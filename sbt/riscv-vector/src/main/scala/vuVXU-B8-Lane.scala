@@ -6,9 +6,9 @@ class CPIO extends Bundle {
   val imul_val = Bool('input);
   val imul_rdy = Bool('output);
   val imul_fn  = Bits(DEF_VAU0_FN, 'input);
-  val imul_in0 = UFix(DEF_XLEN, 'input);
-  val imul_in1 = UFix(DEF_XLEN, 'input);
-  val imul_out = UFix(DEF_XLEN, 'output);
+  val imul_in0 = Bits(DEF_XLEN, 'input);
+  val imul_in1 = Bits(DEF_XLEN, 'input);
+  val imul_out = Bits(DEF_XLEN, 'output);
 
   val fma_val  = Bool('input);
   val fma_rdy  = Bool('output);
@@ -23,12 +23,31 @@ class CPIO extends Bundle {
 class ExpanderIO extends Bundle {
   val bank = new BankToBankIO.flip();
 
+  val ren    = Bool('output);
+  val rlast  = Bool('output);
+  val rcnt   = Bits(DEF_BVLEN  , 'output);
+  val raddr  = Bits(DEF_BREGLEN, 'output);
+  val roplen = Bits(DEF_BOPL   , 'output);
+  val rblen  = Bits(DEF_BRPORT , 'output);
+
+  val wen   = Bool('output);
+  val wlast = Bool('output);
+  val wcnt  = Bits(DEF_BVLEN  , 'output);
+  val waddr = Bits(DEF_BREGLEN, 'output);
+  val wsel  = Bits(DEF_BWPORT , 'output);
+
+  val viu       = Bool('output);
+  val viu_fn    = Bits(DEF_VIU_FN , 'output);
+  val viu_utidx = Bits(DEF_VLEN   , 'output);
+  val viu_imm   = Bits(DEF_DATA   , 'output);
+
+
   val vau0    = Bool('output);
-  val vau0_fn = UFix(DEF_VAU0_FN, 'output);
+  val vau0_fn = Bits(DEF_VAU0_FN, 'output);
   val vau1    = Bool('output);
-  val vau1_fn = UFix(DEF_VAU1_FN, 'output);
+  val vau1_fn = Bits(DEF_VAU1_FN, 'output);
   val vau2    = Bool('output);
-  val vau2_fn = UFix(DEF_VAU2_FN, 'output);
+  val vau2_fn = Bits(DEF_VAU2_FN, 'output);
   val vldq    = Bool('output);
   val vsdq    = Bool('output);
   val utaq    = Bool('output);
@@ -69,10 +88,10 @@ class vuVXU_Banked8_Lane extends Component
   val conn = new ArrayBuffer[BankToBankIO];
   var first = true;
 
-  val rblen = new ArrayBuffer[UFix];
-  val rdata = new ArrayBuffer[UFix];
-  val ropl0 = new ArrayBuffer[UFix];
-  val ropl1 = new ArrayBuffer[UFix];
+  val rblen = new ArrayBuffer[Bits];
+  val rdata = new ArrayBuffer[Bits];
+  val ropl0 = new ArrayBuffer[Bits];
+  val ropl1 = new ArrayBuffer[Bits];
 
   for (i <- 0 until SZ_BANK) 
   {
@@ -104,22 +123,12 @@ class vuVXU_Banked8_Lane extends Component
   io.lane_rlast := con.last.rlast;
   io.land_wlast := con.last.wlast;
 
-  vuVXU_Banked8_Lane_Xbar xbar
-  (
-    .rblen(rblen),
-    .rdata(rdata),
-    .ropl0(ropl0),
-    .ropl1(ropl1),
-
-    .rbl0(rbl0),
-    .rbl1(rbl1),
-    .rbl2(rbl2),
-    .rbl3(rbl3),
-    .rbl4(rbl4),
-    .rbl5(rbl5),
-    .rbl6(rbl6),
-    .rbl7(rbl7)
-  );
+  val xbar = new vuVXU_Banked8_Lane_Xbar();
+  xbar.io.blen  <> rblen;
+  xbar.io.rdata <> rdata;
+  xbar.io.ropl0 <> ropl0;
+  xbar.io.ropl1 <> ropl1;
+  val rbl = xbar.io.rbl;
 
   wire              vau0_val;
   wire `DEF_VAU0_FN vau0_fn;
@@ -128,25 +137,21 @@ class vuVXU_Banked8_Lane extends Component
   wire              vau2_val;
   wire `DEF_VAU2_FN vau2_fn;
 
-  vuVXU_Banked8_Lane_LFU lfu
-  (
-    .clk(clk),
-    .reset(reset),
+  val lfu = new vuVXU_Banked8_Lane_LFU();
+    lfu.io.expand_rcnt := expand_rcnt;
+    lfu.io.expand_wcnt(expand_wcnt),
 
-    .expand_rcnt(expand_rcnt),
-    .expand_wcnt(expand_wcnt),
-
-    .expand_vau0(expand_vau0),
-    .expand_vau0_fn(expand_vau0_fn),
-    .expand_vau1(expand_vau1),
-    .expand_vau1_fn(expand_vau1_fn),
-    .expand_vau2(expand_vau2),
-    .expand_vau2_fn(expand_vau2_fn),
-    .expand_vldq(expand_vldq),
-    .expand_vsdq(expand_vsdq),
-    .expand_utaq(expand_utaq),
-    .expand_utldq(expand_utldq),
-    .expand_utsdq(expand_utsdq),
+    lfu.io.expand_vau0(expand_vau0),
+    lfu.io.expand_vau0_fn(expand_vau0_fn),
+    lfu.io.expand_vau1(expand_vau1),
+    lfu.io.expand_vau1_fn(expand_vau1_fn),
+    lfu.io.expand_vau2(expand_vau2),
+    lfu.io.expand_vau2_fn(expand_vau2_fn),
+    lfu.io.expand_vldq(expand_vldq),
+    lfu.io.expand_vsdq(expand_vsdq),
+    lfu.io.expand_utaq(expand_utaq),
+    lfu.io.expand_utldq(expand_utldq),
+    lfu.io.expand_utsdq(expand_utsdq),
 
     .vau0_val(vau0_val),
     .vau0_fn(vau0_fn),

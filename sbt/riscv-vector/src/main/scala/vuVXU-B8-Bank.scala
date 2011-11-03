@@ -5,33 +5,33 @@ import Node._
 class BankToBankIO extends Bundle {
   val ren    = Bool('input)
   val rlast  = Bool('input)
-  val rct    = UFix(DEF_BVLEN, 'input);
-  val raddr  = UFix(DEF_BREGLEN, 'input);
-  val roplen = UFix(DEF_BOPL, 'input);
-  val rblen  = UFix(DEF_BRPORT, 'input);
+  val rct    = Bits(DEF_BVLEN, 'input);
+  val raddr  = Bits(DEF_BREGLEN, 'input);
+  val roplen = Bits(DEF_BOPL, 'input);
+  val rblen  = Bits(DEF_BRPORT, 'input);
 
   val wen   = Bool('input)
   val wlast = Bool('input)
-  val wct   = UFix(DEF_BVLEN, 'input);
-  val waddr = UFix(DEF_BREGLEN, 'input);
-  val wsel  = UFix(DEF_BWPORT, 'input);
+  val wct   = Bits(DEF_BVLEN, 'input);
+  val waddr = Bits(DEF_BREGLEN, 'input);
+  val wsel  = Bits(DEF_BWPORT, 'input);
 
   val viu_val   = Bool('input)
-  val viu_fn    = UFix(DEF_VIU_FN, 'input);
-  val viu_utidx = UFix(DEF_VLEN, 'input);
-  val viu_imm   = UFix(DEF_DATA, 'input);
+  val viu_fn    = Bits(DEF_VIU_FN, 'input);
+  val viu_utidx = Bits(DEF_VLEN, 'input);
+  val viu_imm   = Bits(DEF_DATA, 'input);
 }
 
 class BankRWIO extends Bundle {
-  val rblen = UFix(DEF_BRPORT, 'output);
+  val rblen = Bits(DEF_BRPORT, 'output);
   val rdata = Bits(DEF_DATA, 'ouput);
-  val ropl0 = UFix(DEF_DATA, 'output);
-  val ropl1 = UFix(DEF_DATA, 'output);
+  val ropl0 = Bits(DEF_DATA, 'output);
+  val ropl1 = Bits(DEF_DATA, 'output);
 
-  val wbl0 = UFix(DEF_DATA, 'input);
-  val wbl1 = UFix(DEF_DATA, 'input);
-  val wbl2 = UFix(DEF_DATA, 'input);
-  val wbl3 = UFix(DEF_DATA, 'input);
+  val wbl0 = Bits(DEF_DATA, 'input);
+  val wbl1 = Bits(DEF_DATA, 'input);
+  val wbl2 = Bits(DEF_DATA, 'input);
+  val wbl3 = Bits(DEF_DATA, 'input);
 }
 
 class vuVXU_Banked8_BankIO extends Bundle {

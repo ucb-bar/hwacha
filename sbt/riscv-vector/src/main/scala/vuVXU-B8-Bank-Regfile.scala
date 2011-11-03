@@ -1,44 +1,43 @@
 class RegfileIO extends Bundle {
   val ren    = Bool('input);
-  val raddr  = UFix(DEF_BREGLEN, 'input);
-  val roplen = UFix(DEF_BOPL, 'input);
+  val raddr  = Bits(DEF_BREGLEN, 'input);
+  val roplen = Bits(DEF_BOPL, 'input);
 
   val wen   = Bool('input);
-  val waddr = UFix(DEF_BREGLEN, 'input);
-  val wsel  = UFix(DEF_BWPORT, 'input);
+  val waddr = Bits(DEF_BREGLEN, 'input);
+  val wsel  = Bits(DEF_BWPORT, 'input);
 
   val rdata = Bits(DEF_DATA, 'output);
-  val ropl0 = UFix(DEF_DATA, 'output);
-  val ropl1 = UFix(DEF_DATA, 'output);
+  val ropl0 = Bits(DEF_DATA, 'output);
+  val ropl1 = Bits(DEF_DATA, 'output);
 
-  val wbl0 = UFix(DEF_DATA, 'input);
-  val wbl1 = UFix(DEF_DATA, 'input);
-  val wbl2 = UFix(DEF_DATA, 'input);
-  val wbl3 = UFix(DEF_DATA, 'input);
+  val wbl0 = Bits(DEF_DATA, 'input);
+  val wbl1 = Bits(DEF_DATA, 'input);
+  val wbl2 = Bits(DEF_DATA, 'input);
+  val wbl3 = Bits(DEF_DATA, 'input);
 
-  val viu_rdata = UFix(DEF_DATA, 'output);
-  val viu_ropl  = UFix(DEF_DATA, 'output);
-  val viu_wdata = UFix(DEF_DATA, 'input);
+  val viu_rdata = Bits(DEF_DATA, 'output);
+  val viu_ropl  = Bits(DEF_DATA, 'output);
+  val viu_wdata = Bits(DEF_DATA, 'input);
 }
 
 class vuVXU_Banked8_Bank_Regfile extends Component {
   val io = RegfileIO();
 
-  val wdata = MuxLookup(io.wsel, UFix(0, SZ_DATA), Array(
-    UFix(0, SZ_BWPORT) -> io.wbl0,
-    UFix(1, SZ_BWPORT) -> io.wbl1,
-    UFix(2, SZ_BWPORT) -> io.wbl2,
-    UFix(3, SZ_BWPORT) -> io.wbl3,
-    UFix(4, SZ_BWPORT) -> io.viu_wdata));
+  val wdata = MuxLookup(io.wsel, Bits(0, SZ_DATA), Array(
+    Bits(0, SZ_BWPORT) -> io.wbl0,
+    Bits(1, SZ_BWPORT) -> io.wbl1,
+    Bits(2, SZ_BWPORT) -> io.wbl2,
+    Bits(3, SZ_BWPORT) -> io.wbl3,
+    Bits(4, SZ_BWPORT) -> io.viu_wdata));
 
   val rfile = Mem(32, io.wen, io.waddr, wdata, resetVal = null);
-  val rdata_rf = Reg(resetVal = UFix(0, DEF_DATA));
-  when(io.ren){rdata_rf <== rfile(io.raddr)};
+  val rdata_rf = rfile(io.raddr);
 
   io.rdata := rdata_rf;
 
-  val ropl0Reg = Reg(){UFix(width = DEF_DATA)};
-  val ropl1Reg = Reg(){UFix(width = DEF_DATA)};
+  val ropl0Reg = Reg(){Bits(width = DEF_DATA)};
+  val ropl1Reg = Reg(){Bits(width = DEF_DATA)};
   when(io.roplen(0).toBool){ropl0Reg <== rdata_rf};
   when(io.roplen(1).toBool){ropl1Reg <== rdata_rf};
 
