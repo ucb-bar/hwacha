@@ -83,10 +83,10 @@ package riscvVector {
 
       // vmcmdq
       val VMCMD_SZ     = 19;
-    /*
-      val VMCMD_CMDCODE 18:11
-      val VMCMD_VLEN_M1 10:0
-    */
+      
+      val VMCMD_CMDCODE = (in: UFix) => in(18,11).toBits;
+      val VMCMD_VLEN_M1 = (in: UFix) => in(10,0).toBits;
+      
       val VMCMD_CMD_SZ = 8;
       val VMCMD_VLEN_SZ = VLENMAX_SZ;
 
@@ -105,7 +105,7 @@ package riscvVector {
 
       val VM_STCMD_SZ = 4+VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ;
       val VM_ISCMD_SZ = VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ;
-      val VM_WBCMD_SZ =  4+VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ;
+      val VM_WBCMD_SZ = 4+VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ;
 
       // utmcmdq
       val UTMCMD_SZ      = 19;

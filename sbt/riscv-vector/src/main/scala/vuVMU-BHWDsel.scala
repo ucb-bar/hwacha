@@ -4,7 +4,8 @@ package riscvVector {
 
 // byte/halfword/word/doubleword select + sign extension logic
 
-class vuVMU_BHWD_selIO extends Bundle {
+class vuVMU_BHWD_selIO extends Bundle
+{
   val bhwd_sel		= Bits(2, 'input);
   val signext		  = Bool('input);
   val addr_lsb		= Bits(4, 'input);
@@ -12,7 +13,8 @@ class vuVMU_BHWD_selIO extends Bundle {
   val dout		    = Bits(64, 'output);
 }
 
-class vuVMU_BHWD_sel extends Component {
+class vuVMU_BHWD_sel extends Component 
+{
   val io = new vuVMU_BHWD_selIO();
 
   val dword_sel     = Mux(io.addr_lsb(3)===Bits(1,1), io.din(127,64), io.din(63,0));

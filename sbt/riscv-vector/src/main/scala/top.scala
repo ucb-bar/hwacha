@@ -19,7 +19,7 @@ package riscvVector {
             val boot_args = args ++ Array("--target-dir", "generated-src");
             chiselMain(
                 boot_args,
-                () => new vuVMU_Ctrl_ut_issue()
+                () => new vuVMU_Ctrl_ut_store() //vuVMU_Ctrl_ut_issue()
             );
     } 
 }
