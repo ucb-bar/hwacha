@@ -21,7 +21,7 @@ class CPIO extends Bundle {
 }
 
 class ExpanderToLFUIO extends Bundle {
-  val rcnt   = Bits(DEF_BVLEN  , 'output);
+  val rcnt  = Bits(DEF_BVLEN  , 'output);
   val wcnt  = Bits(DEF_BVLEN  , 'output);
 
   val vau0    = Bool('output);
@@ -38,7 +38,7 @@ class ExpanderToLFUIO extends Bundle {
 }
 
 class ExpanderIO extends Bundle {
-  val bank = new BankToBankIO.flip();
+  val bank = new BankToBankIO().flip();
 
   val ren    = Bool('output);
   val rlast  = Bool('output);
@@ -97,6 +97,11 @@ class vuVXU_Banked8_Lane extends Component
   val ropl0 = new ArrayBuffer[Bits];
   val ropl1 = new ArrayBuffer[Bits];
 
+  //forward declaring imul, fma, and conv units
+  val imul = new vuVXU_Banked8_FU_imul();
+  val fma  = new vuVXU_Banked8_FU_fma();
+  val conv = new vuVXu_Banked8_FU_conv();
+
   for (i <- 0 until SZ_BANK) 
   {
     val bank = new vuVXU_Banked8_Bank();
@@ -125,7 +130,7 @@ class vuVXU_Banked8_Lane extends Component
   }
 
   io.lane_rlast := con.last.rlast;
-  io.land_wlast := con.last.wlast;
+  io.lane_wlast := con.last.wlast;
 
   val xbar = new vuVXU_Banked8_Lane_Xbar();
   xbar.io.blen  <> rblen;
@@ -135,77 +140,59 @@ class vuVXU_Banked8_Lane extends Component
   val rbl = xbar.io.rbl;
 
   val lfu = new vuVXU_Banked8_Lane_LFU();
-  lfu.io.expand <> io.expand.lfu;
+  lfu.io.expand ^^ io.expand.lfu;
+
   val vau0_val  = lfu.io.vau0_val;
   val vau0_fn   = lfu.io.vau0_fn;
   val vau1_val  = lfu.io.vau1_val;
   val vau1_fn   = lfu.io.vau1_fn;
   val vau2_val  = lfu.io.vau2_val;
   val vau2_fn   = lfu.io.vau2_fn;
-  val vldq_rdy  = lfu.io.vldq_rdy;
-  val vsdq_val  = lfu.io.vsdq_val;
-  val utaq_val  = lfu.io.utaq_val;
-  val utldq_rdy = lfu.io.utldq_rdy;
-  val utsdq_val = lfu.io.utsdq_val;
+
+  io.vmu.vldq_rdy  := lfu.io.vldq_rdy;
+  io.vmu.vsdq_val  := lfu.io.vsdq_val;
+  io.vmu.utaq_val  := lfu.io.utaq_val;
+  io.vmu.utldq_rdy := lfu.io.utldq_rdy;
+  io.vmu.utsdq_val := lfu.io.utsdq_val;
 
   val imul_fn  = Mux(vau0_val, vau0_fn, io.cp.imul_fn);
-  val imul_in0 = Mux(vau0_val, rbl0, Cat(Bits(0,1), io.cp.imul_in0));
-  val imul_in1 = Mux(vau0_val, rbl1, Cat(Bits(0,1), io.cp.imul_in1));
+  val imul_in0 = Mux(vau0_val, rbl(0), Cat(Bits(0,1), io.cp.imul_in0));
+  val imul_in1 = Mux(vau0_val, rbl(1), Cat(Bits(0,1), io.cp.imul_in1));
 
   io.cp.imul_rdy := ~vau0_val;
-  io.cp.imul_out := imul_out(SZ_XLEN-1:0);
+  io.cp.imul_out := imul.io.out(SZ_XLEN-1:0);
 
-  vuVXU_Banked8_FU_imul imul
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau0_val | io.cp.imul_val),
-    .fn(imul_fn),
-    .in0(imul_in0),
-    .in1(imul_in1),
-    .out(imul_out)
-  );
+  //integer multiply
+  imul.io.valid := vau0_val | io.cp.imul_val;
+  imul.io.fn  := imul_fn;
+  imul.io.in0 := imul_in0;
+  imul.io.in1 := imul_in1;
 
-  wire `DEF_VAU1_FN fma_fn = Mux(vau1_val, vau1_fn, io.cp.fma_fn);
-  wire `DEF_DATA fma_in0 = Mux(vau1_val, rbl2, io.cp.fma_in0);
-  wire `DEF_DATA fma_in1 = Mux(vau1_val, rbl3, io.cp.fma_in1);
-  wire `DEF_DATA fma_in2 = Mux(vau1_val, rbl4, io.cp.fma_in2);
-  wire `DEF_EXC  fma_exc;
-  wire `DEF_DATA fma_out;
+  val fma_fn  = Mux(vau1_val, vau1_fn, io.cp.fma_fn);
+  val fma_in0 = Mux(vau1_val, rbl(2), io.cp.fma_in0);
+  val fma_in1 = Mux(vau1_val, rbl(3), io.cp.fma_in1);
+  val fma_in2 = Mux(vau1_val, rbl(4), io.cp.fma_in2);
 
-  assign io.cp.fma_rdy = ~vau1_val;
-  assign io.cp.fma_out = fma_out;
-  assign io.cp.fma_exc = fma_exc;
-  assign wbl1 = fma_out;
+  io.cp.fma_rdy := ~vau1_val;
+  io.cp.fma_out := fma.io.out;
+  io.cp.fma_exc := fma.io.exc;
 
-  vuVXU_Banked8_FU_fma fma
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau1_val | io.cp.fma_val),
-    .fn(fma_fn),
-    .in0(fma_in0),
-    .in1(fma_in1),
-    .in2(fma_in2),
-    .out(fma_out),
-    .exc(fma_exc)
-  );
+  //fma
+  io.fma.valid := vau1_val | io.cp.fma_val;
+  fma.io.fn  := fma_fn;
+  fma.io.in0 := fma_in0;
+  fma.io.in1 := fma_in1;
+  fma.io.in2 := fma_in2;
 
-  vuVXU_Banked8_FU_conv conv
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau2_val),
-    .fn(vau2_fn),
-    .in(rbl5),
-    .exc(),
-    .out(wbl2)
-  );
+  //conv
+  conv.io.valid := vau2_val;
+  conv.io.fn := vau2_fn;
+  conv.io.in := rbl(5);
 
-  assign utaq_bits = rbl6[`SZ_ADDR-1:0];
-  assign vsdq_bits = rbl7;
-  assign utsdq_bits = rbl7;
 
-  assign wbl3 = Mux(utldq_rdy, utldq_bits, vldq_bits);
+  io.vmu.utaq_bits  := rbl(6)(SZ_ADDR-1,0);
+  io.vmu.vsdq_bits  := rbl(7);
+  io.vmu.utsdq_bits := rbl(7);
 
-endmodule
+}
+}

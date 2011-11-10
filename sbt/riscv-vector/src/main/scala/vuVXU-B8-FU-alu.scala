@@ -19,20 +19,20 @@ class Shifter extends Component {
     val output = UFix(width = 64, 'output);
   }
 
-  val left = MuxLookup(RG_VIU_FN(io.fn), Bits(0, 1), Array(
+  val left = MuxLookup(io.fn(RG_VIU_FN), Bits(0, 1), Array(
     VIU_SLL -> Bits(1, 1),
     VIU_SRL -> Bits(0, 1),
     VIU_SRA -> Bits(0, 1)));
 
-  val arith = MuxLookup(RG_VIU_FN(io.fn), Bits(0, 1), Array(
+  val arith = MuxLookup(io.fn(RG_VIU_FN), Bits(0, 1), Array(
    VIU_SLL -> Bits(0, 1),
    VIU_SRL -> Bits(0, 1),
    VIU_SRA -> Bits(1,1)));
 
   val trunc = MuxCase(Bits(0, 1), Array(
-    (RG_VIU_FN(io.fn) === VIU_SRL && RG_VIU_DW(io.fn) === DW32) -> Bits(1,1),
-    (RG_VIU_FN(io.fn) === VIU_SRL && RG_VIU_DW(io.fn) === DW64) -> Bits(0,1),
-    (RG_VIU_FN(io.fn) === VIU_SRA) -> Bits(0,1)));
+    (io.fn(RG_VIU_FN) === VIU_SRL && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1),
+    (io.fn(RG_VIU_FN) === VIU_SRL && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
+    (io.fn(RG_VIU_FN) === VIU_SRA) -> Bits(0,1)));
 
   val shift_in = Mux(left, reverse(io.in), 
 		           Cat(Fill(~trunc, 32)&io.in(63,32),io.in(31,0)));
@@ -54,9 +54,9 @@ class vuVXU_Banked8_FU_alu extends Component {
     val out = UFix(DEF_DATA, 'output);
   );
 
-  def VIU_FN(fn: Bits*) = fn.toList.map(x => {RG_VIU_FN(reg_fn) === x}).reduceLeft(_ || _)
-  def VIU_FP(fp: Bits) = RG_VIU_FP(reg_fn) === fp;
-  def VIU_DW(dw: Bits) = RG_VIU_DW(reg_fn) === dw;
+  def VIU_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
+  def VIU_FP(fp: Bits) = reg_fn(RG_VIU_FP) === fp;
+  def VIU_DW(dw: Bits) = reg_fn(RG_VIU_DW) === dw;
 
   val reg_fn     = Reg(io.fn);
   val reg_utidx  = Reg(io.utidx);

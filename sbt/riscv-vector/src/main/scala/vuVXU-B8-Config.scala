@@ -105,14 +105,14 @@ object riscvVectorConfig{
   val SZ_EXC = 5
   val SZ_XLEN = 64
   val SZ_FLEN = 65
-  /*
-   val DEF_ADDR [`SZ_ADDR-1:0]
-   val DEF_INST [`SZ_INST-1:0]
-   val DEF_DATA [`SZ_DATA-1:0] // data width
-   val DEF_EXC [`SZ_EXC-1:0]
-   val DEF_XLEN [`SZ_XLEN-1:0]
-   val DEF_FLEN [`SZ_FLEN-1:0]
-   * */
+
+  val DEF_ADDR = SZ_ADDR
+  val DEF_INST = SZ_INST
+  val DEF_DATA = SZ_DATA // data width
+  val DEF_EXC  = SZ_EXC
+  val DEF_XLEN = SZ_XLEN
+  val DEF_FLEN = SZ_FLEN
+
   val SZ_STALL = 5
 
   val RG_VLDQ = 4
@@ -127,27 +127,27 @@ object riscvVectorConfig{
   val SZ_VAU0_FN = 3
   val SZ_VAU1_FN = 6
   val SZ_VAU2_FN = 7
-/*
-   val RG_VIU_T  10:7
-   val RG_VIU_T0 10:9
-   val RG_VIU_T1 8:7
-   val RG_VIU_DW 6
-   val RG_VIU_FP 5
-   val RG_VIU_FN 4:0
 
-val RG_VAU1_FP 5
-val RG_VAU1_RM 4:3
-val RG_VAU1_FN 2:0
-val RG_VAU2_FP 6
-val RG_VAU2_RM 5:4
-val RG_VAU2_FN 3:0
-* */
+  val RG_VIU_T  = (10,7);
+  val RG_VIU_T0 = (10,9);
+  val RG_VIU_T1 = (8,7);
+  val RG_VIU_DW = 6 
+  val RG_VIU_FP = 5
+  val RG_VIU_FN = (4,0);
 
-  val RG_VIU_T0 = (in: UFix) => in(10,9).toBits
-  val RG_VIU_T1 = (in: UFix) => in(8,7).toBits
-  val RG_VIU_DW = (in: UFix) => in(6).toBits;
-  val RG_VIU_FN = (in: UFix) => in(4, 0);
-  val RG_VIU_FP = (in: UFix) => in(5).toBits;
+  val RG_VAU1_FP = 5
+  val RG_VAU1_RM = (4,3);
+  val RG_VAU1_FN = (2,0);
+  val RG_VAU2_FP = 6
+  val RG_VAU2_RM = (5,4);
+  val RG_VAU2_FN = (3,0);
+
+
+  val RG_VIU_T0 = (10,9);
+  val RG_VIU_T1 = (8,7);
+  val RG_VIU_DW = 6
+  val RG_VIU_FN = (4, 0);
+  val RG_VIU_FP = 5
   
   val DEF_VIU_FN  = SZ_VIU_FN
   val DEF_VAU0_FN = SZ_VAU0_FN

@@ -104,12 +104,12 @@ class vuVXU_Banked8_Bank extends Component {
   val viu_ropl        = rfile.io.viu_ropl;
   rfile.io.viu_wdata := alu.io.out;
 
-  val viu_in0 = MuxLookup(RG_VIU_T0(delay_viu_fn), UFix(0, SZ_DATA), Array(
+  val viu_in0 = MuxLookup(delay_viu_fn(RG_VIU_T0), UFix(0, SZ_DATA), Array(
     M0 -> UFix(0, SZ_DATA),
     ML -> viu_ropl,
     MR -> viu_rdata));
 
-  val viu_in1 = MuxLookup(RG_VIU_T1(delay_viu_fn), UFix(0, SZ_DATA), Array(
+  val viu_in1 = MuxLookup(delay_viu_fn(RG_VIU_T1), UFix(0, SZ_DATA), Array(
     M0 -> UFix(0, SZ_DATA),
     MR -> viu_rdata,
     MI -> delay_viu_imm));
