@@ -6,9 +6,9 @@ class CPIO extends Bundle {
   val imul_val = Bool('input);
   val imul_rdy = Bool('output);
   val imul_fn  = Bits(DEF_VAU0_FN, 'input);
-  val imul_in0 = UFix(DEF_XLEN, 'input);
-  val imul_in1 = UFix(DEF_XLEN, 'input);
-  val imul_out = UFix(DEF_XLEN, 'output);
+  val imul_in0 = Bits(DEF_XLEN, 'input);
+  val imul_in1 = Bits(DEF_XLEN, 'input);
+  val imul_out = Bits(DEF_XLEN, 'output);
 
   val fma_val  = Bool('input);
   val fma_rdy  = Bool('output);
@@ -20,20 +20,43 @@ class CPIO extends Bundle {
   val fma_exec = Bits(DEF_EXC, 'output);
 }
 
-class ExpanderIO extends Bundle {
-  val bank = new BankToBankIO.flip();
+class ExpanderToLFUIO extends Bundle {
+  val rcnt  = Bits(DEF_BVLEN  , 'output);
+  val wcnt  = Bits(DEF_BVLEN  , 'output);
 
   val vau0    = Bool('output);
-  val vau0_fn = UFix(DEF_VAU0_FN, 'output);
+  val vau0_fn = Bits(DEF_VAU0_FN, 'output);
   val vau1    = Bool('output);
-  val vau1_fn = UFix(DEF_VAU1_FN, 'output);
+  val vau1_fn = Bits(DEF_VAU1_FN, 'output);
   val vau2    = Bool('output);
-  val vau2_fn = UFix(DEF_VAU2_FN, 'output);
+  val vau2_fn = Bits(DEF_VAU2_FN, 'output);
   val vldq    = Bool('output);
   val vsdq    = Bool('output);
   val utaq    = Bool('output);
   val utldq   = Bool('output);
   val utsdq   = Bool('output);
+}
+
+class ExpanderIO extends Bundle {
+  val bank = new BankToBankIO().flip();
+
+  val ren    = Bool('output);
+  val rlast  = Bool('output);
+  val raddr  = Bits(DEF_BREGLEN, 'output);
+  val roplen = Bits(DEF_BOPL   , 'output);
+  val rblen  = Bits(DEF_BRPORT , 'output);
+
+  val wen   = Bool('output);
+  val wlast = Bool('output);
+  val waddr = Bits(DEF_BREGLEN, 'output);
+  val wsel  = Bits(DEF_BWPORT , 'output);
+
+  val viu       = Bool('output);
+  val viu_fn    = Bits(DEF_VIU_FN , 'output);
+  val viu_utidx = Bits(DEF_VLEN   , 'output);
+  val viu_imm   = Bits(DEF_DATA   , 'output);
+
+  val lfu = new ExpanderToLFUIO();
 }
 
 val VMUIO extends Bundle 
@@ -69,10 +92,15 @@ class vuVXU_Banked8_Lane extends Component
   val conn = new ArrayBuffer[BankToBankIO];
   var first = true;
 
-  val rblen = new ArrayBuffer[UFix];
-  val rdata = new ArrayBuffer[UFix];
-  val ropl0 = new ArrayBuffer[UFix];
-  val ropl1 = new ArrayBuffer[UFix];
+  val rblen = new ArrayBuffer[Bits];
+  val rdata = new ArrayBuffer[Bits];
+  val ropl0 = new ArrayBuffer[Bits];
+  val ropl1 = new ArrayBuffer[Bits];
+
+  //forward declaring imul, fma, and conv units
+  val imul = new vuVXU_Banked8_FU_imul();
+  val fma  = new vuVXU_Banked8_FU_fma();
+  val conv = new vuVXu_Banked8_FU_conv();
 
   for (i <- 0 until SZ_BANK) 
   {
@@ -102,125 +130,69 @@ class vuVXU_Banked8_Lane extends Component
   }
 
   io.lane_rlast := con.last.rlast;
-  io.land_wlast := con.last.wlast;
+  io.lane_wlast := con.last.wlast;
 
-  vuVXU_Banked8_Lane_Xbar xbar
-  (
-    .rblen(rblen),
-    .rdata(rdata),
-    .ropl0(ropl0),
-    .ropl1(ropl1),
+  val xbar = new vuVXU_Banked8_Lane_Xbar();
+  xbar.io.blen  <> rblen;
+  xbar.io.rdata <> rdata;
+  xbar.io.ropl0 <> ropl0;
+  xbar.io.ropl1 <> ropl1;
+  val rbl = xbar.io.rbl;
 
-    .rbl0(rbl0),
-    .rbl1(rbl1),
-    .rbl2(rbl2),
-    .rbl3(rbl3),
-    .rbl4(rbl4),
-    .rbl5(rbl5),
-    .rbl6(rbl6),
-    .rbl7(rbl7)
-  );
+  val lfu = new vuVXU_Banked8_Lane_LFU();
+  lfu.io.expand ^^ io.expand.lfu;
 
-  wire              vau0_val;
-  wire `DEF_VAU0_FN vau0_fn;
-  wire              vau1_val;
-  wire `DEF_VAU1_FN vau1_fn;
-  wire              vau2_val;
-  wire `DEF_VAU2_FN vau2_fn;
+  val vau0_val  = lfu.io.vau0_val;
+  val vau0_fn   = lfu.io.vau0_fn;
+  val vau1_val  = lfu.io.vau1_val;
+  val vau1_fn   = lfu.io.vau1_fn;
+  val vau2_val  = lfu.io.vau2_val;
+  val vau2_fn   = lfu.io.vau2_fn;
 
-  vuVXU_Banked8_Lane_LFU lfu
-  (
-    .clk(clk),
-    .reset(reset),
+  io.vmu.vldq_rdy  := lfu.io.vldq_rdy;
+  io.vmu.vsdq_val  := lfu.io.vsdq_val;
+  io.vmu.utaq_val  := lfu.io.utaq_val;
+  io.vmu.utldq_rdy := lfu.io.utldq_rdy;
+  io.vmu.utsdq_val := lfu.io.utsdq_val;
 
-    .expand_rcnt(expand_rcnt),
-    .expand_wcnt(expand_wcnt),
+  val imul_fn  = Mux(vau0_val, vau0_fn, io.cp.imul_fn);
+  val imul_in0 = Mux(vau0_val, rbl(0), Cat(Bits(0,1), io.cp.imul_in0));
+  val imul_in1 = Mux(vau0_val, rbl(1), Cat(Bits(0,1), io.cp.imul_in1));
 
-    .expand_vau0(expand_vau0),
-    .expand_vau0_fn(expand_vau0_fn),
-    .expand_vau1(expand_vau1),
-    .expand_vau1_fn(expand_vau1_fn),
-    .expand_vau2(expand_vau2),
-    .expand_vau2_fn(expand_vau2_fn),
-    .expand_vldq(expand_vldq),
-    .expand_vsdq(expand_vsdq),
-    .expand_utaq(expand_utaq),
-    .expand_utldq(expand_utldq),
-    .expand_utsdq(expand_utsdq),
+  io.cp.imul_rdy := ~vau0_val;
+  io.cp.imul_out := imul.io.out(SZ_XLEN-1:0);
 
-    .vau0_val(vau0_val),
-    .vau0_fn(vau0_fn),
-    .vau1_val(vau1_val),
-    .vau1_fn(vau1_fn),
-    .vau2_val(vau2_val),
-    .vau2_fn(vau2_fn),
-    .vldq_rdy(vldq_rdy),
-    .vsdq_val(vsdq_val),
-    .utaq_val(utaq_val),
-    .utldq_rdy(utldq_rdy),
-    .utsdq_val(utsdq_val)
-  );
+  //integer multiply
+  imul.io.valid := vau0_val | io.cp.imul_val;
+  imul.io.fn  := imul_fn;
+  imul.io.in0 := imul_in0;
+  imul.io.in1 := imul_in1;
 
-  wire `DEF_VAU0_FN imul_fn = vau0_val ? vau0_fn : cp_imul_fn;
-  wire `DEF_DATA imul_in0 = vau0_val ? rbl0 : {1'b0, cp_imul_in0};
-  wire `DEF_DATA imul_in1 = vau0_val ? rbl1 : {1'b0, cp_imul_in1};
-  wire `DEF_DATA imul_out;
+  val fma_fn  = Mux(vau1_val, vau1_fn, io.cp.fma_fn);
+  val fma_in0 = Mux(vau1_val, rbl(2), io.cp.fma_in0);
+  val fma_in1 = Mux(vau1_val, rbl(3), io.cp.fma_in1);
+  val fma_in2 = Mux(vau1_val, rbl(4), io.cp.fma_in2);
 
-  assign cp_imul_rdy = ~vau0_val;
-  assign cp_imul_out = imul_out[`SZ_XLEN-1:0];
-  assign wbl0 = imul_out;
+  io.cp.fma_rdy := ~vau1_val;
+  io.cp.fma_out := fma.io.out;
+  io.cp.fma_exc := fma.io.exc;
 
-  vuVXU_Banked8_FU_imul imul
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau0_val | cp_imul_val),
-    .fn(imul_fn),
-    .in0(imul_in0),
-    .in1(imul_in1),
-    .out(imul_out)
-  );
+  //fma
+  io.fma.valid := vau1_val | io.cp.fma_val;
+  fma.io.fn  := fma_fn;
+  fma.io.in0 := fma_in0;
+  fma.io.in1 := fma_in1;
+  fma.io.in2 := fma_in2;
 
-  wire `DEF_VAU1_FN fma_fn = vau1_val ? vau1_fn : cp_fma_fn;
-  wire `DEF_DATA fma_in0 = vau1_val ? rbl2 : cp_fma_in0;
-  wire `DEF_DATA fma_in1 = vau1_val ? rbl3 : cp_fma_in1;
-  wire `DEF_DATA fma_in2 = vau1_val ? rbl4 : cp_fma_in2;
-  wire `DEF_EXC  fma_exc;
-  wire `DEF_DATA fma_out;
+  //conv
+  conv.io.valid := vau2_val;
+  conv.io.fn := vau2_fn;
+  conv.io.in := rbl(5);
 
-  assign cp_fma_rdy = ~vau1_val;
-  assign cp_fma_out = fma_out;
-  assign cp_fma_exc = fma_exc;
-  assign wbl1 = fma_out;
 
-  vuVXU_Banked8_FU_fma fma
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau1_val | cp_fma_val),
-    .fn(fma_fn),
-    .in0(fma_in0),
-    .in1(fma_in1),
-    .in2(fma_in2),
-    .out(fma_out),
-    .exc(fma_exc)
-  );
+  io.vmu.utaq_bits  := rbl(6)(SZ_ADDR-1,0);
+  io.vmu.vsdq_bits  := rbl(7);
+  io.vmu.utsdq_bits := rbl(7);
 
-  vuVXU_Banked8_FU_conv conv
-  (
-    .clk(clk),
-    .reset(reset),
-    .val(vau2_val),
-    .fn(vau2_fn),
-    .in(rbl5),
-    .exc(),
-    .out(wbl2)
-  );
-
-  assign utaq_bits = rbl6[`SZ_ADDR-1:0];
-  assign vsdq_bits = rbl7;
-  assign utsdq_bits = rbl7;
-
-  assign wbl3 = utldq_rdy ? utldq_bits : vldq_bits;
-
-endmodule
+}
+}

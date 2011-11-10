@@ -35,48 +35,47 @@ object riscvVectorConfig{
   val FPS = Bits("b0", 1)
   val FPD = Bits("b1", 1)
 
-  val VIU_X     = UFix(0, 5)
-  val VIU_ADD   = UFix(1, 5)
-  val VIU_SLL   = UFix(2, 5)
-  val VIU_SLT   = UFix(3, 5)
-  val VIU_SLTU  = UFix(4, 5)
-  val VIU_XOR   = UFix(5, 5)
-  val VIU_SRL   = UFix(6, 5)
-  val VIU_SRA   = UFix(7, 5)
-  val VIU_OR    = UFix(8, 5)
-  val VIU_AND   = UFix(9, 5)
-  val VIU_SUB   = UFix(10, 5)
-  val VIU_IDX   = UFix(11, 5)
-  val VIU_MOV   = UFix(12, 5)
-  val VIU_FSJ   = UFix(13, 5)
-  val VIU_FSJN  = UFix(14, 5)
-  val VIU_FSJX  = UFix(15, 5)
-  val VIU_FEQ   = UFix(16, 5)
-  val VIU_FLT   = UFix(17, 5)
-  val VIU_FLE   = UFix(18, 5)
-  val VIU_FMIN  = UFix(19, 5)
-  val VIU_FMAX  = UFix(20, 5)
-  val VIU_MOVZ  = UFix(21, 5)
-  val VIU_MOVN  = UFix(22, 5)
+  val VIU_X     = Bits(0, 5)
+  val VIU_ADD   = Bits(1, 5)
+  val VIU_SLL   = Bits(2, 5)
+  val VIU_SLT   = Bits(3, 5)
+  val VIU_SLTU  = Bits(4, 5)
+  val VIU_XOR   = Bits(5, 5)
+  val VIU_SRL   = Bits(6, 5)
+  val VIU_SRA   = Bits(7, 5)
+  val VIU_OR    = Bits(8, 5)
+  val VIU_AND   = Bits(9, 5)
+  val VIU_SUB   = Bits(10, 5)
+  val VIU_IDX   = Bits(11, 5)
+  val VIU_MOV   = Bits(12, 5)
+  val VIU_FSJ   = Bits(13, 5)
+  val VIU_FSJN  = Bits(14, 5)
+  val VIU_FSJX  = Bits(15, 5)
+  val VIU_FEQ   = Bits(16, 5)
+  val VIU_FLT   = Bits(17, 5)
+  val VIU_FLE   = Bits(18, 5)
+  val VIU_FMIN  = Bits(19, 5)
+  val VIU_FMAX  = Bits(20, 5)
+  val VIU_MOVZ  = Bits(21, 5)
+  val VIU_MOVN  = Bits(22, 5)
 
   // in the decode table
-  val VAU0_X     = UFix(0, 2)
-  val VAU0_M     = UFix(0, 2)
-  val VAU0_MH    = UFix(1, 2)
-  val VAU0_MHU   = UFix(2, 2)
-  val VAU0_MHSU  = UFix(3, 2)
+  val VAU0_X     = Bits(0, 2)
+  val VAU0_M     = Bits(0, 2)
+  val VAU0_MH    = Bits(1, 2)
+  val VAU0_MHU   = Bits(2, 2)
+  val VAU0_MHSU  = Bits(3, 2)
 
   // acutal ops
-  /*
-   val VAU0_32    {`DW32,`VAU0_M}
-   val VAU0_32H   {`DW32,`VAU0_MH}
-   val VAU0_32HU  {`DW32,`VAU0_MHU}
-   val VAU0_32HSU {`DW32,`VAU0_MHSU}
-   val VAU0_64    {`DW64,`VAU0_M}
-   val VAU0_64H   {`DW64,`VAU0_MH}
-   val VAU0_64HU  {`DW64,`VAU0_MHU}
-   val VAU0_64HSU {`DW64,`VAU0_MHSU}
-   */
+  val VAU0_32    = Cat(DW32,VAU0_M)
+  val VAU0_32H   = Cat(DW32,VAU0_MH)
+  val VAU0_32HU  = Cat(DW32,VAU0_MHU)
+  val VAU0_32HSU = Cat(DW32,VAU0_MHSU)
+  val VAU0_64    = Cat(DW64,VAU0_M)
+  val VAU0_64H   = Cat(DW64,VAU0_MH)
+  val VAU0_64HU  = Cat(DW64,VAU0_MHU)
+  val VAU0_64HSU = Cat(DW64,VAU0_MHSU)
+
   val VAU1_X     = UFix(0, 3)
   val VAU1_ADD   = UFix(0, 3)
   val VAU1_SUB   = UFix(1, 3)
@@ -106,14 +105,14 @@ object riscvVectorConfig{
   val SZ_EXC = 5
   val SZ_XLEN = 64
   val SZ_FLEN = 65
-  /*
-   val DEF_ADDR [`SZ_ADDR-1:0]
-   val DEF_INST [`SZ_INST-1:0]
-   val DEF_DATA [`SZ_DATA-1:0] // data width
-   val DEF_EXC [`SZ_EXC-1:0]
-   val DEF_XLEN [`SZ_XLEN-1:0]
-   val DEF_FLEN [`SZ_FLEN-1:0]
-   * */
+
+  val DEF_ADDR = SZ_ADDR
+  val DEF_INST = SZ_INST
+  val DEF_DATA = SZ_DATA // data width
+  val DEF_EXC  = SZ_EXC
+  val DEF_XLEN = SZ_XLEN
+  val DEF_FLEN = SZ_FLEN
+
   val SZ_STALL = 5
 
   val RG_VLDQ = 4
@@ -128,27 +127,27 @@ object riscvVectorConfig{
   val SZ_VAU0_FN = 3
   val SZ_VAU1_FN = 6
   val SZ_VAU2_FN = 7
-/*
-   val RG_VIU_T  10:7
-   val RG_VIU_T0 10:9
-   val RG_VIU_T1 8:7
-   val RG_VIU_DW 6
-   val RG_VIU_FP 5
-   val RG_VIU_FN 4:0
 
-val RG_VAU1_FP 5
-val RG_VAU1_RM 4:3
-val RG_VAU1_FN 2:0
-val RG_VAU2_FP 6
-val RG_VAU2_RM 5:4
-val RG_VAU2_FN 3:0
-* */
+  val RG_VIU_T  = (10,7);
+  val RG_VIU_T0 = (10,9);
+  val RG_VIU_T1 = (8,7);
+  val RG_VIU_DW = 6 
+  val RG_VIU_FP = 5
+  val RG_VIU_FN = (4,0);
 
-  val RG_VIU_T0 = (in: UFix) => in(10,9).toBits
-  val RG_VIU_T1 = (in: UFix) => in(8,7).toBits
-  val RG_VIU_DW = (in: UFix) => in(6).toBits;
-  val RG_VIU_FN = (in: UFix) => in(4, 0);
-  val RG_VIU_FP = (in: UFix) => in(5).toBits;
+  val RG_VAU1_FP = 5
+  val RG_VAU1_RM = (4,3);
+  val RG_VAU1_FN = (2,0);
+  val RG_VAU2_FP = 6
+  val RG_VAU2_RM = (5,4);
+  val RG_VAU2_FN = (3,0);
+
+
+  val RG_VIU_T0 = (10,9);
+  val RG_VIU_T1 = (8,7);
+  val RG_VIU_DW = 6
+  val RG_VIU_FN = (4, 0);
+  val RG_VIU_FP = 5
   
   val DEF_VIU_FN  = SZ_VIU_FN
   val DEF_VAU0_FN = SZ_VAU0_FN
