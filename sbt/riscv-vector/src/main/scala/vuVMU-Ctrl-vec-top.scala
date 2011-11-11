@@ -1,7 +1,7 @@
 package riscvVector {
   import Chisel._
   import Node._
-  import interface._
+  import Interface._
 
   class vuVMU_Ctrl_vec_topIO extends Bundle {
     val vmcmdq_bits		= Bits(VMCMD_SZ, 'input);
@@ -35,6 +35,8 @@ package riscvVector {
   }
   
   class vuVMU_Ctrl_vec_top extends Component {
+    val io = new vuVMU_Ctrl_vec_topIO();
+    
     val VMU_Ctrl_Idle          = UFix(0,3);
     val VMU_Ctrl_Load          = UFix(1,3);
     val VMU_Ctrl_LoadStride    = UFix(2,3);
@@ -46,8 +48,8 @@ package riscvVector {
 
     val state = Reg(resetVal = VMU_Ctrl_Idle);
     
-    val cmd = VMCMD_CMDCODE(io.vmcmdq_bits);
-    val vlen = VMCMD_VLEN_M1(io.vmcmdq_bits);
+    val cmd = VMCMD_CMDCODE(io.vmcmdq_bits.toUFix);
+    val vlen = VMCMD_VLEN_M1(io.vmcmdq_bits.toUFix);
     val addr = io.vmimmq_bits;
     val stride = Wire() {Bits(VMSTRIDE_SZ)};
 
@@ -61,7 +63,7 @@ package riscvVector {
 
       is(VMU_Ctrl_Idle)
       {
-        when(vmcmdq_val)
+        when(io.vmcmdq_val)
         {
           switch(cmd(7,4))
           {
@@ -229,15 +231,16 @@ package riscvVector {
       }
       otherwise
       {
-        vmcmdq_rdy          = Bool(false);
-        vmimmq_rdy          = Bool(false);
-        vmstrideq_rdy       = Bool(false);
-        vmrespq_bits        = Bits(0);
-        vmrespq_val         = Bool(false);
-        iscmdq_val          = Bool(false);
-        wbcmdq_val          = Bool(false);
-        stcmdq_val          = Bool(false);
-        stride              = UFix(0);
+        io.vmcmdq_rdy          <== Bool(false);
+        io.vmimmq_rdy          <== Bool(false);
+        io.vmstrideq_rdy       <== Bool(false);
+        io.vmrespq_bits        <== Bits(0);
+        io.vmrespq_val         <== Bool(false);
+        io.iscmdq_val          <== Bool(false);
+        io.wbcmdq_val          <== Bool(false);
+        io.stcmdq_val          <== Bool(false);
+        stride              <== UFix(0);
       }
     }
   }
+}

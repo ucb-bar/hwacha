@@ -1,7 +1,7 @@
 package riscvVector {
   import Chisel._
   import Node._
-  import interface._
+  import Interface._
 
   class vuVMU_Ctrl_ut_storeIO extends Bundle
   {
@@ -46,7 +46,7 @@ package riscvVector {
     val cmd_type      = io.stcmdq_deq_bits(UT_STCMD_SZ-2, UT_STCMD_SZ-6);
     val cmd_type_amo  = io.stcmdq_deq_bits(UT_STCMD_SZ);
 
-    val cmd_type_reg = Reg(resetVal = UFix(0, 5));
+    val cmd_type_reg = Reg(resetVal = Bits(0, 5));
     val addr_reg = Reg(resetVal = UFix(0, 32));
     val vlen_reg = Reg(resetVal = UFix(0, UTMCMD_VLEN_SZ));
     val state = Reg(resetVal = VMU_Ctrl_Idle);
@@ -63,34 +63,19 @@ package riscvVector {
     val srq_enq_data_bits = Wire(){Bits()};
     when(cmd_type_fp)
     {
-      when( cmd_type_reg(1,0) === UFix(3,2) )
+      switch(cmd_type_reg(1,0))
       {
-        srq_enq_data_bits <== sdq_deq_dp_bits;
-      }
-      when( cmd_type_reg(1,0) === UFix(2,2) )
-      {
-        srq_enq_data_bits <== Fill(2, sdq_deq_sp_bits);
+        is(Bits("b11")) {srq_enq_data_bits <== sdq_deq_dp_bits;}
+        is(Bits("b10")) {srq_enq_data_bits <== Fill(2, sdq_deq_sp_bits);}
       }
     }
-    when(cmd_type_reg(1,0) === UFix(3,2))
+    switch(cmd_type_reg(1,0))
     {
-      srq_enq_data_bits <== io.sdq_deq_bits(63,0);
-    }
-    when(cmd_type_reg(1,0) === UFix(2,2))
-    {
-      srq_enq_data_bits <== Fill(2, io.sdq_deq_bits(63,0));
-    }
-    when(cmd_type_reg(1,0) === UFix(1,2))
-    {
-      srq_enq_data_bits <== Fill(4, io.sdq_deq_bits(63,0));
-    }
-    when(cmd_type_reg(1,0) === UFix(0,2))
-    {
-      srq_enq_data_bits <== Fill(8, io.sdq_deq_bits(63,0));
-    }
-    otherwise
-    {
-      srq_enq_data_bits <== UFix(0, 64);
+      is(Bits("b11")) {srq_enq_data_bits <== io.sdq_deq_bits(63,0);}
+      is(Bits("b10")) {srq_enq_data_bits <== Fill(2, io.sdq_deq_bits(63,0));}
+      is(Bits("b01")) {srq_enq_data_bits <== Fill(4, io.sdq_deq_bits(63,0));}
+      is(Bits("b00")) {srq_enq_data_bits <== Fill(8, io.sdq_deq_bits(63,0));}
+      otherwise {srq_enq_data_bits <== Bits(0, 64);}
     }
 
     val srq_enq_tag_bits = Wire(){Bits()};

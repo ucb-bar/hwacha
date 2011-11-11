@@ -2,7 +2,7 @@ package riscvVector {
   import Chisel._
   import Node._
 
-  object interface {
+  object Interface {
       val VLENMAX_SZ  = 11;
 
       // vcmdq
