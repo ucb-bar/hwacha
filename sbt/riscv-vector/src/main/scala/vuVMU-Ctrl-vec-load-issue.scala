@@ -69,7 +69,7 @@ package riscvVector {
         {
           io.roq_deq_tag_rdy <== io.lrq_enq_rdy;
           io.lrq_enq_val     <== io.roq_deq_tag_val;
-          when( io.roq_deq_tag_val && io.lrq_enq_rdy )
+          when( io.roq_deq_tag_val & io.lrq_enq_rdy )
           {
             addr_reg <== addr_reg + UFix(16);
           }
@@ -85,7 +85,7 @@ package riscvVector {
         {
           io.roq_deq_tag_rdy <== io.lrq_enq_rdy;
           io.lrq_enq_val     <== io.roq_deq_tag_val;
-          when( io.roq_deq_tag_val && io.lrq_enq_rdy )
+          when( io.roq_deq_tag_val & io.lrq_enq_rdy )
           {
             addr_reg <== addr_reg + stride_reg;
           }

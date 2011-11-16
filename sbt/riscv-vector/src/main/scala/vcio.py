@@ -16,8 +16,11 @@ filename = sys.argv[1]
 patterns = ["\s*(input|output)\s*(reg)*\s*\[`(\w+)-\d+:\d+\]\s+(\w+).*", # matches multibit input/output with defined width
             "\s*(input|output)\s*(reg)*\s*\[(\d+):\d+\]\s+(\w+).*", # ' ' with number width
             "\s*(input|output)\s*(reg)*\s*(\w+).*", # single bit wire
-            "\s*//.*" # comment
+            "\s*//.*" # keep comments
             ]
+
+# [0-9]+'[bhd][0-9a-fA-F] -> Bits("$2$3",$1)
+# wire -> val
 
 def mbit_const(m):
   print m.group(3)

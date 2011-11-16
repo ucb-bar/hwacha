@@ -51,7 +51,7 @@ package riscvVector {
     val cmd = VMCMD_CMDCODE(io.vmcmdq_bits.toUFix);
     val vlen = VMCMD_VLEN_M1(io.vmcmdq_bits.toUFix);
     val addr = io.vmimmq_bits;
-    val stride = Wire() {Bits(VMSTRIDE_SZ)};
+    val stride = Wire() {Bits(width=VMSTRIDE_SZ)};
 
     io.wbcmdq_bits := Cat(cmd(3,0), stride.toBits, addr, vlen);
     io.iscmdq_bits := Cat(stride.toBits, addr, vlen);
@@ -69,7 +69,7 @@ package riscvVector {
           {
             is(Bits("b0000",4))
             {
-              when(cmd(3,0) === Bits("1100") || cmd(3,0) === Bits("1101") || cmd(3,0) === Bits("1110") || cmd(3,0) === Bits("1111"))
+              when(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111"))
               {
                 state <== VMU_Ctrl_Sync;
               }
@@ -117,8 +117,8 @@ package riscvVector {
       {
         io.vmcmdq_rdy <== Bool(true);
         io.vmimmq_rdy <== Bool(true);
-        io.iscmdq_rdy <== Bool(true);
-        io.wbcmdq_rdy <== Bool(true);
+        io.iscmdq_val <== Bool(true);
+        io.wbcmdq_val <== Bool(true);
         switch(cmd(1,0))
         {
           is(Bits("b11"))
@@ -148,7 +148,7 @@ package riscvVector {
       {
         io.vmcmdq_rdy <== Bool(true);
         io.vmimmq_rdy <== Bool(true);
-        io.stcmdq_rdy <== Bool(true);
+        io.stcmdq_val <== Bool(true);
         switch(cmd(1,0))
         {
           is(Bits("b11"))
