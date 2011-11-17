@@ -1,10 +1,11 @@
-`include "interface.vh"
-`include "vuVXU-B8-Config.vh"
-`include "vuVXU-Opcode.vh"
+package riscvVector {
+import Chisel._
+import Config._
+
 
 class LFUIO extends Bundle 
 {
-  val expand = new ExpanderToLFUIO.flip();
+  val expand = new ExpanderToLFUIO().flip();
 
   val vau0_val  = Bool('output);
   val vau0_fn   = Bits(DEF_VAU0_FN, 'output);
@@ -22,6 +23,8 @@ class LFUIO extends Bundle
 
 class vuVXU_Banked8_Lane_LFU extends Component 
 {
+  
+  val io = new LFUIO();
 
   val next_vau0_cnt = Wire(){ UFix(width = DEF_BVLEN) };
   val next_vau1_cnt = Wire(){ UFix(width = DEF_BVLEN) };
@@ -44,12 +47,12 @@ class vuVXU_Banked8_Lane_LFU extends Component
   reg_vlu_cnt  := next_vlu_cnt;
   reg_vsu_cnt  := next_vsu_cnt;
   
-  when(|reg_vau0_cnt){ next_vau0_cnt <== reg_vau0_cnt - UFix(1,1)}
-  when(|reg_vau1_cnt){ next_vau1_cnt <== reg_vau1_cnt - UFix(1,1)}
-  when(|reg_vau2_cnt){ next_vau2_cnt <== reg_vau2_cnt - UFix(1,1)}
-  when(|reg_vgu_cnt){ next_vgu_cnt <== reg_vgu_cnt - UFix(1,1)}
-  when(|reg_vlu_cnt){ next_vlu_cnt <== reg_vlu_cnt - UFix(1,1)}
-  when(|reg_vsu_cnt){ next_vsu_cnt <== reg_vsu_cnt - UFix(1,1)}
+  when(reg_vau0_cnt.orR){ next_vau0_cnt <== reg_vau0_cnt - UFix(1,1)}
+  when(reg_vau1_cnt.orR){ next_vau1_cnt <== reg_vau1_cnt - UFix(1,1)}
+  when(reg_vau2_cnt.orR){ next_vau2_cnt <== reg_vau2_cnt - UFix(1,1)}
+  when(reg_vgu_cnt.orR){ next_vgu_cnt <== reg_vgu_cnt - UFix(1,1)}
+  when(reg_vlu_cnt.orR){ next_vlu_cnt <== reg_vlu_cnt - UFix(1,1)}
+  when(reg_vsu_cnt.orR){ next_vsu_cnt <== reg_vsu_cnt - UFix(1,1)}
 
   when(io.expand.vau0){ next_vau0_cnt <== io.expand.rcnt}
   when(io.expand.vau1){ next_vau1_cnt <== io.expand.rcnt}
@@ -60,12 +63,12 @@ class vuVXU_Banked8_Lane_LFU extends Component
 
   otherwise
   {
-    next_vau0_cnt <== Bits(0, SZ_BVLEN);
-    next_vau1_cnt <== Bits(0, SZ_BVLEN);
-    next_vau2_cnt <== Bits(0, SZ_BVLEN);
-    next_vgu_cnt  <== Bits(0, SZ_BVLEN);
-    next_vlu_cnt  <== Bits(0, SZ_BVLEN);
-    next_vsu_cnt  <== Bits(0, SZ_BVLEN);
+    next_vau0_cnt <== UFix(0, SZ_BVLEN);
+    next_vau1_cnt <== UFix(0, SZ_BVLEN);
+    next_vau2_cnt <== UFix(0, SZ_BVLEN);
+    next_vgu_cnt  <== UFix(0, SZ_BVLEN);
+    next_vlu_cnt  <== UFix(0, SZ_BVLEN);
+    next_vsu_cnt  <== UFix(0, SZ_BVLEN);
   }
 
   val reg_vau0    = Reg(resetVal = Bool(false));
@@ -83,63 +86,63 @@ class vuVXU_Banked8_Lane_LFU extends Component
   
   when(io.expand.vau0)
   {
-    reg_vau0 <= Bool(true);
-    reg_vau0_fn <= io.expand.vau0_fn;
+    reg_vau0 <== Bool(true);
+    reg_vau0_fn <== io.expand.vau0_fn;
   }
-  when(~(|reg_vau0_cnt))
+  when(~(reg_vau0_cnt.orR))
   {
-    reg_vau0 <= Bool(false);
+    reg_vau0 <== Bool(false);
   }
 
   when(io.expand.vau1)
   {
-    reg_vau1 <= Bool(true);
-    reg_vau1_fn <= io.expand.vau1_fn;
+    reg_vau1 <== Bool(true);
+    reg_vau1_fn <== io.expand.vau1_fn;
   }
-  when(~(|reg_vau1_cnt))
+  when(~(reg_vau1_cnt.orR))
   {
-    reg_vau1 <= Bool(false);
+    reg_vau1 <== Bool(false);
   }
   
   when(io.expand.vau2)
   {
-    reg_vau2 <= Bool(true);
-    reg_vau2_fn <= io.expand.vau2_fn;
+    reg_vau2 <== Bool(true);
+    reg_vau2_fn <== io.expand.vau2_fn;
   }
-  when(~(|reg_vau2_cnt))
+  when(~(reg_vau2_cnt.orR))
   {
-    reg_vau2 <= Bool(false);
+    reg_vau2 <== Bool(false);
   }
 
   when(io.expand.utaq)
   {
-    reg_utaq <= Bool(true);
+    reg_utaq <== Bool(true);
   }
-  when(~(|reg_vgu_cnt))
+  when(~(reg_vgu_cnt.orR))
   {
-    reg_utaq <= Bool(false);
+    reg_utaq <== Bool(false);
   }
 
-  when((io.expand.vldq || io.expand.utldq) && (|io.expand.wcnt))
+  when((io.expand.vldq || io.expand.utldq) && (io.expand.wcnt.orR))
   {
-    reg_vldq <= io.expand.vldq;
-    reg_utldq <= io.expand.utldq;
+    reg_vldq <== io.expand.vldq;
+    reg_utldq <== io.expand.utldq;
   }
-  when(~(|next_vlu_cnt))
+  when(~(next_vlu_cnt.orR))
   {
-    reg_vldq <= Bool(false);
-    reg_utldq <= Bool(false);
+    reg_vldq <== Bool(false);
+    reg_utldq <== Bool(false);
   }
 
   when(io.expand.vsdq || io.expand.utsdq)
   {
-    reg_vsdq <= io.expand.vsdq;
-    reg_utsdq <= io.expand.utsdq;
+    reg_vsdq <== io.expand.vsdq;
+    reg_utsdq <== io.expand.utsdq;
   }
-  when(~(|reg_vsu_cnt))
+  when(~(reg_vsu_cnt.orR))
   {
-    reg_vsdq <= Bool(false);
-    reg_utsdq <= Bool(false);
+    reg_vsdq <== Bool(false);
+    reg_utsdq <== Bool(false);
   }
 
   // every signal related to the read port is delayed by one cycle 
@@ -159,4 +162,5 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vsdq_val  := reg_vsdq;
   io.utsdq_val := reg_utsdq;
 
+}
 }

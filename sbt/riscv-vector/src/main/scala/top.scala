@@ -16,11 +16,12 @@ package riscvVector {
 
     object top_main {
         def main(args: Array[String]) = {
-            val boot_args = args ++ Array("--target-dir", "generated-src");
-            chiselMain(
-                boot_args,
-                () => new vuVMU_Ctrl_ut_store() //vuVMU_Ctrl_ut_issue()
-            );
+          val boot_args = args ++ Array("--target-dir", "generated-src");
+          chiselMain(
+            boot_args,
+            () => new vuVMU_Ctrl_ut_store() //vuVMU_Ctrl_ut_issue()
+          );
+	  chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
     } 
 }
 }  

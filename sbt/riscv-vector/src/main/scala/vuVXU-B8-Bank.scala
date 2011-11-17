@@ -1,18 +1,19 @@
 package riscvVector {
 import Chisel._
 import Node._
+import Config._
 
 class BankToBankIO extends Bundle {
   val ren    = Bool('input)
   val rlast  = Bool('input)
-  val rct    = Bits(DEF_BVLEN, 'input);
+  val rcnt   = Bits(DEF_BVLEN, 'input);
   val raddr  = Bits(DEF_BREGLEN, 'input);
   val roplen = Bits(DEF_BOPL, 'input);
   val rblen  = Bits(DEF_BRPORT, 'input);
 
   val wen   = Bool('input)
   val wlast = Bool('input)
-  val wct   = Bits(DEF_BVLEN, 'input);
+  val wcnt  = Bits(DEF_BVLEN, 'input);
   val waddr = Bits(DEF_BREGLEN, 'input);
   val wsel  = Bits(DEF_BWPORT, 'input);
 
@@ -24,7 +25,7 @@ class BankToBankIO extends Bundle {
 
 class BankRWIO extends Bundle {
   val rblen = Bits(DEF_BRPORT, 'output);
-  val rdata = Bits(DEF_DATA, 'ouput);
+  val rdata = Bits(DEF_DATA, 'output);
   val ropl0 = Bits(DEF_DATA, 'output);
   val ropl1 = Bits(DEF_DATA, 'output);
 
@@ -44,36 +45,37 @@ class vuVXU_Banked8_BankIO extends Bundle {
 }
 
 class vuVXU_Banked8_Bank extends Component {
-  val io = vuVXU_Banked8_BankIO();
+  val io = new vuVXU_Banked8_BankIO();
 
   val rpass = io.in.rcnt.orR();
   val wpass = io.in.wcnt.orR();
 
-  val reg_rn     = Reg(rpass & io.in.ren);
+  val reg_ren     = Reg(rpass & io.in.ren);
   val reg_rlast  = Reg(io.in.rlast);
-  val reg_rcnt   = Reg(Mux(rpass, io.in.rcnt - UFix(1), UFix(0)));
+  val reg_rcnt   = Reg(Mux(rpass, io.in.rcnt.toUFix - UFix(1), UFix(0)));
   val reg_raddr  = Reg(io.in.raddr);
   val reg_roplen = Reg(io.in.roplen);
   val reg_rblen  = Reg(io.in.rblen); 
 
   val reg_wen   = Reg(wpass & io.in.wen);
   val reg_wlast = Reg(io.in.wlast);
-  val reg_wcnt  = Reg(Mux(wpass, io.in.wcnt - UFix(1), UFix(0)));
+  val reg_wcnt  = Reg(Mux(wpass, io.in.wcnt.toUFix - UFix(1), UFix(0)));
   val reg_waddr = Reg(io.in.waddr);
   val reg_wsel  = Reg(io.in.wsel);
 
   val reg_viu_val   = Reg(rpass & io.in.viu_val);
   val reg_viu_fn    = Reg(io.in.viu_fn);
-  val reg_viu_utidx = Reg(io.in.viu_utidx + UFix(1));
+  val reg_viu_utidx = Reg(io.in.viu_utidx.toUFix + UFix(1));
   val reg_viu_imm   = Reg(io.in.viu_imm);
 
   // every signal related to the read port is delayed by one cycle 
   // because of the register file is an sram
 
-  val delay_roplen = reg_roplen & Fill(io.active, SZ_BOPL);
-  val delay_rblen  = reg_rblen & Fill(io.active, SZ_BRPORT);
+  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active);
+  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active);
 
-  val delay_viu_fn = reg_viu_fn;
+  val delay_viu_fn  = reg_viu_fn;
+  val delay_viu_imm = reg_viu_imm;
   
   val delay_viu_val   = Reg(io.in.viu_val & io.active);
   val delay_viu_utidx = Reg(io.in.viu_utidx); 
@@ -121,23 +123,23 @@ class vuVXU_Banked8_Bank extends Component {
   alu.io.in0        := viu_in0;
   alu.io.in1        := viu_in1;
 
-  io.out.ren    := Mux(active, reg_ren, io.in.ren);
-  io.out.rlast  := Mux(active, reg_rlast, io.in.rlast);
-  io.out.rcnt   := Mux(active, reg_rcnt, UFix(0))) , io.in.rcnt);
-  io.out.raddr  := Mux(active, reg_raddr, io.in.raddr);
-  io.out.roplen := Mux(active, reg_roplen, io.in.roplen);
-  io.out.rblen  := Mux(active, reg_rblen, io.in.rblen);
+  io.out.ren    := Mux(io.active, reg_ren, io.in.ren);
+  io.out.rlast  := Mux(io.active, reg_rlast, io.in.rlast);
+  io.out.rcnt   := Mux(io.active, reg_rcnt, io.in.rcnt);
+  io.out.raddr  := Mux(io.active, reg_raddr, io.in.raddr);
+  io.out.roplen := Mux(io.active, reg_roplen, io.in.roplen);
+  io.out.rblen  := Mux(io.active, reg_rblen, io.in.rblen);
 
-  io.out.wen   := Mux(active, reg_wen, io.in.wen);
-  io.out.wlast := Mux(active, reg_wlast, io.in.wlast);
-  io.out.wcnt  := Mux(active, reg_wcnt, io.in.wcnt);
-  io.out.waddr := Mux(active, reg_waddr, io.in.waddr);
-  io.out.wsel  := Mux(active, reg_wsel, io.in.wsel);
+  io.out.wen   := Mux(io.active, reg_wen, io.in.wen);
+  io.out.wlast := Mux(io.active, reg_wlast, io.in.wlast);
+  io.out.wcnt  := Mux(io.active, reg_wcnt, io.in.wcnt);
+  io.out.waddr := Mux(io.active, reg_waddr, io.in.waddr);
+  io.out.wsel  := Mux(io.active, reg_wsel, io.in.wsel);
 
-  io.out.viu_val   := Mux(active, reg_viu_val, io.in.viu_val);
-  io.out.viu_fn    := Mux(active, reg_viu_fn, io.in.viu_fn);
-  io.out.viu_utidx := Mux(active, reg_viu_utidx, io.in.viu_utidx);
-  io.out.viu_imm   := Mux(active, reg_viu_imm, io.in.viu_imm);
+  io.out.viu_val   := Mux(io.active, reg_viu_val, io.in.viu_val);
+  io.out.viu_fn    := Mux(io.active, reg_viu_fn, io.in.viu_fn);
+  io.out.viu_utidx := Mux(io.active, reg_viu_utidx, io.in.viu_utidx);
+  io.out.viu_imm   := Mux(io.active, reg_viu_imm, io.in.viu_imm);
 
 }
 }

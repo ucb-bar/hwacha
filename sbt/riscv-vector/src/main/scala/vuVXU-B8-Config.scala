@@ -1,17 +1,17 @@
 package riscvVector {
 
-import Chisel._
-import Node._
+import Chisel._;
+import Node._;
 
-object riscvVectorConfig{
+object Config {
 
-  val INT_STAGES = UFix(2, 3)
-  val IMUL_STAGES = UFix(3, 3)
-  val FMA_STAGES = UFix(5, 3)
-  val FCONV_STAGES = UFix(3, 3)
+  val INT_STAGES   = 2
+  val IMUL_STAGES  = 3
+  val FMA_STAGES   = 5
+  val FCONV_STAGES = 3
 
   val SHIFT_BUF_READ = 3
-  val SHIFT_BUF_WRITE = FMA_STAGES + UFix(4)
+  val SHIFT_BUF_WRITE = FMA_STAGES + 4
 
   val M0 = Bits("b00", 2)
   val MR = Bits("b01", 2)
@@ -143,12 +143,6 @@ object riscvVectorConfig{
   val RG_VAU2_FN = (3,0);
 
 
-  val RG_VIU_T0 = (10,9);
-  val RG_VIU_T1 = (8,7);
-  val RG_VIU_DW = 6
-  val RG_VIU_FN = (4, 0);
-  val RG_VIU_FP = 5
-  
   val DEF_VIU_FN  = SZ_VIU_FN
   val DEF_VAU0_FN = SZ_VAU0_FN
   val DEF_VAU1_FN = SZ_VAU1_FN

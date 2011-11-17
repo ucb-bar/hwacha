@@ -1,3 +1,8 @@
+package riscvVector{
+import Chisel._
+import Node._
+import Config._
+
 class RegfileIO extends Bundle {
   val ren    = Bool('input);
   val raddr  = Bits(DEF_BREGLEN, 'input);
@@ -22,7 +27,7 @@ class RegfileIO extends Bundle {
 }
 
 class vuVXU_Banked8_Bank_Regfile extends Component {
-  val io = RegfileIO();
+  val io = new RegfileIO();
 
   val wdata = MuxLookup(io.wsel, Bits(0, SZ_DATA), Array(
     Bits(0, SZ_BWPORT) -> io.wbl0,
@@ -31,7 +36,7 @@ class vuVXU_Banked8_Bank_Regfile extends Component {
     Bits(3, SZ_BWPORT) -> io.wbl3,
     Bits(4, SZ_BWPORT) -> io.viu_wdata));
 
-  val rfile = Mem(32, io.wen, io.waddr, wdata, resetVal = null);
+  val rfile = Mem(32, io.wen, io.waddr.toUFix, wdata, resetVal = null);
   val rdata_rf = rfile(io.raddr);
 
   io.rdata := rdata_rf;
@@ -47,4 +52,5 @@ class vuVXU_Banked8_Bank_Regfile extends Component {
   io.viu_rdata := rdata_rf;
   io.viu_ropl := io.ropl0;
 
+}
 }

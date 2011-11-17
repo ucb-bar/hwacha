@@ -1,6 +1,8 @@
 package riscvVector {
 import Chisel._
 import Node._
+import Config._
+import scala.collection.mutable.ArrayBuffer
 
 class CPIO extends Bundle {
   val imul_val = Bool('input);
@@ -17,12 +19,12 @@ class CPIO extends Bundle {
   val fma_in1  = Bits(DEF_FLEN, 'input);
   val fma_in2  = Bits(DEF_FLEN, 'input);
   val fma_out  = Bits(DEF_FLEN, 'output);
-  val fma_exec = Bits(DEF_EXC, 'output);
+  val fma_exc = Bits(DEF_EXC, 'output);
 }
 
 class ExpanderToLFUIO extends Bundle {
-  val rcnt  = Bits(DEF_BVLEN  , 'output);
-  val wcnt  = Bits(DEF_BVLEN  , 'output);
+  val rcnt  = UFix(DEF_BVLEN  , 'output);
+  val wcnt  = UFix(DEF_BVLEN  , 'output);
 
   val vau0    = Bool('output);
   val vau0_fn = Bits(DEF_VAU0_FN, 'output);
@@ -59,7 +61,7 @@ class ExpanderIO extends Bundle {
   val lfu = new ExpanderToLFUIO();
 }
 
-val VMUIO extends Bundle 
+class VMUIO extends Bundle 
 {
   val vldq_rdy  = Bool('output);
   val vldq_bits = Bits(DEF_DATA, 'input)
@@ -79,7 +81,7 @@ class vuVXU_LaneIO extends Bundle
 {
   val cp = new CPIO();
   val bactive = Bits(DEF_BANK, 'input);
-  val expand = new ExpanderIO.flip();
+  val expand = new ExpanderIO().flip();
   val lane_rlast = Bool('output);
   val lane_wlast = Bool('output);
   val vmu = new VMUIO();
@@ -100,12 +102,12 @@ class vuVXU_Banked8_Lane extends Component
   //forward declaring imul, fma, and conv units
   val imul = new vuVXU_Banked8_FU_imul();
   val fma  = new vuVXU_Banked8_FU_fma();
-  val conv = new vuVXu_Banked8_FU_conv();
+  val conv = new vuVXU_Banked8_FU_conv();
 
   for (i <- 0 until SZ_BANK) 
   {
     val bank = new vuVXU_Banked8_Bank();
-    bank.io.active := bactive(i);
+    bank.io.active := io.bactive(i).toBool;
     
     if (first)
     { 
@@ -123,17 +125,17 @@ class vuVXU_Banked8_Lane extends Component
     ropl0 += bank.io.rw.ropl0;
     ropl1 += bank.io.rw.ropl1;
 
-    bank.io.rw.wbl0 := imul.out;
-    bank.io.rw.wbl1 := fma.out;
-    bank.io.rw.wbl2 := conv.out;
-    bank.io.rw.wbl3 := Mux(io.vmu.utld_rdy, io.vmu.utldq_bits, io.vmu.vldq_bits);
+    bank.io.rw.wbl0 := imul.io.out;
+    bank.io.rw.wbl1 := fma.io.out;
+    bank.io.rw.wbl2 := conv.io.out;
+    bank.io.rw.wbl3 := Mux(io.vmu.utldq_rdy, io.vmu.utldq_bits, io.vmu.vldq_bits);
   }
 
-  io.lane_rlast := con.last.rlast;
-  io.lane_wlast := con.last.wlast;
+  io.lane_rlast := conn.last.rlast;
+  io.lane_wlast := conn.last.wlast;
 
   val xbar = new vuVXU_Banked8_Lane_Xbar();
-  xbar.io.blen  <> rblen;
+  xbar.io.rblen <> rblen;
   xbar.io.rdata <> rdata;
   xbar.io.ropl0 <> ropl0;
   xbar.io.ropl1 <> ropl1;
@@ -160,7 +162,7 @@ class vuVXU_Banked8_Lane extends Component
   val imul_in1 = Mux(vau0_val, rbl(1), Cat(Bits(0,1), io.cp.imul_in1));
 
   io.cp.imul_rdy := ~vau0_val;
-  io.cp.imul_out := imul.io.out(SZ_XLEN-1:0);
+  io.cp.imul_out := imul.io.out(SZ_XLEN-1,0);
 
   //integer multiply
   imul.io.valid := vau0_val | io.cp.imul_val;
@@ -178,11 +180,11 @@ class vuVXU_Banked8_Lane extends Component
   io.cp.fma_exc := fma.io.exc;
 
   //fma
-  io.fma.valid := vau1_val | io.cp.fma_val;
-  fma.io.fn  := fma_fn;
-  fma.io.in0 := fma_in0;
-  fma.io.in1 := fma_in1;
-  fma.io.in2 := fma_in2;
+  fma.io.valid := vau1_val | io.cp.fma_val;
+  fma.io.fn    := fma_fn;
+  fma.io.in0   := fma_in0;
+  fma.io.in1   := fma_in1;
+  fma.io.in2   := fma_in2;
 
   //conv
   conv.io.valid := vau2_val;
