@@ -21,12 +21,13 @@ package riscvVector
     def main(args: Array[String]) =
     {
       val boot_args = args ++ Array("--target-dir", "generated-src");
-      chiselMain(boot_args, () => new vuVXU_Banked8_FU_fma());
-      chiselMain(boot_args, () => new vuVXU_Banked8_FU_imul());
-      chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());
-      chiselMain(boot_args, () => new vuVXU_Banked8_FU_alu());
-      chiselMain(boot_args, () => new vuVXU_Banked8_Bank());
-      chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_FU_fma());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_FU_imul());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_FU_alu());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_Bank());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
+      chiselMain(boot_args, () => new vuVXU_Issue_VT());
     } 
   }
 } 
