@@ -1,10 +1,13 @@
-package riscvVector {
+package riscvVector
+{
+
 import Chisel._
 import Node._
 import Config._
 import scala.collection.mutable.ArrayBuffer
 
-class CPIO extends Bundle {
+class CPIO extends Bundle
+{
   val imul_val = Bool('input);
   val imul_rdy = Bool('output);
   val imul_fn  = Bits(DEF_VAU0_FN, 'input);
@@ -22,7 +25,8 @@ class CPIO extends Bundle {
   val fma_exc = Bits(DEF_EXC, 'output);
 }
 
-class ExpanderToLFUIO extends Bundle {
+class ExpanderToLFUIO extends Bundle
+{
   val rcnt  = UFix(DEF_BVLEN  , 'output);
   val wcnt  = UFix(DEF_BVLEN  , 'output);
 
@@ -39,25 +43,9 @@ class ExpanderToLFUIO extends Bundle {
   val utsdq   = Bool('output);
 }
 
-class ExpanderIO extends Bundle {
+class ExpanderIO extends Bundle
+{
   val bank = new BankToBankIO().flip();
-
-  val ren    = Bool('output);
-  val rlast  = Bool('output);
-  val raddr  = Bits(DEF_BREGLEN, 'output);
-  val roplen = Bits(DEF_BOPL   , 'output);
-  val rblen  = Bits(DEF_BRPORT , 'output);
-
-  val wen   = Bool('output);
-  val wlast = Bool('output);
-  val waddr = Bits(DEF_BREGLEN, 'output);
-  val wsel  = Bits(DEF_BWPORT , 'output);
-
-  val viu       = Bool('output);
-  val viu_fn    = Bits(DEF_VIU_FN , 'output);
-  val viu_utidx = Bits(DEF_VLEN   , 'output);
-  val viu_imm   = Bits(DEF_DATA   , 'output);
-
   val lfu = new ExpanderToLFUIO();
 }
 
@@ -191,10 +179,9 @@ class vuVXU_Banked8_Lane extends Component
   conv.io.fn := vau2_fn;
   conv.io.in := rbl(5);
 
-
   io.vmu.utaq_bits  := rbl(6)(SZ_ADDR-1,0);
   io.vmu.vsdq_bits  := rbl(7);
   io.vmu.utsdq_bits := rbl(7);
-
 }
+
 }
