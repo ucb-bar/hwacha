@@ -273,7 +273,7 @@ module vuVXU_Issue_VT
     `FCVT_S_W: `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPS,`VAU2_CWTF, `RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
     `FCVT_S_WU:`VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPS,`VAU2_CWUTF,`RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
     `MXTF_S:   `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPS,`VAU2_MXTF, `RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
-    `MFTX_S:   `VTCS = {7'b0_001_000,4'b010_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPS,`VAU2_MFTX, `R_,`RF,`R_,`RX,`I_,y,n,n,n,`CMD_X};
+    `MFTX_S:   `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPS,`VAU2_MFTX, `RF,`R_,`R_,`RX,`I_,y,n,n,n,`CMD_X};
     `FCVT_L_D: `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_CFTL, `RF,`R_,`R_,`RX,`I_,y,n,n,n,`CMD_X};
     `FCVT_LU_D:`VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_CFTLU,`RF,`R_,`R_,`RX,`I_,y,n,n,n,`CMD_X};
     `FCVT_W_D: `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_CFTW, `RF,`R_,`R_,`RX,`I_,y,n,n,n,`CMD_X};
@@ -283,7 +283,7 @@ module vuVXU_Issue_VT
     `FCVT_D_W: `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_CWTF, `RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
     `FCVT_D_WU:`VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_CWUTF,`RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
     `MXTF_D:   `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_MXTF, `RX,`R_,`R_,`RF,`I_,y,n,n,n,`CMD_X};
-    `MFTX_D:   `VTCS = {7'b0_001_000,4'b010_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_MFTX, `R_,`RF,`R_,`RX,`I_,y,n,n,n,`CMD_X};
+    `MFTX_D:   `VTCS = {7'b0_001_000,4'b100_1,6'b001_000,6'b100_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FPD,`VAU2_MFTX, `RF,`R_,`R_,`RX,`I_,y,n,n,n,`CMD_X};
 
     `STOP:     `VTCS = {7'b0_000_000,4'b000_0,6'b000_000,6'b000_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FP_,`VAU2_X,    `R_,`R_,`R_,`R_,`I_,n,y,n,n,`CMD_X};
     default:   `VTCS = {7'b0_000_000,4'b000_0,6'b000_000,6'b000_000,`M0,`M0,`DW__,`FP_,`VIU_X,   `DW__,`VAU0_X,   `FP_,`VAU1_X,    `FP_,`VAU2_X,    `R_,`R_,`R_,`R_,`I_,n,n,n,n,`CMD_X};

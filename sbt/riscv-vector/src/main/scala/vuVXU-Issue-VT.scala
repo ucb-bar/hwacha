@@ -179,7 +179,7 @@ class vuVXU_Issue_VT extends Component
     FCVT_S_W->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPS,VAU2_CWTF, RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
     FCVT_S_WU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPS,VAU2_CWUTF,RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
     MXTF_S->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPS,VAU2_MXTF, RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
-    MFTX_S->    List(Bits("b0_001_000",7),Bits("b010_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPS,VAU2_MFTX, R_,RF,R_,RX,I_,y,n,n,n,CMD_X),
+    MFTX_S->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPS,VAU2_MFTX, RF,R_,R_,RX,I_,y,n,n,n,CMD_X),
     FCVT_L_D->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_CFTL, RF,R_,R_,RX,I_,y,n,n,n,CMD_X),
     FCVT_LU_D-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_CFTLU,RF,R_,R_,RX,I_,y,n,n,n,CMD_X),
     FCVT_W_D->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_CFTW, RF,R_,R_,RX,I_,y,n,n,n,CMD_X),
@@ -189,7 +189,7 @@ class vuVXU_Issue_VT extends Component
     FCVT_D_W->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_CWTF, RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
     FCVT_D_WU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_CWUTF,RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
     MXTF_D->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_MXTF, RX,R_,R_,RF,I_,y,n,n,n,CMD_X),
-    MFTX_D->    List(Bits("b0_001_000",7),Bits("b010_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_MFTX, R_,RF,R_,RX,I_,y,n,n,n,CMD_X),
+    MFTX_D->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b100_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FPD,VAU2_MFTX, RF,R_,R_,RX,I_,y,n,n,n,CMD_X),
 
     STOP->      List(Bits("b0_000_000",7),Bits("b000_0",4),Bits("b000_000",6),Bits("b000_000",6),M0,M0,DW__,FP_,VIU_X,   DW__,VAU0_X,   FP_,VAU1_X,    FP_,VAU2_X,    R_,R_,R_,R_,I_,n,y,n,n,CMD_X)
   ));

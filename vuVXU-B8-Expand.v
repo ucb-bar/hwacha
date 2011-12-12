@@ -223,15 +223,7 @@ module vuVXU_Banked8_Expand
       next_roplen[0] = 2'b00;
       next_rblen[0] = 8'b00_1_000_00;
 
-      if (seq_fn_vau2[`RG_VAU2_FN] == `VAU2_MFTX) // read rs2
-      begin
-        next_raddr[0] = seq_vt;
-        // we don't need to check seq_vt_zero since the op is mftx
-      end
-      else // read rs1
-      begin
-        if (seq_vs_zero) next_rblen[0][5] = 1'b0;
-      end
+      if (seq_vs_zero) next_rblen[0][5] = 1'b0;
     end
     else if (seq_utaq)
     begin

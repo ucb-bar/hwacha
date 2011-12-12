@@ -316,9 +316,7 @@ module vuVXU_Banked8_Seq
       next_vlen[next_ptr1] = vlen;
       next_stride[next_ptr1] = stride;
       next_vs_zero[next_ptr1] = fire_vs_zero;
-      next_vt_zero[next_ptr1] = fire_vt_zero;
       next_vs[next_ptr1] = {2'd0,fire_vs};
-      next_vt[next_ptr1] = {2'd0,fire_vt};
       next_vd[next_ptr1] = {2'd0,fire_vd};
     end
 
