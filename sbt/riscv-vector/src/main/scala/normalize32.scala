@@ -20,7 +20,7 @@ class normalize32 extends Component {
   val dist_1  = norm_4(31, 30) === Bits(0, 2);
   val norm_2  = Mux(dist_1, norm_4 << UFix(2), norm_4);
   val dist_0  = norm_2(31) === Bits(0, 1);
-  io.out      := Mux(dist_0, norm_2 << UFix(1), norm_2);
+  io.out      := Mux(dist_0, norm_2 << UFix(1), norm_2)(31,0);
   io.distance := Cat(dist_4, dist_3, dist_2, dist_1, dist_0);
 }
 }

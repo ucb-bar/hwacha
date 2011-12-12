@@ -9,7 +9,7 @@ import Node._;
 import mulAddSubRecodedFloat32_1._;
 
 class mulAddSubRecodedFloat32_1_io() extends Bundle {
-  val op = Bits(1, 'input);
+  val op = Bits(2, 'input);
   val a = Bits(33, 'input)
   val b = Bits(33, 'input);
   val c = Bits(33, 'input);
@@ -47,7 +47,7 @@ class mulAddSubRecodedFloat32_1 extends Component {
     val isSigNaNB = isNaNB & ~ fractB(22);
     val sigB = Cat(~ isZeroB, fractB).toUFix;
 
-    val opSignC = io.c(32) ^ io.op;
+    val opSignC = io.c(32) ^ io.op(0);
     val expC    = io.c(31, 23).toUFix;
     val fractC  = io.c(22, 0).toUFix;
     val isZeroC = ( expC(8, 6) === Bits("b000", 3) );
@@ -64,7 +64,7 @@ class mulAddSubRecodedFloat32_1 extends Component {
 
     //------------------------------------------------------------------------
     //------------------------------------------------------------------------
-    val signProd = signA ^ signB;
+    val signProd = signA ^ signB ^ io.op(1);
     val isZeroProd = isZeroA | isZeroB;
     //val sExpAlignedProd = expA + Cat(Fill(~ expB(8), 3), expB(7, 0)) + 27;
     val sExpAlignedProd = Cat(Fill(3, ~ expB(8)), expB(7, 0)).toUFix + expA + UFix(27);

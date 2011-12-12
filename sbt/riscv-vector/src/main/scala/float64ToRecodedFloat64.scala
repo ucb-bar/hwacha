@@ -28,7 +28,7 @@ class float64ToRecodedFloat64 extends Component {
 
     val norm_in = Cat(fractIn, Bits(0, 12) );
     
-	val normalizeFract = new normalize64(64, 6);
+	val normalizeFract = new normalize64;
     	normalizeFract.io.in := norm_in;
     	val norm_count = normalizeFract.io.distance;
     	val norm_out   = normalizeFract.io.out;

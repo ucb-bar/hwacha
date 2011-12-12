@@ -4,7 +4,7 @@ package riscvVector
   import Node._
   import Interface._
   import Fpu._
-  import queues._
+  //import queues._
 
   class vuVMU_Ctrl_vec_storeIO extends Bundle
   {

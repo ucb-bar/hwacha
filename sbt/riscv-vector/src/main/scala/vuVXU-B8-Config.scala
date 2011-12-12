@@ -1,10 +1,11 @@
-package riscvVector {
+package riscvVector
+{
 
 import Chisel._;
 import Node._;
 
-object Config {
-
+object Config
+{
   val INT_STAGES   = 2
   val IMUL_STAGES  = 3
   val FMA_STAGES   = 5
@@ -175,6 +176,51 @@ object Config {
   val DEF_BOPL    = SZ_BOPL
   val DEF_BRPORT  = SZ_BRPORT
   val DEF_BWPORT  = SZ_BWPORT
-
 }
+
+object Match
+{
+  def apply(x: Bits, IOs: Bits*) =
+  {
+    val ioList = IOs.toList;
+    var offset = 0;
+    for (io <- IOs.toList.reverse)
+    {
+      io := x(offset+io.width-1, offset)
+      offset += io.width;
+    }
+  }
+}
+
+object Reverse
+{
+  def apply(in: Bits): Bits =
+  {
+    var res = in(0);
+    for(i <- 1 until 64)
+      res = Cat(res, in(i));
+    res
+  }
+}
+
+object ShiftRegister
+{
+  def apply(n: Int, width: Int, valid: Bool, base: Bits): Bits =
+  {
+    if (n == 0)
+    {
+      val res = Reg() { Bits(width = width) };
+      when (valid)
+      {
+        res <== base
+      }
+      res
+    }
+    else
+    {
+      Reg(apply(n-1, width, valid, base));
+    }
+  }
+}
+
 }

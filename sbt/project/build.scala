@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
   val buildOrganization = "edu.berkeley.cs"
   val buildVersion = "1.1"
-  val buildScalaVersion = "2.8.1"
+  val buildScalaVersion = "2.9.1"
 
   val buildSettings = Defaults.defaultSettings ++ Seq (
     organization := buildOrganization,
@@ -18,6 +18,5 @@ object ChiselBuild extends Build{
   import BuildSettings._
 
   lazy val myvec = Project("vector", file("."), settings = buildSettings) aggregate(vector)
-  lazy val vector = Project("riscv-vector", file("riscv-vector"),
-			    settings = buildSettings)
+  lazy val vector = Project("riscv-vector", file("riscv-vector"), settings = buildSettings)
 }

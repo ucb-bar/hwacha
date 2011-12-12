@@ -347,28 +347,30 @@ class fpu_tst_compareFloat64() extends Component{
   io.lte_exception   := Cat(compareFloat64.io.a_eq_b_invalid | compareFloat64.io.a_lt_b_invalid, Bits(0,4));
 }
 
-object rv_fpu {
-  def main(args: Array[String]) = { 
-    val fpu_args = args ++ Array("--target-dir", "fpu");
-    chiselMain(fpu_args, () => new fpu_tst_f64_to_f32());
-    chiselMain(fpu_args, () => new fpu_tst_f32_to_f64());
-    chiselMain(fpu_args, () => new fpu_tst_muladd64());
-    chiselMain(fpu_args, () => new fpu_tst_muladd32());
-    chiselMain(fpu_args, () => new fpu_tst_addsub32());
-    chiselMain(fpu_args, () => new fpu_tst_addsub64());
-    chiselMain(fpu_args, () => new fpu_tst_mul32());
-    chiselMain(fpu_args, () => new fpu_tst_mul64());
-    // chiselMain(fpu_args, () => new float64ToAny());
-    chiselMain(fpu_args, () => new anyToFloat64());
-    // chiselMain(fpu_args, () => new fpu_tst_3264());
-    // chiselMain(fpu_args, () => new fpu_tst_bb());
-    chiselMain(fpu_args, () => new mulAddSubFloat64());
-    chiselMain(fpu_args, () => new float32ToAny());
-    chiselMain(fpu_args, () => new anyToFloat32());
-    chiselMain(fpu_args, () => new fpu_tst_compareFloat32());
-    chiselMain(fpu_args, () => new fpu_tst_compareFloat64());
-    }
-
-}
+//object rv_fpu {
+//  def main(args: Array[String]) = { 
+//    val fpu_args = args ++ Array("--target-dir", "fpu");
+//    //chiselMain(fpu_args, () => new fpu_tst_f64_to_f32());
+//    //chiselMain(fpu_args, () => new fpu_tst_f32_to_f64());
+//    //chiselMain(fpu_args, () => new fpu_tst_muladd64());
+//    //chiselMain(fpu_args, () => new fpu_tst_muladd32());
+//    //chiselMain(fpu_args, () => new fpu_tst_addsub32());
+//    //chiselMain(fpu_args, () => new fpu_tst_addsub64());
+//    //chiselMain(fpu_args, () => new fpu_tst_mul32());
+//    //chiselMain(fpu_args, () => new fpu_tst_mul64());
+//    //// chiselMain(fpu_args, () => new float64ToAny());
+//    //chiselMain(fpu_args, () => new anyToFloat64());
+//    //// chiselMain(fpu_args, () => new fpu_tst_3264());
+//    //// chiselMain(fpu_args, () => new fpu_tst_bb());
+//    //chiselMain(fpu_args, () => new mulAddSubFloat64());
+//    //chiselMain(fpu_args, () => new float32ToAny());
+//    //chiselMain(fpu_args, () => new anyToFloat32());
+//    //chiselMain(fpu_args, () => new fpu_tst_compareFloat32());
+//    //chiselMain(fpu_args, () => new fpu_tst_compareFloat64());
+//    chiselMain(fpu_args, () => new mulAddSubRecodedFloat32_1());
+//    chiselMain(fpu_args, () => new mulAddSubRecodedFloat64_1());
+//    }
+//
+//}
 
 }

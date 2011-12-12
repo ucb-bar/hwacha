@@ -1,4 +1,5 @@
-package riscvVector{
+package riscvVector
+{
 
 import Chisel._
 import Node._
@@ -8,10 +9,9 @@ import fpu_recoded._
 
 class vuVXU_Banked8_FU_conv extends Component 
 {
-
-  val io = new Bundle {
+  val io = new Bundle
+  {
     val valid = Bool('input);
-
     val fn = Bits(DEF_VAU2_FN, 'input);
     val in = Bits(DEF_DATA, 'input);
     val exc = Bits(DEF_EXC, 'output);
@@ -21,19 +21,21 @@ class vuVXU_Banked8_FU_conv extends Component
   def VAU2_FN(ins: Bits*) = ins.toList.map(x => {io.fn(RG_VAU2_FN) === x}).reduceLeft( _ || _ );
   def VAU2_FP(fp: Bits) = io.fn(RG_VAU2_FP) === fp
 
-  val op_int2float = MuxCase(Bits(0,2), Array(
-    VAU2_FN(VAU2_CLTF)  -> type_int64,
-    VAU2_FN(VAU2_CLUTF) -> type_uint64,
-    VAU2_FN(VAU2_CWTF)  -> type_int32,
-    VAU2_FN(VAU2_CWUTF) -> type_uint32
-  ));
+  val op_int2float = MuxCase(
+    Bits(0,2), Array(
+      VAU2_FN(VAU2_CLTF)  -> type_int64,
+      VAU2_FN(VAU2_CLUTF) -> type_uint64,
+      VAU2_FN(VAU2_CWTF)  -> type_int32,
+      VAU2_FN(VAU2_CWUTF) -> type_uint32
+    ));
 
-  val op_float2int = MuxCase(Bits(0,2), Array(
-    VAU2_FN(VAU2_CFTL)  -> type_int64,
-    VAU2_FN(VAU2_CFTLU) -> type_uint64,
-    VAU2_FN(VAU2_CFTW)  -> type_int32,
-    VAU2_FN(VAU2_CFTWU) -> type_uint32
-  ));
+  val op_float2int = MuxCase(
+    Bits(0,2), Array(
+      VAU2_FN(VAU2_CFTL)  -> type_int64,
+      VAU2_FN(VAU2_CFTLU) -> type_uint64,
+      VAU2_FN(VAU2_CFTW)  -> type_int32,
+      VAU2_FN(VAU2_CFTWU) -> type_uint32
+    ));
 
   val val_int2float_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF);
   val val_float2int_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(VAU2_CFTL,VAU2_CFTLU,VAU2_CFTW,VAU2_CFTWU);
@@ -101,63 +103,47 @@ class vuVXU_Banked8_FU_conv extends Component
   val result_float2float_dp = sp2dp.io.out;
   val exc_float2float_dp = sp2dp.io.exception_flags;
 
-  val next_result_sp = MuxCase(Bits(0, SZ_DATA), Array(
-    VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> Cat(Bits("hFFFF_FFFF",32), result_int2float_sp(32,0)),
-    VAU2_FN(VAU2_MXTF) -> Cat(Bits("hFFFF_FFFF",32), result_encode_sp(32,0)),
-    VAU2_FN(VAU2_CFTL,VAU2_CFTLU) -> Cat(Bits(0,1),result_float2int_sp(63,0)),
-    VAU2_FN(VAU2_CFTW,VAU2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_sp(31)),result_float2int_sp(31,0)),
-    VAU2_FN(VAU2_MFTX) -> Cat(Bits(0,1),Fill(32,result_decode_sp(31)),result_decode_sp(31,0)),
-    VAU2_FN(VAU2_CDTS) -> Cat(Bits("hFFFF_FFFF",32), result_float2float_sp(32,0))
-  ));
+  val next_result_sp = MuxCase(
+    Bits(0, SZ_DATA), Array(
+      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> Cat(Bits("hFFFF_FFFF",32), result_int2float_sp(32,0)),
+      VAU2_FN(VAU2_MXTF) -> Cat(Bits("hFFFF_FFFF",32), result_encode_sp(32,0)),
+      VAU2_FN(VAU2_CFTL,VAU2_CFTLU) -> Cat(Bits(0,1),result_float2int_sp(63,0)),
+      VAU2_FN(VAU2_CFTW,VAU2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_sp(31)),result_float2int_sp(31,0)),
+      VAU2_FN(VAU2_MFTX) -> Cat(Bits(0,1),Fill(32,result_decode_sp(31)),result_decode_sp(31,0)),
+      VAU2_FN(VAU2_CDTS) -> Cat(Bits("hFFFF_FFFF",32), result_float2float_sp(32,0))
+    ));
 
-  val next_result_dp = MuxCase(Bits(0, SZ_DATA), Array(
-    VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> result_int2float_dp,
-    VAU2_FN(VAU2_MXTF) -> result_encode_dp,
-    VAU2_FN(VAU2_CFTL,VAU2_CFTLU) -> Cat(Bits(0,1),result_float2int_dp(63,0)),
-    VAU2_FN(VAU2_CFTW,VAU2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_dp(31)),result_float2int_dp(31,0)),
-    VAU2_FN(VAU2_MFTX) -> Cat(Bits(0,1),result_decode_dp(63,0)),
-    VAU2_FN(VAU2_CSTD) -> result_float2float_dp
-  ));
+  val next_result_dp = MuxCase(
+    Bits(0, SZ_DATA), Array(
+      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> result_int2float_dp,
+      VAU2_FN(VAU2_MXTF) -> result_encode_dp,
+      VAU2_FN(VAU2_CFTL,VAU2_CFTLU) -> Cat(Bits(0,1),result_float2int_dp(63,0)),
+      VAU2_FN(VAU2_CFTW,VAU2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_dp(31)),result_float2int_dp(31,0)),
+      VAU2_FN(VAU2_MFTX) -> Cat(Bits(0,1),result_decode_dp(63,0)),
+      VAU2_FN(VAU2_CSTD) -> result_float2float_dp
+    ));
 
-  val next_exc_sp = MuxCase(Bits(0, SZ_EXC), Array(
-    VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> exc_int2float_sp,
-    VAU2_FN(VAU2_CFTL,VAU2_CFTLU,VAU2_CFTW,VAU2_CFTWU) -> exc_float2int_sp,
-    VAU2_FN(VAU2_CDTS) -> exc_float2float_sp
-  ));
+  val next_exc_sp = MuxCase(
+    Bits(0, SZ_EXC), Array(
+      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> exc_int2float_sp,
+      VAU2_FN(VAU2_CFTL,VAU2_CFTLU,VAU2_CFTW,VAU2_CFTWU) -> exc_float2int_sp,
+      VAU2_FN(VAU2_CDTS) -> exc_float2float_sp
+    ));
 
-  val next_exc_dp = MuxCase(Bits(0, SZ_EXC), Array(
-    VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> exc_int2float_dp,
-    VAU2_FN(VAU2_CFTL,VAU2_CFTLU,VAU2_CFTW,VAU2_CFTWU) -> exc_float2int_dp,
-    VAU2_FN(VAU2_CSTD) -> exc_float2float_dp
-  ));
+  val next_exc_dp = MuxCase(
+    Bits(0, SZ_EXC), Array(
+      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> exc_int2float_dp,
+      VAU2_FN(VAU2_CFTL,VAU2_CFTLU,VAU2_CFTW,VAU2_CFTWU) -> exc_float2int_dp,
+      VAU2_FN(VAU2_CSTD) -> exc_float2float_dp
+    ));
 
-  // pipeline registers
+  val result = Mux(
+    VAU2_FP(FPD), Cat(next_exc_dp, next_result_dp),
+    Cat(next_exc_sp, next_result_sp));
 
-  def shift_register(n: Int): (Bits, Bits) = 
-    {
-      if(n == 0)
-	{
-	  val res = Reg(){Bits(width = DEF_DATA)};
-	  val exc = Reg(){Bits(width = DEF_EXC)};
-	  when(io.valid) 
-	  { 
-	    res <== Mux(VAU2_FP(FPD) , next_result_dp , next_result_sp);
-	    exc <== Mux(VAU2_FP(FPD) , next_exc_dp , next_exc_sp);
-	  }
-	  (res, exc)
-	} 
-      else 
-	{
-	  val (next_res, next_exc) = shift_register(n-1);
-	  (Reg(next_res), Reg(next_exc))
-	}
-    }
+  val pipereg = ShiftRegister(FCONV_STAGES-1, DEF_DATA+DEF_EXC, io.valid, result);
 
-  val (pipereg_result, pipereg_exc) = shift_register(FCONV_STAGES-1);
-
-  io.out := pipereg_result;
-  io.exc := pipereg_exc;
-
+  Match(pipereg, io.exc, io.out);
 }
 
 }

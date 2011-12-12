@@ -37,7 +37,7 @@ class normalize64(width: Int = 64, num_bits: Int = 6) extends Component {
     norms     += Mux(distances.last, norms.last << UFix(shift_bits), norms.last);
   }
 
-  io.out      := norms.last;
+  io.out      := norms.last(width-1,0);
 
   io.distance := fold(distances, Cat(_, _));
   
