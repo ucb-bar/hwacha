@@ -5,6 +5,9 @@ import Config._
 
 class LFUIO extends Bundle 
 {
+  val expand_rcnt = UFix(DEF_BVLEN, 'input);
+  val expand_wcnt = UFix(DEF_BVLEN, 'input);
+  
   val expand = new ExpanderToLFUIO().flip();
 
   val vau0_val  = Bool('output);
@@ -54,12 +57,12 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when(reg_vlu_cnt.orR){ next_vlu_cnt <== reg_vlu_cnt - UFix(1,1)}
   when(reg_vsu_cnt.orR){ next_vsu_cnt <== reg_vsu_cnt - UFix(1,1)}
 
-  when(io.expand.vau0){ next_vau0_cnt <== io.expand.rcnt}
-  when(io.expand.vau1){ next_vau1_cnt <== io.expand.rcnt}
-  when(io.expand.vau2){ next_vau2_cnt <== io.expand.rcnt}
-  when(io.expand.utaq){ next_vgu_cnt <== io.expand.rcnt}
-  when(io.expand.vldq || io.expand.utldq){ next_vlu_cnt <== io.expand.wcnt}
-  when(io.expand.vsdq || io.expand.utsdq){ next_vsu_cnt <== io.expand.rcnt}
+  when(io.expand.vau0){ next_vau0_cnt <== io.expand_rcnt}
+  when(io.expand.vau1){ next_vau1_cnt <== io.expand_rcnt}
+  when(io.expand.vau2){ next_vau2_cnt <== io.expand_rcnt}
+  when(io.expand.utaq){ next_vgu_cnt <== io.expand_rcnt}
+  when(io.expand.vldq || io.expand.utldq){ next_vlu_cnt <== io.expand_wcnt}
+  when(io.expand.vsdq || io.expand.utsdq){ next_vsu_cnt <== io.expand_rcnt}
 
   otherwise
   {
@@ -123,7 +126,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
     reg_utaq <== Bool(false);
   }
 
-  when((io.expand.vldq || io.expand.utldq) && (io.expand.wcnt.orR))
+  when((io.expand.vldq || io.expand.utldq) && (io.expand_wcnt.orR))
   {
     reg_vldq <== io.expand.vldq;
     reg_utldq <== io.expand.utldq;

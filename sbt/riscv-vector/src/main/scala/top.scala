@@ -26,8 +26,8 @@ package riscvVector
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_alu());
       //chiselMain(boot_args, () => new vuVXU_Banked8_Bank());
-      //chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
-      chiselMain(boot_args, () => new vuVXU_Issue_VT());
+      chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
+      //chiselMain(boot_args, () => new vuVXU_Issue_VT());
     } 
   }
 } 

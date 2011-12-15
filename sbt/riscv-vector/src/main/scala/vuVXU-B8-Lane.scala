@@ -27,9 +27,6 @@ class CPIO extends Bundle
 
 class ExpanderToLFUIO extends Bundle
 {
-  val rcnt  = UFix(DEF_BVLEN  , 'output);
-  val wcnt  = UFix(DEF_BVLEN  , 'output);
-
   val vau0    = Bool('output);
   val vau0_fn = Bits(DEF_VAU0_FN, 'output);
   val vau1    = Bool('output);
@@ -130,6 +127,8 @@ class vuVXU_Banked8_Lane extends Component
   val rbl = xbar.io.rbl;
 
   val lfu = new vuVXU_Banked8_Lane_LFU();
+  lfu.io.expand_rcnt := io.expand.bank.rcnt.toUFix;
+  lfu.io.expand_wcnt := io.expand.bank.wcnt.toUFix;
   lfu.io.expand ^^ io.expand.lfu;
 
   val vau0_val  = lfu.io.vau0_val;
