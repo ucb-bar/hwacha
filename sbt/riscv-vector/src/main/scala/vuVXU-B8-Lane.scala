@@ -54,7 +54,7 @@ class VMUIO extends Bundle
   val vsdq_bits = Bits(DEF_DATA, 'output);
 
   val utaq_val  = Bool('output);
-  val utaq_bits = Bits(DEF_DATA, 'output);
+  val utaq_bits = Bits(DEF_ADDR, 'output);
 
   val utldq_rdy  = Bool('output);
   val utldq_bits = Bits(DEF_DATA, 'input)

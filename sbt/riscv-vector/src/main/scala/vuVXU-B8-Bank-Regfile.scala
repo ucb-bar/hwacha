@@ -43,7 +43,7 @@ class vuVXU_Banked8_Bank_Regfile extends Component
     ));
 
   val rfile = Mem(256, io.wen, io.waddr.toUFix, wdata, resetVal = null);
-  val rdata_rf = rfile(Reg(io.raddr)); 
+  val rdata_rf = Mux(Reg(io.ren), rfile(Reg(io.raddr)), Bits(0)); 
   io.rdata := rdata_rf;
 
   val ropl0Reg = Reg(){Bits(width = DEF_DATA)};
