@@ -60,7 +60,6 @@ package riscvVector {
     delay_roq_deq_bits := skidbuf.io.deq_bits(127,0);
     skidbuf.io.deq_val ^^ io.ldq_enq_val;
     skidbuf.io.deq_rdy ^^ io.ldq_enq_rdy;
-
     val ldq_bits = Wire(){Bits()};
     val ldq_sp_bits = Wire(){Bits()};
     val ldq_dp_bits = Wire(){Bits()};
