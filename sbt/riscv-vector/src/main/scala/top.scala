@@ -3,6 +3,7 @@ package riscvVector
   import Chisel._
   import Node._
   import Fpu._
+  import Interface._
 
   /*
   class TopIo extends Bundle {
@@ -26,8 +27,14 @@ package riscvVector
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_alu());
       //chiselMain(boot_args, () => new vuVXU_Banked8_Bank());
-      chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
+      //chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
       //chiselMain(boot_args, () => new vuVXU_Issue_VT());
+      //chiselMain(boot_args, () => new vuVMU_BHWD_sel());
+      chiselMain(boot_args, () => new vuVMU_Ctrl_vec_load_wb());
+      //chiselMain(boot_args, () => new vuVMU_QueueCount());
+      //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_top());
+      //chiselMain(boot_args, () => new vuVMU_Ctrl_ut_issue());
+      //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_load_issue());
     } 
   }
 } 

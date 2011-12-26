@@ -3,6 +3,7 @@ package riscvVector {
   import Node._
   import Interface._
   import Fpu._
+  import queues._
 
   class vuVMU_Ctrl_vec_load_wbIO extends Bundle
   {
@@ -30,9 +31,9 @@ package riscvVector {
     val VMU_Ctrl_Writeback     = Bits(1,2);
     val VMU_Ctrl_WritebackDone = Bits(2,2);
 
-    val vlen = io.wbcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0);
-    val addr = io.wbcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ);
-    val stride = io.wbcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ);
+    val vlen = io.wbcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0).toUFix;
+    val addr = io.wbcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ).toUFix;
+    val stride = io.wbcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ).toUFix;
     val cmd_type = io.wbcmdq_deq_bits(VM_WBCMD_SZ-1, VM_WBCMD_SZ-4);
 
     val cmd_type_reg = Reg(resetVal = Bits(0,4));
@@ -46,11 +47,19 @@ package riscvVector {
     val buf_ldq_enq_val = Wire(){Bool()};
     val buf_ldq_enq_rdy = Wire(){Bool()};
 
-    val delay_roq_deq_bits = Wire(){Bits(128)};
-    val delay_cmd_type = Wire(){Bits(4)};
-    val delay_addr_lsb = Wire(){Bits(4)};
+    val delay_cmd_type = Wire(){Bits(width=4)};
+    val delay_addr_lsb = Wire(){Bits(width=4)};
+    val delay_roq_deq_bits = Wire(){Bits(width=128)};
 
-    //insert queue
+    val skidbuf = new queuePipe1PF(128+4+4);
+    skidbuf.io.enq_bits := Cat(cmd_type_reg, addr_reg(3,0), io.roq_deq_bits);
+    skidbuf.io.enq_val := buf_ldq_enq_val;
+    buf_ldq_enq_rdy := skidbuf.io.enq_rdy;
+    delay_cmd_type := skidbuf.io.deq_bits(135,132);
+    delay_addr_lsb := skidbuf.io.deq_bits(131,128);
+    delay_roq_deq_bits := skidbuf.io.deq_bits(127,0);
+    skidbuf.io.deq_val ^^ io.ldq_enq_val;
+    skidbuf.io.deq_rdy ^^ io.ldq_enq_rdy;
 
     val ldq_bits = Wire(){Bits()};
     val ldq_sp_bits = Wire(){Bits()};
@@ -62,7 +71,7 @@ package riscvVector {
       switch(delay_cmd_type(1,0))
       {
         is(Bits("b11")) {io.ldq_enq_bits <== ldq_dp_bits;}
-        is(Bits("b10")) {io.ldq_enq_bits <== Cat(Bits("hFFFF_FFFF"), ldq_sp_bits);}
+        is(Bits("b10")) {io.ldq_enq_bits <== Cat(Bits("hFFFF_FFFF", 32), ldq_sp_bits);}
       }
     }
     otherwise
@@ -70,19 +79,19 @@ package riscvVector {
       io.ldq_enq_bits <== Cat(Bits("b0", 1), ldq_bits);
     }
 
-    val rf32f32  = new recodedFloat32ToFloat32();
+    val rf32f32  = new float32ToRecodedFloat32();
     rf32f32.io.in := ldq_bits(31,0);
-    rf32f32.io.out := ldq_sp_bits;
-    val rf64f64  = new recodedFloat64ToFloat64();
+    ldq_sp_bits := rf32f32.io.out;
+    val rf64f64  = new float64ToRecodedFloat64();
     rf64f64.io.in := ldq_bits;
-    rf64f64.io.out := ldq_dp_bits;
+    ldq_dp_bits := rf64f64.io.out;
 
     val bhwd_sel = new vuVMU_BHWD_sel();
     bhwd_sel.io.bhwd_sel := delay_cmd_type(1,0);
-    bhwd_sel.io.signext := delay_cmd_type(2);
+    bhwd_sel.io.signext := delay_cmd_type(2).toBool;
     bhwd_sel.io.addr_lsb := delay_addr_lsb;
     bhwd_sel.io.din := delay_roq_deq_bits;
-    bhwd_sel.io.dout := ldq_bits;
+    ldq_bits := bhwd_sel.io.dout;
 
     switch(state)
     {
@@ -118,7 +127,7 @@ package riscvVector {
             // Verilog was as follows
             // addr_next = addr_reg + stride_reg;
             // else if (addr_next[31:4] != addr_reg[31:4])
-            when( stride_reg != Bits(0) )
+            when( vlen_reg != UFix(0) && stride_reg != Bits(0) )
             {
               io.roq_deq_rdy <== Bool(true);
             }
@@ -138,10 +147,21 @@ package riscvVector {
           {
             state <== VMU_Ctrl_Idle;
           }
-          otherwise
+          when(vlen_cnt_reg != UFix(0) ) // otherwise
           {
             vlen_cnt_reg <== vlen_cnt_reg - UFix(1);
           }
+          // Alternatively:
+          // when(vlen_cnt_reg === UFix(0) )
+          // {
+          //   state <== VMU_Ctrl_Idle;
+          //   vlen_cnt_reg <== vlen_cnt_reg; // to counter otherwise assignment
+          // }
+          // otherwise
+          // {
+          //   vlen_cnt_reg <== vlen_cnt_reg - UFix(1);
+          // }
+
         }
       }
       otherwise

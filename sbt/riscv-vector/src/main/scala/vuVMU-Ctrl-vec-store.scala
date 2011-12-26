@@ -4,7 +4,7 @@ package riscvVector
   import Node._
   import Interface._
   import Fpu._
-  //import queues._
+  import queues._
 
   class vuVMU_Ctrl_vec_storeIO extends Bundle
   {
@@ -33,9 +33,9 @@ package riscvVector
     val VMU_Ctrl_Store         = Bits(1,2);
     val VMU_Ctrl_StoreWait     = Bits(2,2);
 
-    val vlen = io.stcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0);
-    val addr = io.stcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ);
-    val stride = io.stcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ);
+    val vlen = io.stcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0).toUFix;
+    val addr = io.stcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ).toUFix;
+    val stride = io.stcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ).toUFix;
     val cmd_type = io.stcmdq_deq_bits(VM_STCMD_SZ-1, VM_STCMD_SZ-4);
 
     val cmd_type_reg = Reg(resetVal = Bits(0,4));
@@ -55,10 +55,10 @@ package riscvVector
 
     val rf32f32  = new recodedFloat32ToFloat32();
     rf32f32.io.in := io.sdq_deq_bits(32,0);
-    rf32f32.io.out := sdq_deq_sp;
+    sdq_deq_sp := rf32f32.io.out;
     val rf64f64  = new recodedFloat64ToFloat64();
     rf64f64.io.in := io.sdq_deq_bits;
-    rf64f64.io.out := sdq_deq_dp;
+    sdq_deq_dp := rf64f64.io.out;
 
     io.store_busy := ~((state === VMU_Ctrl_Idle) && ~io.stcmdq_deq_val);
 
@@ -212,9 +212,13 @@ package riscvVector
     {
       for( j <- 0 until 8 )
       {
-
+        val sbuf = new queueFlowPF(8, 2, 3); // 3 = ceilLog2(8)
+        sbuf.io.enq_bits := store_data(((j+1)*8)-1, (j*8));
+        sbuf.io.enq_val := sbuf_byte_enq_val(i*8+j).toBool;
+        io.srq_enq_data_bits(((j+1)*8+i*64),(j*8+i*64)) := sbuf.io.deq_bits;
+        io.srq_enq_wmask_bits(i*8+j) := sbuf.io.deq_val; 
+        sbuf.io.deq_rdy := io.srq_enq_val && io.srq_enq_rdy;
       }
     }
-    
   }
 }

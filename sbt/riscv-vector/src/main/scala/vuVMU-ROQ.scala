@@ -35,6 +35,7 @@ package riscvVector {
 
 
     // val data_array = Mem(ROQ_TAG_ENTRIES, <write enable>, wrAddr: Num, wrData: T, wrMask: Bits = null)
+    // Mem4 <-- Read tutorial
     // compare with trainwreck/caches/sram.v
 
     // read tag

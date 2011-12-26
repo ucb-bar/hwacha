@@ -37,19 +37,19 @@ package riscvVector {
   class vuVMU_Ctrl_vec_top extends Component {
     val io = new vuVMU_Ctrl_vec_topIO();
     
-    val VMU_Ctrl_Idle          = UFix(0,3);
-    val VMU_Ctrl_Load          = UFix(1,3);
-    val VMU_Ctrl_LoadStride    = UFix(2,3);
-    val VMU_Ctrl_Store         = UFix(3,3);
-    val VMU_Ctrl_StoreStride   = UFix(4,3);
-    val VMU_Ctrl_Sync          = UFix(5,3);
-    val VMU_Ctrl_SyncWait      = UFix(6,3);
-    val VMU_Ctrl_Invalid       = UFix(7,3);
+    val VMU_Ctrl_Idle          = Bits(0,3);
+    val VMU_Ctrl_Load          = Bits(1,3);
+    val VMU_Ctrl_LoadStride    = Bits(2,3);
+    val VMU_Ctrl_Store         = Bits(3,3);
+    val VMU_Ctrl_StoreStride   = Bits(4,3);
+    val VMU_Ctrl_Sync          = Bits(5,3);
+    val VMU_Ctrl_SyncWait      = Bits(6,3);
+    val VMU_Ctrl_Invalid       = Bits(7,3);
 
     val state = Reg(resetVal = VMU_Ctrl_Idle);
     
-    val cmd = VMCMD_CMDCODE(io.vmcmdq_bits.toUFix);
-    val vlen = VMCMD_VLEN_M1(io.vmcmdq_bits.toUFix);
+    val cmd = io.vmcmdq_bits(VMCMD_CMDCODE);
+    val vlen = io.vmcmdq_bits(VMCMD_VLEN_M1);
     val addr = io.vmimmq_bits;
     val stride = Wire() {Bits(width=VMSTRIDE_SZ)};
 
@@ -121,26 +121,11 @@ package riscvVector {
         io.wbcmdq_val <== Bool(true);
         switch(cmd(1,0))
         {
-          is(Bits("b11"))
-          {
-            stride <== UFix(8);
-          }
-          is(Bits("b10"))
-          {
-            stride <== UFix(4);
-          }
-          is(Bits("b01"))
-          {
-            stride <== UFix(2);
-          }
-          is(Bits("b00"))
-          {
-            stride <== UFix(1);
-          }
-          otherwise
-          {
-            stride <== UFix(0);
-          }
+          is(Bits("b11")) { stride <== UFix(8); }
+          is(Bits("b10")) { stride <== UFix(4); }
+          is(Bits("b01")) { stride <== UFix(2); }
+          is(Bits("b00")) { stride <== UFix(1); }
+          otherwise { stride <== UFix(0); }
         }
         state <== VMU_Ctrl_Idle;
       }
@@ -151,26 +136,11 @@ package riscvVector {
         io.stcmdq_val <== Bool(true);
         switch(cmd(1,0))
         {
-          is(Bits("b11"))
-          {
-            stride <== UFix(8);
-          }
-          is(Bits("b10"))
-          {
-            stride <== UFix(4);
-          }
-          is(Bits("b01"))
-          {
-            stride <== UFix(2);
-          }
-          is(Bits("b00"))
-          {
-            stride <== UFix(1);
-          }
-          otherwise
-          {
-            stride <== UFix(0);
-          }
+          is(Bits("b11")) { stride <== UFix(8); }
+          is(Bits("b10")) { stride <== UFix(4); }
+          is(Bits("b01")) { stride <== UFix(2); }
+          is(Bits("b00")) { stride <== UFix(1); }
+          otherwise { stride <== UFix(0); }
         }
         state <== VMU_Ctrl_Idle;
       }
@@ -214,7 +184,7 @@ package riscvVector {
       {
         io.vmrespq_val <== Bool(true);
         io.vmrespq_bits <== Bits(1);
-        when(io.vmcmdq_rdy)
+        when(io.vmrespq_rdy)
         {
           state <== VMU_Ctrl_Idle;
         }
@@ -239,7 +209,7 @@ package riscvVector {
         io.iscmdq_val          <== Bool(false);
         io.wbcmdq_val          <== Bool(false);
         io.stcmdq_val          <== Bool(false);
-        stride              <== UFix(0);
+        stride                 <== UFix(0);
       }
     }
   }

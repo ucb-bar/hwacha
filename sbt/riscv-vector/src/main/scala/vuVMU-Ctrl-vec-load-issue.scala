@@ -65,7 +65,7 @@ package riscvVector {
         {
           state <== VMU_Ctrl_Idle;
         }
-        otherwise
+        when( !(addr_cacheline > last_addr_reg) )
         {
           io.roq_deq_tag_rdy <== io.lrq_enq_rdy;
           io.lrq_enq_val     <== io.roq_deq_tag_val;
@@ -81,7 +81,7 @@ package riscvVector {
         {
           state <== VMU_Ctrl_Idle;
         }
-        otherwise
+        when( !(addr_cacheline > last_addr_reg) )
         {
           io.roq_deq_tag_rdy <== io.lrq_enq_rdy;
           io.lrq_enq_val     <== io.roq_deq_tag_val;
