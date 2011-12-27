@@ -7,9 +7,6 @@ package riscvVector {
 
   class vuVMU_Ctrl_vec_load_wbIO extends Bundle
   {
-    val vec_done		= Bool('output);
-    val ldq_deq		  = Bool('input);
-    
     val wbcmdq_deq_bits		= Bits(VM_WBCMD_SZ, 'input);
     val wbcmdq_deq_val		= Bool('input);
     val wbcmdq_deq_rdy		= Bool('output);
@@ -18,14 +15,20 @@ package riscvVector {
     val roq_deq_val		= Bool('input);
     val roq_deq_rdy		= Bool('output);
     // interface to load data queue
-    val ldq_enq_bits	= Bits(65, 'output);
-    val ldq_enq_val		= Bool('output);
-    val ldq_enq_rdy		= Bool('input);
+    val ldq          = new vldqIO();
   }
 
   class vuVMU_Ctrl_vec_load_wb extends Component 
   {
     val io = new vuVMU_Ctrl_vec_load_wbIO();
+
+    val vec_done		  = Wire(){Bool('output)};
+    val ldq_deq		    = Wire(){Bool('input)};
+    val ldq_enq_bits	= Wire(){Bits(65, 'output)};
+
+    io.ldq.wb_done   := vec_done;
+    ldq_deq           := io.ldq.deq_rdy;
+    io.ldq.enq_bits  := ldq_enq_bits;
 
     val VMU_Ctrl_Idle          = Bits(0,2);
     val VMU_Ctrl_Writeback     = Bits(1,2);
@@ -58,8 +61,8 @@ package riscvVector {
     delay_cmd_type := skidbuf.io.deq_bits(135,132);
     delay_addr_lsb := skidbuf.io.deq_bits(131,128);
     delay_roq_deq_bits := skidbuf.io.deq_bits(127,0);
-    skidbuf.io.deq_val ^^ io.ldq_enq_val;
-    skidbuf.io.deq_rdy ^^ io.ldq_enq_rdy;
+    skidbuf.io.deq_val ^^ io.ldq.enq_val;
+    skidbuf.io.deq_rdy ^^ io.ldq.enq_rdy;
     val ldq_bits = Wire(){Bits()};
     val ldq_sp_bits = Wire(){Bits()};
     val ldq_dp_bits = Wire(){Bits()};
@@ -69,13 +72,13 @@ package riscvVector {
     {
       switch(delay_cmd_type(1,0))
       {
-        is(Bits("b11")) {io.ldq_enq_bits <== ldq_dp_bits;}
-        is(Bits("b10")) {io.ldq_enq_bits <== Cat(Bits("hFFFF_FFFF", 32), ldq_sp_bits);}
+        is(Bits("b11")) {ldq_enq_bits <== ldq_dp_bits;}
+        is(Bits("b10")) {ldq_enq_bits <== Cat(Bits("hFFFF_FFFF", 32), ldq_sp_bits);}
       }
     }
     otherwise
     {
-      io.ldq_enq_bits <== Cat(Bits("b0", 1), ldq_bits);
+      ldq_enq_bits <== Cat(Bits("b0", 1), ldq_bits);
     }
 
     val rf32f32  = new floatNToRecodedFloatN(8, 24);
@@ -132,15 +135,15 @@ package riscvVector {
             }
           }
         }
-        when(io.ldq_deq)
+        when(ldq_deq)
         {
           vlen_cnt_reg <== vlen_cnt_reg - UFix(1);
         }
       }
       is(VMU_Ctrl_WritebackDone)
       {
-        io.vec_done <== Bool(true);
-        when(io.ldq_deq)
+        vec_done <== Bool(true);
+        when(ldq_deq)
         {
           when(vlen_cnt_reg === UFix(0) )
           {
@@ -168,7 +171,7 @@ package riscvVector {
         io.wbcmdq_deq_rdy <== Bool(false);
         io.roq_deq_rdy <== Bool(false);
         buf_ldq_enq_val <== Bool(false);
-        io.vec_done <== Bool(false);
+        vec_done <== Bool(false);
       }
     }
   }

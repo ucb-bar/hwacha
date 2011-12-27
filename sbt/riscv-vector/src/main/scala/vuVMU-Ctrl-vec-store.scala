@@ -12,9 +12,7 @@ package riscvVector
     val stcmdq_deq_val		= Bool('input);
     val stcmdq_deq_rdy		= Bool('output);
 
-    val sdq_deq_bits		= Bits(65, 'input);
-    val sdq_deq_val		= Bool('input);
-    val sdq_deq_rdy		= Bool('output);
+    val sdq_deq           = new vsdq_deqIO();
 
     val srq_enq_addr_bits		= Bits(28, 'output);
     val srq_enq_data_bits		= Bits(128, 'output);
@@ -54,10 +52,10 @@ package riscvVector
     val fp_cmd = cmd_type_reg(3).toBool;
 
     val rf32f32  = new recodedFloat32ToFloat32();
-    rf32f32.io.in := io.sdq_deq_bits(32,0);
+    rf32f32.io.in := io.sdq_deq.bits(32,0);
     sdq_deq_sp := rf32f32.io.out;
     val rf64f64  = new recodedFloat64ToFloat64();
-    rf64f64.io.in := io.sdq_deq_bits;
+    rf64f64.io.in := io.sdq_deq.bits;
     sdq_deq_dp := rf64f64.io.out;
 
     io.store_busy := ~((state === VMU_Ctrl_Idle) && ~io.stcmdq_deq_val);
@@ -74,10 +72,10 @@ package riscvVector
     {
       switch(cmd_type_reg(1,0))
       {
-        is(Bits("b11")) {store_data <== io.sdq_deq_bits(63,0);}
-        is(Bits("b10")) {store_data <== Fill(2, io.sdq_deq_bits(31,0));}
-        is(Bits("b01")) {store_data <== Fill(4, io.sdq_deq_bits(15,0));}
-        is(Bits("b00")) {store_data <== Fill(8, io.sdq_deq_bits(7,0));}
+        is(Bits("b11")) {store_data <== io.sdq_deq.bits(63,0);}
+        is(Bits("b10")) {store_data <== Fill(2, io.sdq_deq.bits(31,0));}
+        is(Bits("b01")) {store_data <== Fill(4, io.sdq_deq.bits(15,0));}
+        is(Bits("b00")) {store_data <== Fill(8, io.sdq_deq.bits(7,0));}
         otherwise {store_data <== Bits(0,64);}
       }
     }
@@ -146,8 +144,8 @@ package riscvVector
       }
       is(VMU_Ctrl_Store)
       {
-        io.sdq_deq_rdy <== Bool(true);
-        when(io.sdq_deq_val)
+        io.sdq_deq.rdy <== Bool(true);
+        when(io.sdq_deq.valid)
         {
           sbuf_enq_val <== Bool(true);
           when(vlen_reg === UFix(0))
@@ -202,7 +200,7 @@ package riscvVector
       otherwise
       {
         io.stcmdq_deq_rdy <== Bool(false);
-        io.sdq_deq_rdy <== Bool(false);
+        io.sdq_deq.rdy <== Bool(false);
         io.srq_enq_val <== Bool(false);
         sbuf_enq_val <== Bool(false);
       }
