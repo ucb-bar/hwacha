@@ -4,7 +4,20 @@ package riscvVector
   import Node._
   import Interface._
   import Fpu._
-  //import queues._
+  import queues._
+  import scala.collection.mutable.Queue
+
+  object flatten 
+  {
+    def apply(x: Queue[Bits]): Bits =
+      {
+	var res: Bits = null;
+	while(!x.isEmpty){
+	  res = Cat(x.dequeue, res);
+	}
+	res
+      }
+  }
 
   class vuVMU_Ctrl_vec_storeIO extends Bundle
   {
@@ -33,9 +46,9 @@ package riscvVector
     val VMU_Ctrl_Store         = Bits(1,2);
     val VMU_Ctrl_StoreWait     = Bits(2,2);
 
-    val vlen = io.stcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0);
-    val addr = io.stcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ);
-    val stride = io.stcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ);
+    val vlen = io.stcmdq_deq_bits(VMCMD_VLEN_SZ-1, 0).toUFix;
+    val addr = io.stcmdq_deq_bits(VMIMM_SZ+VMCMD_VLEN_SZ-1, VMCMD_VLEN_SZ).toUFix;
+    val stride = io.stcmdq_deq_bits(VMSTRIDE_SZ+VMIMM_SZ+VMCMD_VLEN_SZ-1,VMIMM_SZ+VMCMD_VLEN_SZ).toUFix;
     val cmd_type = io.stcmdq_deq_bits(VM_STCMD_SZ-1, VM_STCMD_SZ-4);
 
     val cmd_type_reg = Reg(resetVal = Bits(0,4));
@@ -45,43 +58,30 @@ package riscvVector
     val state = Reg(resetVal = VMU_Ctrl_Idle);
 
     val sbuf_enq_val = Wire(){Bool()};
-    val sbuf_byte_enq_val = Wire(){Bits()};
-    val store_data = Wire(){Bits()};
-    val sdq_deq_dp = Wire(){Bits()};
-    val sdq_deq_sp = Wire(){Bits()};
     val store_data_wmask = Wire(){Bits()};
 
     val fp_cmd = cmd_type_reg(3).toBool;
 
     val rf32f32  = new recodedFloat32ToFloat32();
     rf32f32.io.in := io.sdq_deq_bits(32,0);
-    rf32f32.io.out := sdq_deq_sp;
+    val sdq_deq_sp = rf32f32.io.out;
+
     val rf64f64  = new recodedFloat64ToFloat64();
     rf64f64.io.in := io.sdq_deq_bits;
-    rf64f64.io.out := sdq_deq_dp;
+    val sdq_deq_dp = rf64f64.io.out
 
     io.store_busy := ~((state === VMU_Ctrl_Idle) && ~io.stcmdq_deq_val);
 
-    when(fp_cmd)
-    {
-      switch(cmd_type_reg(1,0))
-      {
-        is(Bits("b11")) {store_data <== sdq_deq_dp;}
-        is(Bits("b10")) {store_data <== Fill(2, sdq_deq_sp);}
-      }
-    }
-    otherwise
-    {
-      switch(cmd_type_reg(1,0))
-      {
-        is(Bits("b11")) {store_data <== io.sdq_deq_bits(63,0);}
-        is(Bits("b10")) {store_data <== Fill(2, io.sdq_deq_bits(31,0));}
-        is(Bits("b01")) {store_data <== Fill(4, io.sdq_deq_bits(15,0));}
-        is(Bits("b00")) {store_data <== Fill(8, io.sdq_deq_bits(7,0));}
-        otherwise {store_data <== Bits(0,64);}
-      }
-    }
-
+    val store_data = MuxCase(
+      Bits(0,64), Array(	
+	(fp_cmd && (cmd_type_reg(1, 0) === Bits("b11", 2))) -> sdq_deq_dp,
+        (fp_cmd && (cmd_type_reg(1, 0) === Bits("b10", 2))) -> Fill(2, sdq_deq_sp),
+        (cmd_type_reg(1, 0) === Bits("b11", 2)) -> io.sdq_deq_bits(63, 0),
+        (cmd_type_reg(1, 0) === Bits("b10", 2)) -> Fill(2, io.sdq_deq_bits(31, 0)),
+        (cmd_type_reg(1, 0) === Bits("b01", 2)) -> Fill(4, io.sdq_deq_bits(15, 0)),
+        (cmd_type_reg(1, 0) === Bits("b00", 2)) -> Fill(8, io.sdq_deq_bits(7, 0))
+      ));
+      
     io.srq_enq_addr_bits := addr_reg(31,4);
 
     val addr_incr = addr_reg + stride_reg;
@@ -207,14 +207,37 @@ package riscvVector
         sbuf_enq_val <== Bool(false);
       }
     }
-    
+
+    val sbuf_byte_enq_val = Mux(sbuf_enq_val,
+				Mux(addr_reg(3), 
+				     Cat(store_data_wmask, Bits(0,8)), 
+				     Cat(Bits(0,8), store_data_wmask)), 
+				Bits(0,16));
+
+    var srq_enq_wmask_bits_array = new Queue[Bits];
+    var srq_enq_data_bits_array = new Queue[Bits];
+    var first = true;
+
+
     for( i <- 0 until 2 )
     {
       for( j <- 0 until 8 )
       {
+	val sbuf = new queueSimplePF(8,2,1);
+	sbuf.io.enq_bits := store_data(((j+1)*8)-1,(j*8));
+	sbuf.io.enq_val  := sbuf_byte_enq_val(i*8+j).toBool;
 
+	//io.srq_enq_data_bits(((j+1)*8+i*64)-1,j*8+i*64) := sbuf.io.deq_bits;
+	srq_enq_data_bits_array += sbuf.io.deq_bits;
+	//io.srq_enq_wmask_bits(i*8+j) := sbuf.io.deq_val;
+	srq_enq_wmask_bits_array += sbuf.io.deq_val;
+
+	sbuf.io.deq_rdy := io.srq_enq_val & io.srq_enq_rdy;
       }
     }
+
+    io.srq_enq_data_bits := flatten(srq_enq_data_bits_array);
+    io.srq_enq_wmask_bits := flatten(srq_enq_wmask_bits_array);
     
   }
 }
