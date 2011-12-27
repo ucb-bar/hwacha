@@ -11,7 +11,7 @@ class floatNToRecodedFloatN_io(size: Int) extends Bundle() {
 
 class floatNToRecodedFloatN(expSize : Int = 8, sigSize : Int = 24) extends Component
 {
-  def ceilLog2(x : Int)=ceil(log(x)).toInt;
+  def ceilLog2(x : Int) = ceil(log(x)/log(2.0)).toInt;
 
   val size = expSize + sigSize;
   val logNormSize = ceilLog2( sigSize );
@@ -22,14 +22,14 @@ class floatNToRecodedFloatN(expSize : Int = 8, sigSize : Int = 24) extends Compo
   val sign    = io.in(size-1);
   val expIn   = io.in(size-2, sigSize-1).toUFix;
   val fractIn = io.in(sigSize-2, 0).toUFix;
-  val isZeroExpIn = ( expIn === Bits(0, expSize) );
-  val isZeroFractIn = ( fractIn === Bits(0, sigSize-1) );
+  val isZeroExpIn = ( expIn === Bits("b0", expSize) );
+  val isZeroFractIn = ( fractIn === Bits("b0", sigSize-1) );
   val isZeroOrSubnormal = isZeroExpIn;
-  val isZero      = isZeroOrSubnormal &   isZeroFractIn;
-  val isSubnormal = isZeroOrSubnormal & ~ isZeroFractIn;
-  val isNormalOrSpecial = ~ isZeroExpIn;
+  val isZero = isZeroOrSubnormal && isZeroFractIn;
+  val isSubnormal = isZeroOrSubnormal && ~isZeroFractIn;
+  val isNormalOrSpecial = ~isZeroExpIn;
 
-  val norm_in = Cat(fractIn, Bits(0,normSize-sigSize+1));
+  val norm_in = Cat(fractIn, Bits("b0",normSize-sigSize+1));
 
   val normalizeFract = new normalizeN(expSize, sigSize);
   normalizeFract.io.in := norm_in;
@@ -38,9 +38,9 @@ class floatNToRecodedFloatN(expSize : Int = 8, sigSize : Int = 24) extends Compo
 
   val normalizedFract = norm_out(normSize-2,normSize-sigSize);
   val commonExp =
-    Mux(isSubnormal, Cat(Fill(expSize-logNormSize+1, Bits("b1", 1)), ~norm_count), Bits(0, expSize+1)) |
-    Mux(isNormalOrSpecial, expIn, Bits(0, expSize+1));
-  val expAdjust = Mux(isZero, Bits(0,expSize+1), Cat(Bits("b1", 1), Bits(0, expSize-1), Bits("b1", 1)));
+    Mux(isSubnormal, Cat(Fill(expSize-logNormSize+1, Bits("b1", 1)), ~norm_count), Bits("b0", expSize+1)) |
+    Mux(isNormalOrSpecial, expIn, Bits("b0", expSize+1));
+  val expAdjust = Mux(isZero, Bits("b0",expSize+1), Cat(Bits("b1", 1), Bits(0, expSize-1), Bits("b1", 1)));
   val adjustedCommonExp = commonExp.toUFix + expAdjust.toUFix + isSubnormal.toUFix;
   val isNaN = (adjustedCommonExp(expSize,expSize-1) === Bits("b11",2)) & ~ isZeroFractIn;
 

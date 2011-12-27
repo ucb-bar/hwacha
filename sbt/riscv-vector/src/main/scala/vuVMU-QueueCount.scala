@@ -13,7 +13,7 @@ package riscvVector {
 
   class vuVMU_QueueCount(reset_cnt : Int = 0, ready_cnt : Int = 8, max_cnt : Int = 12) extends Component
   {
-    def ceilLog2(x : Int)=ceil(log(x)).toInt;
+    def ceilLog2(x : Int)=ceil(log(x)/log(2.0)).toInt;
 
     val io = new vuVMU_QueueCountIO();
     val count = Reg(resetVal = UFix(reset_cnt, ceilLog2(max_cnt)));

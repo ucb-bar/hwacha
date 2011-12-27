@@ -78,10 +78,10 @@ package riscvVector {
       io.ldq_enq_bits <== Cat(Bits("b0", 1), ldq_bits);
     }
 
-    val rf32f32  = new float32ToRecodedFloat32();
+    val rf32f32  = new floatNToRecodedFloatN(8, 24);
     rf32f32.io.in := ldq_bits(31,0);
     ldq_sp_bits := rf32f32.io.out;
-    val rf64f64  = new float64ToRecodedFloat64();
+    val rf64f64  = new floatNToRecodedFloatN(11, 53);
     rf64f64.io.in := ldq_bits;
     ldq_dp_bits := rf64f64.io.out;
 
