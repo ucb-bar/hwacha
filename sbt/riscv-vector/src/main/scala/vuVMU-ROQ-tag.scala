@@ -2,6 +2,7 @@ package riscvVector {
   import Chisel._
   import Node._
   import Interface._
+  import scala.collection.mutable.{ArrayBuffer}
 
   class vuVMU_ROQ_tagIO(ROQ_DATA_SIZE:Int = 128, ROQ_TAG_SIZE:Int = 3) extends Bundle
   {
@@ -22,7 +23,7 @@ package riscvVector {
     val roq_data_deq = io.roq_deq_data_rdy && io.roq_deq_data_val;
     val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES));
 
-    val data = Vec(ROQ_TAG_ENTRIES) {Reg(resetVal = Bits(0, ROQ_DATA_SIZE))};
+    val data = Reg(resetVal = Bits(0, ROQ_DATA_SIZE));
 
     io.roq_deq_data_bits := data(read_ptr);
     val roq_deq_data_val = Reg(resetVal = Bits(0, 1));

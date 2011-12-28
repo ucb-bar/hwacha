@@ -3,10 +3,16 @@ package Fpu {
 import Chisel._
 import Node._;
 
-class normalize32_io extends Bundle() {
-  val in       = Bits(32, 'input);
-  val distance = Bits(5, 'output);
-  val out      = Bits(32, 'output);
+class normalize_io extends Bundle() {
+  val in       = Bits('input);
+  val distance = Bits('output);
+  val out      = Bits('output);
+}
+
+class normalize32_io extends normalize_io {
+  override val in       = Bits(32, 'input);
+  override val distance = Bits(5, 'output);
+  override val out      = Bits(32, 'output);
 }
 
 class normalize32 extends Component {

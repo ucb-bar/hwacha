@@ -1,0 +1,1 @@
+sbt "project riscv-vector" "run --v"
