@@ -168,7 +168,7 @@ package riscvVector
               addr_reg <== addr_reg + stride_reg;
               vlen_reg <== vlen_reg - UFix(1);
             }
-            otherwise
+            when(!io.srq_enq_rdy)
             {
               state <== VMU_Ctrl_StoreWait;
             }
@@ -189,7 +189,7 @@ package riscvVector
           {
             state <== VMU_Ctrl_Idle;
           }
-          otherwise
+          when(vlen_reg != UFix(0))
           {
             addr_reg <== addr_incr;
             vlen_reg <== vlen_reg - UFix(1);
