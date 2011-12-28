@@ -173,7 +173,7 @@ package riscvVector
               state <== VMU_Ctrl_StoreWait;
             }
           }
-          otherwise
+          when(addr_incr(31,4) === addr_reg(31,4))
           {
             addr_reg <== addr_incr;
             vlen_reg <== vlen_reg - UFix(1);
