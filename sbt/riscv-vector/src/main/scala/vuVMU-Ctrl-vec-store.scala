@@ -151,6 +151,7 @@ package riscvVector
           when(vlen_reg === UFix(0))
           {
             io.srq_enq_val <== Bool(true);
+	    vlen_reg <== vlen_reg;
             when(io.srq_enq_rdy)
             {
               state <== VMU_Ctrl_Idle;
