@@ -18,9 +18,9 @@ class vuVXU_Issue_VT extends Component
   val if_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR));
   val if_next_pc = if_reg_pc.toUFix() + UFix(4);
 
-  when (io.vt.fire)
+  when (io.vf.fire)
   {
-    if_reg_pc <== io.vt.pc;
+    if_reg_pc <== io.vf.pc;
   }
   when (!stallf)
   {
@@ -30,11 +30,11 @@ class vuVXU_Issue_VT extends Component
   io.imem_req.bits := Mux(
     stallf, if_reg_pc,
     if_next_pc);
-  io.imem_req.valid := io.vt.active;
+  io.imem_req.valid := io.vf.active;
 
   val id_reg_inst = Reg(resetVal = Bits(0,DEF_INST));
 
-  when (io.vt.fire)
+  when (io.vf.fire)
   {
     id_reg_inst <== NOP;
   }
@@ -52,7 +52,7 @@ class vuVXU_Issue_VT extends Component
 
   val cs =
   ListLookup(id_reg_inst,
-                //                                                                                                                                                                   vd_val
+                //                                                                                                                                                                   vd_valid
                 //                                                                                                                                                                   | decode_stop
                 //                                                                                                                                                                   | | enq_vmu_utcmdq
                 //                                                                                                                                                                   | | | enq_vmu_utimmq
@@ -195,40 +195,15 @@ class vuVXU_Issue_VT extends Component
   ));
 
   val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs;
-  val rtype_vs::rtype_vt::rtype_vr::rtype_vd::itype::vd_val::decode_stop::enq_vmu_utcmdq::enq_vmu_utimmq::utcmd::Nil = cs0;
+  val rtype_vs::rtype_vt::rtype_vr::rtype_vd::itype::vd_valid::decode_stop::enq_vmu_utcmdq::enq_vmu_utimmq::utcmd::Nil = cs0;
 
-  val unmasked_val_viu = valid(6);
-  val unmasked_val_vau0 = valid(5);
-  val unmasked_val_vau1 = valid(4);
-  val unmasked_val_vau2 = valid(3);
-  val unmasked_val_vgslu = valid(2);
-  val unmasked_val_vglu = valid(1);
-  val unmasked_val_vgsu = valid(0);
-
-  io.dhazard.vs := dhazard(3).toBool;
-  io.dhazard.vt := dhazard(2).toBool;
-  io.dhazard.vr := dhazard(1).toBool;
-  io.dhazard.vd := dhazard(0).toBool;
-
-  io.shazard.vau0 := shazard(5).toBool;
-  io.shazard.vau1 := shazard(4).toBool;
-  io.shazard.vau2 := shazard(3).toBool;
-  io.shazard.vgu := shazard(2).toBool;
-  io.shazard.vlu := shazard(1).toBool;
-  io.shazard.vsu := shazard(0).toBool;
-
-  // no shazards
-  io.shazard.viu := Bool(false);
-  io.shazard.vgslu := Bool(false);
-  io.shazard.vglu := Bool(false);
-  io.shazard.vgsu := Bool(false);
-
-  io.bhazard.r1w1 := bhazard(5).toBool;
-  io.bhazard.r2w1 := bhazard(4).toBool;
-  io.bhazard.r3w1 := bhazard(3).toBool;
-  io.bhazard.vgslu := bhazard(2).toBool;
-  io.bhazard.vglu := bhazard(1).toBool;
-  io.bhazard.vgsu := bhazard(0).toBool;
+  val unmasked_valid_viu = valid(6);
+  val unmasked_valid_vau0 = valid(5);
+  val unmasked_valid_vau1 = valid(4);
+  val unmasked_valid_vau2 = valid(3);
+  val unmasked_valid_vgslu = valid(2);
+  val unmasked_valid_vglu = valid(1);
+  val unmasked_valid_vgsu = valid(0);
 
   val vau1_rm = Wire(){Bits(width = 2)};
   val vau2_rm = Wire(){Bits(width = 2)};
@@ -244,21 +219,16 @@ class vuVXU_Issue_VT extends Component
     vau2_rm <== id_reg_inst(10,9);
   }
 
-  io.fn.viu := Cat(viu_t0,viu_t1,viu_dw,viu_fp,viu_fn);
-  io.fn.vau0 := Cat(vau0_dw,vau0_fn);
-  io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_fn);
-  io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_fn);
+  val unmasked_valid
+    = unmasked_valid_viu |
+    unmasked_valid_vau0 | unmasked_valid_vau1 | unmasked_valid_vau2 |
+    unmasked_valid_vgslu | unmasked_valid_vglu | unmasked_valid_vgsu;
 
-  val unmasked_val
-    = unmasked_val_viu |
-    unmasked_val_vau0 | unmasked_val_vau1 | unmasked_val_vau2 |
-    unmasked_val_vgslu | unmasked_val_vglu | unmasked_val_vgsu;
+  io.vf.stop := decode_stop.toBool;
 
-  io.vt.stop := decode_stop.toBool;
-
-  val mask_issue_rdy = io.ready; // always issue for memory ops
-  val mask_vmu_utcmdq_rdy = ~enq_vmu_utcmdq | io.vmu_utcmdq.ready;
-  val mask_vmu_utimmq_rdy = ~enq_vmu_utimmq | io.vmu_utimmq.ready;
+  val mask_issue_ready = io.ready; // always issue for memory ops
+  val mask_vmu_utcmdq_ready = ~enq_vmu_utcmdq | io.vmu_utcmdq.ready;
+  val mask_vmu_utimmq_ready = ~enq_vmu_utimmq | io.vmu_utimmq.ready;
 
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
@@ -267,38 +237,76 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ));
 
-  io.vmu_utcmdq.bits := Cat(utcmd,Bits(0,UTMCMD_VLEN_SZ));
+  io.vmu_utcmdq.bits := Cat(utcmd,io.vf.vlen);
   io.vmu_utimmq.bits := imm(31,0);
 
-  io.vmu_utcmdq.valid := (io.vt.active & ~(vd_val & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_rdy & enq_vmu_utcmdq & mask_vmu_utimmq_rdy).toBool;
-  io.vmu_utimmq.valid := (io.vt.active & ~(vd_val & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_rdy & mask_vmu_utcmdq_rdy & enq_vmu_utimmq).toBool;
+  io.vmu_utcmdq.valid := (io.vf.active & ~(vd_valid & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_ready & enq_vmu_utcmdq & mask_vmu_utimmq_ready).toBool;
+  io.vmu_utimmq.valid := (io.vf.active & ~(vd_valid & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_ready & mask_vmu_utcmdq_ready & enq_vmu_utimmq).toBool;
 
-  val issue_val_common = io.vt.active & mask_vmu_utcmdq_rdy & mask_vmu_utimmq_rdy;
+  val valid_common = io.vf.active & mask_vmu_utcmdq_ready & mask_vmu_utimmq_ready;
 
-  io.valid.viu := (issue_val_common & unmasked_val_viu).toBool;
-  io.valid.vau0 := (issue_val_common & unmasked_val_vau0).toBool;
-  io.valid.vau1 := (issue_val_common & unmasked_val_vau1).toBool;
-  io.valid.vau2 := (issue_val_common & unmasked_val_vau2).toBool;
-  io.valid.vgslu := (issue_val_common & unmasked_val_vgslu).toBool;
-  io.valid.vglu := (issue_val_common & unmasked_val_vglu).toBool;
-  io.valid.vgsu := (issue_val_common & unmasked_val_vgsu).toBool;
-
-  // never valid
+  io.valid.viu := (valid_common & unmasked_valid_viu).toBool;
+  io.valid.vau0 := (valid_common & unmasked_valid_vau0).toBool;
+  io.valid.vau1 := (valid_common & unmasked_valid_vau1).toBool;
+  io.valid.vau2 := (valid_common & unmasked_valid_vau2).toBool;
+  io.valid.vgslu := (valid_common & unmasked_valid_vgslu).toBool;
+  io.valid.vglu := (valid_common & unmasked_valid_vglu).toBool;
+  io.valid.vgsu := (valid_common & unmasked_valid_vgsu).toBool;
   io.valid.vgu := Bool(false);
   io.valid.vlu := Bool(false);
   io.valid.vsu := Bool(false);
 
-  io.decoded.vs := Cat(rtype_vs,id_reg_inst(26,22));
-  io.decoded.vt := Cat(rtype_vt,id_reg_inst(21,17));
-  io.decoded.vr := Cat(rtype_vr,id_reg_inst(16,12));
-  io.decoded.vd := Cat(rtype_vd,id_reg_inst(31,27));
-  io.decoded.vs_zero := io.decoded.vs === Bits(0,6);
-  io.decoded.vt_zero := io.decoded.vt === Bits(0,6);
-  io.decoded.vr_zero := io.decoded.vr === Bits(0,6);
-  io.decoded.vd_zero := vd_val.toBool;
+  io.dhazard.vs := dhazard(3).toBool;
+  io.dhazard.vt := dhazard(2).toBool;
+  io.dhazard.vr := dhazard(1).toBool;
+  io.dhazard.vd := dhazard(0).toBool;
+
+  io.shazard.viu := Bool(false);
+  io.shazard.vau0 := shazard(5).toBool;
+  io.shazard.vau1 := shazard(4).toBool;
+  io.shazard.vau2 := shazard(3).toBool;
+  io.shazard.vgslu := Bool(false);
+  io.shazard.vglu := Bool(false);
+  io.shazard.vgsu := Bool(false);
+  io.shazard.vgu := shazard(2).toBool;
+  io.shazard.vlu := shazard(1).toBool;
+  io.shazard.vsu := shazard(0).toBool;
+
+  io.bhazard.r1w1 := bhazard(5).toBool;
+  io.bhazard.r2w1 := bhazard(4).toBool;
+  io.bhazard.r3w1 := bhazard(3).toBool;
+  io.bhazard.vgslu := bhazard(2).toBool;
+  io.bhazard.vglu := bhazard(1).toBool;
+  io.bhazard.vgsu := bhazard(0).toBool;
+  io.bhazard.vlu := Bool(false);
+  io.bhazard.vsu := Bool(false);
+
+  io.fn.viu := Cat(viu_t0,viu_t1,viu_dw,viu_fp,viu_fn);
+  io.fn.vau0 := Cat(vau0_dw,vau0_fn);
+  io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_fn);
+  io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_fn);
+
+  val vs = Cat(rtype_vs,id_reg_inst(26,22));
+  val vt = Cat(rtype_vt,id_reg_inst(21,17));
+  val vr = Cat(rtype_vr,id_reg_inst(16,12));
+  val vd = Cat(rtype_vd,id_reg_inst(31,27));
+
+  val vs_m1 = Cat(Bits(0,1),vs(4,0)).toUFix - UFix(1,1);
+  val vt_m1 = Cat(Bits(0,1),vt(4,0)).toUFix - UFix(1,1);
+  val vr_m1 = Cat(Bits(0,1),vr(4,0)).toUFix - UFix(1,1);
+  val vd_m1 = Cat(Bits(0,1),vd(4,0)).toUFix - UFix(1,1);
+
+  io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs.toUFix, vs_m1);
+  io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs.toUFix, vt_m1);
+  io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs.toUFix, vr_m1);
+  io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs.toUFix, vd_m1);
+  io.decoded.vs_zero := vs === Bits(0,6);
+  io.decoded.vt_zero := vt === Bits(0,6);
+  io.decoded.vr_zero := vr === Bits(0,6);
+  io.decoded.vd_zero := (vd === Bits(0,6) & vd_valid).toBool;
   io.decoded.imm := imm;
 
-  io.illegal := Reg((io.vt.active & (~unmasked_val & ~decode_stop)).toBool, resetVal = Bool(false));
+  io.illegal := Reg((io.vf.active & (~unmasked_valid & ~decode_stop)).toBool, resetVal = Bool(false));
 }
 
 }

@@ -18,6 +18,36 @@ class io_valid[T <: Data]()(data: => T) extends Bundle
   val bits = data.asOutput;
 }
 
+class io_arbiter[T <: Data](n: Int)(data: => T) extends Bundle
+{
+  val in  = Vec(n) { (new io_ready_valid()) { data } }.flip();
+  val out = (new io_ready_valid()) { data };
+}
+
+class Arbiter[T <: Data](n: Int)(data: => T) extends Component
+{
+  val io = new io_arbiter(n)(data)
+  val vout = Wire { Bool() }
+
+  io.in(0).ready := io.out.ready
+  for (i <- 1 to n-1) {
+    io.in(i).ready := !io.in(i-1).valid && io.in(i-1).ready
+  }
+
+  var dout = io.in(n-1).bits
+  for (i <- 1 to n-1)
+    dout = Mux(io.in(n-1-i).valid, io.in(n-1-i).bits, dout)
+
+  for (i <- 0 to n-2)
+  {
+    when (io.in(i).valid) { vout <== Bool(true) }
+  }
+  vout <== io.in(n-1).valid
+
+  vout ^^ io.out.valid
+  dout ^^ io.out.bits
+}
+
 //class io_imem_req() extends io_ready_valid() { Bits(width = DEF_ADDR) };
 //class io_imem_resp extends io_valid { Bits(width = DEF_INST) };
 //class io_vxu_cmdq extends io_ready_valid { Bits(width = DEF_VXU_CMDQ) };
@@ -59,6 +89,8 @@ class io_vf extends Bundle
   val fire = Bool('output);
   val stop = Bool('input);
   val pc = Bits(DEF_ADDR, 'output);
+  val vlen = Bits(DEF_VLEN, 'output);
+  val nxregs = Bits(DEF_REGCNT, 'output);
 }
 
 class io_qstall extends Bundle
@@ -121,6 +153,8 @@ class io_vxu_issue_op extends Bundle
   val vgslu = Bool();
   val vglu = Bool();
   val vgsu = Bool();
+  val vlu = Bool();
+  val vsu = Bool();
 }
 
 class io_vxu_seq_fu extends Bundle
@@ -238,13 +272,11 @@ class io_lane_to_hazard extends Bundle
 
 class io_vxu_issue_tvec extends Bundle
 {
-  val nxregs = Bits(DEF_REGCNT, 'output);
+  val vf = new io_vf();
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput;
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput;
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput;
-
-  val vt = new io_vf();
 
   val vxu_cmdq = (new io_ready_valid){Bits(width = DEF_VXU_CMDQ)}.flip();
   val vxu_immq = (new io_ready_valid){Bits(width = DEF_VXU_IMMQ)}.flip();
@@ -269,7 +301,7 @@ class io_vxu_issue_vt extends Bundle
   val vmu_utcmdq = (new io_ready_valid){Bits(width = DEF_VMU_UTCMDQ)};
   val vmu_utimmq = (new io_ready_valid){Bits(width = DEF_VMU_UTIMMQ)};
 
-  val vt = new io_vf().flip();
+  val vf = new io_vf().flip();
 
   val valid = new io_vxu_issue_fu().asOutput;
   val ready = Bool('input);

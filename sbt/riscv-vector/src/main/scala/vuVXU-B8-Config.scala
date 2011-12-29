@@ -170,7 +170,7 @@ object Config
   val DEF_BPTR    = SZ_LGBANK
   val DEF_BPTR1   = SZ_LGBANK
   val DEF_BPTR2   = SZ_LGBANK+1
-  val DEF_BCNT    = SZ_LGBANK
+  val DEF_BCNT    = SZ_LGBANK+1
   val DEF_BVLEN   = SZ_BVLEN
   val DEF_BREGLEN = SZ_BREGLEN
   val DEF_BOPL    = SZ_BOPL
@@ -211,6 +211,9 @@ object Config
   val UTMIMM_SZ      = 32
   val UTMRESP_SZ     = 1
 
+  val XCMD_CMCODE  = (19,12);
+  val XCMD_VD      = (11,6);
+  val XCMD_VS      = (5,0);
 
   val DEF_VXU_CMDQ = XCMD_SZ
   val DEF_VXU_IMMQ = XIMM_SZ
