@@ -27,7 +27,7 @@ class io_arbiter[T <: Data](n: Int)(data: => T) extends Bundle
 class Arbiter[T <: Data](n: Int)(data: => T) extends Component
 {
   val io = new io_arbiter(n)(data)
-  val vout = Wire { Bool() }
+  val vout = Wire() { Bool() }
 
   io.in(0).ready := io.out.ready
   for (i <- 1 to n-1) {
@@ -42,7 +42,8 @@ class Arbiter[T <: Data](n: Int)(data: => T) extends Component
   {
     when (io.in(i).valid) { vout <== Bool(true) }
   }
-  vout <== io.in(n-1).valid
+  
+  vout <== io.in(n-1).valid;
 
   vout ^^ io.out.valid
   dout ^^ io.out.bits
