@@ -1,0 +1,23 @@
+#!/bin/bash
+
+EXPECTED_ARGS=1
+E_BADARGS=65
+
+UPLOAD_PREFIX=UNCONFIGURED
+
+if [ "$UPLOAD_PREFIX" = "UNCONFIGURED" ]
+then
+  echo "ERROR: You must edit this script and define UPLOAD_PREFIX!"
+  exit 1
+fi
+
+
+if [ $# -ne $EXPECTED_ARGS ]
+then
+  echo "Usage: `basename $0` <file to upload>"
+  exit $E_BADARGS
+fi
+
+dashed=$(echo $1 | sed 's/_/-/g')
+
+scp $1 s144.millennium.berkeley.edu:/scratch/daiweili/trainwreck/vector/$dashed
