@@ -22,13 +22,31 @@ package riscvVector {
   {
     val io = new vuVMU_Ctrl_vec_load_wbIO();
 
-    val vec_done		  = Wire(){Bool('output)};
-    val ldq_deq		    = Wire(){Bool('input)};
-    val ldq_enq_bits	= Wire(){Bits(65, 'output)};
+    val vec_done		      = Wire(){Bool()};
+    val ldq_deq		        = Wire(){Bool()};
+
+    val buf_ldq_enq_val = Wire(){Bool()};
+    val buf_ldq_enq_rdy = Wire(){Bool()};
+
+    val delay_cmd_type = Wire(){Bits(width=4)};
+    val delay_addr_lsb = Wire(){Bits(width=4)};
+    val delay_roq_deq_bits = Wire(){Bits(width=128)};
+
+    val ldq_bits = Wire(){Bits(width=64)};
+    val ldq_sp_bits = Wire(){Bits(width=33)};
+    val ldq_dp_bits = Wire(){Bits(width=65)};
+    val fp_cmd = delay_cmd_type(3).toBool;
 
     io.ldq.wb_done   := vec_done;
-    ldq_deq           := io.ldq.deq_rdy;
-    io.ldq.enq_bits  := ldq_enq_bits;
+    ldq_deq          := io.ldq.deq_rdy;
+
+    val ldq_enq_bits_int = MuxCase(
+      Cat(Bits("b0", 1), ldq_bits), Array(
+        (fp_cmd && delay_cmd_type(1,0) === Bits("b11",2)) -> ldq_dp_bits,
+        (fp_cmd && delay_cmd_type(1,0) === Bits("b10",2)) -> Cat(Bits("hFFFF_FFFF", 32))
+      ));
+    
+    io.ldq.enq_bits  := ldq_enq_bits_int;
 
     val VMU_Ctrl_Idle          = Bits(0,2);
     val VMU_Ctrl_Writeback     = Bits(1,2);
@@ -47,13 +65,6 @@ package riscvVector {
 
     val state = Reg(resetVal = VMU_Ctrl_Idle);
 
-    val buf_ldq_enq_val = Wire(){Bool()};
-    val buf_ldq_enq_rdy = Wire(){Bool()};
-
-    val delay_cmd_type = Wire(){Bits(width=4)};
-    val delay_addr_lsb = Wire(){Bits(width=4)};
-    val delay_roq_deq_bits = Wire(){Bits(width=128)};
-
     val skidbuf = new queuePipe1PF(128+4+4);
     skidbuf.io.enq_bits := Cat(cmd_type_reg, addr_reg(3,0), io.roq_deq_bits);
     skidbuf.io.enq_val := buf_ldq_enq_val;
@@ -63,37 +74,21 @@ package riscvVector {
     delay_roq_deq_bits := skidbuf.io.deq_bits(127,0);
     skidbuf.io.deq_val ^^ io.ldq.enq_val;
     skidbuf.io.deq_rdy ^^ io.ldq.enq_rdy;
-    val ldq_bits = Wire(){Bits()};
-    val ldq_sp_bits = Wire(){Bits()};
-    val ldq_dp_bits = Wire(){Bits()};
-    val fp_cmd = delay_cmd_type(3).toBool;
-
-    when(fp_cmd)
-    {
-      switch(delay_cmd_type(1,0))
-      {
-        is(Bits("b11")) {ldq_enq_bits <== ldq_dp_bits;}
-        is(Bits("b10")) {ldq_enq_bits <== Cat(Bits("hFFFF_FFFF", 32), ldq_sp_bits);}
-      }
-    }
-    otherwise
-    {
-      ldq_enq_bits <== Cat(Bits("b0", 1), ldq_bits);
-    }
-
-    val rf32f32  = new floatNToRecodedFloatN(8, 24);
-    rf32f32.io.in := ldq_bits(31,0);
-    ldq_sp_bits := rf32f32.io.out;
-    val rf64f64  = new floatNToRecodedFloatN(11, 53);
-    rf64f64.io.in := ldq_bits;
-    ldq_dp_bits := rf64f64.io.out;
+    
+    val recode_sp     = new floatNToRecodedFloatN(8, 24);
+    recode_sp.io.in   := ldq_bits(31,0);
+    ldq_sp_bits       := recode_sp.io.out;
+    
+    val recode_dp     = new floatNToRecodedFloatN(11, 53);
+    recode_dp.io.in   := ldq_bits;
+    ldq_dp_bits       := recode_dp.io.out;
 
     val bhwd_sel = new vuVMU_BHWD_sel();
-    bhwd_sel.io.bhwd_sel := delay_cmd_type(1,0);
-    bhwd_sel.io.signext := delay_cmd_type(2).toBool;
-    bhwd_sel.io.addr_lsb := delay_addr_lsb;
-    bhwd_sel.io.din := delay_roq_deq_bits;
-    ldq_bits := bhwd_sel.io.dout;
+    bhwd_sel.io.bhwd_sel  := delay_cmd_type(1,0);
+    bhwd_sel.io.signext   := delay_cmd_type(2).toBool;
+    bhwd_sel.io.addr_lsb  := delay_addr_lsb;
+    bhwd_sel.io.din       := delay_roq_deq_bits;
+    ldq_bits              := bhwd_sel.io.dout;
 
     switch(state)
     {
@@ -129,7 +124,8 @@ package riscvVector {
             // Verilog was as follows
             // addr_next = addr_reg + stride_reg;
             // else if (addr_next[31:4] != addr_reg[31:4])
-            when( vlen_reg != UFix(0) && stride_reg != Bits(0) )
+            when( vlen_reg != UFix(0) &&
+                  addr_reg(31,4) != (addr_reg + stride_reg)(31,4) )
             {
               io.roq_deq_rdy <== Bool(true);
             }
