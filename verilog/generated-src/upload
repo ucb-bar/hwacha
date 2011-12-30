@@ -20,4 +20,4 @@ fi
 
 dashed=$(echo $1 | sed 's/_/-/g')
 
-scp $1 s144.millennium.berkeley.edu:/scratch/daiweili/trainwreck/vector/$dashed
+scp $1 s144.millennium.berkeley.edu:$UPLOAD_PREFIX/$dashed
