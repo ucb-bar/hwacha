@@ -43,7 +43,7 @@ package riscvVector {
     val vlen          = io.stcmdq_deq_bits(UTMCMD_VLEN_SZ-1,0);
     val addr          = io.stcmdq_deq_bits(UTMIMM_SZ+UTMCMD_VLEN_SZ-1, UTMCMD_VLEN_SZ);
     val cmd_type      = io.stcmdq_deq_bits(UT_STCMD_SZ-2, UT_STCMD_SZ-6);
-    val cmd_type_amo  = io.stcmdq_deq_bits(UT_STCMD_SZ);
+    val cmd_type_amo  = io.stcmdq_deq_bits(UT_STCMD_SZ-1);
 
     val cmd_type_reg = Reg(resetVal = Bits(0, 5));
     val addr_reg = Reg(resetVal = UFix(0, 32));
@@ -59,47 +59,37 @@ package riscvVector {
     io.store_busy := (state != VMU_Ctrl_Idle) || io.stcmdq_deq_val;
 
 
-    val srq_enq_data_bits = Wire(){Bits()};
+    val srq_enq_data_bits_int = Wire(){Bits()};
     when(cmd_type_fp)
     {
       switch(cmd_type_reg(1,0))
       {
-        is(Bits("b11")) {srq_enq_data_bits <== sdq_deq_dp_bits;}
-        is(Bits("b10")) {srq_enq_data_bits <== Fill(2, sdq_deq_sp_bits);}
+        is(Bits("b11")) {srq_enq_data_bits_int <== sdq_deq_dp_bits;}
+        is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, sdq_deq_sp_bits);}
       }
     }
     switch(cmd_type_reg(1,0))
     {
-      is(Bits("b11")) {srq_enq_data_bits <== io.sdq_deq.bits(63,0);}
-      is(Bits("b10")) {srq_enq_data_bits <== Fill(2, io.sdq_deq.bits(63,0));}
-      is(Bits("b01")) {srq_enq_data_bits <== Fill(4, io.sdq_deq.bits(63,0));}
-      is(Bits("b00")) {srq_enq_data_bits <== Fill(8, io.sdq_deq.bits(63,0));}
-      otherwise {srq_enq_data_bits <== Bits(0, 64);}
-    }
-
-    val srq_enq_tag_bits = Wire(){Bits()};
-    val srq_enq_op_bits = Wire(){Bits()};
-
-    when(state === VMU_Ctrl_Store)
-    {
-      srq_enq_tag_bits <== Bits("h800", 12);
-      srq_enq_op_bits <== UFix(1, 4);
-    }
-    when(state === VMU_Ctrl_AMO)
-    {
-      srq_enq_tag_bits <== Cat(Bits(8, 4), io.roq_deq_tag_bits);
-      srq_enq_op_bits <== Cat(Bits(1,1), cmd_type_reg(4,2), Bits(0,4));
-    }
-    otherwise
-    {
-      srq_enq_tag_bits <== UFix(0, 12);
+      is(Bits("b11")) {srq_enq_data_bits_int <== io.sdq_deq.bits(63,0);}
+      is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, io.sdq_deq.bits(31,0));}
+      is(Bits("b01")) {srq_enq_data_bits_int <== Fill(4, io.sdq_deq.bits(15,0));}
+      is(Bits("b00")) {srq_enq_data_bits_int <== Fill(8, io.sdq_deq.bits(7,0));}
+      otherwise {srq_enq_data_bits_int <== Bits(0, 64);}
     }
 
     val store_data_wmask = Wire() {Bits()};
 
-    io.srq_enq_data_bits  := srq_enq_data_bits;
-    io.srq_enq_tag_bits   := srq_enq_tag_bits;
-    io.srq_enq_op_bits    := srq_enq_op_bits;
+    io.srq_enq_data_bits  := srq_enq_data_bits_int;
+    io.srq_enq_tag_bits   := MuxCase(
+      Bits(0,12), Array(
+        (state === VMU_Ctrl_Store) -> Bits("h800",12),
+        (state === VMU_Ctrl_AMO) -> Cat(Bits("h8",4),io.roq_deq_tag_bits)
+      ));
+    io.srq_enq_op_bits    := MuxCase(
+      Bits(0,4), Array(
+        (state === VMU_Ctrl_Store) -> Bits("b0001",4),
+        (state === VMU_Ctrl_AMO) -> Cat(Bits("b1",1),cmd_type_reg(4,2))
+      ));
     io.srq_enq_wmask_bits := store_data_wmask;
     io.srq_enq_addr_bits  := req_addr(31,2);
 
@@ -112,21 +102,8 @@ package riscvVector {
 
     switch(cmd_type_reg(1,0))
     {
-      is(UFix(3,2))
-      {
-        store_data_wmask <== Bits("hFF", 8);
-      }
-      is(UFix(2,2))
-      {
-        when(req_addr(2).toBool())
-        {
-          store_data_wmask <== Bits("hF0", 8);
-        }
-        otherwise
-        {
-          store_data_wmask <== Bits("h0F", 8);
-        }
-      }
+      is(UFix(3,2)) { store_data_wmask <== Bits("hFF", 8); }
+      is(UFix(2,2)) { store_data_wmask <== Mux(req_addr(2).toBool,Bits("hF0",8),Bits("h0F",8)); }
       is(UFix(1,2))
       {
         switch(req_addr(2,1))
@@ -149,6 +126,7 @@ package riscvVector {
           is(UFix(7,3)) { store_data_wmask <== Bits("h80", 8); }
         }
       }
+      otherwise { store_data_wmask <== Bits(0,8); }
     }
 
     switch(state) {
@@ -193,6 +171,13 @@ package riscvVector {
             vlen_reg <== vlen_reg - UFix(1,UTMCMD_VLEN_SZ);
           }
         }
+      }
+      otherwise {
+        io.stcmdq_deq_rdy <== Bool(false);
+        io.sdq_deq.rdy <== Bool(false);
+        io.utaq_deq_rdy <== Bool(false);
+        io.srq_enq_val <== Bool(false);
+        io.roq_deq_tag_rdy <== Bool(false);
       }
     }
   }
