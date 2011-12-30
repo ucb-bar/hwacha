@@ -109,10 +109,8 @@ package riscvVector {
 
       // utmcmdq
       val UTMCMD_SZ      = 19;
-    /*
-      val UTMCMD_CMDCODE  18:11
-      val UTMCMD_VLEN_M1  10:0
-    */
+      val UTMCMD_CMDCODE  = (18,11);
+      val UTMCMD_VLEN_M1  = (10,0);
       val UTMCMD_CMD_SZ  = 8;
       val UTMCMD_VLEN_SZ = VLENMAX_SZ;
 

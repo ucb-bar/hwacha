@@ -2,16 +2,15 @@ package riscvVector {
   import Chisel._
   import Node._
   import Interface._
+  import Fpu._
 
   class vuVMU_Ctrl_ut_storeIO extends Bundle
   {
     val stcmdq_deq_bits		= UFix(UT_STCMD_SZ, 'input);
     val stcmdq_deq_val		= Bool('input);
     val stcmdq_deq_rdy		= Bool('output);
-  
-    val sdq_deq_bits		= UFix(65, 'input);
-    val sdq_deq_val		= Bool('input);
-    val sdq_deq_rdy		= Bool('output);
+ 
+    val sdq_deq       = new utsdq_deqIO();
    
     val utaq_deq_bits		= UFix(32, 'input);
     val utaq_deq_val		= Bool('input);
@@ -52,8 +51,8 @@ package riscvVector {
     val state = Reg(resetVal = VMU_Ctrl_Idle);
 
     val req_addr = addr_reg + io.utaq_deq_bits;
-    val sdq_deq_dp_bits = UFix(0,32); // Need to hook up
-    val sdq_deq_sp_bits = UFix(0,64); // Need to hook up
+    val sdq_deq_dp_bits = Wire() {Bits(width=32)};
+    val sdq_deq_sp_bits = Wire() {Bits(width=64)};
 
     val cmd_type_fp = Mux(state === VMU_Ctrl_AMO, Bool(false), cmd_type_reg(3).toBool());
 
@@ -71,10 +70,10 @@ package riscvVector {
     }
     switch(cmd_type_reg(1,0))
     {
-      is(Bits("b11")) {srq_enq_data_bits <== io.sdq_deq_bits(63,0);}
-      is(Bits("b10")) {srq_enq_data_bits <== Fill(2, io.sdq_deq_bits(63,0));}
-      is(Bits("b01")) {srq_enq_data_bits <== Fill(4, io.sdq_deq_bits(63,0));}
-      is(Bits("b00")) {srq_enq_data_bits <== Fill(8, io.sdq_deq_bits(63,0));}
+      is(Bits("b11")) {srq_enq_data_bits <== io.sdq_deq.bits(63,0);}
+      is(Bits("b10")) {srq_enq_data_bits <== Fill(2, io.sdq_deq.bits(63,0));}
+      is(Bits("b01")) {srq_enq_data_bits <== Fill(4, io.sdq_deq.bits(63,0));}
+      is(Bits("b00")) {srq_enq_data_bits <== Fill(8, io.sdq_deq.bits(63,0));}
       otherwise {srq_enq_data_bits <== Bits(0, 64);}
     }
 
@@ -104,9 +103,12 @@ package riscvVector {
     io.srq_enq_wmask_bits := store_data_wmask;
     io.srq_enq_addr_bits  := req_addr(31,2);
 
-    // recodedFloatNToFloatN functions here
-    // recodedFloatNToFloatN #(8,24) decoder_sp ( sdq_deq_bits[32:0], sdq_deq_sp_bits );
-    // recodedFloatNToFloatN #(11,53) decoder_dp ( sdq_deq_bits, sdq_deq_dp_bits );
+    val decoder_sp = new recodedFloat32ToFloat32();
+    decoder_sp.io.in := io.sdq_deq.bits(32,0);
+    sdq_deq_sp_bits := decoder_sp.io.out;
+    val decoder_dp = new recodedFloat64ToFloat64();
+    decoder_dp.io.in := io.sdq_deq.bits;
+    sdq_deq_dp_bits := decoder_dp.io.out;
 
     switch(cmd_type_reg(1,0))
     {
@@ -149,21 +151,9 @@ package riscvVector {
       }
     }
 
-    val stcmdq_deq_rdy    = Wire() {Bool()};
-    val sdq_deq_rdy       = Wire() {Bool()};
-    val utaq_deq_rdy      = Wire() {Bool()};
-    val srq_enq_val       = Wire() {Bool()};
-    val roq_deq_tag_rdy   = Wire() {Bool()};
-
-    io.stcmdq_deq_rdy  := stcmdq_deq_rdy ;
-    io.sdq_deq_rdy     := sdq_deq_rdy    ;
-    io.utaq_deq_rdy    := utaq_deq_rdy   ;
-    io.srq_enq_val     := srq_enq_val    ;
-    io.roq_deq_tag_rdy := roq_deq_tag_rdy;
-
     switch(state) {
       is(VMU_Ctrl_Idle) {
-        stcmdq_deq_rdy <== Bool(true);
+        io.stcmdq_deq_rdy <== Bool(true);
         when(io.stcmdq_deq_val) {
           vlen_reg <== vlen;
           cmd_type_reg <== cmd_type;
@@ -178,10 +168,10 @@ package riscvVector {
         }
       }
       is(VMU_Ctrl_Store) {
-        sdq_deq_rdy <== io.utaq_deq_val && io.srq_enq_rdy;
-        utaq_deq_rdy <== io.sdq_deq_val && io.srq_enq_rdy;
-        srq_enq_val <== io.sdq_deq_val && io.utaq_deq_val;
-        when( io.sdq_deq_val && io.utaq_deq_val && io.srq_enq_rdy ) {
+        io.sdq_deq.rdy <== io.utaq_deq_val && io.srq_enq_rdy;
+        io.utaq_deq_rdy <== io.sdq_deq.valid && io.srq_enq_rdy;
+        io.srq_enq_val <== io.sdq_deq.valid && io.utaq_deq_val;
+        when( io.sdq_deq.valid && io.utaq_deq_val && io.srq_enq_rdy ) {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
             state <== VMU_Ctrl_Idle;
           }
@@ -191,11 +181,11 @@ package riscvVector {
         }
       }
       is(VMU_Ctrl_AMO) {
-        sdq_deq_rdy      <== io.utaq_deq_val && io.srq_enq_rdy && io.roq_deq_tag_val;
-        utaq_deq_rdy     <== io.sdq_deq_val && io.srq_enq_rdy && io.roq_deq_tag_val;
-        srq_enq_val      <== io.sdq_deq_val && io.utaq_deq_val && io.roq_deq_tag_val;
-        roq_deq_tag_rdy  <== io.utaq_deq_val && io.srq_enq_rdy && io.sdq_deq_val;
-        when( io.sdq_deq_val && io.utaq_deq_val && io.roq_deq_tag_val && io.srq_enq_rdy ) {
+        io.sdq_deq.rdy      <== io.utaq_deq_val && io.srq_enq_rdy && io.roq_deq_tag_val;
+        io.utaq_deq_rdy     <== io.sdq_deq.valid && io.srq_enq_rdy && io.roq_deq_tag_val;
+        io.srq_enq_val      <== io.sdq_deq.valid && io.utaq_deq_val && io.roq_deq_tag_val;
+        io.roq_deq_tag_rdy  <== io.utaq_deq_val && io.srq_enq_rdy && io.sdq_deq.valid;
+        when( io.sdq_deq.valid && io.utaq_deq_val && io.roq_deq_tag_val && io.srq_enq_rdy ) {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
             state <== VMU_Ctrl_Idle;
           }
