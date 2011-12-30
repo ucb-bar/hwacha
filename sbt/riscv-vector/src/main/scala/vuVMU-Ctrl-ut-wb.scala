@@ -28,9 +28,9 @@ package riscvVector {
     val VMU_Ctrl_Writeback      = Bits(1,2);
     val VMU_Ctrl_WritebackDone  = Bits(2,2);
 
-    val vlen             = io.wbcmdq_deq_bits(UTMCMD_VLEN_SZ-1, 0);
+    val vlen             = io.wbcmdq_deq_bits(UTMCMD_VLEN_SZ-1, 0).toUFix;
     val cmd_type         = io.wbcmdq_deq_bits(UT_WBCMD_SZ-2, UTMCMD_VLEN_SZ);
-    val cmd_type_amo     = io.wbcmdq_deq_bits(UT_WBCMD_SZ-1);
+    val cmd_type_amo     = io.wbcmdq_deq_bits(UT_WBCMD_SZ-1).toBool;
     val vlen_reg         = Reg(resetVal = UFix(0, UTMCMD_VLEN_SZ));
     val vlen_cnt_reg     = Reg(resetVal = UFix(0, UTMCMD_VLEN_SZ));
     val cmd_type_reg     = Reg(resetVal = Bits(0, 4));
@@ -49,7 +49,7 @@ package riscvVector {
     skidbuf.io.enq_val  := buf_ldq_enq_val;
     buf_ldq_enq_rdy     := skidbuf.io.enq_rdy;
     delay_cmd_type      := skidbuf.io.deq_bits(68,65);
-    delay_cmd_type_amo  := skidbuf.io.deq_bits(64);
+    delay_cmd_type_amo  := skidbuf.io.deq_bits(64).toBool;
     delay_roq_deq_bits  := skidbuf.io.deq_bits(63,0);
     io.ldq.enq_val      := skidbuf.io.deq_val;
     skidbuf.io.deq_rdy  := io.ldq.enq_rdy;

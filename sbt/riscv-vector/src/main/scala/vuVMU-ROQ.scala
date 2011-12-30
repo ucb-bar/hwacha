@@ -22,21 +22,29 @@ package riscvVector {
   class vuVMU_ROQ(ROQ_DATA_SIZE :Int = 128, ROQ_TAG_ENTRIES :Int = 8, ROQ_TAG_SIZE :Int = 3) extends Component
   {
     val io = new vuVMU_ROQIO(ROQ_DATA_SIZE, ROQ_TAG_SIZE);
-    val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE));
-    val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE));
-    val read_ptr_next = read_ptr + UFix(1);
-    val write_ptr_next = write_ptr + UFix(1);
-    val full = (write_ptr_next === read_ptr);
-    val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES));
-    val roq_data_deq = io.roq_deq_data_rdy && io.roq_deq_data_val;
-    val roq_tag_deq = io.roq_deq_tag_rdy && io.roq_deq_tag_val;
-    val roq_deq_data_val = Reg(resetVal = Bool(false));
-    io.roq_deq_data_val := roq_deq_data_val;
+    
+    val read_ptr          = Reg(resetVal = UFix(0, ROQ_TAG_SIZE));
+    val write_ptr         = Reg(resetVal = UFix(0, ROQ_TAG_SIZE));
+    val read_ptr_next     = read_ptr + UFix(1);
+    val write_ptr_next    = write_ptr + UFix(1);
 
+    val full              = (write_ptr_next === read_ptr);
+    val vb_array          = Reg(resetVal=Bits(0, ROQ_TAG_ENTRIES));
+    val roq_data_deq      = io.roq_deq_data_rdy && io.roq_deq_data_val;
+    val roq_tag_deq       = io.roq_deq_tag_rdy && io.roq_deq_tag_val;
+    val roq_deq_data_val  = Reg(resetVal = Bool(false));
+    io.roq_deq_data_val   := roq_deq_data_val;
 
-    // val data_array = Mem(ROQ_TAG_ENTRIES, <write enable>, wrAddr: Num, wrData: T, wrMask: Bits = null)
+    val vb_update_mask = MuxCase(
+      Bits(0,ROQ_TAG_ENTRIES), Array(
+        roq_data_deq -> ~(Bits(1,ROQ_TAG_ENTRIES) << read_ptr),
+        io.roq_enq_val -> (Bits(1,ROQ_TAG_ENTRIES) << read_ptr_next)
+      ));
+    
     // Mem4 <-- Read tutorial
     // compare with trainwreck/caches/sram.v
+    val data_array = Mem4(ROQ_TAG_ENTRIES, io.roq_enq_val, io.roq_enq_tag_bits.toUFix, io.roq_enq_data_bits, w_mask = Bits("b11111111",8));
+    io.roq_deq_data_bits := data_array(io.roq_enq_tag_bits.toUFix, oe = !io.roq_enq_val, cs = Bool(true));
 
     // read tag
     when(roq_tag_deq)
@@ -46,18 +54,32 @@ package riscvVector {
     // read data
     when(roq_data_deq)
     {
-      vb_array(io.roq_enq_tag_bits.toUFix) <== Bits("b0");
-      roq_deq_data_val <== vb_array(read_ptr_next);
+      // vb_array[read_ptr] <= 1'b0
+      vb_array <== vb_array & vb_update_mask;
+      /*MuxCase(
+        vb_array, Array(
+          (read_ptr.toInt == ROQ_TAG_ENTRIES-1) -> Cat(Bits("b0",0), vb_array(ROQ_TAG_ENTRIES-2,0)),
+          (read_ptr.toInt == 0) -> Cat(vb_array(ROQ_TAG_ENTRIES-1,1),Bits("b0",0)),
+          (true) -> Cat(vb_array(ROQ_TAG_ENTIRES-1,read_ptr.toInt+1),Bits("b0",0),vb_array(read_ptr.toInt-1,0))
+      ));*/
+      roq_deq_data_val <== vb_array(read_ptr_next).toBool;
       read_ptr <== read_ptr_next;
     }
     // write data
     when(io.roq_enq_val)
     {
-      vb_array(io.roq_enq_tag_bits.toUFix) <== Bits("b1");
+      // vb_array[roq_enq_tag_bits] <= 1'b1
+      vb_array <== vb_array | vb_update_mask;
+      /*MuxCase(
+        vb_array, Array(
+          (io.roq_enq_tag_bits.toInt == ROQ_TAG_ENTRIES-1) -> Cat(Bits("b1",0), vb_array(ROQ_TAG_ENTRIES-2,0)),
+          (io.roq_enq_tag_bits.toInt == 0) -> Cat(vb_array(ROQ_TAG_ENTRIES-1,1),Bits("b1",0)),
+          (true) -> Cat(vb_array(ROQ_TAG_ENTIRES-1,io.roq_enq_tag_bits.toInt+1),Bits("b1",0),vb_array(io.roq_enq_tag_bits.toInt-1,0))
+        ));*/
     }
     otherwise
     {
-      roq_deq_data_val <== vb_array(read_ptr);
+      roq_deq_data_val <== vb_array(read_ptr).toBool;
     }
   }
 }
