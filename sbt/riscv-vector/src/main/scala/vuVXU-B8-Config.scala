@@ -3,6 +3,7 @@ package riscvVector
 
 import Chisel._;
 import Node._;
+import scala.collection.mutable.ArrayBuffer._;
 
 object Config
 {
@@ -269,6 +270,16 @@ object ShiftRegister
     {
       Reg(apply(n-1, width, valid, base));
     }
+  }
+}
+
+object GenArray{
+  def apply[T <: Data](n: Int)(gen: => T): ArrayBuffer[T] = 
+  {
+    val res = new ArrayBuffer[T];
+    for(i <- 0 until n)
+      res += gen;
+    res
   }
 }
 
