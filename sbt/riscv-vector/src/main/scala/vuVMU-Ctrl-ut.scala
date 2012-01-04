@@ -61,7 +61,7 @@ package riscvVector {
     val wmask = Bits(8, 'output);
     val op    = Bits(4, 'output);
     val valid = Bool('output);
-    val rdy   = Bool('intput);
+    val rdy   = Bool('input);
   }
 
   // response

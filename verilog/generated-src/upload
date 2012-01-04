@@ -3,7 +3,7 @@
 EXPECTED_ARGS=1
 E_BADARGS=65
 
-UPLOAD_PREFIX=UNCONFIGURED
+UPLOAD_PREFIX=/scratch/daiweili/trainwreck/vector
 
 if [ "$UPLOAD_PREFIX" = "UNCONFIGURED" ]
 then

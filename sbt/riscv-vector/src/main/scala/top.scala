@@ -32,8 +32,8 @@ package riscvVector
       //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_store());
       //chiselMain(boot_args, () => new vuVMU_BHWD_sel());
       //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_load_wb());
-      chiselMain(boot_args, () => new vuVMU_Ctrl_vec());
-      //chiselMain(boot_args, () => new vuVMU_Ctrl_ut());
+      //chiselMain(boot_args, () => new vuVMU_Ctrl_vec());
+      chiselMain(boot_args, () => new vuVMU_Ctrl_ut());
       //chiselMain(boot_args, () => new vuVMU_Ctrl_ut_store());
       //chiselMain(boot_args, () => new vuVMU_Ctrl_ut_wb());
       //chiselMain(boot_args, () => new vuVMU_ROQ_ut());

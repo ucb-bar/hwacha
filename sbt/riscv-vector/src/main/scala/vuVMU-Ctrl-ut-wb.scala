@@ -80,10 +80,10 @@ package riscvVector {
         (bhwd_sel === Bits("b00")) -> Cat(Bits(0,1), byte_sel_ext)
       ));
 
-    val recode_sp = new floatNToRecodedFloatN(8,24);
+    val recode_sp = new float32ToRecodedFloat32();
     recode_sp.io.in := delay_roq_deq_bits(31,0);
     roq_deq_sp_bits := recode_sp.io.out;
-    val recode_dp = new floatNToRecodedFloatN(11,53);
+    val recode_dp = new float64ToRecodedFloat64();
     recode_dp.io.in := delay_roq_deq_bits;
     roq_deq_dp_bits := recode_dp.io.out;
 
