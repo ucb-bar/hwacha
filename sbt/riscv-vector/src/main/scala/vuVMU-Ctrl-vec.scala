@@ -100,20 +100,20 @@ package riscvVector {
   {
     val io = new vuVMU_Ctrl_vecIO();
     
-    val ctrl_vec_top          = new vuVMU_Ctrl_vec_top;
+    val ctrl_vec_top          = new vuVMU_Ctrl_vec_top();
     val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 4, 2);
     val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
     val ctrl_vec_load_issue   = new vuVMU_Ctrl_vec_load_issue();
     val ctrl_vec_load_wb      = new vuVMU_Ctrl_vec_load_wb();
     val lrq                   = new queuePipePF(36, 4, 2);
-    val roq                   = new vuVMU_ROQ(130, 256, 8);
+    val roq                   = new vuVMU_ROQ(130, 8, 3);
     val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
     val ctrl_vec_store        = new vuVMU_Ctrl_vec_store();
     val srq                   = new queuePipePF(128+28+16, 2, 1);
 
-    val roq_enq_val           = io.dcacheresp_val & ~io.dcacheresp_tag(11);
+    val roq_enq_val           = io.dcacheresp_val && !(io.dcacheresp_tag(11).toBool);
     val roq_enq_data_bits     = io.dcacheresp_data;
-    val roq_enq_tag_bits      = io.dcacheresp_tag(7, 0);
+    val roq_enq_tag_bits      = io.dcacheresp_tag(7,0);
 
     // ctrl_vec_top
     ctrl_vec_top.io.vmcmdq      ^^ io.vmcmdq;
@@ -153,7 +153,7 @@ package riscvVector {
     ctrl_vec_load_wb.io.wbcmdq_deq_val  := wbcmdq.io.deq_val;
     wbcmdq.io.deq_rdy                   := ctrl_vec_load_wb.io.wbcmdq_deq_rdy;
 
-    ctrl_vec_load_wb.io.roq_deq_bits    := roq.io.roq_deq_data_bits;
+    ctrl_vec_load_wb.io.roq_deq_bits    := roq.io.roq_deq_data_bits(127,0);
     ctrl_vec_load_wb.io.roq_deq_val     := roq.io.roq_deq_data_val;
     roq.io.roq_deq_data_rdy             := ctrl_vec_load_wb.io.roq_deq_rdy;
 

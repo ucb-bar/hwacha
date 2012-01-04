@@ -75,11 +75,11 @@ package riscvVector {
     skidbuf.io.deq_val ^^ io.ldq.enq_val;
     skidbuf.io.deq_rdy ^^ io.ldq.enq_rdy;
     
-    val recode_sp     = new floatNToRecodedFloatN(8, 24);
+    val recode_sp     = new float32ToRecodedFloat32();
     recode_sp.io.in   := ldq_bits(31,0);
     ldq_sp_bits       := recode_sp.io.out;
     
-    val recode_dp     = new floatNToRecodedFloatN(11, 53);
+    val recode_dp     = new float64ToRecodedFloat64();
     recode_dp.io.in   := ldq_bits;
     ldq_dp_bits       := recode_dp.io.out;
 

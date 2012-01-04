@@ -102,7 +102,7 @@ package riscvVector {
     val srq             = new queuePipePF(4+12+30+8+64, 2, 1);
 
     roq.io.roq_enq_val      := io.dcacheresp.valid;
-    roq.io.roq_enq_tag_bits := io.dcacheresp.tag(7,0);
+    roq.io.roq_enq_tag_bits := io.dcacheresp.tag(7,0).toUFix;
     val dcacheresp_addr_lsb =  io.dcacheresp.tag(10,8);
 
     roq.io.roq_enq_data_bits := Cat(Bits(0, 1), MuxCase(
@@ -142,20 +142,19 @@ package riscvVector {
     ctrl_ut_top.io.store_busy     := ctrl_ut_store.io.store_busy;
 
     // ctrl_ut_issue
-    ctrl_ut_issue.io.iscmdq_deq_bits  := iscmdq.io.deq_bits;
+    ctrl_ut_issue.io.iscmdq_deq_bits  := iscmdq.io.deq_bits.toUFix;
     ctrl_ut_issue.io.iscmdq_deq_val   := iscmdq.io.deq_val;
     iscmdq.io.deq_rdy                 := ctrl_ut_issue.io.iscmdq_deq_rdy;
     
-    ctrl_ut_issue.io.utaq_deq_bits    := io.utaq_deq.bits;
+    ctrl_ut_issue.io.utaq_deq_bits    := io.utaq_deq.bits.toUFix;
     ctrl_ut_issue.io.utaq_deq_val     := io.utaq_deq.valid;
     
     lrq.io.enq_bits                   := Cat(ctrl_ut_issue.io.lrq_enq_addr_bits, ctrl_ut_issue.io.lrq_enq_tag_bits);
     lrq.io.enq_val                    := ctrl_ut_issue.io.lrq_enq_val;
     ctrl_ut_issue.io.lrq_enq_rdy      := lrq.io.enq_rdy;
     
-    ctrl_ut_issue.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits;
+    ctrl_ut_issue.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits.toUFix;
     ctrl_ut_issue.io.roq_deq_tag_val  := roq.io.roq_deq_tag_val;
-    roq.io.roq_deq_tag_rdy            := ctrl_ut_issue.io.roq_deq_tag_rdy;
 
     // ctrl_ut_wb
     ctrl_ut_wb.io.ldq               ^^ io.utldq;
@@ -169,16 +168,16 @@ package riscvVector {
     roq.io.roq_deq_data_rdy         := ctrl_ut_wb.io.roq_deq_rdy;
 
     // ctrl_ut_store
-    ctrl_ut_store.io.stcmdq_deq_bits  := stcmdq.io.deq_bits;
+    ctrl_ut_store.io.stcmdq_deq_bits  := stcmdq.io.deq_bits.toUFix;
     ctrl_ut_store.io.stcmdq_deq_val   := stcmdq.io.deq_val;
     stcmdq.io.deq_rdy                 := ctrl_ut_store.io.stcmdq_deq_rdy;
   
     ctrl_ut_store.io.sdq_deq          ^^ io.utsdq_deq;
 
-    ctrl_ut_store.io.utaq_deq_bits    := io.utaq_deq.bits;
+    ctrl_ut_store.io.utaq_deq_bits    := io.utaq_deq.bits.toUFix;
     ctrl_ut_store.io.utaq_deq_val     := io.utaq_deq.valid;
     
-    ctrl_ut_store.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits;
+    ctrl_ut_store.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits.toUFix;
     ctrl_ut_store.io.roq_deq_tag_val  := roq.io.roq_deq_tag_val;
 
     srq.io.enq_bits                   := Cat(ctrl_ut_store.io.srq_enq_op_bits,
