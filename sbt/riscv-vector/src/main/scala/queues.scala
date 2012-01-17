@@ -66,6 +66,7 @@ class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
   io.raddr := deq_ptr;
 
   // We enq/deq only when they are both ready and valid
+  val empty = ~full && (enq_ptr === deq_ptr);
 
   val enq_rdy_int = ~full || (full && io.deq_rdy);
   val deq_val_int = ~empty;
@@ -73,11 +74,10 @@ class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
   val do_enq = enq_rdy_int && io.enq_val;
   val do_deq = io.deq_rdy && deq_val_int;
 
+  val do_pipe = full && (do_enq && do_deq);
   // Determine if we have pipeline or flowthrough behaviour and
   // set the write enable accordingly.
 
-  val empty = ~full && (enq_ptr === deq_ptr);
-  val do_pipe = full && (do_enq && do_deq);
 
   io.wen := do_enq;
 

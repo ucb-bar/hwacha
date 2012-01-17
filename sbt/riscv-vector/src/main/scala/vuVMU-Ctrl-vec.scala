@@ -71,6 +71,27 @@ package riscvVector {
     val rdy		  = Bool('input);
   }
 
+  class vec_dcachereqIO extends Bundle
+  {
+    // D$ interface
+    // request
+    val addr	= Bits(28, 'output);
+    val tag		= Bits(12, 'output);
+    val data	= Bits(128, 'output);
+    val wmask	= Bits(16, 'output);
+    val op		= Bits(4, 'output);
+    val valid = Bool('output);
+    val rdy		= Bool('input);
+  }
+
+  class vec_dcacherespIO extends Bundle
+  {
+    // response
+    val data		= UFix(128, 'input);
+    val tag		  = UFix(12, 'input);
+    val valid		= Bool('input);
+  }
+
   class vuVMU_Ctrl_vecIO extends Bundle
   {
     val vmcmdq      = new vmcmdqIO();
@@ -79,21 +100,8 @@ package riscvVector {
     val vmrespq     = new vmrespqIO();
     val vldq        = new vldqIO();
     val vsdq_deq    = new vsdq_deqIO();
-
-    // D$ interface
-    // request
-    val dcachereq_addr	= Bits(28, 'output);
-    val dcachereq_tag		= Bits(12, 'output);
-    val dcachereq_data	= Bits(128, 'output);
-    val dcachereq_wmask	= Bits(16, 'output);
-    val dcachereq_op		= Bits(4, 'output);
-    val dcachereq_val		= Bool('output);
-    val dcachereq_rdy		= Bool('input);
-
-    // response
-    val dcacheresp_data		= UFix(128, 'input);
-    val dcacheresp_tag		= UFix(12, 'input);
-    val dcacheresp_val		= Bool('input);
+    val dcachereq   = new vec_dcachereqIO();
+    val dcacheresp  = new vec_dcacherespIO();
   }
 
   class vuVMU_Ctrl_vec extends Component
@@ -111,9 +119,9 @@ package riscvVector {
     val ctrl_vec_store        = new vuVMU_Ctrl_vec_store();
     val srq                   = new queuePipePF(128+28+16, 2, 1);
 
-    val roq_enq_val           = io.dcacheresp_val && !(io.dcacheresp_tag(11).toBool);
-    val roq_enq_data_bits     = io.dcacheresp_data;
-    val roq_enq_tag_bits      = io.dcacheresp_tag(7,0);
+    val roq_enq_val           = io.dcacheresp.valid && !(io.dcacheresp.tag(11).toBool);
+    val roq_enq_data_bits     = io.dcacheresp.data;
+    val roq_enq_tag_bits      = io.dcacheresp.tag(7,0);
 
     // ctrl_vec_top
     ctrl_vec_top.io.vmcmdq      ^^ io.vmcmdq;
@@ -178,13 +186,13 @@ package riscvVector {
     ctrl_vec_store.io.srq_enq_rdy       := srq.io.enq_rdy;
 
     // stores are given priority over loads
-    io.dcachereq_val    := lrq.io.deq_val || srq.io.deq_val;
-    lrq.io.deq_rdy      := Mux(srq.io.deq_val, Bool(false), io.dcachereq_rdy);
-    srq.io.deq_rdy      := io.dcachereq_rdy;
-    io.dcachereq_data   := srq.io.deq_bits(127, 0);
-    io.dcachereq_wmask  := srq.io.deq_bits(143, 128);
-    io.dcachereq_addr   := Mux(srq.io.deq_val, srq.io.deq_bits(171, 144), lrq.io.deq_bits(35,8));
-    io.dcachereq_tag    := Mux(srq.io.deq_val, Bits("h800", 12), Cat(Bits("b0", 4), lrq.io.deq_bits(7,0)));
-    io.dcachereq_op     := Mux(srq.io.deq_val, Bits("b0001", 4), Bits("b0000", 4));
+    io.dcachereq.valid  := lrq.io.deq_val || srq.io.deq_val;
+    lrq.io.deq_rdy      := Mux(srq.io.deq_val, Bool(false), io.dcachereq.rdy);
+    srq.io.deq_rdy      := io.dcachereq.rdy;
+    io.dcachereq.data   := srq.io.deq_bits(127, 0);
+    io.dcachereq.wmask  := srq.io.deq_bits(143, 128);
+    io.dcachereq.addr   := Mux(srq.io.deq_val, srq.io.deq_bits(171, 144), lrq.io.deq_bits(35,8));
+    io.dcachereq.tag    := Mux(srq.io.deq_val, Bits("h800", 12), Cat(Bits("b0", 4), lrq.io.deq_bits(7,0)));
+    io.dcachereq.op     := Mux(srq.io.deq_val, Bits("b0001", 4), Bits("b0000", 4));
   }
 }

@@ -53,7 +53,7 @@ package riscvVector {
 
   // D$ interface
   // request
-  class dcachereqIO extends Bundle
+  class ut_dcachereqIO extends Bundle
   {
     val addr  = Bits(30, 'output);
     val tag   = Bits(12, 'output);
@@ -65,7 +65,7 @@ package riscvVector {
   }
 
   // response
-  class dcacherespIO extends Bundle
+  class ut_dcacherespIO extends Bundle
   {
     val data  = Bits(64, 'input);
     val tag   = Bits(12, 'input);
@@ -80,8 +80,8 @@ package riscvVector {
     val utaq_deq    = new utaq_deqIO();
     val utldq       = new utldqIO();
     val utsdq_deq   = new utsdq_deqIO();
-    val dcachereq   = new dcachereqIO();
-    val dcacheresp  = new dcacherespIO();
+    val dcachereq   = new ut_dcachereqIO();
+    val dcacheresp  = new ut_dcacherespIO();
   }
 
   class vuVMU_Ctrl_ut extends Component
