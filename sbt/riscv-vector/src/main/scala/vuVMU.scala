@@ -79,12 +79,13 @@ package riscvVector {
     ctrl_vec.io.dcachereq   ^^ io.dmem_req_vec; 
     ctrl_vec.io.dcacheresp  ^^ io.dmem_resp_vec; 
 
-    ctrl_vec.io.vldq.enq_rdy := vldq.io.enq_rdy;
-
-    vldq.io.enq_val   := ctrl_vec.io.vldq.enq_val;
-    vldq.io.enq_bits  := ctrl_vec.io.vldq.enq_bits;
-
-    vldq.io.deq_rdy := vldq_count.io.deq;
+    ctrl_vec.io.vldq.enq_rdy    := vldq.io.enq_rdy;
+    vldq.io.enq_val             := ctrl_vec.io.vldq.enq_val;
+    vldq.io.enq_bits            := ctrl_vec.io.vldq.enq_bits;
+   
+    ctrl_vec.io.vsdq_deq.valid  := vsdq.io.deq_val;
+    ctrl_vec.io.vsdq_deq.bits   := vsdq.io.deq_bits;
+    vsdq.io.deq_rdy             := ctrl_vec.io.vsdq_deq.rdy;
 
     // ctrl_ut
     ctrl_ut.io.utmcmdq    ^^ io.vmu_utcmdq;
@@ -93,12 +94,23 @@ package riscvVector {
     ctrl_ut.io.dcachereq  ^^ io.dmem_req_ut;
     ctrl_ut.io.dcacheresp ^^ io.dmem_resp_ut;
 
+    ctrl_ut.io.utaq_deq.valid   := utaq.io.deq_val;
+    ctrl_ut.io.utaq_deq.bits    := utaq.io.deq_bits;
+    utaq.io.deq_rdy             := ctrl_ut.io.utaq_deq.rdy;
+
+    utldq.io.enq_val            := ctrl_ut.io.utldq.enq_val;
+    utldq.io.enq_bits           := ctrl_ut.io.utldq.enq_bits;
+    ctrl_ut.io.utldq.enq_rdy    := utldq.io.enq_rdy;
+
+    ctrl_ut.io.utsdq_deq.valid   := utsdq.io.deq_val;
+    ctrl_ut.io.utsdq_deq.bits    := utsdq.io.deq_bits;
+    utsdq.io.deq_rdy             := ctrl_ut.io.utsdq_deq.rdy;
+    
     // lane i/o
     io.lane_vldq_deq_bits     := vldq.io.deq_bits;
     io.lane_vldq_deq_val      := vldq_count.io.ready || ctrl_vec.io.vldq.wb_done;
     vldq_count.io.deq         := io.lane_vldq_deq_rdy;
-    io.lane_vldq_deq_rdy      := vldq.io.deq_rdy;
-    // vldq.io.deq_rdy           := io.lane_vldq_deq_rdy;
+    vldq.io.deq_rdy           := io.lane_vldq_deq_rdy;
     ctrl_vec.io.vldq.deq_rdy  := io.lane_vldq_deq_rdy;
    
     vsdq.io.enq_bits          := io.lane_vsdq_enq_bits;
