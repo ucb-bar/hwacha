@@ -3,9 +3,9 @@ import Chisel._
 import Node._;
 
 class normalizeN_io(normSize : Int, logNormSize : Int) extends Bundle() {
-  val in       = Bits(normSize, 'input);
-  val distance = Bits(logNormSize, 'output);
-  val out      = Bits(normSize, 'output);
+  val in       = Bits(normSize, INPUT);
+  val distance = Bits(logNormSize, OUTPUT);
+  val out      = Bits(normSize, OUTPUT);
 }
 
 class normalizeN(expSize : Int = 8, sigSize : Int = 24) extends Component {

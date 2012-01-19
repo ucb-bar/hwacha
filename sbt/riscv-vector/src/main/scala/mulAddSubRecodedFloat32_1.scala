@@ -9,13 +9,13 @@ import Node._;
 import mulAddSubRecodedFloat32_1._;
 
 class mulAddSubRecodedFloat32_1_io() extends Bundle {
-  val op = Bits(2, 'input);
-  val a = Bits(33, 'input)
-  val b = Bits(33, 'input);
-  val c = Bits(33, 'input);
-  val out = Bits(33, 'output);
-  val roundingMode = Bits(2, 'input);
-  val exceptionFlags = Bits(5, 'output);
+  val op = Bits(2, INPUT);
+  val a = Bits(33, INPUT)
+  val b = Bits(33, INPUT);
+  val c = Bits(33, INPUT);
+  val out = Bits(33, OUTPUT);
+  val roundingMode = Bits(2, INPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 object mulAddSubRecodedFloat32_1 {

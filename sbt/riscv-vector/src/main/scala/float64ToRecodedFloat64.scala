@@ -9,8 +9,8 @@ import Node._;
 import LitConv._;
   
 class float64ToRecodedFloat64_io extends Bundle() {
-  val in = Bits(64, 'input);
-  val out = Bits(65, 'output);
+  val in = Bits(64, INPUT);
+  val out = Bits(65, OUTPUT);
 }
 
 class float64ToRecodedFloat64 extends Component {

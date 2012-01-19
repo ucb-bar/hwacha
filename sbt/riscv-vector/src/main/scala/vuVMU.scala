@@ -15,25 +15,25 @@ package riscvVector {
     val vmu_utimmq    = new utmimmqIO();
     val vmu_utackq    = new utmrespqIO();
 
-    val lane_vldq_deq_bits	= Bits(65, 'output);
-    val lane_vldq_deq_val	= Bool('output);
-    val lane_vldq_deq_rdy	= Bool('input);
+    val lane_vldq_deq_bits	= Bits(65, OUTPUT);
+    val lane_vldq_deq_val	= Bool(OUTPUT);
+    val lane_vldq_deq_rdy	= Bool(INPUT);
 
-    val lane_vsdq_enq_bits	= Bits(65, 'input);
-    val lane_vsdq_enq_val	= Bool('input);
-    val lane_vsdq_enq_rdy	= Bool('output);
+    val lane_vsdq_enq_bits	= Bits(65, INPUT);
+    val lane_vsdq_enq_val	= Bool(INPUT);
+    val lane_vsdq_enq_rdy	= Bool(OUTPUT);
 
-    val lane_utaq_enq_bits	= Bits(32, 'input);
-    val lane_utaq_enq_val	= Bool('input);
-    val lane_utaq_enq_rdy	= Bool('output);
+    val lane_utaq_enq_bits	= Bits(32, INPUT);
+    val lane_utaq_enq_val	= Bool(INPUT);
+    val lane_utaq_enq_rdy	= Bool(OUTPUT);
 
-    val lane_utldq_deq_bits	= Bits(65, 'output);
-    val lane_utldq_deq_val	= Bool('output);
-    val lane_utldq_deq_rdy	= Bool('input);
+    val lane_utldq_deq_bits	= Bits(65, OUTPUT);
+    val lane_utldq_deq_val	= Bool(OUTPUT);
+    val lane_utldq_deq_rdy	= Bool(INPUT);
 
-    val lane_utsdq_enq_bits	= Bits(65, 'input);
-    val lane_utsdq_enq_val	= Bool('input);
-    val lane_utsdq_enq_rdy	= Bool('output);
+    val lane_utsdq_enq_bits	= Bits(65, INPUT);
+    val lane_utsdq_enq_val	= Bool(INPUT);
+    val lane_utsdq_enq_rdy	= Bool(OUTPUT);
 
     val dmem_req_ut         = new ut_dcachereqIO();
     val dmem_resp_ut        = new ut_dcacherespIO(); 

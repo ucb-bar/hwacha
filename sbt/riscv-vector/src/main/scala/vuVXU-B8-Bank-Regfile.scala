@@ -7,26 +7,26 @@ import Config._
 
 class RegfileIO extends Bundle
 {
-  val ren    = Bool('input);
-  val raddr  = Bits(DEF_BREGLEN, 'input);
-  val roplen = Bits(DEF_BOPL, 'input);
+  val ren    = Bool(INPUT);
+  val raddr  = Bits(DEF_BREGLEN, INPUT);
+  val roplen = Bits(DEF_BOPL, INPUT);
 
-  val wen   = Bool('input);
-  val waddr = Bits(DEF_BREGLEN, 'input);
-  val wsel  = Bits(DEF_BWPORT, 'input);
+  val wen   = Bool(INPUT);
+  val waddr = Bits(DEF_BREGLEN, INPUT);
+  val wsel  = Bits(DEF_BWPORT, INPUT);
 
-  val rdata = Bits(DEF_DATA, 'output);
-  val ropl0 = Bits(DEF_DATA, 'output);
-  val ropl1 = Bits(DEF_DATA, 'output);
+  val rdata = Bits(DEF_DATA, OUTPUT);
+  val ropl0 = Bits(DEF_DATA, OUTPUT);
+  val ropl1 = Bits(DEF_DATA, OUTPUT);
 
-  val wbl0 = Bits(DEF_DATA, 'input);
-  val wbl1 = Bits(DEF_DATA, 'input);
-  val wbl2 = Bits(DEF_DATA, 'input);
-  val wbl3 = Bits(DEF_DATA, 'input);
+  val wbl0 = Bits(DEF_DATA, INPUT);
+  val wbl1 = Bits(DEF_DATA, INPUT);
+  val wbl2 = Bits(DEF_DATA, INPUT);
+  val wbl3 = Bits(DEF_DATA, INPUT);
 
-  val viu_rdata = Bits(DEF_DATA, 'output);
-  val viu_ropl  = Bits(DEF_DATA, 'output);
-  val viu_wdata = Bits(DEF_DATA, 'input);
+  val viu_rdata = Bits(DEF_DATA, OUTPUT);
+  val viu_ropl  = Bits(DEF_DATA, OUTPUT);
+  val viu_wdata = Bits(DEF_DATA, INPUT);
 }
 
 class vuVXU_Banked8_Bank_Regfile extends Component

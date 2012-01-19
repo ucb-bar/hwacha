@@ -5,8 +5,8 @@ import Node._;
 import scala.math.{log, ceil}
 
 class floatNToRecodedFloatN_io(size: Int) extends Bundle() {
-  val in  = Bits(size, 'input);
-  val out = Bits(size+1, 'output);
+  val in  = Bits(size, INPUT);
+  val out = Bits(size+1, OUTPUT);
 }
 
 class floatNToRecodedFloatN(expSize : Int = 8, sigSize : Int = 24) extends Component

@@ -14,11 +14,11 @@ object mulRecodedFloat32_1 {
 }
 
 class mulRecodedFloat32_1_io() extends Bundle{
-  val a = Bits(33, 'input);
-  val b = Bits(33, 'input);
-  val roundingMode = Bits(2, 'input);
-  val out = Bits(33, 'output);
-  val exceptionFlags = Bits(5, 'output);
+  val a = Bits(33, INPUT);
+  val b = Bits(33, INPUT);
+  val roundingMode = Bits(2, INPUT);
+  val out = Bits(33, OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class mulRecodedFloat32_1 extends Component{

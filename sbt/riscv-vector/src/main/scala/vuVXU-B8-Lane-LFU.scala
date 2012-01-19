@@ -5,22 +5,22 @@ import Config._
 
 class LFUIO extends Bundle 
 {
-  val expand_rcnt = UFix(DEF_BVLEN, 'input);
-  val expand_wcnt = UFix(DEF_BVLEN, 'input);
+  val expand_rcnt = UFix(DEF_BVLEN, INPUT);
+  val expand_wcnt = UFix(DEF_BVLEN, INPUT);
   
   val expand = new ExpanderToLFUIO().flip();
 
-  val vau0_val  = Bool('output);
-  val vau0_fn   = Bits(DEF_VAU0_FN, 'output);
-  val vau1_val  = Bool('output);
-  val vau1_fn   = Bits(DEF_VAU1_FN, 'output);
-  val vau2_val  = Bool('output);
-  val vau2_fn   = Bits(DEF_VAU2_FN, 'output);
-  val vldq_rdy  = Bool('output);
-  val vsdq_val  = Bool('output);
-  val utaq_val  = Bool('output);
-  val utldq_rdy = Bool('output);
-  val utsdq_val = Bool('output);
+  val vau0_val  = Bool(OUTPUT);
+  val vau0_fn   = Bits(DEF_VAU0_FN, OUTPUT);
+  val vau1_val  = Bool(OUTPUT);
+  val vau1_fn   = Bits(DEF_VAU1_FN, OUTPUT);
+  val vau2_val  = Bool(OUTPUT);
+  val vau2_fn   = Bits(DEF_VAU2_FN, OUTPUT);
+  val vldq_rdy  = Bool(OUTPUT);
+  val vsdq_val  = Bool(OUTPUT);
+  val utaq_val  = Bool(OUTPUT);
+  val utldq_rdy = Bool(OUTPUT);
+  val utsdq_val = Bool(OUTPUT);
 
 }
 

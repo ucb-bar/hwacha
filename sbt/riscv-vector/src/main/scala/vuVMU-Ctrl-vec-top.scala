@@ -11,7 +11,7 @@ package riscvVector {
     val iscmdq      = new iscmdqIO();
     val wbcmdq      = new wbcmdqIO();
     val stcmdq      = new stcmdqIO();
-    val store_busy		= Bool('input);
+    val store_busy		= Bool(INPUT);
   }
   
   class vuVMU_Ctrl_vec_top extends Component {

@@ -6,17 +6,17 @@ package riscvVector {
   class vuVMU_ROQIO(ROQ_DATA_SIZE :Int, ROQ_TAG_SIZE :Int) extends Bundle
   {
     // interface to issue control
-    val roq_deq_tag_bits  = Bits(ROQ_TAG_SIZE, 'output);
-    val roq_deq_tag_val		= Bool('output);
-    val roq_deq_tag_rdy		= Bool('input);
+    val roq_deq_tag_bits  = Bits(ROQ_TAG_SIZE, OUTPUT);
+    val roq_deq_tag_val		= Bool(OUTPUT);
+    val roq_deq_tag_rdy		= Bool(INPUT);
     // interface to responses from D$
-    val roq_enq_data_bits   = Bits(ROQ_DATA_SIZE, 'input);
-    val roq_enq_tag_bits    = UFix(ROQ_TAG_SIZE, 'input);
-    val roq_enq_val		      = Bool('input);
+    val roq_enq_data_bits   = Bits(ROQ_DATA_SIZE, INPUT);
+    val roq_enq_tag_bits    = UFix(ROQ_TAG_SIZE, INPUT);
+    val roq_enq_val		      = Bool(INPUT);
     // interface to writeback control
-    val roq_deq_data_bits   = Bits(ROQ_DATA_SIZE, 'output);
-    val roq_deq_data_val		= Bool('output);
-    val roq_deq_data_rdy		= Bool('input);
+    val roq_deq_data_bits   = Bits(ROQ_DATA_SIZE, OUTPUT);
+    val roq_deq_data_val		= Bool(OUTPUT);
+    val roq_deq_data_rdy		= Bool(INPUT);
   }
 
   class vuVMU_ROQ(ROQ_DATA_SIZE :Int, ROQ_TAG_ENTRIES :Int, ROQ_TAG_SIZE :Int) extends Component

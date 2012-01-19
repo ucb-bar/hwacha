@@ -8,11 +8,11 @@ import scala.collection.mutable.ArrayBuffer;
 class shift_right_track_lsbs_io(
 	DATA_WIDTH: Int,
 	SHIFT_BITS: Int) extends Bundle {
-  val do_shift = Bits(1, 'input);
-  val in       = Bits(DATA_WIDTH, 'input);
-  val in_lsb   = Bits(1, 'input);
-  val out      = Bits(DATA_WIDTH, 'output);
-  val out_lsb  = Bits(1, 'output);
+  val do_shift = Bits(1, INPUT);
+  val in       = Bits(DATA_WIDTH, INPUT);
+  val in_lsb   = Bits(1, INPUT);
+  val out      = Bits(DATA_WIDTH, OUTPUT);
+  val out_lsb  = Bits(1, OUTPUT);
 }
 
 class shift_right_track_lsbs(

@@ -8,11 +8,11 @@ import Chisel._
 import Node._;
 
 class float32ToAny_io extends Bundle() {
-  val in =             Bits(32, 'input);
-  val roundingMode =   Bits(2, 'input);
-  val typeOp =         Bits(2, 'input);
-  val out =            Bits(64, 'output);
-  val exceptionFlags = Bits(5, 'output);
+  val in =             Bits(32, INPUT);
+  val roundingMode =   Bits(2, INPUT);
+  val typeOp =         Bits(2, INPUT);
+  val out =            Bits(64, OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class float32ToAny extends Component {

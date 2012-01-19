@@ -10,13 +10,13 @@ class vuVXU_Banked8_FU_fma extends Component
 {
   val io = new Bundle
   {
-    val valid = Bool('input);
-    val fn    = Bits(DEF_VAU1_FN, 'input);
-    val in0   = Bits(DEF_DATA, 'input);
-    val in1   = Bits(DEF_DATA, 'input);
-    val in2   = Bits(DEF_DATA, 'input);
-    val out   = Bits(DEF_DATA, 'output);
-    val exc   = Bits(DEF_EXC, 'output);
+    val valid = Bool(INPUT);
+    val fn    = Bits(DEF_VAU1_FN, INPUT);
+    val in0   = Bits(DEF_DATA, INPUT);
+    val in1   = Bits(DEF_DATA, INPUT);
+    val in2   = Bits(DEF_DATA, INPUT);
+    val out   = Bits(DEF_DATA, OUTPUT);
+    val exc   = Bits(DEF_EXC, OUTPUT);
   }
 
   // use in0 & in2 for a two operand flop (add,sub,mul)

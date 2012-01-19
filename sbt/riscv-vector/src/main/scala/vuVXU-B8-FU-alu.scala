@@ -10,10 +10,10 @@ class Shifter extends Component
 {
   val io = new Bundle()
   {
-    val fn    = Bits(DEF_VIU_FN, 'input);
-    val shamt = UFix(6, 'input);
-    val in    = Bits(64, 'input);
-    val out   = Bits(64, 'output);
+    val fn    = Bits(DEF_VIU_FN, INPUT);
+    val shamt = UFix(6, INPUT);
+    val in    = Bits(64, INPUT);
+    val out   = Bits(64, OUTPUT);
   }
 
   val left = MuxLookup(
@@ -52,14 +52,14 @@ class vuVXU_Banked8_FU_alu extends Component
 {
   val io = new Bundle()
   {
-    val valid      = Bool('input);
-    val wen        = Bool('input);
-    val wen_masked = Bool('output);
-    val fn         = Bits(DEF_VIU_FN, 'input);
-    val utidx      = Bits(DEF_VLEN, 'input);
-    val in0        = Bits(DEF_DATA, 'input);
-    val in1        = Bits(DEF_DATA, 'input);
-    val out        = Bits(DEF_DATA, 'output);
+    val valid      = Bool(INPUT);
+    val wen        = Bool(INPUT);
+    val wen_masked = Bool(OUTPUT);
+    val fn         = Bits(DEF_VIU_FN, INPUT);
+    val utidx      = Bits(DEF_VLEN, INPUT);
+    val in0        = Bits(DEF_DATA, INPUT);
+    val in1        = Bits(DEF_DATA, INPUT);
+    val out        = Bits(DEF_DATA, OUTPUT);
   };
 
   def VIU_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)

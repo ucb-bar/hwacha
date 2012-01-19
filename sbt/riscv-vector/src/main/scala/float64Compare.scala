@@ -8,12 +8,12 @@ import Chisel._
 import Node._;
 
 class float64Compare_io extends Bundle() {
-  val a_in =           Bits(64, 'input);
-  val b_in =           Bits(64, 'input);
-  val a_eq_b =         Bits(1, 'output);
-  val a_eq_b_invalid = Bits(1, 'output);
-  val a_lt_b =         Bits(1, 'output);
-  val a_lt_b_invalid = Bits(1, 'output);
+  val a_in =           Bits(64, INPUT);
+  val b_in =           Bits(64, INPUT);
+  val a_eq_b =         Bits(1, OUTPUT);
+  val a_eq_b_invalid = Bits(1, OUTPUT);
+  val a_lt_b =         Bits(1, OUTPUT);
+  val a_lt_b_invalid = Bits(1, OUTPUT);
 }
 
 class float64Compare extends Component {

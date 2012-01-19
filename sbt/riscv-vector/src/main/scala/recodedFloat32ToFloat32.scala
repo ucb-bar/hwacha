@@ -4,8 +4,8 @@ import Chisel._
 import Node._;
 
 class recodedFloat32ToFloat32_io extends Bundle() {
-  val in  = Bits(33, 'input);
-  val out = Bits(32, 'output);
+  val in  = Bits(33, INPUT);
+  val out = Bits(32, OUTPUT);
 }
 
 class recodedFloat32ToFloat32 extends Component {

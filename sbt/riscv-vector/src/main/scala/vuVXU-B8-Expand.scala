@@ -6,33 +6,33 @@ import Node._;
 import vuVXU-B8-Config.scala;
 
 class SequencerIO extends Bundle {
-  val last = Bool('output);
+  val last = Bool(OUTPUT);
 
-  val viu   = Bool('output);
-  val vau0  = Bool('output);
-  val vau1  = Bool('output);
-  val vau2  = Bool('output);
-  val vldq  = Bool('output);
-  val vsdq  = Bool('output);
-  val utaq  = Bool('output);
-  val utldq = Bool('output);
-  val utsdq = Bool('output);
+  val viu   = Bool(OUTPUT);
+  val vau0  = Bool(OUTPUT);
+  val vau1  = Bool(OUTPUT);
+  val vau2  = Bool(OUTPUT);
+  val vldq  = Bool(OUTPUT);
+  val vsdq  = Bool(OUTPUT);
+  val utaq  = Bool(OUTPUT);
+  val utldq = Bool(OUTPUT);
+  val utsdq = Bool(OUTPUT);
 
-  val fn_viu = Bits(DEF_VIU_FN , 'output);
-  val fn_vau0 = Bits(DEF_VAU0_FN, 'output);
-  val fn_vau1 = Bits(DEF_VAU1_FN, 'output);
-  val fn_vau2 = Bits(DEF_VAU2_FN, 'output);
+  val fn_viu = Bits(DEF_VIU_FN , OUTPUT);
+  val fn_vau0 = Bits(DEF_VAU0_FN, OUTPUT);
+  val fn_vau1 = Bits(DEF_VAU1_FN, OUTPUT);
+  val fn_vau2 = Bits(DEF_VAU2_FN, OUTPUT);
 
-  val cnt     = Bits(DEF_BVLEN, 'output);
-  val utidx   = Bits(DEF_VLEN, 'output);
-  val vs_zero = Bool('output);
-  val vt_zero = Bool('output);
-  val vr_zero = Bool('output);
-  val vs      = Bits(DEF_BREGLEN, 'output);
-  val vt      = Bits(DEF_BREGLEN, 'output);
-  val vr      = Bits(DEF_BREGLEN, 'output);
-  val vd      = Bits(DEF_BREGLEN, 'output);
-  val imm     = Bits(DEF_DATA, 'output);
+  val cnt     = Bits(DEF_BVLEN, OUTPUT);
+  val utidx   = Bits(DEF_VLEN, OUTPUT);
+  val vs_zero = Bool(OUTPUT);
+  val vt_zero = Bool(OUTPUT);
+  val vr_zero = Bool(OUTPUT);
+  val vs      = Bits(DEF_BREGLEN, OUTPUT);
+  val vt      = Bits(DEF_BREGLEN, OUTPUT);
+  val vr      = Bits(DEF_BREGLEN, OUTPUT);
+  val vd      = Bits(DEF_BREGLEN, OUTPUT);
+  val imm     = Bits(DEF_DATA, OUTPUT);
 }
 
 class vuVXU_Banked8_ExpandIO extends Bundle

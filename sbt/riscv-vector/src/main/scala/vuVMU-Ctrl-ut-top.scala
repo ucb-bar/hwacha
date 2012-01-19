@@ -8,20 +8,20 @@ package riscvVector {
     val utmimmq           = new utmimmqIO();
     val utmrespq          = new utmrespqIO();
 
-    val iscmdq_enq_bits   = Bits(UT_ISCMD_SZ, 'output);
-    val iscmdq_enq_val    = Bool('output);
-    val iscmdq_enq_rdy    = Bool('input);
+    val iscmdq_enq_bits   = Bits(UT_ISCMD_SZ, OUTPUT);
+    val iscmdq_enq_val    = Bool(OUTPUT);
+    val iscmdq_enq_rdy    = Bool(INPUT);
 
-    val wbcmdq_enq_bits   = Bits(UT_WBCMD_SZ, 'output);
-    val wbcmdq_enq_val    = Bool('output);
-    val wbcmdq_enq_rdy    = Bool('input);
+    val wbcmdq_enq_bits   = Bits(UT_WBCMD_SZ, OUTPUT);
+    val wbcmdq_enq_val    = Bool(OUTPUT);
+    val wbcmdq_enq_rdy    = Bool(INPUT);
 
-    val stcmdq_enq_bits   = Bits(UT_STCMD_SZ, 'output);
-    val stcmdq_enq_val    = Bool('output);
-    val stcmdq_enq_rdy    = Bool('input);
+    val stcmdq_enq_bits   = Bits(UT_STCMD_SZ, OUTPUT);
+    val stcmdq_enq_val    = Bool(OUTPUT);
+    val stcmdq_enq_rdy    = Bool(INPUT);
 
-    val issue_busy        = Bool('input);
-    val store_busy        = Bool('input);
+    val issue_busy        = Bool(INPUT);
+    val store_busy        = Bool(INPUT);
   }
 
   class vuVMU_Ctrl_ut_top extends Component {

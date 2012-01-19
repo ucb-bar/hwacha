@@ -4,15 +4,15 @@ import Chisel._
 import Node._;
 
 class normalize_io extends Bundle() {
-  val in       = Bits('input);
-  val distance = Bits('output);
-  val out      = Bits('output);
+  val in       = Bits(INPUT);
+  val distance = Bits(OUTPUT);
+  val out      = Bits(OUTPUT);
 }
 
 class normalize32_io extends normalize_io {
-  override val in       = Bits(32, 'input);
-  override val distance = Bits(5, 'output);
-  override val out      = Bits(32, 'output);
+  override val in       = Bits(32, INPUT);
+  override val distance = Bits(5, OUTPUT);
+  override val out      = Bits(32, OUTPUT);
 }
 
 class normalize32 extends Component {

@@ -4,12 +4,12 @@ import Chisel._
 import Node._;
 
 class recodedFloat32Compare_io(SIG_WIDTH: Int, EXP_WIDTH: Int) extends Bundle {
-  val a              = Bits(SIG_WIDTH + EXP_WIDTH + 1, 'input);
-  val b              = Bits(SIG_WIDTH + EXP_WIDTH + 1, 'input);
-  val a_eq_b         = Bool('output);
-  val a_lt_b         = Bool('output);
-  val a_eq_b_invalid = Bool('output);
-  val a_lt_b_invalid = Bool('output);
+  val a              = Bits(SIG_WIDTH + EXP_WIDTH + 1, INPUT);
+  val b              = Bits(SIG_WIDTH + EXP_WIDTH + 1, INPUT);
+  val a_eq_b         = Bool(OUTPUT);
+  val a_lt_b         = Bool(OUTPUT);
+  val a_eq_b_invalid = Bool(OUTPUT);
+  val a_lt_b_invalid = Bool(OUTPUT);
 }
 
 

@@ -16,12 +16,12 @@ object addSubRecodedFloat64_1 {
 }
 
 class addSubRecodedFloat64_1_io() extends Bundle{
-  val op = Bits(1 ,'input);
-  val a = Bits(65 ,'input);
-  val b = Bits(65 ,'input);
-  val roundingMode = Bits(2 ,'input);
-  val out = Bits(65, 'output);
-  val exceptionFlags = Bits(5, 'output);
+  val op = Bits(1 ,INPUT);
+  val a = Bits(65 ,INPUT);
+  val b = Bits(65 ,INPUT);
+  val roundingMode = Bits(2 ,INPUT);
+  val out = Bits(65, OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class addSubRecodedFloat64_1 extends Component{

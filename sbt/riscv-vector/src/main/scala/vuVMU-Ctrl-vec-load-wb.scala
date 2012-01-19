@@ -7,13 +7,13 @@ package riscvVector {
 
   class vuVMU_Ctrl_vec_load_wbIO extends Bundle
   {
-    val wbcmdq_deq_bits		= Bits(VM_WBCMD_SZ, 'input);
-    val wbcmdq_deq_val		= Bool('input);
-    val wbcmdq_deq_rdy		= Bool('output);
+    val wbcmdq_deq_bits		= Bits(VM_WBCMD_SZ, INPUT);
+    val wbcmdq_deq_val		= Bool(INPUT);
+    val wbcmdq_deq_rdy		= Bool(OUTPUT);
     // interface to reorder queue
-    val roq_deq_bits	= Bits(128, 'input);
-    val roq_deq_val		= Bool('input);
-    val roq_deq_rdy		= Bool('output);
+    val roq_deq_bits	= Bits(128, INPUT);
+    val roq_deq_val		= Bool(INPUT);
+    val roq_deq_rdy		= Bool(OUTPUT);
     // interface to load data queue
     val ldq          = new vldqIO();
   }

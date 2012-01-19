@@ -8,36 +8,36 @@ import scala.collection.mutable.ArrayBuffer
 
 class CPIO extends Bundle
 {
-  val imul_val = Bool('input);
-  val imul_rdy = Bool('output);
-  val imul_fn  = Bits(DEF_VAU0_FN, 'input);
-  val imul_in0 = Bits(DEF_XLEN, 'input);
-  val imul_in1 = Bits(DEF_XLEN, 'input);
-  val imul_out = Bits(DEF_XLEN, 'output);
+  val imul_val = Bool(INPUT);
+  val imul_rdy = Bool(OUTPUT);
+  val imul_fn  = Bits(DEF_VAU0_FN, INPUT);
+  val imul_in0 = Bits(DEF_XLEN, INPUT);
+  val imul_in1 = Bits(DEF_XLEN, INPUT);
+  val imul_out = Bits(DEF_XLEN, OUTPUT);
 
-  val fma_val  = Bool('input);
-  val fma_rdy  = Bool('output);
-  val fma_fn   = Bits(DEF_VAU1_FN, 'input);
-  val fma_in0  = Bits(DEF_FLEN, 'input);
-  val fma_in1  = Bits(DEF_FLEN, 'input);
-  val fma_in2  = Bits(DEF_FLEN, 'input);
-  val fma_out  = Bits(DEF_FLEN, 'output);
-  val fma_exc = Bits(DEF_EXC, 'output);
+  val fma_val  = Bool(INPUT);
+  val fma_rdy  = Bool(OUTPUT);
+  val fma_fn   = Bits(DEF_VAU1_FN, INPUT);
+  val fma_in0  = Bits(DEF_FLEN, INPUT);
+  val fma_in1  = Bits(DEF_FLEN, INPUT);
+  val fma_in2  = Bits(DEF_FLEN, INPUT);
+  val fma_out  = Bits(DEF_FLEN, OUTPUT);
+  val fma_exc = Bits(DEF_EXC, OUTPUT);
 }
 
 class ExpanderToLFUIO extends Bundle
 {
-  val vau0    = Bool('output);
-  val vau0_fn = Bits(DEF_VAU0_FN, 'output);
-  val vau1    = Bool('output);
-  val vau1_fn = Bits(DEF_VAU1_FN, 'output);
-  val vau2    = Bool('output);
-  val vau2_fn = Bits(DEF_VAU2_FN, 'output);
-  val vldq    = Bool('output);
-  val vsdq    = Bool('output);
-  val utaq    = Bool('output);
-  val utldq   = Bool('output);
-  val utsdq   = Bool('output);
+  val vau0    = Bool(OUTPUT);
+  val vau0_fn = Bits(DEF_VAU0_FN, OUTPUT);
+  val vau1    = Bool(OUTPUT);
+  val vau1_fn = Bits(DEF_VAU1_FN, OUTPUT);
+  val vau2    = Bool(OUTPUT);
+  val vau2_fn = Bits(DEF_VAU2_FN, OUTPUT);
+  val vldq    = Bool(OUTPUT);
+  val vsdq    = Bool(OUTPUT);
+  val utaq    = Bool(OUTPUT);
+  val utldq   = Bool(OUTPUT);
+  val utsdq   = Bool(OUTPUT);
 }
 
 class ExpanderIO extends Bundle
@@ -48,27 +48,27 @@ class ExpanderIO extends Bundle
 
 class VMUIO extends Bundle 
 {
-  val vldq_rdy  = Bool('output);
-  val vldq_bits = Bits(DEF_DATA, 'input)
-  val vsdq_val  = Bool('output);
-  val vsdq_bits = Bits(DEF_DATA, 'output);
+  val vldq_rdy  = Bool(OUTPUT);
+  val vldq_bits = Bits(DEF_DATA, INPUT)
+  val vsdq_val  = Bool(OUTPUT);
+  val vsdq_bits = Bits(DEF_DATA, OUTPUT);
 
-  val utaq_val  = Bool('output);
-  val utaq_bits = Bits(DEF_ADDR, 'output);
+  val utaq_val  = Bool(OUTPUT);
+  val utaq_bits = Bits(DEF_ADDR, OUTPUT);
 
-  val utldq_rdy  = Bool('output);
-  val utldq_bits = Bits(DEF_DATA, 'input)
-  val utsdq_val  = Bool('output);
-  val utsdq_bits = Bits(DEF_DATA, 'output);
+  val utldq_rdy  = Bool(OUTPUT);
+  val utldq_bits = Bits(DEF_DATA, INPUT)
+  val utsdq_val  = Bool(OUTPUT);
+  val utsdq_bits = Bits(DEF_DATA, OUTPUT);
 }
 
 class vuVXU_LaneIO extends Bundle 
 {
   val cp = new CPIO();
-  val bactive = Bits(DEF_BANK, 'input);
+  val bactive = Bits(DEF_BANK, INPUT);
   val expand = new ExpanderIO().flip();
-  val lane_rlast = Bool('output);
-  val lane_wlast = Bool('output);
+  val lane_rlast = Bool(OUTPUT);
+  val lane_wlast = Bool(OUTPUT);
   val vmu = new VMUIO();
 }
 

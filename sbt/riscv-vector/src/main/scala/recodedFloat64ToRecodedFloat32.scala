@@ -15,10 +15,10 @@ import recodedFloat64ToRecodedFloat32._;
 import shift_round_position._;
 
 class recodedFloat64ToRecodedFloat32_io() extends Bundle {
-  val in             = Bits(65, 'input);
-  val roundingMode   = Bits(2, 'input);
-  val out            = Bits(33, 'output);
-  val exceptionFlags = Bits(5, 'output);
+  val in             = Bits(65, INPUT);
+  val roundingMode   = Bits(2, INPUT);
+  val out            = Bits(33, OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 object recodedFloat64ToRecodedFloat32 {

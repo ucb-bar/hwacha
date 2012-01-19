@@ -4,9 +4,9 @@ import Chisel._;
 import Node._;
 
 class estNormDistP24PosSum50_io() extends Bundle{
-  val a = Bits(50 ,'input); 
-  val b = Bits(50 ,'input);	
-  val out = Bits(7, 'output);			  
+  val a = Bits(50 ,INPUT); 
+  val b = Bits(50 ,INPUT);	
+  val out = Bits(7, OUTPUT);			  
 }
 
 class estNormDistP24PosSum50 extends Component{

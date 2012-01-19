@@ -8,13 +8,13 @@ import Chisel._
 import Node._;
 
 class mulAddSubFloat64_io extends Bundle() {
-  val a               = Bits(64, 'input);
-  val b               = Bits(64, 'input);
-  val c               = Bits(64, 'input);
-  val op              = Bits(2, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(64, 'output);
+  val a               = Bits(64, INPUT);
+  val b               = Bits(64, INPUT);
+  val c               = Bits(64, INPUT);
+  val op              = Bits(2, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(64, OUTPUT);
 }
 
 class mulAddSubFloat64 extends Component {

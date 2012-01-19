@@ -4,8 +4,8 @@ import Chisel._
 import Node._;
 
 class recodedFloat64ToFloat64_io extends Bundle {
-  val in  = Bits(65, 'input);
-  val out = Bits(64, 'output);
+  val in  = Bits(65, INPUT);
+  val out = Bits(64, OUTPUT);
 }
 
 class recodedFloat64ToFloat64 extends Component {

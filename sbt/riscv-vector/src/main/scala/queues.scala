@@ -6,11 +6,11 @@ import Node._;
 
 class IOqueueCtrl1_pipe extends Bundle
 {
-  val enq_val = Bool('input);
-  val enq_rdy = Bool('output);
-  val deq_val = Bool('output);
-  val deq_rdy = Bool('input);
-  val wen = Bool('output);
+  val enq_val = Bool(INPUT);
+  val enq_rdy = Bool(OUTPUT);
+  val deq_val = Bool(OUTPUT);
+  val deq_rdy = Bool(INPUT);
+  val wen = Bool(OUTPUT);
 }
 
 class queueCtrl1_pipe extends Component
@@ -43,13 +43,13 @@ class queueCtrl1_pipe extends Component
 
 class IOqueueCtrl(addr_sz: Int) extends Bundle()
 {
-  val enq_val = Bool('input);
-  val enq_rdy = Bool('output);
-  val deq_val = Bool('output);
-  val deq_rdy = Bool('input);
-  val wen     = Bool('output);
-  val waddr   = UFix(addr_sz, 'output);
-  val raddr   = UFix(addr_sz, 'output);
+  val enq_val = Bool(INPUT);
+  val enq_rdy = Bool(OUTPUT);
+  val deq_val = Bool(OUTPUT);
+  val deq_rdy = Bool(INPUT);
+  val wen     = Bool(OUTPUT);
+  val waddr   = UFix(addr_sz, OUTPUT);
+  val raddr   = UFix(addr_sz, OUTPUT);
 }
 
 class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
@@ -173,12 +173,12 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
 
 class IOqueueSimplePF(data_sz: Int) extends Bundle()
 {
-  val enq_val  = Bool('input);
-  val enq_rdy  = Bool('output);
-  val deq_val  = Bool('output);
-  val deq_rdy  = Bool('input);
-  val enq_bits = Bits(data_sz, 'input);
-  val deq_bits = Bits(data_sz, 'output);
+  val enq_val  = Bool(INPUT);
+  val enq_rdy  = Bool(OUTPUT);
+  val deq_val  = Bool(OUTPUT);
+  val deq_rdy  = Bool(INPUT);
+  val enq_bits = Bits(data_sz, INPUT);
+  val deq_bits = Bits(data_sz, OUTPUT);
 }
 
 class queueSimplePF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
@@ -209,14 +209,14 @@ class queuePipePF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
 // class IOqueueCtrlFlow extends IOqueueCtrl 
 class IOqueueCtrlFlow(addr_sz: Int) extends Bundle() /* IOqueueCtrl */
 {
-  val enq_val  = Bool('input);
-  val enq_rdy  = Bool('output);
-  val deq_val  = Bool('output);
-  val deq_rdy  = Bool('input);
-  val wen      = Bool('output);
-  val waddr    = UFix(addr_sz, 'output);
-  val raddr    = UFix(addr_sz, 'output);
-  val flowthru = Bool('output);
+  val enq_val  = Bool(INPUT);
+  val enq_rdy  = Bool(OUTPUT);
+  val deq_val  = Bool(OUTPUT);
+  val deq_rdy  = Bool(INPUT);
+  val wen      = Bool(OUTPUT);
+  val waddr    = UFix(addr_sz, OUTPUT);
+  val raddr    = UFix(addr_sz, OUTPUT);
+  val flowthru = Bool(OUTPUT);
 }
 
 class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
@@ -279,12 +279,12 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
 
 class IOqueueDpathFlow(data_sz: Int, addr_sz: Int) extends Bundle()
 {
-  val wen         = Bool('input);
-  val flowthru    = Bool('input);
-  val deq_bits    = Bits(data_sz, 'output);
-  val enq_bits    = Bits(data_sz, 'input);
-  val waddr       = UFix(addr_sz, 'input);
-  val raddr       = UFix(addr_sz, 'input);
+  val wen         = Bool(INPUT);
+  val flowthru    = Bool(INPUT);
+  val deq_bits    = Bits(data_sz, OUTPUT);
+  val enq_bits    = Bits(data_sz, INPUT);
+  val waddr       = UFix(addr_sz, INPUT);
+  val raddr       = UFix(addr_sz, INPUT);
 }
 
 class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
@@ -301,12 +301,12 @@ class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
 
 class IOqueue1PF(data_sz: Int) extends Bundle()
 {
-  val enq_bits    = Bits(data_sz, 'input);
-  val enq_val     = Bool('input);
-  val enq_rdy     = Bool('output);
-  val deq_bits    = Bits(data_sz, 'output);
-  val deq_val     = Bool('output);
-  val deq_rdy     = Bool('input);
+  val enq_bits    = Bits(data_sz, INPUT);
+  val enq_val     = Bool(INPUT);
+  val enq_rdy     = Bool(OUTPUT);
+  val deq_bits    = Bits(data_sz, OUTPUT);
+  val deq_val     = Bool(OUTPUT);
+  val deq_rdy     = Bool(INPUT);
 }
 /*
 class queue1PF(data_sz:Int) extends Component
@@ -341,12 +341,12 @@ class queuePipe1PF(data_sz:Int) extends Component
 
 class IOqueueFlowPF(data_sz: Int) extends Bundle()
 {
-  val enq_val     = Bool('input);
-  val enq_rdy     = Bool('output);
-  val enq_bits    = Bits(data_sz, 'input);
-  val deq_val     = Bool('output);
-  val deq_rdy     = Bool('input);
-  val deq_bits    = Bits(data_sz, 'output);
+  val enq_val     = Bool(INPUT);
+  val enq_rdy     = Bool(OUTPUT);
+  val enq_bits    = Bits(data_sz, INPUT);
+  val deq_val     = Bool(OUTPUT);
+  val deq_rdy     = Bool(INPUT);
+  val deq_bits    = Bits(data_sz, OUTPUT);
 }
 
 class queueFlowPF(data_sz: Int, entries: Int, addr_sz: Int) extends Component

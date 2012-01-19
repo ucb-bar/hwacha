@@ -6,30 +6,30 @@ package riscvVector {
 
   class vuVMU_Ctrl_ut_storeIO extends Bundle
   {
-    val stcmdq_deq_bits		= UFix(UT_STCMD_SZ, 'input);
-    val stcmdq_deq_val		= Bool('input);
-    val stcmdq_deq_rdy		= Bool('output);
+    val stcmdq_deq_bits		= UFix(UT_STCMD_SZ, INPUT);
+    val stcmdq_deq_val		= Bool(INPUT);
+    val stcmdq_deq_rdy		= Bool(OUTPUT);
  
     val sdq_deq       = new utsdq_deqIO();
    
-    val utaq_deq_bits		= UFix(32, 'input);
-    val utaq_deq_val		= Bool('input);
-    val utaq_deq_rdy		= Bool('output);
+    val utaq_deq_bits		= UFix(32, INPUT);
+    val utaq_deq_val		= Bool(INPUT);
+    val utaq_deq_rdy		= Bool(OUTPUT);
    
     // to reorder queue
-    val roq_deq_tag_bits		= UFix(8, 'input);
-    val roq_deq_tag_val		= Bool('input);
-    val roq_deq_tag_rdy		= Bool('output);
+    val roq_deq_tag_bits		= UFix(8, INPUT);
+    val roq_deq_tag_val		= Bool(INPUT);
+    val roq_deq_tag_rdy		= Bool(OUTPUT);
    
-    val srq_enq_addr_bits		= UFix(30, 'output);
-    val srq_enq_tag_bits		= Bits(12, 'output);
-    val srq_enq_op_bits		= Bits(4, 'output);
-    val srq_enq_data_bits		= Bits(64, 'output);
-    val srq_enq_wmask_bits		= Bits(8, 'output);
-    val srq_enq_val		= Bool('output);
-    val srq_enq_rdy		= Bool('input);
+    val srq_enq_addr_bits		= UFix(30, OUTPUT);
+    val srq_enq_tag_bits		= Bits(12, OUTPUT);
+    val srq_enq_op_bits		= Bits(4, OUTPUT);
+    val srq_enq_data_bits		= Bits(64, OUTPUT);
+    val srq_enq_wmask_bits		= Bits(8, OUTPUT);
+    val srq_enq_val		= Bool(OUTPUT);
+    val srq_enq_rdy		= Bool(INPUT);
     
-    val store_busy		= Bool('output);
+    val store_busy		= Bool(OUTPUT);
   }
 
   class vuVMU_Ctrl_ut_store extends Component

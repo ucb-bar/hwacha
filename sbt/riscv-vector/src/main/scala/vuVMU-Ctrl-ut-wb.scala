@@ -10,14 +10,14 @@ package riscvVector {
     // interface to load data queue
     val ldq = new utldqIO();
 
-    val wbcmdq_deq_bits = Bits(UT_WBCMD_SZ, 'input);
-    val wbcmdq_deq_val  = Bool('input);
-    val wbcmdq_deq_rdy  = Bool('output);
+    val wbcmdq_deq_bits = Bits(UT_WBCMD_SZ, INPUT);
+    val wbcmdq_deq_val  = Bool(INPUT);
+    val wbcmdq_deq_rdy  = Bool(OUTPUT);
 
     // interface to reorder queue
-    val roq_deq_bits    = Bits(64, 'input);
-    val roq_deq_val     = Bool('input);
-    val roq_deq_rdy     = Bool('output);
+    val roq_deq_bits    = Bits(64, INPUT);
+    val roq_deq_val     = Bool(INPUT);
+    val roq_deq_rdy     = Bool(OUTPUT);
   }
 
   class vuVMU_Ctrl_ut_wb extends Component

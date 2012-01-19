@@ -17,11 +17,11 @@ object mulRecodedFloat64_1 {
 }
 
 class mulRecodedFloat64_1_io() extends Bundle{
-  val a = Bits(65, 'input);
-  val b = Bits(65, 'input);
-  val roundingMode = Bits(2, 'input);
-  val out = Bits(65, 'output);
-  val exceptionFlags = Bits(65, 'output);
+  val a = Bits(65, INPUT);
+  val b = Bits(65, INPUT);
+  val roundingMode = Bits(2, INPUT);
+  val out = Bits(65, OUTPUT);
+  val exceptionFlags = Bits(65, OUTPUT);
 }
 
 class mulRecodedFloat64_1 extends Component{

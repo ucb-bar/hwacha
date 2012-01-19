@@ -7,13 +7,13 @@ package riscvVector {
   class vuVMU_ROQ_tagIO(ROQ_DATA_SIZE:Int = 128, ROQ_TAG_SIZE:Int = 3) extends Bundle
   {
     // interface to responses from D$
-    val roq_enq_data_bits = Bits(ROQ_DATA_SIZE, 'input);
-    val roq_enq_tag_bits = Bits(ROQ_TAG_SIZE, 'input);
-    val roq_enq_val		= Bool('input);
+    val roq_enq_data_bits = Bits(ROQ_DATA_SIZE, INPUT);
+    val roq_enq_tag_bits = Bits(ROQ_TAG_SIZE, INPUT);
+    val roq_enq_val		= Bool(INPUT);
     // interface to writeback control
-    val roq_deq_data_bits = Bits(ROQ_DATA_SIZE, 'output);
-    val roq_deq_data_val		= Bool('output);
-    val roq_deq_data_rdy		= Bool('input);
+    val roq_deq_data_bits = Bits(ROQ_DATA_SIZE, OUTPUT);
+    val roq_deq_data_val		= Bool(OUTPUT);
+    val roq_deq_data_rdy		= Bool(INPUT);
   }
 
   class vuVMU_ROQ_tag(ROQ_DATA_SIZE:Int = 128, ROQ_TAG_ENTRIES:Int = 8, ROQ_TAG_SIZE:Int = 3) extends Component

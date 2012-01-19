@@ -4,8 +4,8 @@ import Chisel._
 import Node._;
 
 class float32ToRecodedFloat32_io extends Bundle() {
-  val in  = Bits(32, 'input);
-  val out = Bits(33, 'output);
+  val in  = Bits(32, INPUT);
+  val out = Bits(33, OUTPUT);
 }
 
 class float32ToRecodedFloat32 extends Component {

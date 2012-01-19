@@ -6,11 +6,11 @@ package riscvVector {
 
 class vuVMU_BHWD_selIO extends Bundle
 {
-  val bhwd_sel		= Bits(2, 'input);
-  val signext		  = Bool('input);
-  val addr_lsb		= Bits(4, 'input);
-  val din		      = Bits(128, 'input);
-  val dout		    = Bits(64, 'output);
+  val bhwd_sel		= Bits(2, INPUT);
+  val signext		  = Bool(INPUT);
+  val addr_lsb		= Bits(4, INPUT);
+  val din		      = Bits(128, INPUT);
+  val dout		    = Bits(64, OUTPUT);
 }
 
 class vuVMU_BHWD_sel extends Component 

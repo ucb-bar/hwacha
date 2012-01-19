@@ -6,70 +6,70 @@ package riscvVector {
 
   class utmcmdqIO extends Bundle
   {
-    val valid = Bool('input);
-    val rdy   = Bool('output);
-    val bits  = Bits(UTMCMD_SZ, 'input);
+    val valid = Bool(INPUT);
+    val rdy   = Bool(OUTPUT);
+    val bits  = Bits(UTMCMD_SZ, INPUT);
   }
 
   class utmimmqIO extends Bundle
   {
-    val valid = Bool('input);
-    val rdy   = Bool('output);
-    val bits  = Bits(UTMIMM_SZ, 'input);
+    val valid = Bool(INPUT);
+    val rdy   = Bool(OUTPUT);
+    val bits  = Bits(UTMIMM_SZ, INPUT);
   }
 
   class utmrespqIO extends Bundle
   {
-    val valid = Bool('output);
-    val rdy   = Bool('input);
-    val bits  = Bits(UTMRESP_SZ, 'output);
+    val valid = Bool(OUTPUT);
+    val rdy   = Bool(INPUT);
+    val bits  = Bits(UTMRESP_SZ, OUTPUT);
   }
 
   // vmr queue interface
   class utaq_deqIO extends Bundle
   {
-    val valid = Bool('input);
-    val rdy   = Bool('output);
-    val bits  = Bits(32, 'input);
+    val valid = Bool(INPUT);
+    val rdy   = Bool(OUTPUT);
+    val bits  = Bits(32, INPUT);
   }
 
   // load data queue interface
   class utldqIO extends Bundle
   {
-    val enq_val = Bool('output);
-    val enq_rdy   = Bool('input);
-    val enq_bits  = Bits(65, 'output);
-    val deq_rdy = Bool('input);
-    val wb_done = Bool('output);
+    val enq_val = Bool(OUTPUT);
+    val enq_rdy   = Bool(INPUT);
+    val enq_bits  = Bits(65, OUTPUT);
+    val deq_rdy = Bool(INPUT);
+    val wb_done = Bool(OUTPUT);
   }
 
   // store data queue interface
   class utsdq_deqIO extends Bundle
   {
-    val valid = Bool('input);
-    val rdy   = Bool('output);
-    val bits  = Bits(65, 'input);
+    val valid = Bool(INPUT);
+    val rdy   = Bool(OUTPUT);
+    val bits  = Bits(65, INPUT);
   }
 
   // D$ interface
   // request
   class ut_dcachereqIO extends Bundle
   {
-    val addr  = Bits(30, 'output);
-    val tag   = Bits(12, 'output);
-    val data  = Bits(64, 'output);
-    val wmask = Bits(8, 'output);
-    val op    = Bits(4, 'output);
-    val valid = Bool('output);
-    val rdy   = Bool('input);
+    val addr  = Bits(30, OUTPUT);
+    val tag   = Bits(12, OUTPUT);
+    val data  = Bits(64, OUTPUT);
+    val wmask = Bits(8, OUTPUT);
+    val op    = Bits(4, OUTPUT);
+    val valid = Bool(OUTPUT);
+    val rdy   = Bool(INPUT);
   }
 
   // response
   class ut_dcacherespIO extends Bundle
   {
-    val data  = Bits(64, 'input);
-    val tag   = Bits(12, 'input);
-    val valid = Bool('input);
+    val data  = Bits(64, INPUT);
+    val tag   = Bits(12, INPUT);
+    val valid = Bool(INPUT);
   }
 
   class vuVMU_Ctrl_utIO extends Bundle

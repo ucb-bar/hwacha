@@ -4,88 +4,88 @@ import Chisel._
 import Node._;
 
 class fpu_tst_f32_to_f64_io extends Bundle() {
-  val in              = Bits(32, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(64, 'output);
+  val in              = Bits(32, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(64, OUTPUT);
 }
 
 class fpu_tst_f64_to_f32_io extends Bundle() {
-  val in              = Bits(64, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(32, 'output);
+  val in              = Bits(64, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(32, OUTPUT);
 }
 
 class fpu_tst_muladd64_io extends Bundle() {
-  val a               = Bits(64, 'input);
-  val b               = Bits(64, 'input);
-  val c               = Bits(64, 'input);
-  val op              = Bits(1, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(64, 'output);
+  val a               = Bits(64, INPUT);
+  val b               = Bits(64, INPUT);
+  val c               = Bits(64, INPUT);
+  val op              = Bits(1, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(64, OUTPUT);
 }
 
 class fpu_tst_muladd32_io extends Bundle() {
-  val a               = Bits(32, 'input);
-  val b               = Bits(32, 'input);
-  val c               = Bits(32, 'input);
-  val op              = Bits(1, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(32, 'output);
+  val a               = Bits(32, INPUT);
+  val b               = Bits(32, INPUT);
+  val c               = Bits(32, INPUT);
+  val op              = Bits(1, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(32, OUTPUT);
 }
 
 class fpu_tst_addsub32_io extends Bundle() {
-  val a               = Bits(32, 'input);
-  val b               = Bits(32, 'input);
-  val op              = Bits(1, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(32, 'output);
+  val a               = Bits(32, INPUT);
+  val b               = Bits(32, INPUT);
+  val op              = Bits(1, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(32, OUTPUT);
 }
 
 
 class fpu_tst_mul32_io extends Bundle() {
-  val a               = Bits(32, 'input);
-  val b               = Bits(32, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(32, 'output);
+  val a               = Bits(32, INPUT);
+  val b               = Bits(32, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(32, OUTPUT);
 }
 
 class fpu_tst_mul64_io extends Bundle() {
-  val a               = Bits(64, 'input);
-  val b               = Bits(64, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(64, 'output);
+  val a               = Bits(64, INPUT);
+  val b               = Bits(64, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(64, OUTPUT);
 }
 class fpu_tst_addsub64_io extends Bundle() {
-  val a               = Bits(64, 'input);
-  val b               = Bits(64, 'input);
-  val op              = Bits(1, 'input);
-  val rounding_mode   = Bits(2, 'input);
-  val exception_flags = Bits(5, 'output);
-  val out             = Bits(64, 'output);
+  val a               = Bits(64, INPUT);
+  val b               = Bits(64, INPUT);
+  val op              = Bits(1, INPUT);
+  val rounding_mode   = Bits(2, INPUT);
+  val exception_flags = Bits(5, OUTPUT);
+  val out             = Bits(64, OUTPUT);
 }
 
 class fpu_tst_compareFloat32_io extends Bundle() {
-  val a              = Bits(32, 'input);
-  val b              = Bits(32, 'input);
-  val less           = Bool('output);
-  val equal          = Bool('output);
-  val unordered      = Bool('output);
-  val exceptionFlags = Bits(5, 'output);
+  val a              = Bits(32, INPUT);
+  val b              = Bits(32, INPUT);
+  val less           = Bool(OUTPUT);
+  val equal          = Bool(OUTPUT);
+  val unordered      = Bool(OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class fpu_tst_compareFloat64_io extends Bundle() {
-  val a              = Bits(64, 'input);
-  val b              = Bits(64, 'input);
-  val less           = Bool('output);
-  val equal          = Bool('output);
-  val unordered      = Bool('output);
-  val exceptionFlags = Bits(5, 'output);
+  val a              = Bits(64, INPUT);
+  val b              = Bits(64, INPUT);
+  val less           = Bool(OUTPUT);
+  val equal          = Bool(OUTPUT);
+  val unordered      = Bool(OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class fpu_tst_f32_to_f64 extends Component {
@@ -256,15 +256,15 @@ class fpu_tst_mul64 extends Component {
   mulrf64f64.io.out ^^ io.out;  
 }
 class fpu_tst_3264_io extends Bundle() {
-  val sign    = Bits(1, 'input);
-  val exp     = Bits(11, 'input);
-  val fract   = Bits(53, 'input);
-  val out     = Bits(65, 'output);
+  val sign    = Bits(1, INPUT);
+  val exp     = Bits(11, INPUT);
+  val fract   = Bits(53, INPUT);
+  val out     = Bits(65, OUTPUT);
 }
 
 class fpu_bb_io extends Bundle() {
-  val in  = Bits(64, 'input);
-  val out = Bits(64, 'output);
+  val in  = Bits(64, INPUT);
+  val out = Bits(64, OUTPUT);
 }
 
 class fpu_bb extends BlackBox {
@@ -291,14 +291,14 @@ class fpu_tst_3264 extends Component {
 
 class fpu_tst_compareFloat32() extends Component{
   val io = new Bundle {
-    val a              = Bits(32, 'input);
-    val b              = Bits(32, 'input);
-    val less           = Bool('output);
-    val equal          = Bool('output);
-    val lessOrEqual    = Bool('output);
-    val eq_exception   = Bits(5, 'output);
-    val lt_exception   = Bits(5, 'output);
-    val lte_exception  = Bits(5, 'output);
+    val a              = Bits(32, INPUT);
+    val b              = Bits(32, INPUT);
+    val less           = Bool(OUTPUT);
+    val equal          = Bool(OUTPUT);
+    val lessOrEqual    = Bool(OUTPUT);
+    val eq_exception   = Bits(5, OUTPUT);
+    val lt_exception   = Bits(5, OUTPUT);
+    val lte_exception  = Bits(5, OUTPUT);
   }
   val f32_rf32a = new float32ToRecodedFloat32();
   val f32_rf32b = new float32ToRecodedFloat32();
@@ -320,14 +320,14 @@ class fpu_tst_compareFloat32() extends Component{
 
 class fpu_tst_compareFloat64() extends Component{
   val io = new Bundle {
-    val a              = Bits(64, 'input);
-    val b              = Bits(64, 'input);
-    val less           = Bool('output);
-    val equal          = Bool('output);
-    val lessOrEqual    = Bool('output);
-    val eq_exception   = Bits(5, 'output);
-    val lt_exception   = Bits(5, 'output);
-    val lte_exception  = Bits(5, 'output);
+    val a              = Bits(64, INPUT);
+    val b              = Bits(64, INPUT);
+    val less           = Bool(OUTPUT);
+    val equal          = Bool(OUTPUT);
+    val lessOrEqual    = Bool(OUTPUT);
+    val eq_exception   = Bits(5, OUTPUT);
+    val lt_exception   = Bits(5, OUTPUT);
+    val lte_exception  = Bits(5, OUTPUT);
   }
   val f64_rf64a = new float64ToRecodedFloat64();
   val f64_rf64b = new float64ToRecodedFloat64();

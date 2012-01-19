@@ -5,9 +5,9 @@ import Node._;
 import rF32_rF64._;
 
 class rF32_rF64_io extends Bundle() {
-  val in  = Bits(IN_BITS, 'input);
-  val out = Bits(OUT_BITS, 'output);
-  val exception_flags = Bits(5, 'output);
+  val in  = Bits(IN_BITS, INPUT);
+  val out = Bits(OUT_BITS, OUTPUT);
+  val exception_flags = Bits(5, OUTPUT);
 }
 object rF32_rF64 { 
   val IN_EXP_BITS  = 9;

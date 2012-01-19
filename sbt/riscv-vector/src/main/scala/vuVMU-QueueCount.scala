@@ -5,9 +5,9 @@ package riscvVector {
 
   class vuVMU_QueueCountIO extends Bundle
   {
-    val enq		= Bool('input);
-    val deq		= Bool('input);
-    val ready		= Bool('output);
+    val enq		= Bool(INPUT);
+    val deq		= Bool(INPUT);
+    val ready		= Bool(OUTPUT);
   }
 
 

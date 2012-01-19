@@ -7,41 +7,41 @@ import Config._
 
 class BankToBankIO extends Bundle
 {
-  val ren    = Bool('input)
-  val rlast  = Bool('input)
-  val rcnt   = Bits(DEF_BVLEN, 'input);
-  val raddr  = Bits(DEF_BREGLEN, 'input);
-  val roplen = Bits(DEF_BOPL, 'input);
-  val rblen  = Bits(DEF_BRPORT, 'input);
+  val ren    = Bool(INPUT)
+  val rlast  = Bool(INPUT)
+  val rcnt   = Bits(DEF_BVLEN, INPUT);
+  val raddr  = Bits(DEF_BREGLEN, INPUT);
+  val roplen = Bits(DEF_BOPL, INPUT);
+  val rblen  = Bits(DEF_BRPORT, INPUT);
 
-  val wen   = Bool('input)
-  val wlast = Bool('input)
-  val wcnt  = Bits(DEF_BVLEN, 'input);
-  val waddr = Bits(DEF_BREGLEN, 'input);
-  val wsel  = Bits(DEF_BWPORT, 'input);
+  val wen   = Bool(INPUT)
+  val wlast = Bool(INPUT)
+  val wcnt  = Bits(DEF_BVLEN, INPUT);
+  val waddr = Bits(DEF_BREGLEN, INPUT);
+  val wsel  = Bits(DEF_BWPORT, INPUT);
 
-  val viu_val   = Bool('input)
-  val viu_fn    = Bits(DEF_VIU_FN, 'input);
-  val viu_utidx = Bits(DEF_VLEN, 'input);
-  val viu_imm   = Bits(DEF_DATA, 'input);
+  val viu_val   = Bool(INPUT)
+  val viu_fn    = Bits(DEF_VIU_FN, INPUT);
+  val viu_utidx = Bits(DEF_VLEN, INPUT);
+  val viu_imm   = Bits(DEF_DATA, INPUT);
 }
 
 class BankRWIO extends Bundle
 {
-  val rblen = Bits(DEF_BRPORT, 'output);
-  val rdata = Bits(DEF_DATA, 'output);
-  val ropl0 = Bits(DEF_DATA, 'output);
-  val ropl1 = Bits(DEF_DATA, 'output);
+  val rblen = Bits(DEF_BRPORT, OUTPUT);
+  val rdata = Bits(DEF_DATA, OUTPUT);
+  val ropl0 = Bits(DEF_DATA, OUTPUT);
+  val ropl1 = Bits(DEF_DATA, OUTPUT);
 
-  val wbl0 = Bits(DEF_DATA, 'input);
-  val wbl1 = Bits(DEF_DATA, 'input);
-  val wbl2 = Bits(DEF_DATA, 'input);
-  val wbl3 = Bits(DEF_DATA, 'input);
+  val wbl0 = Bits(DEF_DATA, INPUT);
+  val wbl1 = Bits(DEF_DATA, INPUT);
+  val wbl2 = Bits(DEF_DATA, INPUT);
+  val wbl3 = Bits(DEF_DATA, INPUT);
 }
 
 class vuVXU_Banked8_BankIO extends Bundle
 {
-  val active = Bool('input)
+  val active = Bool(INPUT)
   
   val in  = new BankToBankIO();
   val out = new BankToBankIO().flip();

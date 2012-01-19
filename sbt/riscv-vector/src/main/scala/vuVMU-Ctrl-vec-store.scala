@@ -21,19 +21,19 @@ package riscvVector
 
   class vuVMU_Ctrl_vec_storeIO extends Bundle
   {
-    val stcmdq_deq_bits		= Bits(VM_STCMD_SZ, 'input);
-    val stcmdq_deq_val		= Bool('input);
-    val stcmdq_deq_rdy		= Bool('output);
+    val stcmdq_deq_bits		= Bits(VM_STCMD_SZ, INPUT);
+    val stcmdq_deq_val		= Bool(INPUT);
+    val stcmdq_deq_rdy		= Bool(OUTPUT);
 
     val sdq_deq           = new vsdq_deqIO();
 
-    val srq_enq_addr_bits		= Bits(28, 'output);
-    val srq_enq_data_bits		= Bits(128, 'output);
-    val srq_enq_wmask_bits		= Bits(16, 'output);
-    val srq_enq_val		= Bool('output);
-    val srq_enq_rdy		= Bool('input);
+    val srq_enq_addr_bits		= Bits(28, OUTPUT);
+    val srq_enq_data_bits		= Bits(128, OUTPUT);
+    val srq_enq_wmask_bits		= Bits(16, OUTPUT);
+    val srq_enq_val		= Bool(OUTPUT);
+    val srq_enq_rdy		= Bool(INPUT);
 
-    val store_busy		= Bool('output);
+    val store_busy		= Bool(OUTPUT);
   }
 
   class vuVMU_Ctrl_vec_store extends Component

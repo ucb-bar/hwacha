@@ -4,9 +4,9 @@ import Chisel._;
 import Node._;
 
 class estNormDistP53PosSum108_io() extends Bundle{
-  val a = Bits(108 ,'input); 
-  val b = Bits(108 ,'input);	
-  val out = Bits(8, 'output);			  
+  val a = Bits(108 ,INPUT); 
+  val b = Bits(108 ,INPUT);	
+  val out = Bits(8, OUTPUT);			  
 }
 
 class estNormDistP53PosSum108 extends Component {

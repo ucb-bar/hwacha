@@ -7,89 +7,89 @@ package riscvVector {
   class vsdq_deqIO extends Bundle
   {
     // store data queue interface
-    val valid		= Bool('input);
-    val rdy		  = Bool('output);
-    val bits		= Bits(65, 'input);
+    val valid		= Bool(INPUT);
+    val rdy		  = Bool(OUTPUT);
+    val bits		= Bits(65, INPUT);
   }
 
   class vldqIO extends Bundle
   {
     // load data queue interface
-    val enq_val		= Bool('output);
-    val enq_rdy		= Bool('input);
-    val enq_bits	= Bits(65, 'output);
-    val deq_rdy		= Bool('input);
-    val wb_done		= Bool('output);
+    val enq_val		= Bool(OUTPUT);
+    val enq_rdy		= Bool(INPUT);
+    val enq_bits	= Bits(65, OUTPUT);
+    val deq_rdy		= Bool(INPUT);
+    val wb_done		= Bool(OUTPUT);
   }
 
   class vmcmdqIO extends Bundle
   {
-    val bits		= Bits(VMCMD_SZ, 'input);
-    val valid		= Bool('input);
-    val rdy		  = Bool('output);
+    val bits		= Bits(VMCMD_SZ, INPUT);
+    val valid		= Bool(INPUT);
+    val rdy		  = Bool(OUTPUT);
   }
 
   class vmimmqIO extends Bundle
   {
-    val bits		= Bits(VMIMM_SZ, 'input);
-    val valid		= Bool('input);
-    val rdy		  = Bool('output);
+    val bits		= Bits(VMIMM_SZ, INPUT);
+    val valid		= Bool(INPUT);
+    val rdy		  = Bool(OUTPUT);
   }
 
   class vmstrideqIO extends Bundle
   {
-    val bits	= Bits(VMSTRIDE_SZ, 'input);
-    val valid	= Bool('input);
-    val rdy		= Bool('output);
+    val bits	= Bits(VMSTRIDE_SZ, INPUT);
+    val valid	= Bool(INPUT);
+    val rdy		= Bool(OUTPUT);
   }
 
   class vmrespqIO extends Bundle
   {
-    val bits	= Bits(VMRESP_SZ, 'output);
-    val valid	= Bool('output);
-    val rdy		= Bool('input);
+    val bits	= Bits(VMRESP_SZ, OUTPUT);
+    val valid	= Bool(OUTPUT);
+    val rdy		= Bool(INPUT);
   }
   
   class iscmdqIO extends Bundle
   {
-    val bits		= Bits(VM_ISCMD_SZ, 'output);
-    val valid		= Bool('output);
-    val rdy		  = Bool('input);
+    val bits		= Bits(VM_ISCMD_SZ, OUTPUT);
+    val valid		= Bool(OUTPUT);
+    val rdy		  = Bool(INPUT);
   }
 
   class wbcmdqIO extends Bundle
   {
-    val bits		= Bits(VM_WBCMD_SZ, 'output);
-    val valid		= Bool('output);
-    val rdy		  = Bool('input);
+    val bits		= Bits(VM_WBCMD_SZ, OUTPUT);
+    val valid		= Bool(OUTPUT);
+    val rdy		  = Bool(INPUT);
   }
 
   class stcmdqIO extends Bundle
   {
-    val bits		= Bits(VM_STCMD_SZ, 'output);
-    val valid		= Bool('output);
-    val rdy		  = Bool('input);
+    val bits		= Bits(VM_STCMD_SZ, OUTPUT);
+    val valid		= Bool(OUTPUT);
+    val rdy		  = Bool(INPUT);
   }
 
   class vec_dcachereqIO extends Bundle
   {
     // D$ interface
     // request
-    val addr	= Bits(28, 'output);
-    val tag		= Bits(12, 'output);
-    val data	= Bits(128, 'output);
-    val wmask	= Bits(16, 'output);
-    val op		= Bits(4, 'output);
-    val valid = Bool('output);
-    val rdy		= Bool('input);
+    val addr	= Bits(28, OUTPUT);
+    val tag		= Bits(12, OUTPUT);
+    val data	= Bits(128, OUTPUT);
+    val wmask	= Bits(16, OUTPUT);
+    val op		= Bits(4, OUTPUT);
+    val valid = Bool(OUTPUT);
+    val rdy		= Bool(INPUT);
   }
 
   class vec_dcacherespIO extends Bundle
   {
     // response
-    val data		= UFix(128, 'input);
-    val tag		  = UFix(12, 'input);
-    val valid		= Bool('input);
+    val data		= UFix(128, INPUT);
+    val tag		  = UFix(12, INPUT);
+    val valid		= Bool(INPUT);
   }
 
   class vuVMU_Ctrl_vecIO extends Bundle

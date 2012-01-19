@@ -7,14 +7,14 @@ import Config._
 
 class io_ready_valid[T <: Data]()(data: => T) extends Bundle
 {
-  val ready = Bool('input);
-  val valid = Bool('output);
+  val ready = Bool(INPUT);
+  val valid = Bool(OUTPUT);
   val bits = data.asOutput;
 }
 
 class io_valid[T <: Data]()(data: => T) extends Bundle
 {
-  val valid = Bool('output);
+  val valid = Bool(OUTPUT);
   val bits = data.asOutput;
 }
 
@@ -65,20 +65,20 @@ class Arbiter[T <: Data](n: Int)(data: => T) extends Component
 
 class io_imul extends Bundle
 {
-  val fn = Bits(DEF_VAU0_FN, 'output);
-  val in0 = Bits(DEF_XLEN, 'output);
-  val in1 = Bits(DEF_XLEN, 'output);
-  val out = Bits(DEF_XLEN, 'input);
+  val fn = Bits(DEF_VAU0_FN, OUTPUT);
+  val in0 = Bits(DEF_XLEN, OUTPUT);
+  val in1 = Bits(DEF_XLEN, OUTPUT);
+  val out = Bits(DEF_XLEN, INPUT);
 }
 
 class io_fma extends Bundle
 {
-  val fn = Bits(DEF_VAU1_FN, 'output);
-  val in0 = Bits(DEF_FLEN, 'output);
-  val in1 = Bits(DEF_FLEN, 'output);
-  val in2 = Bits(DEF_FLEN, 'output);
-  val out = Bits(DEF_FLEN, 'input);
-  val exc = Bits(DEF_EXC, 'input);
+  val fn = Bits(DEF_VAU1_FN, OUTPUT);
+  val in0 = Bits(DEF_FLEN, OUTPUT);
+  val in1 = Bits(DEF_FLEN, OUTPUT);
+  val in2 = Bits(DEF_FLEN, OUTPUT);
+  val out = Bits(DEF_FLEN, INPUT);
+  val exc = Bits(DEF_EXC, INPUT);
 }
 
 //class io_cp_imul extends io_ready_valid { new io_imul() };
@@ -86,12 +86,12 @@ class io_fma extends Bundle
 
 class io_vf extends Bundle
 {
-  val active = Bool('output);
-  val fire = Bool('output);
-  val stop = Bool('input);
-  val pc = Bits(DEF_ADDR, 'output);
-  val vlen = Bits(DEF_VLEN, 'output);
-  val nxregs = Bits(DEF_REGCNT, 'output);
+  val active = Bool(OUTPUT);
+  val fire = Bool(OUTPUT);
+  val stop = Bool(INPUT);
+  val pc = Bits(DEF_ADDR, OUTPUT);
+  val vlen = Bits(DEF_VLEN, OUTPUT);
+  val nxregs = Bits(DEF_REGCNT, OUTPUT);
 }
 
 class io_qstall extends Bundle
@@ -284,7 +284,7 @@ class io_vxu_issue_tvec extends Bundle
   val vmu_utcmdq = (new io_ready_valid){Bits(width = DEF_VMU_UTCMDQ)};
 
   val valid = new io_vxu_issue_fu().asOutput;
-  val ready = Bool('input);
+  val ready = Bool(INPUT);
   val dhazard = new io_vxu_issue_reg().asOutput;
   val shazard = new io_vxu_issue_fu().asOutput;
   val bhazard = new io_vxu_issue_op().asOutput;
@@ -294,7 +294,7 @@ class io_vxu_issue_tvec extends Bundle
 
 class io_vxu_issue_vt extends Bundle
 {
-  val illegal = Bool('output);
+  val illegal = Bool(OUTPUT);
 
   val imem_req = (new io_ready_valid){Bits(width = DEF_ADDR)};
   val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
@@ -305,7 +305,7 @@ class io_vxu_issue_vt extends Bundle
   val vf = new io_vf().flip();
 
   val valid = new io_vxu_issue_fu().asOutput;
-  val ready = Bool('input);
+  val ready = Bool(INPUT);
   val dhazard = new io_vxu_issue_reg().asOutput;
   val shazard = new io_vxu_issue_fu().asOutput;
   val bhazard = new io_vxu_issue_op().asOutput;
@@ -315,7 +315,7 @@ class io_vxu_issue_vt extends Bundle
 
 class io_vxu_issue extends Bundle
 {
-  val illegal = Bool('output);
+  val illegal = Bool(OUTPUT);
 
   val imem_req = (new io_ready_valid){Bits(width = DEF_ADDR)};
   val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
@@ -330,7 +330,7 @@ class io_vxu_issue extends Bundle
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput;
 
   val tvec_valid = new io_vxu_issue_fu().asOutput;
-  val tvec_ready = Bool('input);
+  val tvec_ready = Bool(INPUT);
   val tvec_dhazard = new io_vxu_issue_reg().asOutput;
   val tvec_shazard = new io_vxu_issue_fu().asOutput;
   val tvec_bhazard = new io_vxu_issue_op().asOutput;
@@ -338,7 +338,7 @@ class io_vxu_issue extends Bundle
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asOutput;
 
   val vt_valid = new io_vxu_issue_fu().asOutput;
-  val vt_ready = Bool('input);
+  val vt_ready = Bool(INPUT);
   val vt_dhazard = new io_vxu_issue_reg().asOutput;
   val vt_shazard = new io_vxu_issue_fu().asOutput;
   val vt_bhazard = new io_vxu_issue_op().asOutput;
@@ -349,7 +349,7 @@ class io_vxu_issue extends Bundle
 class io_vxu_fire extends Bundle
 {
   val tvec_valid = new io_vxu_issue_fu().asInput;
-  val tvec_ready = Bool('input);
+  val tvec_ready = Bool(INPUT);
   val tvec_dhazard = new io_vxu_issue_reg().asInput;
   val tvec_shazard = new io_vxu_issue_fu().asInput;
   val tvec_bhazard = new io_vxu_issue_op().asInput;
@@ -357,7 +357,7 @@ class io_vxu_fire extends Bundle
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput;
 
   val vt_valid = new io_vxu_issue_fu().asInput;
-  val vt_ready = Bool('input);
+  val vt_ready = Bool(INPUT);
   val vt_dhazard = new io_vxu_issue_reg().asInput;
   val vt_shazard = new io_vxu_issue_fu().asInput;
   val vt_bhazard = new io_vxu_issue_op().asInput;
@@ -377,7 +377,7 @@ class io_vxu_hazard extends Bundle
   val lane_to_hazard = new io_lane_to_hazard().asInput;
 
   val tvec_valid = new io_vxu_issue_fu().asInput;
-  val tvec_ready = Bool('output);
+  val tvec_ready = Bool(OUTPUT);
   val tvec_dhazard = new io_vxu_issue_reg().asInput;
   val tvec_shazard = new io_vxu_issue_fu().asInput;
   val tvec_bhazard = new io_vxu_issue_op().asInput;
@@ -385,7 +385,7 @@ class io_vxu_hazard extends Bundle
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput;
 
   val vt_valid = new io_vxu_issue_fu().asInput;
-  val vt_ready = Bool('output);
+  val vt_ready = Bool(OUTPUT);
   val vt_dhazard = new io_vxu_issue_reg().asInput;
   val vt_shazard = new io_vxu_issue_fu().asInput;
   val vt_bhazard = new io_vxu_issue_op().asInput;
@@ -428,7 +428,7 @@ class io_vxu_expand extends Bundle
 
 class io_vxu extends Bundle
 {
-  val illegal = Bool('output);
+  val illegal = Bool(OUTPUT);
 
   val vxu_cmdq = (new io_ready_valid){Bits(width = DEF_VXU_CMDQ)}.flip();
   val vxu_immq = (new io_ready_valid){Bits(width = DEF_VXU_IMMQ)}.flip();

@@ -7,9 +7,9 @@ import normalize64._;
 import scala.collection.mutable.ArrayBuffer;
 
 class normalize64_io(width: Int, num_bits: Int) extends normalize_io {
-  override val in       = Bits(width, 'input);
-  override val distance = Bits(num_bits, 'output);
-  override val out      = Bits(width, 'output);
+  override val in       = Bits(width, INPUT);
+  override val distance = Bits(num_bits, OUTPUT);
+  override val out      = Bits(width, OUTPUT);
 }
 
 object normalize64 {

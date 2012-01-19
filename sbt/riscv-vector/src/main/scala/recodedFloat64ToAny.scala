@@ -8,11 +8,11 @@ import Chisel._
 import Node._;
 
 class recodedFloat64ToAny_io(SIG_WIDTH: Int, EXP_WIDTH: Int, INT_WIDTH: Int) extends Bundle {
-  val in =             Bits(SIG_WIDTH + EXP_WIDTH + 1, 'input);
-  val roundingMode =   Bits(2, 'input);
-  val typeOp =         Bits(2, 'input);
-  val out =            Bits(INT_WIDTH, 'output);
-  val exceptionFlags = Bits(5, 'output);
+  val in =             Bits(SIG_WIDTH + EXP_WIDTH + 1, INPUT);
+  val roundingMode =   Bits(2, INPUT);
+  val typeOp =         Bits(2, INPUT);
+  val out =            Bits(INT_WIDTH, OUTPUT);
+  val exceptionFlags = Bits(5, OUTPUT);
 }
 
 class recodedFloat64ToAny(SIG_WIDTH: Int = 52, EXP_WIDTH: Int = 12, INT_WIDTH: Int = 64) extends Component {

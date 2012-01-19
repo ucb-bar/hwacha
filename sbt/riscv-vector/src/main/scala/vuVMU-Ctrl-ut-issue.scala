@@ -4,25 +4,25 @@ package riscvVector {
   import Interface._
 
   class vuVMU_Ctrl_ut_issueIO extends Bundle {
-    val iscmdq_deq_bits		  = UFix(UT_ISCMD_SZ, 'input);
-    val iscmdq_deq_val		  = Bool('input);
-    val iscmdq_deq_rdy		  = Bool('output);
+    val iscmdq_deq_bits		  = UFix(UT_ISCMD_SZ, INPUT);
+    val iscmdq_deq_val		  = Bool(INPUT);
+    val iscmdq_deq_rdy		  = Bool(OUTPUT);
 
-    val utaq_deq_bits		    = UFix(32, 'input);
-    val utaq_deq_val		    = Bool('input);
-    val utaq_deq_rdy		    = Bool('output);
+    val utaq_deq_bits		    = UFix(32, INPUT);
+    val utaq_deq_val		    = Bool(INPUT);
+    val utaq_deq_rdy		    = Bool(OUTPUT);
 
     // to load request queue
-    val lrq_enq_addr_bits		= Bits(30, 'output);
-    val lrq_enq_tag_bits		= Bits(12, 'output);
-    val lrq_enq_rdy		      = Bool('input);
-    val lrq_enq_val		      = Bool('output);
+    val lrq_enq_addr_bits		= Bits(30, OUTPUT);
+    val lrq_enq_tag_bits		= Bits(12, OUTPUT);
+    val lrq_enq_rdy		      = Bool(INPUT);
+    val lrq_enq_val		      = Bool(OUTPUT);
 
     // to reorder queue
-    val roq_deq_tag_bits		= UFix(8, 'input);
-    val roq_deq_tag_val		  = Bool('input);
-    val roq_deq_tag_rdy		  = Bool('output);
-    val issue_busy		      = Bool('output);
+    val roq_deq_tag_bits		= UFix(8, INPUT);
+    val roq_deq_tag_val		  = Bool(INPUT);
+    val roq_deq_tag_rdy		  = Bool(OUTPUT);
+    val issue_busy		      = Bool(OUTPUT);
   }
 
   class vuVMU_Ctrl_ut_issue extends Component {

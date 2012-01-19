@@ -7,7 +7,7 @@ package riscvVector
 
   /*
   class TopIo extends Bundle {
-    val io = Bool('input); // Here temporarily just so this will compile
+    val io = Bool(INPUT); // Here temporarily just so this will compile
   }
 
   class Top extends Component {
