@@ -169,8 +169,8 @@ object Config
 
   val DEF_BANK    = SZ_BANK
   val DEF_BPTR    = SZ_LGBANK
-  val DEF_BPTR1   = SZ_LGBANK
-  val DEF_BPTR2   = SZ_LGBANK+1
+  val DEF_BPTR1   = SZ_LGBANK+1
+  val DEF_BPTR2   = SZ_LGBANK+2
   val DEF_BCNT    = SZ_LGBANK+1
   val DEF_BVLEN   = SZ_BVLEN
   val DEF_BREGLEN = SZ_BREGLEN
