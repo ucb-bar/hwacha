@@ -3,47 +3,11 @@ package riscvVector
 
 import Chisel._;
 import Node._;
-import vuVXU-B8-Config.scala;
-
-class SequencerIO extends Bundle {
-  val last = Bool('output);
-
-  val viu   = Bool('output);
-  val vau0  = Bool('output);
-  val vau1  = Bool('output);
-  val vau2  = Bool('output);
-  val vldq  = Bool('output);
-  val vsdq  = Bool('output);
-  val utaq  = Bool('output);
-  val utldq = Bool('output);
-  val utsdq = Bool('output);
-
-  val fn_viu = Bits(DEF_VIU_FN , 'output);
-  val fn_vau0 = Bits(DEF_VAU0_FN, 'output);
-  val fn_vau1 = Bits(DEF_VAU1_FN, 'output);
-  val fn_vau2 = Bits(DEF_VAU2_FN, 'output);
-
-  val cnt     = Bits(DEF_BVLEN, 'output);
-  val utidx   = Bits(DEF_VLEN, 'output);
-  val vs_zero = Bool('output);
-  val vt_zero = Bool('output);
-  val vr_zero = Bool('output);
-  val vs      = Bits(DEF_BREGLEN, 'output);
-  val vt      = Bits(DEF_BREGLEN, 'output);
-  val vr      = Bits(DEF_BREGLEN, 'output);
-  val vd      = Bits(DEF_BREGLEN, 'output);
-  val imm     = Bits(DEF_DATA, 'output);
-}
-
-class vuVXU_Banked8_ExpandIO extends Bundle
-{
-  val seq = new SequencerIO().flip();
-  val expand = new ExpanderIO();
-}
+import Config._;
 
 class vuVXU_Banked8_Expand extends Component 
 {
-  val io = new vuVXU_B8_ExpandIO();
+  val io = new io_vxu_expand;
 
   val next_ren    = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } };
   val next_rlast  = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } };
@@ -58,179 +22,177 @@ class vuVXU_Banked8_Expand extends Component
   val reg_raddr  = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BREGLEN)} };
   val reg_roplen = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BOPL)} };
   val reg_rblen  = GenBuf(SHIFT_BUF_READ){ GenArray(DEF_BRPORT){ Reg(){Bool()} } };
-
   for (i <- 0 until SHIFT_BUF_READ){
     reg_ren(i)    := next_ren(i);
     reg_rlast(i)  := next_rlast(i);
     reg_rcnt(i)   := next_rcnt(i);
     reg_raddr(i)  := next_raddr(i);
     reg_roplen(i) := next_roplen(i);
-    reg_rblen(i)  := next_rblen(i);
+    for(j <- 0 until DEF_BRPORT)
+      reg_rblen(i)(j)  := next_rblen(i)(j);
   }
 
   when(io.seq.viu) 
   {
-    when(io.seq.fn_viu(RG_VIU_T) == Cat(M0,MR))
+    when(io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
     {
-      next_raddr(0) <== io.seq.vt;
+      next_raddr(0) <== io.seq_regid_imm.vt;
     }
-    when (io.seq.fn_viu(RG_VIU_T) == Cat(ML,MR))
+    when (io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
     {
-      next_ren(1)    <== Bits("b1", 1);
-      next_rlast(1)  <== io.seq.last;
-      next_rcnt(1)   <== io.seq.cnt;
-      next_raddr(1)  <== io.seq.vt;
+      next_ren(1)    <== Bool(true);
+      next_rlast(1)  <== io.seq_to_expand.last;
+      next_rcnt(1)   <== io.seq_regid_imm.cnt;
+      next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b00", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(1)(i)  <== Bits("b0", 1);
+	next_rblen(1)(i)  <== Bool(false);
     }
 
     next_ren(0)    <== Bool(true);
-    next_rlast(0)  <== io.seq.last;
-    next_rcnt(0)   <== io.seq.cnt;
-    next_raddr(0)  <== io.seq.vs;
+    next_rlast(0)  <== io.seq_to_expand.last;
+    next_rcnt(0)   <== io.seq_regid_imm.cnt;
+    next_raddr(0)  <== io.seq_regid_imm.vs;
     next_roplen(0) <== Bits("b01", 2);
     for(i <- 0 until DEF_BRPORT)
-      next_rblen(0)(i)  <== Bits("b0", 1);
+      next_rblen(0)(i)  <== Bool(false);
 
   }
   when(io.seq.vau0) 
   {
 
-    when(seq_vs_zero) { next_rblen(1)(0) <== Bits("b0", 1); }
-    when(seq_vt_zero) { next_rblen(1)(1) <== Bits("b0", 1); }
+    when(io.seq_regid_imm.vs_zero) { next_rblen(1)(0) <== Bool(false) }
+    when(io.seq_regid_imm.vt_zero) { next_rblen(1)(1) <== Bool(false) }
     otherwise
     { 
-      next_rblen(1)(0) <== Bits("b1", 1);
-      next_rblen(1)(1) <== Bits("b1", 1); 
+      next_rblen(1)(0) <== Bool(true);
+      next_rblen(1)(1) <== Bool(true); 
     }
 
-    next_ren(0)    <== Bits("b1", 1);
-    next_rlast(0)  <== io.seq.last;
-    next_rcnt(0)   <== io.seq.cnt;
-    next_raddr(0)  <== io.seq.vs;
+    next_ren(0)    <== Bool(true);
+    next_rlast(0)  <== io.seq_to_expand.last;
+    next_rcnt(0)   <== io.seq_regid_imm.cnt;
+    next_raddr(0)  <== io.seq_regid_imm.vs;
     next_roplen(0) <== Bits("b01", 2);
     for(i <- 0 until DEF_BRPORT)
-      next_rblen(0)(i)  <== Bits("b0", 1);
+      next_rblen(0)(i)  <== Bool(false);
     
-    next_ren(1)    <== Bits("b1", 1);
-    next_rlast(1)  <== io.seq.last;
-    next_rcnt(1)   <== io.seq.cnt;
-    next_raddr(1)  <== io.seq.vt;
+    next_ren(1)    <== Bool(true);
+    next_rlast(1)  <== io.seq_to_expand.last;
+    next_rcnt(1)   <== io.seq_regid_imm.cnt;
+    next_raddr(1)  <== io.seq_regid_imm.vt;
     next_roplen(1) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i != 1 || i != 0) 
-	next_rblen(1)(i) <== Bits("b0", 1);
+	next_rblen(1)(i) <== Bool(false);
     
   }
   when(io.seq.vau1)
   {
-    when(io.seq.fn_vau1(2))
+    when(io.seq_fn.vau1(2).toBool)
     {
-      when(io.seq.vs_zero) { next_rblen(2)(2) <== Bits("b0", 1); }
-      when(io.seq.vt_zero) { next_rblen(2)(3) <== Bits("b0", 1); }
-      when(io.seq.vr_zero) { next_rblen(2)(4) <== Bits("b0", 1); }
+      when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) <== Bool(false) }
+      when(io.seq_regid_imm.vt_zero) { next_rblen(2)(3) <== Bool(false) }
+      when(io.seq_regid_imm.vr_zero) { next_rblen(2)(4) <== Bool(false) }
       otherwise            
       { 
-	next_rblen(2)(2) <== Bits("b1", 1);
-	next_rblen(2)(3) <== Bits("b1", 1);
-	next_rblen(2)(4) <== Bits("b1", 1); 
+	next_rblen(2)(2) <== Bool(true);
+	next_rblen(2)(3) <== Bool(true);
+	next_rblen(2)(4) <== Bool(true); 
       }
       
-      next_ren(0)    <== Bits("b1", 1);
-      next_rlast(0)  <== io.seq.last;
-      next_rcnt(0)   <== io.seq.cnt;
-      next_raddr(0)  <== io.seq.vs;
+      next_ren(0)    <== Bool(true);
+      next_rlast(0)  <== io.seq_to_expand.last;
+      next_rcnt(0)   <== io.seq_regid_imm.cnt;
+      next_raddr(0)  <== io.seq_regid_imm.vs;
       next_roplen(0) <== Bits("b10", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(0)(i)  <== Bits("b0", 1);
+	next_rblen(0)(i)  <== Bool(false);
 	
-      next_ren(1)    <== Bits("b1", 1);
-      next_rlast(1)  <== io.seq.last;
-      next_rcnt(1)   <== io.seq.cnt;
-      next_raddr(1)  <== io.seq.vt;
+      next_ren(1)    <== Bool(true);
+      next_rlast(1)  <== io.seq_to_expand.last;
+      next_rcnt(1)   <== io.seq_regid_imm.cnt;
+      next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b01", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(1)(i)  <== Bits("b0", 1);
+	next_rblen(1)(i)  <== Bool(false);
       
-      next_ren(2)    <== Bits("b1", 1);
-      next_rlast(2)  <== io.seq.last;
-      next_rcnt(2)   <== io.seq.cnt;
-      next_raddr(2)  <== io.seq.vr;
+      next_ren(2)    <== Bool(true);
+      next_rlast(2)  <== io.seq_to_expand.last;
+      next_rcnt(2)   <== io.seq_regid_imm.cnt;
+      next_raddr(2)  <== io.seq_regid_imm.vr;
       next_roplen(2) <== Bits("b00", 2);
       for(i <- 0 until DEF_BRPORT)
 	if(i != 2 || i != 3 || i != 4) 
-	  next_rblen(2) <== Bits("b0", 8);
+	  next_rblen(2)(i) <== Bool(false);
     }
-    when(!io.seq.fn_vau1(2))
+    when(!io.seq_fn.vau1(2).toBool)
     {
-      when(io.seq.vs_zero) { next_rblen(2)(2) <== Bits("b0", 1); }
-      when(io.seq.vt_zero) { next_rblen(2)(4) <== Bits("b0", 1); }
-      otherwise            
-      { 
-	next_rblen(2)(2) <== Bits("b1", 1); 
-	next_rblen(2)(4) <== Bits("b1", 1); 
-      }
+      when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) <== Bool(false) }
+      when(io.seq_regid_imm.vt_zero) { next_rblen(2)(4) <== Bool(false) }
 
-      next_ren(0)    <== Bits("b1", 1);
-      next_rlast(0)  <== io.seq.last;
-      next_rcnt(0)   <== io.seq.cnt;
-      next_raddr(0)  <== io.seq.vs;
+      next_ren(0)    <== Bool(true);
+      next_rlast(0)  <== io.seq_to_expand.last;
+      next_rcnt(0)   <== io.seq_regid_imm.cnt;
+      next_raddr(0)  <== io.seq_regid_imm.vs;
       next_roplen(0) <== Bits("b10", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(0)(i)  <== Bits("b0", 1);
+	next_rblen(0)(i)  <== Bool(false);
       
-      next_ren(1)    <== Bits("b1", 1);
-      next_rlast(1)  <== io.seq.last;
-      next_rcnt(1)   <== io.seq.cnt;
-      next_raddr(1)  <== io.seq.vt;
+      next_ren(1)    <== Bool(true);
+      next_rlast(1)  <== io.seq_to_expand.last;
+      next_rcnt(1)   <== io.seq_regid_imm.cnt;
+      next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b00", 2);
-      for(i <- 0 until DEF_BRPORT)
-	if(i != 2 || i != 4)
-	  next_rblen(1)(i)  <== Bits("b0", 1);
+      for(i <- 0 until DEF_BRPORT){
+	if(i == 2 || i == 4)
+	  next_rblen(1)(i) <== Bool(true);
+	else
+	  next_rblen(1)(i) <== Bool(false);
+      }
     }
   }
   when(io.seq.vau2)
   {
-    when(io.seq.vs_zero) { next_rblen(0)(5) <== Bits("b0", 1); }
-    otherwsie            { next_rblen(0)(5) <== Bits("b1", 1); }
+    when(io.seq_regid_imm.vs_zero) { next_rblen(0)(5) <== Bool(false) }
+    otherwise                      { next_rblen(0)(5) <== Bool(true); }
     
-    next_ren(0)    <== Bits("b1", 1);
-    next_rlast(0)  <== io.seq.last;
-    next_rcnt(0)   <== io.seq.cnt;
-    next_raddr(0)  <== io.seq.vs;
+    next_ren(0)    <== Bool(true);
+    next_rlast(0)  <== io.seq_to_expand.last;
+    next_rcnt(0)   <== io.seq_regid_imm.cnt;
+    next_raddr(0)  <== io.seq_regid_imm.vs;
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i != 5)
-	next_rblen(0)(i)  <== Bits("b0", 1);
+	next_rblen(0)(i)  <== Bool(false);
   }
   when(io.seq.utaq)
   {
-    when(io.seq.vs_zero) { next_rblen(0)(6) <== Bits("b0", 1); }
-    otherwise            { next_rblen(0)(6) <== Bits("b1", 1); }
+    when(io.seq_regid_imm.vs_zero) { next_rblen(0)(6) <== Bool(false) }
+    otherwise                      { next_rblen(0)(6) <== Bool(true) }
     
-    next_ren(0)    <== Bits("b1", 1);
-    next_rlast(0)  <== io.seq.last;
-    next_rcnt(0)   <== io.seq.cnt;
-    next_raddr(0)  <== io.seq.vs;
+    next_ren(0)    <== Bool(true);
+    next_rlast(0)  <== io.seq_to_expand.last;
+    next_rcnt(0)   <== io.seq_regid_imm.cnt;
+    next_raddr(0)  <== io.seq_regid_imm.vs;
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i == 6)
-	next_rblen(0)  <== Bits("b0", 1);
+	next_rblen(0)(i)  <== Bool(false);
   }
   when(io.seq.vsdq || io.seq.utsdq)
   {
-    when(io.seq.vt_zero) { next_rblen(0)(7) <== Bits("b0", 1); }
-    otherwise            { next_rblen(0)(7) <== Bits("b1", 1); }
+    when(io.seq_regid_imm.vt_zero) { next_rblen(0)(7) <== Bool(false) }
+    otherwise                      { next_rblen(0)(7) <== Bool(true) }
 
-    next_ren(0)    <== Bits("b1", 1);
-    next_rlast(0)  <== io.seq.last;
-    next_rcnt(0)   <== io.seq.cnt;
-    next_raddr(0)  <== io.seq.vt;
+    next_ren(0)    <== Bool(true);
+    next_rlast(0)  <== io.seq_to_expand.last;
+    next_rcnt(0)   <== io.seq_regid_imm.cnt;
+    next_raddr(0)  <== io.seq_regid_imm.vt;
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i != 7)
-	next_rblen(0)  <== Bits("b0", 1);
+	next_rblen(0)(i)  <== Bool(false);
   }
   otherwise 
   {
@@ -251,7 +213,7 @@ class vuVXU_Banked8_Expand extends Component
     next_raddr(SHIFT_BUF_READ-1)  <== Bits("d0", 8);
     next_roplen(SHIFT_BUF_READ-1) <== Bits("d0", 2);
     for(i <- 0 until DEF_BRPORT)
-      next_rblen(SHIFT_BUF_READ-1)(i)  <== Bits("b0", 1);
+      next_rblen(SHIFT_BUF_READ-1)(i)  <== Bool(false);
   }
 
   val next_wen   = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } };
@@ -276,75 +238,75 @@ class vuVXU_Banked8_Expand extends Component
     }
 
   val viu_wptr = 
-    Mux((io.seq.fn_viu(RG_VIU_T) === Cat(ML,MR)) , Bits(INT_STAGES + 2, SZ_LGBANK)
-    , Bits(INT_STAGES + 1, SZ_LGBANK));
+    Mux((io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR)) , Bits(INT_STAGES + 2, DEF_BPTR1)
+    , Bits(INT_STAGES + 1, DEF_BPTR1));
 
   val vau0_wptr =
-    Bits(IMUL_STAGES + 2, SZ_LGBANK);
+    Bits(IMUL_STAGES + 2, DEF_BPTR1);
 
   val vau1_wptr =
-    Mux((io.seq.fn_vau1(2)) , Bits(FMA_STAGES + 3, SZ_LGBANK)
-    , Bits(FMA_STAGES + 2, SZ_LGBANK));
+    Mux((io.seq_fn.vau1(2)) , Bits(FMA_STAGES + 3, DEF_BPTR1)
+    , Bits(FMA_STAGES + 2, DEF_BPTR1));
 
   val vau2_wptr = 
-    Bits(FCONV_STAGES + 1,  SZ_LGBANK);
+    Bits(FCONV_STAGES + 1,  DEF_BPTR1);
       
   when(io.seq.viu)
   {
-    next_wen(viu_wptr) <== Bits("b1", 1);
-    next_wlast(viu_wptr) <== io.seq.last;
-    next_wcnt(viu_wptr) <== io.seq.cnt;
-    next_waddr(viu_wptr) <== io.seq.vd;
-    next_wsel(viu_wptr) <== Bits("d4", 3);
+    next_wen.write(viu_wptr, Bool(true));
+    next_wlast.write(viu_wptr, io.seq_to_expand.last);
+    next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt);
+    next_waddr.write(viu_wptr, io.seq_regid_imm.vd);
+    next_wsel.write(viu_wptr, Bits("d4", 3));
   }
   when(io.seq.vau0)
   {
-    next_wen(vau0_wptr) <== Bits("b1", 1);
-    next_wlast(vau0_wptr) <== io.seq.last;
-    next_wcnt(vau0_wptr) <== io.seq.cnt;
-    next_waddr(vau0_wptr) <== io.seq.vd;
-    next_wsel(vau0_wptr) <== Bits("d0", 3);
+    next_wen.write(vau0_wptr, Bool(true));
+    next_wlast.write(vau0_wptr, io.seq_to_expand.last);
+    next_wcnt.write(vau0_wptr, io.seq_regid_imm.cnt);
+    next_waddr.write(vau0_wptr, io.seq_regid_imm.vd);
+    next_wsel.write(vau0_wptr, Bits("d0", 3));
   }
   when(io.seq.vau1)
   {
-    next_wen(vau1_wptr) <== Bits("b1", 1);
-    next_wlast(vau1_wptr) <== io.seq.last;
-    next_wcnt(vau1_wptr) <== io.seq.cnt;
-    next_waddr(vau1_wptr) <== io.seq.vd;
-    next_wsel(vau1_wptr) <== Bits("d1", 3);
+    next_wen.write(vau1_wptr, Bool(true));
+    next_wlast.write(vau1_wptr, io.seq_to_expand.last);
+    next_wcnt.write(vau1_wptr, io.seq_regid_imm.cnt);
+    next_waddr.write(vau1_wptr, io.seq_regid_imm.vd);
+    next_wsel.write(vau1_wptr, Bits("d1", 3));
   }
   when(io.seq.vau2)
   {
-    next_wen(vau2_wptr) <== Bits("b1", 1);
-    next_wlast(vau2_wptr) <== io.seq.last;
-    next_wcnt(vau2_wptr) <== io.seq.cnt;
-    next_waddr(vau2_wptr) <== io.seq.vd;
-    next_wsel(vau2_wptr) <== Bits("d2", 3);
+    next_wen.write(vau2_wptr, Bool(true));
+    next_wlast.write(vau2_wptr, io.seq_to_expand.last);
+    next_wcnt.write(vau2_wptr, io.seq_regid_imm.cnt);
+    next_waddr.write(vau2_wptr, io.seq_regid_imm.vd);
+    next_wsel.write(vau2_wptr, Bits("d2", 3));
   }
   when (io.seq.vldq || io.seq.utldq)
   {
-    next_wen(0) <== Bits("b1", 1);
-    next_wlast(0) <== io.seq.last;
-    next_wcnt(0) <== io.seq.cnt;
-    next_waddr(0) <== io.seq.vd;
-    next_wsel(0) <== Bits("d3", 3);
+    next_wen(0)   <== Bool(true);
+    next_wlast(0) <== io.seq_to_expand.last;
+    next_wcnt(0)  <== io.seq_regid_imm.cnt;
+    next_waddr(0) <== io.seq_regid_imm.vd;
+    next_wsel(0)  <== Bits("d3", 3);
   }
   otherwise
   {
     for (i <- 0 until SHIFT_BUF_WRITE-1)
       {
-	next_wen(i) <== reg_wen(i+1);
+	next_wen(i)   <== reg_wen(i+1);
 	next_wlast(i) <== reg_wlast(i+1);
-	next_wcnt(i) <== reg_wcnt(i+1);
+	next_wcnt(i)  <== reg_wcnt(i+1);
 	next_waddr(i) <== reg_waddr(i+1);
-	next_wsel(i) <== reg_wsel(i+1);
+	next_wsel(i)  <== reg_wsel(i+1);
       }
 
-    next_wen(SHIFT_BUF_WRITE-1) <== Bits("b0", 1);
-    next_wlast(SHIFT_BUF_WRITE-1) <== Bits("b0", 1);
-    next_wcnt(SHIFT_BUF_WRITE-1) <== Bits("d0", 3);
+    next_wen(SHIFT_BUF_WRITE-1)   <== Bool(false);
+    next_wlast(SHIFT_BUF_WRITE-1) <== Bool(false);
+    next_wcnt(SHIFT_BUF_WRITE-1)  <== Bits("d0", 3);
     next_waddr(SHIFT_BUF_WRITE-1) <== Bits("d0", 8);
-    next_wsel(SHIFT_BUF_WRITE-1) <== Bits("d0", 3);
+    next_wsel(SHIFT_BUF_WRITE-1)  <== Bits("d0", 3);
   }
 
   val next_viu       = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } };
@@ -363,192 +325,195 @@ class vuVXU_Banked8_Expand extends Component
   val next_utldq     = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } };
   val next_utsdq     = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } };
 
-  val reg_viu       = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
+  val reg_viu       = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
   val reg_viu_fn    = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VIU_FN)} };
   val reg_viu_utidx = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VLEN)} };
   val reg_viu_imm   = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_DATA)} };
-  val reg_vau0      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
+  val reg_vau0      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
   val reg_vau0_fn   = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU0_FN)} };
-  val reg_vau1      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
+  val reg_vau1      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
   val reg_vau1_fn   = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU1_FN)} };
-  val reg_vau2      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
+  val reg_vau2      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
   val reg_vau2_fn   = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU2_FN)} };
-  val reg_vldq      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
-  val reg_vsdq      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
-  val reg_utaq      = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
-  val reg_utldq     = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
-  val reg_utsdq     = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } };
+  val reg_vldq      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
+  val reg_vsdq      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
+  val reg_utaq      = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
+  val reg_utldq     = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
+  val reg_utsdq     = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
 
-  always @(posedge clk)
-  begin
-    if (reset)
-    begin
-      for (i=0; i<SHIFT_BUF_READ; i=i+1)
-      begin
-        reg_viu(i) <= Bits("b0", 1);
-        reg_vau0(i) <= Bits("b0", 1);
-        reg_vau1(i) <= Bits("b0", 1);
-        reg_vau2(i) <= Bits("b0", 1);
-        reg_vldq(i) <= Bits("b0", 1);
-        reg_vsdq(i) <= Bits("b0", 1);
-        reg_utaq(i) <= Bits("b0", 1);
-        reg_utldq(i) <= Bits("b0", 1);
-        reg_utsdq(i) <= Bits("b0", 1);
-      end
-    end
-    else
-    begin
-      for (i=0; i<SHIFT_BUF_READ; i=i+1)
-      begin
-        reg_viu(i) <= next_viu(i);
-        reg_viu_fn(i) <= next_viu_fn(i);
-        reg_viu_utidx(i) <= next_viu_utidx(i);
-        reg_viu_imm(i) <= next_viu_imm(i);
-        reg_vau0(i) <= next_vau0(i);
-        reg_vau0_fn(i) <= next_vau0_fn(i);
-        reg_vau1(i) <= next_vau1(i);
-        reg_vau1_fn(i) <= next_vau1_fn(i);
-        reg_vau2(i) <= next_vau2(i);
-        reg_vau2_fn(i) <= next_vau2_fn(i);
-        reg_vldq(i) <= next_vldq(i);
-        reg_vsdq(i) <= next_vsdq(i);
-        reg_utaq(i) <= next_utaq(i);
-        reg_utldq(i) <= next_utldq(i);
-        reg_utsdq(i) <= next_utsdq(i);
-      end
-    end
-  end
 
-  always @(*)
-  begin
-    for (i=0; i<SHIFT_BUF_READ-1; i=i+1)
-    begin
-      next_viu(i) = reg_viu(i+1);
-      next_viu_fn(i) = reg_viu_fn(i+1);
-      next_viu_utidx(i) = reg_viu_utidx(i+1);
-      next_viu_imm(i) = reg_viu_imm(i+1);
-      next_vau0(i) = reg_vau0(i+1);
-      next_vau0_fn(i) = reg_vau0_fn(i+1);
-      next_vau1(i) = reg_vau1(i+1);
-      next_vau1_fn(i) = reg_vau1_fn(i+1);
-      next_vau2(i) = reg_vau2(i+1);
-      next_vau2_fn(i) = reg_vau2_fn(i+1);
-      next_vldq(i) = reg_vldq(i+1);
-      next_vsdq(i) = reg_vsdq(i+1);
-      next_utaq(i) = reg_utaq(i+1);
-      next_utldq(i) = reg_utldq(i+1);
-      next_utsdq(i) = reg_utsdq(i+1);
-    end
+  for (i <- 0 until SHIFT_BUF_READ)
+    {
+      reg_viu(i)       := next_viu(i);
+      reg_viu_fn(i)    := next_viu_fn(i);
+      reg_viu_utidx(i) := next_viu_utidx(i);
+      reg_viu_imm(i)   := next_viu_imm(i);
+      reg_vau0(i)      := next_vau0(i);
+      reg_vau0_fn(i)   := next_vau0_fn(i);
+      reg_vau1(i)      := next_vau1(i);
+      reg_vau1_fn(i)   := next_vau1_fn(i);
+      reg_vau2(i)      := next_vau2(i);
+      reg_vau2_fn(i)   := next_vau2_fn(i);
+      reg_vldq(i)      := next_vldq(i);
+      reg_vsdq(i)      := next_vsdq(i);
+      reg_utaq(i)      := next_utaq(i);
+      reg_utldq(i)     := next_utldq(i);
+      reg_utsdq(i)     := next_utsdq(i);
+    }
 
-    next_viu(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_viu_fn(SHIFT_BUF_READ-1) = SZ_VIU_FN'd0;
-    next_viu_utidx(SHIFT_BUF_READ-1) = SZ_VLEN'd0;
-    next_viu_imm(SHIFT_BUF_READ-1) = SZ_DATA'd0;
-    next_vau0(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_vau0_fn(SHIFT_BUF_READ-1) = SZ_VAU0_FN'd0;
-    next_vau1(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_vau1_fn(SHIFT_BUF_READ-1) = SZ_VAU1_FN'd0;
-    next_vau2(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_vau2_fn(SHIFT_BUF_READ-1) = SZ_VAU2_FN'd0;
-    next_vldq(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_vsdq(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_utaq(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_utldq(SHIFT_BUF_READ-1) = Bits("b0", 1);
-    next_utsdq(SHIFT_BUF_READ-1) = Bits("b0", 1);
+  when(io.seq.viu)
+  {
+    when(io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
+    {
+      when(io.seq_regid_imm.vs_zero)
+      {
+	when(io.seq_regid_imm.vt_zero){
+	  next_viu_fn(1) <== Cat(M0, M0, io.seq_fn.viu(6,0));
+	}
+	otherwise
+	{
+	  next_viu_fn(1) <== Cat(M0, io.seq_fn.viu(8,0))
+	}
+      }
+      otherwise
+      {
+	when(io.seq_regid_imm.vt_zero)
+	{
+	  next_viu_fn(1) <== Cat(io.seq_fn.viu(10,9), 
+				 M0, 
+				 io.seq_fn.viu(6,0));
+	}
+	otherwise
+	{
+	  next_viu_fn(1) <== io.seq_fn.viu;
+	}
+      }
+      
+      next_viu(1) <== Bool(true);
+    }
+    when(io.seq_fn.viu(RG_VIU_T) != Cat(ML,MR))
+    {
+      when(io.seq_regid_imm.vs_zero){ next_viu_fn(0) <== Cat(M0, io.seq_fn.viu(8,0)) }
+      otherwise                     { next_viu_fn(0) <== io.seq_fn.viu }
 
-    if (io.seq.viu)
-    begin
-      if (io.seq.fn_viu(RG_VIU_T) == {ML,MR})
-      begin
-        next_viu(1) = Bits("b1", 1);
-        next_viu_fn(1) = io.seq.fn_viu;
+      next_viu(0)       <== Bool(true);
+      next_viu_utidx(0) <== io.seq_regid_imm.utidx;
+      next_viu_imm(0)   <== io.seq_regid_imm.imm;
+    }
+  }
+  when(io.seq.vau0)
+  {
+    next_vau0(1)    <== Bool(true);
+    next_vau0_fn(1) <== io.seq_fn.vau0;
+  }
+  when(io.seq.vau1)
+  {
+    when(io.seq_fn.vau1(2).toBool)
+    {
+      next_vau1(2)    <== Bool(true);
+      next_vau1_fn(2) <== io.seq_fn.vau1;
+    }
+    when(!io.seq_fn.vau1(2).toBool)
+    {
+      next_vau1(1)    <== Bool(true);
+      next_vau1_fn(1) <== io.seq_fn.vau1;
+    }
+  }
+  when(io.seq.vau2)
+  {
+    next_vau2(0)    <== Bool(true);
+    next_vau2_fn(0) <== io.seq_fn.vau2;
+  }
+  when(io.seq.vldq)
+  {
+    next_vldq(0) <== Bool(true);
+  }
+  when(io.seq.vsdq)
+  {
+    next_vsdq(0) <== Bool(true);
+  }
+  when(io.seq.utaq)
+  {
+    next_utaq(0) <== Bool(true);
+  }
+  when(io.seq.utldq)
+  {
+    next_utldq(0) <== Bool(true);
+  }
+  when(io.seq.utsdq)
+  {
+    next_utsdq(0) <== Bool(true);
+  }
+  otherwise {
+    for(i <- 0 until SHIFT_BUF_READ-1)
+      {
+	next_viu(i)       <== reg_viu(i+1);
+	next_viu_fn(i)    <== reg_viu_fn(i+1);
+	next_viu_utidx(i) <== reg_viu_utidx(i+1);
+	next_viu_imm(i)   <== reg_viu_imm(i+1);
+	next_vau0(i)      <== reg_vau0(i+1);
+	next_vau0_fn(i)   <== reg_vau0_fn(i+1);
+	next_vau1(i)      <== reg_vau1(i+1);
+	next_vau1_fn(i)   <== reg_vau1_fn(i+1);
+	next_vau2(i)      <== reg_vau2(i+1);
+	next_vau2_fn(i)   <== reg_vau2_fn(i+1);
+	next_vldq(i)      <== reg_vldq(i+1);
+	next_vsdq(i)      <== reg_vsdq(i+1);
+	next_utaq(i)      <== reg_utaq(i+1);
+	next_utldq(i)     <== reg_utldq(i+1);
+	next_utsdq(i)     <== reg_utsdq(i+1);
+      }
+    
+    next_viu(SHIFT_BUF_READ-1)       <== Bool(false);
+    next_viu_fn(SHIFT_BUF_READ-1)    <== Bits("d0", SZ_VIU_FN);
+    next_viu_utidx(SHIFT_BUF_READ-1) <== Bits("d0", SZ_VLEN);
+    next_viu_imm(SHIFT_BUF_READ-1)   <== Bits("d0", SZ_DATA);
+    next_vau0(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_vau0_fn(SHIFT_BUF_READ-1)   <== Bits("d0", SZ_VAU0_FN);
+    next_vau1(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_vau1_fn(SHIFT_BUF_READ-1)   <== Bits("d0", SZ_VAU1_FN);
+    next_vau2(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_vau2_fn(SHIFT_BUF_READ-1)   <== Bits("d0", SZ_VAU2_FN);
+    next_vldq(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_vsdq(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_utaq(SHIFT_BUF_READ-1)      <== Bool(false);
+    next_utldq(SHIFT_BUF_READ-1)     <== Bool(false);
+    next_utsdq(SHIFT_BUF_READ-1)     <== Bool(false);
+  }
 
-        if (io.seq.vs_zero) next_viu_fn(1)(RG_VIU_T0) = M0;
-        if (io.seq.vt_zero) next_viu_fn(1)(RG_VIU_T1) = M0;
-      end
-      else
-      begin
-        next_viu(0) = Bits("b1", 1);
-        next_viu_fn(0) = io.seq.fn_viu;
-        next_viu_utidx(0) = io.seq.utidx;
-        next_viu_imm(0) = io.seq.imm;
 
-        if (io.seq.vs_zero) next_viu_fn(0)(RG_VIU_T0) = M0;
-      end
-    end
-    else if (io.seq.vau0)
-    begin
-      next_vau0(1) = Bits("b1", 1);
-      next_vau0_fn(1) = io.seq.fn_vau0;
-    end
-    else if (io.seq.vau1)
-    begin
-      if (io.seq.fn_vau1(2))
-      begin
-        next_vau1(2) = Bits("b1", 1);
-        next_vau1_fn(2) = io.seq.fn_vau1;
-      end
-      else
-      begin
-        next_vau1(1) = Bits("b1", 1);
-        next_vau1_fn(1) = io.seq.fn_vau1;
-      end
-    end
-    else if (io.seq.vau2)
-    begin
-      next_vau2(0) = Bits("b1", 1);
-      next_vau2_fn(0) = io.seq.fn_vau2;
-    end
-    else if (io.seq.vldq)
-    begin
-      next_vldq(0) = Bits("b1", 1);
-    end
-    else if (io.seq.vsdq)
-    begin
-      next_vsdq(0) = Bits("b1", 1);
-    end
-    else if (io.seq.utaq)
-    begin
-      next_utaq(0) = Bits("b1", 1);
-    end
-    else if (io.seq.utldq)
-    begin
-      next_utldq(0) = Bits("b1", 1);
-    end
-    else if (io.seq.utsdq)
-    begin
-      next_utsdq(0) = Bits("b1", 1);
-    end
-  end
+  io.expand_read.ren    := reg_ren(0);
+  io.expand_read.rlast  := reg_rlast(0);
+  io.expand_read.rcnt   := reg_rcnt(0);
+  io.expand_read.raddr  := reg_raddr(0);
+  io.expand_read.roplen := reg_roplen(0);
+  io.expand_read.rblen  := reg_rblen(0).flatten;
 
-  assign expand_ren = reg_ren(0);
-  assign expand_rlast = reg_rlast(0);
-  assign expand_rcnt = reg_rcnt(0);
-  assign expand_raddr = reg_raddr(0);
-  assign expand_roplen = reg_roplen(0);
-  assign expand_rblen = reg_rblen(0);
+  io.rblen_0 := next_rblen(0).flatten;
+  io.rblen_1 := next_rblen(1).flatten;
+  io.rblen_2 := next_rblen(2).flatten;
 
-  assign expand_wen = reg_wen(0);
-  assign expand_wlast = reg_wlast(0);
-  assign expand_wcnt = reg_wcnt(0);
-  assign expand_waddr = reg_waddr(0);
-  assign expand_wsel = reg_wsel(0);
+  io.expand_write.wen   := reg_wen(0);
+  io.expand_write.wlast := reg_wlast(0);
+  io.expand_write.wcnt  := reg_wcnt(0);
+  io.expand_write.waddr := reg_waddr(0);
+  io.expand_write.wsel  := reg_wsel(0);
 
-  assign expand_viu = reg_viu(0);
-  assign expand_viu_fn = reg_viu_fn(0);
-  assign expand_viu_utidx = reg_viu_utidx(0);
-  assign expand_viu_imm = reg_viu_imm(0);
-  assign expand_vau0 = reg_vau0(0);
-  assign expand_vau0_fn = reg_vau0_fn(0);
-  assign expand_vau1 = reg_vau1(0);
-  assign expand_vau1_fn = reg_vau1_fn(0);
-  assign expand_vau2 = reg_vau2(0);
-  assign expand_vau2_fn = reg_vau2_fn(0);
-  assign expand_vldq = reg_vldq(0);
-  assign expand_vsdq = reg_vsdq(0);
-  assign expand_utaq = reg_utaq(0);
-  assign expand_utldq = reg_utldq(0);
-  assign expand_utsdq = reg_utsdq(0);
+  io.expand_fu_fn.viu       := reg_viu(0);
+  io.expand_fu_fn.viu_fn    := reg_viu_fn(0);
+  io.expand_fu_fn.viu_utidx := reg_viu_utidx(0);
+  io.expand_fu_fn.viu_imm   := reg_viu_imm(0);
+  io.expand_fu_fn.vau0      := reg_vau0(0);
+  io.expand_fu_fn.vau0_fn   := reg_vau0_fn(0);
+  io.expand_fu_fn.vau1      := reg_vau1(0);
+  io.expand_fu_fn.vau1_fn   := reg_vau1_fn(0);
+  io.expand_fu_fn.vau2      := reg_vau2(0);
+  io.expand_fu_fn.vau2_fn   := reg_vau2_fn(0);
+  io.expand_fu_fn.vldq      := reg_vldq(0);
+  io.expand_fu_fn.vsdq      := reg_vsdq(0);
+  io.expand_fu_fn.utaq      := reg_utaq(0);
+  io.expand_fu_fn.utldq     := reg_utldq(0);
+  io.expand_fu_fn.utsdq     := reg_utsdq(0);
 
-endmodule
+}
 }

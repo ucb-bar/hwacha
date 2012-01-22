@@ -3,7 +3,8 @@ package riscvVector
 
 import Chisel._;
 import Node._;
-import scala.collection.mutable.ArrayBuffer._;
+import scala.collection.mutable.ArrayBuffer;
+import scala.math._;
 
 object Config
 {
@@ -311,6 +312,8 @@ object GenArray{
     val res = new GenArray[T];
     for(i <- 0 until n)
       res += gen;
+    res.width = res(0).width;
+    if (res.width == -1) throw new Exception();
     res
   }
 }
@@ -325,25 +328,26 @@ object GenBuf{
 }
 
 class GenArray[T <: Data] extends ArrayBuffer[T] {
-  var updates = new Stack[(Bool, Node)];
+  var width = 0;
 
   def write(addr: UFix, data: T) = {
     if(data.isInstanceOf[Node]){
 
       val onehot = UFixToOH(addr, length);
       for(i <- 0 until length){
-	val top = conds.pop;
-	conds.push(top && onehot(i).toBool);
+	conds.push(conds.top && onehot(i).toBool);
 	this(i).comp procAssign data.toNode;
 	conds.pop;
-	conds.push(top);
       }
     }
   }
 
+  def write(addr: Bits, data: T): Unit = {
+    write(addr.toUFix, data);
+  }
+
   def read(addr: UFix): T = {
-    val mux1h = new Mux1H(length, 32);
-    println(this(0).width);
+    val mux1h = new Mux1H(length, width);
     val onehot = UFixToOH(addr, length);
     for(i <- 0 until length){
       mux1h.io.sel(i) := onehot(i).toBool;
@@ -352,6 +356,13 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
     val res = this(0).clone;
     res.setIsCellIO;
     res assign mux1h.io.out;
+    res
+  }
+
+  def flatten: Bits = {
+    var res: Bits = null;
+    for(i <- 0 until length)
+      res = Cat(this(i), res)
     res
   }
 }

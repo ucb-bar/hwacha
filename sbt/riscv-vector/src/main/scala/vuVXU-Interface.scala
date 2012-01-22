@@ -424,6 +424,9 @@ class io_vxu_expand extends Bundle
   val expand_read = new io_vxu_expand_read().asOutput;
   val expand_write = new io_vxu_expand_write().asOutput;
   val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput;
+  val rblen_0 = Bits(8, OUTPUT);
+  val rblen_1 = Bits(8, OUTPUT);
+  val rblen_2 = Bits(8, OUTPUT);
 }
 
 class io_vxu extends Bundle
