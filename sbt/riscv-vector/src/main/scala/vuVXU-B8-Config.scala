@@ -359,7 +359,7 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
     res
   }
 
-  def flatten: Bits = {
+  def flatten(): Bits = {
     var res: Bits = null;
     for(i <- 0 until length)
       res = Cat(this(i), res)

@@ -95,17 +95,17 @@ class vuVXU_Banked8_Seq extends Component {
   val array_vd  = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} };
   val array_imm = GenArray(8){ Reg(){Bits(width=DEF_DATA)} };
 
-  array_val   := next_val.flatten;
-  array_last  := next_last.flatten;
-  array_viu   := next_viu.flatten;
-  array_vau0  := next_vau0.flatten;
-  array_vau1  := next_vau1.flatten;
-  array_vau2  := next_vau2.flatten;
-  array_vldq  := next_vldq.flatten;
-  array_vsdq  := next_vsdq.flatten;
-  array_utaq  := next_utaq.flatten;
-  array_utldq := next_utldq.flatten;
-  array_utsdq := next_utsdq.flatten;
+  array_val   := next_val.flatten();
+  array_last  := next_last.flatten();
+  array_viu   := next_viu.flatten();
+  array_vau0  := next_vau0.flatten();
+  array_vau1  := next_vau1.flatten();
+  array_vau2  := next_vau2.flatten();
+  array_vldq  := next_vldq.flatten();
+  array_vsdq  := next_vsdq.flatten();
+  array_utaq  := next_utaq.flatten();
+  array_utldq := next_utldq.flatten();
+  array_utsdq := next_utsdq.flatten();
 
   for (i <- 0 until SZ_BANK)
     {

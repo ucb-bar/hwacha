@@ -18,7 +18,7 @@ class vuVXU_Pointer extends Component
   val add = io.ptr + io.incr;
 
   io.nptr := MuxLookup(
-    Cat(add, io.bcnt), Bits(0, DEF_BPTR), Array(
+    Cat(add, io.bcnt), UFix(0, DEF_BPTR), Array(
       Cat(UFix(0,5),UFix(3,4)) -> UFix(0,3),
       Cat(UFix(0,5),UFix(4,4)) -> UFix(0,3),
       Cat(UFix(0,5),UFix(5,4)) -> UFix(0,3),
