@@ -327,6 +327,7 @@ object GenBuf{
     }
 }
 
+
 class GenArray[T <: Data] extends ArrayBuffer[T] {
   var width = 0;
 
@@ -365,6 +366,13 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
       res = Cat(this(i), res)
     res
   }
+
+  def :=[T <: Data](src: GenArray[T]) = {
+    for((src, dest) <- this zip src){
+      src := dest;
+    }
+  }
+
 }
   
 }
