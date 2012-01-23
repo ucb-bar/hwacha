@@ -23,9 +23,9 @@ class normalizeN(expSize : Int = 8, sigSize : Int = 24) extends Component {
   // If it's not 32, then it's 64 (we should probably throw an error instead)
   val normalize = (if( expSize == 8 && sigSize == 24 ) new normalize32() else new normalize64());
   
-  normalize.io.out      ^^ io.out;
-  normalize.io.in       ^^ io.in;
-  normalize.io.distance ^^ io.distance;
+  normalize.io.out      <> io.out;
+  normalize.io.in       <> io.in;
+  normalize.io.distance <> io.distance;
 }
 }
 

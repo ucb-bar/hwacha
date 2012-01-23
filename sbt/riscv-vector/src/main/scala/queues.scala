@@ -185,7 +185,7 @@ class queueSimplePF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
 {
   override val io = new IOqueueSimplePF(data_sz);
   val ctrl = new queueCtrl(entries, addr_sz);
-  ctrl.io.deq_val ^^ io.deq_val;
+  ctrl.io.deq_val <> io.deq_val;
   ctrl.io.enq_rdy ^^ io.enq_rdy;
   ctrl.io.enq_val ^^ io.enq_val;     
   ctrl.io.deq_rdy ^^ io.deq_rdy;

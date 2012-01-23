@@ -23,6 +23,7 @@ package riscvVector
     {
       val boot_args = args ++ Array("--target-dir", "generated-src");
       chiselMain(boot_args, () => new vuVMU());
+      //chiselMain(boot_args, () => new vu_dmem_arbiter());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_fma());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_imul());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());

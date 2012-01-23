@@ -11,7 +11,7 @@ package riscvVector {
     val iscmdq      = new iscmdqIO();
     val wbcmdq      = new wbcmdqIO();
     val stcmdq      = new stcmdqIO();
-    val store_busy		= Bool(INPUT);
+    val store_busy	= Bool(INPUT);
   }
   
   class vuVMU_Ctrl_vec_top extends Component {
@@ -185,10 +185,10 @@ package riscvVector {
         io.vmimmq.rdy          <== Bool(false);
         io.vmstrideq.rdy       <== Bool(false);
         io.vmrespq.bits        <== Bits(0);
-        io.vmrespq.valid         <== Bool(false);
-        io.iscmdq.valid          <== Bool(false);
-        io.wbcmdq.valid          <== Bool(false);
-        io.stcmdq.valid          <== Bool(false);
+        io.vmrespq.valid       <== Bool(false);
+        io.iscmdq.valid        <== Bool(false);
+        io.wbcmdq.valid        <== Bool(false);
+        io.stcmdq.valid        <== Bool(false);
         stride                 <== UFix(0);
       }
     }

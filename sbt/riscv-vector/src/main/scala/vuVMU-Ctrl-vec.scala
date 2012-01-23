@@ -71,27 +71,6 @@ package riscvVector {
     val rdy		  = Bool(INPUT);
   }
 
-  class vec_dcachereqIO extends Bundle
-  {
-    // D$ interface
-    // request
-    val addr	= Bits(28, OUTPUT);
-    val tag		= Bits(12, OUTPUT);
-    val data	= Bits(128, OUTPUT);
-    val wmask	= Bits(16, OUTPUT);
-    val op		= Bits(4, OUTPUT);
-    val valid = Bool(OUTPUT);
-    val rdy		= Bool(INPUT);
-  }
-
-  class vec_dcacherespIO extends Bundle
-  {
-    // response
-    val data		= UFix(128, INPUT);
-    val tag		  = UFix(12, INPUT);
-    val valid		= Bool(INPUT);
-  }
-
   class vuVMU_Ctrl_vecIO extends Bundle
   {
     val vmcmdq      = new vmcmdqIO();
@@ -100,34 +79,32 @@ package riscvVector {
     val vmrespq     = new vmrespqIO();
     val vldq        = new vldqIO();
     val vsdq_deq    = new vsdq_deqIO();
-    val dcachereq   = new vec_dcachereqIO();
-    val dcacheresp  = new vec_dcacherespIO();
+    // vector load and store request queues, go to CP
+    val vlrq        = new vlrqIO().flip;
+    val vsrq        = new vsrqIO().flip;
+    val vmldq       = new vmldqIO().flip;
   }
 
   class vuVMU_Ctrl_vec extends Component
   {
     val io = new vuVMU_Ctrl_vecIO();
-    
+
     val ctrl_vec_top          = new vuVMU_Ctrl_vec_top();
     val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 4, 2);
     val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
     val ctrl_vec_load_issue   = new vuVMU_Ctrl_vec_load_issue();
     val ctrl_vec_load_wb      = new vuVMU_Ctrl_vec_load_wb();
     val lrq                   = new queuePipePF(36, 4, 2);
-    val roq                   = new vuVMU_ROQ(130, 8, 3);
     val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
     val ctrl_vec_store        = new vuVMU_Ctrl_vec_store();
     val srq                   = new queuePipePF(128+28+16, 2, 1);
-
-    val roq_enq_val           = io.dcacheresp.valid && !(io.dcacheresp.tag(11).toBool);
-    val roq_enq_data_bits     = io.dcacheresp.data;
-    val roq_enq_tag_bits      = io.dcacheresp.tag(7,0);
+    val ctrl_vec_seq          = new vuVMU_Ctrl_vec_sequencer(8, 8);
 
     // ctrl_vec_top
-    ctrl_vec_top.io.vmcmdq      ^^ io.vmcmdq;
-    ctrl_vec_top.io.vmimmq      ^^ io.vmimmq;
-    ctrl_vec_top.io.vmstrideq   ^^ io.vmstrideq;
-    ctrl_vec_top.io.vmrespq     ^^ io.vmrespq;
+    ctrl_vec_top.io.vmcmdq      <> io.vmcmdq;
+    ctrl_vec_top.io.vmimmq      <> io.vmimmq;
+    ctrl_vec_top.io.vmstrideq   <> io.vmstrideq;
+    ctrl_vec_top.io.vmrespq     <> io.vmrespq;
     
     iscmdq.io.enq_bits          := ctrl_vec_top.io.iscmdq.bits;
     iscmdq.io.enq_val           := ctrl_vec_top.io.iscmdq.valid;
@@ -144,55 +121,36 @@ package riscvVector {
     ctrl_vec_top.io.store_busy  := ctrl_vec_store.io.store_busy;
 
     // ctrl_vec_load_issue
+    ctrl_vec_load_issue.io.vlrq <> io.vlrq;
+
     ctrl_vec_load_issue.io.iscmdq_deq_bits  := iscmdq.io.deq_bits.toUFix;
     ctrl_vec_load_issue.io.iscmdq_deq_val   := iscmdq.io.deq_val;
     iscmdq.io.deq_rdy                       := ctrl_vec_load_issue.io.iscmdq_deq_rdy;
 
-    lrq.io.enq_bits                         := ctrl_vec_load_issue.io.lrq_enq_bits;
-    lrq.io.enq_val                          := ctrl_vec_load_issue.io.lrq_enq_val;
-    ctrl_vec_load_issue.io.lrq_enq_rdy      := lrq.io.enq_rdy;
+    // ctrl_vec_load_wb
+    ctrl_vec_load_wb.io.vmldq             <> io.vmldq;
+    ctrl_vec_load_wb.io.vldq              <> io.vldq;
 
-    ctrl_vec_load_issue.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits.toUFix;
-    ctrl_vec_load_issue.io.roq_deq_tag_val  := roq.io.roq_deq_tag_val;
-    roq.io.roq_deq_tag_rdy                  := ctrl_vec_load_issue.io.roq_deq_tag_rdy;
-
-    // ctrl_vec_load_wb 
-    ctrl_vec_load_wb.io.wbcmdq_deq_bits := wbcmdq.io.deq_bits;
-    ctrl_vec_load_wb.io.wbcmdq_deq_val  := wbcmdq.io.deq_val;
-    wbcmdq.io.deq_rdy                   := ctrl_vec_load_wb.io.wbcmdq_deq_rdy;
-
-    ctrl_vec_load_wb.io.roq_deq_bits    := roq.io.roq_deq_data_bits(127,0);
-    ctrl_vec_load_wb.io.roq_deq_val     := roq.io.roq_deq_data_val;
-    roq.io.roq_deq_data_rdy             := ctrl_vec_load_wb.io.roq_deq_rdy;
-
-    ctrl_vec_load_wb.io.ldq ^^ io.vldq;
+    ctrl_vec_load_wb.io.wbcmdq_deq_bits   := wbcmdq.io.deq_bits;
+    ctrl_vec_load_wb.io.wbcmdq_deq_val    := wbcmdq.io.deq_val;
+    wbcmdq.io.deq_rdy                     := ctrl_vec_load_wb.io.wbcmdq_deq_rdy;
    
-    // roq
-    roq.io.roq_enq_data_bits := Cat(Bits("b00", 2), roq_enq_data_bits);
-    roq.io.roq_enq_tag_bits  := roq_enq_tag_bits;
-    roq.io.roq_enq_val       := roq_enq_val.toBool;
-
     // ctrl_vec_store
     ctrl_vec_store.io.stcmdq_deq_bits   := stcmdq.io.deq_bits;
     ctrl_vec_store.io.stcmdq_deq_val    := stcmdq.io.deq_val;
     stcmdq.io.deq_rdy                   := ctrl_vec_store.io.stcmdq_deq_rdy;
 
-    ctrl_vec_store.io.sdq_deq           ^^ io.vsdq_deq;
+    ctrl_vec_store.io.sdq_deq           <> io.vsdq_deq;
+    ctrl_vec_store.io.vsrq              <> io.vsrq;
 
-    srq.io.enq_bits                     := Cat(ctrl_vec_store.io.srq_enq_addr_bits,
-                                               ctrl_vec_store.io.srq_enq_wmask_bits,
-                                               ctrl_vec_store.io.srq_enq_data_bits);
-    srq.io.enq_val                      := ctrl_vec_store.io.srq_enq_val;
-    ctrl_vec_store.io.srq_enq_rdy       := srq.io.enq_rdy;
-
-    // stores are given priority over loads
-    io.dcachereq.valid  := lrq.io.deq_val || srq.io.deq_val;
-    lrq.io.deq_rdy      := Mux(srq.io.deq_val, Bool(false), io.dcachereq.rdy);
-    srq.io.deq_rdy      := io.dcachereq.rdy;
-    io.dcachereq.data   := srq.io.deq_bits(127, 0);
-    io.dcachereq.wmask  := srq.io.deq_bits(143, 128);
-    io.dcachereq.addr   := Mux(srq.io.deq_val, srq.io.deq_bits(171, 144), lrq.io.deq_bits(35,8));
-    io.dcachereq.tag    := Mux(srq.io.deq_val, Bits("h800", 12), Cat(Bits("b0", 4), lrq.io.deq_bits(7,0)));
-    io.dcachereq.op     := Mux(srq.io.deq_val, Bits("b0001", 4), Bits("b0000", 4));
+    // ctrl_vec_sequencer
+    ctrl_vec_seq.io.vlrq_val    := ctrl_vec_load_issue.io.vlrq.valid;
+    ctrl_vec_seq.io.vlrq_rdy    := io.vlrq.rdy;
+    ctrl_vec_seq.io.vmldq_val   := io.vmldq.valid;
+    ctrl_vec_seq.io.vmldq_rdy   := ctrl_vec_load_wb.io.vmldq.rdy;
+    ctrl_vec_seq.io.vsrq_val    := ctrl_vec_store.io.vsrq.valid;
+    ctrl_vec_seq.io.vsrq_rdy    := io.vsrq.rdy;
+    ctrl_vec_seq.io.vsackq_val  := Bool(true); // FIXME!
+    ctrl_vec_seq.io.vsackq_rdy  := Bool(true); // FIXME!
   }
 }

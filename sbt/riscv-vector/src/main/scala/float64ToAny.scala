@@ -21,12 +21,12 @@ class float64ToAny extends Component {
   val f64_to_rf64 = new float64ToRecodedFloat64();
   val rf64_to_any  = new recodedFloat64ToAny();
 
-  f64_to_rf64.io.in            ^^ io.in;
+  f64_to_rf64.io.in            <> io.in;
   f64_to_rf64.io.out           <> rf64_to_any.io.in;
-  rf64_to_any.io.roundingMode   ^^ io.roundingMode;
-  rf64_to_any.io.typeOp         ^^ io.typeOp;
-  rf64_to_any.io.out            ^^ io.out;
-  rf64_to_any.io.exceptionFlags ^^ io.exceptionFlags;
+  rf64_to_any.io.roundingMode   <> io.roundingMode;
+  rf64_to_any.io.typeOp         <> io.typeOp;
+  rf64_to_any.io.out            <> io.out;
+  rf64_to_any.io.exceptionFlags <> io.exceptionFlags;
 }
 
 } // End Package Fpu

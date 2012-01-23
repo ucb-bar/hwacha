@@ -56,30 +56,39 @@ package riscvVector {
     val ctrl_ut     = new vuVMU_Ctrl_ut();
     // queues
     // vldq queue and capacity counter
-    val vldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
-    val vldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+    val vldq_count  = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val vldq        = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
     // vsdq queue and capacity counter
-    val vsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
-    val vsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+    val vsdq_count  = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val vsdq        = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
     // utaq queue and capacity counter
-    val utaq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
-    val utaq = new queueSimplePF(32, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+    val utaq_count  = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val utaq        = new queueSimplePF(32, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
     // utldq queue and capacity counter
     val utldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
-    val utldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+    val utldq       = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
     // utsdq queue and capacity counter
     val utsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
-    val utsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+    val utsdq       = new queueSimplePF(65, VMU_QUEUE_ENTRIES, log2(VMU_QUEUE_ENTRIES));
+
+    // fake cp dmem interface
+    val vu_dmem_arbiter   = new vu_dmem_arbiter();
+
+    vu_dmem_arbiter.io.dcachereq  <> io.dmem_req_vec;
+    vu_dmem_arbiter.io.dcacheresp <> io.dmem_resp_vec;
+    vu_dmem_arbiter.io.vlrq       <> ctrl_vec.io.vlrq; 
+    vu_dmem_arbiter.io.vsrq       <> ctrl_vec.io.vsrq; 
+    vu_dmem_arbiter.io.vmldq      <> ctrl_vec.io.vmldq; 
 
     // ctrl_vec
-    ctrl_vec.io.vmcmdq      ^^ io.vmu_vcmdq;
-    ctrl_vec.io.vmimmq      ^^ io.vmu_vbaseq;
-    ctrl_vec.io.vmstrideq   ^^ io.vmu_vstrideq;
-    ctrl_vec.io.vmrespq     ^^ io.vmu_vackq;
-    ctrl_vec.io.dcachereq   ^^ io.dmem_req_vec; 
-    ctrl_vec.io.dcacheresp  ^^ io.dmem_resp_vec; 
+    ctrl_vec.io.vmcmdq      <> io.vmu_vcmdq;
+    ctrl_vec.io.vmimmq      <> io.vmu_vbaseq;
+    ctrl_vec.io.vmstrideq   <> io.vmu_vstrideq;
+    ctrl_vec.io.vmrespq     <> io.vmu_vackq;
 
     ctrl_vec.io.vldq.enq_rdy    := vldq.io.enq_rdy;
+    // ctrl_vec doesn't have vldq => causes chisel to throw
+    // NullPointerException
     vldq.io.enq_val             := ctrl_vec.io.vldq.enq_val;
     vldq.io.enq_bits            := ctrl_vec.io.vldq.enq_bits;
    
@@ -88,11 +97,11 @@ package riscvVector {
     vsdq.io.deq_rdy             := ctrl_vec.io.vsdq_deq.rdy;
 
     // ctrl_ut
-    ctrl_ut.io.utmcmdq    ^^ io.vmu_utcmdq;
-    ctrl_ut.io.utmimmq    ^^ io.vmu_utimmq;
-    ctrl_ut.io.utmrespq   ^^ io.vmu_utackq;
-    ctrl_ut.io.dcachereq  ^^ io.dmem_req_ut;
-    ctrl_ut.io.dcacheresp ^^ io.dmem_resp_ut;
+    ctrl_ut.io.utmcmdq    <> io.vmu_utcmdq;
+    ctrl_ut.io.utmimmq    <> io.vmu_utimmq;
+    ctrl_ut.io.utmrespq   <> io.vmu_utackq;
+    ctrl_ut.io.dcachereq  <> io.dmem_req_ut;
+    ctrl_ut.io.dcacheresp <> io.dmem_resp_ut;
 
     ctrl_ut.io.utaq_deq.valid   := utaq.io.deq_val;
     ctrl_ut.io.utaq_deq.bits    := utaq.io.deq_bits;

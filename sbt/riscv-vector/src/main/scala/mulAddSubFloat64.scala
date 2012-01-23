@@ -26,17 +26,17 @@ class mulAddSubFloat64 extends Component {
   val mulAddR64   = new mulAddSubRecodedFloat64_1();
   val mulrf64f64  = new recodedFloat64ToFloat64();
 
-  mulAf64rf64.io.in ^^ io.a;
-  mulBf64rf64.io.in ^^ io.b;
-  mulCf64rf64.io.in ^^ io.c;
+  mulAf64rf64.io.in <> io.a;
+  mulBf64rf64.io.in <> io.b;
+  mulCf64rf64.io.in <> io.c;
   mulAf64rf64.io.out <> mulAddR64.io.a;
   mulBf64rf64.io.out <> mulAddR64.io.b;
   mulCf64rf64.io.out <> mulAddR64.io.c;
-  mulAddR64.io.roundingMode ^^ io.rounding_mode;
-  mulAddR64.io.exceptionFlags ^^ io.exception_flags;
-  mulAddR64.io.op ^^ io.op;
+  mulAddR64.io.roundingMode <> io.rounding_mode;
+  mulAddR64.io.exceptionFlags <> io.exception_flags;
+  mulAddR64.io.op <> io.op;
   mulAddR64.io.out <> mulrf64f64.io.in;
-  mulrf64f64.io.out ^^ io.out;  
+  mulrf64f64.io.out <> io.out;  
 }
 
 } // End Package Fpu

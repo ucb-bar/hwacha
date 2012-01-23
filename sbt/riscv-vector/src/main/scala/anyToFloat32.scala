@@ -21,13 +21,13 @@ class anyToFloat32 extends Component {
   val any_to_rf32  = new anyToRecodedFloat32();
   val rf32_to_f32 = new recodedFloat32ToFloat32();
 
-  any_to_rf32.io.in             ^^ io.in;
-  any_to_rf32.io.roundingMode   ^^ io.roundingMode;
-  any_to_rf32.io.typeOp         ^^ io.typeOp;
-  any_to_rf32.io.exceptionFlags ^^ io.exceptionFlags;
+  any_to_rf32.io.in             <> io.in;
+  any_to_rf32.io.roundingMode   <> io.roundingMode;
+  any_to_rf32.io.typeOp         <> io.typeOp;
+  any_to_rf32.io.exceptionFlags <> io.exceptionFlags;
   any_to_rf32.io.out            <> rf32_to_f32.io.in;
 
-  rf32_to_f32.io.out            ^^ io.out;
+  rf32_to_f32.io.out            <> io.out;
 }
 
 } // End Package Fpu
