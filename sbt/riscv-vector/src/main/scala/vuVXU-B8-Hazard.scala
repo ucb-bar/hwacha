@@ -74,9 +74,9 @@ class vuVXU_Banked8_Hazard extends Component
   {
     next_rport_val.write(next_ptr2, Bool(true));
 
-    when (io.fire.fn_viu(RG_VIU_T) === Cat(ML,MR))
+    when (io.fire_fn.viu(RG_VIU_T) === Cat(ML,MR))
     {
-      next_rport_val.write(ptr3, Bool(true));
+      next_rport_val.write(next_ptr3, Bool(true));
     }
   }
   when (io.fire.vau0)
@@ -95,7 +95,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr3, Bool(true));
     next_rport_vau1.write(next_ptr3, Bool(true));
 
-    when (io.fire.fn_vau1(2))
+    when (io.fire_fn.vau1(2))
     {
       next_rport_val.write(next_ptr4, Bool(true));
       next_rport_vau1.write(next_ptr4, Bool(true));
@@ -163,7 +163,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val tvec_viu_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      io.tvec_valid.viu && (issue.tvec_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> tvec_viu_wptr2,
+      (io.tvec_valid.viu && io.tvec_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> tvec_viu_wptr2,
       io.tvec_valid.viu -> tvec_viu_wptr1
     ));
 
@@ -203,8 +203,8 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_viu_wptr1_add = vt_viu_wptr1 + UFix(1, SZ_LGBANK1);
   val vt_viu_wptr1_add_sub = vt_viu_wptr1_add - io.issue_to_hazard.bcnt;
 
-  val vt_viu_wptr2_add = vt_viu_wptr2 + UFix(1, SZ_LGBANK1);
-  val vt_viu_wptr2_add_sub = vt_viu_wptr2_add - io.issue_to_hazard.bcnt;
+  val vt_vau1_wptr2_add = vt_vau1_wptr2 + UFix(1, SZ_LGBANK1);
+  val vt_vau1_wptr2_add_sub = vt_vau1_wptr2_add - io.issue_to_hazard.bcnt;
 
   val vt_viu_wptr2 = Mux(
     vt_viu_wptr1_add < io.issue_to_hazard.bcnt, vt_viu_wptr1_add(SZ_LGBANK-1,0),
@@ -216,14 +216,22 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_viu_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      io.vt_valid.viu && (io.vt_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> vt_viu_wptr2,
+      (io.vt_valid.viu && io.vt_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> vt_viu_wptr2,
       io.vt_valid.viu -> vt_viu_wptr1
     ));
 
   val vt_vau1_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      io.vt_valid.vau1 && (io.vt_fn.vau1(2) === Bits(1,1)) -> vt_vau1_wptr3,
+      (io.vt_valid.vau1 && io.vt_fn.vau1(2) === Bits(1,1)) -> vt_vau1_wptr3,
       io.vt_valid.vau1 -> vt_vau1_wptr2
+    ));
+
+  val vt_wptr = MuxCase(
+    Bits(0,SZ_LGBANK), Array(
+      io.vt_valid.viu -> vt_viu_wptr,
+      io.vt_valid.vau0 -> vt_vau0_wptr,
+      io.vt_valid.vau1 -> vt_vau1_wptr,
+      io.vt_valid.vau2 -> vt_vau2_wptr
     ));
 
   // for the fire port
@@ -363,12 +371,12 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   // hazard check logic for tvec/vt
-  val shazard_vau0 = (array_rport_val.flat() | array_rport_vau0.flat()).orR() || (array_wport_val.flat() | array_wport_vau0.flat()).orR();
-  val shazard_vau1 = (array_rport_val.flat() | array_rport_vau1.flat()).orR() || (array_wport_val.flat() | array_wport_vau1.flat()).orR();
-  val shazard_vau2 = (array_rport_val.flat() | array_rport_vau2.flat()).orR() || (array_wport_val.flat() | array_wport_vau2.flat()).orR();
-  val shazard_vgu = (array_rport_val.flat() | array_rport_vgu.flat()).orR();
-  val shazard_vlu = (array_wport_val.flat() | array_wport_vlu.flat()).orR();
-  val shazard_vsu = (array_rport_val.flat() | array_rport_vsu.flat()).orR();
+  val shazard_vau0 = (array_rport_val.flatten() | array_rport_vau0.flatten()).orR() || (array_wport_val.flatten() | array_wport_vau0.flatten()).orR();
+  val shazard_vau1 = (array_rport_val.flatten() | array_rport_vau1.flatten()).orR() || (array_wport_val.flatten() | array_wport_vau1.flatten()).orR();
+  val shazard_vau2 = (array_rport_val.flatten() | array_rport_vau2.flatten()).orR() || (array_wport_val.flatten() | array_wport_vau2.flatten()).orR();
+  val shazard_vgu = (array_rport_val.flatten() | array_rport_vgu.flatten()).orR();
+  val shazard_vlu = (array_wport_val.flatten() | array_wport_vlu.flatten()).orR();
+  val shazard_vsu = (array_rport_val.flatten() | array_rport_vsu.flatten()).orR();
 
   val seqhazard_1slot = array_sport_val.read(next_ptr1);
   val seqhazard_2slot = array_sport_val.read(next_ptr1) || array_sport_val.read(next_ptr2);
@@ -399,8 +407,8 @@ class vuVXU_Banked8_Hazard extends Component
       io.tvec_regid_imm.vd === array_wport_vd(0)
     );
 
-  val tvec_dhazard_vt = (array_wport_val.flat() & array_wport_head.flat() & tvec_comp_vt).orR();
-  val tvec_dhazard_vd = (array_wport_val.flat() & array_wport_head.flat() & tvec_comp_vd).orR();
+  val tvec_dhazard_vt = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vt).orR();
+  val tvec_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vd).orR();
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) || array_wport_val.read(tvec_viu_wptr);
   val tvec_bhazard_vlu = array_wport_val.read(next_ptr2);
@@ -490,10 +498,10 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_regid_imm.vd === array_wport_vd(0)
     );
 
-  val vt_dhazard_vs = (array_wport_val.flat() & array_wport_head.flat() & vt_comp_vs).orR();
-  val vt_dhazard_vt = (array_wport_val.flat() & array_wport_head.flat() & vt_comp_vt).orR();
-  val vt_dhazard_vr = (array_wport_val.flat() & array_wport_head.flat() & vt_comp_vr).orR();
-  val vt_dhazard_vd = (array_wport_val.flat() & array_wport_head.flat() & vt_comp_vd).orR();
+  val vt_dhazard_vs = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vs).orR();
+  val vt_dhazard_vt = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vt).orR();
+  val vt_dhazard_vr = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vr).orR();
+  val vt_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vd).orR();
 
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) || array_wport_val.read(vt_wptr);
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) || array_rport_val.read(next_ptr3) || array_wport_val.read(vt_wptr);
