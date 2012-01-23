@@ -3,7 +3,8 @@ package riscvVector
 
 import Chisel._;
 import Node._;
-import scala.collection.mutable.ArrayBuffer._;
+import scala.collection.mutable.ArrayBuffer;
+import scala.math._;
 
 object Config
 {
@@ -169,8 +170,8 @@ object Config
 
   val DEF_BANK    = SZ_BANK
   val DEF_BPTR    = SZ_LGBANK
-  val DEF_BPTR1   = SZ_LGBANK
-  val DEF_BPTR2   = SZ_LGBANK+1
+  val DEF_BPTR1   = SZ_LGBANK+1
+  val DEF_BPTR2   = SZ_LGBANK+2
   val DEF_BCNT    = SZ_LGBANK+1
   val DEF_BVLEN   = SZ_BVLEN
   val DEF_BREGLEN = SZ_BREGLEN
@@ -273,14 +274,97 @@ object ShiftRegister
   }
 }
 
-object GenArray{
-  def apply[T <: Data](n: Int)(gen: => T): ArrayBuffer[T] = 
+object log2up
+{
+  def apply(in: Int) = if (in == 1) 1 else ceil(log(in)/log(2)).toInt
+}
+
+object UFixToOH
+{
+  def apply(in: UFix, width: Int): Bits =
   {
-    val res = new ArrayBuffer[T];
-    for(i <- 0 until n)
-      res += gen;
-    res
+    val out = Bits(1, width)
+    (out << in)(width-1,0);
   }
 }
 
+class Mux1H(n: Int, w: Int) extends Component
+{
+  val io = new Bundle {
+    val sel = Vec(n) { Bool(dir = INPUT) }
+    val in = Vec(n) { Bits(width = w, dir = INPUT) }
+    val out = Bits(width = w, dir = OUTPUT)
+  }
+
+  if (n > 1) {
+    var out = io.in(0) & Fill(w, io.sel(0))
+    for (i <- 1 to n-1)
+      out = out | (io.in(i) & Fill(w, io.sel(i)))
+    io.out := out
+  } else {
+    io.out := io.in(0)
+  }
+}
+
+object GenArray{
+  def apply[T <: Data](n: Int)(gen: => T): GenArray[T] = 
+  {
+    val res = new GenArray[T];
+    for(i <- 0 until n)
+      res += gen;
+    res.width = res(0).width;
+    if (res.width == -1) throw new Exception();
+    res
+  }
+}
+object GenBuf{
+  def apply[T <: Data](n: Int)(gen: => GenArray[T]): ArrayBuffer[GenArray[T]] = 
+    {
+      val res = new ArrayBuffer[GenArray[T]];
+      for(i <- 0 until n)
+	res += gen;
+      res
+    }
+}
+
+class GenArray[T <: Data] extends ArrayBuffer[T] {
+  var width = 0;
+
+  def write(addr: UFix, data: T) = {
+    if(data.isInstanceOf[Node]){
+
+      val onehot = UFixToOH(addr, length);
+      for(i <- 0 until length){
+	conds.push(conds.top && onehot(i).toBool);
+	this(i).comp procAssign data.toNode;
+	conds.pop;
+      }
+    }
+  }
+
+  def write(addr: Bits, data: T): Unit = {
+    write(addr.toUFix, data);
+  }
+
+  def read(addr: UFix): T = {
+    val mux1h = new Mux1H(length, width);
+    val onehot = UFixToOH(addr, length);
+    for(i <- 0 until length){
+      mux1h.io.sel(i) := onehot(i).toBool;
+      mux1h.io.in(i)  assign this(i);
+    }
+    val res = this(0).clone;
+    res.setIsCellIO;
+    res assign mux1h.io.out;
+    res
+  }
+
+  def flatten(): Bits = {
+    var res: Bits = null;
+    for(i <- 0 until length)
+      res = Cat(this(i), res)
+    res
+  }
+}
+  
 }
