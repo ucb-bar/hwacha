@@ -312,7 +312,7 @@ object GenArray{
     val res = new GenArray[T];
     for(i <- 0 until n)
       res += gen;
-    res.width = res(0).width;
+    res.width = res(0).getWidth;
     if (res.width == -1) throw new Exception();
     res
   }
@@ -370,6 +370,17 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
   def :=[T <: Data](src: GenArray[T]) = {
     for((src, dest) <- this zip src){
       src := dest;
+    }
+  }
+
+  def <== (src: Bits) = {
+    for(i <- 0 until length)
+      this(i) <== src(i);
+  }
+  
+  def <==[T <: Data](src: GenArray[T]) = {
+    for((src, dest) <- this zip src){
+      src <== dest;
     }
   }
 

@@ -107,25 +107,22 @@ class vuVXU_Banked8_Seq extends Component {
   array_utldq := next_utldq.flatten();
   array_utsdq := next_utsdq.flatten();
 
-  for (i <- 0 until SZ_BANK)
-    {
-      array_fn_viu(i)  := next_fn_viu(i);
-      array_fn_vau0(i) := next_fn_vau0(i);
-      array_fn_vau1(i) := next_fn_vau1(i);
-      array_fn_vau2(i) := next_fn_vau2(i);
-      array_vlen(i)    := next_vlen(i);
-      array_utidx(i)   := next_utidx(i);
-      array_stride(i)  := next_stride(i);
-      array_vs_zero(i) := next_vs_zero(i);
-      array_vt_zero(i) := next_vt_zero(i);
-      array_vr_zero(i) := next_vr_zero(i);
-      array_vd_zero(i) := next_vd_zero(i);
-      array_vs(i)      := next_vs(i);
-      array_vt(i)      := next_vt(i);
-      array_vr(i)      := next_vr(i);
-      array_vd(i)      := next_vd(i);
-      array_imm(i)     := next_imm(i);
-    }
+  array_fn_viu  := next_fn_viu;
+  array_fn_vau0 := next_fn_vau0;
+  array_fn_vau1 := next_fn_vau1;
+  array_fn_vau2 := next_fn_vau2;
+  array_vlen    := next_vlen;
+  array_utidx   := next_utidx;
+  array_stride  := next_stride;
+  array_vs_zero := next_vs_zero;
+  array_vt_zero := next_vt_zero;
+  array_vr_zero := next_vr_zero;
+  array_vd_zero := next_vd_zero;
+  array_vs      := next_vs;
+  array_vt      := next_vt;
+  array_vr      := next_vr;
+  array_vd      := next_vd;
+  array_imm     := next_imm;
 
   val last = io.issue_to_seq.vlen < io.issue_to_seq.bcnt;
 
@@ -308,39 +305,36 @@ class vuVXU_Banked8_Seq extends Component {
 
   otherwise 
   {
-    for (i <- 0 until SZ_BANK)
-      {
-	next_val(i)   <== array_val(i);
-	next_last(i)  <== array_last(i);
-	next_viu(i)   <== array_viu(i);
-	next_vau0(i)  <== array_vau0(i);
-	next_vau1(i)  <== array_vau1(i);
-	next_vau2(i)  <== array_vau2(i);
-	next_vldq(i)  <== array_vldq(i);
-	next_vsdq(i)  <== array_vsdq(i);
-	next_utaq(i)  <== array_utaq(i);
-	next_utldq(i) <== array_utldq(i);
-	next_utsdq(i) <== array_utsdq(i);
+    next_val   <== array_val;
+    next_last  <== array_last;
+    next_viu   <== array_viu;
+    next_vau0  <== array_vau0;
+    next_vau1  <== array_vau1;
+    next_vau2  <== array_vau2;
+    next_vldq  <== array_vldq;
+    next_vsdq  <== array_vsdq;
+    next_utaq  <== array_utaq;
+    next_utldq <== array_utldq;
+    next_utsdq <== array_utsdq;
 
-	
-	next_fn_viu(i)  <== array_fn_viu(i);
-	next_fn_vau0(i) <== array_fn_vau0(i);
-	next_fn_vau1(i) <== array_fn_vau1(i);
-	next_fn_vau2(i) <== array_fn_vau2(i);
-	next_vlen(i)    <== array_vlen(i);
-	next_utidx(i)   <== array_utidx(i);
-	next_stride(i)  <== array_stride(i);
-	next_vs_zero(i) <== array_vs_zero(i);
-	next_vt_zero(i) <== array_vt_zero(i);
-	next_vr_zero(i) <== array_vr_zero(i);
-	next_vd_zero(i) <== array_vd_zero(i);
-	next_vs(i)      <== array_vs(i);
-	next_vt(i)      <== array_vt(i);
-	next_vr(i)      <== array_vr(i);
-	next_vd(i)      <== array_vd(i);
-	next_imm(i)     <== array_imm(i);
-      }
-  }
+    
+    next_fn_viu  <== array_fn_viu;
+    next_fn_vau0 <== array_fn_vau0;
+    next_fn_vau1 <== array_fn_vau1;
+    next_fn_vau2 <== array_fn_vau2;
+    next_vlen    <== array_vlen;
+    next_utidx   <== array_utidx;
+    next_stride  <== array_stride;
+    next_vs_zero <== array_vs_zero;
+    next_vt_zero <== array_vt_zero;
+    next_vr_zero <== array_vr_zero;
+    next_vd_zero <== array_vd_zero;
+    next_vs      <== array_vs;
+    next_vt      <== array_vt;
+    next_vr      <== array_vr;
+    next_vd      <== array_vd;
+    next_imm     <== array_imm;
+}
 
   val next_dep_vldq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_vsdq = GenArray(SZ_BANK){ Wire(){ Bool() } };
@@ -354,14 +348,11 @@ class vuVXU_Banked8_Seq extends Component {
   val array_dep_utldq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_utsdq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
 
-  for(i <- 0 until SZ_BANK)
-    {
-      array_dep_vldq(i) := next_dep_vldq(i);
-      array_dep_vsdq(i) := next_dep_vsdq(i);
-      array_dep_utaq(i) := next_dep_utaq(i);
-      array_dep_utldq(i) := next_dep_utldq(i);
-      array_dep_utsdq(i) := next_dep_utsdq(i);
-    }
+  array_dep_vldq  := next_dep_vldq;
+  array_dep_vsdq  := next_dep_vsdq;
+  array_dep_utaq  := next_dep_utaq;
+  array_dep_utldq := next_dep_utldq;
+  array_dep_utsdq := next_dep_utsdq;
   
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
@@ -461,15 +452,12 @@ class vuVXU_Banked8_Seq extends Component {
 
   otherwise 
   {
-    for(i <- 0 until SZ_BANK)
-      {
-	next_dep_vldq(i) <== array_dep_vldq(i);
-	next_dep_vsdq(i) <== array_dep_vsdq(i);
-	next_dep_utaq(i) <== array_dep_utaq(i);
-	next_dep_utldq(i) <== array_dep_utldq(i);
-	next_dep_utsdq(i) <== array_dep_utsdq(i);
-      }
-  }
+    next_dep_vldq <== array_dep_vldq;
+    next_dep_vsdq <== array_dep_vsdq;
+    next_dep_utaq <== array_dep_utaq;
+    next_dep_utldq <== array_dep_utldq;
+    next_dep_utsdq <== array_dep_utsdq;
+}
 
   val current_val = array_val(reg_ptr);
   val current_vldq_val = current_val & array_vldq(reg_ptr);
