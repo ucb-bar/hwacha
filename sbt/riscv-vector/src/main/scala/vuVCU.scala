@@ -212,40 +212,40 @@ package riscvVector
         (sel_vxu_cmdq === LDWB) -> Cat(CMD_LDWB, io.vec_cmdq.bits(11,0)),
         (sel_vxu_cmdq === STAC) -> Cat(CMD_STAC, io.vec_cmdq.bits(11,0))));
 
-      val vxu_immq_bits = io.vec_ximm1q.bits;
-      val vmu_vcmdq_bits = Cat(cmd, vlen);
-      val vmu_vbaseq_bits = io.vec_ximm1q.bits(31,0);
-      val vmu_vstrideq_bits = io.vec_ximm2q.bits;
+    io.vxu_immq.bits := io.vec_ximm1q.bits;
+    io.vmu_vcmdq.bits := Cat(cmd, vlen);
+    io.vmu_vbaseq.bits := io.vec_ximm1q.bits(31,0);
+    io.vmu_vstrideq.bits := io.vec_ximm2q.bits;
 
-      switch(state)
+    switch(state)
+    {
+      is(VCU_FORWARD)
       {
-        is(VCU_FORWARD)
-        {
-        }
-        is(VCU_FENCE_CV)
-        {
-          when(io.vxu_ackq.valid && io.vmu_vackq.valid)
-          {
-            io.vec_ackq.bits <== Bits(1,32);
-            io.vec_ackq.valid <== Bool(true);
-          }
-          io.vxu_ackq.ready <== io.vmu_vackq.valid;
-          io.vmu_vackq.ready <== io.vxu_ackq.valid;
-        }
-        is(VCU_FENCE_V)
-        {
-          io.vxu_ackq.ready <== io.vmu_vackq.valid;
-          io.vmu_vackq.ready <== io.vxu_ackq.valid;
-        }
-        otherwise
-        {
-          io.vec_ackq.bits <== Bits(0,32);
-          io.vec_ackq.valid <== Bool(false);
-          io.vxu_ackq.ready <== Bool(false);
-          io.vmu_vackq.ready <== Bool(false);
-        }
       }
-
-
+      is(VCU_FENCE_CV)
+      {
+        when(io.vxu_ackq.valid && io.vmu_vackq.valid)
+        {
+          io.vec_ackq.bits <== Bits(1,32);
+          io.vec_ackq.valid <== Bool(true);
+        }
+        io.vxu_ackq.ready <== io.vmu_vackq.valid;
+        io.vmu_vackq.ready <== io.vxu_ackq.valid;
+      }
+      is(VCU_FENCE_V)
+      {
+        io.vxu_ackq.ready <== io.vmu_vackq.valid;
+        io.vmu_vackq.ready <== io.vxu_ackq.valid;
+      }
+      otherwise
+      {
+        io.vec_ackq.bits <== Bits(0,32);
+        io.vec_ackq.valid <== Bool(false);
+        io.vxu_ackq.ready <== Bool(false);
+        io.vmu_vackq.ready <== Bool(false);
+      }
     }
+
+
   }
+}
