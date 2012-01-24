@@ -5,6 +5,7 @@ package riscvVector
   import Config._
   import Commands._
   import Instructions._
+  import Interface._
 
   class vuVCU extends Component
   {

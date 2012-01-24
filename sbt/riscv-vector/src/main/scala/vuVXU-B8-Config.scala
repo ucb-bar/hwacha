@@ -179,54 +179,9 @@ object Config
   val DEF_BRPORT  = SZ_BRPORT
   val DEF_BWPORT  = SZ_BWPORT
 
-  val VLENMAX_SZ     = 11
-  val VCMD_SZ        = 20
-  val VCMD_CMD_SZ    = 8
-  val VCMD_VD_SZ     = 6
-  val VCMD_VS_SZ     = 6
-  val VIMM_SZ        = 64
-  val VSTRIDE_SZ     = 32
-  val VRESP_SZ       = 32
-  val XCMD_SZ        = 20
-  val XCMD_CMD_SZ    = 8
-  val XCMD_VD_SZ     = 6
-  val XCMD_VS_SZ     = 6
-  val XIMM_SZ        = 64
-  val XRESP_SZ       = 1
-  val XFCMD_SZ       = 68
-  val XFCMD_OP_SZ    = 4
-  val XFCMD_RS_SZ    = 32
-  val XFCMD_RT_SZ    = 32
-  val XFRESP_SZ      = 32
-  val VMCMD_SZ       = 19
-  val VMCMD_CMD_SZ   = 8
-  val VMCMD_VLEN_SZ  = VLENMAX_SZ
-  val VMIMM_SZ       = 32
-  val VMSTRIDE_SZ    = 32
-  val VMRESP_SZ      = 1
-  val VM_STCMD_SZ    = 4+VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ
-  val VM_ISCMD_SZ    = VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ
-  val VM_WBCMD_SZ    = 4+VMCMD_VLEN_SZ+VMIMM_SZ+VMSTRIDE_SZ
-  val UTMCMD_SZ      = 19
-  val UTMCMD_CMD_SZ  = 8
-  val UTMCMD_VLEN_SZ = VLENMAX_SZ
-  val UTMIMM_SZ      = 32
-  val UTMRESP_SZ     = 1
-
   val XCMD_CMCODE  = (19,12);
   val XCMD_VD      = (11,6);
   val XCMD_VS      = (5,0);
-
-  val DEF_VXU_CMDQ = XCMD_SZ
-  val DEF_VXU_IMMQ = XIMM_SZ
-  val DEF_VXU_ACKQ = XRESP_SZ
-  val DEF_VMU_VCMDQ = VMCMD_SZ
-  val DEF_VMU_VBASEQ = VMIMM_SZ
-  val DEF_VMU_VSTRIDEQ = VMSTRIDE_SZ
-  val DEF_VMU_VACKQ = VMRESP_SZ
-  val DEF_VMU_UTCMDQ = UTMCMD_SZ
-  val DEF_VMU_UTIMMQ = UTMIMM_SZ
-  val DEF_VMU_UTACKQ = UTMRESP_SZ
 }
 
 object Match

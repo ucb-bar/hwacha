@@ -4,6 +4,7 @@ package riscvVector
 import Chisel._
 import Node._
 import Config._
+import Interface._
 
 class io_ready_valid[T <: Data]()(data: => T) extends Bundle
 {
@@ -290,6 +291,21 @@ class io_vxu_issue_tvec extends Bundle
   val bhazard = new io_vxu_issue_op().asOutput;
   val fn = new io_vxu_issue_fn().asOutput;
   val decoded = new io_vxu_issue_regid_imm().asOutput;
+}
+
+class io_vcu extends Bundle
+{
+  val vec_cmdq = (new io_ready_valid){Bits(width = VCMD_SZ)}.flip();
+  val vec_ximm1q = (new io_ready_valid){Bits(width = VIMM_SZ)}.flip();
+  val vec_ximm2q = (new io_ready_valid){Bits(width = VSTRIDE_SZ)}.flip();
+  val vxu_cmdq  = (new io_ready_valid){Bits(width = XCMD_SZ)};
+  val vxu_immq  = (new io_ready_valid){Bits(width = XIMM_SZ)};
+  val vmu_vcmdq = (new io_ready_valid){Bits(width = VMCMD_SZ)};
+  val vmu_vbaseq = (new io_ready_valid){Bits(width = VMIMM_SZ)};
+  val vmu_vstrideq = (new io_ready_valid){Bits(width = VMSTRIDE_SZ)};
+  val vec_ackq = (new io_ready_valid){Bits(width = VRESP_SZ)};
+  val vxu_ackq = (new io_ready_valid){Bits(width = XRESP_SZ)}.flip();
+  val vmu_vackq = (new io_ready_valid){Bits(width = VMRESP_SZ)}.flip();
 }
 
 class io_vxu_issue_vt extends Bundle

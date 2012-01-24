@@ -5,7 +5,6 @@ package riscvVector {
   object Interface {
       val VLENMAX_SZ  = 11;
 
-      // vcmdq
       val VCMD_SZ      = 20;
 
       val VCMD_CMD_SZ  = 8;
@@ -125,18 +124,17 @@ package riscvVector {
       val UT_ISCMD_SZ = UTMIMM_SZ+UTMCMD_VLEN_SZ;
       val UT_WBCMD_SZ = 5+UTMCMD_VLEN_SZ; // add amo
       val UT_STCMD_SZ = 6+UTMIMM_SZ+UTMCMD_VLEN_SZ; // add amo
-    /*
-      val DEF_VXU_CMDQ [`XCMD_SZ-1:0]
-      val DEF_VXU_IMMQ [`XIMM_SZ-1:0]
-      val DEF_VXU_ACKQ [`XRESP_SZ-1:0]
-      val DEF_VMU_VCMDQ [`VMCMD_SZ-1:0]
-      val DEF_VMU_VBASEQ [`VMIMM_SZ-1:0]
-      val DEF_VMU_VSTRIDEQ [`VMSTRIDE_SZ-1:0]
-      val DEF_VMU_VACKQ [`VMRESP_SZ-1:0]
-      val DEF_VMU_UTCMDQ [`UTMCMD_SZ-1:0]
-      val DEF_VMU_UTIMMQ [`UTMIMM_SZ-1:0]
-      val DEF_VMU_UTACKQ [`UTMRESP_SZ-1:0]
-    */
+  
+      val DEF_VXU_CMDQ = XCMD_SZ;
+      val DEF_VXU_IMMQ = XIMM_SZ;
+      val DEF_VXU_ACKQ = XRESP_SZ;
+      val DEF_VMU_VCMDQ = VMCMD_SZ;
+      val DEF_VMU_VBASEQ = VMIMM_SZ;
+      val DEF_VMU_VSTRIDEQ = VMSTRIDE_SZ;
+      val DEF_VMU_VACKQ = VMRESP_SZ;
+      val DEF_VMU_UTCMDQ = UTMCMD_SZ;
+      val DEF_VMU_UTIMMQ = UTMIMM_SZ;
+      val DEF_VMU_UTACKQ = UTMRESP_SZ;
   }
 
 }

@@ -5,6 +5,7 @@ import Chisel._
 import Node._
 import Config._
 import Commands._
+import Interface._
 
 class vuVXU_Issue_TVEC extends Component
 {
