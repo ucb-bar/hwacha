@@ -64,22 +64,25 @@ class Arbiter[T <: Data](n: Int)(data: => T) extends Component
 //class io_utldq extends io_ready_valid { Bits(width = DEF_DATA) };
 //class io_utstq extends io_ready_valid { Bits(width = DEF_DATA) };
 
-class io_imul extends Bundle
+class io_imul_req extends Bundle
 {
-  val fn = Bits(DEF_VAU0_FN, OUTPUT);
-  val in0 = Bits(DEF_XLEN, OUTPUT);
-  val in1 = Bits(DEF_XLEN, OUTPUT);
-  val out = Bits(DEF_XLEN, INPUT);
+  val fn = Bits(width=DEF_VAU0_FN);
+  val in0 = Bits(width=DEF_XLEN);
+  val in1 = Bits(width=DEF_XLEN);
 }
 
-class io_fma extends Bundle
+class io_fma_req extends Bundle
 {
-  val fn = Bits(DEF_VAU1_FN, OUTPUT);
-  val in0 = Bits(DEF_FLEN, OUTPUT);
-  val in1 = Bits(DEF_FLEN, OUTPUT);
-  val in2 = Bits(DEF_FLEN, OUTPUT);
-  val out = Bits(DEF_FLEN, INPUT);
-  val exc = Bits(DEF_EXC, INPUT);
+  val fn = Bits(width=DEF_VAU1_FN);
+  val in0 = Bits(width=DEF_FLEN);
+  val in1 = Bits(width=DEF_FLEN);
+  val in2 = Bits(width=DEF_FLEN);
+}
+
+class io_fma_resp extends Bundle
+{
+  val out = Bits(width=DEF_FLEN);
+  val exc = Bits(width=DEF_EXC);
 }
 
 //class io_cp_imul extends io_ready_valid { new io_imul() };
@@ -333,6 +336,33 @@ class io_vxu_issue_vt extends Bundle
   val decoded = new io_vxu_issue_regid_imm().asOutput;
 }
 
+class io_vxu extends Bundle
+{
+  val illegal = Bool(OUTPUT);
+
+  val vxu_cmdq = (new io_ready_valid){Bits(width = DEF_VXU_CMDQ)}.flip();
+  val vxu_immq = (new io_ready_valid){Bits(width = DEF_VXU_IMMQ)}.flip();
+  val vxu_ackq = (new io_ready_valid){Bits(width = DEF_VXU_ACKQ)};
+
+  val vmu_utcmdq = (new io_ready_valid){Bits(width=DEF_VMU_UTCMDQ)};
+  val vmu_utimmq = (new io_ready_valid){Bits(width=DEF_VMU_UTIMMQ)};
+  val vmu_utackq = (new io_ready_valid){Bits(width=DEF_VMU_UTACKQ)}.flip();
+
+  val cp_imul_req = (new io_ready_valid()){new io_imul_req()}.flip();
+  val cp_imul_resp = Bits(DEF_XLEN, OUTPUT);
+  val cp_fma_req = (new io_ready_valid()){new io_fma_req()}.flip();
+  val cp_fma_resp = new io_fma_resp().asOutput;
+
+  val imem_req = (new io_ready_valid){Bits(width = DEF_ADDR)};
+  val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
+
+  val lane_vldq = (new io_ready_valid){Bits(width=DEF_DATA)}.flip();
+  val lane_vsdq = (new io_ready_valid){Bits(width=DEF_DATA)};
+  val lane_utaq = (new io_ready_valid){Bits(width=DEF_ADDR)};
+  val lane_utldq = (new io_ready_valid){Bits(width=DEF_DATA)}.flip();
+  val lane_utsdq = (new io_ready_valid){Bits(width=DEF_DATA)}
+}
+
 class io_vxu_issue extends Bundle
 {
   val illegal = Bool(OUTPUT);
@@ -421,6 +451,7 @@ class io_vxu_seq extends Bundle
 {
   val issue_to_seq = new io_vxu_issue_to_seq().asInput;
   val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput;
+  val seq_to_expand = new io_vxu_seq_to_expand().asOutput;
 
   val qstall = new io_qstall().asInput;
 
@@ -448,31 +479,6 @@ class io_vxu_expand extends Bundle
   val rblen_0 = Bits(8, OUTPUT);
   val rblen_1 = Bits(8, OUTPUT);
   val rblen_2 = Bits(8, OUTPUT);
-}
-
-class io_vxu extends Bundle
-{
-  val illegal = Bool(OUTPUT);
-
-  val vxu_cmdq = (new io_ready_valid){Bits(width = DEF_VXU_CMDQ)}.flip();
-  val vxu_immq = (new io_ready_valid){Bits(width = DEF_VXU_IMMQ)}.flip();
-  val vxu_ackq = (new io_ready_valid){Bits(width = DEF_VXU_ACKQ)};
-
-  val vmu_utcmdq = (new io_ready_valid){Bits(width = DEF_VMU_UTCMDQ)};
-  val vmu_utimmq = (new io_ready_valid){Bits(width = DEF_VMU_UTIMMQ)};
-  val vmu_utackq = (new io_ready_valid){Bits(width = DEF_VMU_UTACKQ)};
-
-  val cp_imul = (new io_ready_valid){new io_imul()}.flip();
-  val cp_fma = (new io_ready_valid){new io_fma()}.flip();
-
-  val imem_req = (new io_ready_valid){Bits(width = DEF_ADDR)};
-  val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
-
-  val lane_vldq = (new io_ready_valid){Bits(width = DEF_DATA)}.flip();
-  val lane_vsdq = (new io_ready_valid){Bits(width = DEF_DATA)};
-  val lane_utaq = (new io_ready_valid){Bits(width = DEF_ADDR)};
-  val lane_utldq = (new io_ready_valid){Bits(width = DEF_DATA)}.flip();
-  val lane_utsdq = (new io_ready_valid){Bits(width = DEF_DATA)};
 }
 
 }

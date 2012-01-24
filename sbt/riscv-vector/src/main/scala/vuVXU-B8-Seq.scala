@@ -493,6 +493,7 @@ class vuVXU_Banked8_Seq extends Component {
   io.seq_to_hazard.stall := Cat(reg_vldq_stall,reg_vsdq_stall,reg_utaq_stall,reg_utldq_stall,reg_utsdq_stall);
 
   io.seq_to_hazard.last := ~stall & current_val & array_last(reg_ptr);
+  io.seq_to_expand.last := ~stall & current_val & array_last(reg_ptr);
 
   io.seq.viu := ~stall & current_val & array_viu(reg_ptr);
   io.seq.vau0 := ~stall & current_val & array_vau0(reg_ptr);
