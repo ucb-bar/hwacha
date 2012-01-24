@@ -78,6 +78,8 @@ class vuVXU extends Component
 
   val b8expand = new vuVXU_Banked8_Expand();
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand;
+  b8expand.io.expand_to_hazard <> b8hazard.io.expand_to_hazard;
+
   b8expand.io.seq <> b8seq.io.seq;
   b8expand.io.seq_fn <> b8seq.io.seq_fn;
   b8expand.io.seq_regid_imm <> b8seq.io.seq_regid_imm;

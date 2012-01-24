@@ -481,6 +481,8 @@ class vuVXU_Banked8_Expand extends Component
     next_utsdq(SHIFT_BUF_READ-1)     <== Bool(false);
   }
 
+  io.expand_to_hazard.ren := reg_ren(0);
+  io.expand_to_hazard.wen := reg_wen(0);
 
   io.expand_read.ren    := reg_ren(0);
   io.expand_read.rlast  := reg_rlast(0);

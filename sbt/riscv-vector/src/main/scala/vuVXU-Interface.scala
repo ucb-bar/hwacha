@@ -467,6 +467,7 @@ class io_vxu_seq extends Bundle
 class io_vxu_expand extends Bundle
 {
   val seq_to_expand = new io_vxu_seq_to_expand().asInput;
+  val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput;
 
   val seq = new io_vxu_seq_fu().asInput;
   val seq_fn = new io_vxu_seq_fn().asInput;
