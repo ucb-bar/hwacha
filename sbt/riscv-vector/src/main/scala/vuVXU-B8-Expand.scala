@@ -503,17 +503,17 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_fu_fn.viu_fn    := reg_viu_fn(0);
   io.expand_fu_fn.viu_utidx := reg_viu_utidx(0);
   io.expand_fu_fn.viu_imm   := reg_viu_imm(0);
-  io.expand_fu_fn.vau0      := reg_vau0(0);
-  io.expand_fu_fn.vau0_fn   := reg_vau0_fn(0);
-  io.expand_fu_fn.vau1      := reg_vau1(0);
-  io.expand_fu_fn.vau1_fn   := reg_vau1_fn(0);
-  io.expand_fu_fn.vau2      := reg_vau2(0);
-  io.expand_fu_fn.vau2_fn   := reg_vau2_fn(0);
-  io.expand_fu_fn.vldq      := reg_vldq(0);
-  io.expand_fu_fn.vsdq      := reg_vsdq(0);
-  io.expand_fu_fn.utaq      := reg_utaq(0);
-  io.expand_fu_fn.utldq     := reg_utldq(0);
-  io.expand_fu_fn.utsdq     := reg_utsdq(0);
+  io.expand_lfu_fn.vau0      := reg_vau0(0);
+  io.expand_lfu_fn.vau0_fn   := reg_vau0_fn(0);
+  io.expand_lfu_fn.vau1      := reg_vau1(0);
+  io.expand_lfu_fn.vau1_fn   := reg_vau1_fn(0);
+  io.expand_lfu_fn.vau2      := reg_vau2(0);
+  io.expand_lfu_fn.vau2_fn   := reg_vau2_fn(0);
+  io.expand_lfu_fn.vldq      := reg_vldq(0);
+  io.expand_lfu_fn.vsdq      := reg_vsdq(0);
+  io.expand_lfu_fn.utaq      := reg_utaq(0);
+  io.expand_lfu_fn.utldq     := reg_utldq(0);
+  io.expand_lfu_fn.utsdq     := reg_utsdq(0);
 
 }
 }

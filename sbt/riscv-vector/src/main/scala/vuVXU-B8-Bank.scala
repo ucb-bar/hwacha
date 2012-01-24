@@ -20,7 +20,7 @@ class BankToBankIO extends Bundle
   val waddr = Bits(DEF_BREGLEN, INPUT);
   val wsel  = Bits(DEF_BWPORT, INPUT);
 
-  val viu_val   = Bool(INPUT)
+  val viu       = Bool(INPUT)
   val viu_fn    = Bits(DEF_VIU_FN, INPUT);
   val viu_utidx = Bits(DEF_VLEN, INPUT);
   val viu_imm   = Bits(DEF_DATA, INPUT);
@@ -69,7 +69,7 @@ class vuVXU_Banked8_Bank extends Component
   val reg_waddr = Reg(io.in.waddr);
   val reg_wsel  = Reg(io.in.wsel);
 
-  val reg_viu_val   = Reg(rpass & io.in.viu_val);
+  val reg_viu_val   = Reg(rpass & io.in.viu);
   val reg_viu_fn    = Reg(io.in.viu_fn);
   val reg_viu_utidx = Reg(io.in.viu_utidx.toUFix + UFix(1));
   val reg_viu_imm   = Reg(io.in.viu_imm);
@@ -83,7 +83,7 @@ class vuVXU_Banked8_Bank extends Component
   val delay_viu_fn  = reg_viu_fn;
   val delay_viu_imm = reg_viu_imm;
   
-  val delay_viu_val   = Reg(io.in.viu_val & io.active);
+  val delay_viu_val   = Reg(io.in.viu & io.active);
   val delay_viu_utidx = Reg(io.in.viu_utidx); 
 
   io.rw.rblen := delay_rblen;
@@ -146,7 +146,7 @@ class vuVXU_Banked8_Bank extends Component
   io.out.waddr := Mux(io.active, reg_waddr, io.in.waddr);
   io.out.wsel  := Mux(io.active, reg_wsel, io.in.wsel);
 
-  io.out.viu_val   := Mux(io.active, reg_viu_val, io.in.viu_val);
+  io.out.viu   := Mux(io.active, reg_viu_val, io.in.viu);
   io.out.viu_fn    := Mux(io.active, reg_viu_fn, io.in.viu_fn);
   io.out.viu_utidx := Mux(io.active, reg_viu_utidx, io.in.viu_utidx);
   io.out.viu_imm   := Mux(io.active, reg_viu_imm, io.in.viu_imm);

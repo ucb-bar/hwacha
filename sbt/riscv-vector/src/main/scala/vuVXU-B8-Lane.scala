@@ -65,10 +65,12 @@ class VMUIO extends Bundle
 class vuVXU_LaneIO extends Bundle 
 {
   val cp = new CPIO();
-  val bactive = Bits(DEF_BANK, INPUT);
-  val expand = new ExpanderIO().flip();
-  val lane_rlast = Bool(OUTPUT);
-  val lane_wlast = Bool(OUTPUT);
+  val issue_to_lane = new io_vxu_issue_to_lane().asInput();
+  val expand_read = new io_vxu_expand_read().asInput;
+  val expand_write = new io_vxu_expand_write().asInput;
+  val expand_fu_fn = new io_vxu_expand_fu_fn().asInput;
+  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput();
+  val lane_to_hazard = new io_lane_to_hazard().asOutput;
   val vmu = new VMUIO();
 }
 
@@ -92,11 +94,13 @@ class vuVXU_Banked8_Lane extends Component
   for (i <- 0 until SZ_BANK) 
   {
     val bank = new vuVXU_Banked8_Bank();
-    bank.io.active := io.bactive(i).toBool;
+    bank.io.active := io.issue_to_lane.bactive(i).toBool;
     
     if (first)
     { 
-      bank.io.in ^^ io.expand.bank; 
+      bank.io.in ^^ io.expand_read; 
+      bank.io.in ^^ io.expand_write;
+      bank.io.in ^^ io.expand_fu_fn;
       first = false ;
     } 
     else 
@@ -116,8 +120,8 @@ class vuVXU_Banked8_Lane extends Component
     bank.io.rw.wbl3 := Mux(io.vmu.utldq_rdy, io.vmu.utldq_bits, io.vmu.vldq_bits);
   }
 
-  io.lane_rlast := conn.last.rlast;
-  io.lane_wlast := conn.last.wlast;
+  io.lane_to_hazard.rlast := conn.last.rlast;
+  io.lane_to_hazard.wlast := conn.last.wlast;
 
   val xbar = new vuVXU_Banked8_Lane_Xbar();
   xbar.io.rblen <> rblen;
@@ -127,9 +131,9 @@ class vuVXU_Banked8_Lane extends Component
   val rbl = xbar.io.rbl;
 
   val lfu = new vuVXU_Banked8_Lane_LFU();
-  lfu.io.expand_rcnt := io.expand.bank.rcnt.toUFix;
-  lfu.io.expand_wcnt := io.expand.bank.wcnt.toUFix;
-  lfu.io.expand ^^ io.expand.lfu;
+  lfu.io.expand_rcnt := io.expand_read.rcnt.toUFix;
+  lfu.io.expand_wcnt := io.expand_write.wcnt.toUFix;
+  lfu.io.expand ^^ io.expand_lfu_fn;
 
   val vau0_val  = lfu.io.vau0_val;
   val vau0_fn   = lfu.io.vau0_fn;

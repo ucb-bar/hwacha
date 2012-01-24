@@ -26,6 +26,7 @@ package riscvVector
       //chiselMain(boot_args, () => new vu_dmem_arbiter());
       //chiselMain(boot_args, () => new vuVXU_Banked8_Expand);
       chiselMain(boot_args, () => new vuVXU_Banked8_Fire);
+      //chiselMain(boot_args, () => new vuVXU_Banked8_Seq);
       //chiselMain(boot_args, () => new vuVXU_Banked8_Hazard);
       //chiselMain(boot_args, () => new vuVMU());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_fma());
@@ -33,7 +34,7 @@ package riscvVector
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_conv());
       //chiselMain(boot_args, () => new vuVXU_Banked8_FU_alu());
       //chiselMain(boot_args, () => new vuVXU_Banked8_Bank());
-      //chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
+      chiselMain(boot_args, () => new vuVXU_Banked8_Lane());
       //chiselMain(boot_args, () => new vuVXU_Issue());
       //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_store());
       //chiselMain(boot_args, () => new vuVMU_BHWD_sel());
