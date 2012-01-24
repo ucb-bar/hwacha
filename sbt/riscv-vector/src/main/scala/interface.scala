@@ -11,11 +11,11 @@ package riscvVector {
       val VCMD_CMD_SZ  = 8;
       val VCMD_VD_SZ   = 6;
       val VCMD_VS_SZ   = 6;
-    /*
-      val VCMD_CMCODE   19:12
-      val VCMD_VD       11:6
-      val VCMD_VS       5:0
-    */
+      
+      val VCMD_CMCODE  = (19,12);
+      val VCMD_VD      = (11,6);
+      val VCMD_VS      = (5,0);
+      
       // vimmq
       val VIMM_SZ      = 64;
     /*
