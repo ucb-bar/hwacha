@@ -96,6 +96,7 @@ class vuVXU extends Component
 
   b8lane.io.cp.fma_val <> io.cp_fma_req.valid;
   b8lane.io.cp.fma_rdy <> io.cp_fma_req.ready;
+  b8lane.io.cp.fma_fn <> io.cp_fma_req.bits.fn;
   b8lane.io.cp.fma_in0 <> io.cp_fma_req.bits.in0;
   b8lane.io.cp.fma_in1 <> io.cp_fma_req.bits.in1;
   b8lane.io.cp.fma_in2 <> io.cp_fma_req.bits.in2;
