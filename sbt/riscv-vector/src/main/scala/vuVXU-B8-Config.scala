@@ -340,5 +340,10 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
   }
 
 }
+
+object VC_SIMPLE_QUEUE 
+{
+  def apply(width, depth) = new queueSimplePF(width, depth, log2up(depth));
+}
   
 }

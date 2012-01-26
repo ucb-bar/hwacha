@@ -85,6 +85,36 @@ class io_fma_resp extends Bundle
   val exc = Bits(width=DEF_EXC);
 }
 
+class io_dmem_req_ut extends Bundle
+{
+  val addr  = Bits(width=30);
+  val op    = Bits(width=4);
+  val data  = Bits(width=64);
+  val wmask = Bits(width=8);
+  val tag   = Bits(width=12);
+}
+
+class io_dmem_resp_ut extends Bundle 
+{
+  val tag  = Bits(width=12);
+  val data = Bits(width=64);
+}
+
+class io_dmem_req_vec extends Bundle
+{
+  val addr  = Bits(width=28);
+  val op    = Bits(width=4);
+  val data  = Bits(width=128);
+  val wmask = Bits(width=16);
+  val tag   = Bits(width=12);  
+}
+
+class io_dmem_resp_ut extends Bundle 
+{
+  val tag  = Bits(width=12);
+  val data = Bits(width=128);
+}
+
 //class io_cp_imul extends io_ready_valid { new io_imul() };
 //class io_cp_fma extends io_ready_valid { new io_fma() };
 
@@ -334,6 +364,31 @@ class io_vxu_issue_vt extends Bundle
   val bhazard = new io_vxu_issue_op().asOutput;
   val fn = new io_vxu_issue_fn().asOutput;
   val decoded = new io_vxu_issue_regid_imm().asOutput;
+}
+
+class io_vu extends BUndle 
+{
+  val illegal = Bool(OUTPUT);
+
+  val vec_cmdq = (new io_ready_valid){Bits(width = VCMD_SZ)}.flip();
+  val vec_ximm1q = (new io_ready_valid){Bits(width=VIMM_SZ)}.flip();
+  val vec_ximm2q = (new io_ready_valid){Bits(width=VSTRIDE_SZ)}.flip();
+  val vec_ackq = (new io_ready_valid){Bits(width=VRESP_SZ)};
+
+  val cp_imul_req = (new io_ready_valid()){new io_imul_req()}.flip();
+  val cp_imul_resp = Bits(DEF_XLEN, OUTPUT);
+  
+  val cp_fma_req = (new io_ready_valid()){new io_fma_req()}.flip();
+  val cp_fma_resp = new io_fma_resp().asOutput;
+
+  val imem_req = (new io_ready_valid){Bits(width = DEF_ADDR)};
+  val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
+
+  val dmem_req_ut = (new io_ready_valid){new io_dmem_req_ut()};
+  val dmem_resp_ut = (new io_valid){nwe io_dmem_resp_ut()}.flip();
+
+  val dmem_req_vec = (new io_ready_valid){new io_dmem_req_vec()};
+  val dmem_resp_vec = (new io_valid}{new io_dmem_resp_vec()}.flip();
 }
 
 class io_vxu extends Bundle
