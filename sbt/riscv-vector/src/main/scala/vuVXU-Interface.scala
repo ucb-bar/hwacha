@@ -109,9 +109,9 @@ class io_dmem_req_vec extends Bundle
   val tag   = Bits(width=12);  
 }
 
-class io_dmem_resp_ut extends Bundle 
+class io_dmem_resp_vec extends Bundle
 {
-  val tag  = Bits(width=12);
+  val tag = Bits(width=12);
   val data = Bits(width=128);
 }
 
@@ -366,7 +366,7 @@ class io_vxu_issue_vt extends Bundle
   val decoded = new io_vxu_issue_regid_imm().asOutput;
 }
 
-class io_vu extends BUndle 
+class io_vu extends Bundle 
 {
   val illegal = Bool(OUTPUT);
 
@@ -385,10 +385,10 @@ class io_vu extends BUndle
   val imem_resp = (new io_valid){Bits(width = DEF_INST)}.flip();
 
   val dmem_req_ut = (new io_ready_valid){new io_dmem_req_ut()};
-  val dmem_resp_ut = (new io_valid){nwe io_dmem_resp_ut()}.flip();
+  val dmem_resp_ut = (new io_valid){new io_dmem_resp_ut()}.flip();
 
   val dmem_req_vec = (new io_ready_valid){new io_dmem_req_vec()};
-  val dmem_resp_vec = (new io_valid}{new io_dmem_resp_vec()}.flip();
+  val dmem_resp_vec = (new io_valid){new io_dmem_resp_vec()}.flip();
 }
 
 class io_vxu extends Bundle

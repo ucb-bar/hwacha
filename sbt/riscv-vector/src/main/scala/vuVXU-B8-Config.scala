@@ -3,6 +3,7 @@ package riscvVector
 
 import Chisel._;
 import Node._;
+import queues._;
 import scala.collection.mutable.ArrayBuffer;
 import scala.math._;
 
@@ -182,6 +183,7 @@ object Config
   val XCMD_CMCODE  = (19,12);
   val XCMD_VD      = (11,6);
   val XCMD_VS      = (5,0);
+
 }
 
 object Match
@@ -343,7 +345,7 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 
 object VC_SIMPLE_QUEUE 
 {
-  def apply(width, depth) = new queueSimplePF(width, depth, log2up(depth));
+  def apply(width: Int, depth: Int) = new queueSimplePF(width, depth, log2up(depth));
 }
   
 }
