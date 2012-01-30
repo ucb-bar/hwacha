@@ -122,9 +122,9 @@ package riscvVector {
     io.utaq_deq.rdy         := ctrl_ut_issue.io.utaq_deq_rdy || ctrl_ut_store.io.utaq_deq_rdy;
 
     // ctrl_ut_top
-    ctrl_ut_top.io.utmcmdq        <> io.utmcmdq;
-    ctrl_ut_top.io.utmimmq        <> io.utmimmq;
-    ctrl_ut_top.io.utmrespq       <> io.utmrespq;
+    ctrl_ut_top.io.utmcmdq        ^^ io.utmcmdq;
+    ctrl_ut_top.io.utmimmq        ^^ io.utmimmq;
+    ctrl_ut_top.io.utmrespq       ^^ io.utmrespq;
  
     iscmdq.io.enq_bits            := ctrl_ut_top.io.iscmdq_enq_bits;
     iscmdq.io.enq_val             := ctrl_ut_top.io.iscmdq_enq_val;
@@ -157,7 +157,7 @@ package riscvVector {
     ctrl_ut_issue.io.roq_deq_tag_val  := roq.io.roq_deq_tag_val;
 
     // ctrl_ut_wb
-    ctrl_ut_wb.io.ldq               <> io.utldq;
+    ctrl_ut_wb.io.ldq               ^^ io.utldq;
     
     ctrl_ut_wb.io.wbcmdq_deq_bits   := wbcmdq.io.deq_bits;
     ctrl_ut_wb.io.wbcmdq_deq_val    := wbcmdq.io.deq_val;
@@ -172,7 +172,7 @@ package riscvVector {
     ctrl_ut_store.io.stcmdq_deq_val   := stcmdq.io.deq_val;
     stcmdq.io.deq_rdy                 := ctrl_ut_store.io.stcmdq_deq_rdy;
   
-    ctrl_ut_store.io.sdq_deq          <> io.utsdq_deq;
+    ctrl_ut_store.io.sdq_deq          ^^ io.utsdq_deq;
 
     ctrl_ut_store.io.utaq_deq_bits    := io.utaq_deq.bits.toUFix;
     ctrl_ut_store.io.utaq_deq_val     := io.utaq_deq.valid;
