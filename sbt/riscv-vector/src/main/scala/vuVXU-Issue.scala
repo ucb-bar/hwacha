@@ -13,7 +13,7 @@ class vuVXU_Issue extends Component
 
   val tvec = new vuVXU_Issue_TVEC();
   val vt = new vuVXU_Issue_VT();
-  val utcmdq_arb = (new Arbiter(2)) { Bits(width = DEF_VMU_UTCMDQ) };
+  val utcmdq_arb = (new Arbiter(2)) { new io_vmu_utcmdq };
 
   tvec.io.vf <> vt.io.vf;
   utcmdq_arb.io.in(0) <> tvec.io.vmu_utcmdq;

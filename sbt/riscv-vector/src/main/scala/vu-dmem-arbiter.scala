@@ -28,28 +28,6 @@ package riscvVector {
     val rdy     = Bool(OUTPUT);
   }
 
-  class vec_dcachereqIO extends Bundle
-  {
-    // D$ interface
-    // request
-    val addr  = Bits(28, OUTPUT);
-    val tag   = Bits(12, OUTPUT);
-    val data  = Bits(128, OUTPUT);
-    val wmask = Bits(16, OUTPUT);
-    val op    = Bits(4, OUTPUT);
-    val valid = Bool(OUTPUT);
-    val rdy   = Bool(INPUT);
-  }
-
-  class vec_dcacherespIO extends Bundle
-  {
-    // response
-    val data   = UFix(128, INPUT);
-    val tag    = UFix(12, INPUT);
-    val valid  = Bool(INPUT);
-  }
-
-
   class vu_dmem_arbiterIO extends Bundle
   {
     val vlrq        = new vlrqIO();
