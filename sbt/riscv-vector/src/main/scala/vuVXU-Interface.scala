@@ -39,12 +39,12 @@ class Arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
   for (i <- 1 to n-1)
     dout = Mux(io.in(n-1-i).valid, io.in(n-1-i).bits, dout)
 
+  vout <== io.in(n-1).valid;
+
   for (i <- 0 to n-2)
   {
     when (io.in(i).valid) { vout <== Bool(true) }
   }
-  
-  vout <== io.in(n-1).valid;
 
   vout ^^ io.out.valid
   dout ^^ io.out.bits
@@ -636,27 +636,27 @@ class io_vxu_expand extends Bundle
 }
 
 
-  class vec_dcachereqIO extends Bundle
-  {
-    // D$ interface
-    // request
-    val addr  = Bits(28, OUTPUT);
-    val tag   = Bits(12, OUTPUT);
-    val data  = Bits(128, OUTPUT);
-    val wmask = Bits(16, OUTPUT);
-    val op    = Bits(4, OUTPUT);
-    val valid = Bool(OUTPUT);
-    val rdy   = Bool(INPUT);
-  }
+  // class vec_dcachereqIO extends Bundle
+  // {
+  //   // D$ interface
+  //   // request
+  //   val addr  = Bits(28, OUTPUT);
+  //   val tag   = Bits(12, OUTPUT);
+  //   val data  = Bits(128, OUTPUT);
+  //   val wmask = Bits(16, OUTPUT);
+  //   val op    = Bits(4, OUTPUT);
+  //   val valid = Bool(OUTPUT);
+  //   val rdy   = Bool(INPUT);
+  // }
 
 
-  class vec_dcacherespIO extends Bundle
-  {
-    // response
-    val data   = UFix(128, INPUT);
-    val tag    = UFix(12, INPUT);
-    val valid  = Bool(INPUT);
-  }
+  // class vec_dcacherespIO extends Bundle
+  // {
+  //   // response
+  //   val data   = UFix(128, INPUT);
+  //   val tag    = UFix(12, INPUT);
+  //   val valid  = Bool(INPUT);
+  // }
 
 
 }

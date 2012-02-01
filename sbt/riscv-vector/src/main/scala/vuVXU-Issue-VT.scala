@@ -22,7 +22,7 @@ class vuVXU_Issue_VT extends Component
   {
     if_reg_pc <== io.vf.pc;
   }
-  when (!stallf)
+  when (!io.vf.fire && !stallf)
   {
     if_reg_pc <== if_next_pc;
   }
@@ -38,13 +38,13 @@ class vuVXU_Issue_VT extends Component
   {
     id_reg_inst <== NOP;
   }
-  when (!stalld)
+  when (!io.vf.fire && !stalld)
   {
+    id_reg_inst <== io.imem_resp.bits;
     when (killf)
     {
       id_reg_inst <== NOP;
     }
-    id_reg_inst <== io.imem_resp.bits;
   }
 
   val n = Bits(0,1);
@@ -208,15 +208,13 @@ class vuVXU_Issue_VT extends Component
   val vau1_rm = Wire(){Bits(width = 2)};
   val vau2_rm = Wire(){Bits(width = 2)};
 
+  vau1_rm <== id_reg_inst(10,9);
+  vau2_rm <== id_reg_inst(10,9);
+
   when (id_reg_inst(11,9) === Bits("b111",3))
   {
     vau1_rm <== Bits(0,2);
     vau2_rm <== Bits(0,2);
-  }
-  otherwise
-  {
-    vau1_rm <== id_reg_inst(10,9);
-    vau2_rm <== id_reg_inst(10,9);
   }
 
   val unmasked_valid

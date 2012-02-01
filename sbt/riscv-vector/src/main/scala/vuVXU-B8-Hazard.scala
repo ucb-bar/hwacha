@@ -66,15 +66,16 @@ class vuVXU_Banked8_Hazard extends Component
     array_rport_vgu(i) := next_rport_vgu(i);
   }
 
-  when (io.lane_to_hazard.rlast)
+  for (i <- 0 until SZ_BANK)
   {
-    next_rport_val.write(reg_ptr, Bool(false));
-    next_rport_vau0.write(reg_ptr, Bool(false));
-    next_rport_vau1.write(reg_ptr, Bool(false));
-    next_rport_vau2.write(reg_ptr, Bool(false));
-    next_rport_vsu.write(reg_ptr, Bool(false));
-    next_rport_vgu.write(reg_ptr, Bool(false));
+    next_rport_val(i) <== array_rport_val(i);
+    next_rport_vau0(i) <== array_rport_vau0(i);
+    next_rport_vau1(i) <== array_rport_vau1(i);
+    next_rport_vau2(i) <== array_rport_vau2(i);
+    next_rport_vsu(i) <== array_rport_vsu(i);
+    next_rport_vgu(i) <== array_rport_vgu(i);
   }
+
   when (io.fire.viu)
   {
     next_rport_val.write(next_ptr2, Bool(true));
@@ -129,17 +130,15 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr2, Bool(true));
     next_rport_vsu.write(next_ptr2, Bool(true));
   }
-  otherwise
+
+  when (io.lane_to_hazard.rlast)
   {
-    for (i <- 0 until SZ_BANK)
-    {
-      next_rport_val(i) <== array_rport_val(i);
-      next_rport_vau0(i) <== array_rport_vau0(i);
-      next_rport_vau1(i) <== array_rport_vau1(i);
-      next_rport_vau2(i) <== array_rport_vau2(i);
-      next_rport_vsu(i) <== array_rport_vsu(i);
-      next_rport_vgu(i) <== array_rport_vgu(i);
-    }
+    next_rport_val.write(reg_ptr, Bool(false));
+    next_rport_vau0.write(reg_ptr, Bool(false));
+    next_rport_vau1.write(reg_ptr, Bool(false));
+    next_rport_vau2.write(reg_ptr, Bool(false));
+    next_rport_vsu.write(reg_ptr, Bool(false));
+    next_rport_vgu.write(reg_ptr, Bool(false));
   }
 
   // I had to change this structure to the following in order to cut the
@@ -277,18 +276,17 @@ class vuVXU_Banked8_Hazard extends Component
     array_wport_vd(i) := next_wport_vd(i);
   }
 
-  when (io.expand_to_hazard.wen)
+  for (i <- 0 until SZ_BANK)
   {
-    next_wport_head.write(reg_ptr, Bool(false));
+    next_wport_val(i) <== array_wport_val(i);
+    next_wport_head(i) <== array_wport_head(i);
+    next_wport_vau0(i) <== array_wport_vau0(i);
+    next_wport_vau1(i) <== array_wport_vau1(i);
+    next_wport_vau2(i) <== array_wport_vau2(i);
+    next_wport_vlu(i) <== array_wport_vlu(i);
+    next_wport_vd(i) <== array_wport_vd(i);
   }
-  when (io.lane_to_hazard.wlast)
-  {
-    next_wport_val.write(reg_ptr, Bool(false));
-    next_wport_vau0.write(reg_ptr, Bool(false));
-    next_wport_vau1.write(reg_ptr, Bool(false));
-    next_wport_vau2.write(reg_ptr, Bool(false));
-    next_wport_vlu.write(reg_ptr, Bool(false));
-  }
+
   when (io.fire.viu)
   {
     next_wport_val.write(viu_wptr, Bool(true));
@@ -337,18 +335,19 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vlu.write(next_ptr2, Bool(true));
     next_wport_vd.write(next_ptr2, io.fire_regid_imm.vd);
   }
-  otherwise
+
+  when (io.expand_to_hazard.wen)
   {
-    for (i <- 0 until SZ_BANK)
-    {
-      next_wport_val(i) <== array_wport_val(i);
-      next_wport_head(i) <== array_wport_head(i);
-      next_wport_vau0(i) <== array_wport_vau0(i);
-      next_wport_vau1(i) <== array_wport_vau1(i);
-      next_wport_vau2(i) <== array_wport_vau2(i);
-      next_wport_vlu(i) <== array_wport_vlu(i);
-      next_wport_vd(i) <== array_wport_vd(i);
-    }
+    next_wport_head.write(reg_ptr, Bool(false));
+  }
+
+  when (io.lane_to_hazard.wlast)
+  {
+    next_wport_val.write(reg_ptr, Bool(false));
+    next_wport_vau0.write(reg_ptr, Bool(false));
+    next_wport_vau1.write(reg_ptr, Bool(false));
+    next_wport_vau2.write(reg_ptr, Bool(false));
+    next_wport_vlu.write(reg_ptr, Bool(false));
   }
 
   val array_sport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
@@ -359,10 +358,11 @@ class vuVXU_Banked8_Hazard extends Component
     array_sport_val(i) := next_sport_val(i);
   }
 
-  when (io.seq_to_hazard.last)
+  for (i <- 0 until SZ_BANK)
   {
-    next_sport_val.write(reg_ptr, Bool(false));
+    next_sport_val(i) <== array_sport_val(i);
   }
+
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
     next_sport_val.write(next_ptr1, Bool(true));
@@ -382,12 +382,10 @@ class vuVXU_Banked8_Hazard extends Component
   {
     next_sport_val.write(next_ptr1, Bool(true));
   }
-  otherwise
+
+  when (io.seq_to_hazard.last)
   {
-    for (i <- 0 until SZ_BANK)
-    {
-      next_sport_val(i) <== array_sport_val(i);
-    }
+    next_sport_val.write(reg_ptr, Bool(false));
   }
 
   // hazard check logic for tvec/vt

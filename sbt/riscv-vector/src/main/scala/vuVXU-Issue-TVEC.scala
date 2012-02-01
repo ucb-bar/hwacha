@@ -85,6 +85,14 @@ class vuVXU_Issue_TVEC extends Component
   val reg_bcnt = Reg(next_bcnt, resetVal = Bits(8,SZ_LGBANK1));
   val reg_stride = Reg(next_stride, resetVal = Bits(63,SZ_REGLEN));
 
+  next_state <== reg_state;
+  next_vlen <== reg_vlen;
+  next_nxregs <== reg_nxregs;
+  next_nfregs <== reg_nfregs;
+  next_bactive <== reg_bactive;
+  next_bcnt <== reg_bcnt;
+  next_stride <== reg_stride;
+
   when (fire_vcfg.toBool)
   {
     next_vlen <== io.vxu_immq.bits(10,0);
@@ -105,16 +113,6 @@ class vuVXU_Issue_TVEC extends Component
   when (io.vf.stop)
   {
     next_state <== ISSUE_TVEC;
-  }
-  otherwise
-  {
-    next_state <== reg_state;
-    next_vlen <== reg_vlen;
-    next_nxregs <== reg_nxregs;
-    next_nfregs <== reg_nfregs;
-    next_bactive <== reg_bactive;
-    next_bcnt <== reg_bcnt;
-    next_stride <== reg_stride;
   }
 
 
