@@ -47,7 +47,16 @@ package riscvVector {
     io.iscmdq_enq_bits := Cat(addr, vlen);
     io.wbcmdq_enq_bits := Cat(cmd_amo, cmd(3,0), vlen);
     io.stcmdq_enq_bits := Cat(cmd_amo, cmd(4,0), addr, vlen);
-    
+
+    io.utmcmdq.rdy <== Bool(false);
+    io.utmimmq.rdy <== Bool(false);
+    io.utmrespq.bits <== Bits(0, UTMRESP_SZ);
+    io.utmrespq.valid <== Bool(false);
+    io.iscmdq_enq_val <== Bool(false);
+    io.wbcmdq_enq_val <== Bool(false);
+    io.stcmdq_enq_val <== Bool(false);
+    cmd_amo <== Bool(false);
+
     switch(state)
     {
       is(VMU_Ctrl_Idle)
@@ -65,7 +74,7 @@ package riscvVector {
               ((cmd(7,4) === Bits("b1110", 4) || cmd(7,4) === Bits("b1111")) && io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy) -> VMU_Ctrl_AMO
             ));
         }
-        otherwise
+        when(!io.utmcmdq.valid)
         {
           state <== VMU_Ctrl_Idle;
         }
@@ -101,7 +110,7 @@ package riscvVector {
           io.utmrespq.valid <== Bool(true);
           io.utmrespq.bits <== Bits(1);
           when(io.utmrespq.rdy) { state <== VMU_Ctrl_Idle; }
-          otherwise { state <== VMU_Ctrl_SyncWait; }
+          when(!io.utmrespq.rdy) { state <== VMU_Ctrl_SyncWait; }
         }
       }
       is(VMU_Ctrl_SyncWait)
@@ -109,23 +118,12 @@ package riscvVector {
         io.utmrespq.valid <== Bool(true);
         io.utmrespq.bits <== Bits(1);
         when(io.utmrespq.rdy) { state <== VMU_Ctrl_Idle; }
-        otherwise { state <== VMU_Ctrl_SyncWait; }
+        when(!io.utmrespq.rdy) { state <== VMU_Ctrl_SyncWait; }
       }
       is(VMU_Ctrl_Invalid)
       {
         io.utmcmdq.rdy <== Bool(true);
         state <== VMU_Ctrl_Idle;
-      }
-      otherwise
-      {
-        io.utmcmdq.rdy <== Bool(false);
-        io.utmimmq.rdy <== Bool(false);
-        io.utmrespq.bits <== Bits(0, UTMRESP_SZ);
-        io.utmrespq.valid <== Bool(false);
-        io.iscmdq_enq_val <== Bool(false);
-        io.wbcmdq_enq_val <== Bool(false);
-        io.stcmdq_enq_val <== Bool(false);
-        cmd_amo <== Bool(false);
       }
     }
 

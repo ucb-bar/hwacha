@@ -60,6 +60,9 @@ package riscvVector {
 
 
     val srq_enq_data_bits_int = Wire(){Bits()};
+
+    srq_enq_data_bits_int <== Bits(0, 64)
+
     when(cmd_type_fp)
     {
       switch(cmd_type_reg(1,0))
@@ -68,13 +71,14 @@ package riscvVector {
         is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, sdq_deq_sp_bits);}
       }
     }
-    switch(cmd_type_reg(1,0))
-    {
-      is(Bits("b11")) {srq_enq_data_bits_int <== io.sdq_deq.bits(63,0);}
-      is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, io.sdq_deq.bits(31,0));}
-      is(Bits("b01")) {srq_enq_data_bits_int <== Fill(4, io.sdq_deq.bits(15,0));}
-      is(Bits("b00")) {srq_enq_data_bits_int <== Fill(8, io.sdq_deq.bits(7,0));}
-      otherwise {srq_enq_data_bits_int <== Bits(0, 64);}
+    when(!cmd_type_fp){
+      switch(cmd_type_reg(1,0))
+      {
+	is(Bits("b11")) {srq_enq_data_bits_int <== io.sdq_deq.bits(63,0);}
+	is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, io.sdq_deq.bits(31,0));}
+	is(Bits("b01")) {srq_enq_data_bits_int <== Fill(4, io.sdq_deq.bits(15,0));}
+	is(Bits("b00")) {srq_enq_data_bits_int <== Fill(8, io.sdq_deq.bits(7,0));}
+      }
     }
 
     val store_data_wmask = Wire() {Bits()};
@@ -99,6 +103,8 @@ package riscvVector {
     val decoder_dp = new recodedFloat64ToFloat64();
     decoder_dp.io.in := io.sdq_deq.bits;
     sdq_deq_dp_bits := decoder_dp.io.out;
+
+    store_data_wmask <== Bits(0,8);
 
     switch(cmd_type_reg(1,0))
     {
@@ -126,8 +132,13 @@ package riscvVector {
           is(UFix(7,3)) { store_data_wmask <== Bits("h80", 8); }
         }
       }
-      otherwise { store_data_wmask <== Bits(0,8); }
     }
+
+    io.stcmdq_deq_rdy <== Bool(false);
+    io.sdq_deq.rdy <== Bool(false);
+    io.utaq_deq_rdy <== Bool(false);
+    io.srq_enq_val <== Bool(false);
+    io.roq_deq_tag_rdy <== Bool(false);
 
     switch(state) {
       is(VMU_Ctrl_Idle) {
@@ -139,7 +150,7 @@ package riscvVector {
             addr_reg <== UFix(0, 32);
             state <== VMU_Ctrl_AMO;
           }
-          otherwise {
+          when(!cmd_type_amo.toBool()) {
             addr_reg <== addr;
             state <== VMU_Ctrl_Store;
           }
@@ -153,7 +164,7 @@ package riscvVector {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
             state <== VMU_Ctrl_Idle;
           }
-          otherwise {
+          when( vlen_reg != UFix(0,UTMCMD_VLEN_SZ) ) {
             vlen_reg <== vlen_reg - UFix(1,UTMCMD_VLEN_SZ);
           }
         }
@@ -167,17 +178,10 @@ package riscvVector {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
             state <== VMU_Ctrl_Idle;
           }
-          otherwise {
+          when( vlen_reg != UFix(0,UTMCMD_VLEN_SZ) ) {
             vlen_reg <== vlen_reg - UFix(1,UTMCMD_VLEN_SZ);
           }
         }
-      }
-      otherwise {
-        io.stcmdq_deq_rdy <== Bool(false);
-        io.sdq_deq.rdy <== Bool(false);
-        io.utaq_deq_rdy <== Bool(false);
-        io.srq_enq_val <== Bool(false);
-        io.roq_deq_tag_rdy <== Bool(false);
       }
     }
   }

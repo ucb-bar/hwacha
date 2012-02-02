@@ -22,7 +22,7 @@ package riscvVector {
     when(io.enq ^ io.deq)
     {
       when(io.enq) {count <== count + UFix(1);}
-      otherwise {count <== count - UFix(1);}
+      when(!io.enq) {count <== count - UFix(1);}
     }
   }
 }

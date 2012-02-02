@@ -29,6 +29,8 @@ package riscvVector {
     val roq_deq_data_val = Reg(resetVal = Bits(0, 1));
     io.roq_deq_data_val := roq_deq_data_val;
 
+    roq_deq_data_val <== vb_array(read_ptr);
+
     when(roq_data_deq)
     {
       vb_array(read_ptr) <== Bits("b0");
@@ -39,10 +41,6 @@ package riscvVector {
     {
       vb_array(io.roq_enq_tag_bits.toUFix) <== Bits("b1");
       data(io.roq_enq_tag_bits.toUFix) <== io.roq_enq_data_bits;
-    }
-    otherwise
-    {
-      roq_deq_data_val <== vb_array(read_ptr);
     }
   }
 }

@@ -217,6 +217,11 @@ package riscvVector
     io.vmu_vbaseq.bits := io.vec_ximm1q.bits(31,0);
     io.vmu_vstrideq.bits := io.vec_ximm2q.bits;
 
+    io.vec_ackq.bits <== Bits(0,32);
+    io.vec_ackq.valid <== Bool(false);
+    io.vxu_ackq.ready <== Bool(false);
+    io.vmu_vackq.ready <== Bool(false);
+
     switch(state)
     {
       is(VCU_FORWARD)
@@ -236,13 +241,6 @@ package riscvVector
       {
         io.vxu_ackq.ready <== io.vmu_vackq.valid;
         io.vmu_vackq.ready <== io.vxu_ackq.valid;
-      }
-      otherwise
-      {
-        io.vec_ackq.bits <== Bits(0,32);
-        io.vec_ackq.valid <== Bool(false);
-        io.vxu_ackq.ready <== Bool(false);
-        io.vmu_vackq.ready <== Bool(false);
       }
     }
 

@@ -84,6 +84,8 @@ package riscvVector
 
     val addr_incr = addr_reg + stride_reg;
 
+    store_data_wmask <== Bits(0,8);
+
     switch(cmd_type_reg(1,0))
     {
       is(Bits("b11"))
@@ -122,11 +124,12 @@ package riscvVector
           is(Bits("b111")) {store_data_wmask <== Bits("b10000000");}
         }
       }
-      otherwise
-      {
-        store_data_wmask <== Bits(0,8);
-      }
     }
+
+    io.stcmdq_deq_rdy <== Bool(false);
+    io.sdq_deq.rdy <== Bool(false);
+    io.srq_enq_val <== Bool(false);
+    sbuf_enq_val <== Bool(false);
 
     switch(state)
     {
@@ -156,12 +159,12 @@ package riscvVector
             {
               state <== VMU_Ctrl_Idle;
             }
-            otherwise
+            when(!io.srq_enq_rdy)
             {
               state <== VMU_Ctrl_StoreWait;
             }
           }
-          when(addr_incr(31,4) != addr_reg(31,4))
+          when(vlen_reg != UFix(0) && addr_incr(31,4) != addr_reg(31,4))
           {
             io.srq_enq_val <== Bool(true);
             when(io.srq_enq_rdy)
@@ -174,7 +177,7 @@ package riscvVector
               state <== VMU_Ctrl_StoreWait;
             }
           }
-          when(addr_incr(31,4) === addr_reg(31,4))
+          when(vlen_reg != UFix(0) && addr_incr(31,4) === addr_reg(31,4))
           {
             addr_reg <== addr_incr;
             vlen_reg <== vlen_reg - UFix(1);
@@ -197,13 +200,6 @@ package riscvVector
             state <== VMU_Ctrl_Store;
           }
         }
-      }
-      otherwise
-      {
-        io.stcmdq_deq_rdy <== Bool(false);
-        io.sdq_deq.rdy <== Bool(false);
-        io.srq_enq_val <== Bool(false);
-        sbuf_enq_val <== Bool(false);
       }
     }
 

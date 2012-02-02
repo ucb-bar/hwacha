@@ -49,6 +49,11 @@ package riscvVector {
     // readAddr: UFix, oe = output enable, cs = chip select
     io.roq_deq_data_bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr), oe = Bool(true), cs = Bool(true));
 
+    // vb_array[read_ptr] <= 1'b0
+    // vb_array[roq_enq_tag_bits] <= 1'b1
+    vb_array <== (vb_array & vb_update_read) | vb_update_write;
+    roq_deq_data_val_int <== vb_array(read_ptr).toBool;
+    
     // read tag
     when(roq_tag_deq)
     {
@@ -59,13 +64,6 @@ package riscvVector {
     {
       roq_deq_data_val_int <== vb_array(read_ptr_next).toBool;
       read_ptr <== read_ptr_next;
-    }
-    otherwise
-    {
-      // vb_array[read_ptr] <= 1'b0
-      // vb_array[roq_enq_tag_bits] <= 1'b1
-      vb_array <== (vb_array & vb_update_read) | vb_update_write;
-      roq_deq_data_val_int <== vb_array(read_ptr).toBool;
     }
   }
 }

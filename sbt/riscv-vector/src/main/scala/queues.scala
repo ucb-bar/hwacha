@@ -35,7 +35,7 @@ class queueCtrl1_pipe extends Component
   {
     full <== Bool(false);
   }
-  when(do_enq)
+  when(!(do_deq && !do_pipe) && do_enq)
   {
     full <== Bool(true);
   }

@@ -87,6 +87,11 @@ package riscvVector {
     recode_dp.io.in := delay_roq_deq_bits;
     roq_deq_dp_bits := recode_dp.io.out;
 
+    io.wbcmdq_deq_rdy <== Bool(false);
+    io.roq_deq_rdy <== Bool(false);
+    buf_ldq_enq_val <== Bool(false);
+    io.ldq.wb_done <== Bool(false);
+
     switch(state)
     {
       is(VMU_Ctrl_Idle)
@@ -135,13 +140,6 @@ package riscvVector {
             vlen_cnt_reg <== vlen_cnt_reg - UFix(1);
           }
         }
-      }
-      otherwise
-      {
-        io.wbcmdq_deq_rdy <== Bool(false);
-        io.roq_deq_rdy <== Bool(false);
-        buf_ldq_enq_val <== Bool(false);
-        io.ldq.wb_done <== Bool(false);
       }
     }
 

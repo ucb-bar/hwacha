@@ -44,6 +44,11 @@ package riscvVector {
     io.lrq_enq_addr_bits  := req_addr(31, 2);
     io.lrq_enq_tag_bits   := Cat(Bits(0,1), req_addr(2,0), io.roq_deq_tag_bits); 
 
+    io.lrq_enq_val      <== Bool(false); 
+    io.iscmdq_deq_rdy   <== Bool(false);
+    io.roq_deq_tag_rdy  <== Bool(false);
+    io.utaq_deq_rdy     <== Bool(false);
+
     switch(state)
     {
       is(VMU_Ctrl_Idle)
@@ -67,18 +72,11 @@ package riscvVector {
           {
             state <== VMU_Ctrl_Idle;
           }
-          otherwise
+          when(vlen_reg != UFix(0))
           {
             vlen_reg <== vlen_reg - UFix(1);
           }
         }
-      }
-      otherwise
-      {
-        io.lrq_enq_val      <== Bool(false); 
-        io.iscmdq_deq_rdy   <== Bool(false);
-        io.roq_deq_tag_rdy  <== Bool(false);
-        io.utaq_deq_rdy     <== Bool(false);
       }
     }
   }
