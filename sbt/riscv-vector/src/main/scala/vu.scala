@@ -60,7 +60,7 @@ class vu extends Component
   vmu_utcmdq.io.enq_val <> vxu.io.vmu_utcmdq.valid;
   vmu_utcmdq.io.enq_rdy <> vxu.io.vmu_utcmdq.ready;  
 
-  val vmu_utimmq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 4);
+  val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 4);
   vmu_utimmq.io.enq_bits <> vxu.io.vmu_utimmq.bits;
   vmu_utimmq.io.enq_val <> vxu.io.vmu_utimmq.valid;
   vmu_utimmq.io.enq_rdy <> vxu.io.vmu_utimmq.ready;  

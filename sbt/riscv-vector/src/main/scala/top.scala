@@ -22,10 +22,10 @@ package riscvVector
     def main(args: Array[String]) =
     {
       val boot_args = args ++ Array("--target-dir", "generated-src");
-      chiselMain(boot_args, () => new vuVMU());
+      //chiselMain(boot_args, () => new vuVMU());
       //chiselMain(boot_args, () => new vuVCU());
       //chiselMain(boot_args, () => new vuVXU());
-      //chiselMain(boot_args, () => new vu());
+      chiselMain(boot_args, () => new vu());
       //chiselMain(boot_args, () => new vu_dmem_arbiter());
       //chiselMain(boot_args, () => new vuVXU_Banked8_Expand);
       //chiselMain(boot_args, () => new vuVXU_Banked8_Fire);
