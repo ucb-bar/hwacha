@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._;
 import Node._;
@@ -507,5 +506,4 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.utldq     := reg_utldq(0);
   io.expand_lfu_fn.utsdq     := reg_utsdq(0);
 
-}
 }

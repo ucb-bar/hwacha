@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -185,6 +184,4 @@ class vuVXU_Banked8_Lane extends Component
   io.vmu.utaq_bits  := rbl(6)(SZ_ADDR-1,0);
   io.vmu.vsdq_bits  := rbl(7);
   io.vmu.utsdq_bits := rbl(7);
-}
-
 }

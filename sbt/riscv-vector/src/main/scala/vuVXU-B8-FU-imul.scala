@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -47,6 +46,4 @@ class vuVXU_Banked8_FU_imul extends Component
     ));
 
   io.out := ShiftRegister(IMUL_STAGES-1, 64, io.valid, mul_output_mux);
-}
-
 }

@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._;
 import Node._;
@@ -279,7 +278,7 @@ object GenBuf{
     {
       val res = new ArrayBuffer[GenArray[T]];
       for(i <- 0 until n)
-	res += gen;
+        res += gen;
       res
     }
 }
@@ -293,9 +292,9 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 
       val onehot = UFixToOH(addr, length);
       for(i <- 0 until length){
-	conds.push(conds.top && onehot(i).toBool);
-	this(i).comp procAssign data.toNode;
-	conds.pop;
+        conds.push(conds.top && onehot(i).toBool);
+        this(i).comp procAssign data.toNode;
+        conds.pop;
       }
     }
   }
@@ -346,6 +345,4 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 object VC_SIMPLE_QUEUE 
 {
   def apply(width: Int, depth: Int) = new queueSimplePF(width, depth, log2up(depth));
-}
-  
 }

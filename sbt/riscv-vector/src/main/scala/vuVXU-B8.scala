@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -126,5 +125,4 @@ class vuVXU extends Component
   io.vxu_ackq.valid <> io.vmu_utackq.valid;
   io.vmu_utackq.ready <> io.vxu_ackq.ready;
 
-}
 }

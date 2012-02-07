@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -579,6 +578,4 @@ class vuVXU_Banked8_Hazard extends Component
     );
 
   io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR() & !vt_dhazard.orR() & !vt_shazard.orR() & !vt_seqhazard.orR() & !vt_bhazard.orR();
-}
-
 }

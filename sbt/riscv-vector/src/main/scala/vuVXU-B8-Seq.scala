@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._;
 import Node._;
@@ -518,5 +517,4 @@ class vuVXU_Banked8_Seq extends Component {
   io.seq_regid_imm.vd := array_vd.read(reg_ptr);
   io.seq_regid_imm.imm := array_imm.read(reg_ptr);
 
-}
 }

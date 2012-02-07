@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -152,6 +151,4 @@ class vuVXU_Pointer extends Component
       //Cat(UFix(21,5),UFix(7,4)) -> UFix(0,3),
       //Cat(UFix(21,5),UFix(8,4)) -> UFix(5,3)
     ));
-}
-
 }

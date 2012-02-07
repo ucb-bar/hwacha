@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -150,6 +149,4 @@ class vuVXU_Banked8_Bank extends Component
   io.out.viu_fn    := Mux(io.active, reg_viu_fn, io.in.viu_fn);
   io.out.viu_utidx := Mux(io.active, reg_viu_utidx, io.in.viu_utidx);
   io.out.viu_imm   := Mux(io.active, reg_viu_imm, io.in.viu_imm);
-}
-
 }

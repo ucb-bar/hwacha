@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -97,6 +96,4 @@ object Commands
   val CMD_VAMOMAXW   = Bits("b1_11_101_10",8)
   val CMD_VAMOMINUW  = Bits("b1_11_110_10",8)
   val CMD_VAMOMAXUW  = Bits("b1_11_111_10",8)
-}
-
 }

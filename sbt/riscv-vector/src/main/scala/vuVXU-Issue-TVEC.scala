@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -195,6 +194,4 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.vr_zero := Bool(true);
   io.decoded.vd_zero := (vd === Bits(0,6) & vd_valid).toBool;
   io.decoded.imm := imm;
-}
-
 }

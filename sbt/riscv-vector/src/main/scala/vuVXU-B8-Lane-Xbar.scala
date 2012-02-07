@@ -1,4 +1,5 @@
-package riscvVector {
+package riscvVector
+
 import Chisel._
 import Node._
 import Config._
@@ -57,5 +58,4 @@ class vuVXU_Banked8_Lane_Xbar extends Component
   io.rbl(6) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 6, io.rdata);
   io.rbl(7) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 7, io.rdata);
 
-}
 }

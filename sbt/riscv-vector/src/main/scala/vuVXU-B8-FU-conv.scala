@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -144,6 +143,4 @@ class vuVXU_Banked8_FU_conv extends Component
   val pipereg = ShiftRegister(FCONV_STAGES-1, DEF_DATA+DEF_EXC, io.valid, result);
 
   Match(pipereg, io.exc, io.out);
-}
-
 }

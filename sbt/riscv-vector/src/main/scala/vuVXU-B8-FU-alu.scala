@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -179,6 +178,4 @@ class vuVXU_Banked8_FU_alu extends Component
 
   io.wen_masked := io.wen & reg_mask.toBool;
   io.out        := reg_result;
-}
-
 }

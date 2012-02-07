@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -13,7 +12,7 @@ class vuVXU_Issue extends Component
 
   val tvec = new vuVXU_Issue_TVEC();
   val vt = new vuVXU_Issue_VT();
-  val utcmdq_arb = (new Arbiter(2)) { new io_vmu_utcmdq };
+  val utcmdq_arb = (new Arbiter(2)){ new io_vmu_utcmdq() };
 
   tvec.io.vf <> vt.io.vf;
   utcmdq_arb.io.in(0) <> tvec.io.vmu_utcmdq;
@@ -47,6 +46,4 @@ class vuVXU_Issue extends Component
   vt.io.bhazard ^^ io.vt_bhazard;
   vt.io.fn ^^ io.vt_fn;
   vt.io.decoded ^^ io.vt_regid_imm;
-}
-
 }

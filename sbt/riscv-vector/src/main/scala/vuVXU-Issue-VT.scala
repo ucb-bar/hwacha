@@ -1,5 +1,4 @@
 package riscvVector
-{
 
 import Chisel._
 import Node._
@@ -305,6 +304,4 @@ class vuVXU_Issue_VT extends Component
   io.decoded.imm := imm;
 
   io.illegal := Reg((io.vf.active & (~unmasked_valid & ~decode_stop)).toBool, resetVal = Bool(false));
-}
-
 }

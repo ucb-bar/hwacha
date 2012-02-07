@@ -1,7 +1,7 @@
-package riscvVector {
+package riscvVector
+
 import Chisel._
 import Config._
-
 
 class LFUIO extends Bundle 
 {
@@ -162,5 +162,4 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vsdq_val  := reg_vsdq;
   io.utsdq_val := reg_utsdq;
 
-}
 }
