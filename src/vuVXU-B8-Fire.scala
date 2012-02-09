@@ -1,4 +1,4 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
@@ -44,5 +44,4 @@ class vuVXU_Banked8_Fire extends Component
   io.fire_regid_imm.vr := io.vt_regid_imm.vr;
   io.fire_regid_imm.vd := Mux(fire_tvec, io.tvec_regid_imm.vd, io.vt_regid_imm.vd);
   io.fire_regid_imm.imm := Mux(fire_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm);
-  io.fire_regid_imm.imm2 := io.tvec_regid_imm.imm2;
 }

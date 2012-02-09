@@ -1,4 +1,4 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
@@ -14,7 +14,6 @@ class vuVXU extends Component
   issue.io.imem_resp <> io.imem_resp;
   issue.io.vxu_cmdq <> io.vxu_cmdq;
   issue.io.vxu_immq <> io.vxu_immq;
-  issue.io.vxu_imm2q <> io.vxu_imm2q;
   issue.io.vmu_utcmdq <> io.vmu_utcmdq;
   issue.io.vmu_utimmq <> io.vmu_utimmq;
 

@@ -1,9 +1,9 @@
-package riscvVector
+package hwacha
 {
   import Chisel._
   import Node._
-  import Fpu._
   import Interface._
+  import hardfloat._
 
   /*
   class TopIo extends Bundle {

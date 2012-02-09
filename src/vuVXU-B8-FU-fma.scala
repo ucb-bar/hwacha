@@ -1,9 +1,9 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
-import Fpu._
 import Config._
+import hardfloat._
 
 class vuVXU_Banked8_FU_fma extends Component
 {

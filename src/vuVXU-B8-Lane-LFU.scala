@@ -1,4 +1,4 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Config._
