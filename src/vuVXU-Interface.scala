@@ -5,7 +5,7 @@ import Node._
 import Config._
 import Interface._
 
-class io_ready_valid[T <: Data]()(data: => T) extends Bundle
+class io_ready_valid[T <: Data](view: List[String] = null)(data: => T) extends Bundle(view)
 {
   val ready = Bool(INPUT)
   val valid = Bool(OUTPUT)
@@ -59,9 +59,9 @@ class io_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_utldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_utstq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 
-class io_vec_cmdq extends io_ready_valid()( { Bits(width = VCMD_SZ) } )
-class io_vec_ximm1q extends io_ready_valid()( { Bits(width = VIMM_SZ) } )
-class io_vec_ximm2q extends io_ready_valid()( { Bits(width = VSTRIDE_SZ) } )
+class io_vec_cmdq(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VCMD_SZ) } )
+class io_vec_ximm1q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VIMM_SZ) } )
+class io_vec_ximm2q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VSTRIDE_SZ) } )
 class io_vmu_vcmdq extends io_ready_valid()( { Bits(width = VMCMD_SZ) } )
 class io_vmu_vbaseq extends io_ready_valid()( { Bits(width = VMIMM_SZ) } )
 class io_vmu_vstrideq extends io_ready_valid()( { Bits(width = VMSTRIDE_SZ) } )
