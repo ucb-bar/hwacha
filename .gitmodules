@@ -1,3 +1,6 @@
 [submodule "hardfloat"]
 	path = hardfloat
 	url = git@github.com:ucb-bar/hardfloat.git
+[submodule "chisel"]
+	path = chisel
+	url = git@github.com:ucb-bar/chisel.git
