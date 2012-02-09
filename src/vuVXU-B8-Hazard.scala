@@ -329,11 +329,10 @@ class vuVXU_Banked8_Hazard extends Component
   }
   when (io.fire.vlu)
   {
-    // new changed next_ptr2 to next_ptr3
-    next_wport_val.write(next_ptr3, Bool(true));
-    next_wport_head.write(next_ptr3, Bool(true));
-    next_wport_vlu.write(next_ptr3, Bool(true));
-    next_wport_vd.write(next_ptr3, io.fire_regid_imm.vd);
+    next_wport_val.write(next_ptr2, Bool(true));
+    next_wport_head.write(next_ptr2, Bool(true));
+    next_wport_vlu.write(next_ptr2, Bool(true));
+    next_wport_vd.write(next_ptr2, io.fire_regid_imm.vd);
   }
 
   when (io.expand_to_hazard.wen)
@@ -378,14 +377,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
   }
-  // new
-  when(io.fire.vlu)
-  {
-    next_sport_val.write(next_ptr1, Bool(true));
-    next_sport_val.write(next_ptr2, Bool(true));
-  }
-  // new
-  when (io.fire.vsu)
+  when (io.fire.vlu || io.fire.vsu)
   {
     next_sport_val.write(next_ptr1, Bool(true));
   }
@@ -461,7 +453,7 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_seqhazard =
     Cat(
       io.tvec_valid.viu & seqhazard_1slot,
-      io.tvec_valid.vlu & seqhazard_2slot, // new
+      io.tvec_valid.vlu & seqhazard_1slot,
       io.tvec_valid.vsu & seqhazard_1slot
     );
 

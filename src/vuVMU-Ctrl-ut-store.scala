@@ -2,7 +2,7 @@ package riscvVector {
   import Chisel._
   import Node._
   import Interface._
-  import Fpu._
+  import hardfloat._
 
   class vuVMU_Ctrl_ut_storeIO extends Bundle
   {

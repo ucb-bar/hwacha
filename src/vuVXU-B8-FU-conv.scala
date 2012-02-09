@@ -2,8 +2,8 @@ package riscvVector
 
 import Chisel._
 import Node._
-import Fpu._
 import Config._
+import hardfloat._
 import fpu_recoded._
 
 class vuVXU_Banked8_FU_conv extends Component 

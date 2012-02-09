@@ -48,7 +48,6 @@ class io_imem_req extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_imem_resp extends io_valid()( { Bits(width = DEF_INST) } )
 class io_vxu_cmdq extends io_ready_valid()( { Bits(width = DEF_VXU_CMDQ) } )
 class io_vxu_immq extends io_ready_valid()( { Bits(width = DEF_VXU_IMMQ) } )
-class io_vxu_imm2q extends io_valid()( { Bitws(width = DEF_VXU_IMM2Q) } )
 class io_vxu_ackq extends io_ready_valid()( { Bits(width = DEF_VXU_ACKQ) } )
 class io_vmu_utcmdq extends io_ready_valid()( { Bits(width = DEF_VMU_UTCMDQ) } )
 class io_vmu_utimmq extends io_ready_valid()( { Bits(width = DEF_VMU_UTIMMQ) } )
@@ -193,7 +192,6 @@ class io_vxu_issue_regid_imm extends Bundle
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
   val imm = Bits(width = DEF_DATA)
-  val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
 
 class io_vxu_issue_op extends Bundle
@@ -353,7 +351,6 @@ class io_vcu extends Bundle
   val vec_ximm2q = new io_vec_ximm2q().flip()
   val vxu_cmdq = new io_vxu_cmdq
   val vxu_immq = new io_vxu_immq
-  val vxu_imm2q = new io_vxu_imm2q
   val vmu_vcmdq = new io_vmu_vcmdq
   val vmu_vbaseq = new io_vmu_vbaseq
   val vmu_vstrideq = new io_vmu_vstrideq
@@ -414,7 +411,6 @@ class io_vxu extends Bundle
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
   val vxu_ackq = new io_vxu_ackq()
 
   val vmu_utcmdq = new io_vmu_utcmdq()
@@ -445,7 +441,6 @@ class io_vxu_issue extends Bundle
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
   val vmu_utcmdq = new io_vmu_utcmdq()
   val vmu_utimmq = new io_vmu_utimmq()
 
