@@ -1,0 +1,3 @@
+[submodule "hardfloat"]
+	path = hardfloat
+	url = git@github.com:ucb-bar/hardfloat.git
