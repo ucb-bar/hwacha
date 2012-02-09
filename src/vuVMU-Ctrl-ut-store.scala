@@ -1,8 +1,8 @@
-package hwacha {
+package riscvVector {
   import Chisel._
   import Node._
   import Interface._
-  import hardfloat._
+  import Fpu._
 
   class vuVMU_Ctrl_ut_storeIO extends Bundle
   {

@@ -1,4 +1,4 @@
-package hwacha
+package riscvVector
 {
 
 import Chisel._
@@ -25,20 +25,27 @@ class vu extends Component
   vxu_immq.io.enq_val <> vcu.io.vxu_immq.valid;
   vxu_immq.io.enq_rdy <> vcu.io.vxu_immq.ready;
 
+  // new
+  val vxu_imm2q = VC_SIMPLE_QUEUE(XIMM2_SZ, 4);
+  vxu_imm2q.io.enq_bits <> vcu.io.vxu_imm2q.bits;
+  vxu_imm2q.io.enq_val <> vcu.io.vxu_imm2q.valid;
+  vxu_imm2q.io.enq_rdy <> vcu.io.vxu_immq.ready;
+  // new
+
   val vmu_vcmdq = VC_SIMPLE_QUEUE(VMCMD_SZ, 4);
-  vmu_vcmdq.io.enq_bits <> vcu.io.vmu_vcmdq.bits;
-  vmu_vcmdq.io.enq_val <> vcu.io.vmu_vcmdq.valid;
-  vmu_vcmdq.io.enq_rdy <> vcu.io.vmu_vcmdq.ready;
+  //vmu_vcmdq.io.enq_bits <> vcu.io.vmu_vcmdq.bits;
+  //vmu_vcmdq.io.enq_val <> vcu.io.vmu_vcmdq.valid;
+  //vmu_vcmdq.io.enq_rdy <> vcu.io.vmu_vcmdq.ready;
 
   val vmu_vbaseq = VC_SIMPLE_QUEUE(VMIMM_SZ, 4);
-  vmu_vbaseq.io.enq_bits <> vcu.io.vmu_vbaseq.bits;
-  vmu_vbaseq.io.enq_val <> vcu.io.vmu_vbaseq.valid;
-  vmu_vbaseq.io.enq_rdy <> vcu.io.vmu_vbaseq.ready;
+  //vmu_vbaseq.io.enq_bits <> vcu.io.vmu_vbaseq.bits;
+  //vmu_vbaseq.io.enq_val <> vcu.io.vmu_vbaseq.valid;
+  //vmu_vbaseq.io.enq_rdy <> vcu.io.vmu_vbaseq.ready;
 
   val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 2);
-  vmu_vstrideq.io.enq_bits <> vcu.io.vmu_vstrideq.bits;
-  vmu_vstrideq.io.enq_val <> vcu.io.vmu_vstrideq.valid;
-  vmu_vstrideq.io.enq_rdy <> vcu.io.vmu_vstrideq.ready;
+  //vmu_vstrideq.io.enq_bits <> vcu.io.vmu_vstrideq.bits;
+  //vmu_vstrideq.io.enq_val <> vcu.io.vmu_vstrideq.valid;
+  //vmu_vstrideq.io.enq_rdy <> vcu.io.vmu_vstrideq.ready;
 
   vcu.io.vec_ackq <> io.vec_ackq;
 
@@ -52,6 +59,24 @@ class vu extends Component
   vxu.io.vxu_immq.bits <> vxu_immq.io.deq_bits;
   vxu.io.vxu_immq.ready <> vxu_immq.io.deq_rdy;
   vxu.io.vxu_immq.valid <> vxu_immq.io.deq_val;
+
+  // new
+  vxu.io.vxu_imm2q.bits <> vxu_imm2q.io.deq_bits;
+  vxu.io.vxu_imm2q.valid <> vxu_imm2q.io.deq_val;
+  vxu.io.vxu_immq.ready <> vxu_immq.io.deq_rdy;
+
+  vxu.io.vxu_vcmdq.bits <> vmu_vcmdq.io.enq_bits;
+  vxu.io.vxu_vcmdq.valid <> vmu_vcmdq.io.enq_bits;
+  vxu.io.vxu_vcmdq.ready <> vmu_vcmdq.io.enq_bits;
+  
+  vxu.io.vxu_vbaseq.bits <> vmu_vbaseq.io.enq_bits;
+  vxu.io.vxu_vbaseq.valid <> vmu_vbaseq.io.enq_val;
+  vxu.io.vxu_vbaseq.ready <> vmu_vbaseq.io.enq_rdy;
+
+  vxu.io.vxu_vstrideq.bits <> vmu_vstrideq.io.enq_bits;
+  vxu.io.vxu_vstrideq.valid <> vmu_vstrideq.io.enq_val;
+  vxu.io.vxu_vstrideq.ready <> vmu_vstrideq.io.enq_rdy;
+  // new
 
   vxu.io.vxu_ackq <> vcu.io.vxu_ackq;
 

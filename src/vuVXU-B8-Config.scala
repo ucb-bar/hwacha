@@ -1,4 +1,4 @@
-package hwacha
+package riscvVector
 
 import Chisel._;
 import Node._;
@@ -116,7 +116,7 @@ object Config
   val DEF_XLEN = SZ_XLEN
   val DEF_FLEN = SZ_FLEN
 
-  val SZ_STALL = 5
+  val SZ_STALL = 6
 
   val RG_VLDQ = 4
   val RG_VSDQ = 3

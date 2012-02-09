@@ -1,4 +1,4 @@
-package hwacha
+package riscvVector
 {
   import Chisel._
   import Node._
@@ -111,9 +111,9 @@ package hwacha
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy &&
     mask_vmu_vcmdq_rdy && mask_vmu_vbaseq_rdy && mask_vmu_vstrideq_rdy;
 
-    /////////////////////////////////////////////////////////////////////////////
-    // REGISTERS
-    /////////////////////////////////////////////////////////////////////////////
+    //----------------------------------------------------------------\\
+    // REGISTERS                                                      \\
+    //----------------------------------------------------------------\\
 
     val VCU_FORWARD = Bits(0,2);
     val VCU_FENCE_CV = Bits(1,2);
@@ -153,9 +153,9 @@ package hwacha
       vlen <== io.vec_ximm1q.bits(VLENMAX_SZ-1,0);
     }
 
-    /////////////////////////////////////////////////////////////////////////////
-    // SIGNALS
-    /////////////////////////////////////////////////////////////////////////////
+    //-------------------------------------------------------------------------\\
+    // SIGNALS                                                                 \\
+    //-------------------------------------------------------------------------\\
 
     val forward = (state === VCU_FORWARD);
 
@@ -189,6 +189,8 @@ package hwacha
     mask_vxu_cmdq_rdy && enq_vxu_immq &&
     mask_vmu_vcmdq_rdy && mask_vmu_vbaseq_rdy && mask_vmu_vstrideq_rdy;
 
+    io.vxu_imm2q.valid := io.vxu_immq.valid; // new
+
     io.vmu_vcmdq.valid :=
     forward &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
@@ -207,12 +209,17 @@ package hwacha
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy &&
     mask_vmu_vcmdq_rdy && mask_vmu_vbaseq_rdy && enq_vmu_vstrideq;
 
-    io.vxu_cmdq.bits := MuxCase(
-      io.vec_cmdq.bits, Array(
-        (sel_vxu_cmdq === LDWB) -> Cat(CMD_LDWB, io.vec_cmdq.bits(11,0)),
-        (sel_vxu_cmdq === STAC) -> Cat(CMD_STAC, io.vec_cmdq.bits(11,0))));
+    // io.vxu_cmdq.bits := MuxCase(
+    //   io.vec_cmdq.bits, Array(
+    //     (sel_vxu_cmdq === LDWB) -> Cat(CMD_LDWB, io.vec_cmdq.bits(11,0)),
+    //     (sel_vxu_cmdq === STAC) -> Cat(CMD_STAC, io.vec_cmdq.bits(11,0))));
 
+    // new 
+    io.vxu_cmdq.bits := io.vec_cmdq.bits;
     io.vxu_immq.bits := io.vec_ximm1q.bits;
+    io.vxu_imm2q.bits := io.vec_ximm2q.bits;
+    // new
+
     io.vmu_vcmdq.bits := Cat(cmd, vlen);
     io.vmu_vbaseq.bits := io.vec_ximm1q.bits(31,0);
     io.vmu_vstrideq.bits := io.vec_ximm2q.bits;

@@ -1,9 +1,9 @@
-package hwacha
+package riscvVector
 
 import Chisel._
 import Node._
 import Config._
-import hardfloat._
+import Fpu._
 
 class Shifter extends Component
 {

@@ -145,6 +145,7 @@ class io_vf extends Bundle
 
 class io_qstall extends Bundle
 {
+  val vlaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
@@ -192,6 +193,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = DEF_REGLEN)
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
+  val cmd = Bits(width = VCMD_SZ);
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
@@ -240,6 +242,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = DEF_BREGLEN)
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
+  val cmd = Bits(width = VCMD_SZ)
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q);
 }

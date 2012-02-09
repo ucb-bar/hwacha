@@ -1,9 +1,9 @@
-package hwacha
+package riscvVector
 {
   import Chisel._
   import Node._
   import Interface._
-  import hardfloat._
+  import Fpu._
   import queues._
   import scala.collection.mutable.Queue
 

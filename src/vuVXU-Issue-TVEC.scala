@@ -1,4 +1,4 @@
-package hwacha
+package riscvVector
 
 import Chisel._
 import Node._
@@ -19,14 +19,15 @@ class vuVXU_Issue_TVEC extends Component
   val tvec_active = (reg_state === ISSUE_TVEC);
 
 
-/////////////////////////////////////////////////////////////////////////////
-// DECODE
-/////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------\\
+// DECODE                                                                  \\
+//-------------------------------------------------------------------------\\
 
   val cmd = io.vxu_cmdq.bits(XCMD_CMCODE);
   val vd = io.vxu_cmdq.bits(XCMD_VD);
   val vt = io.vxu_cmdq.bits(XCMD_VS);
   val imm = io.vxu_immq.bits;
+  val imm2 = io.vxu_imm2q.bits;
 
   val n = Bits(0,1);
   val y = Bits(1,1);
@@ -54,8 +55,39 @@ class vuVXU_Issue_TVEC extends Component
     CMD_VMSV->       List(Bits("b001",3),Bits("b10",2),Bits("b00",2),Bits("b001",3),MI,y,n,n,n,y,n),
     CMD_VFMVV->      List(Bits("b001",3),Bits("b11",2),Bits("b00",2),Bits("b001",3),MR,y,n,n,n,n,n),
 
-    CMD_LDWB->       List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_STAC->       List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n)
+    CMD_VLD       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLW       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLWU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLH       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLHU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLB       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLBU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VSD       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSW       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSH       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSB       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+
+    CMD_VFLD      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VFLW      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VFSD      -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VFSW      -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+
+    CMD_VLSTD     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTW     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTWU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTH     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTHU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTB     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VLSTBU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VSSTD     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSSTW     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSSTH     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VSSTB     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+
+    CMD_VFLSTD    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VFLSTW    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
+    CMD_VFSSTD    -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VFSSTW    -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n)
   ));
 
   val valid::dhazard::shazard::bhazard::vmsrc::cs0 = cs;
@@ -66,9 +98,9 @@ class vuVXU_Issue_TVEC extends Component
   val fire_vf    = tvec_active & io.vxu_cmdq.valid & decode_vf;
 
 
-/////////////////////////////////////////////////////////////////////////////
-// REGISTERS
-/////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------\\
+// REGISTERS                                                               \\
+//-------------------------------------------------------------------------\\
 
   val next_vlen = Wire(){Bits(width = DEF_VLEN)};
   val next_nxregs = Wire(){Bits(width = DEF_REGCNT)};
@@ -115,9 +147,9 @@ class vuVXU_Issue_TVEC extends Component
   }
 
 
-/////////////////////////////////////////////////////////////////////////////
-// SIGNALS
-/////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------\\
+// SIGNALS                                                                 \\
+//-------------------------------------------------------------------------\\
 
   io.vf.active := (reg_state === ISSUE_VT);
   io.vf.fire := fire_vf.toBool;
@@ -193,5 +225,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.vt_zero := vt === Bits(0,6);
   io.decoded.vr_zero := Bool(true);
   io.decoded.vd_zero := (vd === Bits(0,6) & vd_valid).toBool;
+  io.decoded.cmd := cmd;
   io.decoded.imm := imm;
+  io.decoded.imm2 := imm2;
 }

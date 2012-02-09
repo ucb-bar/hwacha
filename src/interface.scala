@@ -1,4 +1,4 @@
-package hwacha {
+package riscvVector {
   import Chisel._
   import Node._
 
@@ -41,6 +41,7 @@ package hwacha {
 
       // ximmq
       val XIMM_SZ      = 64;
+      val XIMM2_SZ     = 32;
     /*
       val XIMM_DATA     63:0
     */
@@ -127,6 +128,7 @@ package hwacha {
   
       val DEF_VXU_CMDQ = XCMD_SZ;
       val DEF_VXU_IMMQ = XIMM_SZ;
+      val DEF_VXU_IMM2Q = XIMM2_SZ;
       val DEF_VXU_ACKQ = XRESP_SZ;
       val DEF_VMU_VCMDQ = VMCMD_SZ;
       val DEF_VMU_VBASEQ = VMIMM_SZ;

@@ -1,4 +1,4 @@
-package hwacha
+package riscvVector
 
 import Chisel._
 import Node._
@@ -14,6 +14,7 @@ class vuVXU extends Component
   issue.io.imem_resp <> io.imem_resp;
   issue.io.vxu_cmdq <> io.vxu_cmdq;
   issue.io.vxu_immq <> io.vxu_immq;
+  issue.io.vxu_imm2q <> io.vxu_imm2q;
   issue.io.vmu_utcmdq <> io.vmu_utcmdq;
   issue.io.vmu_utimmq <> io.vmu_utimmq;
 
@@ -65,6 +66,14 @@ class vuVXU extends Component
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq;
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
 
+  b8seq.io.qstall.vlaq := ~io.vxu_vcmdq.ready || ~io.vxu_vstrideq.ready || ~io.vxu_vbaseq.ready;
+  b8seq.io.seq_to_expand.vlaq <> io.vxu_vcmdq.valid
+  b8seq.io.seq_to_expand.vlaq <> io.vxu_vbaseq.valid
+  b8seq.io.seq_to_expand.vlaq <> io.vxu_vstrideq.valid
+  b8seq.io.seq_to_expand.fire_regid_imm.cmd <> io.vxu_vcmdq.bits;
+  b8seq.io.seq_to_expand.fire_regid_imm.imm <> io.vxu_vbaseq.bits;
+  b8seq.io.seq_to_expand.fire_regid_imm.imm2 <> io.vxu_vstrideq.bits;
+
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
   b8seq.io.qstall.utaq := ~io.lane_utaq.ready;
@@ -74,6 +83,7 @@ class vuVXU extends Component
   b8seq.io.fire <> b8fire.io.fire;
   b8seq.io.fire_fn <> b8fire.io.fire_fn;
   b8seq.io.fire_regid_imm <> b8fire.io.fire_regid_imm;
+
 
   val b8expand = new vuVXU_Banked8_Expand();
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand;

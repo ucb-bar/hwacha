@@ -1,4 +1,4 @@
-package hwacha {
+package riscvVector {
   import Chisel._
   import Node._
   import Interface._
