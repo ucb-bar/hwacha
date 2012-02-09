@@ -241,6 +241,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
   val imm = Bits(width = DEF_DATA)
+  val imm2 = Bits(width = DEF_VXU_IMM2Q);
 }
 
 class io_vxu_expand_read extends Bundle

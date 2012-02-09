@@ -42,6 +42,7 @@ class vuVXU_Banked8_Seq extends Component {
   val next_vau0  = GenArray(DEF_BANK){ Wire(){ Bool() } };
   val next_vau1  = GenArray(DEF_BANK){ Wire(){ Bool() } };
   val next_vau2  = GenArray(DEF_BANK){ Wire(){ Bool() } };
+  val next_vlaq  = GenArray(DEF_BANK){ Wire(){ Bool() } };
   val next_vldq  = GenArray(DEF_BANK){ Wire(){ Bool() } };
   val next_vsdq  = GenArray(DEF_BANK){ Wire(){ Bool() } };
   val next_utaq  = GenArray(DEF_BANK){ Wire(){ Bool() } };
@@ -64,6 +65,7 @@ class vuVXU_Banked8_Seq extends Component {
   val next_vr  = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} };
   val next_vd  = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} };
   val next_imm = GenArray(8){ Wire(){Bits(width=DEF_DATA)} };
+  val next_imm2 = GenArray(8){ Wire(){Bits(width=DEF_VXU_IMM2Q)} };
 
   val array_val   = Reg(resetVal = Bits(0, SZ_BANK));
   val array_last  = Reg(resetVal = Bits(0, SZ_BANK));
@@ -71,6 +73,7 @@ class vuVXU_Banked8_Seq extends Component {
   val array_vau0  = Reg(resetVal = Bits(0, SZ_BANK));
   val array_vau1  = Reg(resetVal = Bits(0, SZ_BANK));
   val array_vau2  = Reg(resetVal = Bits(0, SZ_BANK));
+  val array_vlaq  = Reg(resetVal = Bits(0, SZ_BANK));
   val array_vldq  = Reg(resetVal = Bits(0, SZ_BANK));
   val array_vsdq  = Reg(resetVal = Bits(0, SZ_BANK));
   val array_utaq  = Reg(resetVal = Bits(0, SZ_BANK));
@@ -93,6 +96,7 @@ class vuVXU_Banked8_Seq extends Component {
   val array_vr  = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} };
   val array_vd  = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} };
   val array_imm = GenArray(8){ Reg(){Bits(width=DEF_DATA)} };
+  val array_imm2 = GenArray(8){ Reg(){Bits(width=DEF_VXU_IMM2Q)} };
 
   array_val   := next_val.flatten();
   array_last  := next_last.flatten();
@@ -100,6 +104,7 @@ class vuVXU_Banked8_Seq extends Component {
   array_vau0  := next_vau0.flatten();
   array_vau1  := next_vau1.flatten();
   array_vau2  := next_vau2.flatten();
+  array_vlaq  := next_vlaq.flatten();
   array_vldq  := next_vldq.flatten();
   array_vsdq  := next_vsdq.flatten();
   array_utaq  := next_utaq.flatten();
@@ -131,6 +136,7 @@ class vuVXU_Banked8_Seq extends Component {
   next_vau0  <== array_vau0;
   next_vau1  <== array_vau1;
   next_vau2  <== array_vau2;
+  next_vlaq  <== array_vlaq;
   next_vldq  <== array_vldq;
   next_vsdq  <== array_vsdq;
   next_utaq  <== array_utaq;
@@ -286,9 +292,9 @@ class vuVXU_Banked8_Seq extends Component {
     next_last.write(next_ptr1, last);
     next_vlaq.write(next_ptr1, Bool(true));
     next_vlen.write(next_ptr1, io.issue_to_seq.vlen);
-    next_addr_stride.write(next_ptr1, );
-    next_stride.write(next_ptr1, );
-    next_vbase.write(next_ptr1, );
+    next_stride.write(next_ptr1, io.issue_to_seq.stride);
+    next_imm.write(next_ptr1, io.fire_regid_imm.imm);
+    next_imm2.write(next_ptr1, io.fire_regid_imm.imm2);
     // new
     
     // new
@@ -346,24 +352,33 @@ class vuVXU_Banked8_Seq extends Component {
 
   }
 
+  when(io.seq.vlaq)
+  {
+    next_imm.write(reg_ptr, array_imm.read(reg_ptr) + array_imm2.read(reg_ptr) << 3);
+  }
+
+  val next_dep_vlaq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_vldq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_vsdq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_utaq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_utldq = GenArray(SZ_BANK){ Wire(){ Bool() } };
   val next_dep_utsdq = GenArray(SZ_BANK){ Wire(){ Bool() } };
 
+  val array_dep_vlaq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_vldq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_vsdq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_utaq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_utldq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
   val array_dep_utsdq = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
 
+  array_dep_vlaq  := next_dep_vlaq;
   array_dep_vldq  := next_dep_vldq;
   array_dep_vsdq  := next_dep_vsdq;
   array_dep_utaq  := next_dep_utaq;
   array_dep_utldq := next_dep_utldq;
   array_dep_utsdq := next_dep_utsdq;
 
+  next_dep_vlaq <== array_dep_vlaq;
   next_dep_vldq <== array_dep_vldq;
   next_dep_vsdq <== array_dep_vsdq;
   next_dep_utaq <== array_dep_utaq;
@@ -372,6 +387,7 @@ class vuVXU_Banked8_Seq extends Component {
   
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
+    next_dep_vlaq.write(next_ptr1, Bool(true));
     next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(true));
     next_dep_utaq.write(next_ptr1, Bool(true));
@@ -383,6 +399,7 @@ class vuVXU_Banked8_Seq extends Component {
   {
     for(i <- 0 until SZ_BANK)
       next_dep_utaq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr1, Bool(true));
     next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(true));
     next_dep_utaq.write(next_ptr1, Bool(false));
@@ -391,6 +408,7 @@ class vuVXU_Banked8_Seq extends Component {
 
     for(i <- 0 until SZ_BANK)
       next_dep_utsdq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr2, Bool(true));
     next_dep_vldq.write(next_ptr2, Bool(true));
     next_dep_vsdq.write(next_ptr2, Bool(true));
     next_dep_utaq.write(next_ptr2, Bool(true));
@@ -399,6 +417,7 @@ class vuVXU_Banked8_Seq extends Component {
 
     for(i <- 0 until SZ_BANK)
       next_dep_utldq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr3, Bool(true));
     next_dep_vldq.write(next_ptr3, Bool(true));
     next_dep_vsdq.write(next_ptr3, Bool(true));
     next_dep_utaq.write(next_ptr3, Bool(true));
@@ -410,6 +429,7 @@ class vuVXU_Banked8_Seq extends Component {
   {
     for(i <- 0 until SZ_BANK)
       next_dep_utaq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr1, Bool(true));    
     next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(true));
     next_dep_utaq.write(next_ptr1, Bool(false));
@@ -418,6 +438,7 @@ class vuVXU_Banked8_Seq extends Component {
 
     for(i <- 0 until SZ_BANK)
       next_dep_utldq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr2, Bool(true));    
     next_dep_vldq.write(next_ptr2, Bool(true));
     next_dep_vsdq.write(next_ptr2, Bool(true));
     next_dep_utaq.write(next_ptr2, Bool(true));
@@ -429,6 +450,7 @@ class vuVXU_Banked8_Seq extends Component {
   {
     for(i <- 0 until SZ_BANK)
       next_dep_utaq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr1, Bool(true));
     next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(true));
     next_dep_utaq.write(next_ptr1, Bool(false));
@@ -437,6 +459,7 @@ class vuVXU_Banked8_Seq extends Component {
 
     for(i <- 0 until SZ_BANK)
       next_dep_utsdq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr2, Bool(true));
     next_dep_vldq.write(next_ptr2, Bool(true));
     next_dep_vsdq.write(next_ptr2, Bool(true));
     next_dep_utaq.write(next_ptr2, Bool(true));
@@ -446,19 +469,31 @@ class vuVXU_Banked8_Seq extends Component {
 
   when (io.fire.vlu)
   {
+    //new
     for(i <- 0 until SZ_BANK)
-      next_dep_vldq(i) <== Bool(false);
-    next_dep_vldq.write(next_ptr1, Bool(false));
+      next_dep_vlaq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr1, Bool(false));
+    next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(true));
     next_dep_utaq.write(next_ptr1, Bool(true));
     next_dep_utldq.write(next_ptr1, Bool(true));
-    next_dep_utsdq.write(next_ptr1, Bool(true));
+    next_dep_utsdq.write(next_ptr1, Bool(true));    
+
+    for(i <- 0 until SZ_BANK)
+      next_dep_vldq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr2, Bool(true));
+    next_dep_vldq.write(next_ptr2, Bool(false));
+    next_dep_vsdq.write(next_ptr2, Bool(true));
+    next_dep_utaq.write(next_ptr2, Bool(true));
+    next_dep_utldq.write(next_ptr2, Bool(true));
+    next_dep_utsdq.write(next_ptr2, Bool(true));
   }
 
   when (io.fire.vsu)
   {
     for(i <- 0 until SZ_BANK)
       next_dep_vsdq(i) <== Bool(false);
+    next_dep_vlaq.write(next_ptr1, Bool(true));
     next_dep_vldq.write(next_ptr1, Bool(true));
     next_dep_vsdq.write(next_ptr1, Bool(false));
     next_dep_utaq.write(next_ptr1, Bool(true));
@@ -532,5 +567,5 @@ class vuVXU_Banked8_Seq extends Component {
   io.seq_regid_imm.vr := array_vr.read(reg_ptr);
   io.seq_regid_imm.vd := array_vd.read(reg_ptr);
   io.seq_regid_imm.imm := array_imm.read(reg_ptr);
-
+  io.seq_regid_imm.imm2 := array_imm2.read(reg_ptr);
 }
