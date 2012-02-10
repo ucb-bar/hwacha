@@ -1,8 +1,9 @@
-package riscvVector
+package hwacha 
 
 import Chisel._;
 import Node._;
 import Config._;
+import Interface._;
 
 class vuVXU_Banked8_Seq extends Component {
 
@@ -361,7 +362,7 @@ class vuVXU_Banked8_Seq extends Component {
 
   when(io.seq.vlaq)
   {
-    next_imm.write(reg_ptr, array_imm.read(reg_ptr) + array_imm2.read(reg_ptr) << 3);
+    next_imm.write(reg_ptr, array_imm.read(reg_ptr) + (array_imm2.read(reg_ptr) << UFix(3)));
   }
 
   val next_dep_vlaq = GenArray(SZ_BANK){ Wire(){ Bool() } };
@@ -576,7 +577,7 @@ class vuVXU_Banked8_Seq extends Component {
   io.seq_regid_imm.vt := array_vt.read(reg_ptr);
   io.seq_regid_imm.vr := array_vr.read(reg_ptr);
   io.seq_regid_imm.vd := array_vd.read(reg_ptr);
-  io.seq_regid_imm.cmd := array_cmd.read(reg_ptr);
+  io.seq_regid_imm.cmd := Cat(array_cmd.read(reg_ptr)(7,0), io.seq_regid_imm.cnt + UFix(1, VLENMAX_SZ))(18,0);
   io.seq_regid_imm.imm := array_imm.read(reg_ptr);
   io.seq_regid_imm.imm2 := array_imm2.read(reg_ptr);
 }

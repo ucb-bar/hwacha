@@ -1,4 +1,4 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
@@ -48,7 +48,7 @@ class io_imem_req extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_imem_resp extends io_valid()( { Bits(width = DEF_INST) } )
 class io_vxu_cmdq extends io_ready_valid()( { Bits(width = DEF_VXU_CMDQ) } )
 class io_vxu_immq extends io_ready_valid()( { Bits(width = DEF_VXU_IMMQ) } )
-class io_vxu_imm2q extends io_valid()( { Bitws(width = DEF_VXU_IMM2Q) } )
+class io_vxu_imm2q extends io_valid()( { Bits(width = DEF_VXU_IMM2Q) } )
 class io_vxu_ackq extends io_ready_valid()( { Bits(width = DEF_VXU_ACKQ) } )
 class io_vmu_utcmdq extends io_ready_valid()( { Bits(width = DEF_VMU_UTCMDQ) } )
 class io_vmu_utimmq extends io_ready_valid()( { Bits(width = DEF_VMU_UTIMMQ) } )
@@ -193,7 +193,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = DEF_REGLEN)
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
-  val cmd = Bits(width = VCMD_SZ);
+  val cmd = Bits(width = 19);
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
@@ -216,6 +216,7 @@ class io_vxu_seq_fu extends Bundle
   val vau0 = Bool()
   val vau1 = Bool()
   val vau2 = Bool()
+  val vlaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
@@ -242,7 +243,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = DEF_BREGLEN)
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
-  val cmd = Bits(width = VCMD_SZ)
+  val cmd = Bits(width = 19)
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q);
 }
@@ -339,6 +340,7 @@ class io_vxu_issue_tvec extends Bundle
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
+  val vxu_imm2q = new io_vxu_imm2q().flip()
   val vmu_utcmdq = new io_vmu_utcmdq()
 
   val valid = new io_vxu_issue_fu().asOutput
@@ -419,6 +421,11 @@ class io_vxu extends Bundle
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
+
+  val vmu_vcmdq = new io_vxu_cmdq
+  val vmu_vbaseq = new io_vxu_immq
+  val vmu_vstrideq = new io_vxu_imm2q
+
   val vxu_ackq = new io_vxu_ackq()
 
   val vmu_utcmdq = new io_vmu_utcmdq()

@@ -1,8 +1,8 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
-import Fpu._
+import hardfloat._
 import Config._
 import fpu_recoded._
 

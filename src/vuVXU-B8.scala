@@ -1,4 +1,4 @@
-package riscvVector
+package hwacha
 
 import Chisel._
 import Node._
@@ -66,13 +66,13 @@ class vuVXU extends Component
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq;
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
 
-  b8seq.io.qstall.vlaq := ~io.vxu_vcmdq.ready || ~io.vxu_vstrideq.ready || ~io.vxu_vbaseq.ready;
-  b8seq.io.seq_to_expand.vlaq <> io.vxu_vcmdq.valid
-  b8seq.io.seq_to_expand.vlaq <> io.vxu_vbaseq.valid
-  b8seq.io.seq_to_expand.vlaq <> io.vxu_vstrideq.valid
-  b8seq.io.seq_to_expand.fire_regid_imm.cmd <> io.vxu_vcmdq.bits;
-  b8seq.io.seq_to_expand.fire_regid_imm.imm <> io.vxu_vbaseq.bits;
-  b8seq.io.seq_to_expand.fire_regid_imm.imm2 <> io.vxu_vstrideq.bits;
+  b8seq.io.qstall.vlaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready;
+  b8seq.io.seq.vlaq <> io.vmu_vcmdq.valid
+  b8seq.io.seq.vlaq <> io.vmu_vbaseq.valid
+  b8seq.io.seq.vlaq <> io.vmu_vstrideq.valid
+  b8seq.io.seq_regid_imm.cmd <> io.vmu_vcmdq.bits;
+  b8seq.io.seq_regid_imm.imm <> io.vmu_vbaseq.bits;
+  b8seq.io.seq_regid_imm.imm2 <> io.vmu_vstrideq.bits;
 
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
