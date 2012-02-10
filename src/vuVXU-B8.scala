@@ -66,14 +66,15 @@ class vuVXU extends Component
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq;
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
 
-  b8seq.io.qstall.vlaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready;
-  b8seq.io.seq.vlaq <> io.vmu_vcmdq.valid
-  b8seq.io.seq.vlaq <> io.vmu_vbaseq.valid
-  b8seq.io.seq.vlaq <> io.vmu_vstrideq.valid
-  b8seq.io.seq_regid_imm.cmd <> io.vmu_vcmdq.bits;
-  b8seq.io.seq_regid_imm.imm <> io.vmu_vbaseq.bits;
-  b8seq.io.seq_regid_imm.imm2 <> io.vmu_vstrideq.bits;
+  io.vmu_vcmdq.valid := b8seq.io.seq.vaq
+  io.vmu_vbaseq.valid := b8seq.io.seq.vaq & ~b8seq.io.seq_regid_imm.imm(64);
+  io.vmu_vstrideq.valid := b8seq.io.seq.vaq & b8seq.io.seq_regid_imm.cmd(19);
+  
+  io.vmu_vcmdq.bits := b8seq.io.seq_regid_imm.cmd(18,0);
+  io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
+  io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;
 
+  b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
   b8seq.io.qstall.utaq := ~io.lane_utaq.ready;

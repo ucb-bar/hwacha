@@ -48,7 +48,7 @@ class io_imem_req extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_imem_resp extends io_valid()( { Bits(width = DEF_INST) } )
 class io_vxu_cmdq extends io_ready_valid()( { Bits(width = DEF_VXU_CMDQ) } )
 class io_vxu_immq extends io_ready_valid()( { Bits(width = DEF_VXU_IMMQ) } )
-class io_vxu_imm2q extends io_valid()( { Bits(width = DEF_VXU_IMM2Q) } )
+class io_vxu_imm2q extends io_ready_valid()( { Bits(width = DEF_VXU_IMM2Q) } )
 class io_vxu_ackq extends io_ready_valid()( { Bits(width = DEF_VXU_ACKQ) } )
 class io_vmu_utcmdq extends io_ready_valid()( { Bits(width = DEF_VMU_UTCMDQ) } )
 class io_vmu_utimmq extends io_ready_valid()( { Bits(width = DEF_VMU_UTIMMQ) } )
@@ -145,7 +145,7 @@ class io_vf extends Bundle
 
 class io_qstall extends Bundle
 {
-  val vlaq = Bool()
+  val vaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
@@ -165,6 +165,7 @@ class io_vxu_issue_fu extends Bundle
   val vgu = Bool()
   val vlu = Bool()
   val vsu = Bool()
+  val fence = Bool()
 }
 
 class io_vxu_issue_fn extends Bundle
@@ -193,7 +194,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = DEF_REGLEN)
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
-  val cmd = Bits(width = 19);
+  val cmd = Bits(width = VCMD_SZ);
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
@@ -216,7 +217,7 @@ class io_vxu_seq_fu extends Bundle
   val vau0 = Bool()
   val vau1 = Bool()
   val vau2 = Bool()
-  val vlaq = Bool()
+  val vaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
@@ -243,7 +244,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = DEF_BREGLEN)
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
-  val cmd = Bits(width = 19)
+  val cmd = Bits(width = VCMD_SZ)
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q);
 }

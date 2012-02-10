@@ -389,6 +389,11 @@ class vuVXU_Banked8_Hazard extends Component
   {
     next_sport_val.write(next_ptr1, Bool(true));
   }
+  
+  when (io.fire.fence)
+  {
+    next_sport_val.write(next_ptr1, Bool(true));
+  }
 
   when (io.seq_to_hazard.last)
   {
@@ -462,7 +467,8 @@ class vuVXU_Banked8_Hazard extends Component
     Cat(
       io.tvec_valid.viu & seqhazard_1slot,
       io.tvec_valid.vlu & seqhazard_2slot, // new
-      io.tvec_valid.vsu & seqhazard_1slot
+      io.tvec_valid.vsu & seqhazard_1slot,
+      io.tvec_valid.fence & seqhazard_1slot
     );
 
   val tvec_bhazard =

@@ -39,59 +39,60 @@ class vuVXU_Issue_TVEC extends Component
                      //                                                                | | decode_setvl
                      //                                                                | | | decode_vf
                      //                                                                | | | | deq_vxu_immq
-                     //         val            dhazard       shazard       bhazard msrc| | | | | enq_vmu_utcmdq
-                     //         |              |             |             |        |  | | | | | |
-                     List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n),Array(
-    CMD_VVCFGIVL->   List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,y,y,n,y,n),
-    CMD_VSETVL->     List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,y,n,y,n),
-    CMD_VF->         List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,y,y,n),
+                     //         val            dhazard       shazard       bhazard msrc| | | | | deq_vxu_imm2q  
+                     //         |              |             |             |        |  | | | | | | enq_vmu_utcmdq
+                     //         |              |             |             |        |  | | | | | | |
+                     List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n,n),Array(
+    CMD_VVCFGIVL->   List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,y,y,n,y,n,n),
+    CMD_VSETVL->     List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,y,n,y,n,n),
+    CMD_VF->         List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,y,y,n,n),
 
-    CMD_FENCE_L_V->  List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,y),
-    CMD_FENCE_G_V->  List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,y),
-    CMD_FENCE_L_CV-> List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,y),
-    CMD_FENCE_G_CV-> List(Bits("b000",3),Bits("b00",2),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,y),
+    CMD_FENCE_L_V->  List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n,y),
+    CMD_FENCE_G_V->  List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n,y),
+    CMD_FENCE_L_CV-> List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n,y),
+    CMD_FENCE_G_CV-> List(Bits("b000",3),Bits("b00",2),Bits(0,4),Bits("b00",2),Bits("b000",3),M0,n,n,n,n,n,n,y),
 
-    CMD_VMVV->       List(Bits("b001",3),Bits("b11",2),Bits("b00",2),Bits("b001",3),MR,y,n,n,n,n,n),
-    CMD_VMSV->       List(Bits("b001",3),Bits("b10",2),Bits("b00",2),Bits("b001",3),MI,y,n,n,n,y,n),
-    CMD_VFMVV->      List(Bits("b001",3),Bits("b11",2),Bits("b00",2),Bits("b001",3),MR,y,n,n,n,n,n),
+    CMD_VMVV->       List(Bits("b001",3),Bits("b11",2),Bits(0,4),Bits("b00",2),Bits("b001",3),MR,y,n,n,n,n,n,n),
+    CMD_VMSV->       List(Bits("b001",3),Bits("b10",2),Bits(0,4),Bits("b00",2),Bits("b001",3),MI,y,n,n,n,y,n,n),
+    CMD_VFMVV->      List(Bits("b001",3),Bits("b11",2),Bits(0,4),Bits("b00",2),Bits("b001",3),MR,y,n,n,n,n,n,n),
 
-    CMD_VLD       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLW       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLWU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLH       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLHU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLB       -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLBU      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VSD       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSW       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSH       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSB       -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VLD       -> List(Bits("b010",3),Bits("b10",2),Bits(8,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLW       -> List(Bits("b010",3),Bits("b10",2),Bits(4,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLWU      -> List(Bits("b010",3),Bits("b10",2),Bits(4,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLH       -> List(Bits("b010",3),Bits("b10",2),Bits(2,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLHU      -> List(Bits("b010",3),Bits("b10",2),Bits(2,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLB       -> List(Bits("b010",3),Bits("b10",2),Bits(1,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VLBU      -> List(Bits("b010",3),Bits("b10",2),Bits(1,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VSD       -> List(Bits("b100",3),Bits("b01",2),Bits(8,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
+    CMD_VSW       -> List(Bits("b100",3),Bits("b01",2),Bits(4,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
+    CMD_VSH       -> List(Bits("b100",3),Bits("b01",2),Bits(2,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
+    CMD_VSB       -> List(Bits("b100",3),Bits("b01",2),Bits(1,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
 
-    CMD_VFLD      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VFLW      -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VFSD      -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VFSW      -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VFLD      -> List(Bits("b010",3),Bits("b10",2),Bits(8,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VFLW      -> List(Bits("b010",3),Bits("b10",2),Bits(4,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,n,n),
+    CMD_VFSD      -> List(Bits("b100",3),Bits("b01",2),Bits(8,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
+    CMD_VFSW      -> List(Bits("b100",3),Bits("b01",2),Bits(4,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,n,n),
 
-    CMD_VLSTD     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTW     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTWU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTH     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTHU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTB     -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VLSTBU    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VSSTD     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSSTW     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSSTH     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VSSTB     -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
+    CMD_VLSTD     -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTW     -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTWU    -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTH     -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTHU    -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTB     -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VLSTBU    -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VSSTD     -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n),
+    CMD_VSSTW     -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n),
+    CMD_VSSTH     -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n),
+    CMD_VSSTB     -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n),
 
-    CMD_VFLSTD    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VFLSTW    -> List(Bits("b010",3),Bits("b10",2),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,n,n),
-    CMD_VFSSTD    -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n),
-    CMD_VFSSTW    -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n)
+    CMD_VFLSTD    -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VFLSTW    -> List(Bits("b010",3),Bits("b10",2),Bits(0,4),Bits("b01",2),Bits("b010",3),M0,y,n,n,n,y,y,n),
+    CMD_VFSSTD    -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n),
+    CMD_VFSSTW    -> List(Bits("b100",3),Bits("b01",2),Bits(0,4),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,y,y,n)
   ));
 
-  val valid::dhazard::shazard::bhazard::vmsrc::cs0 = cs;
-  val vd_valid::decode_vcfg::decode_setvl::decode_vf::deq_vxu_immq::enq_vmu_utcmdq::Nil = cs0;
+  val valid::dhazard::shazard::addr_stride::bhazard::vmsrc::cs0 = cs;
+  val vd_valid::decode_vcfg::decode_setvl::decode_vf::deq_vxu_immq::deq_vxu_imm2q::enq_vmu_utcmdq::Nil = cs0;
 
   val fire_vcfg  = tvec_active & io.vxu_cmdq.valid & decode_vcfg;
   val fire_setvl = tvec_active & io.vxu_cmdq.valid & decode_setvl;
@@ -164,16 +165,18 @@ class vuVXU_Issue_TVEC extends Component
   io.issue_to_lane.bactive := reg_bactive;
 
   val mask_vxu_immq_valid = ~deq_vxu_immq | io.vxu_immq.valid;
+  val mask_vxu_imm2q_valid = ~deq_vxu_imm2q | io.vxu_imm2q.valid;
   val mask_issue_ready = ~valid.orR | io.ready;
   val mask_vmu_utcmdq_ready = ~enq_vmu_utcmdq | io.vmu_utcmdq.ready;
 
-  io.vxu_cmdq.ready := (tvec_active & Bool(true) & mask_vxu_immq_valid & mask_issue_ready & mask_vmu_utcmdq_ready).toBool;
-  io.vxu_immq.ready := (tvec_active & io.vxu_cmdq.valid & deq_vxu_immq & mask_issue_ready & mask_vmu_utcmdq_ready).toBool;
+  io.vxu_cmdq.ready := (tvec_active & Bool(true) & mask_vxu_immq_valid & mask_vxu_imm2q_valid & mask_issue_ready & mask_vmu_utcmdq_ready).toBool;
+  io.vxu_immq.ready := (tvec_active & io.vxu_cmdq.valid & deq_vxu_immq & mask_vxu_imm2q_valid & mask_issue_ready & mask_vmu_utcmdq_ready).toBool;
+  io.vxu_imm2q.ready := (tvec_active & io.vxu_cmdq.valid & mask_vxu_imm2q_valid & deq_vxu_imm2q & mask_issue_ready & mask_vmu_utcmdq_ready).toBool;
 
   io.vmu_utcmdq.bits := Cat(cmd,Bits(0,UTMCMD_VLEN_SZ));
-  io.vmu_utcmdq.valid := (tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_issue_ready & enq_vmu_utcmdq).toBool;
+  io.vmu_utcmdq.valid := (tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_vxu_imm2q_valid & mask_issue_ready & enq_vmu_utcmdq).toBool;
 
-  io.valid.viu := (valid(0) & tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_vmu_utcmdq_ready).toBool;
+  io.valid.viu := (valid(0) & tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_vxu_immq_valid & mask_vmu_utcmdq_ready).toBool;
   io.valid.vau0 := Bool(false);
   io.valid.vau1 := Bool(false);
   io.valid.vau2 := Bool(false);
@@ -183,6 +186,7 @@ class vuVXU_Issue_TVEC extends Component
   io.valid.vgu := Bool(false);
   io.valid.vlu := (valid(1) & tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_vmu_utcmdq_ready).toBool;
   io.valid.vsu := (valid(2) & tvec_active & io.vxu_cmdq.valid & mask_vxu_immq_valid & mask_vmu_utcmdq_ready).toBool;
+  io.valid.fence := (io.vxu_cmdq.valid & mask_vxu_immq_valid & enq_vmu_utcmdq).toBool;
 
   io.dhazard.vs := Bool(false);
   io.dhazard.vt := dhazard(0).toBool;
@@ -225,7 +229,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.vt_zero := vt === Bits(0,6);
   io.decoded.vr_zero := Bool(true);
   io.decoded.vd_zero := (vd === Bits(0,6) & vd_valid).toBool;
-  io.decoded.cmd := cmd;
+  io.decoded.cmd := Cat(deq_vxu_imm2q, cmd);
   io.decoded.imm := imm;
-  io.decoded.imm2 := imm2;
+  io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,28), addr_stride));
 }
