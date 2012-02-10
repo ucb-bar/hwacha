@@ -109,15 +109,15 @@ package hwacha {
     val io = new vuVMU_Ctrl_vecIO();
     
     val ctrl_vec_top          = new vuVMU_Ctrl_vec_top();
-    val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 4, 2);
-    val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
+    val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 4);
+    val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 4);
     val ctrl_vec_load_issue   = new vuVMU_Ctrl_vec_load_issue();
     val ctrl_vec_load_wb      = new vuVMU_Ctrl_vec_load_wb();
-    val lrq                   = new queuePipePF(36, 4, 2);
+    val lrq                   = new queuePipePF(36, 4);
     val roq                   = new vuVMU_ROQ(130, 8, 3);
-    val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 4, 2);
+    val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 4);
     val ctrl_vec_store        = new vuVMU_Ctrl_vec_store();
-    val srq                   = new queuePipePF(128+28+16, 2, 1);
+    val srq                   = new queuePipePF(128+28+16, 2);
 
     val roq_enq_val           = io.dcacheresp.valid && !(io.dcacheresp.tag(11).toBool);
     val roq_enq_data_bits     = io.dcacheresp.data;
@@ -129,37 +129,37 @@ package hwacha {
     ctrl_vec_top.io.vmstrideq   ^^ io.vmstrideq;
     ctrl_vec_top.io.vmrespq     ^^ io.vmrespq;
     
-    iscmdq.io.enq_bits          := ctrl_vec_top.io.iscmdq.bits;
-    iscmdq.io.enq_val           := ctrl_vec_top.io.iscmdq.valid;
-    ctrl_vec_top.io.iscmdq.rdy  := iscmdq.io.enq_rdy;
+    iscmdq.io.enq.bits          := ctrl_vec_top.io.iscmdq.bits;
+    iscmdq.io.enq.valid           := ctrl_vec_top.io.iscmdq.valid;
+    ctrl_vec_top.io.iscmdq.rdy  := iscmdq.io.enq.ready;
     
-    wbcmdq.io.enq_bits          := ctrl_vec_top.io.wbcmdq.bits;
-    wbcmdq.io.enq_val           := ctrl_vec_top.io.wbcmdq.valid;
-    ctrl_vec_top.io.wbcmdq.rdy  := wbcmdq.io.enq_rdy;
+    wbcmdq.io.enq.bits          := ctrl_vec_top.io.wbcmdq.bits;
+    wbcmdq.io.enq.valid           := ctrl_vec_top.io.wbcmdq.valid;
+    ctrl_vec_top.io.wbcmdq.rdy  := wbcmdq.io.enq.ready;
 
-    stcmdq.io.enq_bits          := ctrl_vec_top.io.stcmdq.bits;
-    stcmdq.io.enq_val           := ctrl_vec_top.io.stcmdq.valid;
-    ctrl_vec_top.io.stcmdq.rdy  := stcmdq.io.enq_rdy;
+    stcmdq.io.enq.bits          := ctrl_vec_top.io.stcmdq.bits;
+    stcmdq.io.enq.valid           := ctrl_vec_top.io.stcmdq.valid;
+    ctrl_vec_top.io.stcmdq.rdy  := stcmdq.io.enq.ready;
    
     ctrl_vec_top.io.store_busy  := ctrl_vec_store.io.store_busy;
 
     // ctrl_vec_load_issue
-    ctrl_vec_load_issue.io.iscmdq_deq_bits  := iscmdq.io.deq_bits.toUFix;
-    ctrl_vec_load_issue.io.iscmdq_deq_val   := iscmdq.io.deq_val;
-    iscmdq.io.deq_rdy                       := ctrl_vec_load_issue.io.iscmdq_deq_rdy;
+    ctrl_vec_load_issue.io.iscmdq_deq_bits  := iscmdq.io.deq.bits.toUFix;
+    ctrl_vec_load_issue.io.iscmdq_deq_val   := iscmdq.io.deq.valid;
+    iscmdq.io.deq.ready                       := ctrl_vec_load_issue.io.iscmdq_deq_rdy;
 
-    lrq.io.enq_bits                         := ctrl_vec_load_issue.io.lrq_enq_bits;
-    lrq.io.enq_val                          := ctrl_vec_load_issue.io.lrq_enq_val;
-    ctrl_vec_load_issue.io.lrq_enq_rdy      := lrq.io.enq_rdy;
+    lrq.io.enq.bits                         := ctrl_vec_load_issue.io.lrq_enq_bits;
+    lrq.io.enq.valid                          := ctrl_vec_load_issue.io.lrq_enq_val;
+    ctrl_vec_load_issue.io.lrq_enq_rdy      := lrq.io.enq.ready;
 
     ctrl_vec_load_issue.io.roq_deq_tag_bits := roq.io.roq_deq_tag_bits.toUFix;
     ctrl_vec_load_issue.io.roq_deq_tag_val  := roq.io.roq_deq_tag_val;
     roq.io.roq_deq_tag_rdy                  := ctrl_vec_load_issue.io.roq_deq_tag_rdy;
 
     // ctrl_vec_load_wb 
-    ctrl_vec_load_wb.io.wbcmdq_deq_bits := wbcmdq.io.deq_bits;
-    ctrl_vec_load_wb.io.wbcmdq_deq_val  := wbcmdq.io.deq_val;
-    wbcmdq.io.deq_rdy                   := ctrl_vec_load_wb.io.wbcmdq_deq_rdy;
+    ctrl_vec_load_wb.io.wbcmdq_deq_bits := wbcmdq.io.deq.bits;
+    ctrl_vec_load_wb.io.wbcmdq_deq_val  := wbcmdq.io.deq.valid;
+    wbcmdq.io.deq.ready                   := ctrl_vec_load_wb.io.wbcmdq_deq_rdy;
 
     ctrl_vec_load_wb.io.roq_deq_bits    := roq.io.roq_deq_data_bits(127,0);
     ctrl_vec_load_wb.io.roq_deq_val     := roq.io.roq_deq_data_val;
@@ -173,26 +173,26 @@ package hwacha {
     roq.io.roq_enq_val       := roq_enq_val.toBool;
 
     // ctrl_vec_store
-    ctrl_vec_store.io.stcmdq_deq_bits   := stcmdq.io.deq_bits;
-    ctrl_vec_store.io.stcmdq_deq_val    := stcmdq.io.deq_val;
-    stcmdq.io.deq_rdy                   := ctrl_vec_store.io.stcmdq_deq_rdy;
+    ctrl_vec_store.io.stcmdq_deq_bits   := stcmdq.io.deq.bits;
+    ctrl_vec_store.io.stcmdq_deq_val    := stcmdq.io.deq.valid;
+    stcmdq.io.deq.ready                   := ctrl_vec_store.io.stcmdq_deq_rdy;
 
     ctrl_vec_store.io.sdq_deq           ^^ io.vsdq_deq;
 
-    srq.io.enq_bits                     := Cat(ctrl_vec_store.io.srq_enq_addr_bits,
+    srq.io.enq.bits                     := Cat(ctrl_vec_store.io.srq_enq_addr_bits,
                                                ctrl_vec_store.io.srq_enq_wmask_bits,
                                                ctrl_vec_store.io.srq_enq_data_bits);
-    srq.io.enq_val                      := ctrl_vec_store.io.srq_enq_val;
-    ctrl_vec_store.io.srq_enq_rdy       := srq.io.enq_rdy;
+    srq.io.enq.valid                      := ctrl_vec_store.io.srq_enq_val;
+    ctrl_vec_store.io.srq_enq_rdy       := srq.io.enq.ready;
 
     // stores are given priority over loads
-    io.dcachereq.valid  := lrq.io.deq_val || srq.io.deq_val;
-    lrq.io.deq_rdy      := Mux(srq.io.deq_val, Bool(false), io.dcachereq.rdy);
-    srq.io.deq_rdy      := io.dcachereq.rdy;
-    io.dcachereq.data   := srq.io.deq_bits(127, 0);
-    io.dcachereq.wmask  := srq.io.deq_bits(143, 128);
-    io.dcachereq.addr   := Mux(srq.io.deq_val, srq.io.deq_bits(171, 144), lrq.io.deq_bits(35,8));
-    io.dcachereq.tag    := Mux(srq.io.deq_val, Bits("h800", 12), Cat(Bits("b0", 4), lrq.io.deq_bits(7,0)));
-    io.dcachereq.op     := Mux(srq.io.deq_val, Bits("b0001", 4), Bits("b0000", 4));
+    io.dcachereq.valid  := lrq.io.deq.valid || srq.io.deq.valid;
+    lrq.io.deq.ready      := Mux(srq.io.deq.valid, Bool(false), io.dcachereq.rdy);
+    srq.io.deq.ready      := io.dcachereq.rdy;
+    io.dcachereq.data   := srq.io.deq.bits(127, 0);
+    io.dcachereq.wmask  := srq.io.deq.bits(143, 128);
+    io.dcachereq.addr   := Mux(srq.io.deq.valid, srq.io.deq.bits(171, 144), lrq.io.deq.bits(35,8));
+    io.dcachereq.tag    := Mux(srq.io.deq.valid, Bits("h800", 12), Cat(Bits("b0", 4), lrq.io.deq.bits(7,0)));
+    io.dcachereq.op     := Mux(srq.io.deq.valid, Bits("b0001", 4), Bits("b0000", 4));
   }
 }

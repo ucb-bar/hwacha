@@ -66,14 +66,14 @@ package hwacha {
     val state = Reg(resetVal = VMU_Ctrl_Idle);
 
     val skidbuf = new queuePipe1PF(128+4+4);
-    skidbuf.io.enq_bits := Cat(cmd_type_reg, addr_reg(3,0), io.roq_deq_bits);
-    skidbuf.io.enq_val := buf_ldq_enq_val;
-    buf_ldq_enq_rdy := skidbuf.io.enq_rdy;
-    delay_cmd_type := skidbuf.io.deq_bits(135,132);
-    delay_addr_lsb := skidbuf.io.deq_bits(131,128);
-    delay_roq_deq_bits := skidbuf.io.deq_bits(127,0);
-    skidbuf.io.deq_val ^^ io.ldq.enq_val;
-    skidbuf.io.deq_rdy ^^ io.ldq.enq_rdy;
+    skidbuf.io.enq.bits := Cat(cmd_type_reg, addr_reg(3,0), io.roq_deq_bits);
+    skidbuf.io.enq.valid := buf_ldq_enq_val;
+    buf_ldq_enq_rdy := skidbuf.io.enq.ready;
+    delay_cmd_type := skidbuf.io.deq.bits(135,132);
+    delay_addr_lsb := skidbuf.io.deq.bits(131,128);
+    delay_roq_deq_bits := skidbuf.io.deq.bits(127,0);
+    skidbuf.io.deq.valid ^^ io.ldq.enq_val;
+    skidbuf.io.deq.ready ^^ io.ldq.enq_rdy;
     
     val recode_sp     = new float32ToRecodedFloat32();
     recode_sp.io.in   := ldq_bits(31,0);

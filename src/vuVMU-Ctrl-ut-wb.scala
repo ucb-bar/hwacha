@@ -45,14 +45,14 @@ package hwacha {
     val delay_cmd_type_amo  = Wire(){Bool()};
     
     val skidbuf = new queuePipe1PF(64+4+1);
-    skidbuf.io.enq_bits := Cat(cmd_type_reg,cmd_type_amo_reg,io.roq_deq_bits);
-    skidbuf.io.enq_val  := buf_ldq_enq_val;
-    buf_ldq_enq_rdy     := skidbuf.io.enq_rdy;
-    delay_cmd_type      := skidbuf.io.deq_bits(68,65);
-    delay_cmd_type_amo  := skidbuf.io.deq_bits(64).toBool;
-    delay_roq_deq_bits  := skidbuf.io.deq_bits(63,0);
-    io.ldq.enq_val      := skidbuf.io.deq_val;
-    skidbuf.io.deq_rdy  := io.ldq.enq_rdy;
+    skidbuf.io.enq.bits := Cat(cmd_type_reg,cmd_type_amo_reg,io.roq_deq_bits);
+    skidbuf.io.enq.valid  := buf_ldq_enq_val;
+    buf_ldq_enq_rdy     := skidbuf.io.enq.ready;
+    delay_cmd_type      := skidbuf.io.deq.bits(68,65);
+    delay_cmd_type_amo  := skidbuf.io.deq.bits(64).toBool;
+    delay_roq_deq_bits  := skidbuf.io.deq.bits(63,0);
+    io.ldq.enq_val      := skidbuf.io.deq.valid;
+    skidbuf.io.deq.ready  := io.ldq.enq_rdy;
 
     val fp_cmd = Mux(delay_cmd_type_amo, Bool(false), delay_cmd_type(3).toBool);
     val signext = Mux(delay_cmd_type_amo, Bool(false), delay_cmd_type(2).toBool);

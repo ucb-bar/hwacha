@@ -218,16 +218,16 @@ package hwacha
     {
       for( j <- 0 until 8 )
       {
-	val sbuf = new queueFlowPF(8,2,1);
-	sbuf.io.enq_bits := store_data(((j+1)*8)-1,(j*8));
-	sbuf.io.enq_val  := sbuf_byte_enq_val(i*8+j).toBool;
+	val sbuf = new queueFlowPF(8,2);
+	sbuf.io.enq.bits := store_data(((j+1)*8)-1,(j*8));
+	sbuf.io.enq.valid  := sbuf_byte_enq_val(i*8+j).toBool;
 
-	//io.srq_enq_data_bits(((j+1)*8+i*64)-1,j*8+i*64) := sbuf.io.deq_bits;
-	srq_enq_data_bits_array += sbuf.io.deq_bits;
-	//io.srq_enq_wmask_bits(i*8+j) := sbuf.io.deq_val;
-	srq_enq_wmask_bits_array += sbuf.io.deq_val;
+	//io.srq_enq_data_bits(((j+1)*8+i*64)-1,j*8+i*64) := sbuf.io.deq.bits;
+	srq_enq_data_bits_array += sbuf.io.deq.bits;
+	//io.srq_enq_wmask_bits(i*8+j) := sbuf.io.deq.valid;
+	srq_enq_wmask_bits_array += sbuf.io.deq.valid;
 
-	sbuf.io.deq_rdy := io.srq_enq_val & io.srq_enq_rdy;
+	sbuf.io.deq.ready := io.srq_enq_val & io.srq_enq_rdy;
       }
     }
 
