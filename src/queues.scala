@@ -3,6 +3,21 @@ package queues
 
 import Chisel._
 import Node._;
+import scala.math._;
+
+// Util stuff
+object log2up
+{
+  def apply(in: Int) = if (in == 1) 1 else ceil(log(in)/log(2)).toInt
+}
+
+class io_ready_valid[T <: Data]()(data: => T) extends Bundle
+{
+  val ready = Bool(INPUT);
+  val valid = Bool(OUTPUT);
+  val bits = data.asOutput;
+}
+// end util stuff
 
 class IOqueueCtrl1_pipe extends Bundle
 {
@@ -35,7 +50,7 @@ class queueCtrl1_pipe extends Component
   {
     full <== Bool(false);
   }
-  when(!(do_deq && !do_pipe) && do_enq)
+  when(do_enq)
   {
     full <== Bool(true);
   }
@@ -171,38 +186,36 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
   full    <== full_next;
 }
 
-class IOqueueSimplePF(data_sz: Int) extends Bundle()
+class io_queue(data_sz: Int) extends Bundle()
 {
-  val enq_val  = Bool(INPUT);
-  val enq_rdy  = Bool(OUTPUT);
-  val deq_val  = Bool(OUTPUT);
-  val deq_rdy  = Bool(INPUT);
-  val enq_bits = Bits(data_sz, INPUT);
-  val deq_bits = Bits(data_sz, OUTPUT);
+  val enq = (new io_ready_valid())(Bits(width=data_sz)).flip();
+  val deq = (new io_ready_valid())(Bits(width=data_sz));
 }
 
-class queueSimplePF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
+class queueSimplePF(data_sz: Int, entries: Int) extends Component
 {
-  override val io = new IOqueueSimplePF(data_sz);
+  val addr_sz = log2up(entries);
+  override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl(entries, addr_sz);
-  ctrl.io.deq_val <> io.deq_val;
-  ctrl.io.enq_rdy ^^ io.enq_rdy;
-  ctrl.io.enq_val ^^ io.enq_val;     
-  ctrl.io.deq_rdy ^^ io.deq_rdy;
-  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq_bits);
-  io.deq_bits := ram(ctrl.io.raddr);
+  ctrl.io.deq_val <> io.deq.valid;
+  ctrl.io.enq_rdy ^^ io.enq.ready;
+  ctrl.io.enq_val ^^ io.enq.valid;     
+  ctrl.io.deq_rdy ^^ io.deq.ready;
+  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits);
+  io.deq.bits := ram(ctrl.io.raddr);
 }
 
-class queuePipePF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
+class queuePipePF(data_sz: Int, entries: Int) extends Component
 {
-  override val io = new IOqueueSimplePF(data_sz);
+  val addr_sz = log2up(entries);
+  override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl_pipe(entries, addr_sz);
-  ctrl.io.deq_val ^^ io.deq_val;
-  ctrl.io.enq_rdy ^^ io.enq_rdy;
-  ctrl.io.enq_val ^^ io.enq_val;     
-  ctrl.io.deq_rdy ^^ io.deq_rdy;
-  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq_bits);
-  io.deq_bits := ram(ctrl.io.raddr);
+  ctrl.io.deq_val ^^ io.deq.valid;
+  ctrl.io.enq_rdy ^^ io.enq.ready;
+  ctrl.io.enq_val ^^ io.enq.valid;     
+  ctrl.io.deq_rdy ^^ io.deq.ready;
+  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits);
+  io.deq.bits := ram(ctrl.io.raddr);
 }
 
 // TODO: SHOULD USE INHERITANCE BUT BREAKS INTROSPECTION CODE
@@ -299,15 +312,7 @@ class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
 // Single-Element Queues
 //--------------------------------------------------------------------------
 
-class IOqueue1PF(data_sz: Int) extends Bundle()
-{
-  val enq_bits    = Bits(data_sz, INPUT);
-  val enq_val     = Bool(INPUT);
-  val enq_rdy     = Bool(OUTPUT);
-  val deq_bits    = Bits(data_sz, OUTPUT);
-  val deq_val     = Bool(OUTPUT);
-  val deq_rdy     = Bool(INPUT);
-}
+
 /*
 class queue1PF(data_sz:Int) extends Component
 {
@@ -324,47 +329,38 @@ class queue1PF(data_sz:Int) extends Component
 class queuePipe1PF(data_sz:Int) extends Component
 {
   val wen = Wire(){Bool()};
-  override val io = new IOqueue1PF(data_sz);
+  override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl1_pipe();
-  ctrl.io.enq_val ^^ io.enq_val;
-  ctrl.io.enq_rdy ^^ io.enq_rdy;
-  ctrl.io.deq_val ^^ io.deq_val;
-  ctrl.io.deq_rdy ^^ io.deq_rdy;
+  ctrl.io.enq_val ^^ io.enq.valid;
+  ctrl.io.enq_rdy ^^ io.enq.ready;
+  ctrl.io.deq_val ^^ io.deq.valid;
+  ctrl.io.deq_rdy ^^ io.deq.ready;
   wen := ctrl.io.wen;
   val deq_bits_reg = Reg(width=data_sz, resetVal=Bits("b0", data_sz));
-  io.deq_bits := deq_bits_reg;
+  io.deq.bits := deq_bits_reg;
   when(wen)
   {
-    deq_bits_reg <== io.enq_bits;
+    deq_bits_reg <== io.enq.bits;
   }
 }
 
-class IOqueueFlowPF(data_sz: Int) extends Bundle()
+class queueFlowPF(data_sz: Int, entries: Int) extends Component
 {
-  val enq_val     = Bool(INPUT);
-  val enq_rdy     = Bool(OUTPUT);
-  val enq_bits    = Bits(data_sz, INPUT);
-  val deq_val     = Bool(OUTPUT);
-  val deq_rdy     = Bool(INPUT);
-  val deq_bits    = Bits(data_sz, OUTPUT);
-}
-
-class queueFlowPF(data_sz: Int, entries: Int, addr_sz: Int) extends Component
-{
-  override val io = new IOqueueFlowPF(data_sz);
+  override val io = new io_queue(data_sz);
+  val addr_sz = log2up(entries);
   val ctrl  = new queueCtrlFlow(entries, addr_sz);
   val dpath = new queueDpathFlow(data_sz, entries, addr_sz);
-  ctrl.io.deq_rdy   ^^ io.deq_rdy;
+  ctrl.io.deq_rdy   ^^ io.deq.ready;
   ctrl.io.wen       <> dpath.io.wen;
   ctrl.io.raddr     <> dpath.io.raddr;
   ctrl.io.waddr     <> dpath.io.waddr;
   ctrl.io.flowthru  <> dpath.io.flowthru;
-  ctrl.io.enq_val   ^^ io.enq_val;       
-  dpath.io.enq_bits ^^ io.enq_bits;
+  ctrl.io.enq_val   ^^ io.enq.valid;       
+  dpath.io.enq_bits ^^ io.enq.bits;
 
-  ctrl.io.deq_val   ^^ io.deq_val;
-  ctrl.io.enq_rdy   ^^ io.enq_rdy;
-  dpath.io.deq_bits ^^ io.deq_bits;
+  ctrl.io.deq_val   ^^ io.deq.valid;
+  ctrl.io.enq_rdy   ^^ io.enq.ready;
+  dpath.io.deq_bits ^^ io.deq.bits;
 }
 
 }
