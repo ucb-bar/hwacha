@@ -111,37 +111,6 @@ package hwacha
     // REGISTERS                                                      \\
     //----------------------------------------------------------------\\
 
-    val VCU_FORWARD = Bits(0,2);
-    val VCU_FENCE_CV = Bits(1,2);
-    val VCU_FENCE_V = Bits(2,2);
-
-    val state = Reg(resetVal = VCU_FORWARD);
-
-    switch (state)
-    {
-      is (VCU_FORWARD)
-      {
-        when (fire_fence_cv) {
-          state <== VCU_FENCE_CV;
-        }
-        when (fire_fence_v) {
-          state <== VCU_FENCE_V;
-        }
-      }
-      is (VCU_FENCE_CV)
-      {
-        when (io.vmu_vackq.valid && io.vxu_ackq.valid && io.vec_ackq.ready) {
-          state <== VCU_FORWARD;
-        }
-      }
-      is (VCU_FENCE_V)
-      {
-        when (io.vmu_vackq.valid && io.vxu_ackq.valid) {
-          state <== VCU_FORWARD;
-        }
-      }
-    }
-
     val vlen = Reg(resetVal = Bits(0, VLENMAX_SZ));
 
     when (fire_setvl)
@@ -153,35 +122,27 @@ package hwacha
     // SIGNALS                                                                 \\
     //-------------------------------------------------------------------------\\
 
-    val forward = (state === VCU_FORWARD);
-
     io.vec_cmdq.ready :=
-    forward &&
     Bool(true) && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
 
     io.vec_ximm1q.ready :=
-    forward &&
     io.vec_cmdq.valid && deq_vec_ximm1q && mask_vec_ximm2q_val &&
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
 
     io.vec_ximm2q.ready :=
-    forward &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && deq_vec_ximm2q &&
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
 
     io.vxu_cmdq.valid :=
-    forward &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
     enq_vxu_cmdq && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
 
     io.vxu_immq.valid :=
-    forward &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
     mask_vxu_cmdq_rdy && enq_vxu_immq && mask_vxu_imm2q_rdy;
 
     io.vxu_imm2q.valid := 
-    forward &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
     mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && enq_vxu_imm2q;
 
@@ -195,38 +156,6 @@ package hwacha
     io.vxu_immq.bits := io.vec_ximm1q.bits;
     io.vxu_imm2q.bits := io.vec_ximm2q.bits;
     // new
-
-    io.vmu_vcmdq.bits := Cat(cmd, vlen);
-    io.vmu_vbaseq.bits := io.vec_ximm1q.bits(31,0);
-    io.vmu_vstrideq.bits := io.vec_ximm2q.bits;
-
-    io.vec_ackq.bits <== Bits(0,32);
-    io.vec_ackq.valid <== Bool(false);
-    io.vxu_ackq.ready <== Bool(false);
-    io.vmu_vackq.ready <== Bool(false);
-
-    switch(state)
-    {
-      is(VCU_FORWARD)
-      {
-      }
-      is(VCU_FENCE_CV)
-      {
-        when(io.vxu_ackq.valid && io.vmu_vackq.valid)
-        {
-          io.vec_ackq.bits <== Bits(1,32);
-          io.vec_ackq.valid <== Bool(true);
-        }
-        io.vxu_ackq.ready <== io.vmu_vackq.valid;
-        io.vmu_vackq.ready <== io.vxu_ackq.valid;
-      }
-      is(VCU_FENCE_V)
-      {
-        io.vxu_ackq.ready <== io.vmu_vackq.valid;
-        io.vmu_vackq.ready <== io.vxu_ackq.valid;
-      }
-    }
-
 
   }
 }

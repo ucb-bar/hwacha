@@ -11,8 +11,7 @@ class vuVXU_Banked8_Fire extends Component
   val fire_tvec_viu = ~io.tvec_regid_imm.vd_zero & io.tvec_valid.viu & io.tvec_ready;
   val fire_tvec_vlu = ~io.tvec_regid_imm.vd_zero & io.tvec_valid.vlu & io.tvec_ready;
   val fire_tvec_vsu = ~io.tvec_regid_imm.vd_zero & io.tvec_valid.vsu & io.tvec_ready;
-  val fire_tvec_fence = io.tvec_valid.fence & io.tvec_ready;
-  val fire_tvec = fire_tvec_viu | fire_tvec_vlu | fire_tvec_vsu | fire_tvec_fence;
+  val fire_tvec = fire_tvec_viu | fire_tvec_vlu | fire_tvec_vsu;
 
   val fire_vt_viu = ~io.vt_regid_imm.vd_zero & io.vt_valid.viu & io.vt_ready;
   val fire_vt_vau0 = ~io.vt_regid_imm.vd_zero & io.vt_valid.vau0 & io.vt_ready;
@@ -31,7 +30,6 @@ class vuVXU_Banked8_Fire extends Component
   io.fire.vgsu := fire_vt_vgsu;
   io.fire.vlu := fire_tvec_vlu;
   io.fire.vsu := fire_tvec_vsu;
-  io.fire.fence := fire_tvec_fence;
 
   io.fire_fn.viu := Mux(fire_tvec, io.tvec_fn.viu, io.vt_fn.viu);
   io.fire_fn.vau0 := io.vt_fn.vau0;

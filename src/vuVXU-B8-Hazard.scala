@@ -351,16 +351,21 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   val array_sport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
+  val array_vsl_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
+
   val next_sport_val = GenArray(SZ_BANK){ Wire(){ Bool() } };
+  val next_vsl_val = GenArray(SZ_BANK){ Wire(){ Bool() } };
 
   for (i <- 0 until SZ_BANK)
   {
     array_sport_val(i) := next_sport_val(i);
+    array_vsl_val(i) := next_vsl_val(i);
   }
 
   for (i <- 0 until SZ_BANK)
   {
     next_sport_val(i) <== array_sport_val(i);
+    next_vsl_val(i) <== array_vsl_val(i);
   }
 
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
@@ -372,32 +377,37 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
     next_sport_val.write(next_ptr3, Bool(true));
+
+    next_vsl_val.write(next_ptr3, Bool(true));
   }
   when (io.fire.vglu || io.fire.vgsu)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
+
+    next_vsl_val.write(next_ptr2, Bool(true));
   }
   // new
   when(io.fire.vlu)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
+
+    next_vsl_val.write(next_ptr2, Bool(true));
   }
   // new
   when (io.fire.vsu)
   {
     next_sport_val.write(next_ptr1, Bool(true));
+
+    next_vsl_val.write(next_ptr1, Bool(true));
   }
   
-  when (io.fire.fence)
-  {
-    next_sport_val.write(next_ptr1, Bool(true));
-  }
-
   when (io.seq_to_hazard.last)
   {
     next_sport_val.write(reg_ptr, Bool(false));
+
+    next_vsl_val.write(reg_ptr, Bool(false));
   }
 
   // hazard check logic for tvec/vt
@@ -467,8 +477,7 @@ class vuVXU_Banked8_Hazard extends Component
     Cat(
       io.tvec_valid.viu & seqhazard_1slot,
       io.tvec_valid.vlu & seqhazard_2slot, // new
-      io.tvec_valid.vsu & seqhazard_1slot,
-      io.tvec_valid.fence & seqhazard_1slot
+      io.tvec_valid.vsu & seqhazard_1slot
     );
 
   val tvec_bhazard =
@@ -477,6 +486,8 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vlu & io.tvec_bhazard.vlu,
       tvec_bhazard_vsu & io.tvec_bhazard.vsu
     );
+
+  io.no_pending_ldsd = !array_vsl_val.flatten().orR()
 
   io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR() & !tvec_dhazard.orR() & !tvec_shazard.orR() & !tvec_seqhazard.orR() & !tvec_bhazard.orR();
 

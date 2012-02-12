@@ -334,14 +334,21 @@ class io_lane_to_hazard extends Bundle
 class io_vxu_issue_tvec extends Bundle
 {
   val vf = new io_vf()
+  val no_pending_ldsd = Bool(INPUT);
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
 
+  val vec_ackq = new io_vec_ackq
+  val vxu_ackq = new io_vxu_ackq().flip()
+  val vmu_vackq = new io_vmu_vackq().flip()
+
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
+  
+  val vmu_vcmdq = new io_vxu_vcmdq()
   val vmu_utcmdq = new io_vmu_utcmdq()
 
   val valid = new io_vxu_issue_fu().asOutput
@@ -364,9 +371,6 @@ class io_vcu extends Bundle
   val vmu_vcmdq = new io_vmu_vcmdq
   val vmu_vbaseq = new io_vmu_vbaseq
   val vmu_vstrideq = new io_vmu_vstrideq
-  val vec_ackq = new io_vec_ackq
-  val vxu_ackq = new io_vxu_ackq().flip()
-  val vmu_vackq = new io_vmu_vackq().flip()
 }
 
 class io_vxu_issue_vt extends Bundle
@@ -423,11 +427,12 @@ class io_vxu extends Bundle
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
 
-  val vmu_vcmdq = new io_vxu_cmdq
+  val vmu_vcmdq = new io_vxu_vcmdq
   val vmu_vbaseq = new io_vxu_immq
   val vmu_vstrideq = new io_vxu_imm2q
 
-  val vxu_ackq = new io_vxu_ackq()
+  val vec_ackq = new io_vec_ackq
+  val vmu_vackq = new io_vmu_vackq().flip()
 
   val vmu_utcmdq = new io_vmu_utcmdq()
   val vmu_utimmq = new io_vmu_utimmq()
@@ -451,13 +456,20 @@ class io_vxu extends Bundle
 class io_vxu_issue extends Bundle
 {
   val illegal = Bool(OUTPUT)
+  val no_pending_ldsd = Bool(INPUT)
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
 
+  val vec_ackq = new io_vec_ackq  
+  val vxu_ackq = new io.vxu_ackq().flip();
+  val vmu_vackq = new io_vmu_vackq().flip()
+
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
+
+  val vmu_vcmdq = new io_vxu_vcmdq()
   val vmu_utcmdq = new io_vmu_utcmdq()
   val vmu_utimmq = new io_vmu_utimmq()
 
@@ -507,6 +519,8 @@ class io_vxu_fire extends Bundle
 
 class io_vxu_hazard extends Bundle
 {
+  val no_pending_ldsd = Bool(OUTPUT);
+
   val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
   val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
   val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
