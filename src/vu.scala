@@ -27,25 +27,25 @@ class vu extends Component
 
   // new
   val vxu_imm2q = VC_SIMPLE_QUEUE(XIMM2_SZ, 4);
-  vxu_imm2q.io.enq_bits <> vcu.io.vxu_imm2q.bits;
-  vxu_imm2q.io.enq_val <> vcu.io.vxu_imm2q.valid;
-  vxu_imm2q.io.enq_rdy <> vcu.io.vxu_imm2q.ready;
+  vxu_imm2q.io.enq.bits <> vcu.io.vxu_imm2q.bits;
+  vxu_imm2q.io.enq.valid <> vcu.io.vxu_imm2q.valid;
+  vxu_imm2q.io.enq.ready <> vcu.io.vxu_imm2q.ready;
   // new
 
   val vmu_vcmdq = VC_SIMPLE_QUEUE(VMCMD_SZ, 4);
-  //vmu_vcmdq.io.enq_bits <> vcu.io.vmu_vcmdq.bits;
-  //vmu_vcmdq.io.enq_val <> vcu.io.vmu_vcmdq.valid;
-  //vmu_vcmdq.io.enq_rdy <> vcu.io.vmu_vcmdq.ready;
+  //vmu_vcmdq.io.enq.bits <> vcu.io.vmu_vcmdq.bits;
+  //vmu_vcmdq.io.enq.valid <> vcu.io.vmu_vcmdq.valid;
+  //vmu_vcmdq.io.enq.ready <> vcu.io.vmu_vcmdq.ready;
 
   val vmu_vbaseq = VC_SIMPLE_QUEUE(VMIMM_SZ, 4);
-  //vmu_vbaseq.io.enq_bits <> vcu.io.vmu_vbaseq.bits;
-  //vmu_vbaseq.io.enq_val <> vcu.io.vmu_vbaseq.valid;
-  //vmu_vbaseq.io.enq_rdy <> vcu.io.vmu_vbaseq.ready;
+  //vmu_vbaseq.io.enq.bits <> vcu.io.vmu_vbaseq.bits;
+  //vmu_vbaseq.io.enq.valid <> vcu.io.vmu_vbaseq.valid;
+  //vmu_vbaseq.io.enq.ready <> vcu.io.vmu_vbaseq.ready;
 
   val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 2);
-  //vmu_vstrideq.io.enq_bits <> vcu.io.vmu_vstrideq.bits;
-  //vmu_vstrideq.io.enq_val <> vcu.io.vmu_vstrideq.valid;
-  //vmu_vstrideq.io.enq_rdy <> vcu.io.vmu_vstrideq.ready;
+  //vmu_vstrideq.io.enq.bits <> vcu.io.vmu_vstrideq.bits;
+  //vmu_vstrideq.io.enq.valid <> vcu.io.vmu_vstrideq.valid;
+  //vmu_vstrideq.io.enq.ready <> vcu.io.vmu_vstrideq.ready;
 
   val vxu = new vuVXU();
   vxu.io.vec_ackq <> io.vec_ackq;
@@ -61,9 +61,9 @@ class vu extends Component
   vxu.io.vxu_immq.valid <> vxu_immq.io.deq.valid;
 
   // new
-  vxu.io.vxu_imm2q.bits <> vxu_imm2q.io.deq_bits;
-  vxu.io.vxu_imm2q.valid <> vxu_imm2q.io.deq_val;
-  vxu.io.vxu_imm2q.ready <> vxu_imm2q.io.deq_rdy;
+  vxu.io.vxu_imm2q.bits <> vxu_imm2q.io.deq.bits;
+  vxu.io.vxu_imm2q.valid <> vxu_imm2q.io.deq.valid;
+  vxu.io.vxu_imm2q.ready <> vxu_imm2q.io.deq.ready;
 
   vxu.io.vmu_vcmdq.bits <> vmu_vcmdq.io.enq.bits;
   vxu.io.vmu_vcmdq.valid <> vmu_vcmdq.io.enq.valid;
@@ -73,9 +73,9 @@ class vu extends Component
   vxu.io.vmu_vbaseq.valid <> vmu_vbaseq.io.enq.valid;
   vxu.io.vmu_vbaseq.ready <> vmu_vbaseq.io.enq.ready;
 
-  vxu.io.vmu_vstrideq.bits <> vmu_vstrideq.io.enq_bits;
-  vxu.io.vmu_vstrideq.valid <> vmu_vstrideq.io.enq_val;
-  vxu.io.vmu_vstrideq.ready <> vmu_vstrideq.io.enq_rdy;
+  vxu.io.vmu_vstrideq.bits <> vmu_vstrideq.io.enq.bits;
+  vxu.io.vmu_vstrideq.valid <> vmu_vstrideq.io.enq.valid;
+  vxu.io.vmu_vstrideq.ready <> vmu_vstrideq.io.enq.ready;
   // new
 
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 4);

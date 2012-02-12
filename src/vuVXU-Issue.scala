@@ -35,7 +35,7 @@ class vuVXU_Issue extends Component
   tvec.io.issue_to_lane ^^ io.issue_to_lane;
 
   tvec.io.vec_ackq <> io.vec_ackq
-  tvec.io.vxu_ackq <> io.vec_ackq
+  tvec.io.vxu_ackq <> io.vxu_ackq
   tvec.io.vmu_vcmdq <> io.vmu_vcmdq
   tvec.io.vmu_vackq <> io.vmu_vackq
 

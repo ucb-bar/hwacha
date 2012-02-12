@@ -457,8 +457,8 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_stall =
     Cat(
       io.tvec_valid.viu & io.seq_to_hazard.stall.orR(),
-      io.tvec_valid.vlu & (io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
-      io.tvec_valid.vsu & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ))
+      io.tvec_valid.vlu & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
+      io.tvec_valid.vsu & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ))
     );
 
   val tvec_dhazard =
@@ -487,7 +487,7 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vsu & io.tvec_bhazard.vsu
     );
 
-  io.no_pending_ldsd = !array_vsl_val.flatten().orR()
+  io.no_pending_ldsd := !array_vsl_val.flatten().orR()
 
   io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR() & !tvec_dhazard.orR() & !tvec_shazard.orR() & !tvec_seqhazard.orR() & !tvec_bhazard.orR();
 

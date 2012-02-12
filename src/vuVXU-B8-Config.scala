@@ -118,6 +118,7 @@ object Config
 
   val SZ_STALL = 6
 
+  val RG_VAQ = 5
   val RG_VLDQ = 4
   val RG_VSDQ = 3
   val RG_UTAQ = 2

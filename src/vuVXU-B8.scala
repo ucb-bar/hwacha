@@ -13,9 +13,11 @@ class vuVXU extends Component
   issue.io.imem_req <> io.imem_req;
   issue.io.imem_resp <> io.imem_resp;
   issue.io.vec_ackq <> io.vec_ackq;
+  issue.io.vmu_vackq <> io.vmu_vackq;
   issue.io.vxu_cmdq <> io.vxu_cmdq;
   issue.io.vxu_immq <> io.vxu_immq;
   issue.io.vxu_imm2q <> io.vxu_imm2q;
+  issue.io.vmu_vcmdq.ready <> io.vmu_vcmdq.ready;
   issue.io.vmu_utcmdq <> io.vmu_utcmdq;
   issue.io.vmu_utimmq <> io.vmu_utimmq;
 
@@ -74,7 +76,7 @@ class vuVXU extends Component
   io.vmu_vstrideq.valid := b8seq.io.seq.vaq & b8seq.io.seq_regid_imm.cmd(19);
   
   io.vmu_vcmdq.bits := Mux(issue.io.vmu_vcmdq.valid, 
-			   issue.io.vmu_vcmdq,
+			   issue.io.vmu_vcmdq.bits,
 			   b8seq.io.seq_regid_imm.cmd(18,0));
   io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
   io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;

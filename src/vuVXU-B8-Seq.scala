@@ -496,7 +496,7 @@ class vuVXU_Banked8_Seq extends Component {
 
     for(i <- 0 until SZ_BANK)
       next_dep_vldq(i) <== Bool(false);
-    next_dep_vaq.write(next_ptr2, Bool(true));
+    next_dep_vaq.write(next_ptr2, Bool(false));
     next_dep_vldq.write(next_ptr2, Bool(false));
     next_dep_vsdq.write(next_ptr2, Bool(true));
     next_dep_utaq.write(next_ptr2, Bool(true));
