@@ -124,10 +124,10 @@ package hwacha {
     val roq_enq_tag_bits      = io.dcacheresp.tag(7,0);
 
     // ctrl_vec_top
-    ctrl_vec_top.io.vmcmdq      ^^ io.vmcmdq;
-    ctrl_vec_top.io.vmimmq      ^^ io.vmimmq;
-    ctrl_vec_top.io.vmstrideq   ^^ io.vmstrideq;
-    ctrl_vec_top.io.vmrespq     ^^ io.vmrespq;
+    ctrl_vec_top.io.vmcmdq      <> io.vmcmdq;
+    ctrl_vec_top.io.vmimmq      <> io.vmimmq;
+    ctrl_vec_top.io.vmstrideq   <> io.vmstrideq;
+    ctrl_vec_top.io.vmrespq     <> io.vmrespq;
     
     iscmdq.io.enq.bits          := ctrl_vec_top.io.iscmdq.bits;
     iscmdq.io.enq.valid           := ctrl_vec_top.io.iscmdq.valid;
@@ -165,7 +165,7 @@ package hwacha {
     ctrl_vec_load_wb.io.roq_deq_val     := roq.io.roq_deq_data_val;
     roq.io.roq_deq_data_rdy             := ctrl_vec_load_wb.io.roq_deq_rdy;
 
-    ctrl_vec_load_wb.io.ldq ^^ io.vldq;
+    ctrl_vec_load_wb.io.ldq <> io.vldq;
    
     // roq
     roq.io.roq_enq_data_bits := Cat(Bits("b00", 2), roq_enq_data_bits);
@@ -177,7 +177,7 @@ package hwacha {
     ctrl_vec_store.io.stcmdq_deq_val    := stcmdq.io.deq.valid;
     stcmdq.io.deq.ready                   := ctrl_vec_store.io.stcmdq_deq_rdy;
 
-    ctrl_vec_store.io.sdq_deq           ^^ io.vsdq_deq;
+    ctrl_vec_store.io.sdq_deq           <> io.vsdq_deq;
 
     srq.io.enq.bits                     := Cat(ctrl_vec_store.io.srq_enq_addr_bits,
                                                ctrl_vec_store.io.srq_enq_wmask_bits,

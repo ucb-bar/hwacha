@@ -97,9 +97,9 @@ class vuVXU_Banked8_Lane extends Component
     
     if (first)
     { 
-      bank.io.in ^^ io.expand_read; 
-      bank.io.in ^^ io.expand_write;
-      bank.io.in ^^ io.expand_fu_fn;
+      bank.io.in <> io.expand_read; 
+      bank.io.in <> io.expand_write;
+      bank.io.in <> io.expand_fu_fn;
       first = false ;
     } 
     else 
@@ -132,7 +132,7 @@ class vuVXU_Banked8_Lane extends Component
   val lfu = new vuVXU_Banked8_Lane_LFU();
   lfu.io.expand_rcnt := io.expand_read.rcnt.toUFix;
   lfu.io.expand_wcnt := io.expand_write.wcnt.toUFix;
-  lfu.io.expand ^^ io.expand_lfu_fn;
+  lfu.io.expand <> io.expand_lfu_fn;
 
   val vau0_val  = lfu.io.vau0_val;
   val vau0_fn   = lfu.io.vau0_fn;

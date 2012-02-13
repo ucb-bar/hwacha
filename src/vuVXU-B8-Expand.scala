@@ -69,7 +69,7 @@ class vuVXU_Banked8_Expand extends Component
       next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b00", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(1)(i)  <== Bool(false);
+        next_rblen(1)(i)  <== Bool(false);
     }
     when(io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
     {
@@ -93,9 +93,9 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(1) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i == 1 || i == 0) 
-	next_rblen(1)(i) <== Bool(true);
+        next_rblen(1)(i) <== Bool(true);
       else
-	next_rblen(1)(i) <== Bool(false);
+        next_rblen(1)(i) <== Bool(false);
 
     when(io.seq_regid_imm.vs_zero) { next_rblen(1)(0) <== Bool(false) }
     when(io.seq_regid_imm.vt_zero) { next_rblen(1)(1) <== Bool(false) }
@@ -110,15 +110,15 @@ class vuVXU_Banked8_Expand extends Component
       next_raddr(0)  <== io.seq_regid_imm.vs;
       next_roplen(0) <== Bits("b10", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(0)(i)  <== Bool(false);
-	
+        next_rblen(0)(i)  <== Bool(false);
+        
       next_ren(1)    <== Bool(true);
       next_rlast(1)  <== io.seq_to_expand.last;
       next_rcnt(1)   <== io.seq_regid_imm.cnt;
       next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b01", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(1)(i)  <== Bool(false);
+        next_rblen(1)(i)  <== Bool(false);
       
       next_ren(2)    <== Bool(true);
       next_rlast(2)  <== io.seq_to_expand.last;
@@ -126,10 +126,10 @@ class vuVXU_Banked8_Expand extends Component
       next_raddr(2)  <== io.seq_regid_imm.vr;
       next_roplen(2) <== Bits("b00", 2);
       for(i <- 0 until DEF_BRPORT)
-	if(i == 2 || i == 3 || i == 4) 
-	  next_rblen(2)(i) <== Bool(true);
-	else
-	  next_rblen(2)(i) <== Bool(false);
+        if(i == 2 || i == 3 || i == 4) 
+          next_rblen(2)(i) <== Bool(true);
+        else
+          next_rblen(2)(i) <== Bool(false);
 
 
       when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) <== Bool(false) }
@@ -144,7 +144,7 @@ class vuVXU_Banked8_Expand extends Component
       next_raddr(0)  <== io.seq_regid_imm.vs;
       next_roplen(0) <== Bits("b10", 2);
       for(i <- 0 until DEF_BRPORT)
-	next_rblen(0)(i)  <== Bool(false);
+        next_rblen(0)(i)  <== Bool(false);
       
       next_ren(1)    <== Bool(true);
       next_rlast(1)  <== io.seq_to_expand.last;
@@ -152,10 +152,10 @@ class vuVXU_Banked8_Expand extends Component
       next_raddr(1)  <== io.seq_regid_imm.vt;
       next_roplen(1) <== Bits("b00", 2);
       for(i <- 0 until DEF_BRPORT){
-	if(i == 2 || i == 4)
-	  next_rblen(1)(i) <== Bool(true);
-	else
-	  next_rblen(1)(i) <== Bool(false);
+        if(i == 2 || i == 4)
+          next_rblen(1)(i) <== Bool(true);
+        else
+          next_rblen(1)(i) <== Bool(false);
       }
 
       when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) <== Bool(false) }
@@ -171,9 +171,9 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i == 5)
-	next_rblen(0)(i) <== Bool(true);
+        next_rblen(0)(i) <== Bool(true);
       else
-	next_rblen(0)(i) <== Bool(false); 
+        next_rblen(0)(i) <== Bool(false); 
 
     when(io.seq_regid_imm.vs_zero) { next_rblen(0)(5) <== Bool(false) }
   }
@@ -186,9 +186,9 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i == 6)
-	next_rblen(0)(i) <== Bool(true);
+        next_rblen(0)(i) <== Bool(true);
       else
-	next_rblen(0)(i) <== Bool(false);
+        next_rblen(0)(i) <== Bool(false);
 
     when(io.seq_regid_imm.vs_zero) { next_rblen(0)(6) <== Bool(false) }
   }
@@ -201,9 +201,9 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(0) <== Bits("b00", 2);
     for(i <- 0 until DEF_BRPORT)
       if(i == 7)
-	next_rblen(0)(i) <== Bool(true);
+        next_rblen(0)(i) <== Bool(true);
       else
-	next_rblen(0)(i) <== Bool(false);
+        next_rblen(0)(i) <== Bool(false);
 
     when(io.seq_regid_imm.vt_zero) { next_rblen(0)(7) <== Bool(false) }
   }
@@ -331,7 +331,6 @@ class vuVXU_Banked8_Expand extends Component
   val reg_utldq     = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
   val reg_utsdq     = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) };
 
-
   for (i <- 0 until SHIFT_BUF_READ)
   {
     reg_viu(i)       := next_viu(i);
@@ -393,26 +392,26 @@ class vuVXU_Banked8_Expand extends Component
       next_viu(1) <== Bool(true);
       when(io.seq_regid_imm.vs_zero)
       {
-	when(io.seq_regid_imm.vt_zero){
-	  next_viu_fn(1) <== Cat(M0, M0, io.seq_fn.viu(6,0));
-	}
-	when(!io.seq_regid_imm.vt_zero)
-	{
-	  next_viu_fn(1) <== Cat(M0, io.seq_fn.viu(8,0))
-	}
+        when(io.seq_regid_imm.vt_zero){
+          next_viu_fn(1) <== Cat(M0, M0, io.seq_fn.viu(6,0));
+        }
+        when(!io.seq_regid_imm.vt_zero)
+        {
+          next_viu_fn(1) <== Cat(M0, io.seq_fn.viu(8,0))
+        }
       }
       when(!io.seq_regid_imm.vs_zero)
       {
-	when(io.seq_regid_imm.vt_zero)
-	{
-	  next_viu_fn(1) <== Cat(io.seq_fn.viu(10,9), 
-				 M0, 
-				 io.seq_fn.viu(6,0));
-	}
-	when(!io.seq_regid_imm.vt_zero)
-	{
-	  next_viu_fn(1) <== io.seq_fn.viu;
-	}
+        when(io.seq_regid_imm.vt_zero)
+        {
+          next_viu_fn(1) <== Cat(io.seq_fn.viu(10,9), 
+                                 M0, 
+                                 io.seq_fn.viu(6,0));
+        }
+        when(!io.seq_regid_imm.vt_zero)
+        {
+          next_viu_fn(1) <== io.seq_fn.viu;
+        }
       }
     }
     when(io.seq_fn.viu(RG_VIU_T) != Cat(ML,MR))
@@ -501,5 +500,4 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.utaq      := reg_utaq(0);
   io.expand_lfu_fn.utldq     := reg_utldq(0);
   io.expand_lfu_fn.utsdq     := reg_utsdq(0);
-
 }

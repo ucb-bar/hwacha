@@ -1,5 +1,4 @@
 package hwacha
-{
 
 import Chisel._
 import Node._
@@ -19,8 +18,6 @@ class vu extends Component
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 4);
   val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 4);
 
-  vxu.io.vec_ackq <> io.vec_ackq;
-
   vxu.io.illegal <> io.illegal;
   
   vxu.io.vxu_cmdq <> io.vec_cmdq;
@@ -34,6 +31,8 @@ class vu extends Component
   vxu.io.vmu_utcmdq <> vmu_utcmdq.io.enq;
   vxu.io.vmu_utimmq <> vmu_utimmq.io.enq;
 
+  vxu.io.vec_ackq <> io.vec_ackq;
+
   vxu.io.cp_imul_req <> io.cp_imul_req;
   vxu.io.cp_imul_resp <> io.cp_imul_resp;
 
@@ -43,7 +42,9 @@ class vu extends Component
   vxu.io.imem_req <> io.imem_req;
   vxu.io.imem_resp <> io.imem_resp;
 
+
   val vmu = new vuVMU();
+
   vmu.io.vxu_to_vmu <> vxu.io.vxu_to_vmu
 
   vmu.io.vmu_vcmdq.bits <> vmu_vcmdq.io.deq.bits;
@@ -116,6 +117,4 @@ class vu extends Component
   vmu.io.dmem_resp_ut.data <> io.dmem_resp_ut.bits.data;
   vmu.io.dmem_resp_vec.tag <> io.dmem_resp_vec.bits.tag;
   vmu.io.dmem_resp_vec.data <> io.dmem_resp_vec.bits.data;
-
-}
 }

@@ -74,12 +74,12 @@ package hwacha {
     val utsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
 
     // ctrl_vec
-    ctrl_vec.io.vmcmdq      ^^ io.vmu_vcmdq;
-    ctrl_vec.io.vmimmq      ^^ io.vmu_vbaseq;
-    ctrl_vec.io.vmstrideq   ^^ io.vmu_vstrideq;
-    ctrl_vec.io.vmrespq     ^^ io.vmu_vackq;
-    ctrl_vec.io.dcachereq   ^^ io.dmem_req_vec; 
-    ctrl_vec.io.dcacheresp  ^^ io.dmem_resp_vec; 
+    ctrl_vec.io.vmcmdq      <> io.vmu_vcmdq;
+    ctrl_vec.io.vmimmq      <> io.vmu_vbaseq;
+    ctrl_vec.io.vmstrideq   <> io.vmu_vstrideq;
+    ctrl_vec.io.vmrespq     <> io.vmu_vackq;
+    ctrl_vec.io.dcachereq   <> io.dmem_req_vec; 
+    ctrl_vec.io.dcacheresp  <> io.dmem_resp_vec; 
 
     ctrl_vec.io.vldq.enq_rdy    := vldq.io.enq.ready;
     vldq.io.enq.valid             := ctrl_vec.io.vldq.enq_val;
@@ -90,11 +90,11 @@ package hwacha {
     vsdq.io.deq.ready             := ctrl_vec.io.vsdq_deq.rdy;
 
     // ctrl_ut
-    ctrl_ut.io.utmcmdq    ^^ io.vmu_utcmdq;
-    ctrl_ut.io.utmimmq    ^^ io.vmu_utimmq;
-    ctrl_ut.io.utmrespq   ^^ io.vmu_utackq;
-    ctrl_ut.io.dcachereq  ^^ io.dmem_req_ut;
-    ctrl_ut.io.dcacheresp ^^ io.dmem_resp_ut;
+    ctrl_ut.io.utmcmdq    <> io.vmu_utcmdq;
+    ctrl_ut.io.utmimmq    <> io.vmu_utimmq;
+    ctrl_ut.io.utmrespq   <> io.vmu_utackq;
+    ctrl_ut.io.dcachereq  <> io.dmem_req_ut;
+    ctrl_ut.io.dcacheresp <> io.dmem_resp_ut;
 
     ctrl_ut.io.utaq_deq.valid   := utaq.io.deq.valid;
     ctrl_ut.io.utaq_deq.bits    := utaq.io.deq.bits;

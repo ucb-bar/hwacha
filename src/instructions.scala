@@ -1,5 +1,4 @@
 package hwacha
-{
 
 import Chisel._
 import Node._;
@@ -249,6 +248,4 @@ object Instructions
   val VF         = Bits("b00000_?????_????????????_111_1110011",32);
 
   val NOP = ADDI & Bits("b00000000000000000000001111111111", 32);
-}
-
 }

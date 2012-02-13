@@ -198,9 +198,9 @@ class queueSimplePF(data_sz: Int, entries: Int) extends Component
   override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl(entries, addr_sz);
   ctrl.io.deq_val <> io.deq.valid;
-  ctrl.io.enq_rdy ^^ io.enq.ready;
-  ctrl.io.enq_val ^^ io.enq.valid;     
-  ctrl.io.deq_rdy ^^ io.deq.ready;
+  ctrl.io.enq_rdy <> io.enq.ready;
+  ctrl.io.enq_val <> io.enq.valid;     
+  ctrl.io.deq_rdy <> io.deq.ready;
   val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits);
   io.deq.bits := ram(ctrl.io.raddr);
 }
@@ -210,10 +210,10 @@ class queuePipePF(data_sz: Int, entries: Int) extends Component
   val addr_sz = log2up(entries);
   override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl_pipe(entries, addr_sz);
-  ctrl.io.deq_val ^^ io.deq.valid;
-  ctrl.io.enq_rdy ^^ io.enq.ready;
-  ctrl.io.enq_val ^^ io.enq.valid;     
-  ctrl.io.deq_rdy ^^ io.deq.ready;
+  ctrl.io.deq_val <> io.deq.valid;
+  ctrl.io.enq_rdy <> io.enq.ready;
+  ctrl.io.enq_val <> io.enq.valid;     
+  ctrl.io.deq_rdy <> io.deq.ready;
   val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits);
   io.deq.bits := ram(ctrl.io.raddr);
 }
@@ -331,10 +331,10 @@ class queuePipe1PF(data_sz:Int) extends Component
   val wen = Wire(){Bool()};
   override val io = new io_queue(data_sz);
   val ctrl = new queueCtrl1_pipe();
-  ctrl.io.enq_val ^^ io.enq.valid;
-  ctrl.io.enq_rdy ^^ io.enq.ready;
-  ctrl.io.deq_val ^^ io.deq.valid;
-  ctrl.io.deq_rdy ^^ io.deq.ready;
+  ctrl.io.enq_val <> io.enq.valid;
+  ctrl.io.enq_rdy <> io.enq.ready;
+  ctrl.io.deq_val <> io.deq.valid;
+  ctrl.io.deq_rdy <> io.deq.ready;
   wen := ctrl.io.wen;
   val deq_bits_reg = Reg(width=data_sz, resetVal=Bits("b0", data_sz));
   io.deq.bits := deq_bits_reg;
@@ -350,17 +350,17 @@ class queueFlowPF(data_sz: Int, entries: Int) extends Component
   val addr_sz = log2up(entries);
   val ctrl  = new queueCtrlFlow(entries, addr_sz);
   val dpath = new queueDpathFlow(data_sz, entries, addr_sz);
-  ctrl.io.deq_rdy   ^^ io.deq.ready;
+  ctrl.io.deq_rdy   <> io.deq.ready;
   ctrl.io.wen       <> dpath.io.wen;
   ctrl.io.raddr     <> dpath.io.raddr;
   ctrl.io.waddr     <> dpath.io.waddr;
   ctrl.io.flowthru  <> dpath.io.flowthru;
-  ctrl.io.enq_val   ^^ io.enq.valid;       
-  dpath.io.enq_bits ^^ io.enq.bits;
+  ctrl.io.enq_val   <> io.enq.valid;       
+  dpath.io.enq_bits <> io.enq.bits;
 
-  ctrl.io.deq_val   ^^ io.deq.valid;
-  ctrl.io.enq_rdy   ^^ io.enq.ready;
-  dpath.io.deq_bits ^^ io.deq.bits;
+  ctrl.io.deq_val   <> io.deq.valid;
+  ctrl.io.enq_rdy   <> io.enq.ready;
+  dpath.io.deq_bits <> io.deq.bits;
 }
 
 }

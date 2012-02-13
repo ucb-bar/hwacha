@@ -30,8 +30,8 @@ object vuVXU_Banked8_Lane_Xbar_Mux8
   def apply(rblen: Vec[Bits], port: Int, rdata: Vec[Bits]): Bits = 
     {
       val mux8 = new vuVXU_Banked8_Lane_Xbar_Mux8(port);
-      mux8.io.rblen ^^ rblen;
-      mux8.io.rdata ^^ rdata;
+      mux8.io.rblen <> rblen;
+      mux8.io.rdata <> rdata;
       mux8.io.rbl
     }
 }
