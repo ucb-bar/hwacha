@@ -123,7 +123,7 @@ package hwacha {
             // what is used in this comparison
             when( vlen_reg === UFix(0) ) 
             {
-              state <== VMU_Ctrl_WritebackDone;
+              state <== VMU_Ctrl_Idle;
               io.roq_deq_rdy <== Bool(true);
             }
             // Verilog was as follows

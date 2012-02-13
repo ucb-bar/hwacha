@@ -350,21 +350,17 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   val array_sport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
-  val array_vsl_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) };
 
   val next_sport_val = GenArray(SZ_BANK){ Wire(){ Bool() } };
-  val next_vsl_val = GenArray(SZ_BANK){ Wire(){ Bool() } };
 
   for (i <- 0 until SZ_BANK)
   {
     array_sport_val(i) := next_sport_val(i);
-    array_vsl_val(i) := next_vsl_val(i);
   }
 
   for (i <- 0 until SZ_BANK)
   {
     next_sport_val(i) <== array_sport_val(i);
-    next_vsl_val(i) <== array_vsl_val(i);
   }
 
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
@@ -376,35 +372,25 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
     next_sport_val.write(next_ptr3, Bool(true));
-
-    next_vsl_val.write(next_ptr3, Bool(true));
   }
   when (io.fire.utld || io.fire.utst)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
-
-    next_vsl_val.write(next_ptr2, Bool(true));
   }
   when(io.fire.vld)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
-
-    next_vsl_val.write(next_ptr2, Bool(true));
   }
   when (io.fire.vst)
   {
     next_sport_val.write(next_ptr1, Bool(true));
-
-    next_vsl_val.write(next_ptr1, Bool(true));
   }
   
   when (io.seq_to_hazard.last)
   {
     next_sport_val.write(reg_ptr, Bool(false));
-
-    next_vsl_val.write(reg_ptr, Bool(false));
   }
 
   // hazard check logic for tvec/vt
@@ -484,7 +470,7 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vst & io.tvec_bhazard.vst
     );
 
-  io.no_pending_ldsd := !array_vsl_val.flatten().orR()
+  io.no_pending_ldsd := !array_rport_vsu.flatten().orR() && !array_rport_vgu.flatten().orR() && !array_wport_vlu.flatten().orR()
 
   io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR() & !tvec_dhazard.orR() & !tvec_shazard.orR() & !tvec_seqhazard.orR() & !tvec_bhazard.orR();
 

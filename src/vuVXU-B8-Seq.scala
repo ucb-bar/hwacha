@@ -590,7 +590,9 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.vr := array_vr.read(reg_ptr);
   io.seq_regid_imm.vd := array_vd.read(reg_ptr);
   io.seq_regid_imm.qcnt := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, VLENMAX_SZ), io.seq_regid_imm.cnt + UFix(2, VLENMAX_SZ));
-  io.seq_regid_imm.cmd := Cat(array_cmd.read(reg_ptr)(8,0), io.seq_regid_imm.cnt + UFix(0, VLENMAX_SZ));
+  io.seq_regid_imm.cmd :=
+    Mux(current_vaq_val, Cat(array_cmd.read(reg_ptr)(8,0), UFix(0, VLENMAX_SZ)),
+        Cat(array_cmd.read(reg_ptr)(8,0), io.seq_regid_imm.cnt + UFix(0, VLENMAX_SZ)));
   io.seq_regid_imm.imm := array_imm.read(reg_ptr);
   io.seq_regid_imm.imm2 := array_imm2.read(reg_ptr);
 }

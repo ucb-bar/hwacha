@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Config._
+import Interface._
 import scala.collection.mutable.ArrayBuffer
 
 class CPIO extends Bundle
@@ -24,21 +25,6 @@ class CPIO extends Bundle
   val fma_exc = Bits(DEF_EXC, OUTPUT);
 }
 
-class ExpanderToLFUIO extends Bundle
-{
-  val vau0    = Bool(OUTPUT);
-  val vau0_fn = Bits(DEF_VAU0_FN, OUTPUT);
-  val vau1    = Bool(OUTPUT);
-  val vau1_fn = Bits(DEF_VAU1_FN, OUTPUT);
-  val vau2    = Bool(OUTPUT);
-  val vau2_fn = Bits(DEF_VAU2_FN, OUTPUT);
-  val vldq    = Bool(OUTPUT);
-  val vsdq    = Bool(OUTPUT);
-  val utaq    = Bool(OUTPUT);
-  val utldq   = Bool(OUTPUT);
-  val utsdq   = Bool(OUTPUT);
-}
-
 class ExpanderIO extends Bundle
 {
   val bank = new BankToBankIO().flip();
@@ -47,6 +33,10 @@ class ExpanderIO extends Bundle
 
 class VMUIO extends Bundle 
 {
+  val vaq_val   = Bool(OUTPUT)
+  val vaq_cmd   = Bits(VCMD_SZ, OUTPUT)
+  val vaq_bits  = Bits(DEF_DATA, OUTPUT)
+
   val vldq_rdy  = Bool(OUTPUT);
   val vldq_bits = Bits(DEF_DATA, INPUT)
   val vsdq_val  = Bool(OUTPUT);
@@ -140,6 +130,10 @@ class vuVXU_Banked8_Lane extends Component
   val vau1_fn   = lfu.io.vau1_fn;
   val vau2_val  = lfu.io.vau2_val;
   val vau2_fn   = lfu.io.vau2_fn;
+
+  io.vmu.vaq_val   := lfu.io.vaq_val
+  io.vmu.vaq_cmd   := lfu.io.vaq_cmd
+  io.vmu.vaq_bits  := lfu.io.vaq_bits
 
   io.vmu.vldq_rdy  := lfu.io.vldq_rdy;
   io.vmu.vsdq_val  := lfu.io.vsdq_val;

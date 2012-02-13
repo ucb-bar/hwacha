@@ -73,27 +73,7 @@ class vuVXU extends Component
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq;
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
 
-  io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
-
-  io.vmu_vcmdq.valid := b8seq.io.seq.vaq || issue.io.vmu_vcmdq.valid;
-  io.vmu_vbaseq.valid := b8seq.io.seq.vaq;
-  io.vmu_vstrideq.valid := b8seq.io.seq.vaq & b8seq.io.seq_regid_imm.cmd(19);
-  
-  io.vmu_vcmdq.bits := 
-    Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
-        b8seq.io.seq_regid_imm.cmd(18,0));
-  io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
-  io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;
-
-  io.vmu_utcmdq.valid := b8seq.io.seq.utaq || issue.io.vmu_utcmdq.valid;
-  io.vmu_utimmq.valid := b8seq.io.seq.utaq & b8seq.io.seq_regid_imm.cmd(19);
-
-  io.vmu_utcmdq.bits :=
-    Mux(issue.io.vmu_utcmdq.valid, issue.io.vmu_utcmdq.bits,
-        b8seq.io.seq_regid_imm.cmd(18,0));
-  io.vmu_utimmq.bits := b8seq.io.seq_regid_imm.imm(31,0);
-
-  b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
+  b8seq.io.qstall.vaq := ~io.lane_vaq.ready
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
   b8seq.io.qstall.utaq := ~io.lane_utaq.ready || ~io.vmu_utcmdq.ready || ~io.vmu_utimmq.ready;
@@ -152,6 +132,29 @@ class vuVXU extends Component
   b8lane.io.vmu.utldq_bits <> io.lane_utldq.bits;
   b8lane.io.vmu.utsdq_val <> io.lane_utsdq.valid;
   b8lane.io.vmu.utsdq_bits <> io.lane_utsdq.bits;
+
+
+  // memory interface
+
+  io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
+
+  io.vmu_vcmdq.valid := b8lane.io.vmu.vaq_val || issue.io.vmu_vcmdq.valid;
+  io.vmu_vbaseq.valid := b8lane.io.vmu.vaq_val
+  io.vmu_vstrideq.valid := Bool(false)
+  
+  io.vmu_vcmdq.bits := 
+    Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
+        b8lane.io.vmu.vaq_cmd(18,0));
+  io.vmu_vbaseq.bits := b8lane.io.vmu.vaq_bits(63,0);
+
+  io.vmu_utcmdq.valid := b8seq.io.seq.utaq || issue.io.vmu_utcmdq.valid;
+  io.vmu_utimmq.valid := b8seq.io.seq.utaq & b8seq.io.seq_regid_imm.cmd(19);
+
+  io.vmu_utcmdq.bits :=
+    Mux(issue.io.vmu_utcmdq.valid, issue.io.vmu_utcmdq.bits,
+        b8seq.io.seq_regid_imm.cmd(18,0));
+  io.vmu_utimmq.bits := b8seq.io.seq_regid_imm.imm(31,0);
+
 
   // responses
   issue.io.vxu_ackq.bits <> io.vmu_utackq.bits;
