@@ -111,7 +111,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr2, Bool(true));
     next_rport_vau2.write(next_ptr2, Bool(true));
   }
-  when (io.fire.vgslu || io.fire.vgsu)
+  when (io.fire.amo || io.fire.utst)
   {
     next_rport_val.write(next_ptr2, Bool(true));
     next_rport_vgu.write(next_ptr2, Bool(true));
@@ -119,12 +119,12 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr3, Bool(true));
     next_rport_vsu.write(next_ptr3, Bool(true));
   }
-  when (io.fire.vglu)
+  when (io.fire.utld)
   {
     next_rport_val.write(next_ptr2, Bool(true));
     next_rport_vgu.write(next_ptr2, Bool(true));
   }
-  when (io.fire.vsu)
+  when (io.fire.vst)
   {
     next_rport_val.write(next_ptr2, Bool(true));
     next_rport_vsu.write(next_ptr2, Bool(true));
@@ -313,23 +313,22 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vau2.write(vau2_wptr, Bool(true));
     next_wport_vd.write(vau2_wptr, io.fire_regid_imm.vd);
   }
-  when (io.fire.vgslu)
+  when (io.fire.amo)
   {
     next_wport_val.write(next_ptr4, Bool(true));
     next_wport_head.write(next_ptr4, Bool(true));
     next_wport_vlu.write(next_ptr4, Bool(true));
     next_wport_vd.write(next_ptr4, io.fire_regid_imm.vd);
   }
-  when (io.fire.vglu)
+  when (io.fire.utld)
   {
     next_wport_val.write(next_ptr3, Bool(true));
     next_wport_head.write(next_ptr3, Bool(true));
     next_wport_vlu.write(next_ptr3, Bool(true));
     next_wport_vd.write(next_ptr3, io.fire_regid_imm.vd);
   }
-  when (io.fire.vlu)
+  when (io.fire.vld)
   {
-    // new changed next_ptr2 to next_ptr3
     next_wport_val.write(next_ptr3, Bool(true));
     next_wport_head.write(next_ptr3, Bool(true));
     next_wport_vlu.write(next_ptr3, Bool(true));
@@ -372,7 +371,7 @@ class vuVXU_Banked8_Hazard extends Component
   {
     next_sport_val.write(next_ptr1, Bool(true));
   }
-  when (io.fire.vgslu)
+  when (io.fire.amo)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
@@ -380,23 +379,21 @@ class vuVXU_Banked8_Hazard extends Component
 
     next_vsl_val.write(next_ptr3, Bool(true));
   }
-  when (io.fire.vglu || io.fire.vgsu)
+  when (io.fire.utld || io.fire.utst)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
 
     next_vsl_val.write(next_ptr2, Bool(true));
   }
-  // new
-  when(io.fire.vlu)
+  when(io.fire.vld)
   {
     next_sport_val.write(next_ptr1, Bool(true));
     next_sport_val.write(next_ptr2, Bool(true));
 
     next_vsl_val.write(next_ptr2, Bool(true));
   }
-  // new
-  when (io.fire.vsu)
+  when (io.fire.vst)
   {
     next_sport_val.write(next_ptr1, Bool(true));
 
@@ -451,14 +448,14 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vd).orR();
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr);
-  val tvec_bhazard_vlu = array_wport_val.read(next_ptr2);
-  val tvec_bhazard_vsu = array_rport_val.read(next_ptr2);
+  val tvec_bhazard_vld = array_wport_val.read(next_ptr2);
+  val tvec_bhazard_vst = array_rport_val.read(next_ptr2);
 
   val tvec_stall =
     Cat(
       io.tvec_valid.viu & io.seq_to_hazard.stall.orR(),
-      io.tvec_valid.vlu & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
-      io.tvec_valid.vsu & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ))
+      io.tvec_valid.vld & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
+      io.tvec_valid.vst & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ))
     );
 
   val tvec_dhazard =
@@ -476,15 +473,15 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_seqhazard =
     Cat(
       io.tvec_valid.viu & seqhazard_1slot,
-      io.tvec_valid.vlu & seqhazard_2slot, // new
-      io.tvec_valid.vsu & seqhazard_1slot
+      io.tvec_valid.vld & seqhazard_2slot,
+      io.tvec_valid.vst & seqhazard_1slot
     );
 
   val tvec_bhazard =
     Cat(
       tvec_bhazard_r1w1 & io.tvec_bhazard.r1w1,
-      tvec_bhazard_vlu & io.tvec_bhazard.vlu,
-      tvec_bhazard_vsu & io.tvec_bhazard.vsu
+      tvec_bhazard_vld & io.tvec_bhazard.vld,
+      tvec_bhazard_vst & io.tvec_bhazard.vst
     );
 
   io.no_pending_ldsd := !array_vsl_val.flatten().orR()
@@ -548,9 +545,9 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr);
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr);
   val vt_bhazard_r3w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_rport_val.read(next_ptr4) | array_wport_val.read(vt_wptr);
-  val vt_bhazard_vgslu = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(next_ptr4);
-  val vt_bhazard_vglu = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3);
-  val vt_bhazard_vgsu = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3);
+  val vt_bhazard_amo = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(next_ptr4);
+  val vt_bhazard_utld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3);
+  val vt_bhazard_utst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3);
 
   val vt_stall =
     Cat(
@@ -558,9 +555,9 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_valid.vau0 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau1 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau2 & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.vgslu & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ)),
-      io.vt_valid.vglu & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
-      io.vt_valid.vgsu & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTLDQ))
+      io.vt_valid.amo & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ)),
+      io.vt_valid.utld & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
+      io.vt_valid.utst & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTLDQ))
     );
 
   val vt_dhazard =
@@ -587,9 +584,9 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_valid.vau0 & seqhazard_1slot,
       io.vt_valid.vau1 & seqhazard_1slot,
       io.vt_valid.vau2 & seqhazard_1slot,
-      io.vt_valid.vgslu & seqhazard_3slot,
-      io.vt_valid.vglu & seqhazard_2slot,
-      io.vt_valid.vgsu & seqhazard_2slot
+      io.vt_valid.amo & seqhazard_3slot,
+      io.vt_valid.utld & seqhazard_2slot,
+      io.vt_valid.utst & seqhazard_2slot
     );
 
   val vt_bhazard =
@@ -597,9 +594,9 @@ class vuVXU_Banked8_Hazard extends Component
       vt_bhazard_r1w1 & io.vt_bhazard.r1w1,
       vt_bhazard_r2w1 & io.vt_bhazard.r2w1,
       vt_bhazard_r3w1 & io.vt_bhazard.r3w1,
-      vt_bhazard_vgslu & io.vt_bhazard.vgslu,
-      vt_bhazard_vglu & io.vt_bhazard.vglu,
-      vt_bhazard_vgsu & io.vt_bhazard.vgsu
+      vt_bhazard_amo & io.vt_bhazard.amo,
+      vt_bhazard_utld & io.vt_bhazard.utld,
+      vt_bhazard_utst & io.vt_bhazard.utst
     );
 
   io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR() & !vt_dhazard.orR() & !vt_shazard.orR() & !vt_seqhazard.orR() & !vt_bhazard.orR();

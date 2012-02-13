@@ -21,6 +21,7 @@ class vuVXU_Banked8_Expand extends Component
   val reg_raddr  = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BREGLEN)} };
   val reg_roplen = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BOPL)} };
   val reg_rblen  = GenBuf(SHIFT_BUF_READ){ GenArray(DEF_BRPORT){ Reg(){Bool()} } };
+
   for (i <- 0 until SHIFT_BUF_READ){
     reg_ren(i)    := next_ren(i);
     reg_rlast(i)  := next_rlast(i);
@@ -49,7 +50,6 @@ class vuVXU_Banked8_Expand extends Component
   next_roplen(SHIFT_BUF_READ-1) <== Bits("d0", 2);
   for(i <- 0 until DEF_BRPORT)
     next_rblen(SHIFT_BUF_READ-1)(i)  <== Bool(false);
-
 
   when(io.seq.viu) 
   {

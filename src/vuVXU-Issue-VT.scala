@@ -200,9 +200,9 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_vau0 = valid(5);
   val unmasked_valid_vau1 = valid(4);
   val unmasked_valid_vau2 = valid(3);
-  val unmasked_valid_vgslu = valid(2);
-  val unmasked_valid_vglu = valid(1);
-  val unmasked_valid_vgsu = valid(0);
+  val unmasked_valid_amo = valid(2);
+  val unmasked_valid_utld = valid(1);
+  val unmasked_valid_utst = valid(0);
 
   val vau1_rm = Wire(){Bits(width = 2)};
   val vau2_rm = Wire(){Bits(width = 2)};
@@ -219,7 +219,7 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid
     = unmasked_valid_viu |
     unmasked_valid_vau0 | unmasked_valid_vau1 | unmasked_valid_vau2 |
-    unmasked_valid_vgslu | unmasked_valid_vglu | unmasked_valid_vgsu;
+    unmasked_valid_amo | unmasked_valid_utld | unmasked_valid_utst;
 
   io.vf.stop := decode_stop.toBool;
 
@@ -232,24 +232,17 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ));
 
-  //io.vmu_utcmdq.bits := Cat(utcmd,io.vf.vlen);
-  //io.vmu_utimmq.bits := imm(31,0);
-
-  //io.vmu_utcmdq.valid := (io.vf.active & ~(vd_valid & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_ready & enq_vmu_utcmdq & mask_vmu_utimmq_ready).toBool;
-  //io.vmu_utimmq.valid := (io.vf.active & ~(vd_valid & ~rtype_vd & id_reg_inst(31,27) === Bits(0,5)) & mask_issue_ready & mask_vmu_utcmdq_ready & enq_vmu_utimmq).toBool;
-
-  val valid_common = io.vf.active// & mask_vmu_utcmdq_ready & mask_vmu_utimmq_ready;
+  val valid_common = io.vf.active
 
   io.valid.viu := (valid_common & unmasked_valid_viu).toBool;
   io.valid.vau0 := (valid_common & unmasked_valid_vau0).toBool;
   io.valid.vau1 := (valid_common & unmasked_valid_vau1).toBool;
   io.valid.vau2 := (valid_common & unmasked_valid_vau2).toBool;
-  io.valid.vgslu := (valid_common & unmasked_valid_vgslu).toBool;
-  io.valid.vglu := (valid_common & unmasked_valid_vglu).toBool;
-  io.valid.vgsu := (valid_common & unmasked_valid_vgsu).toBool;
-  io.valid.vgu := Bool(false);
-  io.valid.vlu := Bool(false);
-  io.valid.vsu := Bool(false);
+  io.valid.amo := (valid_common & unmasked_valid_amo).toBool;
+  io.valid.utld := (valid_common & unmasked_valid_utld).toBool;
+  io.valid.utst := (valid_common & unmasked_valid_utst).toBool;
+  io.valid.vld := Bool(false);
+  io.valid.vst := Bool(false);
 
   io.dhazard.vs := dhazard(3).toBool;
   io.dhazard.vt := dhazard(2).toBool;
@@ -260,9 +253,6 @@ class vuVXU_Issue_VT extends Component
   io.shazard.vau0 := shazard(5).toBool;
   io.shazard.vau1 := shazard(4).toBool;
   io.shazard.vau2 := shazard(3).toBool;
-  io.shazard.vgslu := Bool(false);
-  io.shazard.vglu := Bool(false);
-  io.shazard.vgsu := Bool(false);
   io.shazard.vgu := shazard(2).toBool;
   io.shazard.vlu := shazard(1).toBool;
   io.shazard.vsu := shazard(0).toBool;
@@ -270,11 +260,11 @@ class vuVXU_Issue_VT extends Component
   io.bhazard.r1w1 := bhazard(5).toBool;
   io.bhazard.r2w1 := bhazard(4).toBool;
   io.bhazard.r3w1 := bhazard(3).toBool;
-  io.bhazard.vgslu := bhazard(2).toBool;
-  io.bhazard.vglu := bhazard(1).toBool;
-  io.bhazard.vgsu := bhazard(0).toBool;
-  io.bhazard.vlu := Bool(false);
-  io.bhazard.vsu := Bool(false);
+  io.bhazard.amo := bhazard(2).toBool;
+  io.bhazard.utld := bhazard(1).toBool;
+  io.bhazard.utst := bhazard(0).toBool;
+  io.bhazard.vld := Bool(false);
+  io.bhazard.vst := Bool(false);
 
   io.fn.viu := Cat(viu_t0,viu_t1,viu_dw,viu_fp,viu_fn);
   io.fn.vau0 := Cat(vau0_dw,vau0_fn);

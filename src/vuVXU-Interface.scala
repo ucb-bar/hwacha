@@ -153,19 +153,28 @@ class io_qstall extends Bundle
   val utsdq = Bool()
 }
 
+class io_vxu_issue_fire extends Bundle
+{
+  val viu = Bool()
+  val vau0 = Bool()
+  val vau1 = Bool()
+  val vau2 = Bool()
+  val amo = Bool()
+  val utld = Bool()
+  val utst = Bool()
+  val vld = Bool()
+  val vst = Bool()
+}
+
 class io_vxu_issue_fu extends Bundle
 {
   val viu = Bool()
   val vau0 = Bool()
   val vau1 = Bool()
   val vau2 = Bool()
-  val vgslu = Bool()
-  val vglu = Bool()
-  val vgsu = Bool()
   val vgu = Bool()
   val vlu = Bool()
   val vsu = Bool()
-  val fence = Bool()
 }
 
 class io_vxu_issue_fn extends Bundle
@@ -204,11 +213,11 @@ class io_vxu_issue_op extends Bundle
   val r1w1 = Bool()
   val r2w1 = Bool()
   val r3w1 = Bool()
-  val vgslu = Bool()
-  val vglu = Bool()
-  val vgsu = Bool()
-  val vlu = Bool()
-  val vsu = Bool()
+  val amo = Bool()
+  val utld = Bool()
+  val utst = Bool()
+  val vld = Bool()
+  val vst = Bool()
 }
 
 class io_vxu_seq_fu extends Bundle
@@ -357,7 +366,7 @@ class io_vxu_issue_tvec extends Bundle
   val vmu_vcmdq = new io_vmu_vcmdq()
   val vmu_utcmdq = new io_vmu_utcmdq()
 
-  val valid = new io_vxu_issue_fu().asOutput
+  val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
   val dhazard = new io_vxu_issue_reg().asOutput
   val shazard = new io_vxu_issue_fu().asOutput
@@ -391,7 +400,7 @@ class io_vxu_issue_vt extends Bundle
 
   val vf = new io_vf().flip()
 
-  val valid = new io_vxu_issue_fu().asOutput
+  val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
   val dhazard = new io_vxu_issue_reg().asOutput
   val shazard = new io_vxu_issue_fu().asOutput
@@ -485,7 +494,7 @@ class io_vxu_issue extends Bundle
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
 
-  val tvec_valid = new io_vxu_issue_fu().asOutput
+  val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
   val tvec_dhazard = new io_vxu_issue_reg().asOutput
   val tvec_shazard = new io_vxu_issue_fu().asOutput
@@ -493,7 +502,7 @@ class io_vxu_issue extends Bundle
   val tvec_fn = new io_vxu_issue_fn().asOutput
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asOutput
 
-  val vt_valid = new io_vxu_issue_fu().asOutput
+  val vt_valid = new io_vxu_issue_fire().asOutput
   val vt_ready = Bool(INPUT)
   val vt_dhazard = new io_vxu_issue_reg().asOutput
   val vt_shazard = new io_vxu_issue_fu().asOutput
@@ -504,7 +513,7 @@ class io_vxu_issue extends Bundle
 
 class io_vxu_fire extends Bundle
 {
-  val tvec_valid = new io_vxu_issue_fu().asInput
+  val tvec_valid = new io_vxu_issue_fire().asInput
   val tvec_ready = Bool(INPUT)
   val tvec_dhazard = new io_vxu_issue_reg().asInput
   val tvec_shazard = new io_vxu_issue_fu().asInput
@@ -512,7 +521,7 @@ class io_vxu_fire extends Bundle
   val tvec_fn = new io_vxu_issue_fn().asInput
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val vt_valid = new io_vxu_issue_fu().asInput
+  val vt_valid = new io_vxu_issue_fire().asInput
   val vt_ready = Bool(INPUT)
   val vt_dhazard = new io_vxu_issue_reg().asInput
   val vt_shazard = new io_vxu_issue_fu().asInput
@@ -520,7 +529,7 @@ class io_vxu_fire extends Bundle
   val vt_fn = new io_vxu_issue_fn().asInput
   val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val fire = new io_vxu_issue_fu().asOutput
+  val fire = new io_vxu_issue_fire().asOutput
   val fire_fn = new io_vxu_issue_fn().asOutput
   val fire_regid_imm = new io_vxu_issue_regid_imm().asOutput
 }
@@ -534,7 +543,7 @@ class io_vxu_hazard extends Bundle
   val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
   val lane_to_hazard = new io_lane_to_hazard().asInput
 
-  val tvec_valid = new io_vxu_issue_fu().asInput
+  val tvec_valid = new io_vxu_issue_fire().asInput
   val tvec_ready = Bool(OUTPUT)
   val tvec_dhazard = new io_vxu_issue_reg().asInput
   val tvec_shazard = new io_vxu_issue_fu().asInput
@@ -542,7 +551,7 @@ class io_vxu_hazard extends Bundle
   val tvec_fn = new io_vxu_issue_fn().asInput
   val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val vt_valid = new io_vxu_issue_fu().asInput
+  val vt_valid = new io_vxu_issue_fire().asInput
   val vt_ready = Bool(OUTPUT)
   val vt_dhazard = new io_vxu_issue_reg().asInput
   val vt_shazard = new io_vxu_issue_fu().asInput
@@ -550,7 +559,7 @@ class io_vxu_hazard extends Bundle
   val vt_fn = new io_vxu_issue_fn().asInput
   val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val fire = new io_vxu_issue_fu().asInput
+  val fire = new io_vxu_issue_fire().asInput
   val fire_fn = new io_vxu_issue_fn().asInput
   val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
 }
@@ -563,7 +572,7 @@ class io_vxu_seq extends Bundle
 
   val qstall = new io_qstall().asInput
 
-  val fire = new io_vxu_issue_fu().asInput
+  val fire = new io_vxu_issue_fire().asInput
   val fire_fn = new io_vxu_issue_fn().asInput
   val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
 
