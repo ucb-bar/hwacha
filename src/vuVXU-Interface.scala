@@ -244,6 +244,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = DEF_BREGLEN)
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
+  val qcnt = UFix(width = 4);
   val cmd = Bits(width = VCMD_SZ)
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q);
@@ -289,6 +290,11 @@ class io_vxu_expand_lfu_fn extends Bundle
   val utaq = Bool()
   val utldq = Bool()
   val utsdq = Bool()
+}
+
+class io_vxu_to_vmu extends Bundle
+{
+  val qcnt = UFix(width = 4);
 }
 
 class io_vxu_issue_to_hazard extends Bundle
@@ -422,6 +428,8 @@ class io_vu extends Bundle
 class io_vxu extends Bundle
 {
   val illegal = Bool(OUTPUT)
+
+  val vxu_to_vmu = new io_vxu_to_vmu().asOutput
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()

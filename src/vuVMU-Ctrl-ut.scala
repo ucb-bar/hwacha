@@ -93,7 +93,7 @@ package hwacha {
     val ctrl_ut_issue   = new vuVMU_Ctrl_ut_issue();
     // 12 bits for tag, 30 bits for address
     val lrq             = new queuePipePF(30+12, 4);
-    val roq             = new vuVMU_ROQ(65, 256, 8);
+    val roq             = new vuVMU_ROQ(65, 8, 3);
     val wbcmdq          = new queuePipePF(UT_WBCMD_SZ, 4);
     val ctrl_ut_wb      = new vuVMU_Ctrl_ut_wb();
     val stcmdq          = new queuePipePF(UT_STCMD_SZ, 4);

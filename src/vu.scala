@@ -98,6 +98,8 @@ class vu extends Component
   vxu.io.imem_resp <> io.imem_resp;
 
   val vmu = new vuVMU();
+  vmu.io.vxu_to_vmu <> vxu.io.vxu_to_vmu
+
   vmu.io.vmu_vcmdq.bits <> vmu_vcmdq.io.deq.bits;
   vmu.io.vmu_vcmdq.valid <> vmu_vcmdq.io.deq.valid;
   vmu.io.vmu_vcmdq.rdy <> vmu_vcmdq.io.deq.ready;

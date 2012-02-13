@@ -7,6 +7,8 @@ package hwacha {
   
   class vuVMUIO extends Bundle
   {
+    val vxu_to_vmu    = new io_vxu_to_vmu().asInput();
+
     val vmu_vcmdq     = new vmcmdqIO();
     val vmu_vbaseq    = new vmimmqIO();
     val vmu_vstrideq  = new vmstrideqIO();
@@ -56,10 +58,10 @@ package hwacha {
     val ctrl_ut     = new vuVMU_Ctrl_ut();
     // queues
     // vldq queue and capacity counter
-    val vldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val vldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val vldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
     // vsdq queue and capacity counter
-    val vsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val vsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val vsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
     // utaq queue and capacity counter
     val utaq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
@@ -108,7 +110,8 @@ package hwacha {
     
     // lane i/o
     io.lane_vldq_deq_bits     := vldq.io.deq.bits;
-    io.lane_vldq_deq_val      := vldq_count.io.ready || ctrl_vec.io.vldq.wb_done;
+    io.lane_vldq_deq_val      := vldq_count.io.ready 
+    vldq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
     vldq_count.io.deq         := io.lane_vldq_deq_rdy;
     vldq.io.deq.ready           := io.lane_vldq_deq_rdy;
     ctrl_vec.io.vldq.deq_rdy  := io.lane_vldq_deq_rdy;
@@ -116,9 +119,10 @@ package hwacha {
     vsdq.io.enq.bits          := io.lane_vsdq_enq_bits;
     io.lane_vsdq_enq_rdy      := vsdq_count.io.ready;
     vsdq.io.enq.valid           := io.lane_vsdq_enq_val;
+    vsdq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
     vsdq_count.io.deq         := io.lane_vsdq_enq_val;
     
-    io.lane_utaq_enq_rdy      := utaq_count.io.ready || ctrl_ut.io.utldq.wb_done;
+    io.lane_utaq_enq_rdy      := utaq_count.io.ready
     utaq.io.enq.bits          := io.lane_utaq_enq_bits;
     utaq.io.enq.valid           := io.lane_utaq_enq_val;
     utaq_count.io.deq         := io.lane_utaq_enq_val;

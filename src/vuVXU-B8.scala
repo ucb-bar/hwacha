@@ -80,6 +80,7 @@ class vuVXU extends Component
 			   b8seq.io.seq_regid_imm.cmd(18,0));
   io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
   io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;
+  io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
 
   b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
