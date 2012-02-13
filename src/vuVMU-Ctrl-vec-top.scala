@@ -11,7 +11,7 @@ package hwacha {
     val iscmdq      = new iscmdqIO()
     val wbcmdq      = new wbcmdqIO()
     val stcmdq      = new stcmdqIO()
-    val store_busy		= Bool(INPUT)
+    val store_busy              = Bool(INPUT)
   }
   
   class vuVMU_Ctrl_vec_top extends Component {
@@ -58,21 +58,21 @@ package hwacha {
           switch(cmd(7,4))
           {
             state <== VMU_Ctrl_Invalid
-	    is(Bits("b0000",4))
+            is(Bits("b0000",4))
             {
-	      state <== VMU_Ctrl_Idle
+              state <== VMU_Ctrl_Idle
               when(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111"))
               {
                 state <== VMU_Ctrl_Sync
               }
-	      when( !(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111")) )
+              when( !(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111")) )
               {
                 state <== VMU_Ctrl_Invalid
               }
             }
             is(Bits("b1000",4)) // standard vector load
             {
-	      state <== VMU_Ctrl_Idle
+              state <== VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.iscmdq.rdy && io.wbcmdq.rdy )
               {
                 state <== VMU_Ctrl_Load
@@ -80,7 +80,7 @@ package hwacha {
             }
             is(Bits("b1001",4)) // standard vector store
             {
-	      state <== VMU_Ctrl_Idle
+              state <== VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.stcmdq.rdy )
               {
                 state <== VMU_Ctrl_Store
@@ -88,7 +88,7 @@ package hwacha {
             }
             is(Bits("b1010",4)) // strided vector load
             {
-	      state <== VMU_Ctrl_Idle
+              state <== VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.vmstrideq.valid && io.iscmdq.rdy && io.wbcmdq.rdy ) 
               {
                 state <== VMU_Ctrl_LoadStride
@@ -96,7 +96,7 @@ package hwacha {
             }
             is(Bits("b1011",4)) // strided vector load
             {
-	      state <== VMU_Ctrl_Idle
+              state <== VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.vmstrideq.valid && io.stcmdq.rdy ) 
               {
                 state <== VMU_Ctrl_StoreStride
@@ -113,7 +113,7 @@ package hwacha {
         io.wbcmdq.valid <== Bool(true)
         switch(cmd(1,0))
         {
-	  stride <== UFix(0)
+          stride <== UFix(0)
           is(Bits("b11")) { stride <== UFix(8) }
           is(Bits("b10")) { stride <== UFix(4) }
           is(Bits("b01")) { stride <== UFix(2) }
@@ -128,7 +128,7 @@ package hwacha {
         io.stcmdq.valid <== Bool(true)
         switch(cmd(1,0))
         {
-	  stride <== UFix(0)
+          stride <== UFix(0)
           is(Bits("b11")) { stride <== UFix(8) }
           is(Bits("b10")) { stride <== UFix(4) }
           is(Bits("b01")) { stride <== UFix(2) }
@@ -166,7 +166,7 @@ package hwacha {
           {
             state <== VMU_Ctrl_Idle
           }
-          when(!io.vmrespq.rdy)	  
+          when(!io.vmrespq.rdy)   
           {
             state <== VMU_Ctrl_SyncWait
           }
