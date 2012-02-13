@@ -21,7 +21,6 @@ class vuVXU extends Component
   issue.io.vmu_utcmdq <> io.vmu_utcmdq;
   issue.io.vmu_utimmq <> io.vmu_utimmq;
 
-
   val b8fire = new vuVXU_Banked8_Fire();
 
   b8fire.io.tvec_valid <> issue.io.tvec_valid;
@@ -83,6 +82,20 @@ class vuVXU extends Component
   io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
 
   b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
+  b8seq.io.qstall.vlaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready;
+  b8seq.io.seq.vlaq <> io.vmu_vcmdq.valid
+  b8seq.io.seq.vlaq <> io.vmu_vbaseq.valid
+  b8seq.io.seq.vlaq <> io.vmu_vstrideq.valid
+  b8seq.io.seq_regid_imm.cmd <> io.vmu_vcmdq.bits;
+  b8seq.io.seq_regid_imm.imm <> io.vmu_vbaseq.bits;
+  b8seq.io.seq_regid_imm.imm2 <> io.vmu_vstrideq.bits;
+  
+  // Figure out how to arbitrate this between Seq and Issue
+  issue.io.vmu_utcmdq <> io.vmu_utcmdq;
+
+  b8seq.io.seq_regid_imm.imm2 <> io.vmu_utcmdq.bits;
+  b8seq.io.seq_regid_imm.imm <> io.vmu_utimmq.bits;
+
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
   b8seq.io.qstall.utaq := ~io.lane_utaq.ready;

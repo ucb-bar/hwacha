@@ -12,11 +12,8 @@ class vuVXU_Issue extends Component
 
   val tvec = new vuVXU_Issue_TVEC();
   val vt = new vuVXU_Issue_VT();
-  val utcmdq_arb = (new Arbiter(2)){ new io_vmu_utcmdq() };
 
   tvec.io.vf <> vt.io.vf;
-  utcmdq_arb.io.in(0) <> tvec.io.vmu_utcmdq;
-  utcmdq_arb.io.in(1) <> vt.io.vmu_utcmdq;
 
   vt.io.illegal ^^ io.illegal;
   vt.io.imem_req ^^ io.imem_req;
@@ -25,8 +22,7 @@ class vuVXU_Issue extends Component
   tvec.io.vxu_cmdq ^^ io.vxu_cmdq;
   tvec.io.vxu_immq ^^ io.vxu_immq;
   tvec.io.vxu_imm2q ^^ io.vxu_imm2q;
-  utcmdq_arb.io.out ^^ io.vmu_utcmdq;
-  vt.io.vmu_utimmq ^^ io.vmu_utimmq;
+  tvec.io.vmu_utcmdq ^^ io.vmu_utcmdq;
 
   tvec.io.no_pending_ldsd <> io.no_pending_ldsd
 

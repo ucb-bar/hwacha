@@ -31,8 +31,10 @@ class vu extends Component
   vxu.io.vmu_vbaseq <> vmu_vbaseq.io.enq;
   vxu.io.vmu_vstrideq <> vmu_vstrideq.io.enq;
 
-  vxu.io.vmu_utcmdq <> vmu_utcmdq.io.enq;
-  vxu.io.vmu_utimmq <> vmu_utimmq.io.enq;
+  vxu.io.vxu_ackq <> vcu.io.vxu_ackq;
+
+  vmu_utimmq.io.enq <> vxu.io.vmu_utimmq;
+  vmu_utcmdq.io.enq <> vxu.io.vmu_utcmdq;
 
   vxu.io.cp_imul_req <> io.cp_imul_req;
   vxu.io.cp_imul_resp <> io.cp_imul_resp;
@@ -47,13 +49,8 @@ class vu extends Component
   vmu.io.vxu_to_vmu <> vxu.io.vxu_to_vmu
 
   vmu.io.vmu_vcmdq.bits <> vmu_vcmdq.io.deq.bits;
-  vmu.io.vmu_vcmdq.valid <> vmu_vcmdq.io.deq.valid;
-  vmu.io.vmu_vcmdq.rdy <> vmu_vcmdq.io.deq.ready;
-
   vmu.io.vmu_vbaseq.bits <> vmu_vbaseq.io.deq.bits;
-  vmu.io.vmu_vbaseq.valid <> vmu_vbaseq.io.deq.valid;
-  vmu.io.vmu_vbaseq.rdy <> vmu_vbaseq.io.deq.ready;
-  
+ 
   vmu.io.vmu_vstrideq.bits <> vmu_vstrideq.io.deq.bits;
   vmu.io.vmu_vstrideq.valid <> vmu_vstrideq.io.deq.valid;
   vmu.io.vmu_vstrideq.rdy <> vmu_vstrideq.io.deq.ready;
@@ -70,9 +67,9 @@ class vu extends Component
   vmu.io.vmu_utimmq.valid <> vmu_utimmq.io.deq.valid;
   vmu.io.vmu_utimmq.rdy <> vmu_utimmq.io.deq.ready;
 
-  vmu.io.vmu_utackq.bits <> vxu.io.vmu_utackq.bits;
-  vmu.io.vmu_utackq.valid <> vxu.io.vmu_utackq.valid;
-  vmu.io.vmu_utackq.rdy <> vxu.io.vmu_utackq.ready;
+  vmu.io.vmu_utcmdq <> vmu_utcmdq.io.deq;
+  vmu.io.vmu_utimmq <> vmu_utimmq.io.deq;
+  vmu.io.vmu_utackq <> vxu.io.vmu_utackq;
 
   vmu.io.lane_vldq_deq_bits <> vxu.io.lane_vldq.bits;
   vmu.io.lane_vldq_deq_val <> vxu.io.lane_vldq.valid;

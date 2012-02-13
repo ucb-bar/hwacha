@@ -264,6 +264,7 @@ class vuVXU_Banked8_Seq extends Component {
     next_stride.write(next_ptr1, io.issue_to_seq.stride);
     next_vs_zero.write(next_ptr1, io.fire_regid_imm.vs_zero);
     next_vs.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vs));
+    next_imm2.write(next_ptr1, io.fire_regid_imm.imm2); //new
 
     next_val.write(next_ptr2, Bool(true));
     next_last.write(next_ptr2, last);
@@ -282,6 +283,7 @@ class vuVXU_Banked8_Seq extends Component {
     next_stride.write(next_ptr1, io.issue_to_seq.stride);
     next_vs_zero.write(next_ptr1, io.fire_regid_imm.vs_zero);
     next_vs.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vs));
+    next_imm2.write(next_ptr1, io.fire_regid_imm.imm2); //new
 
     next_val.write(next_ptr2, Bool(true));
     next_last.write(next_ptr2, last);
