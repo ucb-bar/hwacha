@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Config._
+import Interface._
 
 class vuVXU extends Component
 {
@@ -140,12 +141,13 @@ class vuVXU extends Component
 
   io.vmu_vcmdq.valid := b8lane.io.vmu.vaq_val || issue.io.vmu_vcmdq.valid;
   io.vmu_vbaseq.valid := b8lane.io.vmu.vaq_val
-  io.vmu_vstrideq.valid := Bool(false)
+  io.vmu_vstrideq.valid := b8lane.io.vmu.vaq_val & b8lane.io.vmu.vaq_cmd(19)
   
   io.vmu_vcmdq.bits := 
     Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
         b8lane.io.vmu.vaq_cmd(18,0));
   io.vmu_vbaseq.bits := b8lane.io.vmu.vaq_bits(63,0);
+  io.vmu_vstrideq.bits := Bits(0, DEF_VXU_IMM2Q)
 
   io.vmu_utcmdq.valid := b8seq.io.seq.utaq || issue.io.vmu_utcmdq.valid;
   io.vmu_utimmq.valid := b8seq.io.seq.utaq & b8seq.io.seq_regid_imm.cmd(19);

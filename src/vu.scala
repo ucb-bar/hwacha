@@ -13,7 +13,7 @@ class vu extends Component
 
   val vmu_vcmdq = VC_SIMPLE_QUEUE(VMCMD_SZ, 16);
   val vmu_vbaseq = VC_SIMPLE_QUEUE(VMIMM_SZ, 16);
-  val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 2);
+  val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 16);
 
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 4);
   val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 4);
@@ -22,8 +22,8 @@ class vu extends Component
 
   vxu.io.lane_vaq.ready := vaq_count.io.ready
   vaq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  vaq_count.io.deq := vxu.io.vmu_vbaseq.valid
-  vaq_count.io.enq := vmu_vbaseq.io.deq.valid && vmu_vbaseq.io.deq.ready
+  vaq_count.io.dec := vxu.io.vmu_vbaseq.valid
+  vaq_count.io.inc := vmu_vbaseq.io.deq.valid && vmu_vbaseq.io.deq.ready
 
   vxu.io.illegal <> io.illegal;
   
