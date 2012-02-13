@@ -64,13 +64,13 @@ package hwacha {
     val vsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val vsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
     // utaq queue and capacity counter
-    val utaq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val utaq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val utaq = new queueSimplePF(32, VMU_QUEUE_ENTRIES);
     // utldq queue and capacity counter
-    val utldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val utldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val utldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
     // utsdq queue and capacity counter
-    val utsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES);
+    val utsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true);
     val utsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES);
 
     // ctrl_vec
@@ -125,10 +125,12 @@ package hwacha {
     io.lane_utaq_enq_rdy      := utaq_count.io.ready
     utaq.io.enq.bits          := io.lane_utaq_enq_bits;
     utaq.io.enq.valid           := io.lane_utaq_enq_val;
+    utaq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
     utaq_count.io.deq         := io.lane_utaq_enq_val;
 
     io.lane_utldq_deq_bits    := utldq.io.deq.bits;
-    io.lane_utldq_deq_val     := utldq_count.io.ready || ctrl_ut.io.utldq.wb_done;
+    io.lane_utldq_deq_val     := utldq_count.io.ready;
+    utldq_count.io.qcnt       := io.vxu_to_vmu.qcnt;
     utldq_count.io.deq        := io.lane_utldq_deq_rdy;
     utldq.io.deq.ready          := io.lane_utldq_deq_rdy;
     ctrl_ut.io.utldq.deq_rdy  := io.lane_utldq_deq_rdy;
@@ -136,6 +138,7 @@ package hwacha {
     io.lane_utsdq_enq_rdy     := utsdq_count.io.ready;
     utsdq.io.enq.bits         := io.lane_utsdq_enq_bits;
     utsdq.io.enq.valid          := io.lane_utsdq_enq_val;
+    utsdq_count.io.qcnt       := io.vxu_to_vmu.qcnt;
     utsdq_count.io.deq        := io.lane_utsdq_enq_val;
 
     // count enq

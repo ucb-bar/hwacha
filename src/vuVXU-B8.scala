@@ -18,8 +18,9 @@ class vuVXU extends Component
   issue.io.vxu_immq <> io.vxu_immq;
   issue.io.vxu_imm2q <> io.vxu_imm2q;
   issue.io.vmu_vcmdq.ready <> io.vmu_vcmdq.ready;
-  issue.io.vmu_utcmdq <> io.vmu_utcmdq;
-  issue.io.vmu_utimmq <> io.vmu_utimmq;
+  issue.io.vmu_utcmdq.ready <> io.vmu_utcmdq.ready;
+  //issue.io.vmu_utimmq.ready <> io.vmu_utimmq.ready;
+
 
   val b8fire = new vuVXU_Banked8_Fire();
 
@@ -74,31 +75,25 @@ class vuVXU extends Component
   io.vmu_vbaseq.valid := b8seq.io.seq.vaq;
   io.vmu_vstrideq.valid := b8seq.io.seq.vaq & b8seq.io.seq_regid_imm.cmd(19);
   
-  io.vmu_vcmdq.bits := Mux(issue.io.vmu_vcmdq.valid, 
-			   issue.io.vmu_vcmdq.bits,
-			   b8seq.io.seq_regid_imm.cmd(18,0));
+  io.vmu_vcmdq.bits := 
+    Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
+	b8seq.io.seq_regid_imm.cmd(18,0));
   io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
   io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;
   io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
 
+  io.vmu_utcmdq.valid := b8seq.io.seq.utaq || issue.io.vmu_utcmdq.valid;
+  io.vmu_utimmq.valid := b8seq.io.seq.utaq & b8seq.io.seq_regid_imm.cmd(19);
+
+  io.vmu_utcmdq.bits :=
+    Mux(issue.io.vmu_utcmdq.valid, issue.io.vmu_utcmdq.bits,
+	b8seq.io.seq_regid_imm.cmd(18,0));
+  io.vmu_utimmq.bits := b8seq.io.seq_regid_imm.imm(31,0);
+
   b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
-  b8seq.io.qstall.vlaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready;
-  b8seq.io.seq.vlaq <> io.vmu_vcmdq.valid
-  b8seq.io.seq.vlaq <> io.vmu_vbaseq.valid
-  b8seq.io.seq.vlaq <> io.vmu_vstrideq.valid
-  b8seq.io.seq_regid_imm.cmd <> io.vmu_vcmdq.bits;
-  b8seq.io.seq_regid_imm.imm <> io.vmu_vbaseq.bits;
-  b8seq.io.seq_regid_imm.imm2 <> io.vmu_vstrideq.bits;
-  
-  // Figure out how to arbitrate this between Seq and Issue
-  issue.io.vmu_utcmdq <> io.vmu_utcmdq;
-
-  b8seq.io.seq_regid_imm.imm2 <> io.vmu_utcmdq.bits;
-  b8seq.io.seq_regid_imm.imm <> io.vmu_utimmq.bits;
-
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid;
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready;
-  b8seq.io.qstall.utaq := ~io.lane_utaq.ready;
+  b8seq.io.qstall.utaq := ~io.lane_utaq.ready || ~io.vmu_utcmdq.ready || ~io.vmu_utimmq.ready;
   b8seq.io.qstall.utldq := ~io.lane_utldq.valid;
   b8seq.io.qstall.utsdq := ~io.lane_utsdq.ready;
 

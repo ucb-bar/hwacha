@@ -23,6 +23,7 @@ class vuVXU_Issue extends Component
   tvec.io.vxu_immq ^^ io.vxu_immq;
   tvec.io.vxu_imm2q ^^ io.vxu_imm2q;
   tvec.io.vmu_utcmdq ^^ io.vmu_utcmdq;
+  vt.io.vmu_utimmq ^^ io.vmu_utimmq;
 
   tvec.io.no_pending_ldsd <> io.no_pending_ldsd
 
