@@ -44,7 +44,7 @@ class vuVXU extends Component
   val b8hazard = new vuVXU_Banked8_Hazard()
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
-  b8hazard.io.no_pending_ldsd <> issue.io.no_pending_ldsd
+  b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
  
   b8hazard.io.tvec_valid <> issue.io.tvec_valid
   b8hazard.io.tvec_ready <> issue.io.tvec_ready

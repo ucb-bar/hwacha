@@ -187,13 +187,13 @@ class vuVXU_Issue_TVEC extends Component
 
   val fire_fence_cv =
     tvec_active &&
-  decode_fence_cv && (state === VXU_FORWARD) && io.no_pending_ldsd &&
-  io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-  mask_vmu_utcmdq_ready && mask_vmu_vmcmdq_ready && mask_issue_ready
+    decode_fence_cv && (state === VXU_FORWARD) && !io.hazard_to_issue.pending_memop &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    mask_vmu_utcmdq_ready && mask_vmu_vmcmdq_ready && mask_issue_ready
 
   val fire_fence_v =
     tvec_active &&
-    decode_fence_v && (state === VXU_FORWARD) && io.no_pending_ldsd &&
+    decode_fence_v && (state === VXU_FORWARD) && !io.hazard_to_issue.pending_memop &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_vmu_utcmdq_ready && mask_vmu_vmcmdq_ready && mask_issue_ready
 
@@ -215,37 +215,31 @@ class vuVXU_Issue_TVEC extends Component
     }
     is (VXU_FENCE_CV)
     {
-      when(io.no_pending_ldsd)
+      when(io.vxu_ackq.valid && io.vmu_vackq.valid)
       {
-        when(io.vxu_ackq.valid && io.vmu_vackq.valid)
-        {
-          io.vec_ackq.bits <== Bits(1, 32)
-          io.vec_ackq.valid <== Bool(true)
-        }
-
-        when (io.vmu_vackq.valid && io.vxu_ackq.valid && io.vec_ackq.ready) {
-          state <== VXU_FORWARD
-        }
-        
-        io.vxu_ackq.ready <== io.vmu_vackq.valid
-        io.vmu_vackq.ready <== io.vxu_ackq.valid
+        io.vec_ackq.bits <== Bits(1, 32)
+        io.vec_ackq.valid <== Bool(true)
       }
+
+      when (io.vmu_vackq.valid && io.vxu_ackq.valid && io.vec_ackq.ready) {
+        state <== VXU_FORWARD
+      }
+      
+      io.vxu_ackq.ready <== io.vmu_vackq.valid
+      io.vmu_vackq.ready <== io.vxu_ackq.valid
     }
     is (VXU_FENCE_V)
     {
-      when(io.no_pending_ldsd)
-      {
-        when (io.vmu_vackq.valid && io.vxu_ackq.valid) {
-          state <== VXU_FORWARD
-        }
-
-        io.vxu_ackq.ready <== io.vmu_vackq.valid
-        io.vmu_vackq.ready <== io.vxu_ackq.valid
+      when (io.vmu_vackq.valid && io.vxu_ackq.valid) {
+        state <== VXU_FORWARD
       }
+
+      io.vxu_ackq.ready <== io.vmu_vackq.valid
+      io.vmu_vackq.ready <== io.vxu_ackq.valid
     }
   }
 
-  val forward = (state === VXU_FORWARD) && (!decode_fence_cv && !decode_fence_v || io.no_pending_ldsd)
+  val forward = (state === VXU_FORWARD) && (!decode_fence_cv && !decode_fence_v || !io.hazard_to_issue.pending_memop)
 
   io.vxu_cmdq.ready := 
     forward &&
@@ -262,14 +256,14 @@ class vuVXU_Issue_TVEC extends Component
   io.vmu_vcmdq.bits := Cat(cmd, reg_vlen)
   io.vmu_vcmdq.valid := 
     tvec_active && 
-    (state === VXU_FORWARD) && (decode_fence_cv || decode_fence_v) && io.no_pending_ldsd &&
+    (state === VXU_FORWARD) && (decode_fence_cv || decode_fence_v) && !io.hazard_to_issue.pending_memop &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready && 
     enq_vmu_vmcmdq && mask_vmu_utcmdq_ready
 
   io.vmu_utcmdq.bits := Cat(cmd,Bits(0,UTMCMD_VLEN_SZ))
   io.vmu_utcmdq.valid := 
     tvec_active && 
-    (state === VXU_FORWARD) && (decode_fence_cv || decode_fence_v) && io.no_pending_ldsd && 
+    (state === VXU_FORWARD) && (decode_fence_cv || decode_fence_v) && !io.hazard_to_issue.pending_memop && 
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready && 
     mask_vmu_vmcmdq_ready && enq_vmu_utcmdq
 

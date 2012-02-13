@@ -405,6 +405,9 @@ class vuVXU_Banked8_Hazard extends Component
   val seqhazard_2slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2)
   val seqhazard_3slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2) | array_sport_val.read(next_ptr3)
 
+  // checking any pending memory ops for fences
+  io.hazard_to_issue.pending_memop := array_rport_vsu.flatten().orR() || array_rport_vgu.flatten().orR() || array_wport_vlu.flatten().orR()
+
   // hazard check logic for tvec
   val tvec_comp_vt =
     Cat(
@@ -469,8 +472,6 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vld & io.tvec_bhazard.vld,
       tvec_bhazard_vst & io.tvec_bhazard.vst
     )
-
-  io.no_pending_ldsd := !array_rport_vsu.flatten().orR() && !array_rport_vgu.flatten().orR() && !array_wport_vlu.flatten().orR()
 
   io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR() & !tvec_dhazard.orR() & !tvec_shazard.orR() & !tvec_seqhazard.orR() & !tvec_bhazard.orR()
 

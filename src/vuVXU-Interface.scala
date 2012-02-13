@@ -316,6 +316,11 @@ class io_vxu_issue_to_hazard extends Bundle
   val bcnt = Bits(width = DEF_BCNT)
 }
 
+class io_vxu_hazard_to_issue extends Bundle
+{
+  val pending_memop = Bool()
+}
+
 class io_vxu_issue_to_seq extends Bundle
 {
   val vlen = Bits(width = DEF_VLEN)
@@ -354,11 +359,11 @@ class io_lane_to_hazard extends Bundle
 class io_vxu_issue_tvec extends Bundle
 {
   val vf = new io_vf()
-  val no_pending_ldsd = Bool(INPUT)
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
+  val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
 
   val vec_ackq = new io_vec_ackq
   val vxu_ackq = new io_vxu_ackq().flip()
@@ -479,7 +484,6 @@ class io_vxu extends Bundle
 class io_vxu_issue extends Bundle
 {
   val illegal = Bool(OUTPUT)
-  val no_pending_ldsd = Bool(INPUT)
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
@@ -499,6 +503,7 @@ class io_vxu_issue extends Bundle
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
+  val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
 
   val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
@@ -542,8 +547,7 @@ class io_vxu_fire extends Bundle
 
 class io_vxu_hazard extends Bundle
 {
-  val no_pending_ldsd = Bool(OUTPUT)
-
+  val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
   val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
   val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
   val expand_to_hazard = new io_vxu_expand_to_hazard().asInput

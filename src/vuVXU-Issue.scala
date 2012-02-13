@@ -25,11 +25,10 @@ class vuVXU_Issue extends Component
   tvec.io.vmu_utcmdq <> io.vmu_utcmdq
   vt.io.vmu_utimmq <> io.vmu_utimmq
 
-  tvec.io.no_pending_ldsd <> io.no_pending_ldsd
-
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
   tvec.io.issue_to_lane <> io.issue_to_lane
+  tvec.io.hazard_to_issue <> io.hazard_to_issue
 
   tvec.io.vec_ackq <> io.vec_ackq
   tvec.io.vxu_ackq <> io.vxu_ackq
