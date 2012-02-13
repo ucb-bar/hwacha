@@ -114,7 +114,7 @@ package hwacha {
         {
           when(vlen_reg === UFix(0))
           {
-            state <== VMU_Ctrl_WritebackDone
+            state <== VMU_Ctrl_Idle
           }
           when(vlen_reg != UFix(0))
           {

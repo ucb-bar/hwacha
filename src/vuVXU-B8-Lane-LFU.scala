@@ -36,9 +36,9 @@ class LFUIO extends Bundle
   val vau1_fn   = Bits(DEF_VAU1_FN, OUTPUT)
   val vau2_val  = Bool(OUTPUT)
   val vau2_fn   = Bits(DEF_VAU2_FN, OUTPUT)
+  val cmd = Bits(VCMD_SZ, OUTPUT)
+  val imm = Bits(DEF_DATA, OUTPUT)
   val vaq_val   = Bool(OUTPUT)
-  val vaq_cmd   = Bits(VCMD_SZ, OUTPUT)
-  val vaq_bits  = Bits(DEF_DATA, OUTPUT)
   val vldq_rdy  = Bool(OUTPUT)
   val vsdq_val  = Bool(OUTPUT)
   val utaq_val  = Bool(OUTPUT)
@@ -141,6 +141,8 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (io.expand.utaq)
   {
     reg_utaq <== Bool(true)
+    reg_cmd <== io.expand.cmd
+    reg_imm <== io.expand.imm
   }
   when (!io.expand.utaq && ~(reg_vgu_cnt.orR))
   {
@@ -196,10 +198,10 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau1_fn   := reg_vau1_fn
   io.vau2_val  := reg_vau2
   io.vau2_fn   := reg_vau2_fn
+  io.cmd := reg_cmd
+  io.imm := reg_imm
   io.utaq_val  := reg_utaq
   io.vaq_val   := reg_vaq
-  io.vaq_cmd   := reg_cmd
-  io.vaq_bits  := reg_imm
   io.vldq_rdy  := io.expand.vldq | reg_vldq
   io.utldq_rdy := io.expand.utldq | reg_utldq
   io.vsdq_val  := reg_vsdq

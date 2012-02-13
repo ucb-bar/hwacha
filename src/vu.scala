@@ -15,8 +15,8 @@ class vu extends Component
   val vmu_vbaseq = VC_SIMPLE_QUEUE(VMIMM_SZ, 16)
   val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 16)
 
-  val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 4)
-  val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 4)
+  val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
+  val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 16)
 
   val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 

@@ -33,9 +33,10 @@ class ExpanderIO extends Bundle
 
 class VMUIO extends Bundle 
 {
+  val cmd = Bits(VCMD_SZ, OUTPUT)
+  val imm = Bits(DEF_DATA, OUTPUT)
+
   val vaq_val   = Bool(OUTPUT)
-  val vaq_cmd   = Bits(VCMD_SZ, OUTPUT)
-  val vaq_bits  = Bits(DEF_DATA, OUTPUT)
 
   val vldq_rdy  = Bool(OUTPUT)
   val vldq_bits = Bits(DEF_DATA, INPUT)
@@ -131,10 +132,10 @@ class vuVXU_Banked8_Lane extends Component
   val vau2_val  = lfu.io.vau2_val
   val vau2_fn   = lfu.io.vau2_fn
 
-  io.vmu.vaq_val   := lfu.io.vaq_val
-  io.vmu.vaq_cmd   := lfu.io.vaq_cmd
-  io.vmu.vaq_bits  := lfu.io.vaq_bits
+  io.vmu.cmd := lfu.io.cmd
+  io.vmu.imm := lfu.io.imm
 
+  io.vmu.vaq_val   := lfu.io.vaq_val
   io.vmu.vldq_rdy  := lfu.io.vldq_rdy
   io.vmu.vsdq_val  := lfu.io.vsdq_val
   io.vmu.utaq_val  := lfu.io.utaq_val

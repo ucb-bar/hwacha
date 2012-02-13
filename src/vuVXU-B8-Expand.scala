@@ -493,6 +493,8 @@ class vuVXU_Banked8_Expand extends Component
   when(io.seq.utaq)
   {
     next_utaq(0) <== Bool(true)
+    next_cmd(0) <== io.seq_regid_imm.cmd
+    next_imm(0) <== io.seq_regid_imm.imm
   }
   when(io.seq.utldq)
   {
