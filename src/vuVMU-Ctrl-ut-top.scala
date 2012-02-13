@@ -63,16 +63,54 @@ package hwacha {
       {
         when(io.utmcmdq.valid) 
         {
-          state <== MuxCase(
-            VMU_Ctrl_Invalid, Array(
-              (cmd(7,4) === Bits("b0000", 4) && 
-                (cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4))) -> VMU_Ctrl_Sync,
-              (cmd(7,4) === Bits("b0000", 4) &&
-                !(cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4))) -> VMU_Ctrl_Invalid,
-              (cmd(7,4) === Bits("b1100", 4) && io.utmimmq.valid && io.iscmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.store_busy) -> VMU_Ctrl_Load,
-              (cmd(7,4) === Bits("b1101", 4) && io.utmimmq.valid && io.stcmdq_enq_rdy && !io.issue_busy) -> VMU_Ctrl_Store,
-              ((cmd(7,4) === Bits("b1110", 4) || cmd(7,4) === Bits("b1111")) && io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy) -> VMU_Ctrl_AMO
-            ))
+          switch (cmd(7,4))
+          {
+            state <== VMU_Ctrl_Invalid
+            is (Bits("b0000", 4))
+            {
+              state <== VMU_Ctrl_Idle
+              when (cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4))
+              {
+                state <== VMU_Ctrl_Sync
+              }
+              when (!(cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4)))
+              {
+                state <== VMU_Ctrl_Invalid
+              }
+            }
+            is (Bits("b1100", 4))
+            {
+              state <== VMU_Ctrl_Idle
+              when (io.utmimmq.valid && io.iscmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.store_busy)
+              {
+                state <== VMU_Ctrl_Load
+              }
+            }
+            is (Bits("b1101", 4))
+            {
+              state <== VMU_Ctrl_Idle
+              when (io.utmimmq.valid && io.stcmdq_enq_rdy && !io.issue_busy)
+              {
+                state <== VMU_Ctrl_Store
+              }
+            }
+            is (Bits("b1110", 4))
+            {
+              state <== VMU_Ctrl_Idle
+              when (io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy)
+              {
+                state <== VMU_Ctrl_AMO
+              }
+            }
+            is (Bits("b1111", 4))
+            {
+              state <== VMU_Ctrl_Idle
+              when (io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy)
+              {
+                state <== VMU_Ctrl_AMO
+              }
+            }
+          }
         }
         when(!io.utmcmdq.valid)
         {
