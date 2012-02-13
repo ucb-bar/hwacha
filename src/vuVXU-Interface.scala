@@ -585,9 +585,6 @@ class io_vxu_expand extends Bundle
   val expand_write = new io_vxu_expand_write().asOutput
   val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
-  val rblen_0 = Bits(8, OUTPUT)
-  val rblen_1 = Bits(8, OUTPUT)
-  val rblen_2 = Bits(8, OUTPUT)
 }
 
 // class vec_dcachereqIO extends Bundle

@@ -72,7 +72,7 @@ class vuVXU extends Component
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
 
   io.vmu_vcmdq.valid := b8seq.io.seq.vaq || issue.io.vmu_vcmdq.valid;
-  io.vmu_vbaseq.valid := b8seq.io.seq.vaq & ~b8seq.io.seq_regid_imm.imm(64);
+  io.vmu_vbaseq.valid := b8seq.io.seq.vaq;
   io.vmu_vstrideq.valid := b8seq.io.seq.vaq & b8seq.io.seq_regid_imm.cmd(19);
   
   io.vmu_vcmdq.bits := Mux(issue.io.vmu_vcmdq.valid, 
