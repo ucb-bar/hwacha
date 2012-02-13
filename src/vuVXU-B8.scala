@@ -8,7 +8,9 @@ class vuVXU extends Component
 {
   val io = new io_vxu();
 
+
   val issue = new vuVXU_Issue();
+
   issue.io.illegal <> io.illegal;
   issue.io.imem_req <> io.imem_req;
   issue.io.imem_resp <> io.imem_resp;
@@ -19,7 +21,6 @@ class vuVXU extends Component
   issue.io.vxu_imm2q <> io.vxu_imm2q;
   issue.io.vmu_vcmdq.ready <> io.vmu_vcmdq.ready;
   issue.io.vmu_utcmdq.ready <> io.vmu_utcmdq.ready;
-  //issue.io.vmu_utimmq.ready <> io.vmu_utimmq.ready;
 
 
   val b8fire = new vuVXU_Banked8_Fire();
@@ -40,9 +41,9 @@ class vuVXU extends Component
 
 
   val b8hazard = new vuVXU_Banked8_Hazard();
-  b8hazard.io.no_pending_ldsd <> issue.io.no_pending_ldsd
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard;
+  b8hazard.io.no_pending_ldsd <> issue.io.no_pending_ldsd
  
   b8hazard.io.tvec_valid <> issue.io.tvec_valid;
   b8hazard.io.tvec_ready <> issue.io.tvec_ready;
@@ -68,8 +69,11 @@ class vuVXU extends Component
 
 
   val b8seq = new vuVXU_Banked8_Seq();
+
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq;
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard;
+
+  io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
 
   io.vmu_vcmdq.valid := b8seq.io.seq.vaq || issue.io.vmu_vcmdq.valid;
   io.vmu_vbaseq.valid := b8seq.io.seq.vaq;
@@ -77,17 +81,16 @@ class vuVXU extends Component
   
   io.vmu_vcmdq.bits := 
     Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
-	b8seq.io.seq_regid_imm.cmd(18,0));
+        b8seq.io.seq_regid_imm.cmd(18,0));
   io.vmu_vbaseq.bits := b8seq.io.seq_regid_imm.imm(63,0);
   io.vmu_vstrideq.bits := b8seq.io.seq_regid_imm.imm2;
-  io.vxu_to_vmu.qcnt := b8seq.io.seq_regid_imm.qcnt;
 
   io.vmu_utcmdq.valid := b8seq.io.seq.utaq || issue.io.vmu_utcmdq.valid;
   io.vmu_utimmq.valid := b8seq.io.seq.utaq & b8seq.io.seq_regid_imm.cmd(19);
 
   io.vmu_utcmdq.bits :=
     Mux(issue.io.vmu_utcmdq.valid, issue.io.vmu_utcmdq.bits,
-	b8seq.io.seq_regid_imm.cmd(18,0));
+        b8seq.io.seq_regid_imm.cmd(18,0));
   io.vmu_utimmq.bits := b8seq.io.seq_regid_imm.imm(31,0);
 
   b8seq.io.qstall.vaq := ~io.vmu_vcmdq.ready || ~io.vmu_vbaseq.ready || ~io.vmu_vstrideq.ready;
@@ -103,6 +106,7 @@ class vuVXU extends Component
 
 
   val b8expand = new vuVXU_Banked8_Expand();
+
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand;
   b8expand.io.expand_to_hazard <> b8hazard.io.expand_to_hazard;
 
@@ -110,7 +114,9 @@ class vuVXU extends Component
   b8expand.io.seq_fn <> b8seq.io.seq_fn;
   b8expand.io.seq_regid_imm <> b8seq.io.seq_regid_imm;
 
+
   val b8lane = new vuVXU_Banked8_Lane();
+
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane;
 
   b8lane.io.cp.imul_val <> io.cp_imul_req.valid;
@@ -151,5 +157,4 @@ class vuVXU extends Component
   issue.io.vxu_ackq.bits <> io.vmu_utackq.bits;
   issue.io.vxu_ackq.valid <> io.vmu_utackq.valid;
   io.vmu_utackq.ready <> issue.io.vxu_ackq.ready;
-
 }
