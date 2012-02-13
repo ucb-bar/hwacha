@@ -546,7 +546,7 @@ class vuVXU_Banked8_Seq extends Component
     array_dep_utsdq.read(reg_ptr) & reg_utsdq_stall |
     current_vaq_val & io.qstall.vaq |
     current_vldq_val & io.qstall.vldq |
-    current_vsdq_val & io.qstall.vsdq |
+    current_vsdq_val & io.qstall.vaq & io.qstall.vsdq |
     current_utaq_val & io.qstall.utaq |
     current_utldq_val & io.qstall.utldq |
     current_utsdq_val & io.qstall.utsdq;
