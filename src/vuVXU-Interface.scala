@@ -204,7 +204,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = DEF_REGLEN)
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
-  val cmd = Bits(width = VCMD_SZ);
+  val cmd = Bits(width = VCMD_SZ)
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
@@ -254,10 +254,10 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = DEF_BREGLEN)
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
-  val qcnt = UFix(width = 5);
+  val qcnt = UFix(width = 5)
   val cmd = Bits(width = VCMD_SZ)
   val imm = Bits(width = DEF_DATA)
-  val imm2 = Bits(width = DEF_VXU_IMM2Q);
+  val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
 
 class io_vxu_expand_read extends Bundle
@@ -308,7 +308,7 @@ class io_vxu_expand_lfu_fn extends Bundle
 
 class io_vxu_to_vmu extends Bundle
 {
-  val qcnt = UFix(width = 5);
+  val qcnt = UFix(width = 5)
 }
 
 class io_vxu_issue_to_hazard extends Bundle
@@ -354,7 +354,7 @@ class io_lane_to_hazard extends Bundle
 class io_vxu_issue_tvec extends Bundle
 {
   val vf = new io_vf()
-  val no_pending_ldsd = Bool(INPUT);
+  val no_pending_ldsd = Bool(INPUT)
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
@@ -485,7 +485,7 @@ class io_vxu_issue extends Bundle
   val imem_resp = new io_imem_resp().flip()
 
   val vec_ackq = new io_vec_ackq  
-  val vxu_ackq = new io_vxu_ackq().flip();
+  val vxu_ackq = new io_vxu_ackq().flip()
   val vmu_vackq = new io_vmu_vackq().flip()
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
@@ -542,7 +542,7 @@ class io_vxu_fire extends Bundle
 
 class io_vxu_hazard extends Bundle
 {
-  val no_pending_ldsd = Bool(OUTPUT);
+  val no_pending_ldsd = Bool(OUTPUT)
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
   val seq_to_hazard = new io_vxu_seq_to_hazard().asInput

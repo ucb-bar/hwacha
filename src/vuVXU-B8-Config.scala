@@ -1,10 +1,10 @@
 package hwacha
 
-import Chisel._;
-import Node._;
-import queues._;
-import scala.collection.mutable.ArrayBuffer;
-import scala.math._;
+import Chisel._
+import Node._
+import queues._
+import scala.collection.mutable.ArrayBuffer
+import scala.math._
 
 object Config
 {
@@ -132,19 +132,19 @@ object Config
   val SZ_VAU1_FN = 6
   val SZ_VAU2_FN = 7
 
-  val RG_VIU_T  = (10,7);
-  val RG_VIU_T0 = (10,9);
-  val RG_VIU_T1 = (8,7);
+  val RG_VIU_T  = (10,7)
+  val RG_VIU_T0 = (10,9)
+  val RG_VIU_T1 = (8,7)
   val RG_VIU_DW = 6 
   val RG_VIU_FP = 5
-  val RG_VIU_FN = (4,0);
+  val RG_VIU_FN = (4,0)
 
   val RG_VAU1_FP = 5
-  val RG_VAU1_RM = (4,3);
-  val RG_VAU1_FN = (2,0);
+  val RG_VAU1_RM = (4,3)
+  val RG_VAU1_FN = (2,0)
   val RG_VAU2_FP = 6
-  val RG_VAU2_RM = (5,4);
-  val RG_VAU2_FN = (3,0);
+  val RG_VAU2_RM = (5,4)
+  val RG_VAU2_FN = (3,0)
 
 
   val DEF_VIU_FN  = SZ_VIU_FN
@@ -180,9 +180,9 @@ object Config
   val DEF_BRPORT  = SZ_BRPORT
   val DEF_BWPORT  = SZ_BWPORT
 
-  val XCMD_CMCODE  = (19,12);
-  val XCMD_VD      = (11,6);
-  val XCMD_VS      = (5,0);
+  val XCMD_CMCODE  = (19,12)
+  val XCMD_VD      = (11,6)
+  val XCMD_VS      = (5,0)
 
 }
 
@@ -190,12 +190,12 @@ object Match
 {
   def apply(x: Bits, IOs: Bits*) =
   {
-    val ioList = IOs.toList;
-    var offset = 0;
+    val ioList = IOs.toList
+    var offset = 0
     for (io <- IOs.toList.reverse)
     {
       io := x(offset+io.width-1, offset)
-      offset += io.width;
+      offset += io.width
     }
   }
 }
@@ -204,9 +204,9 @@ object Reverse
 {
   def apply(in: Bits): Bits =
   {
-    var res = in(0);
+    var res = in(0)
     for(i <- 1 until 64)
-      res = Cat(res, in(i));
+      res = Cat(res, in(i))
     res
   }
 }
@@ -217,7 +217,7 @@ object ShiftRegister
   {
     if (n == 0)
     {
-      val res = Reg() { Bits(width = width) };
+      val res = Reg() { Bits(width = width) }
       when (valid)
       {
         res <== base
@@ -226,7 +226,7 @@ object ShiftRegister
     }
     else
     {
-      Reg(apply(n-1, width, valid, base));
+      Reg(apply(n-1, width, valid, base))
     }
   }
 }
@@ -241,7 +241,7 @@ object UFixToOH
   def apply(in: UFix, width: Int): Bits =
   {
     val out = Bits(1, width)
-    (out << in)(width-1,0);
+    (out << in)(width-1,0)
   }
 }
 
@@ -266,59 +266,59 @@ class Mux1H(n: Int, w: Int) extends Component
 object GenArray{
   def apply[T <: Data](n: Int)(gen: => T): GenArray[T] = 
   {
-    val res = new GenArray[T];
+    val res = new GenArray[T]
     for(i <- 0 until n)
-      res += gen;
-    res.width = res(0).getWidth;
-    if (res.width == -1) throw new Exception();
+      res += gen
+    res.width = res(0).getWidth
+    if (res.width == -1) throw new Exception()
     res
   }
 }
 object GenBuf{
   def apply[T <: Data](n: Int)(gen: => GenArray[T]): ArrayBuffer[GenArray[T]] = 
     {
-      val res = new ArrayBuffer[GenArray[T]];
+      val res = new ArrayBuffer[GenArray[T]]
       for(i <- 0 until n)
-        res += gen;
+        res += gen
       res
     }
 }
 
 
 class GenArray[T <: Data] extends ArrayBuffer[T] {
-  var width = 0;
+  var width = 0
 
   def write(addr: UFix, data: T) = {
     if(data.isInstanceOf[Node]){
 
-      val onehot = UFixToOH(addr, length);
+      val onehot = UFixToOH(addr, length)
       for(i <- 0 until length){
-        conds.push(conds.top && onehot(i).toBool);
-        this(i).comp procAssign data.toNode;
-        conds.pop;
+        conds.push(conds.top && onehot(i).toBool)
+        this(i).comp procAssign data.toNode
+        conds.pop
       }
     }
   }
 
   def write(addr: Bits, data: T): Unit = {
-    write(addr.toUFix, data);
+    write(addr.toUFix, data)
   }
 
   def read(addr: UFix): T = {
-    val mux1h = new Mux1H(length, width);
-    val onehot = UFixToOH(addr, length);
+    val mux1h = new Mux1H(length, width)
+    val onehot = UFixToOH(addr, length)
     for(i <- 0 until length){
-      mux1h.io.sel(i) := onehot(i).toBool;
-      mux1h.io.in(i)  assign this(i);
+      mux1h.io.sel(i) := onehot(i).toBool
+      mux1h.io.in(i)  assign this(i)
     }
-    val res = this(0).clone;
-    res.setIsCellIO;
-    res assign mux1h.io.out;
+    val res = this(0).clone
+    res.setIsCellIO
+    res assign mux1h.io.out
     res
   }
 
   def flatten(): Bits = {
-    var res: Bits = null;
+    var res: Bits = null
     for(i <- 0 until length)
       res = Cat(this(i), res)
     res
@@ -326,18 +326,18 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 
   def :=[T <: Data](src: GenArray[T]) = {
     for((src, dest) <- this zip src){
-      src := dest;
+      src := dest
     }
   }
 
   def <== (src: Bits) = {
     for(i <- 0 until length)
-      this(i) <== src(i);
+      this(i) <== src(i)
   }
   
   def <==[T <: Data](src: GenArray[T]) = {
     for((src, dest) <- this zip src){
-      src <== dest;
+      src <== dest
     }
   }
 
@@ -345,5 +345,5 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 
 object VC_SIMPLE_QUEUE 
 {
-  def apply(width: Int, depth: Int) = new queueSimplePF(width, depth);
+  def apply(width: Int, depth: Int) = new queueSimplePF(width, depth)
 }

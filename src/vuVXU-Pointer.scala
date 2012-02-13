@@ -8,13 +8,13 @@ class vuVXU_Pointer extends Component
 {
   val io = new Bundle
   {
-    val ptr = UFix(DEF_BPTR, INPUT);
-    val incr = UFix(DEF_BPTR1, INPUT);
-    val bcnt = UFix(DEF_BCNT, INPUT);
-    val nptr = UFix(DEF_BPTR, OUTPUT);
+    val ptr = UFix(DEF_BPTR, INPUT)
+    val incr = UFix(DEF_BPTR1, INPUT)
+    val bcnt = UFix(DEF_BCNT, INPUT)
+    val nptr = UFix(DEF_BPTR, OUTPUT)
   }
 
-  val add = io.ptr + io.incr;
+  val add = io.ptr + io.incr
 
   io.nptr := MuxLookup(
     Cat(add, io.bcnt), UFix(0, DEF_BPTR), Array(
@@ -150,5 +150,5 @@ class vuVXU_Pointer extends Component
       //Cat(UFix(21,5),UFix(6,4)) -> UFix(3,3),
       //Cat(UFix(21,5),UFix(7,4)) -> UFix(0,3),
       //Cat(UFix(21,5),UFix(8,4)) -> UFix(5,3)
-    ));
+    ))
 }

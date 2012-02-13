@@ -9,16 +9,16 @@ package hwacha
 
   class vuVCU extends Component
   {
-    val io = new io_vcu();
+    val io = new io_vcu()
 
-    val cmd = io.vec_cmdq.bits(VCMD_CMCODE);
+    val cmd = io.vec_cmdq.bits(VCMD_CMCODE)
 
-    val y = Bool(true);
-    val n = Bool(false);
+    val y = Bool(true)
+    val n = Bool(false)
 
-    val FWD  = Bits(0,2);
-    val LDWB = Bits(1,2);
-    val STAC = Bits(2,2);
+    val FWD  = Bits(0,2)
+    val LDWB = Bits(1,2)
+    val STAC = Bits(2,2)
 
     val cs = 
       ListLookup(cmd,
@@ -81,41 +81,41 @@ package hwacha
         CMD_VFLSTW    -> List(n, n, n, y, y, y, y, y, y, y, LDWB),
         CMD_VFSSTD    -> List(n, n, n, y, y, y, y, y, y, y, STAC),
         CMD_VFSSTW    -> List(n, n, n, y, y, y, y, y, y, y, STAC)
-      ));
+      ))
 
-    val decode_fence_cv::decode_fence_v::decode_setvl::deq_vec_ximm1q::deq_vec_ximm2q::enq_vxu_cmdq::enq_vxu_immq::enq_vxu_imm2q::enq_vmu_vbaseq::enq_vmu_vstrideq::sel_vxu_cmdq::Nil = cs;
+    val decode_fence_cv::decode_fence_v::decode_setvl::deq_vec_ximm1q::deq_vec_ximm2q::enq_vxu_cmdq::enq_vxu_immq::enq_vxu_imm2q::enq_vmu_vbaseq::enq_vmu_vstrideq::sel_vxu_cmdq::Nil = cs
 
-    val mask_vec_ximm1q_val = !deq_vec_ximm1q || io.vec_ximm1q.valid;
-    val mask_vec_ximm2q_val = !deq_vec_ximm2q || io.vec_ximm2q.valid;
-    val mask_vxu_cmdq_rdy = !enq_vxu_cmdq || io.vxu_cmdq.ready;
-    val mask_vxu_immq_rdy = !enq_vxu_immq || io.vxu_immq.ready;
-    val mask_vxu_imm2q_rdy = !enq_vxu_imm2q || io.vxu_imm2q.ready;
+    val mask_vec_ximm1q_val = !deq_vec_ximm1q || io.vec_ximm1q.valid
+    val mask_vec_ximm2q_val = !deq_vec_ximm2q || io.vec_ximm2q.valid
+    val mask_vxu_cmdq_rdy = !enq_vxu_cmdq || io.vxu_cmdq.ready
+    val mask_vxu_immq_rdy = !enq_vxu_immq || io.vxu_immq.ready
+    val mask_vxu_imm2q_rdy = !enq_vxu_imm2q || io.vxu_imm2q.ready
 
 
     val fire_fence_cv =
       decode_fence_cv &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     val fire_fence_v =
       decode_fence_v &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     val fire_setvl =
       decode_setvl &&
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     //----------------------------------------------------------------\\
     // REGISTERS                                                      \\
     //----------------------------------------------------------------\\
 
-    val vlen = Reg(resetVal = Bits(0, VLENMAX_SZ));
+    val vlen = Reg(resetVal = Bits(0, VLENMAX_SZ))
 
     when (fire_setvl)
     {
-      vlen <== io.vec_ximm1q.bits(VLENMAX_SZ-1,0);
+      vlen <== io.vec_ximm1q.bits(VLENMAX_SZ-1,0)
     }
 
     //-------------------------------------------------------------------------\\
@@ -124,37 +124,37 @@ package hwacha
 
     io.vec_cmdq.ready :=
     Bool(true) && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     io.vec_ximm1q.ready :=
     io.vec_cmdq.valid && deq_vec_ximm1q && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     io.vec_ximm2q.ready :=
     io.vec_cmdq.valid && mask_vec_ximm1q_val && deq_vec_ximm2q &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     io.vxu_cmdq.valid :=
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    enq_vxu_cmdq && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy;
+    enq_vxu_cmdq && mask_vxu_immq_rdy && mask_vxu_imm2q_rdy
 
     io.vxu_immq.valid :=
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && enq_vxu_immq && mask_vxu_imm2q_rdy;
+    mask_vxu_cmdq_rdy && enq_vxu_immq && mask_vxu_imm2q_rdy
 
     io.vxu_imm2q.valid := 
     io.vec_cmdq.valid && mask_vec_ximm1q_val && mask_vec_ximm2q_val &&
-    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && enq_vxu_imm2q;
+    mask_vxu_cmdq_rdy && mask_vxu_immq_rdy && enq_vxu_imm2q
 
     // io.vxu_cmdq.bits := MuxCase(
     //   io.vec_cmdq.bits, Array(
     //     (sel_vxu_cmdq === LDWB) -> Cat(CMD_LDWB, io.vec_cmdq.bits(11,0)),
-    //     (sel_vxu_cmdq === STAC) -> Cat(CMD_STAC, io.vec_cmdq.bits(11,0))));
+    //     (sel_vxu_cmdq === STAC) -> Cat(CMD_STAC, io.vec_cmdq.bits(11,0))))
 
     // new 
-    io.vxu_cmdq.bits := io.vec_cmdq.bits;
-    io.vxu_immq.bits := io.vec_ximm1q.bits;
-    io.vxu_imm2q.bits := io.vec_ximm2q.bits;
+    io.vxu_cmdq.bits := io.vec_cmdq.bits
+    io.vxu_immq.bits := io.vec_ximm1q.bits
+    io.vxu_imm2q.bits := io.vec_ximm2q.bits
     // new
 
   }
