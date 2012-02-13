@@ -89,17 +89,17 @@ package hwacha {
     val io = new vuVMU_Ctrl_utIO();
 
     val ctrl_ut_top     = new vuVMU_Ctrl_ut_top();
-    val iscmdq          = new queuePipePF(UT_ISCMD_SZ, 4);
+    val iscmdq          = new queuePipePF(UT_ISCMD_SZ, 16);
     val ctrl_ut_issue   = new vuVMU_Ctrl_ut_issue();
     // 12 bits for tag, 30 bits for address
-    val lrq             = new queuePipePF(30+12, 4);
-    val roq             = new vuVMU_ROQ(65, 8, 3);
-    val wbcmdq          = new queuePipePF(UT_WBCMD_SZ, 4);
+    val lrq             = new queuePipePF(30+12, 16);
+    val roq             = new vuVMU_ROQ(65, 256, 8);
+    val wbcmdq          = new queuePipePF(UT_WBCMD_SZ, 16);
     val ctrl_ut_wb      = new vuVMU_Ctrl_ut_wb();
-    val stcmdq          = new queuePipePF(UT_STCMD_SZ, 4);
+    val stcmdq          = new queuePipePF(UT_STCMD_SZ, 16);
     val ctrl_ut_store   = new vuVMU_Ctrl_ut_store();
     // 4 bits for opcode, 12 bits for tag, 30 bits for address, 8 bits for write mask, 64 bits of data
-    val srq             = new queuePipePF(4+12+30+8+64, 2);
+    val srq             = new queuePipePF(4+12+30+8+64, 16);
 
     roq.io.roq_enq_val      := io.dcacheresp.valid;
     roq.io.roq_enq_tag_bits := io.dcacheresp.tag(7,0).toUFix;

@@ -109,15 +109,15 @@ package hwacha {
     val io = new vuVMU_Ctrl_vecIO();
     
     val ctrl_vec_top          = new vuVMU_Ctrl_vec_top();
-    val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 4);
-    val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 4);
+    val iscmdq                = new queuePipePF(VM_ISCMD_SZ, 16);
+    val wbcmdq                = new queuePipePF(VM_WBCMD_SZ, 16);
     val ctrl_vec_load_issue   = new vuVMU_Ctrl_vec_load_issue();
     val ctrl_vec_load_wb      = new vuVMU_Ctrl_vec_load_wb();
-    val lrq                   = new queuePipePF(36, 4);
-    val roq                   = new vuVMU_ROQ(130, 8, 3);
-    val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 4);
+    val lrq                   = new queuePipePF(36, 16);
+    val roq                   = new vuVMU_ROQ(130, 256, 8);
+    val stcmdq                = new queuePipePF(VM_WBCMD_SZ, 16);
     val ctrl_vec_store        = new vuVMU_Ctrl_vec_store();
-    val srq                   = new queuePipePF(128+28+16, 2);
+    val srq                   = new queuePipePF(128+28+16, 16);
 
     val roq_enq_val           = io.dcacheresp.valid && !(io.dcacheresp.tag(11).toBool);
     val roq_enq_data_bits     = io.dcacheresp.data;
