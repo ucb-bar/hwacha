@@ -1,1 +1,4 @@
-verilog/generated-src/upload
+verilog/
+sbt/hwacha/target/
+sbt/project/target/
+sbt/target/
