@@ -112,7 +112,7 @@ package hwacha {
     io.lane_vldq_deq_bits     := vldq.io.deq.bits;
     io.lane_vldq_deq_val      := vldq_count.io.ready 
     vldq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
-    vldq_count.io.deq         := io.lane_vldq_deq_rdy;
+    vldq_count.io.dec         := io.lane_vldq_deq_rdy;
     vldq.io.deq.ready           := io.lane_vldq_deq_rdy;
     ctrl_vec.io.vldq.deq_rdy  := io.lane_vldq_deq_rdy;
    
@@ -120,18 +120,18 @@ package hwacha {
     io.lane_vsdq_enq_rdy      := vsdq_count.io.ready;
     vsdq.io.enq.valid           := io.lane_vsdq_enq_val;
     vsdq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
-    vsdq_count.io.deq         := io.lane_vsdq_enq_val;
+    vsdq_count.io.dec         := io.lane_vsdq_enq_val;
     
     io.lane_utaq_enq_rdy      := utaq_count.io.ready
     utaq.io.enq.bits          := io.lane_utaq_enq_bits;
     utaq.io.enq.valid           := io.lane_utaq_enq_val;
     utaq_count.io.qcnt        := io.vxu_to_vmu.qcnt;
-    utaq_count.io.deq         := io.lane_utaq_enq_val;
+    utaq_count.io.dec         := io.lane_utaq_enq_val;
 
     io.lane_utldq_deq_bits    := utldq.io.deq.bits;
     io.lane_utldq_deq_val     := utldq_count.io.ready;
     utldq_count.io.qcnt       := io.vxu_to_vmu.qcnt;
-    utldq_count.io.deq        := io.lane_utldq_deq_rdy;
+    utldq_count.io.dec        := io.lane_utldq_deq_rdy;
     utldq.io.deq.ready          := io.lane_utldq_deq_rdy;
     ctrl_ut.io.utldq.deq_rdy  := io.lane_utldq_deq_rdy;
 
@@ -139,14 +139,14 @@ package hwacha {
     utsdq.io.enq.bits         := io.lane_utsdq_enq_bits;
     utsdq.io.enq.valid          := io.lane_utsdq_enq_val;
     utsdq_count.io.qcnt       := io.vxu_to_vmu.qcnt;
-    utsdq_count.io.deq        := io.lane_utsdq_enq_val;
+    utsdq_count.io.dec        := io.lane_utsdq_enq_val;
 
     // count enq
-    vldq_count.io.enq   := vldq.io.enq.valid && ctrl_vec.io.vldq.enq_rdy;
-    vsdq_count.io.enq   := vsdq.io.deq.valid && ctrl_vec.io.vsdq_deq.rdy;
-    utaq_count.io.enq   := utaq.io.deq.valid && ctrl_ut.io.utaq_deq.rdy;
-    utldq_count.io.enq  := utldq.io.enq.valid && ctrl_ut.io.utldq.enq_rdy;
-    utsdq_count.io.enq  := utsdq.io.deq.valid && ctrl_ut.io.utsdq_deq.rdy;
+    vldq_count.io.inc   := vldq.io.enq.valid && ctrl_vec.io.vldq.enq_rdy;
+    vsdq_count.io.inc   := vsdq.io.deq.valid && ctrl_vec.io.vsdq_deq.rdy;
+    utaq_count.io.inc   := utaq.io.deq.valid && ctrl_ut.io.utaq_deq.rdy;
+    utldq_count.io.inc  := utldq.io.enq.valid && ctrl_ut.io.utldq.enq_rdy;
+    utsdq_count.io.inc  := utsdq.io.deq.valid && ctrl_ut.io.utsdq_deq.rdy;
 
   }
 }

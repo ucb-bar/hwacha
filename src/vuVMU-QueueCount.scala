@@ -6,8 +6,8 @@ import scala.math.{log, ceil}
 
 class vuVMU_QueueCountIO(w: Int) extends Bundle
 {
-  val enq = Bool(INPUT);
-  val deq = Bool(INPUT);
+  val inc = Bool(INPUT);
+  val dec = Bool(INPUT);
   val ready = Bool(OUTPUT);
   val qcnt = UFix(w, INPUT);
 }
@@ -21,10 +21,10 @@ class vuVMU_QueueCount(reset_cnt : Int, ready_cnt : Int, max_cnt : Int, use_qcnt
   val next_count = Wire(){ UFix(width = ceilLog2(max_cnt)+1) }
 
   next_count <== count;
-  when(io.enq ^ io.deq)
+  when(io.inc ^ io.dec)
   {
-    when(io.enq) {next_count <== count + UFix(1);}
-    when(!io.enq) {next_count <== count - UFix(1);}
+    when(io.inc) {next_count <== count + UFix(1);}
+    when(!io.inc) {next_count <== count - UFix(1);}
   }
 
   count := next_count
