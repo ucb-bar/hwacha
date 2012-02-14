@@ -78,8 +78,7 @@ class vu extends Component
   vxu.io.lane_vldq.bits := vldq.io.deq.bits
 
   vldq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  vldq_count.io.inc := vldq.io.enq.ready && vldq.io.enq.valid
-  //vldq_count.io.dec := vldq.io.deq.ready
+  vldq_count.io.inc := vldq.io.enq.ready && vmu.io.vldq_enq_valid
   vldq_count.io.dec := vxu.io.lane_vldq.ready
 
 
@@ -93,8 +92,8 @@ class vu extends Component
   vmu.io.vsdq_deq_bits := vsdq.io.deq.bits
 
   vsdq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  vsdq_count.io.inc := vsdq.io.enq.valid
-  vsdq_count.io.dec := vsdq.io.deq.ready && vsdq.io.deq.valid
+  vsdq_count.io.inc := vmu.io.vsdq_deq_ready && vsdq.io.deq.valid
+  vsdq_count.io.dec := vxu.io.lane_vsdq.valid
 
 
   // utaq
@@ -107,8 +106,8 @@ class vu extends Component
   vmu.io.utaq_deq_bits := utaq.io.deq.bits
 
   utaq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  utaq_count.io.inc := utaq.io.enq.valid
-  utaq_count.io.dec := utaq.io.deq.ready && utaq.io.deq.valid
+  utaq_count.io.inc := vmu.io.utaq_deq_ready && utaq.io.deq.valid
+  utaq_count.io.dec := vxu.io.lane_utaq.valid
 
 
   // utldq
@@ -121,8 +120,7 @@ class vu extends Component
   vxu.io.lane_utldq.bits := utldq.io.deq.bits
 
   utldq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  utldq_count.io.inc := utldq.io.enq.ready && utldq.io.enq.valid
-  //utldq_count.io.dec := utldq.io.deq.ready
+  utldq_count.io.inc := utldq.io.enq.ready && vmu.io.utldq_enq_valid
   utldq_count.io.dec := vxu.io.lane_utldq.ready
 
 
@@ -136,8 +134,8 @@ class vu extends Component
   vmu.io.utsdq_deq_bits := utsdq.io.deq.bits
 
   utsdq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  utsdq_count.io.inc := utsdq.io.enq.valid
-  utsdq_count.io.dec := utsdq.io.deq.ready && utsdq.io.deq.valid
+  utsdq_count.io.inc := vmu.io.utsdq_deq_ready && utsdq.io.deq.valid
+  utsdq_count.io.dec := vxu.io.lane_utsdq.valid
 
 
   // vmu
