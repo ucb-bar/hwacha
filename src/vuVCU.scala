@@ -115,7 +115,7 @@ package hwacha
 
     when (fire_setvl)
     {
-      vlen <== io.vec_ximm1q.bits(VLENMAX_SZ-1,0)
+      vlen := io.vec_ximm1q.bits(VLENMAX_SZ-1,0)
     }
 
     //-------------------------------------------------------------------------\\

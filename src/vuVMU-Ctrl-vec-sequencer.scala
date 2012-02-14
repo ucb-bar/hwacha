@@ -31,29 +31,29 @@ package hwacha {
 
     when( io.vlrq_val && io.vlrq_rdy )
     {
-      vlr_inflight <== vlr_inflight + UFix(1)
+      vlr_inflight := vlr_inflight + UFix(1)
     }
     when( io.vmldq_val && io.vmldq_rdy && vlr_inflight > UFix(0) )
     {
-      vlr_inflight <== vlr_inflight - UFix(1)
+      vlr_inflight := vlr_inflight - UFix(1)
     }
     when( io.vlrq_val && io.vlrq_rdy && io.vmldq_val && io.vmldq_rdy )
     {
-      vlr_inflight <== vlr_inflight
+      vlr_inflight := vlr_inflight
     }
     // bottom when takes priority
 
     when( io.vsrq_val && io.vsrq_rdy )
     {
-      vsr_inflight <== vsr_inflight + UFix(1)
+      vsr_inflight := vsr_inflight + UFix(1)
     }
     when( io.vsackq_val && io.vsackq_rdy && vsr_inflight > UFix(0) )
     {
-      vsr_inflight <== vsr_inflight - UFix(1)
+      vsr_inflight := vsr_inflight - UFix(1)
     }
     when( io.vsrq_val && io.vsrq_rdy && io.vsackq_val && io.vsackq_rdy )
     {
-      vsr_inflight <== vsr_inflight
+      vsr_inflight := vsr_inflight
     }
   }
 }

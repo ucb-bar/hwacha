@@ -41,29 +41,29 @@ package hwacha {
     val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES,Bits(1)))
     val vb_update_write = Mux(io.roq_enq_val, (Bits(1) << roq_enq_tag_bits_int), Bits(0,ROQ_TAG_ENTRIES))
     
-    // Mem4 <-- Read tutorial
+    // Mem <-- Read tutorial
     // compare with trainwreck/caches/sram.v
     // depth: Int, wrEnable: Bool, wrAddr: UFix, wrData: Data
-    Mem4.setDefaultReadLatency(1)
-    val data_array = Mem4(ROQ_TAG_ENTRIES, io.roq_enq_val, roq_enq_tag_bits_int, io.roq_enq_data_bits) //, w_mask = Bits("b11111111",8))
+    Mem.setDefaultReadLatency(1)
+    val data_array = Mem(ROQ_TAG_ENTRIES, io.roq_enq_val, roq_enq_tag_bits_int, io.roq_enq_data_bits) //, w_mask = Bits("b11111111",8))
     // readAddr: UFix, oe = output enable, cs = chip select
     io.roq_deq_data_bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr), oe = Bool(true), cs = Bool(true))
 
     // vb_array[read_ptr] <= 1'b0
     // vb_array[roq_enq_tag_bits] <= 1'b1
-    vb_array <== (vb_array & vb_update_read) | vb_update_write
-    roq_deq_data_val_int <== vb_array(read_ptr).toBool
+    vb_array := (vb_array & vb_update_read) | vb_update_write
+    roq_deq_data_val_int := vb_array(read_ptr).toBool
     
     // read tag
     when(roq_tag_deq)
     {
-      write_ptr <== write_ptr_next
+      write_ptr := write_ptr_next
     }
     // read data
     when(roq_data_deq)
     {
-      roq_deq_data_val_int <== vb_array(read_ptr_next).toBool
-      read_ptr <== read_ptr_next
+      roq_deq_data_val_int := vb_array(read_ptr_next).toBool
+      read_ptr := read_ptr_next
     }
   }
 }

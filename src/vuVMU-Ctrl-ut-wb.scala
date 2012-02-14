@@ -87,57 +87,57 @@ package hwacha {
     recode_dp.io.in := delay_roq_deq_bits
     roq_deq_dp_bits := recode_dp.io.out
 
-    io.wbcmdq_deq_rdy <== Bool(false)
-    io.roq_deq_rdy <== Bool(false)
-    buf_ldq_enq_val <== Bool(false)
-    io.ldq.wb_done <== Bool(false)
+    io.wbcmdq_deq_rdy := Bool(false)
+    io.roq_deq_rdy := Bool(false)
+    buf_ldq_enq_val := Bool(false)
+    io.ldq.wb_done := Bool(false)
 
     switch(state)
     {
       is(VMU_Ctrl_Idle)
       {
-        io.wbcmdq_deq_rdy <== Bool(true)
+        io.wbcmdq_deq_rdy := Bool(true)
         when(io.wbcmdq_deq_val)
         {
-          vlen_reg <== vlen
-          vlen_cnt_reg <== vlen
-          cmd_type_reg <== cmd_type
-          cmd_type_amo_reg <== cmd_type_amo
-          state <== VMU_Ctrl_Writeback
+          vlen_reg := vlen
+          vlen_cnt_reg := vlen
+          cmd_type_reg := cmd_type
+          cmd_type_amo_reg := cmd_type_amo
+          state := VMU_Ctrl_Writeback
         }
       }
       is(VMU_Ctrl_Writeback)
       {
-        io.roq_deq_rdy <== buf_ldq_enq_rdy
-        buf_ldq_enq_val <== io.roq_deq_val
+        io.roq_deq_rdy := buf_ldq_enq_rdy
+        buf_ldq_enq_val := io.roq_deq_val
         when(io.roq_deq_val && buf_ldq_enq_rdy)
         {
           when(vlen_reg === UFix(0))
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(vlen_reg != UFix(0))
           {
-            vlen_reg <== vlen_reg - UFix(1)
+            vlen_reg := vlen_reg - UFix(1)
           }
           when(io.ldq.deq_rdy)
           {
-            vlen_cnt_reg <== vlen_cnt_reg - UFix(1)
+            vlen_cnt_reg := vlen_cnt_reg - UFix(1)
           }
         }
       }
       is(VMU_Ctrl_WritebackDone)
       {
-        io.ldq.wb_done <== Bool(true)
+        io.ldq.wb_done := Bool(true)
         when(io.ldq.deq_rdy)
         {
           when(vlen_cnt_reg === UFix(0))
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(vlen_cnt_reg != UFix(0))
           {
-            vlen_cnt_reg <== vlen_cnt_reg - UFix(1)
+            vlen_cnt_reg := vlen_cnt_reg - UFix(1)
           }
         }
       }

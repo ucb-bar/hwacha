@@ -123,34 +123,34 @@ class vuVXU_Issue_TVEC extends Component
   val reg_bcnt = Reg(next_bcnt, resetVal = Bits(8,SZ_LGBANK1))
   val reg_stride = Reg(next_stride, resetVal = Bits(63,SZ_REGLEN))
 
-  next_state <== reg_state
-  next_vlen <== reg_vlen
-  next_nxregs <== reg_nxregs
-  next_nfregs <== reg_nfregs
-  next_bactive <== reg_bactive
-  next_bcnt <== reg_bcnt
-  next_stride <== reg_stride
+  next_state := reg_state
+  next_vlen := reg_vlen
+  next_nxregs := reg_nxregs
+  next_nfregs := reg_nfregs
+  next_bactive := reg_bactive
+  next_bcnt := reg_bcnt
+  next_stride := reg_stride
 
   when (fire_vcfg.toBool)
   {
-    next_vlen <== io.vxu_immq.bits(10,0)
-    next_nxregs <== io.vxu_immq.bits(16,11)
-    next_nfregs <== io.vxu_immq.bits(22,17)
-    next_bactive <== io.vxu_immq.bits(30,23)
-    next_bcnt <== io.vxu_immq.bits(34,31)
-    next_stride <== next_nxregs.toUFix + next_nfregs.toUFix - Bits(1,2).toUFix
+    next_vlen := io.vxu_immq.bits(10,0)
+    next_nxregs := io.vxu_immq.bits(16,11)
+    next_nfregs := io.vxu_immq.bits(22,17)
+    next_bactive := io.vxu_immq.bits(30,23)
+    next_bcnt := io.vxu_immq.bits(34,31)
+    next_stride := next_nxregs.toUFix + next_nfregs.toUFix - Bits(1,2).toUFix
   }
   when (fire_setvl.toBool)
   {
-    next_vlen <== io.vxu_immq.bits(10,0)
+    next_vlen := io.vxu_immq.bits(10,0)
   }
   when (fire_vf.toBool)
   {
-    next_state <== ISSUE_VT
+    next_state := ISSUE_VT
   }
   when (io.vf.stop)
   {
-    next_state <== ISSUE_TVEC
+    next_state := ISSUE_TVEC
   }
 
 //-------------------------------------------------------------------------\\
@@ -197,45 +197,45 @@ class vuVXU_Issue_TVEC extends Component
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_vmu_utcmdq_ready && mask_vmu_vmcmdq_ready && mask_issue_ready
 
-  io.vec_ackq.bits <== Bits(0,32)
-  io.vec_ackq.valid <== Bool(false)
-  io.vxu_ackq.ready <== Bool(false)
-  io.vmu_vackq.ready <== Bool(false)
+  io.vec_ackq.bits := Bits(0,32)
+  io.vec_ackq.valid := Bool(false)
+  io.vxu_ackq.ready := Bool(false)
+  io.vmu_vackq.ready := Bool(false)
 
   switch (state)
   {
     is (VXU_FORWARD)
     {
       when (fire_fence_cv) {
-        state <== VXU_FENCE_CV
+        state := VXU_FENCE_CV
       }
       when (fire_fence_v) {
-        state <== VXU_FENCE_V
+        state := VXU_FENCE_V
       }
     }
     is (VXU_FENCE_CV)
     {
       when(io.vxu_ackq.valid && io.vmu_vackq.valid)
       {
-        io.vec_ackq.bits <== Bits(1, 32)
-        io.vec_ackq.valid <== Bool(true)
+        io.vec_ackq.bits := Bits(1, 32)
+        io.vec_ackq.valid := Bool(true)
       }
 
       when (io.vmu_vackq.valid && io.vxu_ackq.valid && io.vec_ackq.ready) {
-        state <== VXU_FORWARD
+        state := VXU_FORWARD
       }
       
-      io.vxu_ackq.ready <== io.vmu_vackq.valid
-      io.vmu_vackq.ready <== io.vxu_ackq.valid
+      io.vxu_ackq.ready := io.vmu_vackq.valid
+      io.vmu_vackq.ready := io.vxu_ackq.valid
     }
     is (VXU_FENCE_V)
     {
       when (io.vmu_vackq.valid && io.vxu_ackq.valid) {
-        state <== VXU_FORWARD
+        state := VXU_FORWARD
       }
 
-      io.vxu_ackq.ready <== io.vmu_vackq.valid
-      io.vmu_vackq.ready <== io.vxu_ackq.valid
+      io.vxu_ackq.ready := io.vmu_vackq.valid
+      io.vmu_vackq.ready := io.vxu_ackq.valid
     }
   }
 

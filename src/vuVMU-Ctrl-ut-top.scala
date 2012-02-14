@@ -48,14 +48,14 @@ package hwacha {
     io.wbcmdq_enq_bits := Cat(cmd_amo, cmd(3,0), vlen)
     io.stcmdq_enq_bits := Cat(cmd_amo, cmd(4,0), addr, vlen)
 
-    io.utmcmdq.rdy <== Bool(false)
-    io.utmimmq.rdy <== Bool(false)
-    io.utmrespq.bits <== Bits(0, UTMRESP_SZ)
-    io.utmrespq.valid <== Bool(false)
-    io.iscmdq_enq_val <== Bool(false)
-    io.wbcmdq_enq_val <== Bool(false)
-    io.stcmdq_enq_val <== Bool(false)
-    cmd_amo <== Bool(false)
+    io.utmcmdq.rdy := Bool(false)
+    io.utmimmq.rdy := Bool(false)
+    io.utmrespq.bits := Bits(0, UTMRESP_SZ)
+    io.utmrespq.valid := Bool(false)
+    io.iscmdq_enq_val := Bool(false)
+    io.wbcmdq_enq_val := Bool(false)
+    io.stcmdq_enq_val := Bool(false)
+    cmd_amo := Bool(false)
 
     switch(state)
     {
@@ -65,103 +65,103 @@ package hwacha {
         {
           switch (cmd(7,4))
           {
-            state <== VMU_Ctrl_Invalid
+            state := VMU_Ctrl_Invalid
             is (Bits("b0000", 4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when (cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4))
               {
-                state <== VMU_Ctrl_Sync
+                state := VMU_Ctrl_Sync
               }
               when (!(cmd(3,0) === Bits("b1100", 4) || cmd(3,0) === Bits("b1101", 4) || cmd(3,0) === Bits("b1110", 4) || cmd(3,0) === Bits("b1111", 4)))
               {
-                state <== VMU_Ctrl_Invalid
+                state := VMU_Ctrl_Invalid
               }
             }
             is (Bits("b1100", 4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when (io.utmimmq.valid && io.iscmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.store_busy)
               {
-                state <== VMU_Ctrl_Load
+                state := VMU_Ctrl_Load
               }
             }
             is (Bits("b1101", 4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when (io.utmimmq.valid && io.stcmdq_enq_rdy && !io.issue_busy)
               {
-                state <== VMU_Ctrl_Store
+                state := VMU_Ctrl_Store
               }
             }
             is (Bits("b1110", 4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when (io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy)
               {
-                state <== VMU_Ctrl_AMO
+                state := VMU_Ctrl_AMO
               }
             }
             is (Bits("b1111", 4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when (io.stcmdq_enq_rdy && io.wbcmdq_enq_rdy && !io.issue_busy)
               {
-                state <== VMU_Ctrl_AMO
+                state := VMU_Ctrl_AMO
               }
             }
           }
         }
         when(!io.utmcmdq.valid)
         {
-          state <== VMU_Ctrl_Idle
+          state := VMU_Ctrl_Idle
         }
       }
       is(VMU_Ctrl_Load)
       {
-        io.utmcmdq.rdy <== Bool(true)
-        io.utmimmq.rdy <== Bool(true)
-        io.iscmdq_enq_val <== Bool(true)
-        io.wbcmdq_enq_val <== Bool(true)
-        state <== VMU_Ctrl_Idle
+        io.utmcmdq.rdy := Bool(true)
+        io.utmimmq.rdy := Bool(true)
+        io.iscmdq_enq_val := Bool(true)
+        io.wbcmdq_enq_val := Bool(true)
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_Store)
       {
-        io.utmcmdq.rdy <== Bool(true)
-        io.utmimmq.rdy <== Bool(true)
-        io.stcmdq_enq_val <== Bool(true)
-        state <== VMU_Ctrl_Idle
+        io.utmcmdq.rdy := Bool(true)
+        io.utmimmq.rdy := Bool(true)
+        io.stcmdq_enq_val := Bool(true)
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_AMO)
       {
-        io.utmcmdq.rdy <== Bool(true)
-        io.stcmdq_enq_val <== Bool(true)
-        io.wbcmdq_enq_val <== Bool(true)
-        cmd_amo <== Bool(true)
-        state <== VMU_Ctrl_Idle
+        io.utmcmdq.rdy := Bool(true)
+        io.stcmdq_enq_val := Bool(true)
+        io.wbcmdq_enq_val := Bool(true)
+        cmd_amo := Bool(true)
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_Sync)
       {
         when(!io.store_busy)
         {
-          io.utmcmdq.rdy <== Bool(true)
-          io.utmrespq.valid <== Bool(true)
-          io.utmrespq.bits <== Bits(1)
-          when(io.utmrespq.rdy) { state <== VMU_Ctrl_Idle }
-          when(!io.utmrespq.rdy) { state <== VMU_Ctrl_SyncWait }
+          io.utmcmdq.rdy := Bool(true)
+          io.utmrespq.valid := Bool(true)
+          io.utmrespq.bits := Bits(1)
+          when(io.utmrespq.rdy) { state := VMU_Ctrl_Idle }
+          when(!io.utmrespq.rdy) { state := VMU_Ctrl_SyncWait }
         }
       }
       is(VMU_Ctrl_SyncWait)
       {
-        io.utmrespq.valid <== Bool(true)
-        io.utmrespq.bits <== Bits(1)
-        when(io.utmrespq.rdy) { state <== VMU_Ctrl_Idle }
-        when(!io.utmrespq.rdy) { state <== VMU_Ctrl_SyncWait }
+        io.utmrespq.valid := Bool(true)
+        io.utmrespq.bits := Bits(1)
+        when(io.utmrespq.rdy) { state := VMU_Ctrl_Idle }
+        when(!io.utmrespq.rdy) { state := VMU_Ctrl_SyncWait }
       }
       is(VMU_Ctrl_Invalid)
       {
-        io.utmcmdq.rdy <== Bool(true)
-        state <== VMU_Ctrl_Idle
+        io.utmcmdq.rdy := Bool(true)
+        state := VMU_Ctrl_Idle
       }
     }
 

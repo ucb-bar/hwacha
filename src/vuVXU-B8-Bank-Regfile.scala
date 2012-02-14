@@ -47,8 +47,8 @@ class vuVXU_Banked8_Bank_Regfile extends Component
 
   val ropl0Reg = Reg(){Bits(width = DEF_DATA)}
   val ropl1Reg = Reg(){Bits(width = DEF_DATA)}
-  when(io.roplen(0).toBool){ropl0Reg <== rdata_rf}
-  when(io.roplen(1).toBool){ropl1Reg <== rdata_rf}
+  when(io.roplen(0).toBool){ropl0Reg := rdata_rf}
+  when(io.roplen(1).toBool){ropl1Reg := rdata_rf}
 
   io.ropl0 := ropl0Reg
   io.ropl1 := ropl1Reg

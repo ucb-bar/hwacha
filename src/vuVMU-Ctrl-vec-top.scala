@@ -37,15 +37,15 @@ package hwacha {
     io.iscmdq.bits := Cat(stride.toBits, addr, vlen)
     io.stcmdq.bits := Cat(cmd(3,0), stride.toBits, addr, vlen)
 
-    io.vmcmdq.rdy          <== Bool(false)
-    io.vmimmq.rdy          <== Bool(false)
-    io.vmstrideq.rdy       <== Bool(false)
-    io.vmrespq.bits        <== Bits(0)
-    io.vmrespq.valid         <== Bool(false)
-    io.iscmdq.valid          <== Bool(false)
-    io.wbcmdq.valid          <== Bool(false)
-    io.stcmdq.valid          <== Bool(false)
-    stride                 <== UFix(0)
+    io.vmcmdq.rdy          := Bool(false)
+    io.vmimmq.rdy          := Bool(false)
+    io.vmstrideq.rdy       := Bool(false)
+    io.vmrespq.bits        := Bits(0)
+    io.vmrespq.valid         := Bool(false)
+    io.iscmdq.valid          := Bool(false)
+    io.wbcmdq.valid          := Bool(false)
+    io.stcmdq.valid          := Bool(false)
+    stride                 := UFix(0)
 
     switch(state)
     {
@@ -57,49 +57,49 @@ package hwacha {
         {
           switch(cmd(7,4))
           {
-            state <== VMU_Ctrl_Invalid
+            state := VMU_Ctrl_Invalid
             is(Bits("b0000",4))
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111"))
               {
-                state <== VMU_Ctrl_Sync
+                state := VMU_Ctrl_Sync
               }
               when( !(cmd(3,0) === Bits("b1100") || cmd(3,0) === Bits("b1101") || cmd(3,0) === Bits("b1110") || cmd(3,0) === Bits("b1111")) )
               {
-                state <== VMU_Ctrl_Invalid
+                state := VMU_Ctrl_Invalid
               }
             }
             is(Bits("b1000",4)) // standard vector load
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.iscmdq.rdy && io.wbcmdq.rdy )
               {
-                state <== VMU_Ctrl_Load
+                state := VMU_Ctrl_Load
               }
             }
             is(Bits("b1001",4)) // standard vector store
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.stcmdq.rdy )
               {
-                state <== VMU_Ctrl_Store
+                state := VMU_Ctrl_Store
               }
             }
             is(Bits("b1010",4)) // strided vector load
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.vmstrideq.valid && io.iscmdq.rdy && io.wbcmdq.rdy ) 
               {
-                state <== VMU_Ctrl_LoadStride
+                state := VMU_Ctrl_LoadStride
               }
             }
             is(Bits("b1011",4)) // strided vector load
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
               when( io.vmimmq.valid && io.vmstrideq.valid && io.stcmdq.rdy ) 
               {
-                state <== VMU_Ctrl_StoreStride
+                state := VMU_Ctrl_StoreStride
               }
             }
           }
@@ -107,89 +107,89 @@ package hwacha {
       }
       is(VMU_Ctrl_Load)
       {
-        io.vmcmdq.rdy <== Bool(true)
-        io.vmimmq.rdy <== Bool(true)
-        io.iscmdq.valid <== Bool(true)
-        io.wbcmdq.valid <== Bool(true)
+        io.vmcmdq.rdy := Bool(true)
+        io.vmimmq.rdy := Bool(true)
+        io.iscmdq.valid := Bool(true)
+        io.wbcmdq.valid := Bool(true)
         switch(cmd(1,0))
         {
-          stride <== UFix(0)
-          is(Bits("b11")) { stride <== UFix(8) }
-          is(Bits("b10")) { stride <== UFix(4) }
-          is(Bits("b01")) { stride <== UFix(2) }
-          is(Bits("b00")) { stride <== UFix(1) }
+          stride := UFix(0)
+          is(Bits("b11")) { stride := UFix(8) }
+          is(Bits("b10")) { stride := UFix(4) }
+          is(Bits("b01")) { stride := UFix(2) }
+          is(Bits("b00")) { stride := UFix(1) }
         }
-        state <== VMU_Ctrl_Idle
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_Store)
       {
-        io.vmcmdq.rdy <== Bool(true)
-        io.vmimmq.rdy <== Bool(true)
-        io.stcmdq.valid <== Bool(true)
+        io.vmcmdq.rdy := Bool(true)
+        io.vmimmq.rdy := Bool(true)
+        io.stcmdq.valid := Bool(true)
         switch(cmd(1,0))
         {
-          stride <== UFix(0)
-          is(Bits("b11")) { stride <== UFix(8) }
-          is(Bits("b10")) { stride <== UFix(4) }
-          is(Bits("b01")) { stride <== UFix(2) }
-          is(Bits("b00")) { stride <== UFix(1) }
+          stride := UFix(0)
+          is(Bits("b11")) { stride := UFix(8) }
+          is(Bits("b10")) { stride := UFix(4) }
+          is(Bits("b01")) { stride := UFix(2) }
+          is(Bits("b00")) { stride := UFix(1) }
         }
-        state <== VMU_Ctrl_Idle
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_LoadStride)
       {
-        io.vmcmdq.rdy <== Bool(true)
-        io.vmimmq.rdy <== Bool(true)
-        io.vmstrideq.rdy <== Bool(true)
-        io.iscmdq.valid <== Bool(true)
-        io.wbcmdq.valid <== Bool(true)
-        stride <== io.vmstrideq.bits
-        state <== VMU_Ctrl_Idle
+        io.vmcmdq.rdy := Bool(true)
+        io.vmimmq.rdy := Bool(true)
+        io.vmstrideq.rdy := Bool(true)
+        io.iscmdq.valid := Bool(true)
+        io.wbcmdq.valid := Bool(true)
+        stride := io.vmstrideq.bits
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_StoreStride)
       {
-        io.vmcmdq.rdy <== Bool(true)
-        io.vmimmq.rdy <== Bool(true)
-        io.vmstrideq.rdy <== Bool(true)
-        io.stcmdq.valid <== Bool(true)
-        stride <== io.vmstrideq.bits
-        state <== VMU_Ctrl_Idle
+        io.vmcmdq.rdy := Bool(true)
+        io.vmimmq.rdy := Bool(true)
+        io.vmstrideq.rdy := Bool(true)
+        io.stcmdq.valid := Bool(true)
+        stride := io.vmstrideq.bits
+        state := VMU_Ctrl_Idle
       }
       is(VMU_Ctrl_Sync)
       {
         when(!io.store_busy)
         {
-          io.vmcmdq.rdy <== Bool(true)
-          io.vmrespq.valid <== Bool(true)
-          io.vmrespq.bits <== Bits(1)
+          io.vmcmdq.rdy := Bool(true)
+          io.vmrespq.valid := Bool(true)
+          io.vmrespq.bits := Bits(1)
           when(io.vmrespq.rdy)
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(!io.vmrespq.rdy)   
           {
-            state <== VMU_Ctrl_SyncWait
+            state := VMU_Ctrl_SyncWait
           }
         }
       }
       is(VMU_Ctrl_SyncWait)
       {
-        io.vmrespq.valid <== Bool(true)
-        io.vmrespq.bits <== Bits(1)
+        io.vmrespq.valid := Bool(true)
+        io.vmrespq.bits := Bits(1)
         when(io.vmrespq.rdy)
         {
-          state <== VMU_Ctrl_Idle
+          state := VMU_Ctrl_Idle
         }
         when(!io.vmrespq.rdy)
         {
-          state <== VMU_Ctrl_SyncWait
+          state := VMU_Ctrl_SyncWait
         }
       }
       is(VMU_Ctrl_Invalid)
       {
-        io.vmcmdq.rdy <== Bool(true)
+        io.vmcmdq.rdy := Bool(true)
         // error?
-        state <== VMU_Ctrl_Idle
+        state := VMU_Ctrl_Idle
       }
     }
   }

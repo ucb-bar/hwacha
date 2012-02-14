@@ -48,11 +48,11 @@ class queueCtrl1_pipe extends Component
 
   when(do_deq && !do_pipe)
   {
-    full <== Bool(false)
+    full := Bool(false)
   }
   when(do_enq)
   {
-    full <== Bool(true)
+    full := Bool(true)
   }
 }
 
@@ -124,9 +124,9 @@ class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
     Mux(do_deq && full && ~do_pipe,                       Bool(false),
         full))
 
-  enq_ptr <== enq_ptr_next
-  deq_ptr <== deq_ptr_next
-  full    <== full_next
+  enq_ptr := enq_ptr_next
+  deq_ptr := deq_ptr_next
+  full    := full_next
 }
 
 class queueCtrl(entries: Int, addr_sz: Int) extends Component
@@ -181,9 +181,9 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
     Mux(do_deq && full,                                   Bool(false),
         full))
 
-  enq_ptr <== enq_ptr_next
-  deq_ptr <== deq_ptr_next
-  full    <== full_next
+  enq_ptr := enq_ptr_next
+  deq_ptr := deq_ptr_next
+  full    := full_next
 }
 
 class io_queue(data_sz: Int) extends Bundle()
@@ -285,9 +285,9 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
     Mux(do_deq && full,                                   Bool(false),
         full))
 
-  enq_ptr <== enq_ptr_next
-  deq_ptr <== deq_ptr_next
-  full    <== full_next
+  enq_ptr := enq_ptr_next
+  deq_ptr := deq_ptr_next
+  full    := full_next
 }
 
 class IOqueueDpathFlow(data_sz: Int, addr_sz: Int) extends Bundle()
@@ -322,7 +322,7 @@ class queue1PF(data_sz:Int) extends Component
   io.deq_bits := deq_bits
   when(wen)
   {
-    deq_bits <== io.enq_bits
+    deq_bits := io.enq_bits
   }
 }
 */
@@ -340,7 +340,7 @@ class queuePipe1PF(data_sz:Int) extends Component
   io.deq.bits := deq_bits_reg
   when(wen)
   {
-    deq_bits_reg <== io.enq.bits
+    deq_bits_reg := io.enq.bits
   }
 }
 

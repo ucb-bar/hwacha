@@ -173,8 +173,8 @@ class vuVXU_Banked8_FU_alu extends Component
       VIU_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
     ))
 
-  reg_mask   <== next_mask
-  reg_result <== next_result
+  reg_mask   := next_mask
+  reg_result := next_result
 
   io.wen_masked := io.wen & reg_mask.toBool
   io.out        := reg_result

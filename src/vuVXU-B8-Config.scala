@@ -220,7 +220,7 @@ object ShiftRegister
       val res = Reg() { Bits(width = width) }
       when (valid)
       {
-        res <== base
+        res := base
       }
       res
     }
@@ -330,15 +330,9 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
     }
   }
 
-  def <== (src: Bits) = {
+  def := (src: Bits) = {
     for(i <- 0 until length)
-      this(i) <== src(i)
-  }
-  
-  def <==[T <: Data](src: GenArray[T]) = {
-    for((src, dest) <- this zip src){
-      src <== dest
-    }
+      this(i) := src(i)
   }
 
 }

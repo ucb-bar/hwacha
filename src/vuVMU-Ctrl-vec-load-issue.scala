@@ -39,27 +39,27 @@ package hwacha {
 
     io.lrq_enq_bits := Cat(addr_reg(31,4), io.roq_deq_tag_bits)
 
-    io.lrq_enq_val <== Bool(false)
-    io.iscmdq_deq_rdy <== Bool(false)
-    io.roq_deq_tag_rdy <== Bool(false)
+    io.lrq_enq_val := Bool(false)
+    io.iscmdq_deq_rdy := Bool(false)
+    io.roq_deq_tag_rdy := Bool(false)
 
     switch(state)
     {
       is(VMU_Ctrl_Idle)
       {
-        io.iscmdq_deq_rdy <== Bool(true)
+        io.iscmdq_deq_rdy := Bool(true)
         when( io.iscmdq_deq_val )
         {
-          addr_reg <== addr
-          last_addr_reg <== addr + (vlen * stride)
-          stride_reg <== stride
+          addr_reg := addr
+          last_addr_reg := addr + (vlen * stride)
+          stride_reg := stride
           when( stride < UFix(16) )
           {
-            state <== VMU_Ctrl_IssueShort
+            state := VMU_Ctrl_IssueShort
           }
           when( !(state < UFix(16)) ) 
           {
-            state <== VMU_Ctrl_IssueLong
+            state := VMU_Ctrl_IssueLong
           }
         }
       }
@@ -67,15 +67,15 @@ package hwacha {
       {
         when( addr_cacheline > last_addr_reg )
         {
-          state <== VMU_Ctrl_Idle
+          state := VMU_Ctrl_Idle
         }
         when( !(addr_cacheline > last_addr_reg) )
         {
-          io.roq_deq_tag_rdy <== io.lrq_enq_rdy
-          io.lrq_enq_val     <== io.roq_deq_tag_val
+          io.roq_deq_tag_rdy := io.lrq_enq_rdy
+          io.lrq_enq_val     := io.roq_deq_tag_val
           when( io.roq_deq_tag_val & io.lrq_enq_rdy )
           {
-            addr_reg <== addr_reg + UFix(16)
+            addr_reg := addr_reg + UFix(16)
           }
         }
       }
@@ -83,15 +83,15 @@ package hwacha {
       {
         when( addr_cacheline > last_addr_reg )
         {
-          state <== VMU_Ctrl_Idle
+          state := VMU_Ctrl_Idle
         }
         when( !(addr_cacheline > last_addr_reg) )
         {
-          io.roq_deq_tag_rdy <== io.lrq_enq_rdy
-          io.lrq_enq_val     <== io.roq_deq_tag_val
+          io.roq_deq_tag_rdy := io.lrq_enq_rdy
+          io.lrq_enq_val     := io.roq_deq_tag_val
           when( io.roq_deq_tag_val & io.lrq_enq_rdy )
           {
-            addr_reg <== addr_reg + stride_reg
+            addr_reg := addr_reg + stride_reg
           }
         }
       }

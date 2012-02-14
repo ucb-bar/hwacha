@@ -61,23 +61,23 @@ package hwacha {
 
     val srq_enq_data_bits_int = Wire(){Bits()}
 
-    srq_enq_data_bits_int <== Bits(0, 64)
+    srq_enq_data_bits_int := Bits(0, 64)
 
     when(cmd_type_fp)
     {
       switch(cmd_type_reg(1,0))
       {
-        is(Bits("b11")) {srq_enq_data_bits_int <== sdq_deq_dp_bits}
-        is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, sdq_deq_sp_bits)}
+        is(Bits("b11")) {srq_enq_data_bits_int := sdq_deq_dp_bits}
+        is(Bits("b10")) {srq_enq_data_bits_int := Fill(2, sdq_deq_sp_bits)}
       }
     }
     when(!cmd_type_fp){
       switch(cmd_type_reg(1,0))
       {
-	is(Bits("b11")) {srq_enq_data_bits_int <== io.sdq_deq.bits(63,0)}
-	is(Bits("b10")) {srq_enq_data_bits_int <== Fill(2, io.sdq_deq.bits(31,0))}
-	is(Bits("b01")) {srq_enq_data_bits_int <== Fill(4, io.sdq_deq.bits(15,0))}
-	is(Bits("b00")) {srq_enq_data_bits_int <== Fill(8, io.sdq_deq.bits(7,0))}
+	is(Bits("b11")) {srq_enq_data_bits_int := io.sdq_deq.bits(63,0)}
+	is(Bits("b10")) {srq_enq_data_bits_int := Fill(2, io.sdq_deq.bits(31,0))}
+	is(Bits("b01")) {srq_enq_data_bits_int := Fill(4, io.sdq_deq.bits(15,0))}
+	is(Bits("b00")) {srq_enq_data_bits_int := Fill(8, io.sdq_deq.bits(7,0))}
       }
     }
 
@@ -104,82 +104,82 @@ package hwacha {
     decoder_dp.io.in := io.sdq_deq.bits
     sdq_deq_dp_bits := decoder_dp.io.out
 
-    store_data_wmask <== Bits(0,8)
+    store_data_wmask := Bits(0,8)
 
     switch(cmd_type_reg(1,0))
     {
-      is(UFix(3,2)) { store_data_wmask <== Bits("hFF", 8) }
-      is(UFix(2,2)) { store_data_wmask <== Mux(req_addr(2).toBool,Bits("hF0",8),Bits("h0F",8)) }
+      is(UFix(3,2)) { store_data_wmask := Bits("hFF", 8) }
+      is(UFix(2,2)) { store_data_wmask := Mux(req_addr(2).toBool,Bits("hF0",8),Bits("h0F",8)) }
       is(UFix(1,2))
       {
         switch(req_addr(2,1))
         {
-          is(UFix(0,2)) { store_data_wmask <== Bits("h03", 8) }
-          is(UFix(1,2)) { store_data_wmask <== Bits("h0C", 8) }
-          is(UFix(2,2)) { store_data_wmask <== Bits("h30", 8) }
-          is(UFix(3,2)) { store_data_wmask <== Bits("hC0", 8) }
+          is(UFix(0,2)) { store_data_wmask := Bits("h03", 8) }
+          is(UFix(1,2)) { store_data_wmask := Bits("h0C", 8) }
+          is(UFix(2,2)) { store_data_wmask := Bits("h30", 8) }
+          is(UFix(3,2)) { store_data_wmask := Bits("hC0", 8) }
         }
       }
       is(UFix(0,2)) { 
         switch(req_addr(2,0)) {
-          is(UFix(0,3)) { store_data_wmask <== Bits("h01", 8) }
-          is(UFix(1,3)) { store_data_wmask <== Bits("h02", 8) }
-          is(UFix(2,3)) { store_data_wmask <== Bits("h04", 8) }
-          is(UFix(3,3)) { store_data_wmask <== Bits("h08", 8) }
-          is(UFix(4,3)) { store_data_wmask <== Bits("h10", 8) }
-          is(UFix(5,3)) { store_data_wmask <== Bits("h20", 8) }
-          is(UFix(6,3)) { store_data_wmask <== Bits("h40", 8) }
-          is(UFix(7,3)) { store_data_wmask <== Bits("h80", 8) }
+          is(UFix(0,3)) { store_data_wmask := Bits("h01", 8) }
+          is(UFix(1,3)) { store_data_wmask := Bits("h02", 8) }
+          is(UFix(2,3)) { store_data_wmask := Bits("h04", 8) }
+          is(UFix(3,3)) { store_data_wmask := Bits("h08", 8) }
+          is(UFix(4,3)) { store_data_wmask := Bits("h10", 8) }
+          is(UFix(5,3)) { store_data_wmask := Bits("h20", 8) }
+          is(UFix(6,3)) { store_data_wmask := Bits("h40", 8) }
+          is(UFix(7,3)) { store_data_wmask := Bits("h80", 8) }
         }
       }
     }
 
-    io.stcmdq_deq_rdy <== Bool(false)
-    io.sdq_deq.rdy <== Bool(false)
-    io.utaq_deq_rdy <== Bool(false)
-    io.srq_enq_val <== Bool(false)
-    io.roq_deq_tag_rdy <== Bool(false)
+    io.stcmdq_deq_rdy := Bool(false)
+    io.sdq_deq.rdy := Bool(false)
+    io.utaq_deq_rdy := Bool(false)
+    io.srq_enq_val := Bool(false)
+    io.roq_deq_tag_rdy := Bool(false)
 
     switch(state) {
       is(VMU_Ctrl_Idle) {
-        io.stcmdq_deq_rdy <== Bool(true)
+        io.stcmdq_deq_rdy := Bool(true)
         when(io.stcmdq_deq_val) {
-          vlen_reg <== vlen
-          cmd_type_reg <== cmd_type
+          vlen_reg := vlen
+          cmd_type_reg := cmd_type
           when(cmd_type_amo.toBool()) {
-            addr_reg <== UFix(0, 32)
-            state <== VMU_Ctrl_AMO
+            addr_reg := UFix(0, 32)
+            state := VMU_Ctrl_AMO
           }
           when(!cmd_type_amo.toBool()) {
-            addr_reg <== addr
-            state <== VMU_Ctrl_Store
+            addr_reg := addr
+            state := VMU_Ctrl_Store
           }
         }
       }
       is(VMU_Ctrl_Store) {
-        io.sdq_deq.rdy <== io.utaq_deq_val && io.srq_enq_rdy
-        io.utaq_deq_rdy <== io.sdq_deq.valid && io.srq_enq_rdy
-        io.srq_enq_val <== io.sdq_deq.valid && io.utaq_deq_val
+        io.sdq_deq.rdy := io.utaq_deq_val && io.srq_enq_rdy
+        io.utaq_deq_rdy := io.sdq_deq.valid && io.srq_enq_rdy
+        io.srq_enq_val := io.sdq_deq.valid && io.utaq_deq_val
         when( io.sdq_deq.valid && io.utaq_deq_val && io.srq_enq_rdy ) {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when( vlen_reg != UFix(0,UTMCMD_VLEN_SZ) ) {
-            vlen_reg <== vlen_reg - UFix(1,UTMCMD_VLEN_SZ)
+            vlen_reg := vlen_reg - UFix(1,UTMCMD_VLEN_SZ)
           }
         }
       }
       is(VMU_Ctrl_AMO) {
-        io.sdq_deq.rdy      <== io.utaq_deq_val && io.srq_enq_rdy && io.roq_deq_tag_val
-        io.utaq_deq_rdy     <== io.sdq_deq.valid && io.srq_enq_rdy && io.roq_deq_tag_val
-        io.srq_enq_val      <== io.sdq_deq.valid && io.utaq_deq_val && io.roq_deq_tag_val
-        io.roq_deq_tag_rdy  <== io.utaq_deq_val && io.srq_enq_rdy && io.sdq_deq.valid
+        io.sdq_deq.rdy      := io.utaq_deq_val && io.srq_enq_rdy && io.roq_deq_tag_val
+        io.utaq_deq_rdy     := io.sdq_deq.valid && io.srq_enq_rdy && io.roq_deq_tag_val
+        io.srq_enq_val      := io.sdq_deq.valid && io.utaq_deq_val && io.roq_deq_tag_val
+        io.roq_deq_tag_rdy  := io.utaq_deq_val && io.srq_enq_rdy && io.sdq_deq.valid
         when( io.sdq_deq.valid && io.utaq_deq_val && io.roq_deq_tag_val && io.srq_enq_rdy ) {
           when( vlen_reg === UFix(0,UTMCMD_VLEN_SZ) ) {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when( vlen_reg != UFix(0,UTMCMD_VLEN_SZ) ) {
-            vlen_reg <== vlen_reg - UFix(1,UTMCMD_VLEN_SZ)
+            vlen_reg := vlen_reg - UFix(1,UTMCMD_VLEN_SZ)
           }
         }
       }

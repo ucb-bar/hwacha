@@ -84,120 +84,120 @@ package hwacha
 
     val addr_incr = addr_reg + stride_reg
 
-    store_data_wmask <== Bits(0,8)
+    store_data_wmask := Bits(0,8)
 
     switch(cmd_type_reg(1,0))
     {
       is(Bits("b11"))
       {
-        store_data_wmask <== Bits("b11111111")
+        store_data_wmask := Bits("b11111111")
       }
       is(Bits("b10"))
       {
         switch(addr_reg(2))
         {
-          is(Bits(0)) {store_data_wmask <== Bits("b00001111")}
-          is(Bits(1)) {store_data_wmask <== Bits("b11110000")}
+          is(Bits(0)) {store_data_wmask := Bits("b00001111")}
+          is(Bits(1)) {store_data_wmask := Bits("b11110000")}
         }
       }
       is(Bits("b01"))
       {
         switch(addr_reg(2,1))
         {
-          is(Bits("b00")) {store_data_wmask <== Bits("b00000011")}
-          is(Bits("b01")) {store_data_wmask <== Bits("b00001100")}
-          is(Bits("b10")) {store_data_wmask <== Bits("b00110000")}
-          is(Bits("b11")) {store_data_wmask <== Bits("b11000000")}
+          is(Bits("b00")) {store_data_wmask := Bits("b00000011")}
+          is(Bits("b01")) {store_data_wmask := Bits("b00001100")}
+          is(Bits("b10")) {store_data_wmask := Bits("b00110000")}
+          is(Bits("b11")) {store_data_wmask := Bits("b11000000")}
         }
       }
       is(Bits("b00"))
       {
         switch(addr_reg(2,0))
         {
-          is(Bits("b000")) {store_data_wmask <== Bits("b00000001")}
-          is(Bits("b001")) {store_data_wmask <== Bits("b00000010")}
-          is(Bits("b010")) {store_data_wmask <== Bits("b00000100")}
-          is(Bits("b011")) {store_data_wmask <== Bits("b00001000")}
-          is(Bits("b100")) {store_data_wmask <== Bits("b00010000")}
-          is(Bits("b101")) {store_data_wmask <== Bits("b00100000")}
-          is(Bits("b110")) {store_data_wmask <== Bits("b01000000")}
-          is(Bits("b111")) {store_data_wmask <== Bits("b10000000")}
+          is(Bits("b000")) {store_data_wmask := Bits("b00000001")}
+          is(Bits("b001")) {store_data_wmask := Bits("b00000010")}
+          is(Bits("b010")) {store_data_wmask := Bits("b00000100")}
+          is(Bits("b011")) {store_data_wmask := Bits("b00001000")}
+          is(Bits("b100")) {store_data_wmask := Bits("b00010000")}
+          is(Bits("b101")) {store_data_wmask := Bits("b00100000")}
+          is(Bits("b110")) {store_data_wmask := Bits("b01000000")}
+          is(Bits("b111")) {store_data_wmask := Bits("b10000000")}
         }
       }
     }
 
-    io.stcmdq_deq_rdy <== Bool(false)
-    io.sdq_deq.rdy <== Bool(false)
-    io.srq_enq_val <== Bool(false)
-    sbuf_enq_val <== Bool(false)
+    io.stcmdq_deq_rdy := Bool(false)
+    io.sdq_deq.rdy := Bool(false)
+    io.srq_enq_val := Bool(false)
+    sbuf_enq_val := Bool(false)
 
     switch(state)
     {
       is(VMU_Ctrl_Idle)
       {
-        io.stcmdq_deq_rdy <== Bool(true)
+        io.stcmdq_deq_rdy := Bool(true)
         when(io.stcmdq_deq_val)
         {
-          addr_reg <== addr
-          stride_reg <== stride
-          vlen_reg <== vlen
-          cmd_type_reg <== cmd_type
-          state <== VMU_Ctrl_Store
+          addr_reg := addr
+          stride_reg := stride
+          vlen_reg := vlen
+          cmd_type_reg := cmd_type
+          state := VMU_Ctrl_Store
         }
       }
       is(VMU_Ctrl_Store)
       {
-        io.sdq_deq.rdy <== Bool(true)
+        io.sdq_deq.rdy := Bool(true)
         when(io.sdq_deq.valid)
         {
-          sbuf_enq_val <== Bool(true)
+          sbuf_enq_val := Bool(true)
           when(vlen_reg === UFix(0))
           {
-            io.srq_enq_val <== Bool(true)
-	    vlen_reg <== vlen_reg
+            io.srq_enq_val := Bool(true)
+	    vlen_reg := vlen_reg
             when(io.srq_enq_rdy)
             {
-              state <== VMU_Ctrl_Idle
+              state := VMU_Ctrl_Idle
             }
             when(!io.srq_enq_rdy)
             {
-              state <== VMU_Ctrl_StoreWait
+              state := VMU_Ctrl_StoreWait
             }
           }
           when(vlen_reg != UFix(0) && addr_incr(31,4) != addr_reg(31,4))
           {
-            io.srq_enq_val <== Bool(true)
+            io.srq_enq_val := Bool(true)
             when(io.srq_enq_rdy)
             {
-              addr_reg <== addr_reg + stride_reg
-              vlen_reg <== vlen_reg - UFix(1)
+              addr_reg := addr_reg + stride_reg
+              vlen_reg := vlen_reg - UFix(1)
             }
             when(!io.srq_enq_rdy)
             {
-              state <== VMU_Ctrl_StoreWait
+              state := VMU_Ctrl_StoreWait
             }
           }
           when(vlen_reg != UFix(0) && addr_incr(31,4) === addr_reg(31,4))
           {
-            addr_reg <== addr_incr
-            vlen_reg <== vlen_reg - UFix(1)
+            addr_reg := addr_incr
+            vlen_reg := vlen_reg - UFix(1)
           }
         }
       }
       is(VMU_Ctrl_StoreWait)
       {
-        io.srq_enq_val <== Bool(true)
+        io.srq_enq_val := Bool(true)
         when(io.srq_enq_rdy)
         {
           when(vlen_reg === UFix(0))
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(vlen_reg != UFix(0))
           {
-            addr_reg <== addr_incr
-            vlen_reg <== vlen_reg - UFix(1)
-            state <== VMU_Ctrl_Store
+            addr_reg := addr_incr
+            vlen_reg := vlen_reg - UFix(1)
+            state := VMU_Ctrl_Store
           }
         }
       }

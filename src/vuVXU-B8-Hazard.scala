@@ -67,12 +67,12 @@ class vuVXU_Banked8_Hazard extends Component
 
   for (i <- 0 until SZ_BANK)
   {
-    next_rport_val(i) <== array_rport_val(i)
-    next_rport_vau0(i) <== array_rport_vau0(i)
-    next_rport_vau1(i) <== array_rport_vau1(i)
-    next_rport_vau2(i) <== array_rport_vau2(i)
-    next_rport_vsu(i) <== array_rport_vsu(i)
-    next_rport_vgu(i) <== array_rport_vgu(i)
+    next_rport_val(i) := array_rport_val(i)
+    next_rport_vau0(i) := array_rport_vau0(i)
+    next_rport_vau1(i) := array_rport_vau1(i)
+    next_rport_vau2(i) := array_rport_vau2(i)
+    next_rport_vsu(i) := array_rport_vsu(i)
+    next_rport_vgu(i) := array_rport_vgu(i)
   }
 
   when (io.fire.viu)
@@ -277,13 +277,13 @@ class vuVXU_Banked8_Hazard extends Component
 
   for (i <- 0 until SZ_BANK)
   {
-    next_wport_val(i) <== array_wport_val(i)
-    next_wport_head(i) <== array_wport_head(i)
-    next_wport_vau0(i) <== array_wport_vau0(i)
-    next_wport_vau1(i) <== array_wport_vau1(i)
-    next_wport_vau2(i) <== array_wport_vau2(i)
-    next_wport_vlu(i) <== array_wport_vlu(i)
-    next_wport_vd(i) <== array_wport_vd(i)
+    next_wport_val(i) := array_wport_val(i)
+    next_wport_head(i) := array_wport_head(i)
+    next_wport_vau0(i) := array_wport_vau0(i)
+    next_wport_vau1(i) := array_wport_vau1(i)
+    next_wport_vau2(i) := array_wport_vau2(i)
+    next_wport_vlu(i) := array_wport_vlu(i)
+    next_wport_vd(i) := array_wport_vd(i)
   }
 
   when (io.fire.viu)
@@ -360,7 +360,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   for (i <- 0 until SZ_BANK)
   {
-    next_sport_val(i) <== array_sport_val(i)
+    next_sport_val(i) := array_sport_val(i)
   }
 
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)

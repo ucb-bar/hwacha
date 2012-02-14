@@ -90,41 +90,41 @@ package hwacha {
     bhwd_sel.io.din       := delay_roq_deq_bits
     ldq_bits              := bhwd_sel.io.dout
 
-    io.wbcmdq_deq_rdy <== Bool(false)
-    io.roq_deq_rdy <== Bool(false)
-    buf_ldq_enq_val <== Bool(false)
-    vec_done <== Bool(false)
+    io.wbcmdq_deq_rdy := Bool(false)
+    io.roq_deq_rdy := Bool(false)
+    buf_ldq_enq_val := Bool(false)
+    vec_done := Bool(false)
 
     switch(state)
     {
       is(VMU_Ctrl_Idle)
       {
-        io.wbcmdq_deq_rdy <== Bool(true)
+        io.wbcmdq_deq_rdy := Bool(true)
         when(io.wbcmdq_deq_val)
         {
-          addr_reg <== addr
-          stride_reg <== stride
-          vlen_reg <== vlen
-          vlen_cnt_reg <== vlen
-          cmd_type_reg <== cmd_type
-          state <== VMU_Ctrl_Writeback
+          addr_reg := addr
+          stride_reg := stride
+          vlen_reg := vlen
+          vlen_cnt_reg := vlen
+          cmd_type_reg := cmd_type
+          state := VMU_Ctrl_Writeback
         }
       }
       is(VMU_Ctrl_Writeback)
       {
         when(io.roq_deq_val)
         {
-          buf_ldq_enq_val <== Bool(true)
+          buf_ldq_enq_val := Bool(true)
           when(buf_ldq_enq_rdy)
           {
-            addr_reg <== addr_reg + stride_reg
-            vlen_reg <== vlen_reg - UFix(1)
+            addr_reg := addr_reg + stride_reg
+            vlen_reg := vlen_reg - UFix(1)
             // Should double check to see
             // what is used in this comparison
             when( vlen_reg === UFix(0) ) 
             {
-              state <== VMU_Ctrl_Idle
-              io.roq_deq_rdy <== Bool(true)
+              state := VMU_Ctrl_Idle
+              io.roq_deq_rdy := Bool(true)
             }
             // Verilog was as follows
             // addr_next = addr_reg + stride_reg
@@ -132,37 +132,37 @@ package hwacha {
             when( vlen_reg != UFix(0) &&
                   addr_reg(31,4) != (addr_reg + stride_reg)(31,4) )
             {
-              io.roq_deq_rdy <== Bool(true)
+              io.roq_deq_rdy := Bool(true)
             }
           }
         }
         when(ldq_deq)
         {
-          vlen_cnt_reg <== vlen_cnt_reg - UFix(1)
+          vlen_cnt_reg := vlen_cnt_reg - UFix(1)
         }
       }
       is(VMU_Ctrl_WritebackDone)
       {
-        vec_done <== Bool(true)
+        vec_done := Bool(true)
         when(ldq_deq)
         {
           when(vlen_cnt_reg === UFix(0) )
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(vlen_cnt_reg != UFix(0) ) // otherwise
           {
-            vlen_cnt_reg <== vlen_cnt_reg - UFix(1)
+            vlen_cnt_reg := vlen_cnt_reg - UFix(1)
           }
           // Alternatively:
           // when(vlen_cnt_reg === UFix(0) )
           // {
-          //   state <== VMU_Ctrl_Idle
-          //   vlen_cnt_reg <== vlen_cnt_reg // to counter otherwise assignment
+          //   state := VMU_Ctrl_Idle
+          //   vlen_cnt_reg := vlen_cnt_reg // to counter otherwise assignment
           // }
           // otherwise
           // {
-          //   vlen_cnt_reg <== vlen_cnt_reg - UFix(1)
+          //   vlen_cnt_reg := vlen_cnt_reg - UFix(1)
           // }
 
         }

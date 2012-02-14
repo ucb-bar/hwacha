@@ -44,37 +44,37 @@ package hwacha {
     io.lrq_enq_addr_bits  := req_addr(31, 2)
     io.lrq_enq_tag_bits   := Cat(Bits(0,1), req_addr(2,0), io.roq_deq_tag_bits) 
 
-    io.lrq_enq_val      <== Bool(false) 
-    io.iscmdq_deq_rdy   <== Bool(false)
-    io.roq_deq_tag_rdy  <== Bool(false)
-    io.utaq_deq_rdy     <== Bool(false)
+    io.lrq_enq_val      := Bool(false) 
+    io.iscmdq_deq_rdy   := Bool(false)
+    io.roq_deq_tag_rdy  := Bool(false)
+    io.utaq_deq_rdy     := Bool(false)
 
     switch(state)
     {
       is(VMU_Ctrl_Idle)
       {
-        io.iscmdq_deq_rdy   <== Bool(true)
+        io.iscmdq_deq_rdy   := Bool(true)
         when(io.iscmdq_deq_val)
         {
-          state <== VMU_Ctrl_Issue
-          addr_reg <== addr
-          vlen_reg <== vlen
+          state := VMU_Ctrl_Issue
+          addr_reg := addr
+          vlen_reg := vlen
         }
       }
       is(VMU_Ctrl_Issue)
       {
-        io.lrq_enq_val      <== io.roq_deq_tag_val  & io.utaq_deq_val
-        io.roq_deq_tag_rdy  <== io.lrq_enq_rdy      & io.utaq_deq_val
-        io.utaq_deq_rdy     <== io.roq_deq_tag_val  & io.lrq_enq_rdy
+        io.lrq_enq_val      := io.roq_deq_tag_val  & io.utaq_deq_val
+        io.roq_deq_tag_rdy  := io.lrq_enq_rdy      & io.utaq_deq_val
+        io.utaq_deq_rdy     := io.roq_deq_tag_val  & io.lrq_enq_rdy
         when(io.lrq_enq_rdy && io.roq_deq_tag_val && io.utaq_deq_val)
         {
           when(vlen_reg === UFix(0))
           {
-            state <== VMU_Ctrl_Idle
+            state := VMU_Ctrl_Idle
           }
           when(vlen_reg != UFix(0))
           {
-            vlen_reg <== vlen_reg - UFix(1)
+            vlen_reg := vlen_reg - UFix(1)
           }
         }
       }
