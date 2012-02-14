@@ -44,8 +44,8 @@ package hwacha {
     // Mem <-- Read tutorial
     // compare with trainwreck/caches/sram.v
     // depth: Int, wrEnable: Bool, wrAddr: UFix, wrData: Data
-    Mem.setDefaultReadLatency(1)
     val data_array = Mem(ROQ_TAG_ENTRIES, io.roq_enq_val, roq_enq_tag_bits_int, io.roq_enq_data_bits) //, w_mask = Bits("b11111111",8))
+    data_array.setReadLatency(1)
     // readAddr: UFix, oe = output enable, cs = chip select
     io.roq_deq_data_bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr), oe = Bool(true), cs = Bool(true))
 
