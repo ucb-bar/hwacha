@@ -7,8 +7,6 @@ package hwacha {
   
   class vuVMUIO extends Bundle
   {
-    val vxu_to_vmu    = new io_vxu_to_vmu().asInput()
-
     val vmu_vcmdq     = new vmcmdqIO()
     val vmu_vbaseq    = new vmimmqIO()
     val vmu_vstrideq  = new vmstrideqIO()
@@ -17,31 +15,31 @@ package hwacha {
     val vmu_utimmq    = new utmimmqIO()
     val vmu_utackq    = new utmrespqIO()
 
-    val lane_vldq_deq_bits	= Bits(65, OUTPUT)
-    val lane_vldq_deq_val	= Bool(OUTPUT)
-    val lane_vldq_deq_rdy	= Bool(INPUT)
+    val vldq_enq_bits = Bits(65, OUTPUT)
+    val vldq_enq_valid = Bool(OUTPUT)
+    val vldq_enq_ready = Bool(INPUT)
 
-    val lane_vsdq_enq_bits	= Bits(65, INPUT)
-    val lane_vsdq_enq_val	= Bool(INPUT)
-    val lane_vsdq_enq_rdy	= Bool(OUTPUT)
+    val vsdq_deq_bits = Bits(65, INPUT)
+    val vsdq_deq_valid = Bool(INPUT)
+    val vsdq_deq_ready = Bool(OUTPUT)
 
-    val lane_utaq_enq_bits	= Bits(32, INPUT)
-    val lane_utaq_enq_val	= Bool(INPUT)
-    val lane_utaq_enq_rdy	= Bool(OUTPUT)
+    val utaq_deq_bits = Bits(32, INPUT)
+    val utaq_deq_valid = Bool(INPUT)
+    val utaq_deq_ready = Bool(OUTPUT)
 
-    val lane_utldq_deq_bits	= Bits(65, OUTPUT)
-    val lane_utldq_deq_val	= Bool(OUTPUT)
-    val lane_utldq_deq_rdy	= Bool(INPUT)
+    val utldq_enq_bits = Bits(65, OUTPUT)
+    val utldq_enq_valid = Bool(OUTPUT)
+    val utldq_enq_ready = Bool(INPUT)
 
-    val lane_utsdq_enq_bits	= Bits(65, INPUT)
-    val lane_utsdq_enq_val	= Bool(INPUT)
-    val lane_utsdq_enq_rdy	= Bool(OUTPUT)
+    val utsdq_deq_bits = Bits(65, INPUT)
+    val utsdq_deq_valid = Bool(INPUT)
+    val utsdq_deq_ready = Bool(OUTPUT)
 
-    val dmem_req_ut         = new ut_dcachereqIO()
-    val dmem_resp_ut        = new ut_dcacherespIO() 
+    val dmem_req_ut = new ut_dcachereqIO()
+    val dmem_resp_ut = new ut_dcacherespIO() 
 
-    val dmem_req_vec        = new vec_dcachereqIO()
-    val dmem_resp_vec       = new vec_dcacherespIO()
+    val dmem_req_vec = new vec_dcachereqIO()
+    val dmem_resp_vec = new vec_dcacherespIO()
   }
 
   
@@ -56,22 +54,6 @@ package hwacha {
 
     val ctrl_vec    = new vuVMU_Ctrl_vec()
     val ctrl_ut     = new vuVMU_Ctrl_ut()
-    // queues
-    // vldq queue and capacity counter
-    val vldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true)
-    val vldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES)
-    // vsdq queue and capacity counter
-    val vsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true)
-    val vsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES)
-    // utaq queue and capacity counter
-    val utaq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true)
-    val utaq = new queueSimplePF(32, VMU_QUEUE_ENTRIES)
-    // utldq queue and capacity counter
-    val utldq_count = new vuVMU_QueueCount(0, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true)
-    val utldq = new queueSimplePF(65, VMU_QUEUE_ENTRIES)
-    // utsdq queue and capacity counter
-    val utsdq_count = new vuVMU_QueueCount(VMU_QUEUE_ENTRIES, VMU_QUEUE_LEVEL+1, VMU_QUEUE_ENTRIES, true)
-    val utsdq = new queueSimplePF(65, VMU_QUEUE_ENTRIES)
 
     // ctrl_vec
     ctrl_vec.io.vmcmdq      <> io.vmu_vcmdq
@@ -81,13 +63,13 @@ package hwacha {
     ctrl_vec.io.dcachereq   <> io.dmem_req_vec 
     ctrl_vec.io.dcacheresp  <> io.dmem_resp_vec 
 
-    ctrl_vec.io.vldq.enq_rdy    := vldq.io.enq.ready
-    vldq.io.enq.valid             := ctrl_vec.io.vldq.enq_val
-    vldq.io.enq.bits            := ctrl_vec.io.vldq.enq_bits
+    ctrl_vec.io.vldq.enq_rdy    := io.vldq_enq_ready
+    io.vldq_enq_valid           := ctrl_vec.io.vldq.enq_val
+    io.vldq_enq_bits            := ctrl_vec.io.vldq.enq_bits
    
-    ctrl_vec.io.vsdq_deq.valid  := vsdq.io.deq.valid
-    ctrl_vec.io.vsdq_deq.bits   := vsdq.io.deq.bits
-    vsdq.io.deq.ready             := ctrl_vec.io.vsdq_deq.rdy
+    ctrl_vec.io.vsdq_deq.valid  := io.vsdq_deq_valid
+    ctrl_vec.io.vsdq_deq.bits   := io.vsdq_deq_bits
+    io.vsdq_deq_ready           := ctrl_vec.io.vsdq_deq.rdy
 
     // ctrl_ut
     ctrl_ut.io.utmcmdq    <> io.vmu_utcmdq
@@ -96,57 +78,16 @@ package hwacha {
     ctrl_ut.io.dcachereq  <> io.dmem_req_ut
     ctrl_ut.io.dcacheresp <> io.dmem_resp_ut
 
-    ctrl_ut.io.utaq_deq.valid   := utaq.io.deq.valid
-    ctrl_ut.io.utaq_deq.bits    := utaq.io.deq.bits
-    utaq.io.deq.ready             := ctrl_ut.io.utaq_deq.rdy
+    ctrl_ut.io.utaq_deq.valid   := io.utaq_deq_valid
+    ctrl_ut.io.utaq_deq.bits    := io.utaq_deq_bits
+    io.utaq_deq_ready           := ctrl_ut.io.utaq_deq.rdy
 
-    utldq.io.enq.valid            := ctrl_ut.io.utldq.enq_val
-    utldq.io.enq.bits           := ctrl_ut.io.utldq.enq_bits
-    ctrl_ut.io.utldq.enq_rdy    := utldq.io.enq.ready
+    io.utldq_enq_valid          := ctrl_ut.io.utldq.enq_val
+    io.utldq_enq_bits           := ctrl_ut.io.utldq.enq_bits
+    ctrl_ut.io.utldq.enq_rdy    := io.utldq_enq_ready
 
-    ctrl_ut.io.utsdq_deq.valid   := utsdq.io.deq.valid
-    ctrl_ut.io.utsdq_deq.bits    := utsdq.io.deq.bits
-    utsdq.io.deq.ready             := ctrl_ut.io.utsdq_deq.rdy
-    
-    // lane i/o
-    io.lane_vldq_deq_bits     := vldq.io.deq.bits
-    io.lane_vldq_deq_val      := vldq_count.io.ready 
-    vldq_count.io.qcnt        := io.vxu_to_vmu.qcnt
-    vldq_count.io.dec         := io.lane_vldq_deq_rdy
-    vldq.io.deq.ready           := io.lane_vldq_deq_rdy
-    ctrl_vec.io.vldq.deq_rdy  := io.lane_vldq_deq_rdy
-   
-    vsdq.io.enq.bits          := io.lane_vsdq_enq_bits
-    io.lane_vsdq_enq_rdy      := vsdq_count.io.ready
-    vsdq.io.enq.valid           := io.lane_vsdq_enq_val
-    vsdq_count.io.qcnt        := io.vxu_to_vmu.qcnt
-    vsdq_count.io.dec         := io.lane_vsdq_enq_val
-    
-    io.lane_utaq_enq_rdy      := utaq_count.io.ready
-    utaq.io.enq.bits          := io.lane_utaq_enq_bits
-    utaq.io.enq.valid           := io.lane_utaq_enq_val
-    utaq_count.io.qcnt        := io.vxu_to_vmu.qcnt
-    utaq_count.io.dec         := io.lane_utaq_enq_val
-
-    io.lane_utldq_deq_bits    := utldq.io.deq.bits
-    io.lane_utldq_deq_val     := utldq_count.io.ready
-    utldq_count.io.qcnt       := io.vxu_to_vmu.qcnt
-    utldq_count.io.dec        := io.lane_utldq_deq_rdy
-    utldq.io.deq.ready          := io.lane_utldq_deq_rdy
-    ctrl_ut.io.utldq.deq_rdy  := io.lane_utldq_deq_rdy
-
-    io.lane_utsdq_enq_rdy     := utsdq_count.io.ready
-    utsdq.io.enq.bits         := io.lane_utsdq_enq_bits
-    utsdq.io.enq.valid          := io.lane_utsdq_enq_val
-    utsdq_count.io.qcnt       := io.vxu_to_vmu.qcnt
-    utsdq_count.io.dec        := io.lane_utsdq_enq_val
-
-    // count enq
-    vldq_count.io.inc   := vldq.io.enq.valid && ctrl_vec.io.vldq.enq_rdy
-    vsdq_count.io.inc   := vsdq.io.deq.valid && ctrl_vec.io.vsdq_deq.rdy
-    utaq_count.io.inc   := utaq.io.deq.valid && ctrl_ut.io.utaq_deq.rdy
-    utldq_count.io.inc  := utldq.io.enq.valid && ctrl_ut.io.utldq.enq_rdy
-    utsdq_count.io.inc  := utsdq.io.deq.valid && ctrl_ut.io.utsdq_deq.rdy
-
+    ctrl_ut.io.utsdq_deq.valid  := io.utsdq_deq_valid
+    ctrl_ut.io.utsdq_deq.bits   := io.utsdq_deq_bits
+    io.utsdq_deq_ready          := ctrl_ut.io.utsdq_deq.rdy
   }
 }

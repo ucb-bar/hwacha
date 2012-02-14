@@ -8,7 +8,7 @@ class vuVMU_QueueCountIO(w: Int) extends Bundle
 {
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
-  val ready = Bool(OUTPUT)
+  val watermark = Bool(OUTPUT)
   val qcnt = UFix(w, INPUT)
 }
 
@@ -31,7 +31,7 @@ class vuVMU_QueueCount(reset_cnt : Int, ready_cnt : Int, max_cnt : Int, use_qcnt
 
   // we need to look at what's in the queue on the next cycle
   if (!use_qcnt)
-    io.ready := next_count >= UFix(ready_cnt)
+    io.watermark := next_count >= UFix(ready_cnt)
   else
-    io.ready := next_count >= io.qcnt
+    io.watermark := next_count >= io.qcnt
 }

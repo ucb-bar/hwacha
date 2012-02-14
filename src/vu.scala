@@ -14,19 +14,30 @@ class vu extends Component
   val vmu_vcmdq = VC_SIMPLE_QUEUE(VMCMD_SZ, 16)
   val vmu_vbaseq = VC_SIMPLE_QUEUE(VMIMM_SZ, 16)
   val vmu_vstrideq = VC_SIMPLE_QUEUE(VMSTRIDE_SZ, 16)
+  val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
+
+  val vldq = VC_SIMPLE_QUEUE(SZ_DATA, 16)
+  val vldq_count = new vuVMU_QueueCount(0, 9, 16, true)
+
+  val vsdq = VC_SIMPLE_QUEUE(SZ_DATA, 16)
+  val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
   val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 16)
+  val utaq = VC_SIMPLE_QUEUE(SZ_ADDR, 16)
+  val utaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
-  val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
+  val utldq = VC_SIMPLE_QUEUE(SZ_DATA, 16)
+  val utldq_count = new vuVMU_QueueCount(0, 9, 16, true)
 
-  vxu.io.lane_vaq.ready := vaq_count.io.ready
-  vaq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
-  vaq_count.io.dec := vxu.io.vmu_vbaseq.valid
-  vaq_count.io.inc := vmu_vbaseq.io.deq.valid && vmu_vbaseq.io.deq.ready
+  val utsdq = VC_SIMPLE_QUEUE(SZ_DATA, 16)
+  val utsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
-  vxu.io.illegal <> io.illegal
-  
+  val vmu = new vuVMU()
+
+  // vxu
+  io.illegal <> vxu.io.illegal
+
   vxu.io.vxu_cmdq <> io.vec_cmdq
   vxu.io.vxu_immq <> io.vec_ximm1q
   vxu.io.vxu_imm2q <> io.vec_ximm2q
@@ -50,10 +61,86 @@ class vu extends Component
   vxu.io.imem_resp <> io.imem_resp
 
 
-  val vmu = new vuVMU()
+  // vaq
+  vxu.io.lane_vaq.ready := vaq_count.io.watermark
+  vaq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  vaq_count.io.inc := vmu_vbaseq.io.deq.valid && vmu_vbaseq.io.deq.ready
+  vaq_count.io.dec := vxu.io.vmu_vbaseq.valid
 
-  vmu.io.vxu_to_vmu <> vxu.io.vxu_to_vmu
 
+  // vldq
+  vmu.io.vldq_enq_ready := vldq.io.enq.ready
+  vldq.io.enq.valid := vmu.io.vldq_enq_valid
+  vldq.io.enq.bits := vmu.io.vldq_enq_bits
+
+  vldq.io.deq.ready := vxu.io.lane_vldq.ready
+  vxu.io.lane_vldq.valid := vldq_count.io.watermark // vldq.deq.valid
+  vxu.io.lane_vldq.bits := vldq.io.deq.bits
+
+  vldq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  vldq_count.io.inc := vldq.io.enq.ready && vldq.io.enq.valid
+  //vldq_count.io.dec := vldq.io.deq.ready
+  vldq_count.io.dec := vxu.io.lane_vldq.ready
+
+
+  // vsdq
+  vxu.io.lane_vsdq.ready := vsdq_count.io.watermark // vsdq.io.enq.ready
+  vsdq.io.enq.valid := vxu.io.lane_vsdq.valid
+  vsdq.io.enq.bits := vxu.io.lane_vsdq.bits
+
+  vsdq.io.deq.ready := vmu.io.vsdq_deq_ready
+  vmu.io.vsdq_deq_valid := vsdq.io.deq.valid
+  vmu.io.vsdq_deq_bits := vsdq.io.deq.bits
+
+  vsdq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  vsdq_count.io.inc := vsdq.io.enq.valid
+  vsdq_count.io.dec := vsdq.io.deq.ready && vsdq.io.deq.valid
+
+
+  // utaq
+  vxu.io.lane_utaq.ready := utaq_count.io.watermark // utaq.io.enq.ready
+  utaq.io.enq.valid := vxu.io.lane_utaq.valid
+  utaq.io.enq.bits := vxu.io.lane_utaq.bits
+
+  utaq.io.deq.ready := vmu.io.utaq_deq_ready
+  vmu.io.utaq_deq_valid := utaq.io.deq.valid
+  vmu.io.utaq_deq_bits := utaq.io.deq.bits
+
+  utaq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  utaq_count.io.inc := utaq.io.enq.valid
+  utaq_count.io.dec := utaq.io.deq.ready && utaq.io.deq.valid
+
+
+  // utldq
+  vmu.io.utldq_enq_ready := utldq.io.enq.ready
+  utldq.io.enq.valid := vmu.io.utldq_enq_valid
+  utldq.io.enq.bits := vmu.io.utldq_enq_bits
+
+  utldq.io.deq.ready := vxu.io.lane_utldq.ready
+  vxu.io.lane_utldq.valid := utldq_count.io.watermark // utldq.deq.valid
+  vxu.io.lane_utldq.bits := utldq.io.deq.bits
+
+  utldq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  utldq_count.io.inc := utldq.io.enq.ready && utldq.io.enq.valid
+  //utldq_count.io.dec := utldq.io.deq.ready
+  utldq_count.io.dec := vxu.io.lane_utldq.ready
+
+
+  // utsdq
+  vxu.io.lane_utsdq.ready := utsdq_count.io.watermark // utsdq.io.enq.ready
+  utsdq.io.enq.valid := vxu.io.lane_utsdq.valid
+  utsdq.io.enq.bits := vxu.io.lane_utsdq.bits
+
+  utsdq.io.deq.ready := vmu.io.utsdq_deq_ready
+  vmu.io.utsdq_deq_valid := utsdq.io.deq.valid
+  vmu.io.utsdq_deq_bits := utsdq.io.deq.bits
+
+  utsdq_count.io.qcnt := vxu.io.vxu_to_vmu.qcnt
+  utsdq_count.io.inc := utsdq.io.enq.valid
+  utsdq_count.io.dec := utsdq.io.deq.ready && utsdq.io.deq.valid
+
+
+  // vmu
   vmu.io.vmu_vcmdq.bits <> vmu_vcmdq.io.deq.bits
   vmu.io.vmu_vcmdq.valid <> vmu_vcmdq.io.deq.valid
   vmu.io.vmu_vcmdq.rdy <> vmu_vcmdq.io.deq.ready
@@ -81,26 +168,6 @@ class vu extends Component
   vmu.io.vmu_utackq.bits <> vxu.io.vmu_utackq.bits
   vmu.io.vmu_utackq.valid <> vxu.io.vmu_utackq.valid
   vmu.io.vmu_utackq.rdy <> vxu.io.vmu_utackq.ready
-
-  vmu.io.lane_vldq_deq_bits <> vxu.io.lane_vldq.bits
-  vmu.io.lane_vldq_deq_val <> vxu.io.lane_vldq.valid
-  vmu.io.lane_vldq_deq_rdy <> vxu.io.lane_vldq.ready
-
-  vmu.io.lane_vsdq_enq_bits <> vxu.io.lane_vsdq.bits
-  vmu.io.lane_vsdq_enq_val <> vxu.io.lane_vsdq.valid
-  vmu.io.lane_vsdq_enq_rdy <> vxu.io.lane_vsdq.ready
-
-  vmu.io.lane_utaq_enq_bits <> vxu.io.lane_utaq.bits
-  vmu.io.lane_utaq_enq_val <> vxu.io.lane_utaq.valid
-  vmu.io.lane_utaq_enq_rdy <> vxu.io.lane_utaq.ready
-
-  vmu.io.lane_utldq_deq_bits <> vxu.io.lane_utldq.bits
-  vmu.io.lane_utldq_deq_val <> vxu.io.lane_utldq.valid
-  vmu.io.lane_utldq_deq_rdy <> vxu.io.lane_utldq.ready
-
-  vmu.io.lane_utsdq_enq_bits <> vxu.io.lane_utsdq.bits
-  vmu.io.lane_utsdq_enq_val <> vxu.io.lane_utsdq.valid
-  vmu.io.lane_utsdq_enq_rdy <> vxu.io.lane_utsdq.ready
 
   vmu.io.dmem_req_vec.addr <> io.dmem_req_vec.bits.addr
   vmu.io.dmem_req_vec.op <> io.dmem_req_vec.bits.op
