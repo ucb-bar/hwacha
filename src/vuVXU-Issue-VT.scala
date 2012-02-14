@@ -17,14 +17,8 @@ class vuVXU_Issue_VT extends Component
   val if_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
   val if_next_pc = if_reg_pc.toUFix() + UFix(4)
 
-  when (io.vf.fire)
-  {
-    if_reg_pc := io.vf.pc
-  }
-  when (!io.vf.fire && !stallf)
-  {
-    if_reg_pc := if_next_pc
-  }
+  when (io.vf.fire) { if_reg_pc := io.vf.pc }
+  .elsewhen (!stallf) { if_reg_pc := if_next_pc }
 
   io.imem_req.bits := Mux(
     stallf, if_reg_pc,
@@ -37,13 +31,10 @@ class vuVXU_Issue_VT extends Component
   {
     id_reg_inst := NOP
   }
-  when (!io.vf.fire && !stalld)
+  .elsewhen (!stalld)
   {
     id_reg_inst := io.imem_resp.bits
-    when (killf)
-    {
-      id_reg_inst := NOP
-    }
+    when (killf) { id_reg_inst := NOP }
   }
 
   val n = Bits(0,1)

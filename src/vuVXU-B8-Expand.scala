@@ -52,7 +52,7 @@ class vuVXU_Banked8_Expand extends Component
   for(i <- 0 until DEF_BRPORT)
     next_rblen(SHIFT_BUF_READ-1)(i)  := Bool(false)
 
-  when(io.seq.viu) 
+  when (io.seq.viu) 
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
@@ -72,12 +72,12 @@ class vuVXU_Banked8_Expand extends Component
       for(i <- 0 until DEF_BRPORT)
         next_rblen(1)(i)  := Bool(false)
     }
-    when(io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
+    when (io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
     {
       next_raddr(0) := io.seq_regid_imm.vt
     }
   }
-  when(io.seq.vau0) 
+  when (io.seq.vau0) 
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
@@ -98,12 +98,12 @@ class vuVXU_Banked8_Expand extends Component
       else
         next_rblen(1)(i) := Bool(false)
 
-    when(io.seq_regid_imm.vs_zero) { next_rblen(1)(0) := Bool(false) }
-    when(io.seq_regid_imm.vt_zero) { next_rblen(1)(1) := Bool(false) }
+    when (io.seq_regid_imm.vs_zero) { next_rblen(1)(0) := Bool(false) }
+    when (io.seq_regid_imm.vt_zero) { next_rblen(1)(1) := Bool(false) }
   }
-  when(io.seq.vau1)
+  when (io.seq.vau1)
   {
-    when(io.seq_fn.vau1(2).toBool)
+    when (io.seq_fn.vau1(2).toBool)
     {
       next_ren(0)    := Bool(true)
       next_rlast(0)  := io.seq_to_expand.last
@@ -133,11 +133,11 @@ class vuVXU_Banked8_Expand extends Component
           next_rblen(2)(i) := Bool(false)
 
 
-      when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
-      when(io.seq_regid_imm.vt_zero) { next_rblen(2)(3) := Bool(false) }
-      when(io.seq_regid_imm.vr_zero) { next_rblen(2)(4) := Bool(false) }
+      when (io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
+      when (io.seq_regid_imm.vt_zero) { next_rblen(2)(3) := Bool(false) }
+      when (io.seq_regid_imm.vr_zero) { next_rblen(2)(4) := Bool(false) }
     }
-    when(!io.seq_fn.vau1(2).toBool)
+    when (!io.seq_fn.vau1(2).toBool)
     {
       next_ren(0)    := Bool(true)
       next_rlast(0)  := io.seq_to_expand.last
@@ -159,11 +159,11 @@ class vuVXU_Banked8_Expand extends Component
           next_rblen(1)(i) := Bool(false)
       }
 
-      when(io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
-      when(io.seq_regid_imm.vt_zero) { next_rblen(2)(4) := Bool(false) }
+      when (io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
+      when (io.seq_regid_imm.vt_zero) { next_rblen(2)(4) := Bool(false) }
     }
   }
-  when(io.seq.vau2)
+  when (io.seq.vau2)
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
@@ -176,15 +176,15 @@ class vuVXU_Banked8_Expand extends Component
       else
         next_rblen(0)(i) := Bool(false) 
 
-    when(io.seq_regid_imm.vs_zero) { next_rblen(0)(5) := Bool(false) }
+    when (io.seq_regid_imm.vs_zero) { next_rblen(0)(5) := Bool(false) }
   }
-  when(io.seq.vaq)
+  when (io.seq.vaq)
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
     next_rcnt(0)   := io.seq_regid_imm.cnt
   }
-  when(io.seq.utaq)
+  when (io.seq.utaq)
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
@@ -197,9 +197,9 @@ class vuVXU_Banked8_Expand extends Component
       else
         next_rblen(0)(i) := Bool(false)
 
-    when(io.seq_regid_imm.vs_zero) { next_rblen(0)(6) := Bool(false) }
+    when (io.seq_regid_imm.vs_zero) { next_rblen(0)(6) := Bool(false) }
   }
-  when(io.seq.vsdq || io.seq.utsdq)
+  when (io.seq.vsdq || io.seq.utsdq)
   {
     next_ren(0)    := Bool(true)
     next_rlast(0)  := io.seq_to_expand.last
@@ -212,7 +212,7 @@ class vuVXU_Banked8_Expand extends Component
       else
         next_rblen(0)(i) := Bool(false)
 
-    when(io.seq_regid_imm.vt_zero) { next_rblen(0)(7) := Bool(false) }
+    when (io.seq_regid_imm.vt_zero) { next_rblen(0)(7) := Bool(false) }
   }
 
   val next_wen   = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
@@ -265,7 +265,7 @@ class vuVXU_Banked8_Expand extends Component
   next_waddr(SHIFT_BUF_WRITE-1) := Bits("d0", 8)
   next_wsel(SHIFT_BUF_WRITE-1)  := Bits("d0", 3)
       
-  when(io.seq.viu)
+  when (io.seq.viu)
   {
     next_wen.write(viu_wptr, Bool(true))
     next_wlast.write(viu_wptr, io.seq_to_expand.last)
@@ -273,7 +273,7 @@ class vuVXU_Banked8_Expand extends Component
     next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
     next_wsel.write(viu_wptr, Bits("d4", 3))
   }
-  when(io.seq.vau0)
+  when (io.seq.vau0)
   {
     next_wen.write(vau0_wptr, Bool(true))
     next_wlast.write(vau0_wptr, io.seq_to_expand.last)
@@ -281,7 +281,7 @@ class vuVXU_Banked8_Expand extends Component
     next_waddr.write(vau0_wptr, io.seq_regid_imm.vd)
     next_wsel.write(vau0_wptr, Bits("d0", 3))
   }
-  when(io.seq.vau1)
+  when (io.seq.vau1)
   {
     next_wen.write(vau1_wptr, Bool(true))
     next_wlast.write(vau1_wptr, io.seq_to_expand.last)
@@ -289,7 +289,7 @@ class vuVXU_Banked8_Expand extends Component
     next_waddr.write(vau1_wptr, io.seq_regid_imm.vd)
     next_wsel.write(vau1_wptr, Bits("d1", 3))
   }
-  when(io.seq.vau2)
+  when (io.seq.vau2)
   {
     next_wen.write(vau2_wptr, Bool(true))
     next_wlast.write(vau2_wptr, io.seq_to_expand.last)
@@ -412,95 +412,81 @@ class vuVXU_Banked8_Expand extends Component
   next_utldq(SHIFT_BUF_READ-1)     := Bool(false)
   next_utsdq(SHIFT_BUF_READ-1)     := Bool(false)
 
-  when(io.seq.viu)
+  when (io.seq.viu)
   {
-    when(io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
+    when (io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
     {
       next_viu(1) := Bool(true)
-      when(io.seq_regid_imm.vs_zero)
+      when (io.seq_regid_imm.vs_zero)
       {
-        when(io.seq_regid_imm.vt_zero){
-          next_viu_fn(1) := Cat(M0, M0, io.seq_fn.viu(6,0))
-        }
-        when(!io.seq_regid_imm.vt_zero)
-        {
-          next_viu_fn(1) := Cat(M0, io.seq_fn.viu(8,0))
-        }
+        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(M0, M0, io.seq_fn.viu(6,0)) }
+        .otherwise { next_viu_fn(1) := Cat(M0, io.seq_fn.viu(8,0)) }
       }
-      when(!io.seq_regid_imm.vs_zero)
+      .otherwise
       {
-        when(io.seq_regid_imm.vt_zero)
-        {
-          next_viu_fn(1) := Cat(io.seq_fn.viu(10,9), 
-                                 M0, 
-                                 io.seq_fn.viu(6,0))
-        }
-        when(!io.seq_regid_imm.vt_zero)
-        {
-          next_viu_fn(1) := io.seq_fn.viu
-        }
+        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(io.seq_fn.viu(10,9), M0, io.seq_fn.viu(6,0)) }
+        .otherwise { next_viu_fn(1) := io.seq_fn.viu }
       }
     }
-    when(io.seq_fn.viu(RG_VIU_T) != Cat(ML,MR))
+    .otherwise
     {
       next_viu(0)       := Bool(true)
       next_viu_fn(0)    := io.seq_fn.viu
       next_viu_utidx(0) := io.seq_regid_imm.utidx
       next_viu_imm(0)   := io.seq_regid_imm.imm
 
-      when(io.seq_regid_imm.vs_zero){ next_viu_fn(0) := Cat(M0, io.seq_fn.viu(8,0)) }
-
+      when (io.seq_regid_imm.vs_zero) { next_viu_fn(0) := Cat(M0, io.seq_fn.viu(8,0)) }
     }
   }
-  when(io.seq.vau0)
+  when (io.seq.vau0)
   {
     next_vau0(1)    := Bool(true)
     next_vau0_fn(1) := io.seq_fn.vau0
   }
-  when(io.seq.vau1)
+  when (io.seq.vau1)
   {
-    when(io.seq_fn.vau1(2).toBool)
+    when (io.seq_fn.vau1(2).toBool)
     {
       next_vau1(2)    := Bool(true)
       next_vau1_fn(2) := io.seq_fn.vau1
     }
-    when(!io.seq_fn.vau1(2).toBool)
+    .otherwise
     {
       next_vau1(1)    := Bool(true)
       next_vau1_fn(1) := io.seq_fn.vau1
     }
   }
-  when(io.seq.vau2)
+  when (io.seq.vau2)
   {
     next_vau2(0)    := Bool(true)
     next_vau2_fn(0) := io.seq_fn.vau2
   }
-  when(io.seq.vaq)
+  when (io.seq.vaq)
   {
     next_vaq(0) := Bool(true)
     next_cmd(0) := io.seq_regid_imm.cmd
     next_imm(0) := io.seq_regid_imm.imm
     next_imm2(0) := io.seq_regid_imm.imm2
   }
-  when(io.seq.vldq)
+  when (io.seq.vldq)
   {
     next_vldq(0) := Bool(true)
   }
-  when(io.seq.vsdq)
+  when (io.seq.vsdq)
   {
     next_vsdq(0) := Bool(true)
   }
-  when(io.seq.utaq)
+  when (io.seq.utaq)
   {
     next_utaq(0) := Bool(true)
     next_cmd(0) := io.seq_regid_imm.cmd
     next_imm(0) := io.seq_regid_imm.imm
   }
-  when(io.seq.utldq)
+  when (io.seq.utldq)
   {
     next_utldq(0) := Bool(true)
   }
-  when(io.seq.utsdq)
+  when (io.seq.utsdq)
   {
     next_utsdq(0) := Bool(true)
   }
