@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Interface._
+import Config._
 
 class io_roq_enq_bundle(ROQ_DATA_SIZE :Int, ROQ_TAG_SIZE :Int) extends Bundle
 {
@@ -20,8 +21,9 @@ class io_roqcnt(ROQ_DATA_SIZE :Int, ROQ_TAG_SIZE :Int) extends Bundle
   val watermark = Bool(OUTPUT)
 }
 
-class roqcnt(ROQ_DATA_SIZE :Int, ROQ_TAG_ENTRIES :Int, ROQ_TAG_SIZE :Int, ROQ_MAX_QCNT :Int) extends Component
+class roqcnt(ROQ_DATA_SIZE :Int, ROQ_TAG_ENTRIES :Int, ROQ_MAX_QCNT :Int) extends Component
 {
+  val ROQ_TAG_SIZE = log2up(ROQ_TAG_ENTRIES)
   val io = new io_roqcnt(ROQ_DATA_SIZE, ROQ_TAG_SIZE)
   
   val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
