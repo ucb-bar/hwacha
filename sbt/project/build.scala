@@ -1,7 +1,8 @@
 import sbt._
 import Keys._
 
-object BuildSettings {
+object BuildSettings
+{
   val buildOrganization = "edu.berkeley.cs"
   val buildVersion = "1.1"
   val buildScalaVersion = "2.8.1"
@@ -14,9 +15,11 @@ object BuildSettings {
 
 }
 
-object ChiselBuild extends Build{
+object ChiselBuild extends Build
+{
   import BuildSettings._
 
-  lazy val myvec = Project("vector", file("."), settings = buildSettings) aggregate(vector)
-  lazy val vector = Project("hwacha", file("hwacha"), settings = buildSettings)
+  lazy val chisel = Project("chisel", file("chisel"), settings = buildSettings)
+  lazy val hardfloat = Project("hardfloat", file("hardfloat"), settings = buildSettings) dependsOn(chisel)
+  lazy val hwacha = Project("hwacha", file("hwacha"), settings = buildSettings) dependsOn(chisel, hardfloat)
 }
