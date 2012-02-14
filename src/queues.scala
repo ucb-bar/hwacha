@@ -1,5 +1,4 @@
 package queues
-{
 
 import Chisel._
 import Node._
@@ -14,6 +13,12 @@ object log2up
 class io_ready_valid[T <: Data]()(data: => T) extends Bundle
 {
   val ready = Bool(INPUT)
+  val valid = Bool(OUTPUT)
+  val bits = data.asOutput
+}
+
+class io_valid[T <: Data]()(data: => T) extends Bundle
+{
   val valid = Bool(OUTPUT)
   val bits = data.asOutput
 }
@@ -39,7 +44,7 @@ class queueCtrl1_pipe extends Component
   val deq_val_int = !empty
   val do_enq = enq_rdy_int && io.enq_val
   val do_deq = io.deq_rdy && deq_val_int
-  
+
   val do_pipe = full && do_enq && do_deq
 
   io.wen := do_enq
@@ -119,7 +124,7 @@ class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
     Mux(do_enq, enq_ptr_inc,
         enq_ptr)
 
-  val full_next = 
+  val full_next =
     Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
     Mux(do_deq && full && ~do_pipe,                       Bool(false),
         full))
@@ -176,7 +181,7 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
     Mux(do_enq, enq_ptr_inc,
         enq_ptr)
 
-  val full_next = 
+  val full_next =
     Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
     Mux(do_deq && full,                                   Bool(false),
         full))
@@ -199,7 +204,7 @@ class queueSimplePF(data_sz: Int, entries: Int) extends Component
   val ctrl = new queueCtrl(entries, addr_sz)
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
-  ctrl.io.enq_val <> io.enq.valid     
+  ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
   val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits)
   io.deq.bits := ram(ctrl.io.raddr)
@@ -212,14 +217,14 @@ class queuePipePF(data_sz: Int, entries: Int) extends Component
   val ctrl = new queueCtrl_pipe(entries, addr_sz)
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
-  ctrl.io.enq_val <> io.enq.valid     
+  ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
   val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits)
   io.deq.bits := ram(ctrl.io.raddr)
 }
 
 // TODO: SHOULD USE INHERITANCE BUT BREAKS INTROSPECTION CODE
-// class IOqueueCtrlFlow extends IOqueueCtrl 
+// class IOqueueCtrlFlow extends IOqueueCtrl
 class IOqueueCtrlFlow(addr_sz: Int) extends Bundle() /* IOqueueCtrl */
 {
   val enq_val  = Bool(INPUT)
@@ -280,7 +285,7 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
     Mux(do_enq && ~do_flowthru, enq_ptr_inc,
         enq_ptr)
 
-  val full_next = 
+  val full_next =
     Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
     Mux(do_deq && full,                                   Bool(false),
         full))
@@ -355,7 +360,7 @@ class queueFlowPF(data_sz: Int, entries: Int) extends Component
   ctrl.io.raddr     <> dpath.io.raddr
   ctrl.io.waddr     <> dpath.io.waddr
   ctrl.io.flowthru  <> dpath.io.flowthru
-  ctrl.io.enq_val   <> io.enq.valid       
+  ctrl.io.enq_val   <> io.enq.valid
   dpath.io.enq_bits <> io.enq.bits
 
   ctrl.io.deq_val   <> io.deq.valid
@@ -363,4 +368,155 @@ class queueFlowPF(data_sz: Int, entries: Int) extends Component
   dpath.io.deq_bits <> io.deq.bits
 }
 
+class io_queue_spec[T <: Data](data: => T) extends Bundle
+{
+  val enq = new io_ready_valid()({ data }).flip()
+  val deq = new io_ready_valid()({ data })
+
+  val ack = Bool(INPUT)
+  val nack = Bool(INPUT)
+}
+
+class queue_spec[T <: Data](entries: Int)(data: => T) extends Component
+{
+  val io = new io_queue_spec(data)
+
+  // cannot ack and nack at the same cycle
+  // chisel_assert(io.ack && !io.nack)
+  // chisel_assert(!io.ack && io.nack)
+
+  val enq_ptr = Reg(resetVal = UFix(0, log2up(entries)))
+  val deq_ptr = Reg(resetVal = UFix(0, log2up(entries)))
+  val deq_ptr_spec = Reg(resetVal = UFix(0, log2up(entries)))
+  val full = Reg(resetVal = Bool(false))
+  val full_spec = Reg(resetVal = Bool(false))
+
+  // enq is not affected by nack
+  // since enqueuing is governed by the non-spec deq ptr
+  io.enq.ready := !full
+
+  // can't bypass the deq pointer
+  // since a nack signal might be late
+  io.deq.valid := !io.nack && (full_spec || (enq_ptr != deq_ptr_spec))
+
+  val do_enq = io.enq.ready && io.enq.valid
+  val do_deq = io.ack
+  val do_deq_spec = io.deq.ready && io.deq.valid
+
+  val enq_ptr_inc = enq_ptr + UFix(1)
+
+  when (do_enq) { enq_ptr := enq_ptr_inc }
+  when (do_deq) { deq_ptr := deq_ptr + UFix(1) }
+  when (do_deq_spec) { deq_ptr_spec := deq_ptr_spec + UFix(1) }
+
+  val full_next =
+    Mux(do_enq && !do_deq && (enq_ptr_inc === deq_ptr), Bool(true),
+    Mux(do_deq && full, Bool(false),
+        full))
+
+  full := full_next
+
+  when (io.nack)
+  {
+    deq_ptr_spec := deq_ptr
+    full_spec := full_next
+  }
+  .otherwise
+  {
+    full_spec :=
+      Mux(do_enq && !do_deq_spec && (enq_ptr_inc === deq_ptr_spec), Bool(true),
+      Mux(do_deq_spec && full_spec, Bool(false),
+          full_spec))
+  }
+
+  io.deq.bits <> Mem(entries, do_enq, enq_ptr, io.enq.bits).read(deq_ptr_spec)
+}
+
+class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
+{
+  val data = Bits(width=ROQ_DATA_SIZE)
+  val rtag = UFix(width=ROQ_TAG_SIZE)
+}
+
+class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
+{
+  val deq_rtag = new io_ready_valid()( {Bits(width=ROQ_TAG_SIZE)} )
+  val deq_data = new io_ready_valid()( {Bits(width=ROQ_DATA_SIZE)} )
+  val enq = new io_valid()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip()
+
+  val ack = Bool(INPUT)
+  val nack = Bool(INPUT)
+
+  val qcnt = UFix(ROQ_TAG_SIZE, INPUT)
+  val watermark = Bool(OUTPUT)
+}
+
+class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int) extends Component
+{
+  val ROQ_TAG_SIZE = log2up(ROQ_TAG_ENTRIES)
+
+  val io = new io_queue_reorder_qcnt(ROQ_DATA_SIZE, ROQ_TAG_SIZE)
+
+  val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
+  val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
+  val read_ptr_next = read_ptr + UFix(1)
+  val write_ptr_next = write_ptr + UFix(1)
+  val full = (write_ptr_next === read_ptr)
+
+  val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
+  data_array.setReadLatency(1)
+
+  val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
+  val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
+  val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, ROQ_TAG_ENTRIES))
+  vb_array := (vb_array & vb_update_read) | vb_update_write
+
+  val roq_data_deq = io.deq_data.ready && io.deq_data.valid
+  val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
+
+  val deq_data_val_int = Reg(resetVal = Bool(false))
+
+  deq_data_val_int := vb_array(read_ptr).toBool
+
+  when(roq_rtag_deq)
+  {
+    write_ptr := write_ptr_next
+  }
+  when(roq_data_deq)
+  {
+    deq_data_val_int := vb_array(read_ptr_next).toBool
+    read_ptr := read_ptr_next
+  }
+
+  io.deq_rtag.valid := !full
+  io.deq_rtag.bits := write_ptr.toBits
+
+  io.deq_data.valid := deq_data_val_int
+  io.deq_data.bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
+
+  // Logic for watermark
+  val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
+  val shifted_write_ptr =
+    Mux(read_ptr < io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
+        UFix(ROQ_TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)
+
+  val shifted_vb_update_write =
+    Mux(io.enq.valid, (Bits(1) << shifted_write_ptr),
+        Bits(0, ROQ_TAG_ENTRIES))
+
+  shifted_vb_array :=
+    Mux(roq_data_deq, (shifted_vb_array | shifted_vb_update_write),
+        ((shifted_vb_array | shifted_vb_update_write) >> UFix(1)))
+
+  // a limited version of leading count ones
+  // maximum cnt is defined by ROQ_MAX_QCNT
+  var sel = shifted_vb_array(0)
+  var output = UFix(1, ROQ_TAG_SIZE)
+  for (i <- 0 until ROQ_MAX_QCNT)
+  {
+    output = Mux(sel, UFix(i), output)
+    sel = sel & shifted_vb_array(i+1)
+  }
+
+  io.watermark := output >= io.qcnt
 }
