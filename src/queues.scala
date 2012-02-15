@@ -532,11 +532,11 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   // maximum cnt is defined by ROQ_MAX_QCNT
   var sel = shifted_vb_array(0)
   var output = UFix(1, ROQ_TAG_SIZE)
-  // for (i <- 0 until ROQ_MAX_QCNT)
-  // {
-  //   output = Mux(sel, UFix(i), output)
-  //   sel = sel & shifted_vb_array(i+1)
-  // }
+  for (i <- 0 until ROQ_MAX_QCNT)
+  {
+    output = Mux(sel, UFix(i), output)
+    sel = sel & shifted_vb_array(i+1)
+  }
 
   io.watermark := output >= io.qcnt
 }
