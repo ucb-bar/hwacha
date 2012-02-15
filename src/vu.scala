@@ -10,15 +10,23 @@ class vu extends Component
 {
   val io = new io_vu()
 
+  val vcmdq = VC_SIMPLE_QUEUE(VCMD_SZ, 16)
+  val vximm1q = VC_SIMPLE_QUEUE(VIMM_SZ, 16)
+  val vximm2q = VC_SIMPLE_QUEUE(VSTRIDE_SZ, 16)
+
+  vcmdq.io.enq <> io.vec_cmdq
+  vximm1q.io.enq <> io.vec_ximm1q
+  vximm2q.io.enq <> io.vec_ximm2q
+
   val vxu = new vuVXU()
 
-  val vaq = new queue_spec(16)( new io_vaq_bundle() )
+  val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
   val vldq = new queue_reorder_qcnt(65, 256, 9)
   val vldq_count = new vuVMU_QueueCount(0, 9, 16, true)
 
-  val vsdq = new queue_spec(16)( Bits(width = 65) )
+  val vsdq = new queue_spec(16)({ Bits(width = 65) })
   val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
@@ -35,9 +43,9 @@ class vu extends Component
   // vxu
   io.illegal <> vxu.io.illegal
 
-  vxu.io.vxu_cmdq <> io.vec_cmdq
-  vxu.io.vxu_immq <> io.vec_ximm1q
-  vxu.io.vxu_imm2q <> io.vec_ximm2q
+  vxu.io.vxu_cmdq <> vcmdq.io.deq
+  vxu.io.vxu_immq <> vximm1q.io.deq
+  vxu.io.vxu_imm2q <> vximm2q.io.deq
 
   vxu.io.vec_ackq <> io.vec_ackq
 
