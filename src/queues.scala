@@ -459,9 +459,10 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
+  val write_ptr_spec = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val read_ptr_next = read_ptr + UFix(1)
-  val write_ptr_next = write_ptr + UFix(1)
-  val full = (write_ptr_next === read_ptr)
+  val full = Reg(resetVal = Bool(false))
+  val full_spec = Reg(resetVal = Bool(false))
 
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
   val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
@@ -473,22 +474,45 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, ROQ_TAG_ENTRIES))
   vb_array := (vb_array & vb_update_read) | vb_update_write
 
+  val roq_data_deq = io.deq_data.ready && io.deq_data.valid
+  val roq_rtag_deq_spec = io.deq_rtag.ready && io.deq_rtag.valid
+  val roq_rtag_deq = io.ack
+
   val deq_data_val_int = Reg(resetVal = Bool(false))
 
   deq_data_val_int := vb_array(read_ptr).toBool
 
-  when(roq_rtag_deq)
-  {
-    write_ptr := write_ptr_next
-  }
+  when(roq_rtag_deq) { write_ptr := write_ptr + UFix(1) }
+  when(roq_rtag_deq_spec) { write_ptr_spec := write_ptr_spec + UFix(1) }
   when(roq_data_deq)
   {
     deq_data_val_int := vb_array(read_ptr_next).toBool
     read_ptr := read_ptr_next
   }
 
-  io.deq_rtag.valid := !full
+  io.deq_rtag.valid := !io.nack && (full_spec || (read_ptr != write_ptr_spec))
   io.deq_rtag.bits := write_ptr.toBits
+
+  val full_next =
+    Mux(io.enq.valid && !roq_rtag_deq_spec && (read_ptr_next === write_ptr), Bool(true),
+    Mux(roq_rtag_deq && full, Bool(false),
+        full))
+
+  full := full_next
+
+  when (io.nack)
+  {
+    write_ptr_spec := write_ptr
+    full_spec := full_next
+  }
+  .otherwise
+  {
+    full_spec :=
+      Mux(io.enq.valid && !roq_rtag_deq_spec && (read_ptr_next === write_ptr_spec), Bool(true),
+      Mux(roq_rtag_deq_spec && full_spec, Bool(false),
+          full_spec))
+  }
+
 
   io.deq_data.valid := deq_data_val_int
   io.deq_data.bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
@@ -519,3 +543,4 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   io.watermark := output >= io.qcnt
 }
+
