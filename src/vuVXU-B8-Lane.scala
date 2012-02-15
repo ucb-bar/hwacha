@@ -132,7 +132,7 @@ class vuVXU_Banked8_Lane extends Component
   val vau2_val  = lfu.io.vau2_val
   val vau2_fn   = lfu.io.vau2_fn
 
-  io.vmu.mem := lfu.io.mem
+  io.vmu.mem <> lfu.io.mem
   io.vmu.imm := lfu.io.imm
 
   io.vmu.vaq_val   := lfu.io.vaq_val

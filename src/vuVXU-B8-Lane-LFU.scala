@@ -198,7 +198,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau1_fn   := reg_vau1_fn
   io.vau2_val  := reg_vau2
   io.vau2_fn   := reg_vau2_fn
-  io.mem := reg_mem
+  io.mem <> reg_mem
   io.imm := reg_imm
   io.utaq_val  := reg_utaq
   io.vaq_val   := reg_vaq

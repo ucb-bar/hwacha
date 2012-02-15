@@ -40,7 +40,7 @@ class Shifter extends Component
     left, Reverse(io.in), 
     Cat(Fill(32, ~trunc) & io.in(63,32), io.in(31,0)))
 
-  val shift_out = (Cat(arith & shift_in(63), shift_in).toFix >>> io.shamt)(63,0)
+  val shift_out = (Cat(arith & shift_in(63), shift_in).toFix >> io.shamt)(63,0)
 
   io.out := Mux(
     left, Reverse(shift_out),
