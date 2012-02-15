@@ -12,7 +12,7 @@ class ExpanderToLFUIO extends Bundle
   val vau1_fn = Bits(DEF_VAU1_FN, OUTPUT)
   val vau2    = Bool(OUTPUT)
   val vau2_fn = Bits(DEF_VAU2_FN, OUTPUT)
-  val cmd     = Bits(VCMD_SZ, OUTPUT)
+  val mem     = new io_vxu_mem_cmd().asOutput
   val imm     = Bits(DEF_DATA, OUTPUT)
   val imm2    = Bits(DEF_VXU_IMM2Q, OUTPUT)
   val vaq     = Bool(OUTPUT)
@@ -36,7 +36,7 @@ class LFUIO extends Bundle
   val vau1_fn   = Bits(DEF_VAU1_FN, OUTPUT)
   val vau2_val  = Bool(OUTPUT)
   val vau2_fn   = Bits(DEF_VAU2_FN, OUTPUT)
-  val cmd = Bits(VCMD_SZ, OUTPUT)
+  val mem = new io_vxu_mem_cmd().asOutput
   val imm = Bits(DEF_DATA, OUTPUT)
   val vaq_val   = Bool(OUTPUT)
   val vldq_rdy  = Bool(OUTPUT)
@@ -98,7 +98,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val reg_vau1_fn = Reg(){ Bits(width = DEF_VAU1_FN) }
   val reg_vau2    = Reg(resetVal = Bool(false))
   val reg_vau2_fn = Reg(){ Bits(width = DEF_VAU2_FN) }
-  val reg_cmd     = Reg(){ Bits(width = VCMD_SZ) }
+  val reg_mem     = Reg(){ new io_vxu_mem_cmd() }
   val reg_imm     = Reg(){ Bits(width = DEF_DATA) }
   val reg_imm2    = Reg(){ Bits(width = DEF_VXU_IMM2Q) }
   val reg_vaq     = Reg(resetVal = Bool(false))
@@ -141,7 +141,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (io.expand.utaq)
   {
     reg_utaq := Bool(true)
-    reg_cmd := io.expand.cmd
+    reg_mem := io.expand.mem
     reg_imm := io.expand.imm
   }
   when (!io.expand.utaq && ~(reg_vgu_cnt.orR))
@@ -152,7 +152,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (io.expand.vaq)
   {
     reg_vaq := Bool(true)
-    reg_cmd := io.expand.cmd
+    reg_mem := io.expand.mem
     reg_imm := io.expand.imm
     reg_imm2 := io.expand.imm2
   }
@@ -198,7 +198,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau1_fn   := reg_vau1_fn
   io.vau2_val  := reg_vau2
   io.vau2_fn   := reg_vau2_fn
-  io.cmd := reg_cmd
+  io.mem := reg_mem
   io.imm := reg_imm
   io.utaq_val  := reg_utaq
   io.vaq_val   := reg_vaq

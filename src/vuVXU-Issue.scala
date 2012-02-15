@@ -22,8 +22,6 @@ class vuVXU_Issue extends Component
   tvec.io.vxu_cmdq <> io.vxu_cmdq
   tvec.io.vxu_immq <> io.vxu_immq
   tvec.io.vxu_imm2q <> io.vxu_imm2q
-  tvec.io.vmu_utcmdq <> io.vmu_utcmdq
-  vt.io.vmu_utimmq <> io.vmu_utimmq
 
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
@@ -31,9 +29,6 @@ class vuVXU_Issue extends Component
   tvec.io.hazard_to_issue <> io.hazard_to_issue
 
   tvec.io.vec_ackq <> io.vec_ackq
-  tvec.io.vxu_ackq <> io.vxu_ackq
-  tvec.io.vmu_vcmdq <> io.vmu_vcmdq
-  tvec.io.vmu_vackq <> io.vmu_vackq
 
   tvec.io.valid <> io.tvec_valid
   tvec.io.ready <> io.tvec_ready

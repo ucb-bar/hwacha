@@ -23,7 +23,7 @@ object Interface
   val VIMM_DATA     63:0
 */
   // vstrideq
-  val VSTRIDE_SZ   = 32
+  val VSTRIDE_SZ   = 64
 /*
   val VSTRIDE_DATA  31:0
 */
@@ -43,7 +43,7 @@ object Interface
 
   // ximmq
   val XIMM_SZ      = 64
-  val XIMM2_SZ     = 32
+  val XIMM2_SZ     = 64
 /*
   val XIMM_DATA     63:0
 */

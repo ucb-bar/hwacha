@@ -67,7 +67,7 @@ class io_vmu_vbaseq extends io_ready_valid()( { Bits(width = VMIMM_SZ) } )
 class io_vmu_vstrideq extends io_ready_valid()( { Bits(width = VMSTRIDE_SZ) } )
 class io_vec_ackq extends io_ready_valid()( { Bits(width = VRESP_SZ) } )
 class io_vmu_vackq extends io_ready_valid()( { Bits(width = VMRESP_SZ) } )
-class io_lane_vaq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
+class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
@@ -128,11 +128,33 @@ class io_dmem_vec_resp_bundle extends Bundle
   val data = Bits(width = 128)
 }
 
+class io_dmem_req_bundle extends Bundle
+{
+  val valid = Bool()
+  val cmd = Bits(width = 4)
+  val typ = Bits(width = 3)
+  val idx = Bits(width = PGIDX_BITS)
+  val ppn = Bits(width = PPN_BITS)
+  val data = Bits(width = 64)
+  val tag = Bits(width = 9)
+}
+
+class io_dmem_resp_bundle extends Bundle
+{
+  val nack = Bool()
+  val valid = Bool()
+  val data = Bits(width = 64)
+  val tag = Bits(width = 9)
+}
+
 class io_dmem_ut_req extends io_ready_valid()( { new io_dmem_ut_req_bundle() } )
 class io_dmem_ut_resp extends io_valid()( { new io_dmem_ut_resp_bundle() } )
 
 class io_dmem_vec_req extends io_ready_valid()( { new io_dmem_vec_req_bundle() } )
 class io_dmem_vec_resp extends io_valid()( { new io_dmem_vec_resp_bundle() } )
+
+class io_dmem_req extends io_valid()({ new io_dmem_req_bundle() })
+class io_dmem_resp extends io_valid()({ new io_dmem_resp_bundle() })
 
 class io_vf extends Bundle
 {
@@ -152,6 +174,22 @@ class io_qstall extends Bundle
   val utaq = Bool()
   val utldq = Bool()
   val utsdq = Bool()
+}
+
+class io_vxu_mem_cmd extends Bundle
+{
+  val cmd = Bits(width = 4)
+  val typ = Bits(width = 3)
+  val typ_float = Bits(width = 1)
+}
+
+class io_vaq_bundle extends Bundle
+{
+  val cmd = Bits(width = 4)
+  val typ = Bits(width = 3)
+  val typ_float = Bits(width = 1)
+  val idx = Bits(width = PGIDX_BITS)
+  val ppn = Bits(width = PPN_BITS)
 }
 
 class io_vxu_issue_fire extends Bundle
@@ -204,9 +242,9 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = DEF_REGLEN)
   val vr = Bits(width = DEF_REGLEN)
   val vd = Bits(width = DEF_REGLEN)
-  val cmd = Bits(width = VCMD_SZ)
+  val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
-  val imm2 = Bits(width = DEF_VXU_IMM2Q)
+  val imm2 = Bits(width = DEF_DATA)
 }
 
 class io_vxu_issue_op extends Bundle
@@ -255,7 +293,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vr = Bits(width = DEF_BREGLEN)
   val vd = Bits(width = DEF_BREGLEN)
   val qcnt = UFix(width = 5)
-  val cmd = Bits(width = VCMD_SZ)
+  val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
 }
@@ -295,7 +333,7 @@ class io_vxu_expand_lfu_fn extends Bundle
   val vau1_fn = Bits(width = DEF_VAU1_FN)
   val vau2 = Bool()
   val vau2_fn = Bits(width = DEF_VAU2_FN)
-  val cmd = Bits(width = VCMD_SZ)
+  val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
   val vaq = Bool()
@@ -366,16 +404,11 @@ class io_vxu_issue_tvec extends Bundle
   val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
 
   val vec_ackq = new io_vec_ackq
-  val vxu_ackq = new io_vxu_ackq().flip()
-  val vmu_vackq = new io_vmu_vackq().flip()
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
   
-  val vmu_vcmdq = new io_vmu_vcmdq()
-  val vmu_utcmdq = new io_vmu_utcmdq()
-
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
   val dhazard = new io_vxu_issue_reg().asOutput
@@ -404,9 +437,6 @@ class io_vxu_issue_vt extends Bundle
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
-
-  val vmu_utcmdq = new io_vmu_utcmdq
-  val vmu_utimmq = new io_vmu_utimmq
 
   val vf = new io_vf().flip()
 
@@ -437,33 +467,19 @@ class io_vu extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
 
-  val dmem_req_ut = new io_dmem_ut_req()
-  val dmem_resp_ut = new io_dmem_ut_resp().flip()
-
-  val dmem_req_vec = new io_dmem_vec_req()
-  val dmem_resp_vec = new io_dmem_vec_resp().flip()
+  val dmem_req = new io_dmem_req()
+  val dmem_resp = new io_dmem_resp().flip()
 }
 
 class io_vxu extends Bundle
 {
   val illegal = Bool(OUTPUT)
 
-  val vxu_to_vmu = new io_vxu_to_vmu().asOutput
-
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
 
-  val vmu_vcmdq = new io_vmu_vcmdq
-  val vmu_vbaseq = new io_vxu_immq
-  val vmu_vstrideq = new io_vxu_imm2q
-
   val vec_ackq = new io_vec_ackq
-  val vmu_vackq = new io_vmu_vackq().flip()
-
-  val vmu_utcmdq = new io_vmu_utcmdq()
-  val vmu_utimmq = new io_vmu_utimmq()
-  val vmu_utackq = new io_vmu_utackq().flip()
 
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(DEF_XLEN, OUTPUT)
@@ -479,6 +495,8 @@ class io_vxu extends Bundle
   val lane_utaq = new io_lane_utaq()
   val lane_utldq = new io_lane_utldq().flip()
   val lane_utsdq = new io_lane_utsdq()
+
+  val qcnt = UFix(width = 5)
 }
 
 class io_vxu_issue extends Bundle
@@ -489,16 +507,10 @@ class io_vxu_issue extends Bundle
   val imem_resp = new io_imem_resp().flip()
 
   val vec_ackq = new io_vec_ackq  
-  val vxu_ackq = new io_vxu_ackq().flip()
-  val vmu_vackq = new io_vmu_vackq().flip()
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
-
-  val vmu_vcmdq = new io_vmu_vcmdq()
-  val vmu_utcmdq = new io_vmu_utcmdq()
-  val vmu_utimmq = new io_vmu_utimmq()
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
