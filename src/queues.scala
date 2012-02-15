@@ -465,7 +465,8 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val full_spec = Reg(resetVal = Bool(false))
 
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
-  val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
+  val roq_rtag_deq_spec = io.deq_rtag.ready && io.deq_rtag.valid
+  val roq_rtag_deq = io.ack
 
   val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
 
@@ -473,10 +474,6 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
   val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, ROQ_TAG_ENTRIES))
   vb_array := (vb_array & vb_update_read) | vb_update_write
-
-  val roq_data_deq = io.deq_data.ready && io.deq_data.valid
-  val roq_rtag_deq_spec = io.deq_rtag.ready && io.deq_rtag.valid
-  val roq_rtag_deq = io.ack
 
   val deq_data_val_int = Reg(resetVal = Bool(false))
 
