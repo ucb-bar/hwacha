@@ -51,7 +51,7 @@ class vuMemIF extends Component
   io.vldq_ack := mem_load_val && !io.mem_resp.bits.nack
   io.vldq_nack := mem_load_val && io.mem_resp.bits.nack
 
-  io.mem_req.bits.valid := id_load_val || id_store_val
+  io.mem_req.valid := id_load_val || id_store_val
   io.mem_req.bits.cmd := io.vaq_deq.bits.cmd
   io.mem_req.bits.typ := io.vaq_deq.bits.typ
   io.mem_req.bits.idx := io.vaq_deq.bits.idx
@@ -59,7 +59,7 @@ class vuMemIF extends Component
   io.mem_req.bits.data := io.vsdq_deq.bits
   io.mem_req.bits.tag := io.vldq_deq_rtag.bits
 
-  io.vldq_enq.valid := io.mem_resp.bits.valid
+  io.vldq_enq.valid := io.mem_resp.valid
   io.vldq_enq.bits.data := io.mem_resp.bits.data
   io.vldq_enq.bits.rtag := io.mem_resp.bits.tag.toUFix()
 }

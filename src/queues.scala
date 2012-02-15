@@ -379,7 +379,7 @@ class io_queue_spec[T <: Data](data: => T) extends Bundle
 
 class queue_spec[T <: Data](entries: Int)(data: => T) extends Component
 {
-  val io = new io_queue_spec(data)
+  val io = new io_queue_spec({ data })
 
   // cannot ack and nack at the same cycle
   // chisel_assert(io.ack && !io.nack)

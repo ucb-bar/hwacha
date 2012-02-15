@@ -279,7 +279,7 @@ object UFixToOH
   }
 }
 
-class Mux1H(n: Int, w: Int) extends Component
+class Mux1H_(n: Int, w: Int) extends Component
 {
   val io = new Bundle {
     val sel = Vec(n) { Bool(dir = INPUT) }
@@ -339,7 +339,7 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
   }
 
   def read(addr: UFix): T = {
-    val mux1h = new Mux1H(length, width)
+    val mux1h = new Mux1H_(length, width)
     val onehot = UFixToOH(addr, length)
     for(i <- 0 until length){
       mux1h.io.sel(i) := onehot(i).toBool

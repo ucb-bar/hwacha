@@ -496,7 +496,7 @@ class io_vxu extends Bundle
   val lane_utldq = new io_lane_utldq().flip()
   val lane_utsdq = new io_lane_utsdq()
 
-  val qcnt = UFix(width = 5)
+  val qcnt = UFix(5, OUTPUT)
 }
 
 class io_vxu_issue extends Bundle
