@@ -461,14 +461,15 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val write_ptr_spec = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val read_ptr_next = read_ptr + UFix(1)
-  val full = Reg(resetVal = Bool(false))
-  val full_spec = Reg(resetVal = Bool(false))
+  val full = Reg(resetVal = Bool(true))
+  val full_spec = Reg(resetVal = Bool(true))
 
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
   val roq_rtag_deq_spec = io.deq_rtag.ready && io.deq_rtag.valid
   val roq_rtag_deq = io.ack
 
   val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
+  data_array.setReadLatency(1)
 
   val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
@@ -488,10 +489,10 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   }
 
   io.deq_rtag.valid := !io.nack && (full_spec || (read_ptr != write_ptr_spec))
-  io.deq_rtag.bits := write_ptr.toBits
+  io.deq_rtag.bits := write_ptr_spec.toBits
 
   val full_next =
-    Mux(io.enq.valid && !roq_rtag_deq_spec && (read_ptr_next === write_ptr), Bool(true),
+    Mux(roq_data_deq && !roq_rtag_deq && (read_ptr_next === write_ptr), Bool(true),
     Mux(roq_rtag_deq && full, Bool(false),
         full))
 
@@ -505,7 +506,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   .otherwise
   {
     full_spec :=
-      Mux(io.enq.valid && !roq_rtag_deq_spec && (read_ptr_next === write_ptr_spec), Bool(true),
+      Mux(roq_data_deq && !roq_rtag_deq_spec && (read_ptr_next === write_ptr_spec), Bool(true),
       Mux(roq_rtag_deq_spec && full_spec, Bool(false),
           full_spec))
   }
@@ -517,7 +518,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   // Logic for watermark
   val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val shifted_write_ptr =
-    Mux(read_ptr < io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
+    Mux(read_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
         UFix(ROQ_TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)
 
   val shifted_vb_update_write =
@@ -525,8 +526,8 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
         Bits(0, ROQ_TAG_ENTRIES))
 
   shifted_vb_array :=
-    Mux(roq_data_deq, (shifted_vb_array | shifted_vb_update_write),
-        ((shifted_vb_array | shifted_vb_update_write) >> UFix(1)))
+    Mux(roq_data_deq, ((shifted_vb_array | shifted_vb_update_write) >> UFix(1)),
+        (shifted_vb_array | shifted_vb_update_write))
 
   // a limited version of leading count ones
   // maximum cnt is defined by ROQ_MAX_QCNT
@@ -534,7 +535,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   var locnt = UFix(1, ROQ_TAG_SIZE)
   for (i <- 0 until ROQ_MAX_QCNT)
   {
-    locnt = Mux(sel, UFix(i), locnt)
+    locnt = Mux(sel, UFix(i+1), locnt)
     sel = sel & shifted_vb_array(i+1)
   }
 
