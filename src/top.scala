@@ -14,7 +14,7 @@ object top_main
     //chiselMain(boot_args, () => new vuVMU())
     //chiselMain(boot_args, () => new vuVCU())
     //chiselMain(boot_args, () => new vuVXU())
-    //chiselMain(boot_args, () => new vu())
+    chiselMain(boot_args, () => new vu())
     //chiselMain(boot_args, () => new vu_dmem_arbiter())
     //chiselMain(boot_args, () => new vuVXU_Banked8_Expand)
     //chiselMain(boot_args, () => new vuVXU_Banked8_Fire)
@@ -40,6 +40,6 @@ object top_main
     //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_top())
     //chiselMain(boot_args, () => new vuVMU_Ctrl_ut_issue())
     //chiselMain(boot_args, () => new vuVMU_Ctrl_vec_load_issue())
-    chiselMain(boot_args, () => new queue_reorder_qcnt(65, 256, 9))
+    //chiselMain(boot_args, () => new queue_reorder_qcnt(65, 256, 9))
   } 
 }
