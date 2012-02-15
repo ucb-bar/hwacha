@@ -531,13 +531,13 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   // a limited version of leading count ones
   // maximum cnt is defined by ROQ_MAX_QCNT
   var sel = shifted_vb_array(0)
-  var output = UFix(1, ROQ_TAG_SIZE)
+  var locnt = UFix(1, ROQ_TAG_SIZE)
   for (i <- 0 until ROQ_MAX_QCNT)
   {
-    output = Mux(sel, UFix(i), output)
+    locnt = Mux(sel, UFix(i), locnt)
     sel = sel & shifted_vb_array(i+1)
   }
 
-  io.watermark := output >= io.qcnt
+  io.watermark := locnt >= io.qcnt
 }
 
