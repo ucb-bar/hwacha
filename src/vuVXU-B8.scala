@@ -135,6 +135,7 @@ class vuVXU extends Component
   // memory interface
   io.qcnt := b8seq.io.seq_regid_imm.qcnt
 
+  io.lane_vaq.valid := b8lane.io.vmu.vaq_val
   io.lane_vaq.bits <> b8lane.io.vmu.mem
   io.lane_vaq.bits.idx := b8lane.io.vmu.imm(PGIDX_BITS-1, 0)
   io.lane_vaq.bits.ppn := b8lane.io.vmu.imm(PADDR_BITS, PGIDX_BITS)
