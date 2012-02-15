@@ -370,8 +370,8 @@ class queueFlowPF(data_sz: Int, entries: Int) extends Component
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {
-  val enq = new io_ready_valid()({ data }).flip()
-  val deq = new io_ready_valid()({ data })
+  val enq = new io_ready_valid()( data ).flip()
+  val deq = new io_ready_valid()( data )
 
   val ack = Bool(INPUT)
   val nack = Bool(INPUT)

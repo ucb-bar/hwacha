@@ -12,13 +12,13 @@ class vu extends Component
 
   val vxu = new vuVXU()
 
-  val vaq = new queue_spec(16)({ new io_vaq_bundle() })
+  val vaq = new queue_spec(16)( new io_vaq_bundle() )
   val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
   val vldq = new queue_reorder_qcnt(65, 256, 9)
   val vldq_count = new vuVMU_QueueCount(0, 9, 16, true)
 
-  val vsdq = new queue_spec(16)({ Bits(width = 65) })
+  val vsdq = new queue_spec(16)( Bits(width = 65) )
   val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
