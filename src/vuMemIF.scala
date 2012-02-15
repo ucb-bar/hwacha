@@ -39,16 +39,18 @@ class vuMemIF extends Component
   val mem_load_val = Reg(ex_load_val, resetVal = Bool(false))
   val mem_store_val = Reg(ex_store_val, resetVal = Bool(false))
 
+  val nack_reg = Reg(io.mem_resp.bits.nack, resetVal = Bool(false))
+
   io.vaq_deq.ready := id_load_cmd && io.vldq_deq_rtag.valid || id_store_cmd && io.vsdq_deq.valid
-  io.vaq_ack := (mem_load_val || mem_store_val) && !io.mem_resp.bits.nack
+  io.vaq_ack := (mem_load_val || mem_store_val) && !nack_reg && !io.mem_resp.bits.nack
   io.vaq_nack := (mem_load_val || mem_store_val) && io.mem_resp.bits.nack
 
   io.vsdq_deq.ready := id_store_cmd && io.vaq_deq.valid
-  io.vsdq_ack := mem_store_val && !io.mem_resp.bits.nack
+  io.vsdq_ack := mem_store_val && !nack_reg && !io.mem_resp.bits.nack
   io.vsdq_nack := mem_store_val && io.mem_resp.bits.nack
 
   io.vldq_deq_rtag.ready := id_load_cmd && io.vaq_deq.valid
-  io.vldq_ack := mem_load_val && !io.mem_resp.bits.nack
+  io.vldq_ack := mem_load_val && !nack_reg && !io.mem_resp.bits.nack
   io.vldq_nack := mem_load_val && io.mem_resp.bits.nack
 
   io.mem_req.valid := id_load_val || id_store_val
