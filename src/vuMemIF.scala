@@ -61,5 +61,5 @@ class vuMemIF extends Component
 
   io.vldq_enq.valid := io.mem_resp.bits.valid
   io.vldq_enq.bits.data := io.mem_resp.bits.data
-  io.vldq_enq.bits.rtag := io.mem_resp.bits.tag
+  io.vldq_enq.bits.rtag := io.mem_resp.bits.tag.toUFix()
 }
