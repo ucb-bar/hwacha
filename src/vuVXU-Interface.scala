@@ -130,7 +130,6 @@ class io_dmem_vec_resp_bundle extends Bundle
 
 class io_dmem_req_bundle extends Bundle
 {
-  val valid = Bool()
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
   val idx = Bits(width = PGIDX_BITS)
@@ -142,7 +141,6 @@ class io_dmem_req_bundle extends Bundle
 class io_dmem_resp_bundle extends Bundle
 {
   val nack = Bool()
-  val valid = Bool()
   val data = Bits(width = 64)
   val tag = Bits(width = 9)
 }
