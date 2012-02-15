@@ -102,7 +102,7 @@ object Config
   val VAU2_CDTS  = Bits("b1110", 4)
   val VAU2_CSTD  = Bits("b1111", 4)
 
-  val SZ_ADDR = 32
+  val SZ_ADDR = 64
   val SZ_INST = 32
   val SZ_DATA = 65
   val SZ_EXC = 5
