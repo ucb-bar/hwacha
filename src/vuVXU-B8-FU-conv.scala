@@ -104,12 +104,12 @@ class vuVXU_Banked8_FU_conv extends Component
 
   val next_result_sp = MuxCase(
     Bits(0, SZ_DATA), Array(
-      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> Cat(Bits("hFFFF_FFFF",32), result_int2float_sp(32,0)),
-      VAU2_FN(VAU2_MXTF) -> Cat(Bits("hFFFF_FFFF",32), result_encode_sp(32,0)),
+      VAU2_FN(VAU2_CLTF,VAU2_CLUTF,VAU2_CWTF,VAU2_CWUTF) -> Cat(Bits("hFFFFFFFF",32), result_int2float_sp(32,0)),
+      VAU2_FN(VAU2_MXTF) -> Cat(Bits("hFFFFFFFF",32), result_encode_sp(32,0)),
       VAU2_FN(VAU2_CFTL,VAU2_CFTLU) -> Cat(Bits(0,1),result_float2int_sp(63,0)),
       VAU2_FN(VAU2_CFTW,VAU2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_sp(31)),result_float2int_sp(31,0)),
       VAU2_FN(VAU2_MFTX) -> Cat(Bits(0,1),Fill(32,result_decode_sp(31)),result_decode_sp(31,0)),
-      VAU2_FN(VAU2_CDTS) -> Cat(Bits("hFFFF_FFFF",32), result_float2float_sp(32,0))
+      VAU2_FN(VAU2_CDTS) -> Cat(Bits("hFFFFFFFF",32), result_float2float_sp(32,0))
     ))
 
   val next_result_dp = MuxCase(

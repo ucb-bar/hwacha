@@ -73,7 +73,7 @@ package hwacha {
     io.ldq.enq_bits := MuxCase(
       Bits(0,64), Array(
         (fp_cmd && bhwd_sel === Bits("b11",2)) -> roq_deq_dp_bits,
-        (fp_cmd && bhwd_sel === Bits("b10",2)) -> Cat(Bits("hFFFF_FFFF",32), roq_deq_sp_bits),
+        (fp_cmd && bhwd_sel === Bits("b10",2)) -> Cat(Bits("hFFFFFFFF",32), roq_deq_sp_bits),
         (bhwd_sel === Bits("b11")) -> Cat(Bits(0,1), delay_roq_deq_bits),
         (bhwd_sel === Bits("b10")) -> Cat(Bits(0,1), word_sel_ext),
         (bhwd_sel === Bits("b01")) -> Cat(Bits(0,1), hw_sel_ext),

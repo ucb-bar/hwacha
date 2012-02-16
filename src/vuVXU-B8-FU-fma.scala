@@ -63,7 +63,7 @@ class vuVXU_Banked8_FU_fma extends Component
 
   val result = Mux(
     io.fn(RG_VAU1_FP), result_dp,
-    Cat(result_sp(37,33), Bits("hFFFF_FFFF",32), result_sp(32,0)))
+    Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)))
 
   val pipereg = ShiftRegister(FMA_STAGES-1, 70, io.valid, result)
 

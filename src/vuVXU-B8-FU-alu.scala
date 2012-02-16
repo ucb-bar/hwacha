@@ -162,7 +162,7 @@ class vuVXU_Banked8_FU_alu extends Component
       VIU_FN(VIU_AND) -> (reg_in0 & reg_in1),
       VIU_FN(VIU_OR) -> (reg_in0 | reg_in1),
       VIU_FN(VIU_XOR) -> (reg_in0 ^ reg_in1),
-      (VIU_FN(VIU_FSJ,VIU_FSJN,VIU_FSJX) && VIU_FP(FPS)) -> Cat(Bits("hFFFF_FFFF", 32), sj_sp, reg_in0(31,0)),
+      (VIU_FN(VIU_FSJ,VIU_FSJN,VIU_FSJX) && VIU_FP(FPS)) -> Cat(Bits("hFFFFFFFF", 32), sj_sp, reg_in0(31,0)),
       (VIU_FN(VIU_FSJ,VIU_FSJN,VIU_FSJX) && VIU_FP(FPD)) -> Cat(sj_dp, reg_in0(63,0)),
       VIU_FN(VIU_FMIN,VIU_FMAX) -> fminmax
     ))

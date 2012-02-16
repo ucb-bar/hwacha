@@ -43,7 +43,7 @@ package hwacha {
     val ldq_enq_bits_int = MuxCase(
       Cat(Bits("b0", 1), ldq_bits), Array(
         (fp_cmd && delay_cmd_type(1,0) === Bits("b11",2)) -> ldq_dp_bits,
-        (fp_cmd && delay_cmd_type(1,0) === Bits("b10",2)) -> Cat(Bits("hFFFF_FFFF", 32), ldq_sp_bits)
+        (fp_cmd && delay_cmd_type(1,0) === Bits("b10",2)) -> Cat(Bits("hFFFFFFFF", 32), ldq_sp_bits)
       ))
     
     io.ldq.enq_bits  := ldq_enq_bits_int
