@@ -414,6 +414,8 @@ class io_vxu_issue_tvec extends Bundle
   val bhazard = new io_vxu_issue_op().asOutput
   val fn = new io_vxu_issue_fn().asOutput
   val decoded = new io_vxu_issue_regid_imm().asOutput
+
+  val store_zero = Bool(INPUT)
 }
 
 class io_vcu extends Bundle
@@ -495,6 +497,8 @@ class io_vxu extends Bundle
   val lane_utsdq = new io_lane_utsdq()
 
   val qcnt = UFix(5, OUTPUT)
+  
+  val store_zero = Bool(INPUT)
 }
 
 class io_vxu_issue extends Bundle
@@ -530,6 +534,8 @@ class io_vxu_issue extends Bundle
   val vt_bhazard = new io_vxu_issue_op().asOutput
   val vt_fn = new io_vxu_issue_fn().asOutput
   val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
+  
+  val store_zero = Bool(INPUT)
 }
 
 class io_vxu_fire extends Bundle

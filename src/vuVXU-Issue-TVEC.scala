@@ -211,7 +211,7 @@ class vuVXU_Issue_TVEC extends Component
     is (VXU_FENCE_CV)
     {
       io.vec_ackq.bits := Bits(1, 32)
-      io.vec_ackq.valid := Bool(true)
+      io.vec_ackq.valid := !io.hazard_to_issue.pending_memop && io.store_zero
 
       when (io.vec_ackq.ready)
       {

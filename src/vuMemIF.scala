@@ -40,6 +40,7 @@ class vuMemIF extends Component
   val mem_store_val = Reg(ex_store_val, resetVal = Bool(false))
 
   val nack_reg = Reg(io.mem_resp.bits.nack, resetVal = Bool(false))
+  // val nack_reg2 = Reg(nack_reg, resetVal = Bool(false)) // 3 cycles for nack to come back
 
   io.vaq_deq.ready := id_load_cmd && io.vldq_deq_rtag.valid || id_store_cmd && io.vsdq_deq.valid
   io.vaq_ack := (mem_load_val || mem_store_val) && !nack_reg && !io.mem_resp.bits.nack

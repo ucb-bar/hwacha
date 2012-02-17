@@ -29,6 +29,8 @@ class vu extends Component
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
   val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
+  val vsackcnt = new sackcnt()
+
   val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
   val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 16)
   val utaq = VC_SIMPLE_QUEUE(SZ_ADDR, 16)
@@ -94,7 +96,7 @@ class vu extends Component
 
 
   // vsdq
-  vxu.io.lane_vsdq.ready := vsdq_count.io.watermark // vsdq.io.enq.ready
+  vxu.io.lane_vsdq.ready := vsdq_count.io.watermark && vsackcnt.io.watermark// vsdq.io.enq.ready
   vsdq.io.enq.valid := vxu.io.lane_vsdq.valid
   vsdq.io.enq.bits := vxu.io.lane_vsdq.bits
 
@@ -107,6 +109,12 @@ class vu extends Component
   vsdq_count.io.inc := memif.io.vsdq_ack
   vsdq_count.io.dec := vxu.io.lane_vsdq.valid
 
+  //vsack
+  vsackcnt.io.vsdq_ack := memif.io.vsdq_ack
+  vsackcnt.io.vsdq_deq_valid := vsdq.io.deq.valid
+  vsackcnt.io.vsdq_deq_ready := vsdq.io.deq.ready
+  vsackcnt.io.qcnt := vxu.io.qcnt
+  vxu.io.store_zero := vsackcnt.io.zero
 
   //val vmu = new vuVMU()
 

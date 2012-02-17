@@ -218,6 +218,10 @@ object Config
   val M_XA_MAX  = Bits("b1101", 4);
   val M_XA_MINU = Bits("b1110", 4);
   val M_XA_MAXU = Bits("b1111", 4);
+
+  val VACKCNT = 32
+  val VACKCNT_FX = UFix(VACKCNT)
+  val VACKCNT_SZ = log2up(VACKCNT)
 }
 
 object Match
