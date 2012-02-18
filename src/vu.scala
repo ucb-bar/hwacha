@@ -109,10 +109,10 @@ class vu extends Component
   vsdq_count.io.inc := memif.io.vsdq_ack
   vsdq_count.io.dec := vxu.io.lane_vsdq.valid
 
-  //vsack
+  // vsack
   vsackcnt.io.vsdq_ack := memif.io.vsdq_ack
-  vsackcnt.io.vsdq_deq_valid := vsdq.io.deq.valid
-  vsackcnt.io.vsdq_deq_ready := vsdq.io.deq.ready
+  vsackcnt.io.vsdq_enq_valid := vxu.io.lane_vsdq.valid
+  vsackcnt.io.vsdq_enq_ready := vsdq.io.enq.ready
   vsackcnt.io.qcnt := vxu.io.qcnt
   vxu.io.store_zero := vsackcnt.io.zero
 

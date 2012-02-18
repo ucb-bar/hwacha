@@ -213,7 +213,7 @@ class vuVXU_Issue_TVEC extends Component
       io.vec_ackq.bits := Bits(1, 32)
       io.vec_ackq.valid := !io.hazard_to_issue.pending_memop && io.store_zero
 
-      when (io.vec_ackq.ready)
+      when (io.vec_ackq.valid)
       {
         state := VXU_FORWARD
       }
