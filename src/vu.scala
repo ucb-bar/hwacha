@@ -20,6 +20,8 @@ class vu extends Component
 
   val vxu = new vuVXU()
 
+  val irb = new vuIRB()
+
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
@@ -64,6 +66,17 @@ class vu extends Component
 
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
+
+  // irb
+  irb.io.irb_cmdb <> vxu.io.irb_cmdb
+  irb.io.irb_imm1b <> vxu.io.irb_imm1b
+  irb.io.irb_imm2b <> vxu.io.irb_imm2b
+  irb.io.irb_cntb <> vxu.io.irb_cntb
+
+  irb.io.issue_to_irb <> vxu.io.issue_to_irb
+  irb.io.irb_to_issue <> vxu.io.irb_to_issue
+
+  irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
 
   // vaq

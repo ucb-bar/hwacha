@@ -222,6 +222,16 @@ object Config
   val VACKCNT = 32
   val VACKCNT_FX = UFix(VACKCNT)
   val VACKCNT_SZ = log2up(VACKCNT)
+
+  val IRB_CMD_DEPTH = 8
+  val IRB_IMM1_DEPTH = 8
+  val IRB_IMM2_DEPTH = 8
+  val IRB_CNT_DEPTH = 8
+
+  val IRB_CMD_SIZE = log2up(IRB_CMD_DEPTH)
+  val IRB_IMM1_SIZE = log2up(IRB_IMM1_DEPTH)
+  val IRB_IMM2_SIZE = log2up(IRB_IMM2_DEPTH)
+  val IRB_CNT_SIZE = log2up(IRB_IMM2_DEPTH)
 }
 
 object Match

@@ -39,6 +39,10 @@ class vuVXU_Issue extends Component
   tvec.io.decoded <> io.tvec_regid_imm
   tvec.io.store_zero <> io.store_zero
 
+  tvec.io.irb_cmdb <> io.irb_cmdb
+  tvec.io.irb_imm1b <> io.irb_imm1b
+  tvec.io.irb_imm2b <> io.irb_imm2b
+  tvec.io.irb_to_issue <> io_irb_to_issue
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
@@ -47,4 +51,9 @@ class vuVXU_Issue extends Component
   vt.io.bhazard <> io.vt_bhazard
   vt.io.fn <> io.vt_fn
   vt.io.decoded <> io.vt_regid_imm
+
+  vt.io.irb_to_issue <> io.irb_to_issue
+  vt.io.issue_to_irb <> io.issue_to_irb
+
+  io.irb_cntb <> Mux(tvec.io.active, tvec.io.irb_cntb, vt.io.irb_cntb)
 }

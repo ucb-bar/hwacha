@@ -17,6 +17,7 @@ class vuVXU_Issue_TVEC extends Component
   val reg_state = Reg(next_state, resetVal = ISSUE_TVEC)
 
   val tvec_active = (reg_state === ISSUE_TVEC)
+  io.active := tvec_active    
 
 
 //-------------------------------------------------------------------------\\
@@ -163,6 +164,7 @@ class vuVXU_Issue_TVEC extends Component
   io.vf.pc := io.vxu_immq.bits(31,0)
   io.vf.nxregs := reg_nxregs
   io.vf.vlen := reg_vlen
+  io.vf.imm1_rtag := io.irb_to_issue.imm1_rtag
 
   io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_seq.vlen := reg_vlen
@@ -173,6 +175,9 @@ class vuVXU_Issue_TVEC extends Component
   val mask_vxu_immq_valid = !deq_vxu_immq || io.vxu_immq.valid
   val mask_vxu_imm2q_valid = !deq_vxu_imm2q || io.vxu_imm2q.valid
   val mask_issue_ready = !valid.orR || io.ready
+
+  val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
+  val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
 
 //-------------------------------------------------------------------------\\
 // FENCE LOGIC                                                             \\
@@ -228,25 +233,61 @@ class vuVXU_Issue_TVEC extends Component
 
   io.vxu_cmdq.ready := 
     forward &&
-    tvec_active && Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready
+    tvec_active && Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.vxu_immq.ready := 
     forward && 
-    tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready
+    tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.vxu_imm2q.ready := 
     forward &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_imm2q_valid && deq_vxu_imm2q && mask_issue_ready
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q && mask_issue_ready &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
-  io.valid.viu := valid(0) && tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_immq_valid
+  io.irb_cmdb.valid := 
+    forward && 
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready
+
+  io.irb_imm1b.valid :=
+    forward &&
+    tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready
+
+  io.irb_imm2b.valid :=
+    forward &&
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q && mask_issue_ready
+
+  io.irb_cntb.valid :=
+    forward &&
+    tvec_active && io.vxu_cmdq.valid
+
+  io.irb_cmdb.bits := io.vxu_cmdq.bits
+  io.irb_imm1b.bits := io.vxu_imm1q.bits
+  io.irb_imm2b.bits := io.vxu_imm2q.bits
+  io.irb_cntb.bits := Bits(0, VLEN_SZ)
+
+  io.valid.viu := 
+    valid(0) && 
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_immq_valid &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
+
   io.valid.vau0 := Bool(false)
   io.valid.vau1 := Bool(false)
   io.valid.vau2 := Bool(false)
   io.valid.amo := Bool(false)
   io.valid.utld := Bool(false)
   io.valid.utst := Bool(false)
-  io.valid.vld := valid(1) && tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid
-  io.valid.vst := valid(2) && tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid
+
+  io.valid.vld := 
+    valid(1) && 
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
+
+  io.valid.vst := 
+    valid(2) && 
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.dhazard.vs := Bool(false)
   io.dhazard.vt := dhazard(0).toBool
@@ -291,4 +332,6 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
+  io.decoded.imm1_rtag := io.irb_to_issue.imm1_rtag
+  io.decoded.cnt_rtag := io.irb_to_issue.cnt_rtag
 }

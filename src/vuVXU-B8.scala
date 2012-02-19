@@ -20,6 +20,14 @@ class vuVXU extends Component
   issue.io.vxu_immq <> io.vxu_immq
   issue.io.vxu_imm2q <> io.vxu_imm2q
   issue.io.store_zero <> io.store_zero
+  
+  issue.io.irb_cmdb <> io.irb_cmdb
+  issue.io.irb_imm1b <> io.irb_imm1b
+  issue.io.irb_imm2b <> io.irb_imm2b
+  issue.io.irb_cntb <> io.irb_cntb
+
+  issue.io.issue_to_irb <> io.issue_to_irb
+  issue.io.irb_to_issue <> io.irb_to_issue
 
   val b8fire = new vuVXU_Banked8_Fire()
 
@@ -82,6 +90,7 @@ class vuVXU extends Component
   b8seq.io.fire_fn <> b8fire.io.fire_fn
   b8seq.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
+  b8seq.io.seq_to_irb <> io.seq_to_irb
 
   val b8expand = new vuVXU_Banked8_Expand()
 

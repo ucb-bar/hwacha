@@ -70,6 +70,8 @@ class vuVXU_Banked8_Seq extends Component
   val next_mem_typ_float = GenArray(8){ Wire(){Bits(width=1)} }
   val next_imm = GenArray(8){ Wire(){Bits(width=DEF_DATA)} }
   val next_imm2 = GenArray(8){ Wire(){Bits(width=DEF_VXU_IMM2Q)} }
+  val next_imm1_rtag = GenArray(DEF_BANK){ Wire(){ Bits(width=IRB_IMM1_SZ) } }
+  val next_cnt_rtag = GenArray(DEF_BANK){ Wire(){ Bits(width=IRB_ADDR_SZ) } }
 
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
   val array_last = Reg(resetVal = Bits(0, SZ_BANK))
