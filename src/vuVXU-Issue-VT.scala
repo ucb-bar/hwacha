@@ -34,21 +34,30 @@ class vuVXU_Issue_VT extends Component
   io.imem_req.bits := req_pc
   io.imem_req.valid := io.vf.active
 
+  val id_reg_inst = Reg(resetVal = Bits(0,DEF_INST))
+  val id_pc_next = Reg(resetVal = Bits(0, SZ_ADDR))
+  val id_inst_val = Reg(resetVal = Bool(false))
+
   io.decoded.irb.imm1_rtag := imm1_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
-  io.decoded.irb.pc_next := req_pc
+  io.decoded.irb.pc_next := id_pc_next
   io.decoded.irb.update_imm1 := Bool(true)
-
-  val id_reg_inst = Reg(resetVal = Bits(0,DEF_INST))
 
   when (io.vf.fire)
   {
     id_reg_inst := NOP
+    id_inst_val := Bool(false)
   }
   .elsewhen (!stalld)
   {
     id_reg_inst := io.imem_resp.bits
-    when (killf) { id_reg_inst := NOP }
+    id_pc_next := req_pc
+    id_inst_val := io.imem_resp.valid
+    when (killf) 
+    { 
+      id_reg_inst := NOP 
+      id_inst_val := Bool(false)
+    }
   }
 
   val n = Bits(0,1)
@@ -237,7 +246,7 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
-  io.irb_cntb.valid := io.vf.active & io.ready & valid.orR()
+  io.irb_cntb.valid := io.vf.active & io.ready & valid.orR() & !killf & id_inst_val & !decode_stop.toBool
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
   io.issue_to_irb.updateLast := decode_stop.toBool

@@ -256,19 +256,19 @@ class vuVXU_Issue_TVEC extends Component
     forward &&
     !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
     tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready &&
-    io.irb.cmdb.ready && deq_vxu_immq && mask_irb_imm2b_ready && io.irb_cntb.ready
+    io.irb_cmdb.ready && deq_vxu_immq && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.irb_imm2b.valid :=
     forward &&
     !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
     tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q && mask_issue_ready &&
-    io.irb.cmdb.ready && mask_irb_imm1b_ready && deq_vxu_imm2q && io.irb_cntb.ready
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && deq_vxu_imm2q && io.irb_cntb.ready
 
   io.irb_cntb.valid :=
     forward &&
-    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q && mask_issue_ready &&
-    io.irb.cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && Bool(true)
+    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl && !fire_vf &&
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready &&
+    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && Bool(true)
 
   io.irb_cmdb.bits := io.vxu_cmdq.bits
   io.irb_imm1b.bits := io.vxu_immq.bits

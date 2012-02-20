@@ -71,18 +71,18 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int, usePrevPtr: Boolean = false) extends Co
   {
     when(io.updateLast && io.update.valid && enq_ptr_prev === io.update.bits.addr)
     {
-      data_next.write(enq_ptr_prev, Cat(io.updateLast, Cat(Bits(0,1), io.update.bits.data)))
+      data_next.write(enq_ptr_prev, Cat(Bits(1,1), io.update.bits.data(DATA_SIZE-2,0)))
     }
     . otherwise 
     {
       when(io.update.valid)
       {
-	data_next.write(io.update.bits.addr, Cat(Bits(0,1), io.update.bits.data))
+	data_next.write(io.update.bits.addr, io.update.bits.data)
       }
       when(io.updateLast)
       {
 	data_next.write(enq_ptr_prev, 
-			Cat(io.updateLast, data_array.read(enq_ptr_prev)(DATA_SIZE-2,0))) 
+			Cat(Bits(1,1), data_array.read(enq_ptr_prev)(DATA_SIZE-2,0))) 
       }
     }    
   } else 
@@ -92,6 +92,20 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int, usePrevPtr: Boolean = false) extends Co
 
   io.enq.ready := !full
   io.deq.valid := !empty
-  io.deq.bits := data_array.read(deq_ptr)
+
+  if(usePrevPtr)
+  {
+    io.deq.bits := 
+      Mux((io.updateLast || io.update.valid) && do_deq && (deq_ptr === enq_ptr_prev) || (deq_ptr === io.update.bits.addr),
+          data_next.read(deq_ptr),
+          data_array.read(deq_ptr))
+  } else 
+  {
+    io.deq.bits := 
+      Mux(io.update.valid && do_deq && (deq_ptr === io.update.bits.addr), 
+          data_next.read(deq_ptr),
+          data_array.read(deq_ptr))
+  }
+
   io.rtag := enq_ptr
 }

@@ -44,7 +44,7 @@ class vuIRB extends Component
   ircntb.io.updateLast <> io.issue_to_irb.updateLast
   ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
 
-  val cmd = ircmdb.io.deq.bits
+  val cmd = ircmdb.io.deq.bits(XCMD_CMCODE)
   val n = Bool(false)
   val y = Bool(true)
 
@@ -98,13 +98,18 @@ class vuIRB extends Component
     CMD_VFSSTW    -> List(n, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs.map(x => x.toBool)
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs
+  val decode_vf = vf
+  val decode_deq_ircmdb = deq_ircmdb.toBool
+  val decode_deq_irimm1b = deq_irimm1b.toBool
+  val decode_deq_irimm2b = deq_irimm2b.toBool
+  val decode_deq_ircntb = deq_ircntb.toBool
 
-  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((vf & ircntb.io.deq.bits(DEF_VLEN)) | deq_ircmdb)
-  irimm1b.io.deq.ready := io.seq_to_irb.last & deq_irimm1b
-  irimm2b.io.deq.ready := io.seq_to_irb.last & deq_irimm2b
-  ircntb.io.deq.ready  := io.seq_to_irb.last & deq_ircntb
-  
+  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((decode_vf & ircntb.io.deq.bits(DEF_VLEN)) | decode_deq_ircmdb)
+  irimm1b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm1b
+  irimm2b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm2b
+  ircntb.io.deq.ready  := io.seq_to_irb.last & decode_deq_ircntb
+    
   io.mem.valid := ircmdb.io.deq.valid || irimm1b.io.deq.valid || irimm2b.io.deq.valid || ircntb.io.deq.valid
   io.mem.bits := 
     MuxCase(Bits(0), Array(
