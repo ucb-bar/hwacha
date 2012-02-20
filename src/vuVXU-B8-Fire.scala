@@ -46,6 +46,8 @@ class vuVXU_Banked8_Fire extends Component
   io.fire_regid_imm.mem <> Mux(fire_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
   io.fire_regid_imm.imm := Mux(fire_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm)
   io.fire_regid_imm.imm2 := io.tvec_regid_imm.imm2
-  io.fire_regid_imm.imm1_tag := Mux(fire_tvec, io.tvec_regid_imm.imm1_tag, io.tvec_regid_imm.imm1_tag)
-  io.fire_regid_imm.cnt_tag := Mux(fire_tvec, io.tvec_regid_imm.cnt_tag, io.tvec_regid_imm.cnt_tag)
+  io.fire_regid_imm.irb.imm1_rtag := Mux(fire_tvec, io.tvec_regid_imm.irb.imm1_rtag, io.tvec_regid_imm.irb.imm1_rtag)
+  io.fire_regid_imm.irb.cnt_rtag := Mux(fire_tvec, io.tvec_regid_imm.irb.cnt_rtag, io.tvec_regid_imm.irb.cnt_rtag)
+  io.fire_regid_imm.irb.pc_next := io.vt_regid_imm.irb.pc_next
+  io.fire_regid_imm.irb.update_imm1 := io.tvec_regid_imm.irb.update_imm1
 }

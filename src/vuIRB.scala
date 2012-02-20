@@ -4,27 +4,32 @@ import Chisel._
 import Node._
 import Config._
 import Interface._
+import Instructions._
+import Commands._
 
 class io_vu_irb extends Bundle 
 {
   val irb_cmdb = new io_vxu_cmdq().flip()
-  val irb_imm1b = new io_vxu_imm1q().flip()
+  val irb_imm1b = new io_vxu_immq().flip()
   val irb_imm2b = new io_vxu_imm2q().flip()
   val irb_cntb = new io_vxu_cntq().flip()
 
   val issue_to_irb = new io_issue_to_irb().flip()
   val irb_to_issue = new io_irb_to_issue()
 
-  val seq_to_irb = new io_seq_to_irb.flip()
+  val seq_to_irb = new io_seq_to_irb().flip()
+
+  val mem = new io_irb_sdb()
 }
 
 class vuIRB extends Component 
 {
+  val io = new io_vu_irb()
 
   val ircmdb = VC_SIMPLE_QUEUE(VCMD_SZ, IRB_CMD_DEPTH)
   val irimm1b = new Buffer(VIMM_SZ, IRB_IMM1_DEPTH)
   val irimm2b = VC_SIMPLE_QUEUE(VSTRIDE_SZ, IRB_IMM2_DEPTH)
-  val ircntb = new Buffier(DEF_VLEN+1, IRB_CNT_DEPTH, true)
+  val ircntb = new Buffer(DEF_VLEN+1, IRB_CNT_DEPTH, true)
 
   ircmdb.io.enq <> io.irb_cmdb
 
@@ -35,9 +40,13 @@ class vuIRB extends Component
   irimm2b.io.enq <> io.irb_imm2b
   
   ircntb.io.enq <> io.irb_cntb
-  ircnt.io.update <> io.seq_to_irb.update_cnt
+  ircntb.io.update <> io.seq_to_irb.update_cnt
   ircntb.io.updateLast <> io.issue_to_irb.updateLast
-  ircnt.io.rtag <> io.irb_to_issue.cnt_rtag
+  ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
+
+  val cmd = ircmdb.io.deq.bits
+  val n = Bool(false)
+  val y = Bool(true)
 
   val cs =
     ListLookup(cmd,
@@ -89,11 +98,19 @@ class vuIRB extends Component
     CMD_VFSSTW    -> List(n, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb = cs
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs.map(x => x.toBool)
 
-  ircmdb.io.deq.ready  := io.last & ((vf & ircntb.deq.bits(DEF_VLEN)) | deq_ircmdb)
-  irimm1b.io.deq.ready := io.last & deq_irimm1b
-  irimm2b.io.deq.ready := io.last & deq_irimm2b
-  ircntb.io.deq.ready  := io.last & deq_ircntb
+  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((vf & ircntb.io.deq.bits(DEF_VLEN)) | deq_ircmdb)
+  irimm1b.io.deq.ready := io.seq_to_irb.last & deq_irimm1b
+  irimm2b.io.deq.ready := io.seq_to_irb.last & deq_irimm2b
+  ircntb.io.deq.ready  := io.seq_to_irb.last & deq_ircntb
   
+  io.mem.valid := ircmdb.io.deq.valid || irimm1b.io.deq.valid || irimm2b.io.deq.valid || ircntb.io.deq.valid
+  io.mem.bits := 
+    MuxCase(Bits(0), Array(
+      ircmdb.io.deq.valid -> ircmdb.io.deq.bits,
+      irimm1b.io.deq.valid -> irimm1b.io.deq.bits,
+      irimm2b.io.deq.valid -> irimm2b.io.deq.bits,
+      ircntb.io.deq.valid -> ircntb.io.deq.bits
+    ))
 }

@@ -59,6 +59,7 @@ class io_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_utldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_utstq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
+class io_irb_sdb extends io_ready_valid()( Bits(width=DEF_DATA) )
 
 class io_vec_cmdq(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VCMD_SZ) } )
 class io_vec_ximm1q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VIMM_SZ) } )
@@ -155,6 +156,12 @@ class io_dmem_vec_resp extends io_valid()( { new io_dmem_vec_resp_bundle() } )
 class io_dmem_req extends io_valid()({ new io_dmem_req_bundle() })
 class io_dmem_resp extends io_valid()({ new io_dmem_resp_bundle() })
 
+class io_irbUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
+{
+  val data = Bits(width=DATA_SIZE)
+  val addr = UFix(width=ADDR_SIZE)
+}
+
 class io_vf extends Bundle
 {
   val active = Bool(OUTPUT)
@@ -245,8 +252,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_DATA)
-  val imm1_rtag = Bits(width = IRB_IMM1_SZ)
-  val cnt_rtag = Bits(width = IRB_CNT_SZ)
+  val irb = new io_vxu_irb_bundle()
 }
 
 class io_vxu_issue_op extends Bundle
@@ -298,6 +304,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
+  val irb = new io_vxu_irb_bundle()
 }
 
 class io_vxu_expand_read extends Bundle
@@ -396,28 +403,38 @@ class io_lane_to_hazard extends Bundle
   val wlast = Bool()
 }
 
-val io_issue_to_irb extends Bundle
+class io_issue_to_irb extends Bundle
 {
   val updateLast = Bool(OUTPUT)
 }
 
 class io_irb_to_issue extends Bundle 
 {
-  val imm1_rtag = Bits(IRB_IMM1_SIZE, OUTPUT)
-  val cnt_rtag = Bits(IRB_CNT_SIZE, OUTPUT)
+  val imm1_rtag = Bits(IRB_IMM1_SZ, OUTPUT)
+  val cnt_rtag = Bits(IRB_CNT_SZ, OUTPUT)
+}
+
+class io_vxu_irb_bundle extends Bundle
+{
+  val imm1_rtag = Bits(IRB_IMM1_SZ, OUTPUT)
+  val cnt_rtag = Bits(IRB_CNT_SZ, OUTPUT)
+  val pc_next = Bits(SZ_ADDR, OUTPUT)
+  val update_imm1 = Bool(OUTPUT)
 }
 
 class io_seq_to_irb extends Bundle
 {
   val last = Bool(OUTPUT)
-  val update_imm1 = new io_valid()( new updateReq(VIMM_SZ, 3) )
-  val update_cnt = new io_valid()( new updateReq(DEF_VLEN, 3) )
+  val update_imm1 = new io_valid()( new io_irbUpdateReq(VIMM_SZ, 3) )
+  val update_cnt = new io_valid()( new io_irbUpdateReq(DEF_VLEN, 3) )
 }
 
 
 class io_vxu_issue_tvec extends Bundle
 {
   val vf = new io_vf()
+
+  val active = Bool(OUTPUT)
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput

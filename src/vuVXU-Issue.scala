@@ -42,7 +42,8 @@ class vuVXU_Issue extends Component
   tvec.io.irb_cmdb <> io.irb_cmdb
   tvec.io.irb_imm1b <> io.irb_imm1b
   tvec.io.irb_imm2b <> io.irb_imm2b
-  tvec.io.irb_to_issue <> io_irb_to_issue
+  tvec.io.irb_cntb.ready := io.irb_cntb.ready
+  tvec.io.irb_to_issue <> io.irb_to_issue
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
@@ -52,8 +53,10 @@ class vuVXU_Issue extends Component
   vt.io.fn <> io.vt_fn
   vt.io.decoded <> io.vt_regid_imm
 
+  vt.io.irb_cntb.ready := io.irb_cntb.ready
   vt.io.irb_to_issue <> io.irb_to_issue
   vt.io.issue_to_irb <> io.issue_to_irb
 
-  io.irb_cntb <> Mux(tvec.io.active, tvec.io.irb_cntb, vt.io.irb_cntb)
+  io.irb_cntb.valid := Mux(tvec.io.active, tvec.io.irb_cntb.valid, vt.io.irb_cntb.valid)
+  io.irb_cntb.bits := Mux(tvec.io.active, tvec.io.irb_cntb.bits, vt.io.irb_cntb.bits)
 }

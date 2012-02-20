@@ -248,6 +248,7 @@ class vuVXU_Issue_TVEC extends Component
 
   io.irb_cmdb.valid := 
     forward && 
+    !decode_fence_cv && !decode_fence_v &&
     tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready
 
   io.irb_imm1b.valid :=
@@ -263,13 +264,13 @@ class vuVXU_Issue_TVEC extends Component
     tvec_active && io.vxu_cmdq.valid
 
   io.irb_cmdb.bits := io.vxu_cmdq.bits
-  io.irb_imm1b.bits := io.vxu_imm1q.bits
+  io.irb_imm1b.bits := io.vxu_immq.bits
   io.irb_imm2b.bits := io.vxu_imm2q.bits
-  io.irb_cntb.bits := Bits(0, VLEN_SZ)
+  io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
   io.valid.viu := 
     valid(0) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_immq_valid &&
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.valid.vau0 := Bool(false)
@@ -281,12 +282,12 @@ class vuVXU_Issue_TVEC extends Component
 
   io.valid.vld := 
     valid(1) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid &&
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.valid.vst := 
     valid(2) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid &&
+    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
 
   io.dhazard.vs := Bool(false)
@@ -332,6 +333,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
-  io.decoded.imm1_rtag := io.irb_to_issue.imm1_rtag
-  io.decoded.cnt_rtag := io.irb_to_issue.cnt_rtag
+  io.decoded.irb.imm1_rtag := io.irb_to_issue.imm1_rtag
+  io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
+  io.decoded.irb.update_imm1 := !io.valid.viu
 }

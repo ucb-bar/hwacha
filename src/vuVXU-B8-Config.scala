@@ -228,10 +228,10 @@ object Config
   val IRB_IMM2_DEPTH = 8
   val IRB_CNT_DEPTH = 8
 
-  val IRB_CMD_SIZE = log2up(IRB_CMD_DEPTH)
-  val IRB_IMM1_SIZE = log2up(IRB_IMM1_DEPTH)
-  val IRB_IMM2_SIZE = log2up(IRB_IMM2_DEPTH)
-  val IRB_CNT_SIZE = log2up(IRB_IMM2_DEPTH)
+  val IRB_CMD_SZ = log2up(IRB_CMD_DEPTH)
+  val IRB_IMM1_SZ = log2up(IRB_IMM1_DEPTH)
+  val IRB_IMM2_SZE = log2up(IRB_IMM2_DEPTH)
+  val IRB_CNT_SZ = log2up(IRB_IMM2_DEPTH)
 }
 
 object Match

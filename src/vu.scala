@@ -78,7 +78,6 @@ class vu extends Component
 
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
-
   // vaq
   vxu.io.lane_vaq.ready := vaq_count.io.watermark // vaq.io.enq.ready
   vaq.io.enq.valid := vxu.io.lane_vaq.valid
@@ -111,7 +110,7 @@ class vu extends Component
   // vsdq
   vxu.io.lane_vsdq.ready := vsdq_count.io.watermark && vsackcnt.io.watermark// vsdq.io.enq.ready
   vsdq.io.enq.valid := vxu.io.lane_vsdq.valid
-  vsdq.io.enq.bits := vxu.io.lane_vsdq.bits
+  vsdq.io.enq.bits := Mux(Bool(true), vxu.io.lane_vsdq.bits, irb.io.mem.bits)
 
   memif.io.vsdq_deq <> vsdq.io.deq
 
