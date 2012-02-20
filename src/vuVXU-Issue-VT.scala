@@ -10,7 +10,7 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val stalld = ~io.ready
+  val stalld = ~io.ready || !io.irb_cntb.ready
   val stallf = ~io.imem_req.ready || ~io.imem_resp.valid || stalld
   val killf = ~io.imem_resp.valid
 
