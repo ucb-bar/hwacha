@@ -16,7 +16,10 @@ class vuVXU_Issue_TVEC extends Component
   val next_state = Wire(){Bits(width = 1)}
   val reg_state = Reg(next_state, resetVal = ISSUE_TVEC)
 
-  val tvec_active = (reg_state === ISSUE_TVEC)
+  val next_pending_fence = Wire(){Bool()}
+  val reg_pending_fence = Reg(next_pending_fence, resetVal = Bool(false))
+
+  val tvec_active = (reg_state === ISSUE_TVEC) && !reg_pending_fence
   io.active := tvec_active    
 
 
@@ -95,16 +98,80 @@ class vuVXU_Issue_TVEC extends Component
     CMD_VFSSTW    -> List(Bits("b100",3),Bits("b01",2),Bits("b10",2),Bits("b100",3),M0,n,n,n,n,n,n,y,y,Bits(0,4),MTF_Y,MT_W,M_XWR)
   ))
 
-  val valid::dhazard::shazard::bhazard::vmsrc::decoded_fence_cv::decoded_fence_v::cs0 = cs
+  val valid::dhazard::shazard::bhazard::vmsrc::decode_fence_cv::decode_fence_v::cs0 = cs
   val vd_valid::decode_vcfg::decode_setvl::decode_vf::deq_vxu_immq::deq_vxu_imm2q::cs1 = cs0
   val addr_stride::mem_type_float::mem_type::mem_cmd::Nil = cs1
 
-  val decode_fence_cv = decoded_fence_cv
-  val decode_fence_v = decoded_fence_v
+  val decode_irb_cmdb_valid = valid.orR || decode_vf
+  val decode_irb_cntb_valid = valid.orR
 
-  val fire_vcfg  = tvec_active && io.vxu_cmdq.valid && decode_vcfg
-  val fire_setvl = tvec_active && io.vxu_cmdq.valid && decode_setvl
-  val fire_vf    = tvec_active && io.vxu_cmdq.valid && decode_vf
+  val tvec_active_fence_clear =
+    tvec_active &&
+    (!decode_fence_cv.toBool && !decode_fence_v.toBool || !io.hazard_to_issue.pending_memop && io.store_zero)
+
+//-------------------------------------------------------------------------\\
+// FIRE & QUEUE LOGIC                                                      \\
+//-------------------------------------------------------------------------\\
+
+  val mask_issue_ready = !valid.orR || io.ready
+  val mask_vxu_immq_valid = !deq_vxu_immq || io.vxu_immq.valid
+  val mask_vxu_imm2q_valid = !deq_vxu_imm2q || io.vxu_imm2q.valid
+  val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || io.irb_cmdb.ready
+  val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
+  val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
+  val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
+
+  val valid_common =
+    tvec_active_fence_clear &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  val fire_common = mask_issue_ready && valid_common
+
+  val fire_vcfg = fire_common && decode_vcfg
+  val fire_setvl = fire_common && decode_setvl
+  val fire_vf = fire_common && decode_vf
+  val fire_fence_cv = fire_common && decode_fence_cv
+
+  io.vxu_cmdq.ready := 
+    tvec_active_fence_clear && mask_issue_ready && 
+    Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  io.vxu_immq.ready := 
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  io.vxu_imm2q.ready := 
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  io.irb_cmdb.valid := 
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    decode_irb_cmdb_valid && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  io.irb_imm1b.valid :=
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
+    mask_irb_cmdb_ready && deq_vxu_immq && mask_irb_imm2b_ready && mask_irb_cntb_ready
+
+  io.irb_imm2b.valid :=
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && deq_vxu_imm2q && mask_irb_cntb_ready
+
+  io.irb_cntb.valid :=
+    tvec_active_fence_clear && mask_issue_ready &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && decode_irb_cntb_valid
+
+  io.irb_cmdb.bits := io.vxu_cmdq.bits
+  io.irb_imm1b.bits := io.vxu_immq.bits
+  io.irb_imm2b.bits := io.vxu_imm2q.bits
+  io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
 
 //-------------------------------------------------------------------------\\
@@ -155,6 +222,7 @@ class vuVXU_Issue_TVEC extends Component
     next_state := ISSUE_TVEC
   }
 
+
 //-------------------------------------------------------------------------\\
 // SIGNALS                                                                 \\
 //-------------------------------------------------------------------------\\
@@ -172,130 +240,40 @@ class vuVXU_Issue_TVEC extends Component
   io.issue_to_seq.bcnt := reg_bcnt
   io.issue_to_lane.bactive := reg_bactive
 
-  val mask_vxu_immq_valid = !deq_vxu_immq || io.vxu_immq.valid
-  val mask_vxu_imm2q_valid = !deq_vxu_imm2q || io.vxu_imm2q.valid
-  val mask_issue_ready = !valid.orR || io.ready
-
-  val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
-  val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
 
 //-------------------------------------------------------------------------\\
 // FENCE LOGIC                                                             \\
 //-------------------------------------------------------------------------\\
 
-  val VXU_FORWARD = Bits(0,2)
-  val VXU_FENCE_CV = Bits(1,2)
-  val VXU_FENCE_V = Bits(2,2)
-  
-  val state = Reg(resetVal = VXU_FORWARD)
-
-  val fire_fence_cv =
-    tvec_active &&
-    decode_fence_cv && (state === VXU_FORWARD) && !io.hazard_to_issue.pending_memop &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready
-
-  val fire_fence_v =
-    tvec_active &&
-    decode_fence_v && (state === VXU_FORWARD) && !io.hazard_to_issue.pending_memop &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready
-
   io.vec_ackq.bits := Bits(0, 32)
   io.vec_ackq.valid := Bool(false)
 
-  switch (state)
+  when (fire_fence_cv) { next_pending_fence := Bool(true) }
+  when (reg_pending_fence)
   {
-    is (VXU_FORWARD)
-    {
-      when (fire_fence_cv) {
-        state := VXU_FENCE_CV
-      }
-      when (fire_fence_v) {
-        state := VXU_FENCE_V
-      }
-    }
-    is (VXU_FENCE_CV)
-    {
-      io.vec_ackq.bits := Bits(1, 32)
-      io.vec_ackq.valid := !io.hazard_to_issue.pending_memop && io.store_zero
+    io.vec_ackq.bits := Bits(1, 32)
+    io.vec_ackq.valid := Bool(true)
 
-      when (io.vec_ackq.valid)
-      {
-        state := VXU_FORWARD
-      }
-    }
-    is (VXU_FENCE_V)
+    when (io.vec_ackq.ready)
     {
-      state := VXU_FORWARD
+      next_pending_fence := Bool(false)
     }
   }
 
-  val forward = (state === VXU_FORWARD) && (!decode_fence_cv.toBool && !decode_fence_v.toBool || !io.hazard_to_issue.pending_memop)
 
-  io.vxu_cmdq.ready := 
-    forward &&
-    tvec_active && Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
+//-------------------------------------------------------------------------\\
+// ISSUE                                                                   \\
+//-------------------------------------------------------------------------\\
 
-  io.vxu_immq.ready := 
-    forward && 
-    tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
-
-  io.vxu_imm2q.ready := 
-    forward &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q && mask_issue_ready &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
-
-  io.irb_cmdb.valid := 
-    forward && 
-    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready &&
-    Bool(true) && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
-
-  io.irb_imm1b.valid :=
-    forward &&
-    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
-    tvec_active && io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid && mask_issue_ready &&
-    io.irb_cmdb.ready && deq_vxu_immq && mask_irb_imm2b_ready && io.irb_cntb.ready
-
-  io.irb_imm2b.valid :=
-    forward &&
-    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q && mask_issue_ready &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && deq_vxu_imm2q && io.irb_cntb.ready
-
-  io.irb_cntb.valid :=
-    forward &&
-    !decode_fence_cv && !decode_fence_v && !fire_vcfg && !fire_setvl && !fire_vf &&
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && mask_issue_ready &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && Bool(true)
-
-  io.irb_cmdb.bits := io.vxu_cmdq.bits
-  io.irb_imm1b.bits := io.vxu_immq.bits
-  io.irb_imm2b.bits := io.vxu_imm2q.bits
-  io.irb_cntb.bits := Bits(0, SZ_VLEN)
-
-  io.valid.viu := 
-    valid(0) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
-
+  io.valid.viu := valid_common && valid(0)
   io.valid.vau0 := Bool(false)
   io.valid.vau1 := Bool(false)
   io.valid.vau2 := Bool(false)
   io.valid.amo := Bool(false)
   io.valid.utld := Bool(false)
   io.valid.utst := Bool(false)
-
-  io.valid.vld := 
-    valid(1) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
-
-  io.valid.vst := 
-    valid(2) && 
-    tvec_active && io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-    io.irb_cmdb.ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && io.irb_cntb.ready
+  io.valid.vld := valid_common && valid(1)
+  io.valid.vst := valid_common && valid(2)
 
   io.dhazard.vs := Bool(false)
   io.dhazard.vt := dhazard(0).toBool
