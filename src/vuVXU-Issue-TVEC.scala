@@ -245,6 +245,7 @@ class vuVXU_Issue_TVEC extends Component
 // FENCE LOGIC                                                             \\
 //-------------------------------------------------------------------------\\
 
+  next_pending_fence := reg_pending_fence
   io.vec_ackq.bits := Bits(0, 32)
   io.vec_ackq.valid := Bool(false)
 
