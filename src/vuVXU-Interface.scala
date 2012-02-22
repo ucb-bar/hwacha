@@ -137,14 +137,15 @@ class io_dmem_req_bundle extends Bundle
   val idx = Bits(width = PGIDX_BITS)
   val ppn = Bits(width = PPN_BITS)
   val data = Bits(width = 64)
-  val tag = Bits(width = 9)
+  val tag = Bits(width = 10)
 }
 
 class io_dmem_resp_bundle extends Bundle
 {
   val nack = Bool()
   val data = Bits(width = 64)
-  val tag = Bits(width = 9)
+  val tag = Bits(width = 10)
+  val typ = Bits(width = 3)
 }
 
 class io_dmem_ut_req extends io_ready_valid()( { new io_dmem_ut_req_bundle() } )
