@@ -519,7 +519,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val shifted_write_ptr =
     Mux(read_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
-        UFix(ROQ_TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)
+        UFix(ROQ_TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)(ROQ_TAG_SIZE-1,0)
 
   val shifted_vb_update_write =
     Mux(io.enq.valid, (Bits(1) << shifted_write_ptr),
@@ -532,7 +532,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   // a limited version of leading count ones
   // maximum cnt is defined by ROQ_MAX_QCNT
   var sel = shifted_vb_array(0)
-  var locnt = UFix(1, ROQ_TAG_SIZE)
+  var locnt = UFix(0, ROQ_TAG_SIZE)
   for (i <- 0 until ROQ_MAX_QCNT)
   {
     locnt = Mux(sel, UFix(i+1), locnt)
