@@ -25,8 +25,8 @@ class vu extends Component
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
 
-  val vldq = new queue_reorder_qcnt(65, 256, 9)
-  val vldq_count = new vuVMU_QueueCount(0, 9, 16, true)
+  // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
+  val vldq = new queue_reorder_qcnt(65, 128, 9)
 
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
   val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
