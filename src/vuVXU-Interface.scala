@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Config._
 import Interface._
+import queues._
 
 class io_ready_valid[T <: Data](view: List[String] = null)(data: => T) extends Bundle(view)
 {
@@ -694,6 +695,43 @@ class io_vxu_expand extends Bundle
   val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
 }
+
+class io_vxu_mem extends Bundle
+{
+  val lane_vaq_valid = Bool(INPUT)
+  val lane_vaq_mem = new io_vxu_mem_cmd().asInput
+  val lane_vaq_imm = Bits(DEF_DATA, INPUT)
+  
+  val vmu_vaq_valid = Bool(OUTPUT)
+  val vmu_vaq_bits = new io_vaq_bundle().asOutput
+  
+  val lane_vsdq_valid = Bool(INPUT)
+  val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
+  val lane_vsdq_bits = Bits(DEF_DATA, INPUT) 
+  
+  val vmu_vsdq_valid = Bool(OUTPUT)
+  val vmu_vsdq_bits = Bits(DEF_DATA, OUTPUT) 
+}
+
+class io_vu_memif extends Bundle
+{
+  val vaq_deq = new io_ready_valid()({ new io_vaq_bundle() }).flip()
+  val vaq_ack = Bool(OUTPUT)
+  val vaq_nack = Bool(OUTPUT)
+
+  val vsdq_deq = new io_ready_valid()({ Bits(width = 65) }).flip()
+  val vsdq_ack = Bool(OUTPUT)
+  val vsdq_nack = Bool(OUTPUT)
+
+  val vldq_deq_rtag = new io_ready_valid()({ Bits(width = 8) }).flip()
+  val vldq_ack = Bool(OUTPUT)
+  val vldq_nack = Bool(OUTPUT)
+  val vldq_enq = new io_ready_valid()({ new io_queue_reorder_qcnt_enq_bundle(65, 8) })
+
+  val mem_req = new io_dmem_req()
+  val mem_resp = new io_dmem_resp().flip()
+}
+
 
 // class vec_dcachereqIO extends Bundle
 // {
