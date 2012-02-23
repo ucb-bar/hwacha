@@ -58,8 +58,6 @@ class io_vmu_utackq extends io_ready_valid()( { Bits(width = DEF_VMU_UTACKQ) } )
 class io_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
-class io_utldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
-class io_utstq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_irb_sdb extends io_ready_valid()( Bits(width=DEF_DATA) )
 
 class io_vec_cmdq(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VCMD_SZ) } )
@@ -74,8 +72,6 @@ class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
-class io_lane_utldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
-class io_lane_utsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 
 class io_imul_req_bundle extends Bundle
 {
@@ -181,8 +177,6 @@ class io_qstall extends Bundle
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
-  val utldq = Bool()
-  val utsdq = Bool()
 }
 
 class io_vxu_mem_cmd extends Bundle
@@ -279,8 +273,6 @@ class io_vxu_seq_fu extends Bundle
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
-  val utldq = Bool()
-  val utsdq = Bool()
 }
 
 class io_vxu_seq_fn extends Bundle
@@ -351,8 +343,6 @@ class io_vxu_expand_lfu_fn extends Bundle
   val vldq = Bool()
   val vsdq = Bool()
   val utaq = Bool()
-  val utldq = Bool()
-  val utsdq = Bool()
 }
 
 class io_vxu_to_vmu extends Bundle
@@ -547,8 +537,6 @@ class io_vxu extends Bundle
   val lane_vldq = new io_lane_vldq().flip()
   val lane_vsdq = new io_lane_vsdq()
   val lane_utaq = new io_lane_utaq()
-  val lane_utldq = new io_lane_utldq().flip()
-  val lane_utsdq = new io_lane_utsdq()
 
   val qcnt = UFix(5, OUTPUT)
   

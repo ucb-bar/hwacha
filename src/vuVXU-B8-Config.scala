@@ -116,14 +116,11 @@ object Config
   val DEF_XLEN = SZ_XLEN
   val DEF_FLEN = SZ_FLEN
 
-  val SZ_STALL = 6
+  val SZ_STALL = 3
 
-  val RG_VAQ = 5
-  val RG_VLDQ = 4
-  val RG_VSDQ = 3
-  val RG_UTAQ = 2
-  val RG_UTLDQ = 1
-  val RG_UTSDQ = 0
+  val RG_VAQ = 2
+  val RG_VLDQ = 1
+  val RG_VSDQ = 0
 
   val DEF_STALL = SZ_STALL
 

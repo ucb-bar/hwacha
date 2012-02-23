@@ -83,8 +83,6 @@ class vuVXU extends Component
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready
   b8seq.io.qstall.utaq := ~io.lane_utaq.ready
-  b8seq.io.qstall.utldq := ~io.lane_utldq.valid
-  b8seq.io.qstall.utsdq := ~io.lane_utsdq.ready
 
   b8seq.io.fire <> b8fire.io.fire
   b8seq.io.fire_fn <> b8fire.io.fire_fn
@@ -133,10 +131,6 @@ class vuVXU extends Component
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
   b8lane.io.vmu.utaq_val <> io.lane_utaq.valid
   b8lane.io.vmu.utaq_bits <> io.lane_utaq.bits
-  b8lane.io.vmu.utldq_rdy <> io.lane_utldq.ready
-  b8lane.io.vmu.utldq_bits <> io.lane_utldq.bits
-  b8lane.io.vmu.utsdq_val <> io.lane_utsdq.valid
-  b8lane.io.vmu.utsdq_bits <> io.lane_utsdq.bits
 
   // memory interface
   val b8mem = new vuVXU_Banked8_Mem()

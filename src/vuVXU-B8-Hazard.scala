@@ -124,10 +124,16 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr2, Bool(true))
     next_rport_vgu.write(next_ptr2, Bool(true))
   }
+  when (io.fire.vld)
+  {
+    next_rport_val.write(next_ptr2, Bool(true))
+    next_rport_vgu.write(next_ptr2, Bool(true))
+  }
   when (io.fire.vst)
   {
     next_rport_val.write(next_ptr2, Bool(true))
     next_rport_vsu.write(next_ptr2, Bool(true))
+    next_rport_vgu.write(next_ptr2, Bool(true))
   }
 
   when (io.lane_to_hazard.rlast)
@@ -394,12 +400,12 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   // hazard check logic for tvec/vt
-  val shazard_vau0 = (array_rport_val.flatten() | array_rport_vau0.flatten()).orR() | (array_wport_val.flatten() | array_wport_vau0.flatten()).orR()
-  val shazard_vau1 = (array_rport_val.flatten() | array_rport_vau1.flatten()).orR() | (array_wport_val.flatten() | array_wport_vau1.flatten()).orR()
-  val shazard_vau2 = (array_rport_val.flatten() | array_rport_vau2.flatten()).orR() | (array_wport_val.flatten() | array_wport_vau2.flatten()).orR()
-  val shazard_vgu = (array_rport_val.flatten() | array_rport_vgu.flatten()).orR()
-  val shazard_vlu = (array_wport_val.flatten() | array_wport_vlu.flatten()).orR()
-  val shazard_vsu = (array_rport_val.flatten() | array_rport_vsu.flatten()).orR()
+  val shazard_vau0 = (array_rport_val.flatten() & array_rport_vau0.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau0.flatten()).orR()
+  val shazard_vau1 = (array_rport_val.flatten() & array_rport_vau1.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau1.flatten()).orR()
+  val shazard_vau2 = (array_rport_val.flatten() & array_rport_vau2.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau2.flatten()).orR()
+  val shazard_vgu = (array_rport_val.flatten() & array_rport_vgu.flatten()).orR()
+  val shazard_vlu = (array_wport_val.flatten() & array_wport_vlu.flatten()).orR()
+  val shazard_vsu = (array_rport_val.flatten() & array_rport_vsu.flatten()).orR()
 
   val seqhazard_1slot = array_sport_val.read(next_ptr1)
   val seqhazard_2slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2)
@@ -437,14 +443,14 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vd).orR()
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr)
-  val tvec_bhazard_vld = array_wport_val.read(next_ptr2)
+  val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
   val tvec_bhazard_vst = array_rport_val.read(next_ptr2)
 
   val tvec_stall =
     Cat(
       io.tvec_valid.viu & io.seq_to_hazard.stall.orR(),
-      io.tvec_valid.vld & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
-      io.tvec_valid.vst & (io.seq_to_hazard.stall(RG_VAQ) | io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_UTAQ) | io.seq_to_hazard.stall(RG_UTLDQ) | io.seq_to_hazard.stall(RG_UTSDQ))
+      io.tvec_valid.vld & io.seq_to_hazard.stall(RG_VSDQ),
+      io.tvec_valid.vst & io.seq_to_hazard.stall(RG_VLDQ)
     )
 
   val tvec_dhazard =
@@ -455,6 +461,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val tvec_shazard =
     Cat(
+      shazard_vgu & io.tvec_shazard.vgu,
       shazard_vlu & io.tvec_shazard.vlu,
       shazard_vsu & io.tvec_shazard.vsu
     )
@@ -542,9 +549,9 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_valid.vau0 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau1 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau2 & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.amo & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ)),
-      io.vt_valid.utld & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTSDQ)),
-      io.vt_valid.utst & (io.seq_to_hazard.stall(RG_VLDQ) | io.seq_to_hazard.stall(RG_VSDQ) | io.seq_to_hazard.stall(RG_UTLDQ))
+      io.vt_valid.amo,
+      io.vt_valid.utld & io.seq_to_hazard.stall(RG_VSDQ),
+      io.vt_valid.utst & io.seq_to_hazard.stall(RG_VLDQ)
     )
 
   val vt_dhazard =
