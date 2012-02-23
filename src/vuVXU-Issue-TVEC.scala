@@ -103,6 +103,8 @@ class vuVXU_Issue_TVEC extends Component
   val addr_stride::mem_type_float::mem_type::mem_cmd::Nil = cs1
 
   val decode_irb_cmdb_valid = valid.orR || decode_vf
+  val decode_irb_imm1b_valid = valid.orR && deq_vxu_immq
+  val decode_irb_imm2b_valid = valid.orR && deq_vxu_imm2q
   val decode_irb_cntb_valid = valid.orR
 
   val tvec_active_fence_clear =
@@ -155,12 +157,12 @@ class vuVXU_Issue_TVEC extends Component
 
   io.irb_imm1b.valid :=
     tvec_active_fence_clear && mask_issue_ready &&
-    io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
+    io.vxu_cmdq.valid && decode_irb_imm1b_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && deq_vxu_immq && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.irb_imm2b.valid :=
     tvec_active_fence_clear && mask_issue_ready &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && decode_irb_imm2b_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && deq_vxu_imm2q && mask_irb_cntb_ready
 
   io.irb_cntb.valid :=
