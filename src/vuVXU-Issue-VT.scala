@@ -10,7 +10,7 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val stalld = ~io.ready || !io.irb_cntb.ready
+  val stalld = ~io.ready // || !io.irb_cntb.ready
   val stallf = ~io.imem_req.ready || ~io.imem_resp.valid || stalld
   val killf = ~io.imem_resp.valid
 
@@ -251,13 +251,13 @@ class vuVXU_Issue_VT extends Component
 
   io.issue_to_irb.updateLast := decode_stop.toBool
 
-  io.valid.viu := io.vf.active && unmasked_valid_viu && io.irb_cntb.ready
-  io.valid.vau0 := io.vf.active && unmasked_valid_vau0 && io.irb_cntb.ready
-  io.valid.vau1 := io.vf.active && unmasked_valid_vau1 && io.irb_cntb.ready
-  io.valid.vau2 := io.vf.active && unmasked_valid_vau2 && io.irb_cntb.ready
-  io.valid.amo := io.vf.active && unmasked_valid_amo && io.irb_cntb.ready
-  io.valid.utld := io.vf.active && unmasked_valid_utld && io.irb_cntb.ready
-  io.valid.utst := io.vf.active && unmasked_valid_utst && io.irb_cntb.ready
+  io.valid.viu := io.vf.active && unmasked_valid_viu // && io.irb_cntb.ready
+  io.valid.vau0 := io.vf.active && unmasked_valid_vau0 // && io.irb_cntb.ready
+  io.valid.vau1 := io.vf.active && unmasked_valid_vau1 // && io.irb_cntb.ready
+  io.valid.vau2 := io.vf.active && unmasked_valid_vau2 // && io.irb_cntb.ready
+  io.valid.amo := io.vf.active && unmasked_valid_amo // && io.irb_cntb.ready
+  io.valid.utld := io.vf.active && unmasked_valid_utld // && io.irb_cntb.ready
+  io.valid.utst := io.vf.active && unmasked_valid_utst // && io.irb_cntb.ready
   io.valid.vld := Bool(false)
   io.valid.vst := Bool(false)
 
