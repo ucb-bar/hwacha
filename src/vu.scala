@@ -90,7 +90,7 @@ class vu extends Component
 
   vaq_count.io.qcnt := vxu.io.qcnt
   vaq_count.io.inc := memif.io.vaq_ack
-  vaq_count.io.dec := vxu.io.lane_vaq.valid
+  vaq_count.io.dec := vxu.io.lane_vaq_dec
 
 
   // vldq
@@ -119,7 +119,7 @@ class vu extends Component
 
   vsdq_count.io.qcnt := vxu.io.qcnt
   vsdq_count.io.inc := memif.io.vsdq_ack
-  vsdq_count.io.dec := vxu.io.lane_vsdq.valid
+  vsdq_count.io.dec := vxu.io.lane_vsdq_dec
 
   // vsack
   vsackcnt.io.inc := memif.io.vsdq_ack

@@ -143,9 +143,11 @@ class vuVXU extends Component
 
   io.lane_vaq.valid := b8mem.io.vmu_vaq_valid
   io.lane_vaq.bits <> b8mem.io.vmu_vaq_bits
+  io.lane_vaq_dec := b8lane.io.vmu.vaq_val
 
   io.lane_vsdq.valid := b8mem.io.vmu_vsdq_valid
   io.lane_vsdq.bits := b8mem.io.vmu_vsdq_bits
+  io.lane_vsdq_dec := b8lane.io.vmu.vsdq_val
   
   io.qcnt := b8seq.io.seq_regid_imm.qcnt
 }

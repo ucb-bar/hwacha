@@ -534,6 +534,9 @@ class io_vxu extends Bundle
   val lane_vldq = new io_lane_vldq().flip()
   val lane_vsdq = new io_lane_vsdq()
 
+  val lane_vaq_dec = Bool(OUTPUT)
+  val lane_vsdq_dec = Bool(OUTPUT)
+
   val qcnt = UFix(5, OUTPUT)
   
   val pending_store = Bool(INPUT)
