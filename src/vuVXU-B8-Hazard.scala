@@ -549,7 +549,7 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_valid.vau0 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau1 & io.seq_to_hazard.stall.orR(),
       io.vt_valid.vau2 & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.amo,
+      Bool(false), // io.vt_valid.amo
       io.vt_valid.utld & io.seq_to_hazard.stall(RG_VSDQ),
       io.vt_valid.utst & io.seq_to_hazard.stall(RG_VLDQ)
     )
