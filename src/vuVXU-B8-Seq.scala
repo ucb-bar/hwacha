@@ -445,7 +445,7 @@ class vuVXU_Banked8_Seq extends Component
 
   }
 
-  when(io.seq.vaq || io.seq.vldq)
+  when(io.seq.vaq && !io.seq_regid_imm.utmemop)
   {
     next_imm.write(reg_ptr, array_imm.read(reg_ptr) + (array_imm2.read(reg_ptr) << UFix(3)))
   }
@@ -561,7 +561,7 @@ class vuVXU_Banked8_Seq extends Component
 
   when (current_vaq_val.toBool) { reg_vaq_stall := io.qstall.vaq }
   when (current_vldq_val.toBool) { reg_vldq_stall := io.qstall.vldq }
-  when (current_vsdq_val.toBool) { reg_vsdq_stall := (io.qstall.vaq || io.qstall.vsdq) }
+  when (current_vsdq_val.toBool) { reg_vsdq_stall := io.qstall.vsdq }
 
   val stall =
     array_dep_vaq.read(reg_ptr) & reg_vaq_stall |
@@ -569,7 +569,7 @@ class vuVXU_Banked8_Seq extends Component
     array_dep_vsdq.read(reg_ptr) & reg_vsdq_stall |
     current_vaq_val & io.qstall.vaq |
     current_vldq_val & io.qstall.vldq |
-    current_vsdq_val & (io.qstall.vaq | io.qstall.vsdq)
+    current_vsdq_val & io.qstall.vsdq
 
   val reg_stall =
     current_vaq_val & reg_vaq_stall |
