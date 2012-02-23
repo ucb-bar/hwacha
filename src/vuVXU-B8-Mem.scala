@@ -14,7 +14,7 @@ class vuVXU_Banked8_Mem extends Component
   val reg_lane_vaq_valid = Reg(io.lane_vaq_valid)
   val reg_lane_vaq_mem = Reg(io.lane_vaq_mem)
   val reg_lane_vaq_imm = Reg(io.lane_vaq_imm)
-  val reg_lane_vaq_rf = Reg(resetVal=Bits(0,DEF_DATA))
+  val reg_lane_vaq_rf = Reg(Bits(0))
 
   val addr = reg_lane_vaq_imm + reg_lane_vaq_rf
   io.vmu_vaq_valid := reg_lane_vaq_valid

@@ -68,5 +68,5 @@ class vuMemIF extends Component
 	    (load_fp_d) -> ldq_dp_bits,
       (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits)
   ))
-  io.vldq_enq.bits.rtag := reg_mem_resp.bits.tag >> UFix(1)
+  io.vldq_enq.bits.rtag := reg_mem_resp.bits.tag.toUFix >> UFix(1)
 }
