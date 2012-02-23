@@ -37,7 +37,7 @@ class vuVXU_Issue extends Component
   tvec.io.bhazard <> io.tvec_bhazard
   tvec.io.fn <> io.tvec_fn
   tvec.io.decoded <> io.tvec_regid_imm
-  tvec.io.store_zero <> io.store_zero
+  tvec.io.pending_store <> io.pending_store
 
   tvec.io.irb_cmdb <> io.irb_cmdb
   tvec.io.irb_imm1b <> io.irb_imm1b

@@ -107,7 +107,7 @@ class vuVXU_Issue_TVEC extends Component
 
   val tvec_active_fence_clear =
     tvec_active &&
-    (!decode_fence_cv.toBool && !decode_fence_v.toBool || !io.hazard_to_issue.pending_memop && io.store_zero)
+    (!decode_fence_cv.toBool && !decode_fence_v.toBool || !io.hazard_to_issue.pending_memop && !io.pending_store)
 
 //-------------------------------------------------------------------------\\
 // FIRE & QUEUE LOGIC                                                      \\

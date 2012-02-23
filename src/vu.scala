@@ -122,11 +122,10 @@ class vu extends Component
   vsdq_count.io.dec := vxu.io.lane_vsdq.valid
 
   // vsack
-  vsackcnt.io.vsdq_ack := memif.io.vsdq_ack
-  vsackcnt.io.vsdq_enq_valid := vxu.io.lane_vsdq.valid
-  vsackcnt.io.vsdq_enq_ready := vsdq.io.enq.ready
+  vsackcnt.io.inc := memif.io.vsdq_ack
+  vsackcnt.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
   vsackcnt.io.qcnt := vxu.io.qcnt
-  vxu.io.store_zero := vsackcnt.io.zero
+  vxu.io.pending_store := !vsackcnt.io.zero
 
   //val vmu = new vuVMU()
 

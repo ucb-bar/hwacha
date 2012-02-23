@@ -456,7 +456,7 @@ class io_vxu_issue_tvec extends Bundle
   val fn = new io_vxu_issue_fn().asOutput
   val decoded = new io_vxu_issue_regid_imm().asOutput
 
-  val store_zero = Bool(INPUT)
+  val pending_store = Bool(INPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
@@ -551,7 +551,7 @@ class io_vxu extends Bundle
 
   val qcnt = UFix(5, OUTPUT)
   
-  val store_zero = Bool(INPUT)
+  val pending_store = Bool(INPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
@@ -598,7 +598,7 @@ class io_vxu_issue extends Bundle
   val vt_fn = new io_vxu_issue_fn().asOutput
   val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
   
-  val store_zero = Bool(INPUT)
+  val pending_store = Bool(INPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
