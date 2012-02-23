@@ -57,7 +57,6 @@ class io_vmu_utimmq extends io_ready_valid()( { Bits(width = DEF_VMU_UTIMMQ) } )
 class io_vmu_utackq extends io_ready_valid()( { Bits(width = DEF_VMU_UTACKQ) } )
 class io_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
-class io_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 class io_irb_sdb extends io_ready_valid()( Bits(width=DEF_DATA) )
 
 class io_vec_cmdq(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = VCMD_SZ) } )
@@ -71,7 +70,6 @@ class io_vmu_vackq extends io_ready_valid()( { Bits(width = VMRESP_SZ) } )
 class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
-class io_lane_utaq extends io_ready_valid()( { Bits(width = DEF_ADDR) } )
 
 class io_imul_req_bundle extends Bundle
 {
@@ -176,7 +174,6 @@ class io_qstall extends Bundle
   val vaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
-  val utaq = Bool()
 }
 
 class io_vxu_mem_cmd extends Bundle
@@ -272,7 +269,6 @@ class io_vxu_seq_fu extends Bundle
   val vaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
-  val utaq = Bool()
 }
 
 class io_vxu_seq_fn extends Bundle
@@ -298,6 +294,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = DEF_DATA)
   val imm2 = Bits(width = DEF_VXU_IMM2Q)
+  val utmemop = Bool()
   val irb = new io_vxu_irb_bundle()
 }
 
@@ -342,7 +339,7 @@ class io_vxu_expand_lfu_fn extends Bundle
   val vaq = Bool()
   val vldq = Bool()
   val vsdq = Bool()
-  val utaq = Bool()
+  val utmemop = Bool()
 }
 
 class io_vxu_to_vmu extends Bundle
@@ -536,7 +533,6 @@ class io_vxu extends Bundle
   val lane_vaq = new io_lane_vaq()
   val lane_vldq = new io_lane_vldq().flip()
   val lane_vsdq = new io_lane_vsdq()
-  val lane_utaq = new io_lane_utaq()
 
   val qcnt = UFix(5, OUTPUT)
   
@@ -689,6 +685,8 @@ class io_vxu_mem extends Bundle
   val lane_vaq_valid = Bool(INPUT)
   val lane_vaq_mem = new io_vxu_mem_cmd().asInput
   val lane_vaq_imm = Bits(DEF_DATA, INPUT)
+  val lane_vaq_utmemop = Bool(INPUT)
+  val lane_vaq_rf = Bits(DEF_DATA, INPUT)
   
   val vmu_vaq_valid = Bool(OUTPUT)
   val vmu_vaq_bits = new io_vaq_bundle().asOutput

@@ -36,15 +36,14 @@ class VMUIO extends Bundle
   val vaq_val   = Bool(OUTPUT)
   val vaq_mem = new io_vxu_mem_cmd().asOutput
   val vaq_imm = Bits(DEF_DATA, OUTPUT)
+  val vaq_utmemop = Bool(OUTPUT)
+  val vaq_rf = Bits(DEF_DATA, OUTPUT)
 
   val vldq_rdy  = Bool(OUTPUT)
   val vldq_bits = Bits(DEF_DATA, INPUT)
   val vsdq_val  = Bool(OUTPUT)
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
   val vsdq_bits = Bits(DEF_DATA, OUTPUT)
-
-  val utaq_val  = Bool(OUTPUT)
-  val utaq_bits = Bits(DEF_ADDR, OUTPUT)
 }
 
 class vuVXU_LaneIO extends Bundle 
@@ -134,7 +133,7 @@ class vuVXU_Banked8_Lane extends Component
   io.vmu.vaq_val   := lfu.io.vaq_val
   io.vmu.vldq_rdy  := lfu.io.vldq_rdy
   io.vmu.vsdq_val  := lfu.io.vsdq_val
-  io.vmu.utaq_val  := lfu.io.utaq_val
+  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
 
   val imul_fn  = Mux(vau0_val, vau0_fn, io.cp.imul_fn)
   val imul_in0 = Mux(vau0_val, rbl(0), Cat(Bits(0,1), io.cp.imul_in0))
@@ -170,6 +169,6 @@ class vuVXU_Banked8_Lane extends Component
   conv.io.fn := vau2_fn
   conv.io.in := rbl(5)
 
-  io.vmu.utaq_bits  := rbl(6)(SZ_ADDR-1,0)
-  io.vmu.vsdq_bits  := rbl(7)
+  io.vmu.vaq_rf := rbl(6)(SZ_ADDR-1,0)
+  io.vmu.vsdq_bits := rbl(7)
 }

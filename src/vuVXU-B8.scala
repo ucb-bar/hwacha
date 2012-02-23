@@ -82,7 +82,6 @@ class vuVXU extends Component
   b8seq.io.qstall.vaq := ~io.lane_vaq.ready
   b8seq.io.qstall.vldq := ~io.lane_vldq.valid
   b8seq.io.qstall.vsdq := ~io.lane_vsdq.ready
-  b8seq.io.qstall.utaq := ~io.lane_utaq.ready
 
   b8seq.io.fire <> b8fire.io.fire
   b8seq.io.fire_fn <> b8fire.io.fire_fn
@@ -129,14 +128,14 @@ class vuVXU extends Component
 
   b8lane.io.vmu.vldq_rdy <> io.lane_vldq.ready
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
-  b8lane.io.vmu.utaq_val <> io.lane_utaq.valid
-  b8lane.io.vmu.utaq_bits <> io.lane_utaq.bits
 
   // memory interface
   val b8mem = new vuVXU_Banked8_Mem()
   b8mem.io.lane_vaq_valid := b8lane.io.vmu.vaq_val
   b8mem.io.lane_vaq_mem <> b8lane.io.vmu.vaq_mem
   b8mem.io.lane_vaq_imm := b8lane.io.vmu.vaq_imm
+  b8mem.io.lane_vaq_utmemop := b8lane.io.vmu.vaq_utmemop
+  b8mem.io.lane_vaq_rf := b8lane.io.vmu.vaq_rf
 
   b8mem.io.lane_vsdq_valid := b8lane.io.vmu.vsdq_val 
   b8mem.io.lane_vsdq_mem <> b8lane.io.vmu.vsdq_mem
@@ -149,27 +148,4 @@ class vuVXU extends Component
   io.lane_vsdq.bits := b8mem.io.vmu_vsdq_bits
   
   io.qcnt := b8seq.io.seq_regid_imm.qcnt
-
-  //io.vmu_vcmdq.valid := b8lane.io.vmu.vaq_val || issue.io.vmu_vcmdq.valid
-  //io.vmu_vbaseq.valid := b8lane.io.vmu.vaq_val
-  //io.vmu_vstrideq.valid := b8lane.io.vmu.vaq_val & b8lane.io.vmu.cmd(19)
-  //
-  //io.vmu_vcmdq.bits := 
-  //  Mux(issue.io.vmu_vcmdq.valid, issue.io.vmu_vcmdq.bits,
-  //      b8lane.io.vmu.cmd(18,0))
-  //io.vmu_vbaseq.bits := b8lane.io.vmu.imm(63,0)
-  //io.vmu_vstrideq.bits := Bits(0, DEF_VXU_IMM2Q)
-
-  //io.vmu_utcmdq.valid := b8lane.io.vmu.utaq_val || issue.io.vmu_utcmdq.valid
-  //io.vmu_utimmq.valid := b8lane.io.vmu.utaq_val & b8lane.io.vmu.cmd(19)
-
-  //io.vmu_utcmdq.bits :=
-  //  Mux(issue.io.vmu_utcmdq.valid, issue.io.vmu_utcmdq.bits,
-  //      b8lane.io.vmu.cmd(18,0))
-  //io.vmu_utimmq.bits := b8lane.io.vmu.imm(31,0)
-
-
-  //// responses
-  //issue.io.vxu_ackq.bits <> io.vmu_utackq.bits
-  //issue.io.vxu_ackq.valid <> io.vmu_utackq.valid
 }

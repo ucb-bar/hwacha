@@ -18,7 +18,7 @@ class ExpanderToLFUIO extends Bundle
   val vaq     = Bool(OUTPUT)
   val vldq    = Bool(OUTPUT)
   val vsdq    = Bool(OUTPUT)
-  val utaq    = Bool(OUTPUT)
+  val utmemop = Bool(OUTPUT)
 }
 
 class LFUIO extends Bundle 
@@ -39,7 +39,7 @@ class LFUIO extends Bundle
   val vaq_val   = Bool(OUTPUT)
   val vldq_rdy  = Bool(OUTPUT)
   val vsdq_val  = Bool(OUTPUT)
-  val utaq_val  = Bool(OUTPUT)
+  val vaq_utmemop = Bool(OUTPUT)
 }
 
 class vuVXU_Banked8_Lane_LFU extends Component 
@@ -77,7 +77,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (io.expand.vau0) { next_vau0_cnt := io.expand_rcnt}
   when (io.expand.vau1) { next_vau1_cnt := io.expand_rcnt}
   when (io.expand.vau2) { next_vau2_cnt := io.expand_rcnt}
-  when (io.expand.vaq || io.expand.utaq) { next_vgu_cnt := io.expand_rcnt}
+  when (io.expand.vaq) { next_vgu_cnt := io.expand_rcnt}
   when (io.expand.vldq) { next_vlu_cnt := io.expand_wcnt}
   when (io.expand.vsdq) { next_vsu_cnt := io.expand_rcnt}
   
@@ -100,7 +100,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val reg_vaq     = Reg(resetVal = Bool(false))
   val reg_vldq    = Reg(resetVal = Bool(false))
   val reg_vsdq    = Reg(resetVal = Bool(false))
-  val reg_utaq    = Reg(resetVal = Bool(false))
+  val reg_utmemop = Reg(resetVal = Bool(false))
 
   when (io.expand.vau0)
   {
@@ -132,31 +132,21 @@ class vuVXU_Banked8_Lane_LFU extends Component
     reg_vau2 := Bool(false)
   }
 
-  when (io.expand.utaq)
-  {
-    reg_utaq := Bool(true)
-    reg_mem := io.expand.mem
-    reg_imm := io.expand.imm
-  }
-  when (!io.expand.utaq && ~(reg_vgu_cnt.orR))
-  {
-    reg_utaq := Bool(false)
-  }
-
   when (io.expand.vaq)
   {
     reg_vaq := Bool(true)
     reg_mem := io.expand.mem
     reg_imm := io.expand.imm
     reg_imm2 := io.expand.imm2
-  }
-  when (reg_vaq)
-  {
-    reg_imm := reg_imm.toUFix + reg_imm2.toUFix
+    reg_utmemop := io.expand.utmemop
   }
   when (!io.expand.vaq && ~(reg_vgu_cnt.orR))
   {
     reg_vaq := Bool(false)
+  }
+  when (reg_vaq && !reg_utmemop)
+  {
+    reg_imm := reg_imm.toUFix + reg_imm2.toUFix
   }
 
   when ((io.expand.vldq) && (io.expand_wcnt.orR))
@@ -190,7 +180,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau2_fn   := reg_vau2_fn
   io.mem <> reg_mem
   io.imm := reg_imm
-  io.utaq_val  := reg_utaq
+  io.vaq_utmemop  := reg_utmemop
   io.vaq_val   := reg_vaq
   io.vldq_rdy  := io.expand.vldq | reg_vldq
   io.vsdq_val  := reg_vsdq

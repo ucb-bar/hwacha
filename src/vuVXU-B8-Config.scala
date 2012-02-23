@@ -186,7 +186,7 @@ object Config
   val PPN_BITS = PADDR_BITS - PGIDX_BITS
 
   val MTF_X = Bits(0, 1)
-  val MTF_N = Bits(1, 1)
+  val MTF_N = Bits(0, 1)
   val MTF_Y = Bits(1, 1)
 
   val MT_X  = Bits("b000", 3);

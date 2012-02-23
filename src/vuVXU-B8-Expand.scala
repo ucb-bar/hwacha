@@ -180,24 +180,27 @@ class vuVXU_Banked8_Expand extends Component
   }
   when (io.seq.vaq)
   {
-    next_ren(0) := Bool(true)
-    next_rlast(0) := io.seq_to_expand.last
-    next_rcnt(0) := io.seq_regid_imm.cnt
-  }
-  when (io.seq.utaq)
-  {
-    next_ren(0) := Bool(true)
-    next_rlast(0) := io.seq_to_expand.last
-    next_rcnt(0) := io.seq_regid_imm.cnt
-    next_raddr(0) := io.seq_regid_imm.vs
-    next_roplen(0) := Bits("b00", 2)
-    for(i <- 0 until DEF_BRPORT)
-      if(i == 6)
+    when (io.seq_regid_imm.utmemop)
+    {
+      next_ren(0) := Bool(true)
+      next_rlast(0) := io.seq_to_expand.last
+      next_rcnt(0) := io.seq_regid_imm.cnt
+      next_raddr(0) := io.seq_regid_imm.vs
+      next_roplen(0) := Bits("b00", 2)
+      for(i <- 0 until DEF_BRPORT)
+        if(i == 6)
         next_rblen(0)(i) := Bool(true)
       else
         next_rblen(0)(i) := Bool(false)
 
-    when (io.seq_regid_imm.vs_zero) { next_rblen(0)(6) := Bool(false) }
+      when (io.seq_regid_imm.vs_zero) { next_rblen(0)(6) := Bool(false) }
+    }
+    .otherwise
+    {
+      next_ren(0) := Bool(true)
+      next_rlast(0) := io.seq_to_expand.last
+      next_rcnt(0) := io.seq_regid_imm.cnt
+    }
   }
   when (io.seq.vsdq)
   {
@@ -324,7 +327,7 @@ class vuVXU_Banked8_Expand extends Component
   val next_vaq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vldq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vsdq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_utaq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_utmemop = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
 
   val reg_viu = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_viu_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VIU_FN)} }
@@ -344,7 +347,7 @@ class vuVXU_Banked8_Expand extends Component
   val reg_vaq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vldq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vsdq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_utaq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_utmemop = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
 
   for (i <- 0 until SHIFT_BUF_READ)
   {
@@ -366,7 +369,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_vaq(i) := next_vaq(i)
     reg_vldq(i) := next_vldq(i)
     reg_vsdq(i) := next_vsdq(i)
-    reg_utaq(i) := next_utaq(i)
+    reg_utmemop(i) := next_utmemop(i)
   }
 
   for(i <- 0 until SHIFT_BUF_READ-1)
@@ -389,7 +392,7 @@ class vuVXU_Banked8_Expand extends Component
     next_vaq(i) := reg_vaq(i+1)
     next_vldq(i) := reg_vldq(i+1)
     next_vsdq(i) := reg_vsdq(i+1)
-    next_utaq(i) := reg_utaq(i+1)
+    next_utmemop(i) := reg_utmemop(i+1)
   }
   
   next_viu(SHIFT_BUF_READ-1) := Bool(false)
@@ -410,7 +413,7 @@ class vuVXU_Banked8_Expand extends Component
   next_vaq(SHIFT_BUF_READ-1) := Bool(false)
   next_vldq(SHIFT_BUF_READ-1) := Bool(false)
   next_vsdq(SHIFT_BUF_READ-1) := Bool(false)
-  next_utaq(SHIFT_BUF_READ-1) := Bool(false)
+  next_utmemop(SHIFT_BUF_READ-1) := Bool(false)
 
   when (io.seq.viu)
   {
@@ -469,6 +472,7 @@ class vuVXU_Banked8_Expand extends Component
     next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
     next_imm(0) := io.seq_regid_imm.imm
     next_imm2(0) := io.seq_regid_imm.imm2
+    next_utmemop(0) := io.seq_regid_imm.utmemop
   }
   when (io.seq.vldq)
   {
@@ -477,14 +481,6 @@ class vuVXU_Banked8_Expand extends Component
   when (io.seq.vsdq)
   {
     next_vsdq(0) := Bool(true)
-  }
-  when (io.seq.utaq)
-  {
-    next_utaq(0) := Bool(true)
-    next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
-    next_mem_typ(0) := io.seq_regid_imm.mem.typ
-    next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
-    next_imm(0) := io.seq_regid_imm.imm
   }
 
   io.expand_to_hazard.ren := reg_ren(0)
@@ -521,5 +517,5 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.vaq := reg_vaq(0)
   io.expand_lfu_fn.vldq := reg_vldq(0)
   io.expand_lfu_fn.vsdq := reg_vsdq(0)
-  io.expand_lfu_fn.utaq := reg_utaq(0)
+  io.expand_lfu_fn.utmemop := reg_utmemop(0)
 }
