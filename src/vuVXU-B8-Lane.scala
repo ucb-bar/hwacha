@@ -126,14 +126,14 @@ class vuVXU_Banked8_Lane extends Component
   val vau2_val  = lfu.io.vau2_val
   val vau2_fn   = lfu.io.vau2_fn
 
-  io.vmu.vaq_mem <> lfu.io.mem
-  io.vmu.vsdq_mem <> lfu.io.mem
-  io.vmu.vaq_imm := lfu.io.imm
-
   io.vmu.vaq_val   := lfu.io.vaq_val
+  io.vmu.vaq_mem <> lfu.io.vaq_mem
+  io.vmu.vaq_imm := lfu.io.vaq_imm
+  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
+
   io.vmu.vldq_rdy  := lfu.io.vldq_rdy
   io.vmu.vsdq_val  := lfu.io.vsdq_val
-  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
+  io.vmu.vsdq_mem <> lfu.io.vsdq_mem
 
   val imul_fn  = Mux(vau0_val, vau0_fn, io.cp.imul_fn)
   val imul_in0 = Mux(vau0_val, rbl(0), Cat(Bits(0,1), io.cp.imul_in0))
