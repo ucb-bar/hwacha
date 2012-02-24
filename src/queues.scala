@@ -395,9 +395,9 @@ class queue_spec[T <: Data](entries: Int)(data: => T) extends Component
   // since enqueuing is governed by the non-spec deq ptr
   io.enq.ready := !full
 
-  // can't bypass the deq pointer
-  // since a nack signal might be late
-  io.deq.valid := !io.nack && (full_spec || (enq_ptr != deq_ptr_spec))
+  // since nack is a very late signal
+  // don't mask deq.valid with !io.nack, the d$ kills the request
+  io.deq.valid := full_spec || (enq_ptr != deq_ptr_spec)
 
   val do_enq = io.enq.ready && io.enq.valid
   val do_deq = io.ack
@@ -488,7 +488,9 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
     read_ptr := read_ptr_next
   }
 
-  io.deq_rtag.valid := !io.nack && (full_spec || (read_ptr != write_ptr_spec))
+  // since nack is a very late signal
+  // don't mask deq_rtag.valid with !io.nack, the d$ kills the request
+  io.deq_rtag.valid := full_spec || (read_ptr != write_ptr_spec)
   io.deq_rtag.bits := write_ptr_spec.toBits
 
   val full_next =
