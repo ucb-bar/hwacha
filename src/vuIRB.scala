@@ -30,7 +30,7 @@ class vuIRB extends Component
   val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=VCMD_SZ)})
   val irimm1b = new Buffer(VIMM_SZ, IRB_IMM1_DEPTH)
   val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=VSTRIDE_SZ)})
-  val ircntb = new Buffer(DEF_VLEN+1, IRB_CNT_DEPTH, true)
+  val ircntb = new Buffer(DEF_VLEN, IRB_CNT_DEPTH, true)
 
   ircmdb.io.enq <> io.irb_cmdb
 
@@ -42,7 +42,7 @@ class vuIRB extends Component
   
   ircntb.io.enq <> io.irb_cntb
   ircntb.io.update <> io.seq_to_irb.update_cnt
-  ircntb.io.updateLast <> io.issue_to_irb.updateLast
+  ircntb.io.markLast <> io.issue_to_irb.markLast
   ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
 
   val cmd = ircmdb.io.deq.bits(XCMD_CMCODE)
@@ -106,7 +106,7 @@ class vuIRB extends Component
   val decode_deq_irimm2b = deq_irimm2b.toBool
   val decode_deq_ircntb = deq_ircntb.toBool
 
-  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((decode_vf & ircntb.io.deq.bits(DEF_VLEN)) | decode_deq_ircmdb)
+  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_ircmdb)
   irimm1b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm1b
   irimm2b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm2b
   ircntb.io.deq.ready  := io.seq_to_irb.last & decode_deq_ircntb

@@ -183,7 +183,7 @@ class vuVXU_Banked8_Seq extends Component
   next_imm2 := array_imm2
   next_irb_imm1_rtag := array_irb_imm1_rtag
   next_irb_cnt_rtag := array_irb_cnt_rtag
-  array_irb_cnt := next_irb_cnt
+  next_irb_cnt := array_irb_cnt
   next_irb_pc_next := array_irb_pc_next
   next_irb_update_imm1 := array_irb_update_imm1
 
