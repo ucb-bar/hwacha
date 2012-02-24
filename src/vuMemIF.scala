@@ -11,17 +11,21 @@ class vuMemIF extends Component
 {
   val io = new io_vu_memif()
 
+  val id_pf_cmd = (io.vaq_deq.bits.cmd === M_PFW || io.vaq_deq.bits.cmd === M_PFR)
   val id_load_cmd = (io.vaq_deq.bits.cmd === M_XRD)
   val id_store_cmd = (io.vaq_deq.bits.cmd === M_XWR)
   val id_amo_cmd = (M_XA_ADD <= io.vaq_deq.bits.cmd) && (io.vaq_deq.bits.cmd <= M_XA_MAXU) // assuing amos are contiguous
+  val id_pf_val = id_pf_cmd && io.vaq_deq.valid
   val id_load_val = id_load_cmd && io.vaq_deq.valid && io.vldq_deq_rtag.valid
   val id_store_val = id_store_cmd && io.vaq_deq.valid && io.vsdq_deq.valid
   val id_amo_val = id_amo_cmd && io.vaq_deq.valid && io.vsdq_deq.valid && io.vldq_deq_rtag.valid
 
+  val ex_pf_val = Reg(id_pf_val, resetVal = Bool(false))
   val ex_load_val = Reg(id_load_val, resetVal = Bool(false))
   val ex_store_val = Reg(id_store_val, resetVal = Bool(false))
   val ex_amo_val = Reg(id_amo_val, resetVal = Bool(false))
 
+  val mem_pf_val = Reg(ex_pf_val, resetVal = Bool(false))
   val mem_load_val = Reg(ex_load_val, resetVal = Bool(false))
   val mem_store_val = Reg(ex_store_val, resetVal = Bool(false))
   val mem_amo_val = Reg(ex_amo_val, resetVal = Bool(false))
@@ -29,11 +33,12 @@ class vuMemIF extends Component
   val nack_reg = Reg(io.mem_resp.bits.nack, resetVal = Bool(false))
 
   io.vaq_deq.ready :=
+    id_pf_cmd ||
     id_load_cmd && io.vldq_deq_rtag.valid ||
     id_store_cmd && io.vsdq_deq.valid ||
     id_amo_cmd && io.vsdq_deq.valid && io.vldq_deq_rtag.valid
-  io.vaq_ack := (mem_load_val || mem_store_val || mem_amo_val) && !nack_reg && !io.mem_resp.bits.nack
-  io.vaq_nack := (mem_load_val || mem_store_val || mem_amo_val) && io.mem_resp.bits.nack
+  io.vaq_ack := (mem_pf_val || mem_load_val || mem_store_val || mem_amo_val) && !nack_reg && !io.mem_resp.bits.nack
+  io.vaq_nack := (mem_pf_val || mem_load_val || mem_store_val || mem_amo_val) && io.mem_resp.bits.nack
 
   io.vsdq_deq.ready :=
     id_store_cmd && io.vaq_deq.valid ||
@@ -47,7 +52,7 @@ class vuMemIF extends Component
   io.vldq_ack := (mem_load_val || mem_amo_val) && !nack_reg && !io.mem_resp.bits.nack
   io.vldq_nack := (mem_load_val || mem_amo_val) && io.mem_resp.bits.nack
 
-  io.mem_req.valid := id_load_val || id_store_val || id_amo_val
+  io.mem_req.valid := id_load_val || id_store_val || id_amo_val || id_pf_val
   io.mem_req.bits.cmd := io.vaq_deq.bits.cmd
   io.mem_req.bits.typ := io.vaq_deq.bits.typ
   io.mem_req.bits.idx := io.vaq_deq.bits.idx

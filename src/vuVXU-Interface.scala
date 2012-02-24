@@ -23,6 +23,7 @@ class io_arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Bundle
 {
   val in = Vec(n){ data.flip() }
   val out = data
+  val chosen = Bits(log2up(n),OUTPUT)
 }
 
 class Arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
@@ -34,8 +35,15 @@ class Arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
     io.in(i).ready := !io.in(i-1).valid && io.in(i-1).ready
 
   var dout = io.in(n-1).bits
+  var choose = Bits(n-1)
   for (i <- 1 to n-1)
-    dout = Mux(io.in(n-1-i).valid, io.in(n-1-i).bits, dout)
+  {
+    val actual = n-1-i
+    dout = Mux(io.in(actual).valid, io.in(actual).bits, dout)
+    choose = Mux(io.in(actual).valid, Bits(actual,log2up(n)), choose)
+  }
+
+  io.chosen := choose
 
   var vout = io.in(0).valid
   for (i <- 1 to n-1)
@@ -498,6 +506,10 @@ class io_vu extends Bundle
   val vec_ximm2q = new io_vec_ximm2q().flip()
   val vec_ackq = new io_vec_ackq()
 
+  val vec_pfcmdq = new io_vec_cmdq().flip()
+  val vec_pfximm1q = new io_vec_ximm1q().flip()
+  val vec_pfximm2q = new io_vec_ximm2q().flip()
+
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(DEF_XLEN, OUTPUT)
   
@@ -719,6 +731,18 @@ class io_vu_memif extends Bundle
 
   val mem_req = new io_dmem_req()
   val mem_resp = new io_dmem_resp().flip()
+}
+
+class io_vru extends Bundle
+{
+  val vpfaq = new io_ready_valid()({ new io_vaq_bundle() })
+  
+  // command
+  val vec_pfcmdq = new io_vec_cmdq().flip()
+  // base
+  val vec_pfximm1q = new io_vec_ximm1q().flip()
+  // stride
+  val vec_pfximm2q = new io_vec_ximm2q().flip()
 }
 
 

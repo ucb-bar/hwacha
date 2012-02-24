@@ -6,6 +6,7 @@ import Config._
 import Interface._
 import Instructions._
 import Commands._
+import queues._
 
 class io_vu_irb extends Bundle 
 {
@@ -26,9 +27,9 @@ class vuIRB extends Component
 {
   val io = new io_vu_irb()
 
-  val ircmdb = VC_SIMPLE_QUEUE(VCMD_SZ, IRB_CMD_DEPTH)
+  val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=VCMD_SZ)})
   val irimm1b = new Buffer(VIMM_SZ, IRB_IMM1_DEPTH)
-  val irimm2b = VC_SIMPLE_QUEUE(VSTRIDE_SZ, IRB_IMM2_DEPTH)
+  val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=VSTRIDE_SZ)})
   val ircntb = new Buffer(DEF_VLEN+1, IRB_CNT_DEPTH, true)
 
   ircmdb.io.enq <> io.irb_cmdb

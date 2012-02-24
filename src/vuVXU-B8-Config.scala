@@ -180,6 +180,7 @@ object Config
   val XCMD_CMCODE  = (19,12)
   val XCMD_VD      = (11,6)
   val XCMD_VS      = (5,0)
+  val XCMD_VLEN    = (10,0)
 
   val PADDR_BITS = 40
   val PGIDX_BITS = 13
@@ -216,6 +217,8 @@ object Config
   val M_XA_MINU = Bits("b1110", 4);
   val M_XA_MAXU = Bits("b1111", 4);
 
+  val OFFSET_BITS = 6; // log2(cache line size in bytes)
+  
   val VACKCNT = 32
   val VACKCNT_FX = UFix(VACKCNT)
   val VACKCNT_SZ = log2up(VACKCNT)
@@ -382,7 +385,3 @@ class GenArray[T <: Data] extends ArrayBuffer[T] {
 
 }
 
-object VC_SIMPLE_QUEUE 
-{
-  def apply(width: Int, depth: Int) = new queueSimplePF(width, depth)
-}
