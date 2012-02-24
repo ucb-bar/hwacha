@@ -10,7 +10,9 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val stalld = ~io.ready // || !io.irb_cntb.ready
+  val vt_ready = io.ready && io.irb_cntb.ready
+
+  val stalld = !vt_ready
   val stallf = ~io.imem_req.ready || ~io.imem_resp.valid || stalld
   val killf = ~io.imem_resp.valid
 
@@ -36,7 +38,6 @@ class vuVXU_Issue_VT extends Component
 
   val id_reg_inst = Reg(resetVal = Bits(0,DEF_INST))
   val id_pc_next = Reg(resetVal = Bits(0, SZ_ADDR))
-  val id_inst_val = Reg(resetVal = Bool(false))
 
   io.decoded.irb.imm1_rtag := imm1_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
@@ -46,17 +47,14 @@ class vuVXU_Issue_VT extends Component
   when (io.vf.fire)
   {
     id_reg_inst := NOP
-    id_inst_val := Bool(false)
   }
   .elsewhen (!stalld)
   {
     id_reg_inst := io.imem_resp.bits
     id_pc_next := req_pc
-    id_inst_val := io.imem_resp.valid
     when (killf) 
     { 
       id_reg_inst := NOP 
-      id_inst_val := Bool(false)
     }
   }
 
@@ -237,8 +235,6 @@ class vuVXU_Issue_VT extends Component
 
   io.vf.stop := decode_stop.toBool
 
-  val mask_issue_ready = io.ready // always issue for memory ops
-
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
       II -> Cat(Bits(0,1),Fill(52,id_reg_inst(21)),id_reg_inst(21,10)),
@@ -246,18 +242,20 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
-  io.irb_cntb.valid := io.vf.active & io.ready & valid.orR() & !killf & id_inst_val & !decode_stop.toBool
+  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
-  io.issue_to_irb.updateLast := decode_stop.toBool
+  io.issue_to_irb.markLast := decode_stop.toBool
 
-  io.valid.viu := io.vf.active && unmasked_valid_viu // && io.irb_cntb.ready
-  io.valid.vau0 := io.vf.active && unmasked_valid_vau0 // && io.irb_cntb.ready
-  io.valid.vau1 := io.vf.active && unmasked_valid_vau1 // && io.irb_cntb.ready
-  io.valid.vau2 := io.vf.active && unmasked_valid_vau2 // && io.irb_cntb.ready
-  io.valid.amo := io.vf.active && unmasked_valid_amo // && io.irb_cntb.ready
-  io.valid.utld := io.vf.active && unmasked_valid_utld // && io.irb_cntb.ready
-  io.valid.utst := io.vf.active && unmasked_valid_utst // && io.irb_cntb.ready
+  val valid_common = io.vf.active & io.irb_cntb.ready
+
+  io.valid.viu := valid_common && unmasked_valid_viu 
+  io.valid.vau0 := valid_common && unmasked_valid_vau0
+  io.valid.vau1 := valid_common && unmasked_valid_vau1
+  io.valid.vau2 := valid_common && unmasked_valid_vau2
+  io.valid.amo := valid_common && unmasked_valid_amo
+  io.valid.utld := valid_common && unmasked_valid_utld
+  io.valid.utst := valid_common && unmasked_valid_utst
   io.valid.vld := Bool(false)
   io.valid.vst := Bool(false)
 

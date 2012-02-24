@@ -394,7 +394,7 @@ class io_lane_to_hazard extends Bundle
 
 class io_issue_to_irb extends Bundle
 {
-  val updateLast = Bool(OUTPUT)
+  val markLast = Bool(OUTPUT)
 }
 
 class io_irb_to_issue extends Bundle 

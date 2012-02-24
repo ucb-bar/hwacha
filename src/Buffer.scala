@@ -11,101 +11,94 @@ class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   val deq = new io_ready_valid()( Bits(width=DATA_SIZE) )
   val update = new io_valid()( new io_irbUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip()
 
-  val updateLast = Bool(INPUT)
+  val markLast = Bool(INPUT)
+  val deq_last = Bool(OUTPUT)
   val rtag = Bits(ADDR_SIZE, OUTPUT)
 }
 
-class Buffer(DATA_SIZE: Int, DEPTH: Int, usePrevPtr: Boolean = false) extends Component 
+class Buffer(DATA_SIZE: Int, DEPTH: Int, useLastPtr: Boolean = false) extends Component 
 {
   val ADDR_SIZE = log2up(DEPTH)
 
   val io = new io_buffer(DATA_SIZE, ADDR_SIZE)
 
-  val deq_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
-  val enq_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
+  val read_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
+  val write_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
+  val last_write_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
   val full_next = Wire(){ Bool() }
   
-  val deq_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
-  val enq_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
-  val enq_ptr_prev = Reg(enq_ptr)
+  val read_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
+  val write_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
+  val last_write_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
   val full = Reg(resetVal = Bool(false))
 
-  deq_ptr := deq_ptr_next
-  enq_ptr := enq_ptr_next
+  read_ptr := read_ptr_next
+  write_ptr := write_ptr_next
+  last_write_ptr := last_write_ptr_next
   full := full_next
 
-  deq_ptr_next := deq_ptr
-  enq_ptr_next := enq_ptr
+  read_ptr_next := read_ptr
+  write_ptr_next := write_ptr
+  last_write_ptr_next := last_write_ptr
   full_next := full
 
   val do_enq = io.enq.valid && io.enq.ready
   val do_deq = io.deq.ready && io.deq.valid
 
-  when(do_deq) { deq_ptr_next := deq_ptr + UFix(1) }
-  when(do_enq) { enq_ptr_next := enq_ptr + UFix(1) }
+  when(do_deq) { read_ptr_next := read_ptr + UFix(1) }
+  when(do_enq) 
+  { 
+    write_ptr_next := write_ptr + UFix(1) 
+    last_write_ptr_next := write_ptr
+  }
 
-  when (do_enq && !do_deq && (enq_ptr_next === deq_ptr))
+  when (do_enq && !do_deq && (write_ptr_next === read_ptr))
   {
     full_next := Bool(true)
   }
   . elsewhen (do_deq && full) 
   {
-    full_next := Bool(true)
+    full_next := Bool(false)
   }
   . otherwise 
   {
     full_next := full
   }
 
-  val empty = !full && (deq_ptr === enq_ptr)
+  val empty = !full && (read_ptr === write_ptr)
 
   val data_next = GenArray(DEPTH){ Wire(){ Bits(width=DATA_SIZE) } }
   val data_array = GenArray(DEPTH){ Reg(){ Bits(width=DATA_SIZE) } }
+
+  val last_next = GenArray(DEPTH){ Wire(){ Bool() } }
+  val last_array = GenArray(DEPTH){ Reg(){ Bool() } }
   
   data_array := data_next
+  last_array := last_next
+
   data_next := data_array
+  last_next := last_array
 
-  when(do_enq) { data_next.write(enq_ptr, io.enq.bits) }
+  when(do_enq) { data_next.write(write_ptr, io.enq.bits) }
+  when(io.update.valid) { data_next.write(io.update.bits.addr, io.update.bits.data) }
 
-  if(usePrevPtr)
+  if (useLastPtr)
   {
-    when(io.updateLast && io.update.valid && enq_ptr_prev === io.update.bits.addr)
-    {
-      data_next.write(enq_ptr_prev, Cat(Bits(1,1), io.update.bits.data(DATA_SIZE-2,0)))
-    }
-    . otherwise 
-    {
-      when(io.update.valid)
-      {
-	data_next.write(io.update.bits.addr, io.update.bits.data)
-      }
-      when(io.updateLast)
-      {
-	data_next.write(enq_ptr_prev, 
-			Cat(Bits(1,1), data_array.read(enq_ptr_prev)(DATA_SIZE-2,0))) 
-      }
-    }    
-  } else 
-  {
-    when(io.update.valid) { data_next.write(io.update.bits.addr, io.update.bits.data) }    
+    when (do_enq) { last_next.write(write_ptr, Bool(false)) }
+    when (io.markLast) { last_next.write(last_write_ptr, Bool(true)) }
   }
 
   io.enq.ready := !full
   io.deq.valid := !empty
 
-  if(usePrevPtr)
-  {
-    io.deq.bits := 
-      Mux((io.updateLast || io.update.valid) && do_deq && (deq_ptr === enq_ptr_prev) || (deq_ptr === io.update.bits.addr),
-          data_next.read(deq_ptr),
-          data_array.read(deq_ptr))
-  } else 
-  {
-    io.deq.bits := 
-      Mux(io.update.valid && do_deq && (deq_ptr === io.update.bits.addr), 
-          data_next.read(deq_ptr),
-          data_array.read(deq_ptr))
-  }
+  val bypass_bits = (read_ptr === last_write_ptr) && do_deq && io.update.valid
+  val bypass_last = (read_ptr === io.update.bits.addr) && do_deq && io.markLast
 
-  io.rtag := enq_ptr
+  if (useLastPtr)
+  {
+    io.deq_last := Mux(bypass_last, last_next.read(read_ptr), last_array.read(read_ptr))
+  }
+  io.deq.bits := Mux(bypass_bits, data_next.read(read_ptr), data_array.read(read_ptr))
+
+  io.rtag := write_ptr
 }

@@ -118,14 +118,14 @@ class vuVXU_Issue_TVEC extends Component
   val mask_issue_ready = !valid.orR || io.ready
   val mask_vxu_immq_valid = !deq_vxu_immq || io.vxu_immq.valid
   val mask_vxu_imm2q_valid = !deq_vxu_imm2q || io.vxu_imm2q.valid
-  //val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || io.irb_cmdb.ready
-  //val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
-  //val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
-  //val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
-  val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || Bool(true)
-  val mask_irb_imm1b_ready = !deq_vxu_immq || Bool(true)
-  val mask_irb_imm2b_ready = !deq_vxu_imm2q || Bool(true)
-  val mask_irb_cntb_ready = !decode_irb_cntb_valid || Bool(true)
+  val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || io.irb_cmdb.ready
+  val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
+  val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
+  val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
+  //val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || Bool(true)
+  //val mask_irb_imm1b_ready = !deq_vxu_immq || Bool(true)
+  //val mask_irb_imm2b_ready = !deq_vxu_imm2q || Bool(true)
+  //val mask_irb_cntb_ready = !decode_irb_cntb_valid || Bool(true)
 
   val valid_common =
     tvec_active_fence_clear &&
