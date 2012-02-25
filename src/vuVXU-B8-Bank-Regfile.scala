@@ -2,30 +2,30 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 
 class RegfileIO extends Bundle
 {
   val ren    = Bool(INPUT)
-  val raddr  = Bits(DEF_BREGLEN, INPUT)
-  val roplen = Bits(DEF_BOPL, INPUT)
+  val raddr  = Bits(SZ_BREGLEN, INPUT)
+  val roplen = Bits(SZ_BOPL, INPUT)
 
   val wen   = Bool(INPUT)
-  val waddr = Bits(DEF_BREGLEN, INPUT)
-  val wsel  = Bits(DEF_BWPORT, INPUT)
+  val waddr = Bits(SZ_BREGLEN, INPUT)
+  val wsel  = Bits(SZ_BWPORT, INPUT)
 
-  val rdata = Bits(DEF_DATA, OUTPUT)
-  val ropl0 = Bits(DEF_DATA, OUTPUT)
-  val ropl1 = Bits(DEF_DATA, OUTPUT)
+  val rdata = Bits(SZ_DATA, OUTPUT)
+  val ropl0 = Bits(SZ_DATA, OUTPUT)
+  val ropl1 = Bits(SZ_DATA, OUTPUT)
 
-  val wbl0 = Bits(DEF_DATA, INPUT)
-  val wbl1 = Bits(DEF_DATA, INPUT)
-  val wbl2 = Bits(DEF_DATA, INPUT)
-  val wbl3 = Bits(DEF_DATA, INPUT)
+  val wbl0 = Bits(SZ_DATA, INPUT)
+  val wbl1 = Bits(SZ_DATA, INPUT)
+  val wbl2 = Bits(SZ_DATA, INPUT)
+  val wbl3 = Bits(SZ_DATA, INPUT)
 
-  val viu_rdata = Bits(DEF_DATA, OUTPUT)
-  val viu_ropl  = Bits(DEF_DATA, OUTPUT)
-  val viu_wdata = Bits(DEF_DATA, INPUT)
+  val viu_rdata = Bits(SZ_DATA, OUTPUT)
+  val viu_ropl  = Bits(SZ_DATA, OUTPUT)
+  val viu_wdata = Bits(SZ_DATA, INPUT)
 }
 
 class vuVXU_Banked8_Bank_Regfile extends Component
@@ -46,8 +46,8 @@ class vuVXU_Banked8_Bank_Regfile extends Component
   val rdata_rf = Mux(Reg(io.ren), rfile(io.raddr), Bits(0)) 
   io.rdata := rdata_rf
 
-  val ropl0Reg = Reg(){Bits(width = DEF_DATA)}
-  val ropl1Reg = Reg(){Bits(width = DEF_DATA)}
+  val ropl0Reg = Reg(){Bits(width = SZ_DATA)}
+  val ropl1Reg = Reg(){Bits(width = SZ_DATA)}
   when(io.roplen(0).toBool){ropl0Reg := rdata_rf}
   when(io.roplen(1).toBool){ropl1Reg := rdata_rf}
 

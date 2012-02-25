@@ -2,9 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Commands._
-import Interface._
+import Constants._
 import scala.math._
 
 class vuVRU extends Component
@@ -15,8 +13,8 @@ class vuVRU extends Component
   val VRU_IssueShort = Bits(1, 2)
   val VRU_IssueLong = Bits(2, 2)
 
-  val cmd = io.vec_pfcmdq.bits(XCMD_CMCODE)
-  val vlen = io.vec_pfcmdq.bits(XCMD_VLEN).toUFix
+  val cmd = io.vec_pfcmdq.bits(RG_XCMD_CMCODE)
+  val vlen = io.vec_pfcmdq.bits(RG_XCMD_VLEN).toUFix
 
   val stride_decoded = MuxLookup(cmd, Bits(0,4), Array(
     CMD_VLD    -> Bits(8,4),
@@ -54,9 +52,9 @@ class vuVRU extends Component
     CMD_VFSSTW -> Bits(0,4)))
 
   val state = Reg(resetVal = VRU_Idle)
-  val addr_reg = Reg(resetVal = UFix(0, VIMM_SZ))
-  val last_addr_reg = Reg(resetVal = UFix(0, VIMM_SZ))
-  val stride_reg = Reg(resetVal = UFix(0, VIMM_SZ))
+  val addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
+  val last_addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
+  val stride_reg = Reg(resetVal = UFix(0, SZ_VIMM))
 
   val unit_stride = (stride_decoded != Bits(0,4))
   

@@ -2,14 +2,14 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 import hardfloat._
 
 class Shifter extends Component
 {
   val io = new Bundle()
   {
-    val fn    = Bits(DEF_VIU_FN, INPUT)
+    val fn    = Bits(SZ_VIU_FN, INPUT)
     val shamt = UFix(6, INPUT)
     val in    = Bits(64, INPUT)
     val out   = Bits(64, OUTPUT)
@@ -54,11 +54,11 @@ class vuVXU_Banked8_FU_alu extends Component
     val valid      = Bool(INPUT)
     val wen        = Bool(INPUT)
     val wen_masked = Bool(OUTPUT)
-    val fn         = Bits(DEF_VIU_FN, INPUT)
-    val utidx      = Bits(DEF_VLEN, INPUT)
-    val in0        = Bits(DEF_DATA, INPUT)
-    val in1        = Bits(DEF_DATA, INPUT)
-    val out        = Bits(DEF_DATA, OUTPUT)
+    val fn         = Bits(SZ_VIU_FN, INPUT)
+    val utidx      = Bits(SZ_VLEN, INPUT)
+    val in0        = Bits(SZ_DATA, INPUT)
+    val in1        = Bits(SZ_DATA, INPUT)
+    val out        = Bits(SZ_DATA, OUTPUT)
   }
 
   def VIU_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)

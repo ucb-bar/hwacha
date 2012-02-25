@@ -2,14 +2,13 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 
 class io_sackcnt extends Bundle
 {
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
-  val qcnt = UFix(VACKCNT_SZ,INPUT)
+  val qcnt = UFix(SZ_VACKCNT,INPUT)
   val zero = Bool(OUTPUT)
   val watermark = Bool(OUTPUT)
 }
@@ -17,7 +16,7 @@ class io_sackcnt extends Bundle
 class sackcnt extends Component
 {
   val io = new io_sackcnt()
-  val cnt = Reg(resetVal=UFix(VACKCNT-1,VACKCNT_SZ))
+  val cnt = Reg(resetVal=UFix(VACKCNT-1,SZ_VACKCNT))
 
   io.zero := (cnt === UFix(VACKCNT-1))
 

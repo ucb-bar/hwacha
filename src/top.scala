@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import hardfloat._
-import Interface._
+import Constants._
 import queues._
 
 object top_main

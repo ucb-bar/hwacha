@@ -2,17 +2,16 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 import queues._
 
 class vu extends Component
 {
   val io = new io_vu()
 
-  val vcmdq = new queueSimplePF(16)({Bits(width=VCMD_SZ)})
-  val vximm1q = new queueSimplePF(16)({Bits(width=VIMM_SZ)})
-  val vximm2q = new queueSimplePF(16)({Bits(width=VSTRIDE_SZ)})
+  val vcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
+  val vximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
+  val vximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
@@ -32,9 +31,6 @@ class vu extends Component
   val vsdq_count = new queuecnt(16, 9, 16, true)
 
   val vsackcnt = new sackcnt()
-
-  val vmu_utcmdq = new queueSimplePF(16)({Bits(width=UTMCMD_SZ)})
-  val vmu_utimmq = new queueSimplePF(16)({Bits(width=UTMIMM_SZ)})
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -114,9 +110,9 @@ class vu extends Component
   val reg_chosen = Reg(vaq_arb.io.chosen)
   val reg_chosen2 = Reg(reg_chosen)
 
-  val vpfcmdq = new queueSimplePF(16)({Bits(width=VCMD_SZ)})
-  val vpfximm1q = new queueSimplePF(16)({Bits(width=VIMM_SZ)})
-  val vpfximm2q = new queueSimplePF(16)({Bits(width=VSTRIDE_SZ)})
+  val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
+  val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
+  val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
 
   vpfcmdq.io.enq <> io.vec_pfcmdq
   vpfximm1q.io.enq <> io.vec_pfximm1q

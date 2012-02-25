@@ -2,13 +2,13 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 
 class XBarMux8IO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(DEF_BRPORT, INPUT) }
-  val rdata = Vec(8){ Bits(DEF_DATA, INPUT) }
-  val rbl   = Bits(DEF_DATA, OUTPUT)
+  val rblen = Vec(8){ Bits(SZ_BRPORT, INPUT) }
+  val rdata = Vec(8){ Bits(SZ_DATA, INPUT) }
+  val rbl   = Bits(SZ_DATA, OUTPUT)
 }
 
 class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Component
@@ -38,12 +38,12 @@ object vuVXU_Banked8_Lane_Xbar_Mux8
 
 class XbarIO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(DEF_BRPORT, INPUT) }
-  val rdata = Vec(8){ Bits(DEF_DATA, INPUT) }
-  val ropl0 = Vec(8){ Bits(DEF_DATA, INPUT) }
-  val ropl1 = Vec(8){ Bits(DEF_DATA, INPUT) }
+  val rblen = Vec(8){ Bits(SZ_BRPORT, INPUT) }
+  val rdata = Vec(8){ Bits(SZ_DATA, INPUT) }
+  val ropl0 = Vec(8){ Bits(SZ_DATA, INPUT) }
+  val ropl1 = Vec(8){ Bits(SZ_DATA, INPUT) }
 
-  val rbl = Vec(8){ Bits(DEF_DATA, OUTPUT) }
+  val rbl = Vec(8){ Bits(SZ_DATA, OUTPUT) }
 }
 
 class vuVXU_Banked8_Lane_Xbar extends Component

@@ -1,20 +1,19 @@
 package hwacha
 
 import Chisel._
-import Config._
-import Interface._
+import Constants._
 
 class ExpanderToLFUIO extends Bundle
 {
   val vau0 = Bool(OUTPUT)
-  val vau0_fn = Bits(DEF_VAU0_FN, OUTPUT)
+  val vau0_fn = Bits(SZ_VAU0_FN, OUTPUT)
   val vau1 = Bool(OUTPUT)
-  val vau1_fn = Bits(DEF_VAU1_FN, OUTPUT)
+  val vau1_fn = Bits(SZ_VAU1_FN, OUTPUT)
   val vau2 = Bool(OUTPUT)
-  val vau2_fn = Bits(DEF_VAU2_FN, OUTPUT)
+  val vau2_fn = Bits(SZ_VAU2_FN, OUTPUT)
   val mem = new io_vxu_mem_cmd().asOutput
-  val imm = Bits(DEF_DATA, OUTPUT)
-  val imm2 = Bits(DEF_VXU_IMM2Q, OUTPUT)
+  val imm = Bits(SZ_DATA, OUTPUT)
+  val imm2 = Bits(SZ_XIMM2, OUTPUT)
   val vaq = Bool(OUTPUT)
   val vldq = Bool(OUTPUT)
   val vsdq = Bool(OUTPUT)
@@ -23,20 +22,20 @@ class ExpanderToLFUIO extends Bundle
 
 class LFUIO extends Bundle 
 {
-  val expand_rcnt = UFix(DEF_BVLEN, INPUT)
-  val expand_wcnt = UFix(DEF_BVLEN, INPUT)
+  val expand_rcnt = UFix(SZ_BVLEN, INPUT)
+  val expand_wcnt = UFix(SZ_BVLEN, INPUT)
   
   val expand = new ExpanderToLFUIO().flip()
 
   val vau0_val = Bool(OUTPUT)
-  val vau0_fn = Bits(DEF_VAU0_FN, OUTPUT)
+  val vau0_fn = Bits(SZ_VAU0_FN, OUTPUT)
   val vau1_val = Bool(OUTPUT)
-  val vau1_fn = Bits(DEF_VAU1_FN, OUTPUT)
+  val vau1_fn = Bits(SZ_VAU1_FN, OUTPUT)
   val vau2_val = Bool(OUTPUT)
-  val vau2_fn = Bits(DEF_VAU2_FN, OUTPUT)
+  val vau2_fn = Bits(SZ_VAU2_FN, OUTPUT)
   val vaq_val = Bool(OUTPUT)
   val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(DEF_DATA, OUTPUT)
+  val vaq_imm = Bits(SZ_DATA, OUTPUT)
   val vaq_utmemop = Bool(OUTPUT)
   val vldq_rdy = Bool(OUTPUT)
   val vsdq_val = Bool(OUTPUT)
@@ -47,12 +46,12 @@ class vuVXU_Banked8_Lane_LFU extends Component
 {
   val io = new LFUIO()
 
-  val next_vau0_cnt = Wire(){ UFix(width = DEF_BVLEN) }
-  val next_vau1_cnt = Wire(){ UFix(width = DEF_BVLEN) }
-  val next_vau2_cnt = Wire(){ UFix(width = DEF_BVLEN) }
-  val next_vgu_cnt = Wire(){ UFix(width = DEF_BVLEN) }
-  val next_vlu_cnt = Wire(){ UFix(width = DEF_BVLEN) }
-  val next_vsu_cnt = Wire(){ UFix(width = DEF_BVLEN) }
+  val next_vau0_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vau1_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vau2_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vgu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vlu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vsu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
 
   val reg_vau0_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
   val reg_vau1_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
@@ -90,15 +89,15 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (reg_vsu_cnt.orR) { next_vsu_cnt := reg_vsu_cnt - UFix(1,1)}
 
   val reg_vau0 = Reg(resetVal = Bool(false))
-  val reg_vau0_fn = Reg(){ Bits(width = DEF_VAU0_FN) }
+  val reg_vau0_fn = Reg(){ Bits(width = SZ_VAU0_FN) }
   val reg_vau1 = Reg(resetVal = Bool(false))
-  val reg_vau1_fn = Reg(){ Bits(width = DEF_VAU1_FN) }
+  val reg_vau1_fn = Reg(){ Bits(width = SZ_VAU1_FN) }
   val reg_vau2 = Reg(resetVal = Bool(false))
-  val reg_vau2_fn = Reg(){ Bits(width = DEF_VAU2_FN) }
+  val reg_vau2_fn = Reg(){ Bits(width = SZ_VAU2_FN) }
   val reg_vaq_mem = Reg(){ new io_vxu_mem_cmd() }
   val reg_vsdq_mem = Reg(){ new io_vxu_mem_cmd() }
-  val reg_imm = Reg(){ Bits(width = DEF_DATA) }
-  val reg_imm2 = Reg(){ Bits(width = DEF_VXU_IMM2Q) }
+  val reg_imm = Reg(){ Bits(width = SZ_DATA) }
+  val reg_imm2 = Reg(){ Bits(width = SZ_XIMM2) }
   val reg_vaq = Reg(resetVal = Bool(false))
   val reg_vldq = Reg(resetVal = Bool(false))
   val reg_vsdq = Reg(resetVal = Bool(false))

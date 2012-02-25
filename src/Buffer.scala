@@ -2,8 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 
 class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {

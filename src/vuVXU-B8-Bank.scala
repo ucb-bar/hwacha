@@ -2,40 +2,40 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 
 class BankToBankIO extends Bundle
 {
   val ren    = Bool(INPUT)
   val rlast  = Bool(INPUT)
-  val rcnt   = Bits(DEF_BVLEN, INPUT)
-  val raddr  = Bits(DEF_BREGLEN, INPUT)
-  val roplen = Bits(DEF_BOPL, INPUT)
-  val rblen  = Bits(DEF_BRPORT, INPUT)
+  val rcnt   = Bits(SZ_BVLEN, INPUT)
+  val raddr  = Bits(SZ_BREGLEN, INPUT)
+  val roplen = Bits(SZ_BOPL, INPUT)
+  val rblen  = Bits(SZ_BRPORT, INPUT)
 
   val wen   = Bool(INPUT)
   val wlast = Bool(INPUT)
-  val wcnt  = Bits(DEF_BVLEN, INPUT)
-  val waddr = Bits(DEF_BREGLEN, INPUT)
-  val wsel  = Bits(DEF_BWPORT, INPUT)
+  val wcnt  = Bits(SZ_BVLEN, INPUT)
+  val waddr = Bits(SZ_BREGLEN, INPUT)
+  val wsel  = Bits(SZ_BWPORT, INPUT)
 
   val viu       = Bool(INPUT)
-  val viu_fn    = Bits(DEF_VIU_FN, INPUT)
-  val viu_utidx = Bits(DEF_VLEN, INPUT)
-  val viu_imm   = Bits(DEF_DATA, INPUT)
+  val viu_fn    = Bits(SZ_VIU_FN, INPUT)
+  val viu_utidx = Bits(SZ_VLEN, INPUT)
+  val viu_imm   = Bits(SZ_DATA, INPUT)
 }
 
 class BankRWIO extends Bundle
 {
-  val rblen = Bits(DEF_BRPORT, OUTPUT)
-  val rdata = Bits(DEF_DATA, OUTPUT)
-  val ropl0 = Bits(DEF_DATA, OUTPUT)
-  val ropl1 = Bits(DEF_DATA, OUTPUT)
+  val rblen = Bits(SZ_BRPORT, OUTPUT)
+  val rdata = Bits(SZ_DATA, OUTPUT)
+  val ropl0 = Bits(SZ_DATA, OUTPUT)
+  val ropl1 = Bits(SZ_DATA, OUTPUT)
 
-  val wbl0 = Bits(DEF_DATA, INPUT)
-  val wbl1 = Bits(DEF_DATA, INPUT)
-  val wbl2 = Bits(DEF_DATA, INPUT)
-  val wbl3 = Bits(DEF_DATA, INPUT)
+  val wbl0 = Bits(SZ_DATA, INPUT)
+  val wbl1 = Bits(SZ_DATA, INPUT)
+  val wbl2 = Bits(SZ_DATA, INPUT)
+  val wbl3 = Bits(SZ_DATA, INPUT)
 }
 
 class vuVXU_Banked8_BankIO extends Bundle

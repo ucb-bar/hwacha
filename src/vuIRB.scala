@@ -2,10 +2,8 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 import Instructions._
-import Commands._
 import queues._
 
 class io_vu_irb extends Bundle 
@@ -27,10 +25,10 @@ class vuIRB extends Component
 {
   val io = new io_vu_irb()
 
-  val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=VCMD_SZ)})
-  val irimm1b = new Buffer(VIMM_SZ, IRB_IMM1_DEPTH)
-  val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=VSTRIDE_SZ)})
-  val ircntb = new Buffer(DEF_VLEN, IRB_CNT_DEPTH, true)
+  val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=SZ_VCMD)})
+  val irimm1b = new Buffer(SZ_VIMM, IRB_IMM1_DEPTH)
+  val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
+  val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH, true)
 
   ircmdb.io.enq <> io.irb_cmdb
 
@@ -45,7 +43,7 @@ class vuIRB extends Component
   ircntb.io.markLast <> io.issue_to_irb.markLast
   ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
 
-  val cmd = ircmdb.io.deq.bits(XCMD_CMCODE)
+  val cmd = ircmdb.io.deq.bits(RG_XCMD_CMCODE)
   val n = Bool(false)
   val y = Bool(true)
 
