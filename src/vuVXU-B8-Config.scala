@@ -66,18 +66,18 @@ object Config
   val VAU0_X     = Bits(0, 2)
   val VAU0_M     = Bits(0, 2)
   val VAU0_MH    = Bits(1, 2)
-  val VAU0_MHU   = Bits(2, 2)
-  val VAU0_MHSU  = Bits(3, 2)
+  val VAU0_MHSU  = Bits(2, 2)
+  val VAU0_MHU   = Bits(3, 2)
 
   // acutal ops
   val VAU0_32    = Cat(DW32,VAU0_M)
   val VAU0_32H   = Cat(DW32,VAU0_MH)
-  val VAU0_32HU  = Cat(DW32,VAU0_MHU)
   val VAU0_32HSU = Cat(DW32,VAU0_MHSU)
+  val VAU0_32HU  = Cat(DW32,VAU0_MHU)
   val VAU0_64    = Cat(DW64,VAU0_M)
   val VAU0_64H   = Cat(DW64,VAU0_MH)
-  val VAU0_64HU  = Cat(DW64,VAU0_MHU)
   val VAU0_64HSU = Cat(DW64,VAU0_MHSU)
+  val VAU0_64HU  = Cat(DW64,VAU0_MHU)
 
   val VAU1_X     = UFix(0, 3)
   val VAU1_ADD   = UFix(0, 3)
