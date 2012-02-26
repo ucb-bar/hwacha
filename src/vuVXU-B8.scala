@@ -109,15 +109,6 @@ class vuVXU extends Component
   b8lane.io.cp.imul_in1 <> io.cp_imul_req.bits.in1
   b8lane.io.cp.imul_out <> io.cp_imul_resp
 
-  b8lane.io.cp.fma_val <> io.cp_fma_req.valid
-  b8lane.io.cp.fma_rdy <> io.cp_fma_req.ready
-  b8lane.io.cp.fma_fn <> io.cp_fma_req.bits.fn
-  b8lane.io.cp.fma_in0 <> io.cp_fma_req.bits.in0
-  b8lane.io.cp.fma_in1 <> io.cp_fma_req.bits.in1
-  b8lane.io.cp.fma_in2 <> io.cp_fma_req.bits.in2
-  b8lane.io.cp.fma_out <> io.cp_fma_resp.out
-  b8lane.io.cp.fma_exc <> io.cp_fma_resp.exc
-
   b8lane.io.expand_read <> b8expand.io.expand_read
   b8lane.io.expand_write <> b8expand.io.expand_write
   b8lane.io.expand_fu_fn <> b8expand.io.expand_fu_fn

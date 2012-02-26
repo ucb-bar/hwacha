@@ -44,9 +44,6 @@ class vu extends Component
   vxu.io.cp_imul_req <> io.cp_imul_req
   vxu.io.cp_imul_resp <> io.cp_imul_resp
 
-  vxu.io.cp_fma_req <> io.cp_fma_req
-  vxu.io.cp_fma_resp <> io.cp_fma_resp
-
   vxu.io.imem_req <> io.imem_req
   vxu.io.imem_resp <> io.imem_resp
 
