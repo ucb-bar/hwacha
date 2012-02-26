@@ -207,13 +207,13 @@ class vuVXU_Issue_VT extends Component
   val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
   val rtype_vs::rtype_vt::rtype_vr::rtype_vd::itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0
 
-  val unmasked_valid_viu = valid(6).toBool
-  val unmasked_valid_vau0 = valid(5).toBool
-  val unmasked_valid_vau1 = valid(4).toBool
-  val unmasked_valid_vau2 = valid(3).toBool
-  val unmasked_valid_amo = valid(2).toBool
-  val unmasked_valid_utld = valid(1).toBool
-  val unmasked_valid_utst = valid(0).toBool
+  val unmasked_valid_viu = valid(6)
+  val unmasked_valid_vau0 = valid(5)
+  val unmasked_valid_vau1 = valid(4)
+  val unmasked_valid_vau2 = valid(3)
+  val unmasked_valid_amo = valid(2)
+  val unmasked_valid_utld = valid(1)
+  val unmasked_valid_utst = valid(0)
 
   val vau1_rm = Wire(){Bits(width = 2)}
   val vau2_rm = Wire(){Bits(width = 2)}
@@ -232,7 +232,7 @@ class vuVXU_Issue_VT extends Component
     unmasked_valid_vau0 || unmasked_valid_vau1 || unmasked_valid_vau2 ||
     unmasked_valid_amo || unmasked_valid_utld || unmasked_valid_utst
 
-  io.vf.stop := decode_stop.toBool
+  io.vf.stop := decode_stop
 
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
@@ -244,7 +244,7 @@ class vuVXU_Issue_VT extends Component
   io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
-  io.issue_to_irb.markLast := decode_stop.toBool
+  io.issue_to_irb.markLast := decode_stop
 
   val valid_common = io.vf.active & io.irb_cntb.ready
 
@@ -258,25 +258,25 @@ class vuVXU_Issue_VT extends Component
   io.valid.vld := Bool(false)
   io.valid.vst := Bool(false)
 
-  io.dhazard.vs := dhazard(3).toBool
-  io.dhazard.vt := dhazard(2).toBool
-  io.dhazard.vr := dhazard(1).toBool
-  io.dhazard.vd := dhazard(0).toBool
+  io.dhazard.vs := dhazard(3)
+  io.dhazard.vt := dhazard(2)
+  io.dhazard.vr := dhazard(1)
+  io.dhazard.vd := dhazard(0)
 
   io.shazard.viu := Bool(false)
-  io.shazard.vau0 := shazard(5).toBool
-  io.shazard.vau1 := shazard(4).toBool
-  io.shazard.vau2 := shazard(3).toBool
-  io.shazard.vgu := shazard(2).toBool
-  io.shazard.vlu := shazard(1).toBool
-  io.shazard.vsu := shazard(0).toBool
+  io.shazard.vau0 := shazard(5)
+  io.shazard.vau1 := shazard(4)
+  io.shazard.vau2 := shazard(3)
+  io.shazard.vgu := shazard(2)
+  io.shazard.vlu := shazard(1)
+  io.shazard.vsu := shazard(0)
 
-  io.bhazard.r1w1 := bhazard(5).toBool
-  io.bhazard.r2w1 := bhazard(4).toBool
-  io.bhazard.r3w1 := bhazard(3).toBool
-  io.bhazard.amo := bhazard(2).toBool
-  io.bhazard.utld := bhazard(1).toBool
-  io.bhazard.utst := bhazard(0).toBool
+  io.bhazard.r1w1 := bhazard(5)
+  io.bhazard.r2w1 := bhazard(4)
+  io.bhazard.r3w1 := bhazard(3)
+  io.bhazard.amo := bhazard(2)
+  io.bhazard.utld := bhazard(1)
+  io.bhazard.utst := bhazard(0)
   io.bhazard.vld := Bool(false)
   io.bhazard.vst := Bool(false)
 
