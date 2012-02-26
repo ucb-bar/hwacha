@@ -107,22 +107,28 @@ class vuVXU_Banked8_FU_fma extends Component
         VAU1_NMADD -> FCMD_NMADD
       ))
 
+    val fn = io.fn(RG_VAU1_FN)
+    val two_operands = fn === VAU1_ADD || fn === VAU1_SUB || fn === VAU1_MUL
+
     io.cp_dfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits(1)
     io.cp_dfma.cmd := rocket_cmd
     io.cp_dfma.rm := io.fn(RG_VAU1_RM)
     io.cp_dfma.in1 := io.in0
-    io.cp_dfma.in2 := io.in1
+    io.cp_dfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_dfma.in3 := io.in2
-    io.out := io.cp_dfma.out
-    io.exc := io.cp_dfma.exc
 
     io.cp_sfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits(0)
     io.cp_sfma.cmd := rocket_cmd
     io.cp_sfma.rm := io.fn(RG_VAU1_RM)
     io.cp_sfma.in1 := io.in0
-    io.cp_sfma.in2 := io.in1
+    io.cp_sfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_sfma.in3 := io.in2
-    io.out := Cat(Bits("hFFFFFFFF",32), ShiftRegister(DFMA_STAGES-SFMA_STAGES, 33, Bool(true), io.cp_sfma.out))
-    io.exc := ShiftRegister(DFMA_STAGES-SFMA_STAGES, SZ_EXC, Bool(true), io.cp_sfma.exc)
+
+    val dp = ShiftRegister(DFMA_STAGES-2, 1, Bool(true), io.fn(RG_VAU1_FP))
+
+    io.out := Mux(dp, io.cp_dfma.out,
+                  Cat(Bits("hFFFFFFFF",32), ShiftRegister(DFMA_STAGES-SFMA_STAGES-1, 33, Bool(true), io.cp_sfma.out)))
+    io.exc := Mux(dp, io.cp_dfma.exc,
+                  ShiftRegister(DFMA_STAGES-SFMA_STAGES-1, SZ_EXC, Bool(true), io.cp_sfma.exc))
   }
 }
