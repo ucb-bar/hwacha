@@ -8,7 +8,7 @@ import Commands._
 
 class io_vu_evac extends Bundle
 {
-  val cpu_exception = new io_cpu_exception()
+  val cpu_exception = new io_cpu_exception().flip()
 
   val irb_cmdb = new io_vxu_cmdq().flip()
   val irb_imm1b = new io_vxu_immq().flip()
@@ -295,7 +295,7 @@ class vuEvac extends Component
             state_next := STATE_VCNTQ
           } . otherwise 
           {
-            state_next := STATE_VCNTQ
+            state_next := STATE_VCMDQ
             io.vcmdq.ready := Bool(true)
           }
         }

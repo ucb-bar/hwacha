@@ -23,8 +23,6 @@ class vu extends Component
   val irb = new vuIRB()
   val evac = new vuEvac()
 
-  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
-
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new queuecnt(16, 9, 16, true)
 
@@ -82,6 +80,8 @@ class vu extends Component
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
   // evac
+  evac.io.cpu_exception <> io.cpu_exception
+
   evac.io.irb_cmdb <> irb.io.irb_deq_cmdb
   evac.io.irb_imm1b <> irb.io.irb_deq_imm1b
   evac.io.irb_imm2b <> irb.io.irb_deq_imm2b
@@ -114,8 +114,9 @@ class vu extends Component
   vldq.io.nack := memif.io.vldq_nack
 
   // vsdq arbiter
+  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
-  vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.valid
+  vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.bits
   vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
   
   vsdq_arb.io.in(1).valid := evac.io.vsdq.valid
@@ -165,7 +166,7 @@ class vu extends Component
   
   vpfaq.io.enq <> vru.io.vpfaq
 
-  // vaq arbbiter
+  // vaq arbiter
   val vaq_evac_lane_arb = new Arbiter(2)( new io_lane_vaq() )
   
   vaq_evac_lane_arb.io.in(0).valid := vxu.io.lane_vaq.valid
