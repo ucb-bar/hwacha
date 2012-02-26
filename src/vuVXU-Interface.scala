@@ -25,7 +25,7 @@ class io_arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Bundle
   val chosen = Bits(log2up(n),OUTPUT)
 }
 
-class Arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
+class cArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
 {
   val io = new io_arbiter(n)(data)
 
@@ -473,6 +473,25 @@ class io_vxu_issue_vt extends Bundle
   val cpu_exception = new io_cpu_exception().flip()
 }
 
+class ioDTLB_CPU_req_bundle extends Bundle
+{
+  // lookup requests
+  val kill  = Bool()
+  val cmd  = Bits(width=4) // load/store/amo
+  val asid = Bits(width=ASID_BITS)
+  val vpn  = UFix(width=VPN_BITS+1)
+}
+class ioDTLB_CPU_req extends io_ready_valid()( { new ioDTLB_CPU_req_bundle() } )
+
+class ioDTLB_CPU_resp extends Bundle
+{
+  // lookup responses
+  val miss = Bool(OUTPUT)
+  val ppn = UFix(PPN_BITS, OUTPUT)
+  val xcpt_ld = Bool(OUTPUT)
+  val xcpt_st = Bool(OUTPUT)
+}
+
 class io_vu extends Bundle 
 {
   val illegal = Bool(OUTPUT)
@@ -497,6 +516,12 @@ class io_vu extends Bundle
   val dmem_resp = new io_dmem_resp().flip()
 
   val cpu_exception = new io_cpu_exception().flip()
+
+  val vec_tlb_req = new ioDTLB_CPU_req()
+  val vec_tlb_resp = new ioDTLB_CPU_resp()
+
+  val vec_pftlb_req = new ioDTLB_CPU_req()
+  val vec_pftlb_resp = new ioDTLB_CPU_resp()
 }
 
 class io_vxu extends Bundle
