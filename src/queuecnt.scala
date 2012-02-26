@@ -13,7 +13,7 @@ class io_queuecnt(w: Int) extends Bundle
   val zero = Bool(OUTPUT)
 }
 
-class queuecnt(reset_cnt : Int, ready_cnt: Int, max_cnt : Int, use_qcnt: Boolean = false) extends Component
+class queuecnt(reset_cnt : Int, max_cnt : Int, use_qcnt: Boolean = true, ready_cnt: Int = 0) extends Component
 {
   def floorLog2(x : Int)=floor(log(x)/log(2.0)).toInt
 
