@@ -195,8 +195,12 @@ object Constants
 
   // the following constants are from the rocket pipeline
   val PADDR_BITS = 40
+  val VADDR_BITS = 43
   val PGIDX_BITS = 13
-  val PPN_BITS = PADDR_BITS - PGIDX_BITS
+  val PPN_BITS = PADDR_BITS-PGIDX_BITS
+  val VPN_BITS = VADDR_BITS-PGIDX_BITS
+  val ASID_BITS = 7
+  val OFFSET_BITS = 6 // log2(cache line size in bytes)
 
   val MTF_X = Bits(0, 1)
   val MTF_N = Bits(0, 1)
@@ -228,8 +232,6 @@ object Constants
   val M_XA_MAX  = Bits("b1101", 4)
   val M_XA_MINU = Bits("b1110", 4)
   val M_XA_MAXU = Bits("b1111", 4)
-
-  val OFFSET_BITS = 6 // log2(cache line size in bytes)
 }
 
 object Commands {
@@ -327,43 +329,4 @@ object Commands {
   val CMD_VAMOMINUW  = Bits("b1_11_110_10",8)
   val CMD_VAMOMAXUW  = Bits("b1_11_111_10",8)
 
-  // the following constants are from the rocket pipeline
-  val PADDR_BITS = 40
-  val VADDR_BITS = 43
-  val PGIDX_BITS = 13
-  val PPN_BITS = PADDR_BITS-PGIDX_BITS
-  val VPN_BITS = VADDR_BITS-PGIDX_BITS
-  val ASID_BITS = 7
-  val OFFSET_BITS = 6 // log2(cache line size in bytes)
-
-  val MTF_X = Bits(0, 1)
-  val MTF_N = Bits(0, 1)
-  val MTF_Y = Bits(1, 1)
-
-  val MT_X  = Bits("b000", 3)
-  val MT_B  = Bits("b000", 3)
-  val MT_H  = Bits("b001", 3)
-  val MT_W  = Bits("b010", 3)
-  val MT_D  = Bits("b011", 3)
-  val MT_BU = Bits("b100", 3)
-  val MT_HU = Bits("b101", 3)
-  val MT_WU = Bits("b110", 3)
-
-  val M_X       = UFix(0, 4)
-  val M_XRD     = Bits("b0000", 4) // int load
-  val M_XWR     = Bits("b0001", 4) // int store
-  val M_PFR     = Bits("b0010", 4) // prefetch with intent to read
-  val M_PFW     = Bits("b0011", 4) // prefetch with intent to write
-  val M_FLA     = Bits("b0100", 4) // write back and invlaidate all lines
-  val M_FENCE   = Bits("b0101", 4) // memory fence
-  val M_INV     = Bits("b0110", 4) // write back and invalidate line
-  val M_CLN     = Bits("b0111", 4) // write back line
-  val M_XA_ADD  = Bits("b1000", 4)
-  val M_XA_SWAP = Bits("b1001", 4)
-  val M_XA_AND  = Bits("b1010", 4)
-  val M_XA_OR   = Bits("b1011", 4)
-  val M_XA_MIN  = Bits("b1100", 4)
-  val M_XA_MAX  = Bits("b1101", 4)
-  val M_XA_MINU = Bits("b1110", 4)
-  val M_XA_MAXU = Bits("b1111", 4)
 }
