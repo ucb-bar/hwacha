@@ -2,8 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 
 class vuVXU_Banked8_Seq extends Component
 {
@@ -11,9 +10,9 @@ class vuVXU_Banked8_Seq extends Component
 
   val bcntm1 = io.issue_to_seq.bcnt - UFix(1)
 
-  val next_ptr1 = Wire(){ UFix(width=DEF_BPTR) }
-  val next_ptr2 = Wire(){ UFix(width=DEF_BPTR) }
-  val next_ptr3 = Wire(){ UFix(width=DEF_BPTR) }
+  val next_ptr1 = Wire(){ UFix(width=SZ_BPTR) }
+  val next_ptr2 = Wire(){ UFix(width=SZ_BPTR) }
+  val next_ptr3 = Wire(){ UFix(width=SZ_BPTR) }
 
   val reg_ptr = Reg(next_ptr1, resetVal = UFix(0, SZ_LGBANK))
 
@@ -37,42 +36,42 @@ class vuVXU_Banked8_Seq extends Component
     Mux(next_ptr3_add < io.issue_to_seq.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
         next_ptr3_add_bcnt(SZ_LGBANK-1,0))
 
-  val next_val = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_last = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_viu = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vau0 = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vau1 = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vau2 = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vaq = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vldq = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vsdq = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_utmemop = GenArray(DEF_BANK){ Wire(){ Bool() } }
+  val next_val = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_last = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_viu = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vau0 = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vau1 = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vau2 = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vaq = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vldq = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vsdq = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_utmemop = GenArray(SZ_BANK){ Wire(){ Bool() } }
 
-  val next_fn_viu = GenArray(8){ Wire(){Bits(width=DEF_VIU_FN)} }
-  val next_fn_vau0 = GenArray(8){ Wire(){Bits(width=DEF_VAU0_FN)} }
-  val next_fn_vau1 = GenArray(8){ Wire(){Bits(width=DEF_VAU1_FN)} }
-  val next_fn_vau2 = GenArray(8){ Wire(){Bits(width=DEF_VAU2_FN)} }
-  val next_vlen = GenArray(8){ Wire(){Bits(width=DEF_VLEN)} }
-  val next_utidx = GenArray(8){ Wire(){Bits(width=DEF_VLEN)} }
-  val next_stride = GenArray(8){ Wire(){Bits(width=DEF_REGLEN)} }
-  val next_vs_zero = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vt_zero = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vr_zero = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vd_zero = GenArray(DEF_BANK){ Wire(){ Bool() } }
-  val next_vs = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} }
-  val next_vt = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} }
-  val next_vr = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} }
-  val next_vd = GenArray(8){ Wire(){Bits(width=DEF_BREGLEN)} }
+  val next_fn_viu = GenArray(8){ Wire(){Bits(width=SZ_VIU_FN)} }
+  val next_fn_vau0 = GenArray(8){ Wire(){Bits(width=SZ_VAU0_FN)} }
+  val next_fn_vau1 = GenArray(8){ Wire(){Bits(width=SZ_VAU1_FN)} }
+  val next_fn_vau2 = GenArray(8){ Wire(){Bits(width=SZ_VAU2_FN)} }
+  val next_vlen = GenArray(8){ Wire(){Bits(width=SZ_VLEN)} }
+  val next_utidx = GenArray(8){ Wire(){Bits(width=SZ_VLEN)} }
+  val next_stride = GenArray(8){ Wire(){Bits(width=SZ_REGLEN)} }
+  val next_vs_zero = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vt_zero = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vr_zero = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vd_zero = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_vs = GenArray(8){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_vt = GenArray(8){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_vr = GenArray(8){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_vd = GenArray(8){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_mem_cmd = GenArray(8){ Wire(){Bits(width=4)} }
   val next_mem_typ = GenArray(8){ Wire(){Bits(width=3)} }
   val next_mem_typ_float = GenArray(8){ Wire(){Bits(width=1)} }
-  val next_imm = GenArray(8){ Wire(){Bits(width=DEF_DATA)} }
-  val next_imm2 = GenArray(8){ Wire(){Bits(width=DEF_VXU_IMM2Q)} }
-  val next_irb_imm1_rtag = GenArray(DEF_BANK){ Wire(){ Bits(width=IRB_IMM1_SZ) } }
-  val next_irb_cnt_rtag = GenArray(DEF_BANK){ Wire(){ Bits(width=IRB_CNT_SZ) } }
-  val next_irb_cnt = GenArray(DEF_BANK){ Wire(){ Bits(width=DEF_VLEN) } }
-  val next_irb_pc_next = GenArray(DEF_BANK){ Wire(){ Bits(width=SZ_ADDR) } }
-  val next_irb_update_imm1 = GenArray(DEF_BANK){ Wire(){ Bool() } }
+  val next_imm = GenArray(8){ Wire(){Bits(width=SZ_DATA)} }
+  val next_imm2 = GenArray(8){ Wire(){Bits(width=SZ_XIMM2)} }
+  val next_irb_imm1_rtag = GenArray(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_IMM1) } }
+  val next_irb_cnt_rtag = GenArray(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_CNT) } }
+  val next_irb_cnt = GenArray(SZ_BANK){ Wire(){ Bits(width=SZ_VLEN) } }
+  val next_irb_pc_next = GenArray(SZ_BANK){ Wire(){ Bits(width=SZ_ADDR) } }
+  val next_irb_update_imm1 = GenArray(SZ_BANK){ Wire(){ Bool() } }
 
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
   val array_last = Reg(resetVal = Bits(0, SZ_BANK))
@@ -85,31 +84,31 @@ class vuVXU_Banked8_Seq extends Component
   val array_vsdq = Reg(resetVal = Bits(0, SZ_BANK))
   val array_utmemop = Reg(resetVal = Bits(0, SZ_BANK))
 
-  val array_fn_viu = GenArray(8){ Reg(){Bits(width=DEF_VIU_FN)} }
-  val array_fn_vau0 = GenArray(8){ Reg(){Bits(width=DEF_VAU0_FN)} }
-  val array_fn_vau1 = GenArray(8){ Reg(){Bits(width=DEF_VAU1_FN)} }
-  val array_fn_vau2 = GenArray(8){ Reg(){Bits(width=DEF_VAU2_FN)} }
-  val array_vlen = GenArray(8){ Reg(){Bits(width=DEF_VLEN)} }
-  val array_utidx = GenArray(8){ Reg(){Bits(width=DEF_VLEN)} }
-  val array_stride = GenArray(8){ Reg(){Bits(width=DEF_REGLEN)} }
-  val array_vs_zero = GenArray(DEF_BANK){ Reg(){ Bool() } }
-  val array_vt_zero = GenArray(DEF_BANK){ Reg(){ Bool() } }
-  val array_vr_zero = GenArray(DEF_BANK){ Reg(){ Bool() } }
-  val array_vd_zero = GenArray(DEF_BANK){ Reg(){ Bool() } }
-  val array_vs = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} }
-  val array_vt = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} }
-  val array_vr = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} }
-  val array_vd = GenArray(8){ Reg(){Bits(width=DEF_BREGLEN)} }
+  val array_fn_viu = GenArray(8){ Reg(){Bits(width=SZ_VIU_FN)} }
+  val array_fn_vau0 = GenArray(8){ Reg(){Bits(width=SZ_VAU0_FN)} }
+  val array_fn_vau1 = GenArray(8){ Reg(){Bits(width=SZ_VAU1_FN)} }
+  val array_fn_vau2 = GenArray(8){ Reg(){Bits(width=SZ_VAU2_FN)} }
+  val array_vlen = GenArray(8){ Reg(){Bits(width=SZ_VLEN)} }
+  val array_utidx = GenArray(8){ Reg(){Bits(width=SZ_VLEN)} }
+  val array_stride = GenArray(8){ Reg(){Bits(width=SZ_REGLEN)} }
+  val array_vs_zero = GenArray(SZ_BANK){ Reg(){ Bool() } }
+  val array_vt_zero = GenArray(SZ_BANK){ Reg(){ Bool() } }
+  val array_vr_zero = GenArray(SZ_BANK){ Reg(){ Bool() } }
+  val array_vd_zero = GenArray(SZ_BANK){ Reg(){ Bool() } }
+  val array_vs = GenArray(8){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val array_vt = GenArray(8){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val array_vr = GenArray(8){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val array_vd = GenArray(8){ Reg(){Bits(width=SZ_BREGLEN)} }
   val array_mem_cmd = GenArray(8){ Reg(){Bits(width=4)} }
   val array_mem_typ = GenArray(8){ Reg(){Bits(width=3)} }
   val array_mem_typ_float = GenArray(8){ Reg(){Bits(width=1)} }
-  val array_imm = GenArray(8){ Reg(){Bits(width=DEF_DATA)} }
-  val array_imm2 = GenArray(8){ Reg(){Bits(width=DEF_VXU_IMM2Q)} }
-  val array_irb_imm1_rtag = GenArray(DEF_BANK){ Reg(){ Bits(width=IRB_IMM1_SZ) } }
-  val array_irb_cnt_rtag = GenArray(DEF_BANK){ Reg(){ Bits(width=IRB_CNT_SZ) } }
-  val array_irb_cnt = GenArray(DEF_BANK){ Reg(){ Bits(width=DEF_VLEN) } }
-  val array_irb_pc_next = GenArray(DEF_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
-  val array_irb_update_imm1 = GenArray(DEF_BANK){ Reg(){ Bool() } }
+  val array_imm = GenArray(8){ Reg(){Bits(width=SZ_DATA)} }
+  val array_imm2 = GenArray(8){ Reg(){Bits(width=SZ_XIMM2)} }
+  val array_irb_imm1_rtag = GenArray(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_IMM1) } }
+  val array_irb_cnt_rtag = GenArray(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_CNT) } }
+  val array_irb_cnt = GenArray(SZ_BANK){ Reg(){ Bits(width=SZ_VLEN) } }
+  val array_irb_pc_next = GenArray(SZ_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
+  val array_irb_update_imm1 = GenArray(SZ_BANK){ Reg(){ Bool() } }
 
   array_val := next_val.flatten()
   array_last := next_last.flatten()

@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 
 class vuVXU_Banked8_Fire extends Component
 {

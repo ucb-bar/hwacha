@@ -2,8 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 
 class vuVXU_Banked8_Expand extends Component 
 {
@@ -11,17 +10,17 @@ class vuVXU_Banked8_Expand extends Component
 
   val next_ren = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_rlast = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_rcnt = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_BVLEN)} }
-  val next_raddr = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_BREGLEN)} }
-  val next_roplen = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_BOPL)} }
-  val next_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(DEF_BRPORT){ Wire(){Bool()} } }
+  val next_rcnt = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BVLEN)} }
+  val next_raddr = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_roplen = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BOPL)} }
+  val next_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(SZ_BRPORT){ Wire(){Bool()} } }
 
   val reg_ren = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false))}
   val reg_rlast = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } }
-  val reg_rcnt = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BVLEN)} }
-  val reg_raddr = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BREGLEN)} }
-  val reg_roplen = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_BOPL)} }
-  val reg_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(DEF_BRPORT){ Reg(){Bool()} } }
+  val reg_rcnt = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BVLEN)} }
+  val reg_raddr = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val reg_roplen = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BOPL)} }
+  val reg_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(SZ_BRPORT){ Reg(){Bool()} } }
 
   for (i <- 0 until SHIFT_BUF_READ){
     reg_ren(i) := next_ren(i)
@@ -29,7 +28,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_rcnt(i) := next_rcnt(i)
     reg_raddr(i) := next_raddr(i)
     reg_roplen(i) := next_roplen(i)
-    for(j <- 0 until DEF_BRPORT)
+    for(j <- 0 until SZ_BRPORT)
       reg_rblen(i)(j) := next_rblen(i)(j)
   }
 
@@ -40,7 +39,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(i) := reg_rcnt(i+1)
     next_raddr(i) := reg_raddr(i+1)
     next_roplen(i) := reg_roplen(i+1)
-    for(j <- 0 until DEF_BRPORT)
+    for(j <- 0 until SZ_BRPORT)
       next_rblen(i)(j) := reg_rblen(i+1)(j)
   }
 
@@ -49,7 +48,7 @@ class vuVXU_Banked8_Expand extends Component
   next_rcnt(SHIFT_BUF_READ-1) := Bits("d0", 3)
   next_raddr(SHIFT_BUF_READ-1) := Bits("d0", 8)
   next_roplen(SHIFT_BUF_READ-1) := Bits("d0", 2)
-  for(i <- 0 until DEF_BRPORT)
+  for(i <- 0 until SZ_BRPORT)
     next_rblen(SHIFT_BUF_READ-1)(i) := Bool(false)
 
   when (io.seq.viu) 
@@ -59,7 +58,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(0) := io.seq_regid_imm.cnt
     next_raddr(0) := io.seq_regid_imm.vs
     next_roplen(0) := Bits("b01", 2)
-    for(i <- 0 until DEF_BRPORT)
+    for(i <- 0 until SZ_BRPORT)
       next_rblen(0)(i) := Bool(false)
 
     when (io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
@@ -69,7 +68,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(1) := io.seq_regid_imm.cnt
       next_raddr(1) := io.seq_regid_imm.vt
       next_roplen(1) := Bits("b00", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         next_rblen(1)(i) := Bool(false)
     }
     when (io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
@@ -84,7 +83,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(0) := io.seq_regid_imm.cnt
     next_raddr(0) := io.seq_regid_imm.vs
     next_roplen(0) := Bits("b01", 2)
-    for(i <- 0 until DEF_BRPORT)
+    for(i <- 0 until SZ_BRPORT)
       next_rblen(0)(i) := Bool(false)
     
     next_ren(1) := Bool(true)
@@ -92,7 +91,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(1) := io.seq_regid_imm.cnt
     next_raddr(1) := io.seq_regid_imm.vt
     next_roplen(1) := Bits("b00", 2)
-    for(i <- 0 until DEF_BRPORT)
+    for(i <- 0 until SZ_BRPORT)
       if(i == 1 || i == 0) 
         next_rblen(1)(i) := Bool(true)
       else
@@ -110,7 +109,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(0) := io.seq_regid_imm.cnt
       next_raddr(0) := io.seq_regid_imm.vs
       next_roplen(0) := Bits("b10", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         next_rblen(0)(i) := Bool(false)
         
       next_ren(1) := Bool(true)
@@ -118,7 +117,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(1) := io.seq_regid_imm.cnt
       next_raddr(1) := io.seq_regid_imm.vt
       next_roplen(1) := Bits("b01", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         next_rblen(1)(i) := Bool(false)
       
       next_ren(2) := Bool(true)
@@ -126,7 +125,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(2) := io.seq_regid_imm.cnt
       next_raddr(2) := io.seq_regid_imm.vr
       next_roplen(2) := Bits("b00", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         if(i == 2 || i == 3 || i == 4) 
           next_rblen(2)(i) := Bool(true)
         else
@@ -144,7 +143,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(0) := io.seq_regid_imm.cnt
       next_raddr(0) := io.seq_regid_imm.vs
       next_roplen(0) := Bits("b10", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         next_rblen(0)(i) := Bool(false)
       
       next_ren(1) := Bool(true)
@@ -152,7 +151,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(1) := io.seq_regid_imm.cnt
       next_raddr(1) := io.seq_regid_imm.vt
       next_roplen(1) := Bits("b00", 2)
-      for(i <- 0 until DEF_BRPORT){
+      for(i <- 0 until SZ_BRPORT){
         if(i == 2 || i == 4)
           next_rblen(1)(i) := Bool(true)
         else
@@ -170,7 +169,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(0) := io.seq_regid_imm.cnt
     next_raddr(0) := io.seq_regid_imm.vs
     next_roplen(0) := Bits("b00", 2)
-    for(i <- 0 until DEF_BRPORT)
+    for(i <- 0 until SZ_BRPORT)
       if(i == 5)
         next_rblen(0)(i) := Bool(true)
       else
@@ -187,7 +186,7 @@ class vuVXU_Banked8_Expand extends Component
       next_rcnt(0) := io.seq_regid_imm.cnt
       next_raddr(0) := io.seq_regid_imm.vs
       next_roplen(0) := Bits("b00", 2)
-      for(i <- 0 until DEF_BRPORT)
+      for(i <- 0 until SZ_BRPORT)
         if(i == 6)
         next_rblen(0)(i) := Bool(true)
       else
@@ -209,7 +208,7 @@ class vuVXU_Banked8_Expand extends Component
     next_rcnt(0) := io.seq_regid_imm.cnt
     next_raddr(0) := io.seq_regid_imm.vt
     next_roplen(0) := Bits("b00", 2)
-    for(i <- 0 until DEF_BRPORT)
+    for(i <- 0 until SZ_BRPORT)
       if(i == 7)
         next_rblen(0)(i) := Bool(true)
       else
@@ -220,15 +219,15 @@ class vuVXU_Banked8_Expand extends Component
 
   val next_wen = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
   val next_wlast = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
-  val next_wcnt = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=DEF_BVLEN)} }
-  val next_waddr = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=DEF_BREGLEN)} }
-  val next_wsel = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=DEF_BWPORT)} }
+  val next_wcnt = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BVLEN)} }
+  val next_waddr = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_wsel = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
 
   val reg_wen = GenArray(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
   val reg_wlast = GenArray(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
-  val reg_wcnt = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=DEF_BVLEN)} }
-  val reg_waddr = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=DEF_BREGLEN)} }
-  val reg_wsel = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=DEF_BWPORT)} }
+  val reg_wcnt = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
+  val reg_waddr = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val reg_wsel = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
 
   for (i <- 0 until SHIFT_BUF_WRITE)
   {
@@ -240,18 +239,18 @@ class vuVXU_Banked8_Expand extends Component
   }
 
   val viu_wptr = 
-    Mux((io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR)) , Bits(INT_STAGES + 2, DEF_BPTR1)
-    , Bits(INT_STAGES + 1, DEF_BPTR1))
+    Mux((io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR)) , Bits(INT_STAGES + 2, SZ_BPTR1)
+    , Bits(INT_STAGES + 1, SZ_BPTR1))
 
   val vau0_wptr =
-    Bits(IMUL_STAGES + 2, DEF_BPTR1)
+    Bits(IMUL_STAGES + 2, SZ_BPTR1)
 
   val vau1_wptr =
-    Mux((io.seq_fn.vau1(2)) , Bits(FMA_STAGES + 3, DEF_BPTR1)
-    , Bits(FMA_STAGES + 2, DEF_BPTR1))
+    Mux((io.seq_fn.vau1(2)) , Bits(FMA_STAGES + 3, SZ_BPTR1)
+    , Bits(FMA_STAGES + 2, SZ_BPTR1))
 
   val vau2_wptr = 
-    Bits(FCONV_STAGES + 1,  DEF_BPTR1)
+    Bits(FCONV_STAGES + 1,  SZ_BPTR1)
 
   for (i <- 0 until SHIFT_BUF_WRITE-1)
   {
@@ -310,40 +309,40 @@ class vuVXU_Banked8_Expand extends Component
   }
 
   val next_viu = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_viu_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_VIU_FN)} }
-  val next_viu_utidx = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_VLEN)} }
-  val next_viu_imm = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_DATA)} }
+  val next_viu_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VIU_FN)} }
+  val next_viu_utidx = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VLEN)} }
+  val next_viu_imm = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_DATA)} }
   val next_vau0 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau0_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_VAU0_FN)} }
+  val next_vau0_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU0_FN)} }
   val next_vau1 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau1_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_VAU1_FN)} }
+  val next_vau1_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU1_FN)} }
   val next_vau2 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau2_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=DEF_VAU2_FN)} }
+  val next_vau2_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU2_FN)} }
   val next_mem_cmd = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=4) } }
   val next_mem_typ = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
   val next_mem_typ_float = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
-  val next_imm = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=DEF_DATA) } }
-  val next_imm2 = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=DEF_VXU_IMM2Q) } }
+  val next_imm = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_DATA) } }
+  val next_imm2 = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_XIMM2) } }
   val next_vaq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vldq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vsdq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_utmemop = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
 
   val reg_viu = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_viu_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VIU_FN)} }
-  val reg_viu_utidx = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VLEN)} }
-  val reg_viu_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_DATA)} }
+  val reg_viu_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VIU_FN)} }
+  val reg_viu_utidx = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VLEN)} }
+  val reg_viu_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
   val reg_vau0 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau0_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU0_FN)} }
+  val reg_vau0_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU0_FN)} }
   val reg_vau1 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau1_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU1_FN)} }
+  val reg_vau1_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU1_FN)} }
   val reg_vau2 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau2_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VAU2_FN)} }
+  val reg_vau2_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU2_FN)} }
   val reg_mem_cmd = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=4) } }
   val reg_mem_typ = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=3) } }
   val reg_mem_typ_float = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=1) } }
-  val reg_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_DATA)} }
-  val reg_imm2 = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=DEF_VXU_IMM2Q)} }
+  val reg_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
+  val reg_imm2 = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_XIMM2)} }
   val reg_vaq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vldq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vsdq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
@@ -409,7 +408,7 @@ class vuVXU_Banked8_Expand extends Component
   next_mem_typ(SHIFT_BUF_READ-1) := Bits("d0", 3)
   next_mem_typ_float(SHIFT_BUF_READ-1) := Bits("d0", 1)
   next_imm(SHIFT_BUF_READ-1) := Bits("d0", SZ_DATA)
-  next_imm2(SHIFT_BUF_READ-1) := Bits("d0", DEF_VXU_IMM2Q)
+  next_imm2(SHIFT_BUF_READ-1) := Bits("d0", SZ_XIMM2)
   next_vaq(SHIFT_BUF_READ-1) := Bool(false)
   next_vldq(SHIFT_BUF_READ-1) := Bool(false)
   next_vsdq(SHIFT_BUF_READ-1) := Bool(false)

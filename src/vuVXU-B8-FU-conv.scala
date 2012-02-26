@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import hardfloat._
-import Config._
+import Constants._
 import fpu_recoded._
 
 class vuVXU_Banked8_FU_conv extends Component 
@@ -11,10 +11,10 @@ class vuVXU_Banked8_FU_conv extends Component
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn = Bits(DEF_VAU2_FN, INPUT)
-    val in = Bits(DEF_DATA, INPUT)
-    val exc = Bits(DEF_EXC, OUTPUT)
-    val out = Bits(DEF_DATA, OUTPUT)
+    val fn = Bits(SZ_VAU2_FN, INPUT)
+    val in = Bits(SZ_DATA, INPUT)
+    val exc = Bits(SZ_EXC, OUTPUT)
+    val out = Bits(SZ_DATA, OUTPUT)
   }
 
   def VAU2_FN(ins: Bits*) = ins.toList.map(x => {io.fn(RG_VAU2_FN) === x}).reduceLeft( _ || _ )
@@ -140,7 +140,7 @@ class vuVXU_Banked8_FU_conv extends Component
     VAU2_FP(FPD), Cat(next_exc_dp, next_result_dp),
     Cat(next_exc_sp, next_result_sp))
 
-  val pipereg = ShiftRegister(FCONV_STAGES-1, DEF_DATA+DEF_EXC, io.valid, result)
+  val pipereg = ShiftRegister(FCONV_STAGES-1, SZ_DATA+SZ_EXC, io.valid, result)
 
   Match(pipereg, io.exc, io.out)
 }

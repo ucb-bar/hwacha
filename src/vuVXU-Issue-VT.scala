@@ -2,8 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Commands._
+import Constants._
 import Instructions._
 
 class vuVXU_Issue_VT extends Component
@@ -19,7 +18,7 @@ class vuVXU_Issue_VT extends Component
   val if_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
   val if_next_pc = if_reg_pc + UFix(4)
 
-  val imm1_rtag = Reg(resetVal = Bits(0, IRB_IMM1_SZ))
+  val imm1_rtag = Reg(resetVal = Bits(0, SZ_IRB_IMM1))
 
   when (io.vf.fire) 
   { 
@@ -36,7 +35,7 @@ class vuVXU_Issue_VT extends Component
   io.imem_req.bits := req_pc
   io.imem_req.valid := io.vf.active
 
-  val id_reg_inst = Reg(resetVal = Bits(0,DEF_INST))
+  val id_reg_inst = Reg(resetVal = Bits(0,SZ_INST))
   val id_pc_next = Reg(resetVal = Bits(0, SZ_ADDR))
 
   io.decoded.irb.imm1_rtag := imm1_rtag

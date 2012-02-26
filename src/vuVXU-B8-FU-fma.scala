@@ -3,19 +3,19 @@ package hwacha
 import Chisel._
 import Node._
 import hardfloat._
-import Config._
+import Constants._
 
 class vuVXU_Banked8_FU_fma extends Component
 {
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn    = Bits(DEF_VAU1_FN, INPUT)
-    val in0   = Bits(DEF_DATA, INPUT)
-    val in1   = Bits(DEF_DATA, INPUT)
-    val in2   = Bits(DEF_DATA, INPUT)
-    val out   = Bits(DEF_DATA, OUTPUT)
-    val exc   = Bits(DEF_EXC, OUTPUT)
+    val fn    = Bits(SZ_VAU1_FN, INPUT)
+    val in0   = Bits(SZ_DATA, INPUT)
+    val in1   = Bits(SZ_DATA, INPUT)
+    val in2   = Bits(SZ_DATA, INPUT)
+    val out   = Bits(SZ_DATA, OUTPUT)
+    val exc   = Bits(SZ_EXC, OUTPUT)
   }
 
   // use in0 & in2 for a two operand flop (add,sub,mul)

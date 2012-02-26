@@ -2,9 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Commands._
-import Interface._
+import Constants._
 
 class vuVXU_Issue extends Component
 {

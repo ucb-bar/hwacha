@@ -2,27 +2,26 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 import scala.collection.mutable.ArrayBuffer
 
 class CPIO extends Bundle
 {
   val imul_val = Bool(INPUT)
   val imul_rdy = Bool(OUTPUT)
-  val imul_fn  = Bits(DEF_VAU0_FN, INPUT)
-  val imul_in0 = Bits(DEF_XLEN, INPUT)
-  val imul_in1 = Bits(DEF_XLEN, INPUT)
-  val imul_out = Bits(DEF_XLEN, OUTPUT)
+  val imul_fn  = Bits(SZ_VAU0_FN, INPUT)
+  val imul_in0 = Bits(SZ_XLEN, INPUT)
+  val imul_in1 = Bits(SZ_XLEN, INPUT)
+  val imul_out = Bits(SZ_XLEN, OUTPUT)
 
   val fma_val  = Bool(INPUT)
   val fma_rdy  = Bool(OUTPUT)
-  val fma_fn   = Bits(DEF_VAU1_FN, INPUT)
-  val fma_in0  = Bits(DEF_FLEN, INPUT)
-  val fma_in1  = Bits(DEF_FLEN, INPUT)
-  val fma_in2  = Bits(DEF_FLEN, INPUT)
-  val fma_out  = Bits(DEF_FLEN, OUTPUT)
-  val fma_exc = Bits(DEF_EXC, OUTPUT)
+  val fma_fn   = Bits(SZ_VAU1_FN, INPUT)
+  val fma_in0  = Bits(SZ_FLEN, INPUT)
+  val fma_in1  = Bits(SZ_FLEN, INPUT)
+  val fma_in2  = Bits(SZ_FLEN, INPUT)
+  val fma_out  = Bits(SZ_FLEN, OUTPUT)
+  val fma_exc = Bits(SZ_EXC, OUTPUT)
 }
 
 class ExpanderIO extends Bundle
@@ -35,15 +34,15 @@ class VMUIO extends Bundle
 {
   val vaq_val   = Bool(OUTPUT)
   val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(DEF_DATA, OUTPUT)
+  val vaq_imm = Bits(SZ_DATA, OUTPUT)
   val vaq_utmemop = Bool(OUTPUT)
-  val vaq_rf = Bits(DEF_DATA, OUTPUT)
+  val vaq_rf = Bits(SZ_DATA, OUTPUT)
 
   val vldq_rdy  = Bool(OUTPUT)
-  val vldq_bits = Bits(DEF_DATA, INPUT)
+  val vldq_bits = Bits(SZ_DATA, INPUT)
   val vsdq_val  = Bool(OUTPUT)
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
-  val vsdq_bits = Bits(DEF_DATA, OUTPUT)
+  val vsdq_bits = Bits(SZ_DATA, OUTPUT)
 }
 
 class vuVXU_LaneIO extends Bundle 

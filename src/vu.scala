@@ -2,39 +2,35 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 import queues._
 
 class vu extends Component
 {
   val io = new io_vu()
 
-  val vcmdq = VC_SIMPLE_QUEUE(VCMD_SZ, 16)
-  val vximm1q = VC_SIMPLE_QUEUE(VIMM_SZ, 16)
-  val vximm2q = VC_SIMPLE_QUEUE(VSTRIDE_SZ, 16)
+  val vcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
+  val vximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
+  val vximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
   vximm2q.io.enq <> io.vec_ximm2q
-
+  
   val vxu = new vuVXU()
 
   val irb = new vuIRB()
 
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_count = new vuVMU_QueueCount(16, 9, 16, true)
+  val vaq_count = new queuecnt(16, 9, 16, true)
 
   // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
   val vldq = new queue_reorder_qcnt(65, 128, 9)
 
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
-  val vsdq_count = new vuVMU_QueueCount(16, 9, 16, true)
+  val vsdq_count = new queuecnt(16, 9, 16, true)
 
   val vsackcnt = new sackcnt()
-
-  val vmu_utcmdq = VC_SIMPLE_QUEUE(UTMCMD_SZ, 16)
-  val vmu_utimmq = VC_SIMPLE_QUEUE(UTMIMM_SZ, 16)
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -72,21 +68,7 @@ class vu extends Component
 
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
-  // vaq
-  vxu.io.lane_vaq.ready := vaq_count.io.watermark // vaq.io.enq.ready
-  vaq.io.enq.valid := vxu.io.lane_vaq.valid
-  vaq.io.enq.bits := vxu.io.lane_vaq.bits
-
-  memif.io.vaq_deq <> vaq.io.deq
-
-  vaq.io.ack := memif.io.vaq_ack
-  vaq.io.nack := memif.io.vaq_nack
-
-  vaq_count.io.qcnt := vxu.io.qcnt
-  vaq_count.io.inc := memif.io.vaq_ack
-  vaq_count.io.dec := vxu.io.lane_vaq_dec
-
-
+  
   // vldq
   vldq.io.enq <> memif.io.vldq_enq
 
@@ -120,4 +102,53 @@ class vu extends Component
   vsackcnt.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
   vsackcnt.io.qcnt := vxu.io.qcnt
   vxu.io.pending_store := !vsackcnt.io.zero
+
+  // prefetch
+
+  val vru = new vuVRU()
+  val vpfaq = new queue_spec(16)({ new io_vaq_bundle() })
+  val vaq_arb = new Arbiter(2)({ new io_lane_vaq() })
+
+  val reg_chosen = Reg(vaq_arb.io.chosen)
+  val reg_chosen2 = Reg(reg_chosen)
+
+  val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
+  val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
+  val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
+
+  vpfcmdq.io.enq <> io.vec_pfcmdq
+  vpfximm1q.io.enq <> io.vec_pfximm1q
+  vpfximm2q.io.enq <> io.vec_pfximm2q
+
+  vru.io.vec_pfcmdq <> vpfcmdq.io.deq
+  vru.io.vec_pfximm1q <> vpfximm1q.io.deq
+  vru.io.vec_pfximm2q <> vpfximm2q.io.deq
+  
+  vpfaq.io.enq <> vru.io.vpfaq
+
+  // vaq
+  vxu.io.lane_vaq.ready := vaq_count.io.watermark // vaq.io.enq.ready
+  vaq.io.enq.valid := vxu.io.lane_vaq.valid
+  vaq.io.enq.bits := vxu.io.lane_vaq.bits
+
+  vaq_arb.io.in(0) <> vpfaq.io.deq
+  vaq_arb.io.in(1) <> vaq.io.deq
+
+  memif.io.vaq_deq <> vaq_arb.io.out
+
+  val vaqack = Mux(reg_chosen2 === Bits(1), memif.io.vaq_ack, Bool(false))
+  val vaqnack = memif.io.vaq_nack
+  
+  val vpfaqack = Mux(reg_chosen2 === Bits(0), memif.io.vaq_ack, Bool(false))
+  val vpfaqnack = memif.io.vaq_nack
+  
+  vaq.io.ack := vaqack
+  vaq.io.nack := vaqnack
+
+  vpfaq.io.ack := vpfaqack
+  vpfaq.io.nack := vpfaqnack
+  
+  vaq_count.io.qcnt := vxu.io.qcnt
+  vaq_count.io.inc := vaqack
+  vaq_count.io.dec := vxu.io.lane_vaq_dec
 }

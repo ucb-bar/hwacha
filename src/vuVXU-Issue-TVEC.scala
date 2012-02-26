@@ -2,9 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Commands._
-import Interface._
+import Constants._
 
 class vuVXU_Issue_TVEC extends Component
 {
@@ -27,9 +25,9 @@ class vuVXU_Issue_TVEC extends Component
 // DECODE                                                                  \\
 //-------------------------------------------------------------------------\\
 
-  val cmd = io.vxu_cmdq.bits(XCMD_CMCODE)
-  val vd = io.vxu_cmdq.bits(XCMD_VD)
-  val vt = io.vxu_cmdq.bits(XCMD_VS)
+  val cmd = io.vxu_cmdq.bits(RG_XCMD_CMCODE)
+  val vd = io.vxu_cmdq.bits(RG_XCMD_VD)
+  val vt = io.vxu_cmdq.bits(RG_XCMD_VS)
   val imm = io.vxu_immq.bits
   val imm2 = io.vxu_imm2q.bits
 
@@ -183,12 +181,12 @@ class vuVXU_Issue_TVEC extends Component
 // REGISTERS                                                               \\
 //-------------------------------------------------------------------------\\
 
-  val next_vlen = Wire(){Bits(width = DEF_VLEN)}
-  val next_nxregs = Wire(){Bits(width = DEF_REGCNT)}
-  val next_nfregs = Wire(){Bits(width = DEF_REGCNT)}
-  val next_bactive = Wire(){Bits(width = DEF_BANK)}
-  val next_bcnt = Wire(){Bits(width = DEF_BCNT)}
-  val next_stride = Wire(){Bits(width = DEF_REGLEN)}
+  val next_vlen = Wire(){Bits(width = SZ_VLEN)}
+  val next_nxregs = Wire(){Bits(width = SZ_REGCNT)}
+  val next_nfregs = Wire(){Bits(width = SZ_REGCNT)}
+  val next_bactive = Wire(){Bits(width = SZ_BANK)}
+  val next_bcnt = Wire(){Bits(width = SZ_BCNT)}
+  val next_stride = Wire(){Bits(width = SZ_REGLEN)}
 
   val reg_vlen = Reg(next_vlen, resetVal = Bits(0,SZ_VLEN))
   val reg_nxregs = Reg(next_nxregs, resetVal = Bits(32,SZ_REGCNT))
@@ -304,16 +302,16 @@ class vuVXU_Issue_TVEC extends Component
   io.bhazard.vst := bhazard(2).toBool
 
   io.fn.viu := Cat(M0,vmsrc,DW64,FP_,VIU_MOV)
-  io.fn.vau0 := Bits(0,DEF_VAU0_FN)
-  io.fn.vau1 := Bits(0,DEF_VAU1_FN)
-  io.fn.vau2 := Bits(0,DEF_VAU2_FN)
+  io.fn.vau0 := Bits(0,SZ_VAU0_FN)
+  io.fn.vau1 := Bits(0,SZ_VAU1_FN)
+  io.fn.vau2 := Bits(0,SZ_VAU2_FN)
 
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UFix(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
 
-  io.decoded.vs := Bits(0,DEF_REGLEN)
+  io.decoded.vs := Bits(0,SZ_REGLEN)
   io.decoded.vt := Mux(vt(5), vt_m1 + reg_nxregs, vt_m1) 
-  io.decoded.vr := Bits(0,DEF_REGLEN)
+  io.decoded.vr := Bits(0,SZ_REGLEN)
   io.decoded.vd := Mux(vd(5), vd_m1 + reg_nxregs, vd_m1)
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)

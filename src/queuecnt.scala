@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import scala.math.{log, ceil}
 
-class vuVMU_QueueCountIO(w: Int) extends Bundle
+class io_queuecnt(w: Int) extends Bundle
 {
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
@@ -12,11 +12,11 @@ class vuVMU_QueueCountIO(w: Int) extends Bundle
   val qcnt = UFix(w, INPUT)
 }
 
-class vuVMU_QueueCount(reset_cnt : Int, ready_cnt : Int, max_cnt : Int, use_qcnt: Boolean = false) extends Component
+class queuecnt(reset_cnt : Int, ready_cnt : Int, max_cnt : Int, use_qcnt: Boolean = false) extends Component
 {
   def ceilLog2(x : Int)=ceil(log(x)/log(2.0)).toInt
 
-  val io = new vuVMU_QueueCountIO(ceilLog2(max_cnt)+1)
+  val io = new io_queuecnt(ceilLog2(max_cnt)+1)
   val count = Reg(resetVal = UFix(reset_cnt, ceilLog2(max_cnt)+1))
   val next_count = Wire(){ UFix(width = ceilLog2(max_cnt)+1) }
 

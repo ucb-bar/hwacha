@@ -2,22 +2,22 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
+import Constants._
 
 class vuVXU_Pointer extends Component
 {
   val io = new Bundle
   {
-    val ptr = UFix(DEF_BPTR, INPUT)
-    val incr = UFix(DEF_BPTR1, INPUT)
-    val bcnt = UFix(DEF_BCNT, INPUT)
-    val nptr = UFix(DEF_BPTR, OUTPUT)
+    val ptr = UFix(SZ_BPTR, INPUT)
+    val incr = UFix(SZ_BPTR1, INPUT)
+    val bcnt = UFix(SZ_BCNT, INPUT)
+    val nptr = UFix(SZ_BPTR, OUTPUT)
   }
 
   val add = io.ptr + io.incr
 
   io.nptr := MuxLookup(
-    Cat(add, io.bcnt), UFix(0, DEF_BPTR), Array(
+    Cat(add, io.bcnt), UFix(0, SZ_BPTR), Array(
       Cat(UFix(0,5),UFix(3,4)) -> UFix(0,3),
       Cat(UFix(0,5),UFix(4,4)) -> UFix(0,3),
       Cat(UFix(0,5),UFix(5,4)) -> UFix(0,3),

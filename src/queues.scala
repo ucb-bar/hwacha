@@ -191,16 +191,16 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
   full    := full_next
 }
 
-class io_queue(data_sz: Int) extends Bundle()
+class io_queue[T <: Data](data: => T) extends Bundle()
 {
-  val enq = (new io_ready_valid())(Bits(width=data_sz)).flip()
-  val deq = (new io_ready_valid())(Bits(width=data_sz))
+  val enq = new io_ready_valid()( data ).flip()
+  val deq = new io_ready_valid()( data )
 }
 
-class queueSimplePF(data_sz: Int, entries: Int) extends Component
+class queueSimplePF[T <: Data](entries: Int)(data: => T) extends Component
 {
   val addr_sz = log2up(entries)
-  override val io = new io_queue(data_sz)
+  override val io = new io_queue({data})
   val ctrl = new queueCtrl(entries, addr_sz)
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
@@ -210,10 +210,10 @@ class queueSimplePF(data_sz: Int, entries: Int) extends Component
   io.deq.bits := ram(ctrl.io.raddr)
 }
 
-class queuePipePF(data_sz: Int, entries: Int) extends Component
+class queuePipePF[T <: Data](entries: Int)(data: => T) extends Component
 {
   val addr_sz = log2up(entries)
-  override val io = new io_queue(data_sz)
+  override val io = new io_queue({data})
   val ctrl = new queueCtrl_pipe(entries, addr_sz)
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
@@ -295,23 +295,23 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
   full    := full_next
 }
 
-class IOqueueDpathFlow(data_sz: Int, addr_sz: Int) extends Bundle()
-{
-  val wen         = Bool(INPUT)
-  val flowthru    = Bool(INPUT)
-  val deq_bits    = Bits(data_sz, OUTPUT)
-  val enq_bits    = Bits(data_sz, INPUT)
-  val waddr       = UFix(addr_sz, INPUT)
-  val raddr       = UFix(addr_sz, INPUT)
-}
-
-class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
-{
-  override val io = new IOqueueDpathFlow(data_sz, addr_sz)
-  val ram  = Mem(entries, io.wen, io.waddr, io.enq_bits)
-  val rout = ram(io.raddr)
-  io.deq_bits := Mux(io.flowthru, io.enq_bits, rout)
-}
+//class IOqueueDpathFlow(data_sz: Int, addr_sz: Int) extends Bundle()
+//{
+//  val wen         = Bool(INPUT)
+//  val flowthru    = Bool(INPUT)
+//  val deq_bits    = Bits(data_sz, OUTPUT)
+//  val enq_bits    = Bits(data_sz, INPUT)
+//  val waddr       = UFix(addr_sz, INPUT)
+//  val raddr       = UFix(addr_sz, INPUT)
+//}
+//
+//class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
+//{
+//  override val io = new IOqueueDpathFlow(data_sz, addr_sz)
+//  val ram  = Mem(entries, io.wen, io.waddr, io.enq_bits)
+//  val rout = ram(io.raddr)
+//  io.deq_bits := Mux(io.flowthru, io.enq_bits, rout)
+//}
 
 //--------------------------------------------------------------------------
 // Single-Element Queues
@@ -331,17 +331,17 @@ class queue1PF(data_sz:Int) extends Component
   }
 }
 */
-class queuePipe1PF(data_sz:Int) extends Component
+class queuePipe1PF[T <: Data](data: => T) extends Component
 {
   val wen = Wire(){Bool()}
-  override val io = new io_queue(data_sz)
+  override val io = new io_queue({data})
   val ctrl = new queueCtrl1_pipe()
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.deq_rdy <> io.deq.ready
   wen := ctrl.io.wen
-  val deq_bits_reg = Reg(width=data_sz, resetVal=Bits("b0", data_sz))
+  val deq_bits_reg = Reg(data)
   io.deq.bits := deq_bits_reg
   when(wen)
   {
@@ -349,24 +349,24 @@ class queuePipe1PF(data_sz:Int) extends Component
   }
 }
 
-class queueFlowPF(data_sz: Int, entries: Int) extends Component
-{
-  override val io = new io_queue(data_sz)
-  val addr_sz = log2up(entries)
-  val ctrl  = new queueCtrlFlow(entries, addr_sz)
-  val dpath = new queueDpathFlow(data_sz, entries, addr_sz)
-  ctrl.io.deq_rdy   <> io.deq.ready
-  ctrl.io.wen       <> dpath.io.wen
-  ctrl.io.raddr     <> dpath.io.raddr
-  ctrl.io.waddr     <> dpath.io.waddr
-  ctrl.io.flowthru  <> dpath.io.flowthru
-  ctrl.io.enq_val   <> io.enq.valid
-  dpath.io.enq_bits <> io.enq.bits
-
-  ctrl.io.deq_val   <> io.deq.valid
-  ctrl.io.enq_rdy   <> io.enq.ready
-  dpath.io.deq_bits <> io.deq.bits
-}
+//class queueFlowPF[T <: Data](entries: Int)(data: => T) extends Component
+//{
+//  override val io = new io_queue({data})
+//  val addr_sz = log2up(entries)
+//  val ctrl  = new queueCtrlFlow(entries, addr_sz)
+//  val dpath = new queueDpathFlow(data_sz, entries, addr_sz)
+//  ctrl.io.deq_rdy   <> io.deq.ready
+//  ctrl.io.wen       <> dpath.io.wen
+//  ctrl.io.raddr     <> dpath.io.raddr
+//  ctrl.io.waddr     <> dpath.io.waddr
+//  ctrl.io.flowthru  <> dpath.io.flowthru
+//  ctrl.io.enq_val   <> io.enq.valid
+//  dpath.io.enq_bits <> io.enq.bits
+//
+//  ctrl.io.deq_val   <> io.deq.valid
+//  ctrl.io.enq_rdy   <> io.enq.ready
+//  dpath.io.deq_bits <> io.deq.bits
+//}
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {
@@ -395,9 +395,9 @@ class queue_spec[T <: Data](entries: Int)(data: => T) extends Component
   // since enqueuing is governed by the non-spec deq ptr
   io.enq.ready := !full
 
-  // can't bypass the deq pointer
-  // since a nack signal might be late
-  io.deq.valid := !io.nack && (full_spec || (enq_ptr != deq_ptr_spec))
+  // since nack is a very late signal
+  // don't mask deq.valid with !io.nack, the d$ kills the request
+  io.deq.valid := full_spec || (enq_ptr != deq_ptr_spec)
 
   val do_enq = io.enq.ready && io.enq.valid
   val do_deq = io.ack
@@ -488,7 +488,9 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
     read_ptr := read_ptr_next
   }
 
-  io.deq_rtag.valid := !io.nack && (full_spec || (read_ptr != write_ptr_spec))
+  // since nack is a very late signal
+  // don't mask deq_rtag.valid with !io.nack, the d$ kills the request
+  io.deq_rtag.valid := full_spec || (read_ptr != write_ptr_spec)
   io.deq_rtag.bits := write_ptr_spec.toBits
 
   val full_next =
