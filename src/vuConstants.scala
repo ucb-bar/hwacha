@@ -232,10 +232,25 @@ object Constants
   val M_XA_MAX  = Bits("b1101", 4)
   val M_XA_MINU = Bits("b1110", 4)
   val M_XA_MAXU = Bits("b1111", 4)
+
+  val HAVE_FMA = false
+
+  val FCMD_X =          Bits("b000000")
+  val FCMD_ADD =        Bits("b000000")
+  val FCMD_SUB =        Bits("b000001")
+  val FCMD_MUL =        Bits("b000010")
+  val FCMD_MADD =       Bits("b100100")
+  val FCMD_MSUB =       Bits("b100101")
+  val FCMD_NMSUB =      Bits("b100110")
+  val FCMD_NMADD =      Bits("b100111")
+  val FCMD_WIDTH = 6
+
+  val DFMA_STAGES = 6
+  val SFMA_STAGES = 4
 }
 
-object Commands {
-
+object Commands
+{
   // command bits for the vector command queue
   val CMD_X          = Bits(0,8)
 

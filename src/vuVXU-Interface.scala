@@ -537,6 +537,8 @@ class io_vu extends Bundle
 
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
+  val cp_dfma = new io_cp_dfma()
+  val cp_sfma = new io_cp_sfma()
   
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
@@ -566,6 +568,8 @@ class io_vxu extends Bundle
 
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
+  val cp_dfma = new io_cp_dfma()
+  val cp_sfma = new io_cp_sfma()
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
