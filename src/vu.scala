@@ -146,7 +146,7 @@ class vu extends Component
 
   val vru = new vuVRU()
   val vpfaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_arb = new Arbiter(2)({ new io_lane_vaq() })
+  val vaq_arb = new cArbiter(2)({ new io_lane_vaq() })
 
   val reg_chosen = Reg(vaq_arb.io.chosen)
   val reg_chosen2 = Reg(reg_chosen)
@@ -201,4 +201,9 @@ class vu extends Component
   vaq_count.io.qcnt := vxu.io.qcnt
   vaq_count.io.inc := vaqack
   vaq_count.io.dec := vxu.io.lane_vaq_dec
+
+  // tlb
+  // temporary
+  io.vec_tlb_req.valid := Bool(false)
+  io.vec_pftlb_req.valid := Bool(false)
 }
