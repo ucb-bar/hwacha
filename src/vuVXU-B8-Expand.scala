@@ -480,12 +480,9 @@ class vuVXU_Banked8_Expand extends Component
   when (io.seq.vsdq)
   {
     next_vsdq(0) := Bool(true)
-    when (io.seq_regid_imm.utmemop)
-    {
-      next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
-      next_mem_typ(0) := io.seq_regid_imm.mem.typ
-      next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
-    }
+    next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
+    next_mem_typ(0) := io.seq_regid_imm.mem.typ
+    next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
   }
 
   io.expand_to_hazard.ren := reg_ren(0)

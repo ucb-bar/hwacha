@@ -418,15 +418,23 @@ class vuVXU_Banked8_Seq extends Component
     next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
     next_imm.write(next_ptr1, Cat(Bits(0,1), io.fire_regid_imm.imm(63,0)))
     next_imm2.write(next_ptr1, io.fire_regid_imm.imm2)
-    next_vsdq.write(next_ptr1, Bool(true))
-    next_vt_zero.write(next_ptr1, io.fire_regid_imm.vt_zero)
-    next_vt.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vt))
 
-    next_irb_imm1_rtag.write(next_ptr1, io.fire_regid_imm.irb.imm1_rtag)
-    next_irb_cnt_rtag.write(next_ptr1, io.fire_regid_imm.irb.cnt_rtag)
+    next_val.write(next_ptr2, Bool(true))
+    next_last.write(next_ptr2, last)
+    next_vsdq.write(next_ptr2, Bool(true))
+    next_vlen.write(next_ptr2, io.issue_to_seq.vlen)
+    next_stride.write(next_ptr2, io.issue_to_seq.stride)
+    next_vt_zero.write(next_ptr2, io.fire_regid_imm.vt_zero)
+    next_vt.write(next_ptr2, Cat(Bits("d0",2),io.fire_regid_imm.vt))
+    next_mem_cmd.write(next_ptr2, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr2, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr2, io.fire_regid_imm.mem.typ_float)
+
+    next_irb_imm1_rtag.write(next_ptr2, io.fire_regid_imm.irb.imm1_rtag)
+    next_irb_cnt_rtag.write(next_ptr2, io.fire_regid_imm.irb.cnt_rtag)
     next_irb_cnt.write(next_ptr1, Bits(0))
-    next_irb_pc_next.write(next_ptr1, io.fire_regid_imm.irb.pc_next)
-    next_irb_update_imm1.write(next_ptr1, io.fire_regid_imm.irb.update_imm1)
+    next_irb_pc_next.write(next_ptr2, io.fire_regid_imm.irb.pc_next)
+    next_irb_update_imm1.write(next_ptr2, io.fire_regid_imm.irb.update_imm1)
   }
 
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
@@ -557,13 +565,17 @@ class vuVXU_Banked8_Seq extends Component
 
   when (io.fire.vst)
   {
-    for(i <- 0 until SZ_BANK){
-      next_dep_vsdq(i) := Bool(false)
+    for(i <- 0 until SZ_BANK)
       next_dep_vaq(i) := Bool(false)
-    }
     next_dep_vaq.write(next_ptr1, Bool(false))
     next_dep_vldq.write(next_ptr1, Bool(true))
-    next_dep_vsdq.write(next_ptr1, Bool(false))
+    next_dep_vsdq.write(next_ptr1, Bool(true))
+    
+    for(i <- 0 until SZ_BANK)
+      next_dep_vsdq(i) := Bool(false)
+    next_dep_vaq.write(next_ptr2, Bool(false))
+    next_dep_vldq.write(next_ptr2, Bool(true))
+    next_dep_vsdq.write(next_ptr2, Bool(false))
   }
 
   val current_val = array_val(reg_ptr)
