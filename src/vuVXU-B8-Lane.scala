@@ -39,6 +39,9 @@ class VMUIO extends Bundle
 class vuVXU_LaneIO extends Bundle 
 {
   val cp = new CPIO()
+  val cp_dfma = new io_cp_dfma()
+  val cp_sfma = new io_cp_sfma()
+
   val issue_to_lane = new io_vxu_issue_to_lane().asInput()
   val expand_read = new io_vxu_expand_read().asInput
   val expand_write = new io_vxu_expand_write().asInput
@@ -144,6 +147,9 @@ class vuVXU_Banked8_Lane extends Component
   fma.io.in0   := rbl(2)
   fma.io.in1   := rbl(3)
   fma.io.in2   := rbl(4)
+
+  io.cp_dfma <> fma.io.cp_dfma
+  io.cp_sfma <> fma.io.cp_sfma
 
   //conv
   conv.io.valid := vau2_val

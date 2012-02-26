@@ -102,8 +102,8 @@ class vuVXU_Issue_TVEC extends Component
   val addr_stride::mem_type_float::mem_type::mem_cmd::Nil = cs1
 
   val decode_irb_cmdb_valid = valid.orR || decode_vf
-  val decode_irb_imm1b_valid = valid.orR && deq_vxu_immq
-  val decode_irb_imm2b_valid = valid.orR && deq_vxu_imm2q
+  val decode_irb_imm1b_valid = decode_irb_cmdb_valid && deq_vxu_immq
+  val decode_irb_imm2b_valid = decode_irb_cmdb_valid && deq_vxu_imm2q
   val decode_irb_cntb_valid = valid.orR
 
   val tvec_active_fence_clear =
