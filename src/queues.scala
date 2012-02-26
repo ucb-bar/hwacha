@@ -206,8 +206,7 @@ class queueSimplePF[T <: Data](entries: Int)(data: => T) extends Component
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
-  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits)
-  io.deq.bits := ram(ctrl.io.raddr)
+  io.deq.bits <> Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits).read(ctrl.io.raddr)
 }
 
 class queuePipePF[T <: Data](entries: Int)(data: => T) extends Component
@@ -219,8 +218,7 @@ class queuePipePF[T <: Data](entries: Int)(data: => T) extends Component
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
-  val ram = Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits)
-  io.deq.bits := ram(ctrl.io.raddr)
+  io.deq.bits <> Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits).read(ctrl.io.raddr)
 }
 
 // TODO: SHOULD USE INHERITANCE BUT BREAKS INTROSPECTION CODE

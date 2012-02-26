@@ -71,13 +71,13 @@ class vuVRU extends Component
   val cmd_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid
 
   // cmd(4)==1 -> vector store
-  io.vpfaq.bits.cmd := Mux(cmd(4), M_PFW, M_PFR)
-  io.vpfaq.bits.typ := Bits(0)
-  io.vpfaq.bits.typ_float := Bits(0)
-  io.vpfaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
-  io.vpfaq.bits.ppn := addr_reg(PADDR_BITS, PGIDX_BITS)
+  io.vpfvaq.bits.cmd := Mux(cmd(4), M_PFW, M_PFR)
+  io.vpfvaq.bits.typ := Bits(0)
+  io.vpfvaq.bits.typ_float := Bits(0)
+  io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
+  io.vpfvaq.bits.ppn := addr_reg(PADDR_BITS, PGIDX_BITS)
 
-  io.vpfaq.valid := Bool(false)
+  io.vpfvaq.valid := Bool(false)
   io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid
   io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_vec_pfximm1q && mask_vec_pfximm2q_valid
   io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_vec_pfximm2q
@@ -104,8 +104,8 @@ class vuVRU extends Component
       }
       .otherwise
       {
-        io.vpfaq.valid := Bool(true)
-        when (io.vpfaq.ready)
+        io.vpfvaq.valid := Bool(true)
+        when (io.vpfvaq.ready)
         {
           addr_reg := addr_reg + UFix(pow(2,OFFSET_BITS).toInt)
         }
@@ -119,8 +119,8 @@ class vuVRU extends Component
       }
       .otherwise
       {
-        io.vpfaq.valid := Bool(true)
-        when (io.vpfaq.ready)
+        io.vpfvaq.valid := Bool(true)
+        when (io.vpfvaq.ready)
         {
           addr_reg := addr_reg + stride_reg
         }

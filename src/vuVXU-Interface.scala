@@ -317,6 +317,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
   val utmemop = Bool()
+  val vaqld = Bool()
   val irb = new io_vxu_irb_bundle()
 }
 
@@ -362,6 +363,7 @@ class io_vxu_expand_lfu_fn extends Bundle
   val vldq = Bool()
   val vsdq = Bool()
   val utmemop = Bool()
+  val vaqld = Bool()
 }
 
 class io_vxu_to_vmu extends Bundle
@@ -508,7 +510,7 @@ class ioDTLB_CPU_req_bundle extends Bundle
   val kill  = Bool()
   val cmd  = Bits(width=4) // load/store/amo
   val asid = Bits(width=ASID_BITS)
-  val vpn  = UFix(width=VPN_BITS+1)
+  val vpn  = Bits(width=VPN_BITS+1)
 }
 class ioDTLB_CPU_req extends io_ready_valid()( { new ioDTLB_CPU_req_bundle() } )
 
@@ -516,7 +518,7 @@ class ioDTLB_CPU_resp extends Bundle
 {
   // lookup responses
   val miss = Bool(OUTPUT)
-  val ppn = UFix(PPN_BITS, OUTPUT)
+  val ppn = Bits(PPN_BITS, OUTPUT)
   val xcpt_ld = Bool(OUTPUT)
   val xcpt_st = Bool(OUTPUT)
 }
@@ -547,10 +549,10 @@ class io_vu extends Bundle
   val cpu_exception = new io_cpu_exception().flip()
 
   val vec_tlb_req = new ioDTLB_CPU_req()
-  val vec_tlb_resp = new ioDTLB_CPU_resp()
+  val vec_tlb_resp = new ioDTLB_CPU_resp().flip()
 
   val vec_pftlb_req = new ioDTLB_CPU_req()
-  val vec_pftlb_resp = new ioDTLB_CPU_resp()
+  val vec_pftlb_resp = new ioDTLB_CPU_resp().flip()
 }
 
 class io_vxu extends Bundle
@@ -769,7 +771,7 @@ class io_vu_memif extends Bundle
 
 class io_vru extends Bundle
 {
-  val vpfaq = new io_ready_valid()({ new io_vaq_bundle() })
+  val vpfvaq = new io_ready_valid()({ new io_vaq_bundle() })
   
   // command
   val vec_pfcmdq = new io_vec_cmdq().flip()
@@ -778,27 +780,3 @@ class io_vru extends Bundle
   // stride
   val vec_pfximm2q = new io_vec_ximm2q().flip()
 }
-
-
-// class vec_dcachereqIO extends Bundle
-// {
-//   // D$ interface
-//   // request
-//   val addr  = Bits(28, OUTPUT)
-//   val tag   = Bits(12, OUTPUT)
-//   val data  = Bits(128, OUTPUT)
-//   val wmask = Bits(16, OUTPUT)
-//   val op    = Bits(4, OUTPUT)
-//   val valid = Bool(OUTPUT)
-//   val rdy   = Bool(INPUT)
-// }
-
-
-// class vec_dcacherespIO extends Bundle
-// {
-//   // response
-//   val data   = UFix(128, INPUT)
-//   val tag    = UFix(12, INPUT)
-//   val valid  = Bool(INPUT)
-// }
-
