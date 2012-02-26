@@ -85,22 +85,7 @@ class io_imul_req_bundle extends Bundle
   val in1 = Bits(width = SZ_XLEN)
 }
 
-class io_fma_req_bundle extends Bundle
-{
-  val fn = Bits(width = SZ_VAU1_FN)
-  val in0 = Bits(width = SZ_FLEN)
-  val in1 = Bits(width = SZ_FLEN)
-  val in2 = Bits(width = SZ_FLEN)
-}
-
 class io_imul_req extends io_ready_valid()( { new io_imul_req_bundle() } )
-class io_fma_req extends io_ready_valid()( { new io_fma_req_bundle() } )
-
-class io_fma_resp extends Bundle
-{
-  val out = Bits(width=SZ_FLEN)
-  val exc = Bits(width=SZ_EXC)
-}
 
 class io_dmem_ut_req_bundle extends Bundle
 {
@@ -503,9 +488,6 @@ class io_vu extends Bundle
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
   
-  val cp_fma_req = new io_fma_req().flip()
-  val cp_fma_resp = new io_fma_resp().asOutput
-
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()
 
@@ -527,8 +509,6 @@ class io_vxu extends Bundle
 
   val cp_imul_req = new io_imul_req().flip()
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
-  val cp_fma_req = new io_fma_req().flip()
-  val cp_fma_resp = new io_fma_resp().asOutput
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip()

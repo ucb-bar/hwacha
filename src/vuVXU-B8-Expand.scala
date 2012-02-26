@@ -102,7 +102,7 @@ class vuVXU_Banked8_Expand extends Component
   }
   when (io.seq.vau1)
   {
-    when (io.seq_fn.vau1(2).toBool)
+    when (FN_VAU1_FMA(io.seq_fn.vau1))
     {
       next_ren(0) := Bool(true)
       next_rlast(0) := io.seq_to_expand.last
@@ -136,7 +136,7 @@ class vuVXU_Banked8_Expand extends Component
       when (io.seq_regid_imm.vt_zero) { next_rblen(2)(3) := Bool(false) }
       when (io.seq_regid_imm.vr_zero) { next_rblen(2)(4) := Bool(false) }
     }
-    when (!io.seq_fn.vau1(2).toBool)
+    .otherwise
     {
       next_ren(0) := Bool(true)
       next_rlast(0) := io.seq_to_expand.last
@@ -246,7 +246,7 @@ class vuVXU_Banked8_Expand extends Component
     Bits(IMUL_STAGES + 2, SZ_BPTR1)
 
   val vau1_wptr =
-    Mux((io.seq_fn.vau1(2)) , Bits(FMA_STAGES + 3, SZ_BPTR1)
+    Mux(FN_VAU1_FMA(io.seq_fn.vau1), Bits(FMA_STAGES + 3, SZ_BPTR1)
     , Bits(FMA_STAGES + 2, SZ_BPTR1))
 
   val vau2_wptr = 
@@ -447,7 +447,7 @@ class vuVXU_Banked8_Expand extends Component
   }
   when (io.seq.vau1)
   {
-    when (io.seq_fn.vau1(2).toBool)
+    when (FN_VAU1_FMA(io.seq_fn.vau1))
     {
       next_vau1(2) := Bool(true)
       next_vau1_fn(2) := io.seq_fn.vau1
@@ -480,12 +480,9 @@ class vuVXU_Banked8_Expand extends Component
   when (io.seq.vsdq)
   {
     next_vsdq(0) := Bool(true)
-    when (io.seq_regid_imm.utmemop)
-    {
-      next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
-      next_mem_typ(0) := io.seq_regid_imm.mem.typ
-      next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
-    }
+    next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
+    next_mem_typ(0) := io.seq_regid_imm.mem.typ
+    next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
   }
 
   io.expand_to_hazard.ren := reg_ren(0)

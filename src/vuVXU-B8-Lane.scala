@@ -13,15 +13,6 @@ class CPIO extends Bundle
   val imul_in0 = Bits(SZ_XLEN, INPUT)
   val imul_in1 = Bits(SZ_XLEN, INPUT)
   val imul_out = Bits(SZ_XLEN, OUTPUT)
-
-  val fma_val  = Bool(INPUT)
-  val fma_rdy  = Bool(OUTPUT)
-  val fma_fn   = Bits(SZ_VAU1_FN, INPUT)
-  val fma_in0  = Bits(SZ_FLEN, INPUT)
-  val fma_in1  = Bits(SZ_FLEN, INPUT)
-  val fma_in2  = Bits(SZ_FLEN, INPUT)
-  val fma_out  = Bits(SZ_FLEN, OUTPUT)
-  val fma_exc = Bits(SZ_EXC, OUTPUT)
 }
 
 class ExpanderIO extends Bundle
@@ -147,21 +138,12 @@ class vuVXU_Banked8_Lane extends Component
   imul.io.in0 := imul_in0
   imul.io.in1 := imul_in1
 
-  val fma_fn  = Mux(vau1_val, vau1_fn, io.cp.fma_fn)
-  val fma_in0 = Mux(vau1_val, rbl(2), io.cp.fma_in0)
-  val fma_in1 = Mux(vau1_val, rbl(3), io.cp.fma_in1)
-  val fma_in2 = Mux(vau1_val, rbl(4), io.cp.fma_in2)
-
-  io.cp.fma_rdy := ~vau1_val
-  io.cp.fma_out := fma.io.out
-  io.cp.fma_exc := fma.io.exc
-
   //fma
-  fma.io.valid := vau1_val | io.cp.fma_val
-  fma.io.fn    := fma_fn
-  fma.io.in0   := fma_in0
-  fma.io.in1   := fma_in1
-  fma.io.in2   := fma_in2
+  fma.io.valid := vau1_val
+  fma.io.fn    := vau1_fn
+  fma.io.in0   := rbl(2)
+  fma.io.in1   := rbl(3)
+  fma.io.in2   := rbl(4)
 
   //conv
   conv.io.valid := vau2_val

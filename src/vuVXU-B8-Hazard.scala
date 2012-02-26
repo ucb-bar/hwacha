@@ -100,7 +100,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr3, Bool(true))
     next_rport_vau1.write(next_ptr3, Bool(true))
 
-    when (io.fire_fn.vau1(2).toBool)
+    when (FN_VAU1_FMA(io.fire_fn.vau1))
     {
       next_rport_val.write(next_ptr4, Bool(true))
       next_rport_vau1.write(next_ptr4, Bool(true))
@@ -132,8 +132,10 @@ class vuVXU_Banked8_Hazard extends Component
   when (io.fire.vst)
   {
     next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vsu.write(next_ptr2, Bool(true))
     next_rport_vgu.write(next_ptr2, Bool(true))
+    
+    next_rport_val.write(next_ptr3, Bool(true))
+    next_rport_vsu.write(next_ptr3, Bool(true))
   }
 
   when (io.lane_to_hazard.rlast)
@@ -234,7 +236,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_vau1_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.vau1 && io.vt_fn.vau1(2) === Bits(1,1)) -> vt_vau1_wptr3,
+      (io.vt_valid.vau1 && FN_VAU1_FMA(io.vt_fn.vau1)) -> vt_vau1_wptr3,
       io.vt_valid.vau1 -> vt_vau1_wptr2
     ))
 
@@ -392,6 +394,7 @@ class vuVXU_Banked8_Hazard extends Component
   when (io.fire.vst)
   {
     next_sport_val.write(next_ptr1, Bool(true))
+    next_sport_val.write(next_ptr2, Bool(true))
   }
   
   when (io.seq_to_hazard.last)
@@ -444,7 +447,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr)
   val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
-  val tvec_bhazard_vst = array_rport_val.read(next_ptr2)
+  val tvec_bhazard_vst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) // not sure about this 
 
   val tvec_stall =
     Cat(
@@ -470,7 +473,7 @@ class vuVXU_Banked8_Hazard extends Component
     Cat(
       io.tvec_valid.viu & seqhazard_1slot,
       io.tvec_valid.vld & seqhazard_2slot,
-      io.tvec_valid.vst & seqhazard_1slot
+      io.tvec_valid.vst & seqhazard_2slot
     )
 
   val tvec_bhazard =

@@ -107,7 +107,7 @@ class vuVXU_Issue_TVEC extends Component
 
   val tvec_active_fence_clear =
     tvec_active &&
-    (!decode_fence_cv.toBool && !decode_fence_v.toBool || !io.hazard_to_issue.pending_memop && !io.pending_store)
+    (!decode_fence_cv && !decode_fence_v || !io.hazard_to_issue.pending_memop && !io.pending_store)
 
 //-------------------------------------------------------------------------\\
 // FIRE & QUEUE LOGIC                                                      \\
@@ -280,26 +280,26 @@ class vuVXU_Issue_TVEC extends Component
   io.valid.vst := valid_common && valid(2)
 
   io.dhazard.vs := Bool(false)
-  io.dhazard.vt := dhazard(0).toBool
+  io.dhazard.vt := dhazard(0)
   io.dhazard.vr := Bool(false)
-  io.dhazard.vd := dhazard(1).toBool
+  io.dhazard.vd := dhazard(1)
 
   io.shazard.viu := Bool(false)
   io.shazard.vau0 := Bool(false)
   io.shazard.vau1 := Bool(false)
   io.shazard.vau2 := Bool(false)
-  io.shazard.vgu := shazard(2).toBool
-  io.shazard.vlu := shazard(1).toBool
-  io.shazard.vsu := shazard(0).toBool
+  io.shazard.vgu := shazard(2)
+  io.shazard.vlu := shazard(1)
+  io.shazard.vsu := shazard(0)
 
-  io.bhazard.r1w1 := bhazard(0).toBool
+  io.bhazard.r1w1 := bhazard(0)
   io.bhazard.r2w1 := Bool(false)
   io.bhazard.r3w1 := Bool(false)
   io.bhazard.amo := Bool(false)
   io.bhazard.utld := Bool(false)
   io.bhazard.utst := Bool(false)
-  io.bhazard.vld := bhazard(1).toBool
-  io.bhazard.vst := bhazard(2).toBool
+  io.bhazard.vld := bhazard(1)
+  io.bhazard.vst := bhazard(2)
 
   io.fn.viu := Cat(M0,vmsrc,DW64,FP_,VIU_MOV)
   io.fn.vau0 := Bits(0,SZ_VAU0_FN)
