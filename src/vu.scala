@@ -24,15 +24,15 @@ class vu extends Component
   val evac = new vuEvac()
 
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_count = new queuecnt(16,9,16,true)
+  val vaq_count = new queuecnt(16,16)
 
   // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
   val vldq = new queue_reorder_qcnt(65,128,9)
 
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
-  val vsdq_count = new queuecnt(16,9,16,true)
+  val vsdq_count = new queuecnt(16,16)
 
-  val vsack_count = new sackcnt()
+  val vsack_count = new queuecnt(31,31)
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -114,7 +114,6 @@ class vu extends Component
   vldq.io.nack := memif.io.vldq_nack
 
   // vsdq arbiter
-  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
   vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.bits
   vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
