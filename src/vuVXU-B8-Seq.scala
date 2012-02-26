@@ -581,6 +581,7 @@ class vuVXU_Banked8_Seq extends Component
   when (current_vsdq_val.toBool) { reg_vsdq_stall := io.qstall.vsdq }
 
   val stall =
+    io.exception |
     array_dep_vaq.read(reg_ptr) & reg_vaq_stall |
     array_dep_vldq.read(reg_ptr) & reg_vldq_stall |
     array_dep_vsdq.read(reg_ptr) & reg_vsdq_stall |

@@ -9,17 +9,21 @@ import Commands._
 
 class io_vu_irb extends Bundle 
 {
-  val irb_cmdb = new io_vxu_cmdq().flip()
-  val irb_imm1b = new io_vxu_immq().flip()
-  val irb_imm2b = new io_vxu_imm2q().flip()
-  val irb_cntb = new io_vxu_cntq().flip()
+  val irb_enq_cmdb = new io_vxu_cmdq().flip()
+  val irb_enq_imm1b = new io_vxu_immq().flip()
+  val irb_enq_imm2b = new io_vxu_imm2q().flip()
+  val irb_enq_cntb = new io_vxu_cntq().flip()
 
   val issue_to_irb = new io_issue_to_irb().flip()
   val irb_to_issue = new io_irb_to_issue()
 
   val seq_to_irb = new io_seq_to_irb().flip()
 
-  val mem = new io_irb_sdb()
+  val irb_deq_cmdb = new io_vxu_cmdq()
+  val irb_deq_imm1b = new io_vxu_immq()
+  val irb_deq_imm2b = new io_vxu_imm2q()
+  val irb_deq_cntb = new io_vxu_cntq()
+  val irb_deq_cntb_last = Bool(OUTPUT)
 }
 
 class vuIRB extends Component 
@@ -57,11 +61,11 @@ class vuIRB extends Component
                      //   |  |  |  |  deq_ircntb
                      //   |  |  |  |  |
                      List(n, n, n, n, n), Array(
-    CMD_VF->         List(y, n, y, n, y),
+    CMD_VF->         List(y, n, n, n, y),
 
-    //CMD_VMVV->       List(Bits("b001",3),Bits("b11",2),Bits("b00",2),Bits("b001",3),MR,n,n,y,n,n,n,n,n,Bits(0,4),MTF_X,MT_X,M_X),
-    //CMD_VMSV->       List(Bits("b001",3),Bits("b10",2),Bits("b00",2),Bits("b001",3),MI,n,n,y,n,n,n,y,n,Bits(0,4),MTF_X,MT_X,M_X),
-    //CMD_VFMVV->      List(Bits("b001",3),Bits("b11",2),Bits("b00",2),Bits("b001",3),MR,n,n,y,n,n,n,n,n,Bits(0,4),MTF_X,MT_X,M_X),
+    CMD_VMVV->       List(n, y, n, n, y),
+    CMD_VMSV->       List(n, y, y, n, y),
+    CMD_VFMVV->      List(n, y, n, n, y),
 
     CMD_VLD       -> List(n, y, y, n, y),
     CMD_VLW       -> List(n, y, y, n, y),
@@ -105,17 +109,30 @@ class vuIRB extends Component
   val decode_deq_irimm2b = deq_irimm2b.toBool
   val decode_deq_ircntb = deq_ircntb.toBool
 
-  ircmdb.io.deq.ready  := io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_ircmdb)
-  irimm1b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm1b
-  irimm2b.io.deq.ready := io.seq_to_irb.last & decode_deq_irimm2b
-  ircntb.io.deq.ready  := io.seq_to_irb.last & decode_deq_ircntb
+  ircmdb.io.deq.ready  := 
+    io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_ircmdb) | 
+    io.irb_deq_cmdb.ready
+
+  irimm1b.io.deq.ready := 
+    io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_irimm1b) | 
+    io.irb_deq_imm1b.ready
+
+  irimm2b.io.deq.ready := 
+    io.seq_to_irb.last & decode_deq_irimm2b | 
+    io.irb_deq_imm2b.ready
+
+  ircntb.io.deq.ready  := 
+    io.seq_to_irb.last & decode_deq_ircntb | 
+    io.irb_deq_cntb.ready
     
-  io.mem.valid := ircmdb.io.deq.valid || irimm1b.io.deq.valid || irimm2b.io.deq.valid || ircntb.io.deq.valid
-  io.mem.bits := 
-    MuxCase(Bits(0), Array(
-      ircmdb.io.deq.valid -> ircmdb.io.deq.bits,
-      irimm1b.io.deq.valid -> irimm1b.io.deq.bits,
-      irimm2b.io.deq.valid -> irimm2b.io.deq.bits,
-      ircntb.io.deq.valid -> ircntb.io.deq.bits
-    ))
+  io.irb_deq_cmdb.bits := ircmdb.io.deq.bits
+  io.irb_deq_imm1b.bits := irimm1b.io.deq.bits
+  io.irb_deq_imm2b.bits := irimm2b.io.deq.bits
+  io.irb_deq_cntb.bits := ircntb.io.deq.bits
+  io.irb_deq_cntb_last := ircntb.io.deq_last
+
+  io.irb_deq_cmdb.valid := ircmdb.io.deq.valid
+  io.irb_deq_imm1b.valid := irimm1b.io.deq.valid
+  io.irb_deq_imm2b.valid := irimm2b.io.deq.valid
+  io.irb_deq_cntb.valid := ircntb.io.deq.valid
 }

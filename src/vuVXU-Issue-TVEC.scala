@@ -122,12 +122,9 @@ class vuVXU_Issue_TVEC extends Component
   val mask_irb_imm1b_ready = !deq_vxu_immq || io.irb_imm1b.ready
   val mask_irb_imm2b_ready = !deq_vxu_imm2q || io.irb_imm2b.ready
   val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
-  //val mask_irb_cmdb_ready = !decode_irb_cmdb_valid || Bool(true)
-  //val mask_irb_imm1b_ready = !deq_vxu_immq || Bool(true)
-  //val mask_irb_imm2b_ready = !deq_vxu_imm2q || Bool(true)
-  //val mask_irb_cntb_ready = !decode_irb_cntb_valid || Bool(true)
 
   val valid_common =
+    !io.exception && 
     tvec_active_fence_clear &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
@@ -139,38 +136,40 @@ class vuVXU_Issue_TVEC extends Component
   val fire_vf = fire_common && decode_vf
   val fire_fence_cv = fire_common && decode_fence_cv
 
+  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.exception
+
   io.vxu_cmdq.ready := 
-    tvec_active_fence_clear && mask_issue_ready && 
+    queue_common && 
     Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.vxu_immq.ready := 
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.vxu_imm2q.ready := 
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.irb_cmdb.valid := 
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     decode_irb_cmdb_valid && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.irb_imm1b.valid :=
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && decode_irb_imm1b_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && deq_vxu_immq && mask_irb_imm2b_ready && mask_irb_cntb_ready
 
   io.irb_imm2b.valid :=
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && decode_irb_imm2b_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && deq_vxu_imm2q && mask_irb_cntb_ready
 
   io.irb_cntb.valid :=
-    tvec_active_fence_clear && mask_issue_ready &&
+    queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && decode_irb_cntb_valid
 

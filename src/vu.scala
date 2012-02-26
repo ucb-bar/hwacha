@@ -54,16 +54,18 @@ class vu extends Component
   vxu.io.imem_req <> io.imem_req
   vxu.io.imem_resp <> io.imem_resp
 
+  vxu.io.cpu_exception <> io.cpu_exception
+
   val memif = new vuMemIF()
 
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
 
   // irb
-  irb.io.irb_cmdb <> vxu.io.irb_cmdb
-  irb.io.irb_imm1b <> vxu.io.irb_imm1b
-  irb.io.irb_imm2b <> vxu.io.irb_imm2b
-  irb.io.irb_cntb <> vxu.io.irb_cntb
+  irb.io.irb_enq_cmdb <> vxu.io.irb_cmdb
+  irb.io.irb_enq_imm1b <> vxu.io.irb_imm1b
+  irb.io.irb_enq_imm2b <> vxu.io.irb_imm2b
+  irb.io.irb_enq_cntb <> vxu.io.irb_cntb
 
   irb.io.issue_to_irb <> vxu.io.issue_to_irb
   irb.io.irb_to_issue <> vxu.io.irb_to_issue

@@ -71,6 +71,12 @@ class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 class io_lane_vsdq extends io_ready_valid()( { Bits(width = DEF_DATA) } )
 
+class io_cpu_exception extends Bundle 
+{
+  val exception = Bool(OUTPUT)
+  val addr = UFix(SZ_ADDR, OUTPUT)
+}
+
 class io_imul_req_bundle extends Bundle
 {
   val fn = Bits(width = DEF_VAU0_FN)
@@ -451,6 +457,8 @@ class io_vxu_issue_tvec extends Bundle
   val irb_imm2b = new io_vxu_imm2q()
   val irb_cntb = new io_vxu_cntq()
   val irb_to_issue = new io_irb_to_issue().flip()
+
+  val cpu_exception = new io_cpu_exception().flip()
 }
 
 class io_vcu extends Bundle
@@ -487,6 +495,8 @@ class io_vxu_issue_vt extends Bundle
 
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip()
+
+  val cpu_exception = new io_cpu_exception().flip()
 }
 
 class io_vu extends Bundle 
@@ -510,6 +520,7 @@ class io_vu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip()
 
+  val cpu_exception = new io_cpu_exception().flip()
 }
 
 class io_vxu extends Bundle
@@ -550,6 +561,8 @@ class io_vxu extends Bundle
   val irb_to_issue = new io_irb_to_issue().flip()
 
   val seq_to_irb = new io_seq_to_irb()
+
+  val cpu_exception = new io_cpu_exception().flip()
 }
 
 class io_vxu_issue extends Bundle
@@ -595,6 +608,8 @@ class io_vxu_issue extends Bundle
 
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip()
+
+  val cpu_exception = new io_cpu_exception().flip()
 }
 
 class io_vxu_fire extends Bundle
@@ -666,6 +681,8 @@ class io_vxu_seq extends Bundle
   val seq_regid_imm = new io_vxu_seq_regid_imm().asOutput
 
   val seq_to_irb = new io_seq_to_irb()
+
+  val cpu_exception = new io_cpu_exception().flip()  
 }
 
 class io_vxu_expand extends Bundle

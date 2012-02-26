@@ -29,6 +29,8 @@ class vuVXU extends Component
   issue.io.issue_to_irb <> io.issue_to_irb
   issue.io.irb_to_issue <> io.irb_to_issue
 
+  issue.io.cpu_exception <> io.cpu_exception
+
   val b8fire = new vuVXU_Banked8_Fire()
 
   b8fire.io.tvec_valid <> issue.io.tvec_valid
@@ -88,6 +90,8 @@ class vuVXU extends Component
   b8seq.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
   b8seq.io.seq_to_irb <> io.seq_to_irb
+
+  b8seq.io.cpu_exception <> io.exception
 
   val b8expand = new vuVXU_Banked8_Expand()
 
