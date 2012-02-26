@@ -114,7 +114,7 @@ class vu extends Component
   vldq.io.nack := memif.io.vldq_nack
 
   // vsdq arbiter
-  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
+  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
   vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.bits
   vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
@@ -147,7 +147,7 @@ class vu extends Component
 
   val vru = new vuVRU()
   val vpfaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_arb = new cArbiter(2)({ new io_lane_vaq() })
+  val vaq_arb = new hArbiter(2)({ new io_lane_vaq() })
 
   val reg_chosen = Reg(vaq_arb.io.chosen)
   val reg_chosen2 = Reg(reg_chosen)
@@ -167,7 +167,7 @@ class vu extends Component
   vpfaq.io.enq <> vru.io.vpfaq
 
   // vaq arbiter
-  val vaq_evac_lane_arb = new Arbiter(2)( new io_lane_vaq() )
+  val vaq_evac_lane_arb = new hArbiter(2)( new io_lane_vaq() )
   
   vaq_evac_lane_arb.io.in(0).valid := vxu.io.lane_vaq.valid
   vaq_evac_lane_arb.io.in(0).bits := vxu.io.lane_vaq.bits

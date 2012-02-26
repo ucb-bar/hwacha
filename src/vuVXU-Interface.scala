@@ -52,6 +52,34 @@ class cArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
   dout <> io.out.bits
 }
 
+
+class hArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
+{
+  val io = new io_arbiter(n)(data)
+
+  io.in(0).ready := io.out.ready
+  for (i <- 1 to n-1)
+    io.in(i).ready := !io.in(i-1).valid && io.in(i-1).ready
+
+  var dout = io.in(n-1).bits
+  var choose = Bits(n-1)
+  for (i <- 1 to n-1)
+  {
+    val actual = n-1-i
+    dout = Mux(io.in(actual).valid, io.in(actual).bits, dout)
+    choose = Mux(io.in(actual).valid, Bits(actual,log2up(n)), choose)
+  }
+
+  io.chosen := choose
+
+  var vout = io.in(0).valid
+  for (i <- 1 to n-1)
+    vout = vout || io.in(i).valid
+
+  vout <> io.out.valid
+  dout <> io.out.bits
+}
+
 class io_imem_req extends io_ready_valid()( { Bits(width = SZ_ADDR) } )
 class io_imem_resp extends io_valid()( { Bits(width = SZ_INST) } )
 class io_vxu_cmdq extends io_ready_valid()( { Bits(width = SZ_XCMD) } )
