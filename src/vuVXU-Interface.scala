@@ -73,6 +73,7 @@ class io_lane_vsdq extends io_ready_valid()( { Bits(width = SZ_DATA) } )
 
 class io_cpu_exception extends Bundle 
 {
+  val supervisor_mode = Bool(OUTPUT)
   val exception = Bool(OUTPUT)
   val addr = UFix(SZ_ADDR, OUTPUT)
 }

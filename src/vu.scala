@@ -12,14 +12,18 @@ class vu extends Component
   val vcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
   val vximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
   val vximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
+  val vxcntq = new queueSimplePF(16)( Bits(width=DEF_VLEN) )
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
   vximm2q.io.enq <> io.vec_ximm2q
+  vxcntq.io.enq <> io.vec_cntq
   
   val vxu = new vuVXU()
-
   val irb = new vuIRB()
+  val evac = new vuEvac()
+
+  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
 
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new queuecnt(16, 9, 16, true)
@@ -35,9 +39,21 @@ class vu extends Component
   // vxu
   io.illegal <> vxu.io.illegal
 
-  vxu.io.vxu_cmdq <> vcmdq.io.deq
-  vxu.io.vxu_immq <> vximm1q.io.deq
-  vxu.io.vxu_imm2q <> vximm2q.io.deq
+  vxu.io.vxu_cmdq.bits := vcmdq.io.deq.bits
+  vxu.io.vxu_cmdq.valid := vcmdq.io.deq.valid
+  vcmdq.io.deq.ready := vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready
+
+  vxu.io.vxu_immq.bits := vximm1q.io.deq.bits
+  vxu.io.vxu_immq.valid := vximm1q.io.valid
+  vximm1q.io.ready := vxu.io.vxu_immq.ready || evac.io.vimm1q.ready
+
+  vxu.io.vxu_imm2q.bits := vximm2q.io.deq.bits
+  vxu.io.vxu_imm2q.valid := vximm2q.io.valid
+  vximm2q.io.ready := vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready
+
+  vxu.io.vxu_cntq.bits := vxcntq.io.deq.bits
+  vxu.io.vxu_cntq.valid := vxcntq.io.valid
+  vxcntq.io.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
 
   vxu.io.vec_ackq <> io.vec_ackq
 
@@ -68,6 +84,24 @@ class vu extends Component
 
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
+  // evac
+  evac.io.irb_cmdb <> irb.io.irb_deq_cmdb
+  evac.io.irb_imm1b <> irb.io.irb_deq_imm1b
+  evac.io.irb_imm2b <> irb.io.irb_deq_imm2b
+  evac.io.irb_cntb <> irb.io.irb_deq_cntb
+  evac.io.irb_cntb_last <> irb.io.irb_deq_cntb_last
+
+  evac.io.vcmdq.bits := vcmdq.io.deq.bits
+  evac.io.vcmdq.valid := vcmdq.io.deq.valid
+
+  evac.io.vximm1q.bits := vximm1q.io.deq.bits
+  evac.io.vximm1q.valid := vximm1q.io.deq.valid
+  
+  evac.io.vimm2q.bits := vximm2q.io.deq.bits
+  evac.io.vimm2q.valid := vximm2q.io.deq.valid
+
+  evac.io.vcntq.bits := vxcntq.io.deq.bit
+  evac.io.vcntq.valid := vxcntq.io.deq.valid
   
   // vldq
   vldq.io.enq <> memif.io.vldq_enq
@@ -82,11 +116,19 @@ class vu extends Component
   vldq.io.ack := memif.io.vldq_ack
   vldq.io.nack := memif.io.vldq_nack
 
+  // vsdq arbiter
+  vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
+  vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.valid
+  vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
+  
+  vsdq_arb.io.in(1).valid := evac.io.vsdq.valid
+  vsdq_arb.io.in(1).bits := evac.io.vsdq.bits
+  evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
 
   // vsdq
-  vxu.io.lane_vsdq.ready := vsdq_count.io.watermark && vsackcnt.io.watermark// vsdq.io.enq.ready
-  vsdq.io.enq.valid := vxu.io.lane_vsdq.valid
-  vsdq.io.enq.bits := Mux(Bool(true), vxu.io.lane_vsdq.bits, irb.io.mem.bits)
+  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vsackcnt.io.watermark// vsdq.io.enq.ready
+  vsdq.io.enq.valid := vsdq_arb.io.out.valid
+  vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
   memif.io.vsdq_deq <> vsdq.io.deq
 
