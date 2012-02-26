@@ -24,8 +24,10 @@ class io_arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Bundle
   val out = data
   val chosen = Bits(log2up(n),OUTPUT)
 }
-
-class cArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
+// h for hwacha, r for rocket
+// for some reason, Chisel is creating two declarations
+// of the same module
+class hArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
 {
   val io = new io_arbiter(n)(data)
 
@@ -52,8 +54,7 @@ class cArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
   dout <> io.out.bits
 }
 
-
-class hArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
+class rArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
 {
   val io = new io_arbiter(n)(data)
 

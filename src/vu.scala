@@ -23,16 +23,18 @@ class vu extends Component
   val irb = new vuIRB()
   val evac = new vuEvac()
 
+  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
+
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_count = new queuecnt(16, 9, 16, true)
+  val vaq_count = new queuecnt(16,9,16,true)
 
   // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = new queue_reorder_qcnt(65, 128, 9)
+  val vldq = new queue_reorder_qcnt(65,128,9)
 
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
-  val vsdq_count = new queuecnt(16, 9, 16, true)
+  val vsdq_count = new queuecnt(16,9,16,true)
 
-  val vsackcnt = new sackcnt()
+  val vsack_count = new sackcnt()
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -124,7 +126,7 @@ class vu extends Component
   evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
 
   // vsdq
-  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vsackcnt.io.watermark// vsdq.io.enq.ready
+  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vsack_count.io.watermark// vsdq.io.enq.ready
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
@@ -138,10 +140,10 @@ class vu extends Component
   vsdq_count.io.dec := vxu.io.lane_vsdq_dec
 
   // vsack
-  vsackcnt.io.inc := memif.io.vsdq_ack
-  vsackcnt.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
-  vsackcnt.io.qcnt := vxu.io.qcnt
-  vxu.io.pending_store := !vsackcnt.io.zero
+  vsack_count.io.inc := memif.io.vsdq_ack
+  vsack_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
+  vsack_count.io.qcnt := vxu.io.qcnt
+  vxu.io.pending_store := !vsack_count.io.zero
 
   // prefetch
 
