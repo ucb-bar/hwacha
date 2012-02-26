@@ -100,7 +100,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_val.write(next_ptr3, Bool(true))
     next_rport_vau1.write(next_ptr3, Bool(true))
 
-    when (io.fire_fn.vau1(2).toBool)
+    when (FN_VAU1_FMA(io.fire_fn.vau1))
     {
       next_rport_val.write(next_ptr4, Bool(true))
       next_rport_vau1.write(next_ptr4, Bool(true))
@@ -236,7 +236,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_vau1_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.vau1 && io.vt_fn.vau1(2) === Bits(1,1)) -> vt_vau1_wptr3,
+      (io.vt_valid.vau1 && FN_VAU1_FMA(io.vt_fn.vau1)) -> vt_vau1_wptr3,
       io.vt_valid.vau1 -> vt_vau1_wptr2
     ))
 

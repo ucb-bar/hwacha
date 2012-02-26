@@ -50,7 +50,7 @@ class vuVXU_Banked8_FU_fma extends Component
   fma_dp.io.a  := Fill(65,val_fma_dp) & fma_multiplicand
   fma_dp.io.b  := Fill(65,val_fma_dp) & fma_multiplier
   fma_dp.io.c  := Fill(65,val_fma_dp) & fma_addend
-  fma_dp.io.roundingMode := Fill(2,val_fma_dp) & io.fn(RG_VAU1_RM)
+  fma_dp.io.roundingMode := Fill(3,val_fma_dp) & io.fn(RG_VAU1_RM)
   val result_dp = Cat(fma_dp.io.exceptionFlags, fma_dp.io.out)
 
   val fma_sp = new mulAddSubRecodedFloat32_1()
@@ -58,7 +58,7 @@ class vuVXU_Banked8_FU_fma extends Component
   fma_sp.io.a  := Fill(33,val_fma_sp) & fma_multiplicand(32,0)
   fma_sp.io.b  := Fill(33,val_fma_sp) & fma_multiplier(32,0)
   fma_sp.io.c  := Fill(33,val_fma_sp) & fma_addend(32,0)
-  fma_sp.io.roundingMode := Fill(2,val_fma_sp) & io.fn(RG_VAU1_RM)
+  fma_sp.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
   val result_sp = Cat(fma_sp.io.exceptionFlags, fma_sp.io.out)
 
   val result = Mux(

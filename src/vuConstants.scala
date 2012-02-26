@@ -173,8 +173,8 @@ object Constants
 
   val SZ_VIU_FN  = 11
   val SZ_VAU0_FN = 3
-  val SZ_VAU1_FN = 6
-  val SZ_VAU2_FN = 7
+  val SZ_VAU1_FN = 7
+  val SZ_VAU2_FN = 8
 
   val RG_VIU_T  = (10,7)
   val RG_VIU_T0 = (10,9)
@@ -183,11 +183,14 @@ object Constants
   val RG_VIU_FP = 5
   val RG_VIU_FN = (4,0)
 
-  val RG_VAU1_FP = 5
-  val RG_VAU1_RM = (4,3)
+  val RG_VAU1_FP = 6
+  val RG_VAU1_RM = (5,3)
   val RG_VAU1_FN = (2,0)
-  val RG_VAU2_FP = 6
-  val RG_VAU2_RM = (5,4)
+
+  val FN_VAU1_FMA = (x: Bits) => x(2)
+
+  val RG_VAU2_FP = 7
+  val RG_VAU2_RM = (6,4)
   val RG_VAU2_FN = (3,0)
 
   // command bits for the vector command queue

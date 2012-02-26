@@ -215,16 +215,16 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utld = valid(1)
   val unmasked_valid_utst = valid(0)
 
-  val vau1_rm = Wire(){Bits(width = 2)}
-  val vau2_rm = Wire(){Bits(width = 2)}
+  val vau1_rm = Wire(){Bits(width = 3)}
+  val vau2_rm = Wire(){Bits(width = 3)}
 
-  vau1_rm := id_reg_inst(10,9)
-  vau2_rm := id_reg_inst(10,9)
+  vau1_rm := id_reg_inst(11,9)
+  vau2_rm := id_reg_inst(11,9)
 
   when (id_reg_inst(11,9) === Bits("b111",3))
   {
-    vau1_rm := Bits(0,2)
-    vau2_rm := Bits(0,2)
+    vau1_rm := Bits(0,3)
+    vau2_rm := Bits(0,3)
   }
 
   val unmasked_valid =

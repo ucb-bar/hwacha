@@ -49,14 +49,14 @@ class vuVXU_Banked8_FU_conv extends Component
 
   val int2float_sp = new anyToRecodedFloat32()
   int2float_sp.io.in := Fill(64,val_int2float_sp) & io.in(63,0)
-  int2float_sp.io.roundingMode := Fill(2,val_int2float_sp) & io.fn(RG_VAU2_RM)
+  int2float_sp.io.roundingMode := Fill(3,val_int2float_sp) & io.fn(RG_VAU2_RM)
   int2float_sp.io.typeOp := Fill(2,val_int2float_sp) & op_int2float
   val result_int2float_sp = int2float_sp.io.out
   val exc_int2float_sp = int2float_sp.io.exceptionFlags
 
   val float2int_sp = new recodedFloat32ToAny()
   float2int_sp.io.in := Fill(33,val_float2int_sp) & io.in(32,0)
-  float2int_sp.io.roundingMode := Fill(2,val_float2int_sp) & io.fn(RG_VAU2_RM)
+  float2int_sp.io.roundingMode := Fill(3,val_float2int_sp) & io.fn(RG_VAU2_RM)
   float2int_sp.io.typeOp := Fill(2,val_float2int_sp) & op_float2int
   val result_float2int_sp = float2int_sp.io.out
   val exc_float2int_sp = float2int_sp.io.exceptionFlags
@@ -71,20 +71,20 @@ class vuVXU_Banked8_FU_conv extends Component
 
   val dp2sp = new recodedFloat64ToRecodedFloat32()
   dp2sp.io.in := Fill(65,val_dp2sp) & io.in
-  dp2sp.io.roundingMode := Fill(2,val_dp2sp) & io.fn(RG_VAU2_RM)
+  dp2sp.io.roundingMode := Fill(3,val_dp2sp) & io.fn(RG_VAU2_RM)
   val result_float2float_sp = dp2sp.io.out
   val exc_float2float_sp = dp2sp.io.exceptionFlags
 
   val int2float_dp = new anyToRecodedFloat64() 
   int2float_dp.io.in := Fill(64,val_int2float_dp) & io.in(63,0)
-  int2float_dp.io.roundingMode := Fill(2,val_int2float_dp) & io.fn(RG_VAU2_RM)
+  int2float_dp.io.roundingMode := Fill(3,val_int2float_dp) & io.fn(RG_VAU2_RM)
   int2float_dp.io.typeOp := Fill(2,val_int2float_dp) & op_int2float
   val result_int2float_dp = int2float_dp.io.out
   val exc_int2float_dp = int2float_dp.io.exceptionFlags
 
   val float2int_dp = new recodedFloat64ToAny()
   float2int_dp.io.in := Fill(65,val_float2int_dp) & io.in
-  float2int_dp.io.roundingMode := Fill(2,val_float2int_dp) & io.fn(RG_VAU2_RM)
+  float2int_dp.io.roundingMode := Fill(3,val_float2int_dp) & io.fn(RG_VAU2_RM)
   float2int_dp.io.typeOp := Fill(2,val_float2int_dp) & op_float2int
   val result_float2int_dp = float2int_dp.io.out
   val exc_float2int_dp = float2int_dp.io.exceptionFlags
