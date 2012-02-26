@@ -75,7 +75,7 @@ class vuVRU extends Component
   io.vpfvaq.bits.typ := Bits(0)
   io.vpfvaq.bits.typ_float := Bits(0)
   io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
-  io.vpfvaq.bits.ppn := addr_reg(PADDR_BITS, PGIDX_BITS)
+  io.vpfvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 
   io.vpfvaq.valid := Bool(false)
   io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid

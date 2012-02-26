@@ -19,25 +19,17 @@ class vu extends Component
   vximm2q.io.enq <> io.vec_ximm2q
   vxcntq.io.enq <> io.vec_cntq
   
+  val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
+  val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
+  val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
+
+  vpfcmdq.io.enq <> io.vec_pfcmdq
+  vpfximm1q.io.enq <> io.vec_pfximm1q
+  vpfximm2q.io.enq <> io.vec_pfximm2q
+
+  val vru = new vuVRU()
   val vxu = new vuVXU()
-  val irb = new vuIRB()
   val evac = new vuEvac()
-
-  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
-
-  val vvaq = new queueSimplePF(16)({ new io_vaq_bundle() })
-  val vvaq_count = new queuecnt(16,16)
-
-  val vpaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vpaq_count = new queuecnt(0,16)
-  
-  // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = new queue_reorder_qcnt(65,128,9)
-
-  val vsdq = new queue_spec(16)({ Bits(width = 65) })
-  val vsdq_count = new queuecnt(16,16)
-
-  val vsack_count = new queuecnt(31,31)
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -70,10 +62,12 @@ class vu extends Component
 
   vxu.io.cpu_exception <> io.cpu_exception
 
-  val memif = new vuMemIF()
-
-  io.dmem_req <> memif.io.mem_req
-  memif.io.mem_resp <> io.dmem_resp
+  // vru
+  vru.io.vec_pfcmdq <> vpfcmdq.io.deq
+  vru.io.vec_pfximm1q <> vpfximm1q.io.deq
+  vru.io.vec_pfximm2q <> vpfximm2q.io.deq
+ 
+  val irb = new vuIRB()
 
   // irb
   irb.io.irb_enq_cmdb <> vxu.io.irb_cmdb
@@ -83,7 +77,6 @@ class vu extends Component
 
   irb.io.issue_to_irb <> vxu.io.issue_to_irb
   irb.io.irb_to_issue <> vxu.io.irb_to_issue
-
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
   // evac
@@ -106,30 +99,158 @@ class vu extends Component
 
   evac.io.vcntq.bits := vxcntq.io.deq.bits
   evac.io.vcntq.valid := vxcntq.io.deq.valid
-  
-  // vldq
-  vldq.io.enq <> memif.io.vldq_enq
 
-  memif.io.vldq_deq_rtag <> vldq.io.deq_rtag
+
+  // vmu
+  val memif = new vuMemIF()
+
+
+  // address queues and counters
+  val vvaq_arb = new hArbiter(2)( new io_lane_vaq() )
+  val vvaq = new queue_spec(16)({ new io_vvaq_bundle() })
+  val vpfvaq = new queue_spec(16)({ new io_vvaq_bundle() })
+  
+  val vpaq = new queue_spec(16)({ new io_vpaq_bundle() })
+  val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
+  val vpaq_arb = new hArbiter(2)({ new io_vpaq() })
+
+  val vvaq_count = new queuecnt(16,16)
+  val vpaq_count = new queuecnt(0,16)
+
+  // tlb signals
+  val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
+  val tlb_vec_hit = Reg(tlb_vec_req) && Reg(io.vec_tlb_req.ready) && !io.vec_tlb_resp.miss
+  val tlb_vec_miss = Reg(tlb_vec_req) && Reg(io.vec_tlb_req.ready) && io.vec_tlb_resp.miss
+  val tlb_vecpf_req = vpfvaq.io.deq.valid && vpfpaq.io.enq.ready
+  val tlb_vecpf_hit = Reg(tlb_vecpf_req) && Reg(io.vec_pftlb_req.ready) && !io.vec_pftlb_resp.miss
+  val tlb_vecpf_miss = Reg(tlb_vecpf_req) && Reg(io.vec_pftlb_req.ready) && io.vec_pftlb_resp.miss
+
+  // vvaq arbiter, port 0: lane vaq
+  vvaq_arb.io.in(0) <> vxu.io.lane_vaq
+  // vvaq arbiter, port 1: evac
+  vvaq_arb.io.in(1) <> evac.io.vaq
+  // vvaq arbiter, output
+  vvaq_arb.io.out.ready := vvaq_count.io.watermark // vaq.io.enq.ready
+  vvaq.io.enq.valid := vvaq_arb.io.out.valid
+  vvaq.io.enq.bits := vvaq_arb.io.out.bits
+
+  // vvaq counts available space
+  vvaq_count.io.qcnt := vxu.io.qcnt
+  // vvaq frees an entry, when vvaq kicks out an entry to vpaq
+  vvaq_count.io.inc := tlb_vec_hit && vpaq.io.enq.ready
+  // vvaq occupies an entry, when the lane kicks out an entry
+  vvaq_count.io.dec := vxu.io.lane_vaq_dec
+  
+  // vvaq tlb hookup
+  io.vec_tlb_req.valid := tlb_vec_req
+  io.vec_tlb_req.bits.kill := tlb_vec_miss
+  io.vec_tlb_req.bits.cmd := vvaq.io.deq.bits.cmd
+  io.vec_tlb_req.bits.vpn := vvaq.io.deq.bits.vpn
+  io.vec_tlb_req.bits.asid := Bits(0)
+  vvaq.io.deq.ready := vpaq.io.enq.ready
+  vvaq.io.ack := tlb_vec_hit && vpaq.io.enq.ready
+  vvaq.io.nack := tlb_vec_miss || !vpaq.io.enq.ready
+
+  // tlb vpaq hookup
+  // enqueue everything but the page number from virtual queue
+  vpaq.io.enq.valid := tlb_vec_hit
+  vpaq.io.enq.bits.cmd := Reg(vvaq.io.deq.bits.cmd)
+  vpaq.io.enq.bits.typ := Reg(vvaq.io.deq.bits.typ)
+  vpaq.io.enq.bits.typ_float := Reg(vvaq.io.deq.bits.typ_float)
+  vpaq.io.enq.bits.idx := Reg(vvaq.io.deq.bits.idx)
+  vpaq.io.enq.bits.ppn := io.vec_tlb_resp.ppn
+ 
+  // vpfvaq hookup
+  vpfvaq.io.enq <> vru.io.vpfvaq
+
+  // vpfvaq tlb hookup
+  io.vec_pftlb_req.valid := tlb_vecpf_req
+  io.vec_pftlb_req.bits.kill := tlb_vecpf_miss
+  io.vec_pftlb_req.bits.cmd := vpfvaq.io.deq.bits.cmd
+  io.vec_pftlb_req.bits.vpn := vpfvaq.io.deq.bits.vpn
+  io.vec_pftlb_req.bits.asid := Bits(0) // FIXME
+  vpfvaq.io.deq.ready := vpfpaq.io.enq.ready
+  vpfvaq.io.ack := tlb_vecpf_hit && vpfpaq.io.enq.ready
+  vpfvaq.io.nack := tlb_vecpf_miss || !vpfpaq.io.enq.ready
+ 
+  // tlb vpfpaq hookup
+  // enqueue everything but the page number from virtual queue
+  vpfpaq.io.enq.valid := tlb_vecpf_hit
+  vpfpaq.io.enq.bits.cmd := Reg(vpfvaq.io.deq.bits.cmd)
+  vpfpaq.io.enq.bits.typ := Reg(vpfvaq.io.deq.bits.typ)
+  vpfpaq.io.enq.bits.typ_float := Reg(vpfvaq.io.deq.bits.typ_float)
+  vpfpaq.io.enq.bits.idx := Reg(vpfvaq.io.deq.bits.idx)
+  vpfpaq.io.enq.bits.ppn := io.vec_pftlb_resp.ppn
+
+  // vpaq arbiter, port 0: vpaq
+  vpaq_arb.io.in(0) <> vpaq.io.deq
+  // vpaq arbiter, port1: vpfpaq
+  vpaq_arb.io.in(1) <> vpfpaq.io.deq
+  // vpaq arbiter, output
+  memif.io.vaq_deq <> vpaq_arb.io.out
+  // vpaq arbiter, register chosen
+  val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
+  val reg_vpaq_arb_chosen2 = Reg(reg_vpaq_arb_chosen)
+
+  // ack, nacks
+  val vpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen2 === Bits(0)
+  val vpaq_nack = memif.io.vaq_nack
+  
+  val vpfpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen2 === Bits(1)
+  val vpfpaq_nack = memif.io.vaq_nack
+  
+  vpaq.io.ack := vpaq_ack
+  vpaq.io.nack := vpaq_nack
+
+  vpfpaq.io.ack := vpfpaq_ack
+  vpfpaq.io.nack := vpfpaq_nack
+  
+  // vpaq counts occupied space
+  //vpaq_count.io.qcnt := vpaq.io.deq.bits.cnt
+  // vpaq occupies an entry, when it accepts an entry from vvaq
+  vpaq_count.io.inc := tlb_vec_hit && vvaq.io.deq.valid && vpaq.io.enq.ready
+  // vpaq frees an entry, when the memory system drains it
+  vpaq_count.io.dec := vpaq_ack
+
+
+  // vector load data queue and counter
+  val vldq = new queue_reorder_qcnt(65,128,9) // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
 
   vldq.io.deq_data.ready := vxu.io.lane_vldq.ready
   vxu.io.lane_vldq.valid := vldq.io.watermark // vldq.deq_data.valid
   vxu.io.lane_vldq.bits := vldq.io.deq_data.bits
 
-  vldq.io.qcnt := vxu.io.qcnt
+  vldq.io.enq <> memif.io.vldq_enq
+  memif.io.vldq_deq_rtag <> vldq.io.deq_rtag
+
   vldq.io.ack := memif.io.vldq_ack
   vldq.io.nack := memif.io.vldq_nack
 
-  // vsdq arbiter
+  // vldq has an embedded counter
+  // vldq counts occupied space
+  // vldq occupies an entry, when it accepts an entry from the memory system
+  // vldq fress an entry, when the lane consumes it
+  vldq.io.qcnt := vxu.io.qcnt
+
+
+  // vector store data queue and counter
+  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
+  val vsdq = new queue_spec(16)({ Bits(width = 65) })
+
+  val vsdq_count = new queuecnt(16,16)
+  val vsack_count = new queuecnt(31,31)
+
+  // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
   vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.bits
   vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
   
+  // vsdq arbiter, port 1: evac
   vsdq_arb.io.in(1).valid := evac.io.vsdq.valid
   vsdq_arb.io.in(1).bits := evac.io.vsdq.bits
   evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
 
-  // vsdq
+  // vsdq arbiter, output
   vsdq_arb.io.out.ready := vsdq_count.io.watermark && vsack_count.io.watermark// vsdq.io.enq.ready
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
@@ -139,110 +260,24 @@ class vu extends Component
   vsdq.io.ack := memif.io.vsdq_ack
   vsdq.io.nack := memif.io.vsdq_nack
 
+  // vsdq counts available space
   vsdq_count.io.qcnt := vxu.io.qcnt
+  // vsdq frees an entry, when the memory system drains it
   vsdq_count.io.inc := memif.io.vsdq_ack
+  // vsdq occupies an entry, when the lane kicks out an entry
   vsdq_count.io.dec := vxu.io.lane_vsdq_dec
 
-  // vsack
-  vsack_count.io.inc := memif.io.vsdq_ack
-  vsack_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
+  // vsack counts available space
   vsack_count.io.qcnt := vxu.io.qcnt
+  // vsack frees an entry, when the memory system acks the store
+  vsack_count.io.inc := memif.io.vsdq_ack
+  // vsack occupies an entry, when the lane kicks out an entry
+  vsack_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
+  // there is no stores in flight, when the counter is full
   vxu.io.pending_store := !vsack_count.io.zero
 
-  // prefetch
-  val vru = new vuVRU()
-  val vpfvaq = new queueSimplePF(16)({ new io_vaq_bundle() })
-  val vpfpaq = new queue_spec(16)({ new io_vaq_bundle() })
-  val vaq_arb = new hArbiter(2)({ new io_lane_vaq() })
 
-  val reg_chosen = Reg(vaq_arb.io.chosen)
-  val reg_chosen2 = Reg(reg_chosen)
-
-  val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
-  val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
-  val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
-
-  vpfcmdq.io.enq <> io.vec_pfcmdq
-  vpfximm1q.io.enq <> io.vec_pfximm1q
-  vpfximm2q.io.enq <> io.vec_pfximm2q
-
-  vru.io.vec_pfcmdq <> vpfcmdq.io.deq
-  vru.io.vec_pfximm1q <> vpfximm1q.io.deq
-  vru.io.vec_pfximm2q <> vpfximm2q.io.deq
- 
-  val do_pftlb_lookup = !io.vec_pftlb_resp.miss && io.vec_pftlb_req.ready
-
-  vpfvaq.io.enq <> vru.io.vpfvaq
-  vpfvaq.io.deq.ready := do_pftlb_lookup && vpfpaq.io.enq.ready
-  io.vec_pftlb_req.valid := vpfvaq.io.deq.valid && vpfpaq.io.enq.ready
-  io.vec_pftlb_req.bits.kill := Bool(false)
-  io.vec_pftlb_req.bits.cmd := vpfvaq.io.deq.bits.cmd
-  io.vec_pftlb_req.bits.vpn := vpfvaq.io.deq.bits.ppn
-  io.vec_pftlb_req.bits.asid := Bits(0) // FIXME
- 
-  vpfpaq.io.enq.valid := do_pftlb_lookup && vpfvaq.io.deq.valid
-  vpfpaq.io.enq.bits.cmd := vpfvaq.io.deq.bits.cmd
-  vpfpaq.io.enq.bits.typ := vpfvaq.io.deq.bits.typ
-  vpfpaq.io.enq.bits.typ_float := vpfvaq.io.deq.bits.typ_float
-  vpfpaq.io.enq.bits.idx := vpfvaq.io.deq.bits.idx
-  // enqueue everything but the page number from virtual queue
-  vpfpaq.io.enq.bits.ppn := io.vec_pftlb_resp.ppn
-
-  // vaq arbiter
-  val vaq_evac_lane_arb = new hArbiter(2)( new io_lane_vaq() )
-  
-  vaq_evac_lane_arb.io.in(0).valid := vxu.io.lane_vaq.valid
-  vaq_evac_lane_arb.io.in(0).bits := vxu.io.lane_vaq.bits
-  vxu.io.lane_vaq.ready := vaq_evac_lane_arb.io.in(0).ready
-
-  vaq_evac_lane_arb.io.in(1).valid := evac.io.vaq.valid
-  vaq_evac_lane_arb.io.in(1).bits := evac.io.vaq.bits
-  evac.io.vaq.ready := vaq_evac_lane_arb.io.in(1).ready
-
-  // vaq
-  vaq_evac_lane_arb.io.out.ready := vvaq_count.io.watermark // vaq.io.enq.ready
-  vvaq.io.enq.valid := vaq_evac_lane_arb.io.out.valid
-  vvaq.io.enq.bits := vaq_evac_lane_arb.io.out.bits
-
-  val do_tlb_lookup = !io.vec_tlb_resp.miss && io.vec_tlb_req.ready
-
-  vvaq.io.deq.ready := do_tlb_lookup && vpaq.io.enq.ready
-  io.vec_tlb_req.valid := vvaq.io.deq.valid && vpaq.io.enq.ready
-  io.vec_tlb_req.bits.kill := Bool(false)
-  io.vec_tlb_req.bits.cmd := vvaq.io.deq.bits.cmd
-  io.vec_tlb_req.bits.vpn := vvaq.io.deq.bits.ppn
-  io.vec_tlb_req.bits.asid := Bits(0) // FIXME
- 
-  vpaq.io.enq.valid := do_tlb_lookup && vvaq.io.deq.valid
-  vpaq.io.enq.bits.cmd := vvaq.io.deq.bits.cmd
-  vpaq.io.enq.bits.typ := vvaq.io.deq.bits.typ
-  vpaq.io.enq.bits.typ_float := vvaq.io.deq.bits.typ_float
-  vpaq.io.enq.bits.idx := vvaq.io.deq.bits.idx
-  // enqueue everything but the page number from virtual queue
-  vpaq.io.enq.bits.ppn := io.vec_tlb_resp.ppn
-
-  vaq_arb.io.in(0) <> vpfpaq.io.deq
-  vaq_arb.io.in(1) <> vpaq.io.deq
-
-  memif.io.vaq_deq <> vaq_arb.io.out
-
-  val vpaqack = Mux(reg_chosen2 === Bits(1), memif.io.vaq_ack, Bool(false))
-  val vpaqnack = memif.io.vaq_nack
-  
-  val vpfpaqack = Mux(reg_chosen2 === Bits(0), memif.io.vaq_ack, Bool(false))
-  val vpfpaqnack = memif.io.vaq_nack
-  
-  vpaq.io.ack := vpaqack
-  vpaq.io.nack := vpaqnack
-
-  vpfpaq.io.ack := vpfpaqack
-  vpfpaq.io.nack := vpfpaqnack
-  
-  vvaq_count.io.qcnt := vxu.io.qcnt
-  vvaq_count.io.inc := do_tlb_lookup && vvaq.io.deq.valid && vpaq.io.enq.ready
-  vvaq_count.io.dec := vxu.io.lane_vaq_dec
-  
-  //vpaq_count.io.qcnt := vpaq.io.deq.bits.cnt
-  vpaq_count.io.inc := do_tlb_lookup && vvaq.io.deq.valid && vpaq.io.enq.ready
-  vpaq_count.io.dec := vpaqack
+  // memif interface
+  io.dmem_req <> memif.io.mem_req
+  memif.io.mem_resp <> io.dmem_resp
 }

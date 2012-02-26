@@ -182,7 +182,6 @@ class vuVXU_Banked8_Expand extends Component
     next_ren(0) := Bool(true)
     next_rlast(0) := io.seq_to_expand.last
     next_rcnt(0) := io.seq_regid_imm.cnt
-    next_vaqld(0) := io.seq_regid_imm.vaqld
     when (io.seq_regid_imm.utmemop)
     {
       next_raddr(0) := io.seq_regid_imm.vs

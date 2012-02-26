@@ -97,9 +97,10 @@ class io_vec_ximm1q(view: List[String] = null) extends io_ready_valid(view)( { B
 class io_vec_ximm2q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = SZ_VSTRIDE) } )
 class io_vec_cntq() extends io_ready_valid()( Bits(width=SZ_VLEN) )
 class io_vec_ackq extends io_ready_valid()( { Bits(width = SZ_VRESP) } )
-class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
+class io_lane_vaq extends io_ready_valid()( { new io_vvaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = SZ_DATA) } )
 class io_lane_vsdq extends io_ready_valid()( { Bits(width = SZ_DATA) } )
+class io_vpaq extends io_ready_valid()( { new io_vpaq_bundle() } )
 
 class io_cpu_exception extends Bundle 
 {
@@ -205,7 +206,16 @@ class io_vxu_mem_cmd extends Bundle
   val typ_float = Bits(width = 1)
 }
 
-class io_vaq_bundle extends Bundle
+class io_vvaq_bundle extends Bundle
+{
+  val cmd = Bits(width = 4)
+  val typ = Bits(width = 3)
+  val typ_float = Bits(width = 1)
+  val idx = Bits(width = PGIDX_BITS)
+  val vpn = Bits(width = VPN_BITS)
+}
+
+class io_vpaq_bundle extends Bundle
 {
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
@@ -744,7 +754,7 @@ class io_vxu_mem extends Bundle
   val lane_vaq_rf = Bits(SZ_DATA, INPUT)
   
   val vmu_vaq_valid = Bool(OUTPUT)
-  val vmu_vaq_bits = new io_vaq_bundle().asOutput
+  val vmu_vaq_bits = new io_vvaq_bundle().asOutput
   
   val lane_vsdq_valid = Bool(INPUT)
   val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
@@ -756,7 +766,7 @@ class io_vxu_mem extends Bundle
 
 class io_vu_memif extends Bundle
 {
-  val vaq_deq = new io_ready_valid()({ new io_vaq_bundle() }).flip()
+  val vaq_deq = new io_ready_valid()({ new io_vpaq_bundle() }).flip()
   val vaq_ack = Bool(OUTPUT)
   val vaq_nack = Bool(OUTPUT)
 
@@ -775,7 +785,7 @@ class io_vu_memif extends Bundle
 
 class io_vru extends Bundle
 {
-  val vpfvaq = new io_ready_valid()({ new io_vaq_bundle() })
+  val vpfvaq = new io_ready_valid()({ new io_vvaq_bundle() })
   
   // command
   val vec_pfcmdq = new io_vec_cmdq().flip()

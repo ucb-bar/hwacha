@@ -135,7 +135,7 @@ class vuEvac extends Component
   io.vaq.bits.typ := MT_D
   io.vaq.bits.typ_float := MTF_N
   io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
-  io.vaq.bits.ppn := addr_reg(PADDR_BITS, PGIDX_BITS)
+  io.vaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 
   io.vsdq.valid := Bool(false)
   io.vsdq.bits := Bits(0)
