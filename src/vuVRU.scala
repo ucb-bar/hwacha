@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Commands._
 import scala.math._
 
 class vuVRU extends Component

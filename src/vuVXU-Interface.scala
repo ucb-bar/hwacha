@@ -66,6 +66,7 @@ class io_irb_sdb extends io_ready_valid()( Bits(width=SZ_DATA) )
 class io_vec_cmdq(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = SZ_VCMD) } )
 class io_vec_ximm1q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = SZ_VIMM) } )
 class io_vec_ximm2q(view: List[String] = null) extends io_ready_valid(view)( { Bits(width = SZ_VSTRIDE) } )
+class io_vec_cntq() extends io_ready_valid()( Bits(width=SZ_VLEN) )
 class io_vec_ackq extends io_ready_valid()( { Bits(width = SZ_VRESP) } )
 class io_lane_vaq extends io_ready_valid()( { new io_vaq_bundle() } )
 class io_lane_vldq extends io_ready_valid()( { Bits(width = SZ_DATA) } )
@@ -479,6 +480,7 @@ class io_vu extends Bundle
   val vec_cmdq = new io_vec_cmdq().flip()
   val vec_ximm1q = new io_vec_ximm1q().flip()
   val vec_ximm2q = new io_vec_ximm2q().flip()
+  val vec_cntq = new io_vec_cntq().flip()
   val vec_ackq = new io_vec_ackq()
 
   val vec_pfcmdq = new io_vec_cmdq().flip()
@@ -504,6 +506,7 @@ class io_vxu extends Bundle
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
   val vxu_imm2q = new io_vxu_imm2q().flip()
+  val vxu_cntq = new io_vxu_cntq().flip()
 
   val vec_ackq = new io_vec_ackq
 

@@ -2,14 +2,13 @@ package hwacha
 
 import Chisel._
 import Node._
-import Config._
-import Interface._
+import Constants._
 import Instructions._
 import Commands._
 
 class io_vu_evac extends Bundle
 {
-  val cpu_exception = new io cpu_exception()
+  val cpu_exception = new io_cpu_exception()
 
   val irb_cmdb = new io_vxu_cmdq().flip()
   val irb_imm1b = new io_vxu_immq().flip()
@@ -33,15 +32,15 @@ class vuEvac extends Component
   val n = Bool(false)
   val y = Bool(true)
 
-  val SEL_CMDB = Bits(0,0)
-  val SEL_VCMDQ = Bits(1,0)
+  val SEL_CMDB = Bits(0,1)
+  val SEL_VCMDQ = Bits(1,1)
 
   val cmd_sel_next = Wire(){ Bits(width=1) }
   val cmd_sel = Reg(cmd_sel_next, resetVal = SEL_CMDB)
 
   cmd_sel_next := cmd_sel
 
-  val cmd = Mux(state, io.vcmdq.bits(XCMD_CMCODE), io.irb_cmdb.bits(XCMD_CMCODE))
+  val cmd = Mux(cmd_sel, io.vcmdq.bits(RG_XCMD_CMCODE), io.irb_cmdb.bits(RG_XCMD_CMCODE))
 
   val cs =
     ListLookup(cmd,
@@ -108,6 +107,7 @@ class vuEvac extends Component
   val STATE_VIMM1Q = Bits(6,4)
   val STATE_VIMM2Q = Bits(7,4)
   val STATE_VCNTQ = Bits(8,4)
+  val STATE_DONE = Bits(9,4)
 
   val state_next = Wire(){ Bits(width=4) }
   val addr_next = Wire(){ UFix(width=SZ_ADDR) }
@@ -118,7 +118,7 @@ class vuEvac extends Component
   state_next := state
   addr_next := addr_reg
 
-  val addr_plus_8 = addr_reg + 8
+  val addr_plus_8 = addr_reg + UFix(8)
 
   io.irb_cmdb.ready := Bool(false)
   io.irb_imm1b.ready := Bool(false)
@@ -130,11 +130,15 @@ class vuEvac extends Component
   io.vimm2q.ready := Bool(false)
   io.vcntq.ready := Bool(false)
 
+  io.vaq.valid := Bool(false)
   io.vaq.bits.cmd := M_XWR
   io.vaq.bits.typ := MT_D
-  io.vaq.bits.type_float := MTF_N
+  io.vaq.bits.typ_float := MTF_N
   io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
   io.vaq.bits.ppn := addr_reg(PADDR_BITS, PGIDX_BITS)
+
+  io.vsdq.valid := Bool(false)
+  io.vsdq.bits := Bits(0)
 
   switch (state)
   {
@@ -143,7 +147,7 @@ class vuEvac extends Component
     {
       when (io.cpu_exception.exception) 
       { 
-        state_next := STATE_CMD 
+        state_next := STATE_CMDB 
         addr_next := io.cpu_exception.addr
       }
     }
@@ -155,7 +159,7 @@ class vuEvac extends Component
         io.vaq.valid := Bool(true)
         io.vsdq.valid := Bool(true)
         io.vsdq.bits := Cat(Bits(0, 28), deq_irimm1b, deq_irimm2b, deq_ircntb, Bits(1,1),
-                            Bits(0, 32 - VCMD_SZ), io.irb_cmdb.bits)
+                            Bits(0, 32 - SZ_VCMD), io.irb_cmdb.bits)
 
         when (io.vsdq.ready && io.vaq.ready) 
         {
@@ -166,7 +170,7 @@ class vuEvac extends Component
           } . elsewhen (deq_irimm2b) 
           {
             state_next := STATE_IMM2B
-          } . elsewhen (deq_cntb) 
+          } . elsewhen (deq_ircntb) 
           {
             state_next := STATE_CNTB
           } . otherwise
@@ -178,7 +182,7 @@ class vuEvac extends Component
 
       } . elsewhen (!io.irb_cmdb.valid) 
       {
-        state_next := VSTATE_CMDQ
+        state_next := STATE_VCMDQ
         cmd_sel_next := SEL_VCMDQ
       }
     }
@@ -198,7 +202,7 @@ class vuEvac extends Component
           when (deq_irimm2b)
           {
             state_next := STATE_IMM2B
-          } . elsewhen (deq_cntb) 
+          } . elsewhen (deq_ircntb) 
           {
             state_next := STATE_CNTB
           } . otherwise 
@@ -213,7 +217,7 @@ class vuEvac extends Component
 
     is (STATE_IMM2B)
     {
-      when (io.irb_imm2b.valid && deq_imm2b)
+      when (io.irb_imm2b.valid && deq_irimm2b)
       {
         io.vaq.valid := Bool(true)
         io.vsdq.valid := Bool(true)
@@ -223,7 +227,7 @@ class vuEvac extends Component
         {
           addr_next := addr_plus_8
           io.irb_imm2b.ready := Bool(true)
-          when (deq_cntb)
+          when (deq_ircntb)
           {
             state_next := STATE_CNTB
           } . otherwise {
@@ -237,7 +241,7 @@ class vuEvac extends Component
 
     is (STATE_CNTB)
     {
-      when (io.irb_cntb.valid && deq_cntb)
+      when (io.irb_cntb.valid && deq_ircntb)
       {
         io.vaq.valid := Bool(true)
         io.vsdq.valid := Bool(true)
@@ -246,9 +250,9 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8          
+          io.irb_cntb.ready := Bool(true)
           when (vf)
           {
-            io.irb_cntb.ready := Bool(true)
             when (!io.irb_cntb_last)
             {
               state_next := STATE_CNTB
@@ -275,11 +279,11 @@ class vuEvac extends Component
         io.vaq.valid := Bool(true)
         io.vsdq.valid := Bool(true)
         io.vsdq.bits := Cat(Bits(0,28), deq_vimm1q, deq_vimm2q, deq_vcntq, Bits(1,1),
-                            Bits(0, 32 - VCMD_SZ), io.vcmdq.bits)
+                            Bits(0, 32 - SZ_VCMD), io.vcmdq.bits)
 
         when (io.vsdq.ready && io.vaq.ready)
         {
-          addr_next := addr_plus8
+          addr_next := addr_plus_8
           when (deq_vimm1q)
           {
             state_next := STATE_VIMM1Q
@@ -298,7 +302,7 @@ class vuEvac extends Component
 
       } . elsewhen (!io.vcmdq.valid) 
       {
-        state_next := DONE
+        state_next := STATE_DONE
       }
     }
 
@@ -310,9 +314,9 @@ class vuEvac extends Component
         io.vsdq.valid := Bool(true)
         io.vsdq.bits := io.vimm1q.bits
 
-        when (io.vsdq.ready && io.vaq.readY)
+        when (io.vsdq.ready && io.vaq.ready)
         {
-          addr_next := addr_plus8
+          addr_next := addr_plus_8
           io.vimm1q.ready := Bool(true)
           when (deq_vimm2q)
           {
@@ -320,7 +324,7 @@ class vuEvac extends Component
           } . elsewhen (deq_vcntq) 
           {
             state_next := STATE_VCNTQ
-          } .otherwsie 
+          } .otherwise 
           {
             state_next := STATE_VCMDQ
             io.vcmdq.ready := Bool(true)
@@ -365,22 +369,19 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
+          io.vcntq.ready := Bool(true)
           when (vf)
           {
-            io.vcntq.ready := Bool(true)
-            when (!io.vcntq_last)
-            {
-              state_next := STATE_VCNTQ
-            } . otherwise {
-              state_next := STATE_VCMDQ
-              io.vcmdq.ready := Bool(true)
-            }
+            state_next := STATE_VCNTQ
           } . otherwise {
             state_next := STATE_VCMDQ
             io.vcmdq.ready := Bool(true)
           }
         }
 
+      } . elsewhen(!io.vcntq.valid && vf) {
+        state_next := STATE_VCMDQ
+        io.vcmdq.ready := Bool(true)
       }
     }
 

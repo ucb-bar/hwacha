@@ -90,7 +90,7 @@ class vuVXU extends Component
 
   b8seq.io.seq_to_irb <> io.seq_to_irb
 
-  b8seq.io.cpu_exception <> io.exception
+  b8seq.io.cpu_exception <> io.cpu_exception
 
   val b8expand = new vuVXU_Banked8_Expand()
 

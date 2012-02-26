@@ -3,13 +3,14 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Commands._
 import Instructions._
 
 class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val vt_ready = io.ready && io.irb_cntb.ready & !io.exception
+  val vt_ready = io.ready && io.irb_cntb.ready & !io.cpu_exception.exception
 
   val stalld = !vt_ready
   val stallf = ~io.imem_req.ready || ~io.imem_resp.valid || stalld
@@ -241,12 +242,12 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
-  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.exception
+  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.cpu_exception.exception
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
   io.issue_to_irb.markLast := decode_stop
 
-  val valid_common = io.vf.active & io.irb_cntb.ready & !io.exception
+  val valid_common = io.vf.active & io.irb_cntb.ready & !io.cpu_exception.exception
 
   io.valid.viu := valid_common && unmasked_valid_viu 
   io.valid.vau0 := valid_common && unmasked_valid_vau0

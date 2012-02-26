@@ -12,7 +12,7 @@ class vu extends Component
   val vcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
   val vximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
   val vximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
-  val vxcntq = new queueSimplePF(16)( Bits(width=DEF_VLEN) )
+  val vxcntq = new queueSimplePF(16)( Bits(width=SZ_VLEN) )
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
@@ -44,16 +44,16 @@ class vu extends Component
   vcmdq.io.deq.ready := vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready
 
   vxu.io.vxu_immq.bits := vximm1q.io.deq.bits
-  vxu.io.vxu_immq.valid := vximm1q.io.valid
-  vximm1q.io.ready := vxu.io.vxu_immq.ready || evac.io.vimm1q.ready
+  vxu.io.vxu_immq.valid := vximm1q.io.deq.valid
+  vximm1q.io.deq.ready := vxu.io.vxu_immq.ready || evac.io.vimm1q.ready
 
   vxu.io.vxu_imm2q.bits := vximm2q.io.deq.bits
-  vxu.io.vxu_imm2q.valid := vximm2q.io.valid
-  vximm2q.io.ready := vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready
+  vxu.io.vxu_imm2q.valid := vximm2q.io.deq.valid
+  vximm2q.io.deq.ready := vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready
 
   vxu.io.vxu_cntq.bits := vxcntq.io.deq.bits
-  vxu.io.vxu_cntq.valid := vxcntq.io.valid
-  vxcntq.io.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
+  vxu.io.vxu_cntq.valid := vxcntq.io.deq.valid
+  vxcntq.io.deq.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
 
   vxu.io.vec_ackq <> io.vec_ackq
 
@@ -91,13 +91,13 @@ class vu extends Component
   evac.io.vcmdq.bits := vcmdq.io.deq.bits
   evac.io.vcmdq.valid := vcmdq.io.deq.valid
 
-  evac.io.vximm1q.bits := vximm1q.io.deq.bits
-  evac.io.vximm1q.valid := vximm1q.io.deq.valid
+  evac.io.vimm1q.bits := vximm1q.io.deq.bits
+  evac.io.vimm1q.valid := vximm1q.io.deq.valid
   
   evac.io.vimm2q.bits := vximm2q.io.deq.bits
   evac.io.vimm2q.valid := vximm2q.io.deq.valid
 
-  evac.io.vcntq.bits := vxcntq.io.deq.bit
+  evac.io.vcntq.bits := vxcntq.io.deq.bits
   evac.io.vcntq.valid := vxcntq.io.deq.valid
   
   // vldq
@@ -165,10 +165,21 @@ class vu extends Component
   
   vpfaq.io.enq <> vru.io.vpfaq
 
+  // vaq arbbiter
+  val vaq_evac_lane_arb = new Arbiter(2)( new io_lane_vaq() )
+  
+  vaq_evac_lane_arb.io.in(0).valid := vxu.io.lane_vaq.valid
+  vaq_evac_lane_arb.io.in(0).bits := vxu.io.lane_vaq.bits
+  vxu.io.lane_vaq.ready := vaq_evac_lane_arb.io.in(0).ready
+
+  vaq_evac_lane_arb.io.in(1).valid := evac.io.vaq.valid
+  vaq_evac_lane_arb.io.in(1).bits := evac.io.vaq.bits
+  evac.io.vaq.ready := vaq_evac_lane_arb.io.in(1).ready
+
   // vaq
-  vxu.io.lane_vaq.ready := vaq_count.io.watermark // vaq.io.enq.ready
-  vaq.io.enq.valid := vxu.io.lane_vaq.valid
-  vaq.io.enq.bits := vxu.io.lane_vaq.bits
+  vaq_evac_lane_arb.io.out.ready := vaq_count.io.watermark // vaq.io.enq.ready
+  vaq.io.enq.valid := vaq_evac_lane_arb.io.out.valid
+  vaq.io.enq.bits := vaq_evac_lane_arb.io.out.bits
 
   vaq_arb.io.in(0) <> vpfaq.io.deq
   vaq_arb.io.in(1) <> vaq.io.deq

@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Instructions._
+import Commands._
 import queues._
 
 class io_vu_irb extends Bundle 
@@ -34,15 +34,15 @@ class vuIRB extends Component
   val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
   val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH, true)
 
-  ircmdb.io.enq <> io.irb_cmdb
+  ircmdb.io.enq <> io.irb_enq_cmdb
 
-  irimm1b.io.enq <> io.irb_imm1b
+  irimm1b.io.enq <> io.irb_enq_imm1b
   irimm1b.io.update <> io.seq_to_irb.update_imm1
   irimm1b.io.rtag <> io.irb_to_issue.imm1_rtag
 
-  irimm2b.io.enq <> io.irb_imm2b
+  irimm2b.io.enq <> io.irb_enq_imm2b
   
-  ircntb.io.enq <> io.irb_cntb
+  ircntb.io.enq <> io.irb_enq_cntb
   ircntb.io.update <> io.seq_to_irb.update_cnt
   ircntb.io.markLast <> io.issue_to_irb.markLast
   ircntb.io.rtag <> io.irb_to_issue.cnt_rtag

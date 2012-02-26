@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Commands._
 
 class vuVXU_Issue_TVEC extends Component
 {
@@ -122,7 +123,7 @@ class vuVXU_Issue_TVEC extends Component
   val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
 
   val valid_common =
-    !io.exception && 
+    !io.cpu_exception.exception && 
     tvec_active_fence_clear &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
@@ -134,7 +135,7 @@ class vuVXU_Issue_TVEC extends Component
   val fire_vf = fire_common && decode_vf
   val fire_fence_cv = fire_common && decode_fence_cv
 
-  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.exception
+  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.cpu_exception.exception
 
   io.vxu_cmdq.ready := 
     queue_common && 
