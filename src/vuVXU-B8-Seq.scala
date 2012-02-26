@@ -651,13 +651,25 @@ class vuVXU_Banked8_Seq extends Component
   {
     next_irb_cnt.write(reg_ptr, io.seq_to_irb.update_cnt.bits.data)
 
-    io.seq_to_irb.update_imm1.valid := array_irb_update_imm1.read(reg_ptr)
     io.seq_to_irb.update_cnt.valid := Bool(true)
 
     when(array_last(reg_ptr))
     {
       io.seq_to_irb.last := Bool(true)
     }
+  }
+
+  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2)
+  {
+    when(array_last(reg_ptr))
+    {
+      io.seq_to_irb.update_imm1.valid := array_irb_update_imm1.read(reg_ptr)
+    }
+  }
+
+  when (io.seq.vldq || io.seq.vsdq)
+  {
+    io.seq_to_irb.update_imm1.valid := Bool(true)
   }
 
   io.seq_to_irb.update_imm1.bits.addr := array_irb_imm1_rtag.read(reg_ptr).toUFix

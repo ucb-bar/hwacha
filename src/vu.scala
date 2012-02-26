@@ -23,8 +23,6 @@ class vu extends Component
   val irb = new vuIRB()
   val evac = new vuEvac()
 
-  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
-
   val vaq = new queue_spec(16)({ new io_vaq_bundle() })
   val vaq_count = new queuecnt(16,9,16,true)
 
