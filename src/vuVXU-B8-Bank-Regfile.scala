@@ -43,6 +43,7 @@ class vuVXU_Banked8_Bank_Regfile extends Component
 
   val rfile = Mem(256, io.wen, io.waddr.toUFix, wdata, resetVal = null)
   rfile.setReadLatency(1)
+  rfile.setTarget('inst)
   val rdata_rf = Mux(Reg(io.ren), rfile(io.raddr), Bits(0)) 
   io.rdata := rdata_rf
 

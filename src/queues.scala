@@ -468,6 +468,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
   data_array.setReadLatency(1)
+  data_array.setTarget('inst)
 
   val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
