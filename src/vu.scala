@@ -143,7 +143,7 @@ class vu extends Component
   
   // vvaq tlb hookup
   io.vec_tlb_req.valid := tlb_vec_req
-  io.vec_tlb_req.bits.kill := tlb_vec_miss
+  io.vec_tlb_req.bits.kill := Bool(false)
   io.vec_tlb_req.bits.cmd := vvaq.io.deq.bits.cmd
   io.vec_tlb_req.bits.vpn := vvaq.io.deq.bits.vpn
   io.vec_tlb_req.bits.asid := Bits(0)
@@ -165,7 +165,7 @@ class vu extends Component
 
   // vpfvaq tlb hookup
   io.vec_pftlb_req.valid := tlb_vecpf_req
-  io.vec_pftlb_req.bits.kill := tlb_vecpf_miss
+  io.vec_pftlb_req.bits.kill := Bool(false)
   io.vec_pftlb_req.bits.cmd := vpfvaq.io.deq.bits.cmd
   io.vec_pftlb_req.bits.vpn := vpfvaq.io.deq.bits.vpn
   io.vec_pftlb_req.bits.asid := Bits(0) // FIXME
