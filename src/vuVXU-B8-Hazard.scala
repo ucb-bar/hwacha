@@ -41,19 +41,19 @@ class vuVXU_Banked8_Hazard extends Component
 
   reg_ptr := next_ptr1
 
-  val array_rport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_rport_vau0 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_rport_vau1 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_rport_vau2 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_rport_vsu = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_rport_vgu = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_vau0 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_vau1 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_vau2 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_vsu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_rport_vgu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
 
-  val next_rport_val = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau0 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau1 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau2 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vsu = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vgu = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_vau0 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_vau1 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_vau2 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_vsu = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_vgu = Vec(SZ_BANK){ Wire(){ Bool() } }
 
   for (i <- 0 until SZ_BANK)
   {
@@ -256,21 +256,21 @@ class vuVXU_Banked8_Hazard extends Component
   val vau1_wptr = vt_vau1_wptr
   val vau2_wptr = vt_vau2_wptr
 
-  val array_wport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_head = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_vau0 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_vau1 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_vau2 = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_vlu = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_wport_vd = GenArray(SZ_BANK){ Reg(){ Bits(width = SZ_REGLEN) } }
+  val array_wport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_head = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_vau0 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_vau1 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_vau2 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_vlu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wport_vd = Vec(SZ_BANK){ Reg(){ Bits(width = SZ_REGLEN) } }
 
-  val next_wport_val = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_head = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau0 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau1 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau2 = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vlu = GenArray(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vd = GenArray(SZ_BANK){ Wire(){ Bits(width = SZ_REGLEN) } }
+  val next_wport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_head = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_vau0 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_vau1 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_vau2 = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_vlu = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wport_vd = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_REGLEN) } }
 
   for (i <- 0 until SZ_BANK)
   {
@@ -357,9 +357,9 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vlu.write(reg_ptr, Bool(false))
   }
 
-  val array_sport_val = GenArray(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_sport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
 
-  val next_sport_val = GenArray(SZ_BANK){ Wire(){ Bool() } }
+  val next_sport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
 
   for (i <- 0 until SZ_BANK)
   {
@@ -403,19 +403,19 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   // hazard check logic for tvec/vt
-  val shazard_vau0 = (array_rport_val.flatten() & array_rport_vau0.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau0.flatten()).orR()
-  val shazard_vau1 = (array_rport_val.flatten() & array_rport_vau1.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau1.flatten()).orR()
-  val shazard_vau2 = (array_rport_val.flatten() & array_rport_vau2.flatten()).orR() | (array_wport_val.flatten() & array_wport_vau2.flatten()).orR()
-  val shazard_vgu = (array_rport_val.flatten() & array_rport_vgu.flatten()).orR()
-  val shazard_vlu = (array_wport_val.flatten() & array_wport_vlu.flatten()).orR()
-  val shazard_vsu = (array_rport_val.flatten() & array_rport_vsu.flatten()).orR()
+  val shazard_vau0 = (array_rport_val.toBits() & array_rport_vau0.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau0.toBits()).orR()
+  val shazard_vau1 = (array_rport_val.toBits() & array_rport_vau1.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau1.toBits()).orR()
+  val shazard_vau2 = (array_rport_val.toBits() & array_rport_vau2.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau2.toBits()).orR()
+  val shazard_vgu = (array_rport_val.toBits() & array_rport_vgu.toBits()).orR()
+  val shazard_vlu = (array_wport_val.toBits() & array_wport_vlu.toBits()).orR()
+  val shazard_vsu = (array_rport_val.toBits() & array_rport_vsu.toBits()).orR()
 
   val seqhazard_1slot = array_sport_val.read(next_ptr1)
   val seqhazard_2slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2)
   val seqhazard_3slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2) | array_sport_val.read(next_ptr3)
 
   // checking any pending memory ops for fences
-  io.hazard_to_issue.pending_memop := array_rport_vsu.flatten().orR() || array_rport_vgu.flatten().orR() || array_wport_vlu.flatten().orR()
+  io.hazard_to_issue.pending_memop := array_rport_vsu.toBits().orR() || array_rport_vgu.toBits().orR() || array_wport_vlu.toBits().orR()
 
   // hazard check logic for tvec
   val tvec_comp_vt =
@@ -442,8 +442,8 @@ class vuVXU_Banked8_Hazard extends Component
       io.tvec_regid_imm.vd === array_wport_vd(0)
     )
 
-  val tvec_dhazard_vt = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vt).orR()
-  val tvec_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & tvec_comp_vd).orR()
+  val tvec_dhazard_vt = (array_wport_val.toBits() & array_wport_head.toBits() & tvec_comp_vt).orR()
+  val tvec_dhazard_vd = (array_wport_val.toBits() & array_wport_head.toBits() & tvec_comp_vd).orR()
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr)
   val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
@@ -534,10 +534,10 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_regid_imm.vd === array_wport_vd(0)
     )
 
-  val vt_dhazard_vs = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vs).orR()
-  val vt_dhazard_vt = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vt).orR()
-  val vt_dhazard_vr = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vr).orR()
-  val vt_dhazard_vd = (array_wport_val.flatten() & array_wport_head.flatten() & vt_comp_vd).orR()
+  val vt_dhazard_vs = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vs).orR()
+  val vt_dhazard_vt = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vt).orR()
+  val vt_dhazard_vr = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vr).orR()
+  val vt_dhazard_vd = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vd).orR()
 
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr)

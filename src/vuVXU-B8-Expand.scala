@@ -8,19 +8,19 @@ class vuVXU_Banked8_Expand extends Component
 {
   val io = new io_vxu_expand
 
-  val next_ren = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_rlast = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_rcnt = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BVLEN)} }
-  val next_raddr = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BREGLEN)} }
-  val next_roplen = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BOPL)} }
-  val next_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(SZ_BRPORT){ Wire(){Bool()} } }
+  val next_ren = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_rlast = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_rcnt = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BVLEN)} }
+  val next_raddr = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_roplen = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BOPL)} }
+  val next_rblen = VecBuf(SHIFT_BUF_READ){ Vec(SZ_BRPORT){ Wire(){Bool()} } }
 
-  val reg_ren = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false))}
-  val reg_rlast = GenArray(SHIFT_BUF_READ){ Reg(){ Bool() } }
-  val reg_rcnt = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BVLEN)} }
-  val reg_raddr = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val reg_roplen = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BOPL)} }
-  val reg_rblen = GenBuf(SHIFT_BUF_READ){ GenArray(SZ_BRPORT){ Reg(){Bool()} } }
+  val reg_ren = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false))}
+  val reg_rlast = Vec(SHIFT_BUF_READ){ Reg(){ Bool() } }
+  val reg_rcnt = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BVLEN)} }
+  val reg_raddr = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val reg_roplen = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BOPL)} }
+  val reg_rblen = VecBuf(SHIFT_BUF_READ){ Vec(SZ_BRPORT){ Reg(){Bool()} } }
 
   for (i <- 0 until SHIFT_BUF_READ){
     reg_ren(i) := next_ren(i)
@@ -211,17 +211,17 @@ class vuVXU_Banked8_Expand extends Component
     when (io.seq_regid_imm.vt_zero) { next_rblen(0)(7) := Bool(false) }
   }
 
-  val next_wen = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
-  val next_wlast = GenArray(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
-  val next_wcnt = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BVLEN)} }
-  val next_waddr = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
-  val next_wsel = GenArray(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
+  val next_wen = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
+  val next_wlast = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
+  val next_wcnt = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BVLEN)} }
+  val next_waddr = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_wsel = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
 
-  val reg_wen = GenArray(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
-  val reg_wlast = GenArray(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
-  val reg_wcnt = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
-  val reg_waddr = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val reg_wsel = GenArray(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
+  val reg_wen = Vec(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
+  val reg_wlast = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
+  val reg_wcnt = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
+  val reg_waddr = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val reg_wsel = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
 
   for (i <- 0 until SHIFT_BUF_WRITE)
   {
@@ -302,47 +302,47 @@ class vuVXU_Banked8_Expand extends Component
     next_wsel(0) := Bits("d3", 3)
   }
 
-  val next_viu = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_viu_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VIU_FN)} }
-  val next_viu_utidx = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VLEN)} }
-  val next_viu_imm = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_DATA)} }
-  val next_vau0 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau0_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU0_FN)} }
-  val next_vau1 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau1_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU1_FN)} }
-  val next_vau2 = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vau2_fn = GenArray(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU2_FN)} }
-  val next_mem_cmd = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=4) } }
-  val next_mem_typ = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
-  val next_mem_typ_float = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
-  val next_imm = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_DATA) } }
-  val next_imm2 = GenArray(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_XIMM2) } }
-  val next_vaq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vldq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vsdq = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_utmemop = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vaqld = GenArray(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_viu = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_viu_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VIU_FN)} }
+  val next_viu_utidx = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VLEN)} }
+  val next_viu_imm = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_DATA)} }
+  val next_vau0 = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vau0_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU0_FN)} }
+  val next_vau1 = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vau1_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU1_FN)} }
+  val next_vau2 = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vau2_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU2_FN)} }
+  val next_mem_cmd = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=4) } }
+  val next_mem_typ = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
+  val next_mem_typ_float = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
+  val next_imm = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_DATA) } }
+  val next_imm2 = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_XIMM2) } }
+  val next_vaq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vldq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vsdq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_utmemop = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
+  val next_vaqld = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
 
-  val reg_viu = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_viu_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VIU_FN)} }
-  val reg_viu_utidx = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VLEN)} }
-  val reg_viu_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
-  val reg_vau0 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau0_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU0_FN)} }
-  val reg_vau1 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau1_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU1_FN)} }
-  val reg_vau2 = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vau2_fn = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU2_FN)} }
-  val reg_mem_cmd = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=4) } }
-  val reg_mem_typ = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=3) } }
-  val reg_mem_typ_float = GenArray(SHIFT_BUF_READ){ Reg(){ Bits(width=1) } }
-  val reg_imm = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
-  val reg_imm2 = GenArray(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_XIMM2)} }
-  val reg_vaq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vldq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vsdq = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_utmemop = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vaqld = GenArray(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_viu = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_viu_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VIU_FN)} }
+  val reg_viu_utidx = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VLEN)} }
+  val reg_viu_imm = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
+  val reg_vau0 = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vau0_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU0_FN)} }
+  val reg_vau1 = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vau1_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU1_FN)} }
+  val reg_vau2 = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vau2_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU2_FN)} }
+  val reg_mem_cmd = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=4) } }
+  val reg_mem_typ = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=3) } }
+  val reg_mem_typ_float = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=1) } }
+  val reg_imm = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
+  val reg_imm2 = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_XIMM2)} }
+  val reg_vaq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vldq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vsdq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_utmemop = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
+  val reg_vaqld = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
 
   for (i <- 0 until SHIFT_BUF_READ)
   {
@@ -493,7 +493,7 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_read.rcnt := reg_rcnt(0)
   io.expand_read.raddr := reg_raddr(0)
   io.expand_read.roplen := reg_roplen(0)
-  io.expand_read.rblen := reg_rblen(0).flatten()
+  io.expand_read.rblen := reg_rblen(0).toBits()
 
   io.expand_write.wen := reg_wen(0)
   io.expand_write.wlast := reg_wlast(0)

@@ -66,11 +66,11 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int, useLastPtr: Boolean = false) extends Co
 
   val empty = !full && (read_ptr === write_ptr)
 
-  val data_next = GenArray(DEPTH){ Wire(){ Bits(width=DATA_SIZE) } }
-  val data_array = GenArray(DEPTH){ Reg(){ Bits(width=DATA_SIZE) } }
+  val data_next = Vec(DEPTH){ Wire(){ Bits(width=DATA_SIZE) } }
+  val data_array = Vec(DEPTH){ Reg(){ Bits(width=DATA_SIZE) } }
 
-  val last_next = GenArray(DEPTH){ Wire(){ Bool() } }
-  val last_array = GenArray(DEPTH){ Reg(){ Bool() } }
+  val last_next = Vec(DEPTH){ Wire(){ Bool() } }
+  val last_array = Vec(DEPTH){ Reg(){ Bool() } }
   
   data_array := data_next
   last_array := last_next
