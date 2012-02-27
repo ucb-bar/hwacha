@@ -5,6 +5,42 @@ import Node._
 import Constants._
 import Commands._
 
+class io_vxu_issue_tvec extends Bundle
+{
+  val vf = new io_vf()
+
+  val active = Bool(OUTPUT)
+
+  val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
+  val issue_to_seq = new io_vxu_issue_to_seq().asOutput
+  val issue_to_lane = new io_vxu_issue_to_lane().asOutput
+  val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
+
+  val vec_ackq = new io_vec_ackq
+
+  val vxu_cmdq = new io_vxu_cmdq().flip()
+  val vxu_immq = new io_vxu_immq().flip()
+  val vxu_imm2q = new io_vxu_imm2q().flip()
+  
+  val valid = new io_vxu_issue_fire().asOutput
+  val ready = Bool(INPUT)
+  val dhazard = new io_vxu_issue_reg().asOutput
+  val shazard = new io_vxu_issue_fu().asOutput
+  val bhazard = new io_vxu_issue_op().asOutput
+  val fn = new io_vxu_issue_fn().asOutput
+  val decoded = new io_vxu_issue_regid_imm().asOutput
+
+  val pending_store = Bool(INPUT)
+
+  val irb_cmdb = new io_vxu_cmdq()
+  val irb_imm1b = new io_vxu_immq()
+  val irb_imm2b = new io_vxu_imm2q()
+  val irb_cntb = new io_vxu_cntq()
+  val irb_to_issue = new io_irb_to_issue().flip()
+
+  val cpu_exception = new io_cpu_exception().flip()
+}
+
 class vuVXU_Issue_TVEC extends Component
 {
   val io = new io_vxu_issue_tvec()

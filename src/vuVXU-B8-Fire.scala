@@ -4,6 +4,29 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vxu_fire extends Bundle
+{
+  val tvec_valid = new io_vxu_issue_fire().asInput
+  val tvec_ready = Bool(INPUT)
+  val tvec_dhazard = new io_vxu_issue_reg().asInput
+  val tvec_shazard = new io_vxu_issue_fu().asInput
+  val tvec_bhazard = new io_vxu_issue_op().asInput
+  val tvec_fn = new io_vxu_issue_fn().asInput
+  val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val vt_valid = new io_vxu_issue_fire().asInput
+  val vt_ready = Bool(INPUT)
+  val vt_dhazard = new io_vxu_issue_reg().asInput
+  val vt_shazard = new io_vxu_issue_fu().asInput
+  val vt_bhazard = new io_vxu_issue_op().asInput
+  val vt_fn = new io_vxu_issue_fn().asInput
+  val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val fire = new io_vxu_issue_fire().asOutput
+  val fire_fn = new io_vxu_issue_fn().asOutput
+  val fire_regid_imm = new io_vxu_issue_regid_imm().asOutput
+}
+
 class vuVXU_Banked8_Fire extends Component
 {
   val io = new io_vxu_fire()

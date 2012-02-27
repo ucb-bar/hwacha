@@ -4,6 +4,72 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vxu_expand_read extends Bundle
+{
+  val ren = Bool()
+  val rlast = Bool()
+  val rcnt = Bits(width = SZ_BVLEN)
+  val raddr = Bits(width = SZ_BREGLEN)
+  val roplen = Bits(width = SZ_BOPL)
+  val rblen = Bits(width = SZ_BRPORT)
+}
+
+class io_vxu_expand_write extends Bundle
+{
+  val wen = Bool()
+  val wlast = Bool()
+  val wcnt = Bits(width = SZ_BVLEN)
+  val waddr = Bits(width = SZ_BREGLEN)
+  val wsel = Bits(width = SZ_BWPORT)
+}
+
+class io_vxu_expand_fu_fn extends Bundle
+{
+  val viu = Bool()
+  val viu_fn = Bits(width = SZ_VIU_FN)
+  val viu_utidx = Bits(width = SZ_VLEN)
+  val viu_imm = Bits(width = SZ_DATA)
+}
+
+class io_vxu_expand_lfu_fn extends Bundle
+{
+  val vau0 = Bool()
+  val vau0_fn = Bits(width = SZ_VAU0_FN)
+  val vau1 = Bool()
+  val vau1_fn = Bits(width = SZ_VAU1_FN)
+  val vau2 = Bool()
+  val vau2_fn = Bits(width = SZ_VAU2_FN)
+  val mem = new io_vxu_mem_cmd()
+  val imm = Bits(width = SZ_DATA)
+  val imm2 = Bits(width = SZ_XIMM2)
+  val vaq = Bool()
+  val vldq = Bool()
+  val vsdq = Bool()
+  val utmemop = Bool()
+  val vaqld = Bool()
+}
+
+class io_vxu_expand_to_hazard extends Bundle
+{
+  val ren = Bool()
+  val wen = Bool()
+}
+
+class io_vxu_expand extends Bundle
+{
+  val seq_to_expand = new io_vxu_seq_to_expand().asInput
+  val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput
+
+  val seq = new io_vxu_seq_fu().asInput
+  val seq_fn = new io_vxu_seq_fn().asInput
+  val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
+
+  val expand_read = new io_vxu_expand_read().asOutput
+  val expand_write = new io_vxu_expand_write().asOutput
+  val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
+  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
+}
+
 class vuVXU_Banked8_Expand extends Component 
 {
   val io = new io_vxu_expand

@@ -6,6 +6,12 @@ import Constants._
 import Commands._
 import queues._
 
+class io_irb_to_issue extends Bundle 
+{
+  val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
+  val cnt_rtag = Bits(SZ_IRB_CNT, OUTPUT)
+}
+
 class io_vu_irb extends Bundle 
 {
   val irb_enq_cmdb = new io_vxu_cmdq().flip()

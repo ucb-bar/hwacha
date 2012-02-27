@@ -4,6 +4,84 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vxu_seq_fu extends Bundle
+{
+  val viu = Bool()
+  val vau0 = Bool()
+  val vau1 = Bool()
+  val vau2 = Bool()
+  val vaq = Bool()
+  val vldq = Bool()
+  val vsdq = Bool()
+}
+
+class io_vxu_seq_fn extends Bundle
+{
+  val viu = Bits(width = SZ_VIU_FN)
+  val vau0 = Bits(width = SZ_VAU0_FN)
+  val vau1 = Bits(width = SZ_VAU1_FN)
+  val vau2 = Bits(width = SZ_VAU2_FN)
+}
+
+class io_vxu_seq_regid_imm extends Bundle
+{
+  val cnt = Bits(width = SZ_BVLEN)
+  val utidx = Bits(width = SZ_VLEN)
+  val vs_zero = Bool()
+  val vt_zero = Bool()
+  val vr_zero = Bool()
+  val vs = Bits(width = SZ_BREGLEN)
+  val vt = Bits(width = SZ_BREGLEN)
+  val vr = Bits(width = SZ_BREGLEN)
+  val vd = Bits(width = SZ_BREGLEN)
+  val qcnt = UFix(width = 5)
+  val mem = new io_vxu_mem_cmd()
+  val imm = Bits(width = SZ_DATA)
+  val imm2 = Bits(width = SZ_XIMM2)
+  val utmemop = Bool()
+  val vaqld = Bool()
+  val irb = new io_vxu_irb_bundle()
+}
+
+class io_vxu_seq_to_hazard extends Bundle
+{
+  val stall = Bits(width = SZ_STALL)
+  val last = Bool()
+}
+
+class io_vxu_seq_to_expand extends Bundle
+{
+  val last = Bool()
+}
+
+class io_seq_to_irb extends Bundle
+{
+  val last = Bool(OUTPUT)
+  val update_imm1 = new io_valid()( new io_irbUpdateReq(SZ_VIMM, 3) )
+  val update_cnt = new io_valid()( new io_irbUpdateReq(SZ_VLEN, 3) )
+}
+
+class io_vxu_seq extends Bundle
+{
+  val issue_to_seq = new io_vxu_issue_to_seq().asInput
+  val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
+  val seq_to_expand = new io_vxu_seq_to_expand().asOutput
+
+  val qstall = new io_qstall().asInput
+
+  val fire = new io_vxu_issue_fire().asInput
+  val fire_fn = new io_vxu_issue_fn().asInput
+  val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val seq = new io_vxu_seq_fu().asOutput
+  val seq_fn = new io_vxu_seq_fn().asOutput
+  val seq_regid_imm = new io_vxu_seq_regid_imm().asOutput
+
+  val seq_to_irb = new io_seq_to_irb()
+
+  val cpu_exception = new io_cpu_exception().flip()  
+}
+
 class vuVXU_Banked8_Seq extends Component
 {
   val io = new io_vxu_seq()

@@ -4,6 +4,40 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vxu_hazard_to_issue extends Bundle
+{
+  val pending_memop = Bool()
+}
+
+class io_vxu_hazard extends Bundle
+{
+  val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
+  val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
+  val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
+  val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
+  val lane_to_hazard = new io_lane_to_hazard().asInput
+
+  val tvec_valid = new io_vxu_issue_fire().asInput
+  val tvec_ready = Bool(OUTPUT)
+  val tvec_dhazard = new io_vxu_issue_reg().asInput
+  val tvec_shazard = new io_vxu_issue_fu().asInput
+  val tvec_bhazard = new io_vxu_issue_op().asInput
+  val tvec_fn = new io_vxu_issue_fn().asInput
+  val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val vt_valid = new io_vxu_issue_fire().asInput
+  val vt_ready = Bool(OUTPUT)
+  val vt_dhazard = new io_vxu_issue_reg().asInput
+  val vt_shazard = new io_vxu_issue_fu().asInput
+  val vt_bhazard = new io_vxu_issue_op().asInput
+  val vt_fn = new io_vxu_issue_fn().asInput
+  val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val fire = new io_vxu_issue_fire().asInput
+  val fire_fn = new io_vxu_issue_fn().asInput
+  val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+}
+
 class vuVXU_Banked8_Hazard extends Component
 {
   val io = new io_vxu_hazard()

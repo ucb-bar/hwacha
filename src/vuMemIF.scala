@@ -6,6 +6,25 @@ import Constants._
 import queues._
 import hardfloat._
 
+class io_vu_memif extends Bundle
+{
+  val vaq_deq = new io_ready_valid()({ new io_vpaq_bundle() }).flip()
+  val vaq_ack = Bool(OUTPUT)
+  val vaq_nack = Bool(OUTPUT)
+
+  val vsdq_deq = new io_ready_valid()({ Bits(width = 65) }).flip()
+  val vsdq_ack = Bool(OUTPUT)
+  val vsdq_nack = Bool(OUTPUT)
+
+  val vldq_deq_rtag = new io_ready_valid()({ Bits(width = 8) }).flip()
+  val vldq_ack = Bool(OUTPUT)
+  val vldq_nack = Bool(OUTPUT)
+  val vldq_enq = new io_ready_valid()({ new io_queue_reorder_qcnt_enq_bundle(65, 8) })
+
+  val mem_req = new io_dmem_req()
+  val mem_resp = new io_dmem_resp().flip()
+}
+
 class vuMemIF extends Component
 {
   val io = new io_vu_memif()

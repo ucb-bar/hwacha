@@ -22,7 +22,7 @@ class io_vu_evac extends Bundle
   val vcntq = new io_vxu_cntq().flip()
 
   val vsdq = new io_vsdq()
-  val vaq  = new io_lane_vaq()
+  val vaq  = new io_vvaq()
 }
 
 class vuEvac extends Component

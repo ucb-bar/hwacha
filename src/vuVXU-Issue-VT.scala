@@ -6,6 +6,42 @@ import Constants._
 import Commands._
 import Instructions._
 
+class io_vf extends Bundle
+{
+  val active = Bool(OUTPUT)
+  val fire = Bool(OUTPUT)
+  val stop = Bool(INPUT)
+  val pc = Bits(SZ_ADDR, OUTPUT)
+  val vlen = Bits(SZ_VLEN, OUTPUT)
+  val nxregs = Bits(SZ_REGCNT, OUTPUT)
+  val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
+}
+
+class io_vxu_issue_vt extends Bundle
+{
+  val illegal = Bool(OUTPUT)
+
+  val imem_req = new io_imem_req()
+  val imem_resp = new io_imem_resp().flip()
+
+  val vf = new io_vf().flip()
+
+  val valid = new io_vxu_issue_fire().asOutput
+  val ready = Bool(INPUT)
+  val dhazard = new io_vxu_issue_reg().asOutput
+  val shazard = new io_vxu_issue_fu().asOutput
+  val bhazard = new io_vxu_issue_op().asOutput
+  val fn = new io_vxu_issue_fn().asOutput
+  val decoded = new io_vxu_issue_regid_imm().asOutput
+
+  val irb_cntb = new io_vxu_cntq()
+
+  val issue_to_irb = new io_issue_to_irb()
+  val irb_to_issue = new io_irb_to_issue().flip()
+
+  val cpu_exception = new io_cpu_exception().flip()
+}
+
 class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()

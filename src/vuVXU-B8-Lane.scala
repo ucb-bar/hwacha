@@ -36,7 +36,13 @@ class VMUIO extends Bundle
   val vsdq_bits = Bits(SZ_DATA, OUTPUT)
 }
 
-class vuVXU_LaneIO extends Bundle 
+class io_lane_to_hazard extends Bundle
+{
+  val rlast = Bool()
+  val wlast = Bool()
+}
+
+class io_vxu_lane extends Bundle 
 {
   val cp = new CPIO()
   val cp_dfma = new io_cp_dfma()
@@ -53,7 +59,7 @@ class vuVXU_LaneIO extends Bundle
 
 class vuVXU_Banked8_Lane extends Component
 {
-  val io = new vuVXU_LaneIO()
+  val io = new io_vxu_lane()
 
   val conn = new ArrayBuffer[BankToBankIO]
   var first = true
