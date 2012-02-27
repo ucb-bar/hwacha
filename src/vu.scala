@@ -190,13 +190,12 @@ class vu extends Component
   memif.io.vaq_deq <> vpaq_arb.io.out
   // vpaq arbiter, register chosen
   val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
-  val reg_vpaq_arb_chosen2 = Reg(reg_vpaq_arb_chosen)
 
   // ack, nacks
-  val vpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen2 === Bits(0)
+  val vpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(0)
   val vpaq_nack = memif.io.vaq_nack
   
-  val vpfpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen2 === Bits(1)
+  val vpfpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(1)
   val vpfpaq_nack = memif.io.vaq_nack
   
   vpaq.io.ack := vpaq_ack

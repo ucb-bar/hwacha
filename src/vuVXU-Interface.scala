@@ -150,6 +150,7 @@ class io_dmem_vec_resp_bundle extends Bundle
 
 class io_dmem_req_bundle extends Bundle
 {
+  val kill = Bool()
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
   val idx = Bits(width = PGIDX_BITS)
