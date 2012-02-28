@@ -242,16 +242,16 @@ class vuVXU_Issue_TVEC extends Component
 
   when (fire_vcfg)
   {
-    next_vlen := io.vxu_immq.bits(10,0)
-    next_nxregs := io.vxu_immq.bits(16,11)
-    next_nfregs := io.vxu_immq.bits(22,17)
-    next_bactive := io.vxu_immq.bits(30,23)
-    next_bcnt := io.vxu_immq.bits(34,31)
+    next_vlen := io.vxu_immq.bits(RG_XCMD_VLEN)
+    next_nxregs := io.vxu_immq.bits(RG_XCMD_NXREGS)
+    next_nfregs := io.vxu_immq.bits(RG_XCMD_NFREGS)
+    next_bactive := io.vxu_immq.bits(RG_XCMD_BACTIVE)
+    next_bcnt := io.vxu_immq.bits(RG_XCMD_BCNT)
     next_stride := next_nxregs + next_nfregs - Bits(1,2)
   }
   when (fire_setvl)
   {
-    next_vlen := io.vxu_immq.bits(10,0)
+    next_vlen := io.vxu_immq.bits(RG_XCMD_VLEN)
   }
   when (fire_vf)
   {

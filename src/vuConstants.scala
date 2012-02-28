@@ -20,6 +20,10 @@ object Constants
   val RG_XCMD_VD = (11,6)
   val RG_XCMD_VS = (5,0)
   val RG_XCMD_VLEN = (10,0)
+  val RG_XCMD_NXREGS = (16,11)
+  val RG_XCMD_NFREGS = (22,17)
+  val RG_XCMD_BACTIVE = (30,23)
+  val RG_XCMD_BCNT = (34,31)
 
   val SZ_VIMM      = 64
   val SZ_XIMM      = 64
