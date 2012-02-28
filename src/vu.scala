@@ -188,6 +188,8 @@ class vu extends Component
   // tlb vpaq hookup
   // enqueue everything but the page number from virtual queue
   vpaq.io.enq.valid := tlb_vec_hit
+  vpaq.io.enq.bits.checkcnt := Reg(vvaq.io.deq.bits.checkcnt)
+  vpaq.io.enq.bits.cnt := Reg(vvaq.io.deq.bits.cnt)
   vpaq.io.enq.bits.cmd := Reg(vvaq.io.deq.bits.cmd)
   vpaq.io.enq.bits.typ := Reg(vvaq.io.deq.bits.typ)
   vpaq.io.enq.bits.typ_float := Reg(vvaq.io.deq.bits.typ_float)
@@ -217,7 +219,18 @@ class vu extends Component
   vpfpaq.io.enq.bits.ppn := io.vec_pftlb_resp.ppn
 
   // vpaq arbiter, port 0: vpaq
-  vpaq_arb.io.in(0) <> vpaq.io.deq
+  // vpaq deq port is valid when it's not checking the cnt or when the cnt is higher than expected
+  vpaq_count.io.qcnt2 := vpaq.io.deq.bits.cnt
+  val prev_vpaq_deq_fire_checkcnt = Reg(){ Bool() }
+  // can't fire looking at checkcnt when it speculatively fired looking at the checkcnt in the previous cycle
+  // since the counter only retires non speculatively
+  val vpaq_deq_head_ok = !vpaq.io.deq.bits.checkcnt || !prev_vpaq_deq_fire_checkcnt && vpaq_count.io.watermark2
+  val vpaq_deq_valid = vpaq.io.deq.valid && vpaq_deq_head_ok
+  val vpaq_deq_ready = vpaq_arb.io.in(0).ready && vpaq_deq_head_ok
+  val vpaq_deq_fire_checkcnt = vpaq_deq_valid && vpaq_deq_ready && vpaq.io.deq.bits.checkcnt
+  vpaq_arb.io.in(0).valid := vpaq_deq_valid
+  vpaq.io.deq.ready := vpaq_deq_ready
+  vpaq_arb.io.in(0).bits <> vpaq.io.deq.bits
   // vpaq arbiter, port1: vpfpaq
   vpaq_arb.io.in(1) <> vpfpaq.io.deq
   // vpaq arbiter, output
@@ -235,13 +248,16 @@ class vu extends Component
   vpaq.io.ack := vpaq_ack
   vpaq.io.nack := vpaq_nack
 
+  // remember if vpaq deq fired the previous cycle
+  prev_vpaq_deq_fire_checkcnt := vpaq_deq_fire_checkcnt && !vpaq_nack
+
   vpfpaq.io.ack := vpfpaq_ack
   vpfpaq.io.nack := vpfpaq_nack
   
   // vpaq counts occupied space
   vpaq_count.io.qcnt := vxu.io.qcnt
   // vpaq occupies an entry, when it accepts an entry from vvaq
-  vpaq_count.io.inc := tlb_vec_hit
+  vpaq_count.io.inc := tlb_vec_hit && vpaq.io.enq.ready
   // vpaq frees an entry, when the memory system drains it
   vpaq_count.io.dec := vpaq_ack
 

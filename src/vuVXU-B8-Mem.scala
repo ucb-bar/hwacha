@@ -9,6 +9,7 @@ import hardfloat._
 class io_vxu_mem extends Bundle
 {
   val lane_vaq_valid = Bool(INPUT)
+  val lane_vaq_check = new io_vxu_mem_check().asInput
   val lane_vaq_mem = new io_vxu_mem_cmd().asInput
   val lane_vaq_imm = Bits(SZ_DATA, INPUT)
   val lane_vaq_utmemop = Bool(INPUT)
@@ -30,12 +31,14 @@ class vuVXU_Banked8_Mem extends Component
   val io = new io_vxu_mem()
 
   val reg_lane_vaq_valid = Reg(io.lane_vaq_valid)
+  val reg_lane_vaq_check = Reg(io.lane_vaq_check)
   val reg_lane_vaq_mem = Reg(io.lane_vaq_mem)
   val reg_lane_vaq_imm = Reg(io.lane_vaq_imm)
   val reg_lane_vaq_rf = Reg(Mux(io.lane_vaq_utmemop, io.lane_vaq_rf, Bits(0,SZ_DATA)))
 
   val addr = reg_lane_vaq_imm + reg_lane_vaq_rf
   io.vmu_vaq_valid := reg_lane_vaq_valid
+  io.vmu_vaq_bits <> reg_lane_vaq_check
   io.vmu_vaq_bits <> reg_lane_vaq_mem
   io.vmu_vaq_bits.idx := addr(PGIDX_BITS-1, 0)
   io.vmu_vaq_bits.vpn := addr(VADDR_BITS, PGIDX_BITS)

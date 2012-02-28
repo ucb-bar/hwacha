@@ -24,6 +24,7 @@ class ExpanderIO extends Bundle
 class VMUIO extends Bundle 
 {
   val vaq_val   = Bool(OUTPUT)
+  val vaq_check = new io_vxu_mem_check().asOutput
   val vaq_mem = new io_vxu_mem_cmd().asOutput
   val vaq_imm = Bits(SZ_DATA, OUTPUT)
   val vaq_utmemop = Bool(OUTPUT)
@@ -126,6 +127,7 @@ class vuVXU_Banked8_Lane extends Component
   val vau2_fn   = lfu.io.vau2_fn
 
   io.vmu.vaq_val   := lfu.io.vaq_val
+  io.vmu.vaq_check <> lfu.io.vaq_check
   io.vmu.vaq_mem <> lfu.io.vaq_mem
   io.vmu.vaq_imm := lfu.io.vaq_imm
   io.vmu.vaq_utmemop := lfu.io.vaq_utmemop

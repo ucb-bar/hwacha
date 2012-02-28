@@ -46,7 +46,6 @@ class io_vxu_expand_lfu_fn extends Bundle
   val vldq = Bool()
   val vsdq = Bool()
   val utmemop = Bool()
-  val vaqld = Bool()
 }
 
 class io_vxu_expand_to_hazard extends Bundle
@@ -387,7 +386,6 @@ class vuVXU_Banked8_Expand extends Component
   val next_vldq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vsdq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_utmemop = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
-  val next_vaqld = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
 
   val reg_viu = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_viu_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VIU_FN)} }
@@ -408,7 +406,6 @@ class vuVXU_Banked8_Expand extends Component
   val reg_vldq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vsdq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_utmemop = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
-  val reg_vaqld = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
 
   for (i <- 0 until SHIFT_BUF_READ)
   {
@@ -431,7 +428,6 @@ class vuVXU_Banked8_Expand extends Component
     reg_vldq(i) := next_vldq(i)
     reg_vsdq(i) := next_vsdq(i)
     reg_utmemop(i) := next_utmemop(i)
-    reg_vaqld(i) := next_vaqld(i)
   }
 
   for(i <- 0 until SHIFT_BUF_READ-1)
@@ -455,7 +451,6 @@ class vuVXU_Banked8_Expand extends Component
     next_vldq(i) := reg_vldq(i+1)
     next_vsdq(i) := reg_vsdq(i+1)
     next_utmemop(i) := reg_utmemop(i+1)
-    next_vaqld(i) := reg_vaqld(i+1)
   }
   
   next_viu(SHIFT_BUF_READ-1) := Bool(false)
@@ -477,7 +472,6 @@ class vuVXU_Banked8_Expand extends Component
   next_vldq(SHIFT_BUF_READ-1) := Bool(false)
   next_vsdq(SHIFT_BUF_READ-1) := Bool(false)
   next_utmemop(SHIFT_BUF_READ-1) := Bool(false)
-  next_vaqld(SHIFT_BUF_READ-1) := Bool(false)
 
   when (io.seq.viu)
   {
@@ -537,7 +531,6 @@ class vuVXU_Banked8_Expand extends Component
     next_imm(0) := io.seq_regid_imm.imm
     next_imm2(0) := io.seq_regid_imm.imm2
     next_utmemop(0) := io.seq_regid_imm.utmemop
-    next_vaqld(0) := io.seq_regid_imm.vaqld
   }
   when (io.seq.vldq)
   {
@@ -586,5 +579,4 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.vldq := reg_vldq(0)
   io.expand_lfu_fn.vsdq := reg_vsdq(0)
   io.expand_lfu_fn.utmemop := reg_utmemop(0)
-  io.expand_lfu_fn.vaqld := reg_vaqld(0)
 }

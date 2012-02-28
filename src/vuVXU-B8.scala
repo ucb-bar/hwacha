@@ -172,6 +172,7 @@ class vuVXU extends Component
   // memory interface
   val b8mem = new vuVXU_Banked8_Mem()
   b8mem.io.lane_vaq_valid := b8lane.io.vmu.vaq_val
+  b8mem.io.lane_vaq_check <> b8lane.io.vmu.vaq_check
   b8mem.io.lane_vaq_mem <> b8lane.io.vmu.vaq_mem
   b8mem.io.lane_vaq_imm := b8lane.io.vmu.vaq_imm
   b8mem.io.lane_vaq_utmemop := b8lane.io.vmu.vaq_utmemop

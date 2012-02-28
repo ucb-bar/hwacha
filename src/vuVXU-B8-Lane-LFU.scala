@@ -18,7 +18,6 @@ class ExpanderToLFUIO extends Bundle
   val vldq = Bool(OUTPUT)
   val vsdq = Bool(OUTPUT)
   val utmemop = Bool(OUTPUT)
-  val vaqld = Bool(OUTPUT)
 }
 
 class LFUIO extends Bundle 
@@ -35,10 +34,10 @@ class LFUIO extends Bundle
   val vau2_val = Bool(OUTPUT)
   val vau2_fn = Bits(SZ_VAU2_FN, OUTPUT)
   val vaq_val = Bool(OUTPUT)
+  val vaq_check = new io_vxu_mem_check().asOutput
   val vaq_mem = new io_vxu_mem_cmd().asOutput
   val vaq_imm = Bits(SZ_DATA, OUTPUT)
   val vaq_utmemop = Bool(OUTPUT)
-  val vaqld = Bool(OUTPUT)
   val vldq_rdy = Bool(OUTPUT)
   val vsdq_val = Bool(OUTPUT)
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
@@ -96,6 +95,8 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val reg_vau1_fn = Reg(){ Bits(width = SZ_VAU1_FN) }
   val reg_vau2 = Reg(resetVal = Bool(false))
   val reg_vau2_fn = Reg(){ Bits(width = SZ_VAU2_FN) }
+  val reg_vaq_checkcnt = Reg(resetVal = Bool(false))
+  val reg_vaq_cnt = Reg(){ UFix(width = 4) }
   val reg_vaq_mem = Reg(){ new io_vxu_mem_cmd() }
   val reg_vsdq_mem = Reg(){ new io_vxu_mem_cmd() }
   val reg_imm = Reg(){ Bits(width = SZ_DATA) }
@@ -104,7 +105,6 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val reg_vldq = Reg(resetVal = Bool(false))
   val reg_vsdq = Reg(resetVal = Bool(false))
   val reg_utmemop = Reg(resetVal = Bool(false))
-  val reg_vaqld = Reg(resetVal = Bool(false))
 
   when (io.expand.vau0)
   {
@@ -136,14 +136,16 @@ class vuVXU_Banked8_Lane_LFU extends Component
     reg_vau2 := Bool(false)
   }
 
+  reg_vaq_checkcnt := Bool(false)
   when (io.expand.vaq)
   {
     reg_vaq := Bool(true)
+    reg_vaq_checkcnt := Bool(true)
+    reg_vaq_cnt := io.expand_rcnt + UFix(1,4)
     reg_vaq_mem := io.expand.mem
     reg_imm := io.expand.imm
     reg_imm2 := io.expand.imm2
     reg_utmemop := io.expand.utmemop
-    reg_vaqld := io.expand.vaqld
   }
   .elsewhen (!reg_vgu_cnt.orR)
   {
@@ -186,10 +188,11 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau2_val := reg_vau2
   io.vau2_fn := reg_vau2_fn
   io.vaq_val := reg_vaq
+  io.vaq_check.checkcnt := reg_vaq_checkcnt
+  io.vaq_check.cnt := reg_vaq_cnt
   io.vaq_mem <> reg_vaq_mem
   io.vaq_imm := reg_imm
   io.vaq_utmemop := reg_utmemop
-  io.vaqld := reg_vaqld
   io.vldq_rdy := io.expand.vldq | reg_vldq
   io.vsdq_val := reg_vsdq
   io.vsdq_mem <> reg_vsdq_mem

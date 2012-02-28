@@ -153,6 +153,12 @@ class io_qstall extends Bundle
   val vsdq = Bool()
 }
 
+class io_vxu_mem_check extends Bundle
+{
+  val checkcnt = Bool()
+  val cnt = UFix(width = 4)
+}
+
 class io_vxu_mem_cmd extends Bundle
 {
   val cmd = Bits(width = 4)
@@ -162,6 +168,8 @@ class io_vxu_mem_cmd extends Bundle
 
 class io_vvaq_bundle extends Bundle
 {
+  val checkcnt = Bool()
+  val cnt = UFix(width = 4)
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
   val typ_float = Bits(width = 1)
@@ -171,6 +179,8 @@ class io_vvaq_bundle extends Bundle
 
 class io_vpaq_bundle extends Bundle
 {
+  val checkcnt = Bool()
+  val cnt = UFix(width = 4)
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
   val typ_float = Bits(width = 1)
