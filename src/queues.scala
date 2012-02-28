@@ -10,6 +10,11 @@ object log2up
   def apply(in: Int) = if (in == 1) 1 else ceil(log(in)/log(2)).toInt
 }
 
+object log2down
+{
+  def apply(x : Int)=floor(log(x)/log(2.0)).toInt
+}
+
 class io_ready_valid[T <: Data]()(data: => T) extends Bundle
 {
   val ready = Bool(INPUT)
@@ -365,6 +370,41 @@ class queuePipe1PF[T <: Data](data: => T) extends Component
 //  ctrl.io.enq_rdy   <> io.enq.ready
 //  dpath.io.deq_bits <> io.deq.bits
 //}
+
+class io_qcnt(w: Int) extends Bundle
+{
+  val inc = Bool(INPUT)
+  val dec = Bool(INPUT)
+  val watermark = Bool(OUTPUT)
+  val qcnt = UFix(w, INPUT)
+  val full = Bool(OUTPUT)
+  val empty = Bool(OUTPUT)
+}
+
+class qcnt(reset_cnt: Int, max_cnt: Int, use_qcnt: Boolean = true, ready_cnt: Int = 0) extends Component
+{
+  val size = log2down(max_cnt) + 1
+
+  val io = new io_qcnt(size)
+  val count = Reg(resetVal = UFix(reset_cnt, size))
+  val next_count = Wire(){ UFix(width = size) }
+
+  next_count := count
+  when (io.inc ^ io.dec)
+  {
+    when (io.inc) {next_count := count + UFix(1)}
+    when (!io.inc) {next_count := count - UFix(1)}
+  }
+
+  count := next_count
+
+  // we need to look at what's in the queue on the next cycle
+  if (!use_qcnt) io.watermark := next_count >= UFix(ready_cnt)
+  else io.watermark := next_count >= io.qcnt
+
+  io.full := (count === UFix(reset_cnt,size))
+  io.empty := (count === UFix(0,size))
+}
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {

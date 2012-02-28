@@ -148,8 +148,8 @@ class vu extends Component
   val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
   val vpaq_arb = new hArbiter(2)({ new io_vpaq() })
 
-  val vvaq_count = new queuecnt(16,16)
-  val vpaq_count = new queuecnt(0,16)
+  val vvaq_count = new qcnt(16,16)
+  val vpaq_count = new qcnt(0,16)
 
   // tlb signals
   val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
@@ -270,8 +270,8 @@ class vu extends Component
   val vsdq_arb = new hArbiter(2)( new io_vsdq() )
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
 
-  val vsdq_count = new queuecnt(16,16)
-  val vsack_count = new queuecnt(31,31)
+  val vsdq_count = new qcnt(16,16)
+  val vsack_count = new qcnt(31,31)
 
   // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
@@ -307,7 +307,7 @@ class vu extends Component
   // vsack occupies an entry, when the lane kicks out an entry
   vsack_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
   // there is no stores in flight, when the counter is full
-  vxu.io.pending_store := !vsack_count.io.zero
+  vxu.io.pending_store := !vsack_count.io.full
 
 
   // memif interface
