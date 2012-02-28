@@ -239,9 +239,9 @@ class vu extends Component
   vpfpaq.io.nack := vpfpaq_nack
   
   // vpaq counts occupied space
-  //vpaq_count.io.qcnt := vpaq.io.deq.bits.cnt
+  vpaq_count.io.qcnt := vxu.io.qcnt
   // vpaq occupies an entry, when it accepts an entry from vvaq
-  vpaq_count.io.inc := tlb_vec_hit && vvaq.io.deq.valid && vpaq.io.enq.ready
+  vpaq_count.io.inc := tlb_vec_hit
   // vpaq frees an entry, when the memory system drains it
   vpaq_count.io.dec := vpaq_ack
 
@@ -284,7 +284,8 @@ class vu extends Component
   evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
 
   // vsdq arbiter, output
-  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vsack_count.io.watermark// vsdq.io.enq.ready
+  vsdq_arb.io.out.ready :=
+    vsdq_count.io.watermark && vpaq_count.io.watermark && vsack_count.io.watermark // vsdq.io.enq.ready
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
