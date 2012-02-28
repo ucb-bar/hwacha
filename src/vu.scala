@@ -138,6 +138,11 @@ class vu extends Component
   // vmu
   val memif = new vuMemIF()
 
+  val vvaq_count = new qcnt(16,16)
+  val vpaq_count = new qcnt(0,16)
+  val vsdq_count = new qcnt(16,16)
+  val vsreq_count = new qcnt(31,31) // vector stores in flight
+  val vlreq_count = new qcnt(128,128) // vector loads in flight
 
   // address queues and counters
   val vvaq_arb = new hArbiter(2)( new io_vvaq() )
@@ -147,9 +152,6 @@ class vu extends Component
   val vpaq = new queue_spec(16)({ new io_vpaq_bundle() })
   val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
   val vpaq_arb = new hArbiter(2)({ new io_vpaq() })
-
-  val vvaq_count = new qcnt(16,16)
-  val vpaq_count = new qcnt(0,16)
 
   // tlb signals
   val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
@@ -164,7 +166,11 @@ class vu extends Component
   // vvaq arbiter, port 1: evac
   vvaq_arb.io.in(1) <> evac.io.vaq
   // vvaq arbiter, output
-  vvaq_arb.io.out.ready := vvaq_count.io.watermark // vaq.io.enq.ready
+  // ready signal a little bit conservative, since checking space for both
+  // vsreq and vlreq, not looking at the request type
+  // however, this is okay since normally you don't hit this limit
+  vvaq_arb.io.out.ready :=
+    vvaq_count.io.watermark && vsreq_count.io.watermark && vlreq_count.io.watermark // vaq.io.enq.ready
   vvaq.io.enq.valid := vvaq_arb.io.out.valid
   vvaq.io.enq.bits := vvaq_arb.io.out.bits
 
@@ -278,16 +284,20 @@ class vu extends Component
   // vldq has an embedded counter
   // vldq counts occupied space
   // vldq occupies an entry, when it accepts an entry from the memory system
-  // vldq fress an entry, when the lane consumes it
+  // vldq frees an entry, when the lane consumes it
   vldq.io.qcnt := vxu.io.qcnt
+
+  // vlreq counts available space
+  vlreq_count.io.qcnt := vxu.io.qcnt
+  // vlreq frees an entry, when the vector load data queue consumes an entry
+  vlreq_count.io.inc := vxu.io.lane_vldq.ready
+  // vlreq occupies an entry, when the memory system kicks out an entry
+  vlreq_count.io.dec := memif.io.vldq_ack
 
 
   // vector store data queue and counter
   val vsdq_arb = new hArbiter(2)( new io_vsdq() )
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
-
-  val vsdq_count = new qcnt(16,16)
-  val vsack_count = new qcnt(31,31)
 
   // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
@@ -300,8 +310,7 @@ class vu extends Component
   evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
 
   // vsdq arbiter, output
-  vsdq_arb.io.out.ready :=
-    vsdq_count.io.watermark && vpaq_count.io.watermark && vsack_count.io.watermark // vsdq.io.enq.ready
+  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vpaq_count.io.watermark // vsdq.io.enq.ready
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
@@ -317,14 +326,14 @@ class vu extends Component
   // vsdq occupies an entry, when the lane kicks out an entry
   vsdq_count.io.dec := vxu.io.lane_vsdq_dec
 
-  // vsack counts available space
-  vsack_count.io.qcnt := vxu.io.qcnt
-  // vsack frees an entry, when the memory system acks the store
-  vsack_count.io.inc := memif.io.vsdq_ack
-  // vsack occupies an entry, when the lane kicks out an entry
-  vsack_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
+  // vsreq counts available space
+  vsreq_count.io.qcnt := vxu.io.qcnt
+  // vsreq frees an entry, when the memory system acks the store
+  vsreq_count.io.inc := memif.io.vsdq_ack
+  // vsreq occupies an entry, when the lane kicks out an entry
+  vsreq_count.io.dec := vxu.io.lane_vsdq.valid && vsdq.io.enq.ready
   // there is no stores in flight, when the counter is full
-  vxu.io.pending_store := !vsack_count.io.full
+  vxu.io.pending_store := !vsreq_count.io.full
 
 
   // memif interface
