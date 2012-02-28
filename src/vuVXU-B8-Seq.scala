@@ -141,7 +141,9 @@ class vuVXU_Banked8_Seq extends Component
   val next_vt = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_vr = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_vd = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
-  val next_mem = Vec(8){ Wire(){new io_vxu_mem_cmd()} }
+  val next_mem_cmd = Vec(8){ Wire(){Bits(width=4)} }
+  val next_mem_typ = Vec(8){ Wire(){Bits(width=3)} }
+  val next_mem_typ_float = Vec(8){ Wire(){Bits(width=1)} }
   val next_imm = Vec(8){ Wire(){Bits(width=SZ_DATA)} }
   val next_imm2 = Vec(8){ Wire(){Bits(width=SZ_XIMM2)} }
   val next_irb_imm1_rtag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_IMM1) } }
@@ -177,7 +179,9 @@ class vuVXU_Banked8_Seq extends Component
   val array_vt = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
   val array_vr = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
   val array_vd = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val array_mem = Vec(8){ Reg(){new io_vxu_mem_cmd()} }
+  val array_mem_cmd = Vec(8){ Reg(){Bits(width=4)} }
+  val array_mem_typ = Vec(8){ Reg(){Bits(width=3)} }
+  val array_mem_typ_float = Vec(8){ Reg(){Bits(width=1)} }
   val array_imm = Vec(8){ Reg(){Bits(width=SZ_DATA)} }
   val array_imm2 = Vec(8){ Reg(){Bits(width=SZ_XIMM2)} }
   val array_irb_imm1_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_IMM1) } }
@@ -213,7 +217,9 @@ class vuVXU_Banked8_Seq extends Component
   array_vt := next_vt
   array_vr := next_vr
   array_vd := next_vd
-  array_mem:= next_mem
+  array_mem_cmd := next_mem_cmd
+  array_mem_typ := next_mem_typ
+  array_mem_typ_float := next_mem_typ_float
   array_imm := next_imm
   array_imm2 := next_imm2
   array_irb_imm1_rtag := next_irb_imm1_rtag
@@ -251,7 +257,9 @@ class vuVXU_Banked8_Seq extends Component
   next_vt := array_vt
   next_vr := array_vr
   next_vd := array_vd
-  next_mem := array_mem
+  next_mem_cmd := array_mem_cmd
+  next_mem_typ := array_mem_typ
+  next_mem_typ_float := array_mem_typ_float
   next_imm := array_imm
   next_imm2 := array_imm2
   next_irb_imm1_rtag := array_irb_imm1_rtag
@@ -356,7 +364,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr1, io.issue_to_seq.stride)
     next_vs_zero.write(next_ptr1, io.fire_regid_imm.vs_zero)
     next_vs.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vs))
-    next_mem.write(next_ptr1, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr1, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr1, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
 
     next_val.write(next_ptr2, Bool(true))
     next_last.write(next_ptr2, last)
@@ -366,9 +376,11 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr2, io.issue_to_seq.stride)
     next_vt_zero.write(next_ptr2, io.fire_regid_imm.vt_zero)
     next_vt.write(next_ptr2, Cat(Bits("d0",2),io.fire_regid_imm.vt))
-    next_mem.write(next_ptr2, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr2, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr2, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr2, io.fire_regid_imm.mem.typ_float)
 
-   next_val.write(next_ptr3, Bool(true))
+    next_val.write(next_ptr3, Bool(true))
     next_last.write(next_ptr3, last)
     next_vldq.write(next_ptr3, Bool(true))
     next_utmemop.write(next_ptr3, Bool(true))
@@ -394,7 +406,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr1, io.issue_to_seq.stride)
     next_vs_zero.write(next_ptr1, io.fire_regid_imm.vs_zero)
     next_vs.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vs))
-    next_mem.write(next_ptr1, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr1, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr1, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
     next_imm.write(next_ptr1, io.fire_regid_imm.imm)
 
     next_val.write(next_ptr2, Bool(true))
@@ -422,7 +436,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr1, io.issue_to_seq.stride)
     next_vs_zero.write(next_ptr1, io.fire_regid_imm.vs_zero)
     next_vs.write(next_ptr1, Cat(Bits("d0",2),io.fire_regid_imm.vs))
-    next_mem.write(next_ptr1, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr1, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr1, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
     next_imm.write(next_ptr1, io.fire_regid_imm.imm)
 
     next_val.write(next_ptr2, Bool(true))
@@ -433,7 +449,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr2, io.issue_to_seq.stride)
     next_vt_zero.write(next_ptr2, io.fire_regid_imm.vt_zero)
     next_vt.write(next_ptr2, Cat(Bits("d0",2),io.fire_regid_imm.vt))
-    next_mem.write(next_ptr2, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr2, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr2, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr2, io.fire_regid_imm.mem.typ_float)
 
     next_irb_imm1_rtag.write(next_ptr2, io.fire_regid_imm.irb.imm1_rtag)
     next_irb_cnt_rtag.write(next_ptr2, io.fire_regid_imm.irb.cnt_rtag)
@@ -450,7 +468,9 @@ class vuVXU_Banked8_Seq extends Component
     next_vaqld.write(next_ptr1, Bool(true))
     next_vlen.write(next_ptr1, io.issue_to_seq.vlen)
     next_stride.write(next_ptr1, io.issue_to_seq.stride)
-    next_mem.write(next_ptr1, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr1, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr1, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
     next_imm.write(next_ptr1, Cat(Bits(0,1), io.fire_regid_imm.imm(63,0)))
     next_imm2.write(next_ptr1, io.fire_regid_imm.imm2)
 
@@ -477,7 +497,9 @@ class vuVXU_Banked8_Seq extends Component
     next_vaq.write(next_ptr1, Bool(true))
     next_vlen.write(next_ptr1, io.issue_to_seq.vlen)
     next_stride.write(next_ptr1, io.issue_to_seq.stride)
-    next_mem.write(next_ptr1, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr1, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr1, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr1, io.fire_regid_imm.mem.typ_float)
     next_imm.write(next_ptr1, Cat(Bits(0,1), io.fire_regid_imm.imm(63,0)))
     next_imm2.write(next_ptr1, io.fire_regid_imm.imm2)
 
@@ -488,7 +510,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride.write(next_ptr2, io.issue_to_seq.stride)
     next_vt_zero.write(next_ptr2, io.fire_regid_imm.vt_zero)
     next_vt.write(next_ptr2, Cat(Bits("d0",2),io.fire_regid_imm.vt))
-    next_mem.write(next_ptr2, io.fire_regid_imm.mem)
+    next_mem_cmd.write(next_ptr2, io.fire_regid_imm.mem.cmd)
+    next_mem_typ.write(next_ptr2, io.fire_regid_imm.mem.typ)
+    next_mem_typ_float.write(next_ptr2, io.fire_regid_imm.mem.typ_float)
 
     next_irb_imm1_rtag.write(next_ptr2, io.fire_regid_imm.irb.imm1_rtag)
     next_irb_cnt_rtag.write(next_ptr2, io.fire_regid_imm.irb.cnt_rtag)
@@ -696,7 +720,9 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.vr := array_vr.read(reg_ptr)
   io.seq_regid_imm.vd := array_vd.read(reg_ptr)
   io.seq_regid_imm.qcnt := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, 5), io.seq_regid_imm.cnt + UFix(2, 5))
-  io.seq_regid_imm.mem := array_mem.read(reg_ptr)
+  io.seq_regid_imm.mem.cmd := array_mem_cmd.read(reg_ptr)
+  io.seq_regid_imm.mem.typ := array_mem_typ.read(reg_ptr)
+  io.seq_regid_imm.mem.typ_float := array_mem_typ_float.read(reg_ptr)
   io.seq_regid_imm.imm := array_imm.read(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2.read(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
