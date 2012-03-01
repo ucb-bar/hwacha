@@ -25,37 +25,7 @@ class io_arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Bundle
   val chosen = Bits(log2up(n),OUTPUT)
 }
 
-// h for hwacha, r for rocket
-// for some reason, Chisel is creating two declarations
-// of the same module
-class hArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
-{
-  val io = new io_arbiter(n)(data)
-
-  io.in(0).ready := io.out.ready
-  for (i <- 1 to n-1)
-    io.in(i).ready := !io.in(i-1).valid && io.in(i-1).ready
-
-  var dout = io.in(n-1).bits
-  var choose = Bits(n-1)
-  for (i <- 1 to n-1)
-  {
-    val actual = n-1-i
-    dout = Mux(io.in(actual).valid, io.in(actual).bits, dout)
-    choose = Mux(io.in(actual).valid, Bits(actual,log2up(n)), choose)
-  }
-
-  io.chosen := choose
-
-  var vout = io.in(0).valid
-  for (i <- 1 to n-1)
-    vout = vout || io.in(i).valid
-
-  vout <> io.out.valid
-  dout <> io.out.bits
-}
-
-class rArbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
+class Arbiter[T <: Data](n: Int)(data: => io_ready_valid[T]) extends Component
 {
   val io = new io_arbiter(n)(data)
 

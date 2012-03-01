@@ -145,13 +145,13 @@ class vu extends Component
   val vlreq_count = new qcnt(128,128) // vector loads in flight
 
   // address queues and counters
-  val vvaq_arb = new hArbiter(2)( new io_vvaq() )
+  val vvaq_arb = new Arbiter(2)( new io_vvaq() )
   val vvaq = new queue_spec(16)({ new io_vvaq_bundle() })
   val vpfvaq = new queue_spec(16)({ new io_vvaq_bundle() })
   
   val vpaq = new queue_spec(16)({ new io_vpaq_bundle() })
   val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
-  val vpaq_arb = new hArbiter(2)({ new io_vpaq() })
+  val vpaq_arb = new Arbiter(2)({ new io_vpaq() })
 
   // tlb signals
   val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
@@ -296,7 +296,7 @@ class vu extends Component
 
 
   // vector store data queue and counter
-  val vsdq_arb = new hArbiter(2)( new io_vsdq() )
+  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
 
   // vsdq arbiter, port 0: lane vsdq
