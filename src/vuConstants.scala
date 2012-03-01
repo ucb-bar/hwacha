@@ -80,7 +80,7 @@ object Constants
 
   // pipe stages
   val INT_STAGES   = 2
-  val IMUL_STAGES  = 3
+  val IMUL_STAGES  = 4
   val FMA_STAGES   = 5
   val FCONV_STAGES = 3
 
