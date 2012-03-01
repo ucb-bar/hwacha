@@ -377,9 +377,7 @@ class vuVXU_Banked8_Expand extends Component
   val next_vau1_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU1_FN)} }
   val next_vau2 = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
   val next_vau2_fn = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_VAU2_FN)} }
-  val next_mem_cmd = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=4) } }
-  val next_mem_typ = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
-  val next_mem_typ_float = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=3) } }
+  val next_mem = Vec(SHIFT_BUF_READ){ Wire(){ new io_vxu_mem_cmd() } }
   val next_imm = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_DATA) } }
   val next_imm2 = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_XIMM2) } }
   val next_vaq = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
@@ -397,9 +395,7 @@ class vuVXU_Banked8_Expand extends Component
   val reg_vau1_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU1_FN)} }
   val reg_vau2 = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
   val reg_vau2_fn = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_VAU2_FN)} }
-  val reg_mem_cmd = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=4) } }
-  val reg_mem_typ = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=3) } }
-  val reg_mem_typ_float = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=1) } }
+  val reg_mem = Vec(SHIFT_BUF_READ){ Reg(){ new io_vxu_mem_cmd() } }
   val reg_imm = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_DATA)} }
   val reg_imm2 = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_XIMM2)} }
   val reg_vaq = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false)) }
@@ -419,9 +415,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_vau1_fn(i) := next_vau1_fn(i)
     reg_vau2(i) := next_vau2(i)
     reg_vau2_fn(i) := next_vau2_fn(i)
-    reg_mem_cmd(i) := next_mem_cmd(i)
-    reg_mem_typ(i) := next_mem_typ(i)
-    reg_mem_typ_float(i) := next_mem_typ_float(i)
+    reg_mem(i) := next_mem(i)
     reg_imm(i) := next_imm(i)
     reg_imm2(i) := next_imm2(i)
     reg_vaq(i) := next_vaq(i)
@@ -442,9 +436,7 @@ class vuVXU_Banked8_Expand extends Component
     next_vau1_fn(i) := reg_vau1_fn(i+1)
     next_vau2(i) := reg_vau2(i+1)
     next_vau2_fn(i) := reg_vau2_fn(i+1)
-    next_mem_cmd(i) := reg_mem_cmd(i+1)
-    next_mem_typ(i) := reg_mem_typ(i+1)
-    next_mem_typ_float(i) := reg_mem_typ_float(i+1)
+    next_mem(i) := reg_mem(i+1)
     next_imm(i) := reg_imm(i+1)
     next_imm2(i) := reg_imm2(i+1)
     next_vaq(i) := reg_vaq(i+1)
@@ -463,9 +455,9 @@ class vuVXU_Banked8_Expand extends Component
   next_vau1_fn(SHIFT_BUF_READ-1) := Bits("d0", SZ_VAU1_FN)
   next_vau2(SHIFT_BUF_READ-1) := Bool(false)
   next_vau2_fn(SHIFT_BUF_READ-1) := Bits("d0", SZ_VAU2_FN)
-  next_mem_cmd(SHIFT_BUF_READ-1) := Bits("d0", 4)
-  next_mem_typ(SHIFT_BUF_READ-1) := Bits("d0", 3)
-  next_mem_typ_float(SHIFT_BUF_READ-1) := Bits("d0", 1)
+  next_mem(SHIFT_BUF_READ-1).cmd := Bits("d0", 4)
+  next_mem(SHIFT_BUF_READ-1).typ := Bits("d0", 3)
+  next_mem(SHIFT_BUF_READ-1).typ_float := Bits("d0", 1)
   next_imm(SHIFT_BUF_READ-1) := Bits("d0", SZ_DATA)
   next_imm2(SHIFT_BUF_READ-1) := Bits("d0", SZ_XIMM2)
   next_vaq(SHIFT_BUF_READ-1) := Bool(false)
@@ -525,9 +517,7 @@ class vuVXU_Banked8_Expand extends Component
   when (io.seq.vaq)
   {
     next_vaq(0) := Bool(true)
-    next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
-    next_mem_typ(0) := io.seq_regid_imm.mem.typ
-    next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
+    next_mem(0) := io.seq_regid_imm.mem
     next_imm(0) := io.seq_regid_imm.imm
     next_imm2(0) := io.seq_regid_imm.imm2
     next_utmemop(0) := io.seq_regid_imm.utmemop
@@ -539,9 +529,7 @@ class vuVXU_Banked8_Expand extends Component
   when (io.seq.vsdq)
   {
     next_vsdq(0) := Bool(true)
-    next_mem_cmd(0) := io.seq_regid_imm.mem.cmd
-    next_mem_typ(0) := io.seq_regid_imm.mem.typ
-    next_mem_typ_float(0) := io.seq_regid_imm.mem.typ_float
+    next_mem(0) := io.seq_regid_imm.mem
   }
 
   io.expand_to_hazard.ren := reg_ren(0)
@@ -570,9 +558,7 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.vau1_fn := reg_vau1_fn(0)
   io.expand_lfu_fn.vau2 := reg_vau2(0)
   io.expand_lfu_fn.vau2_fn := reg_vau2_fn(0)
-  io.expand_lfu_fn.mem.cmd := reg_mem_cmd(0)
-  io.expand_lfu_fn.mem.typ := reg_mem_typ(0)
-  io.expand_lfu_fn.mem.typ_float := reg_mem_typ_float(0)
+  io.expand_lfu_fn.mem := reg_mem(0)
   io.expand_lfu_fn.imm := reg_imm(0)
   io.expand_lfu_fn.imm2 := reg_imm2(0)
   io.expand_lfu_fn.vaq := reg_vaq(0)

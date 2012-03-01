@@ -516,7 +516,7 @@ class vuVXU_Banked8_Seq extends Component
       next_vsdq(reg_ptr) := Bool(false)
       next_utmemop(reg_ptr) := Bool(false)
     }
-    when (!array_last(reg_ptr).toBool)
+    .otherwise
     {
       when (next_vlen(reg_ptr) < io.issue_to_seq.bcnt)
       {
@@ -731,7 +731,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_irb.update_imm1.bits.addr := array_irb_imm1_rtag(reg_ptr).toUFix
   io.seq_to_irb.update_imm1.bits.data := 
     Mux(io.seq.vldq || io.seq.vsdq, array_imm(reg_ptr), 
-	array_irb_pc_next(reg_ptr))
+        array_irb_pc_next(reg_ptr))
 
   io.seq_to_irb.update_cnt.bits.addr := array_irb_cnt_rtag(reg_ptr).toUFix
   io.seq_to_irb.update_cnt.bits.data := array_irb_cnt(reg_ptr) + io.seq_regid_imm.cnt
