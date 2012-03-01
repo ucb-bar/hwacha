@@ -503,7 +503,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vr(reg_ptr) := array_vr(reg_ptr) + array_stride(reg_ptr)
     next_vd(reg_ptr) := array_vd(reg_ptr) + array_stride(reg_ptr)
 
-    when (array_last(reg_ptr).toBool)
+    when (array_last(reg_ptr))
     {
       next_val(reg_ptr) := Bool(false)
       next_last(reg_ptr) := Bool(false)
@@ -644,9 +644,9 @@ class vuVXU_Banked8_Seq extends Component
   val reg_vldq_stall = Reg(resetVal = Bool(false))
   val reg_vsdq_stall = Reg(resetVal = Bool(false))
 
-  when (current_vaq_val.toBool) { reg_vaq_stall := io.qstall.vaq }
-  when (current_vldq_val.toBool) { reg_vldq_stall := io.qstall.vldq }
-  when (current_vsdq_val.toBool) { reg_vsdq_stall := io.qstall.vsdq }
+  when (current_vaq_val) { reg_vaq_stall := io.qstall.vaq }
+  when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
+  when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
 
   val stall =
     io.cpu_exception.exception |

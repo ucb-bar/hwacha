@@ -519,13 +519,13 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   val deq_data_val_int = Reg(resetVal = Bool(false))
 
-  deq_data_val_int := vb_array(read_ptr).toBool
+  deq_data_val_int := vb_array(read_ptr)
 
   when(roq_rtag_deq) { write_ptr := write_ptr + UFix(1) }
   when(roq_rtag_deq_spec) { write_ptr_spec := write_ptr_spec + UFix(1) }
   when(roq_data_deq)
   {
-    deq_data_val_int := vb_array(read_ptr_next).toBool
+    deq_data_val_int := vb_array(read_ptr_next)
     read_ptr := read_ptr_next
   }
 

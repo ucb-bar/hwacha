@@ -109,10 +109,10 @@ class vuIRB extends Component
 
   val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs
   val decode_vf = vf
-  val decode_deq_ircmdb = deq_ircmdb.toBool
-  val decode_deq_irimm1b = deq_irimm1b.toBool
-  val decode_deq_irimm2b = deq_irimm2b.toBool
-  val decode_deq_ircntb = deq_ircntb.toBool
+  val decode_deq_ircmdb = deq_ircmdb
+  val decode_deq_irimm1b = deq_irimm1b
+  val decode_deq_irimm2b = deq_irimm2b
+  val decode_deq_ircntb = deq_ircntb
 
   ircmdb.io.deq.ready  := 
     io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_ircmdb) | 
