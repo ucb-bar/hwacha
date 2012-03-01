@@ -153,18 +153,32 @@ class vu extends Component
   val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
   val vpaq_arb = new Arbiter(2)({ new io_vpaq() })
 
+  val VVAQARB_LANE = 0
+  val VVAQARB_EVAC = 1
+  val VPAQARB_VPAQ = 0
+  val VPAQARB_VPFPAQ = 1
+
   // tlb signals
   val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
-  val tlb_vec_hit = Reg(tlb_vec_req) && Reg(io.vec_tlb_req.ready) && !io.vec_tlb_resp.miss
-  val tlb_vec_miss = Reg(tlb_vec_req) && Reg(io.vec_tlb_req.ready) && io.vec_tlb_resp.miss
+  val tlb_vec_req_kill = Wire(){ Bool() }
+  val tlb_vec_hit = Reg(tlb_vec_req) && !tlb_vec_req_kill && Reg(io.vec_tlb_req.ready) && !io.vec_tlb_resp.miss
+  val tlb_vec_miss = Reg(tlb_vec_req) && !tlb_vec_req_kill && (Reg(!io.vec_tlb_req.ready) || io.vec_tlb_resp.miss)
+  val tlb_vec_ack = tlb_vec_hit && vpaq.io.enq.ready
+  val tlb_vec_nack = tlb_vec_miss || !vpaq.io.enq.ready
+  tlb_vec_req_kill := Reg(tlb_vec_nack)
+
   val tlb_vecpf_req = vpfvaq.io.deq.valid && vpfpaq.io.enq.ready
-  val tlb_vecpf_hit = Reg(tlb_vecpf_req) && Reg(io.vec_pftlb_req.ready) && !io.vec_pftlb_resp.miss
-  val tlb_vecpf_miss = Reg(tlb_vecpf_req) && Reg(io.vec_pftlb_req.ready) && io.vec_pftlb_resp.miss
+  val tlb_vecpf_req_kill = Wire(){ Bool() }
+  val tlb_vecpf_hit = Reg(tlb_vecpf_req) && !tlb_vecpf_req_kill && Reg(io.vec_pftlb_req.ready) && !io.vec_pftlb_resp.miss
+  val tlb_vecpf_miss = Reg(tlb_vecpf_req) && !tlb_vecpf_req_kill && (Reg(!io.vec_pftlb_req.ready) || io.vec_pftlb_resp.miss)
+  val tlb_vecpf_ack = tlb_vecpf_hit && vpaq.io.enq.ready
+  val tlb_vecpf_nack = tlb_vecpf_miss || !vpaq.io.enq.ready
+  tlb_vecpf_req_kill := Reg(tlb_vecpf_nack)
 
   // vvaq arbiter, port 0: lane vaq
-  vvaq_arb.io.in(0) <> vxu.io.lane_vaq
+  vvaq_arb.io.in(VVAQARB_LANE) <> vxu.io.lane_vaq
   // vvaq arbiter, port 1: evac
-  vvaq_arb.io.in(1) <> evac.io.vaq
+  vvaq_arb.io.in(VVAQARB_EVAC) <> evac.io.vaq
   // vvaq arbiter, output
   // ready signal a little bit conservative, since checking space for both
   // vsreq and vlreq, not looking at the request type
@@ -177,7 +191,7 @@ class vu extends Component
   // vvaq counts available space
   vvaq_count.io.qcnt := vxu.io.qcnt
   // vvaq frees an entry, when vvaq kicks out an entry to vpaq
-  vvaq_count.io.inc := tlb_vec_hit && vpaq.io.enq.ready
+  vvaq_count.io.inc := tlb_vec_ack
   // vvaq occupies an entry, when the lane kicks out an entry
   vvaq_count.io.dec := vxu.io.lane_vaq_dec
   
@@ -188,8 +202,8 @@ class vu extends Component
   io.vec_tlb_req.bits.vpn := vvaq.io.deq.bits.vpn
   io.vec_tlb_req.bits.asid := Bits(0)
   vvaq.io.deq.ready := vpaq.io.enq.ready
-  vvaq.io.ack := tlb_vec_hit && vpaq.io.enq.ready
-  vvaq.io.nack := tlb_vec_miss || !vpaq.io.enq.ready
+  vvaq.io.ack := tlb_vec_ack
+  vvaq.io.nack := tlb_vec_nack
 
   // tlb vpaq hookup
   // enqueue everything but the page number from virtual queue
@@ -212,8 +226,8 @@ class vu extends Component
   io.vec_pftlb_req.bits.vpn := vpfvaq.io.deq.bits.vpn
   io.vec_pftlb_req.bits.asid := Bits(0) // FIXME
   vpfvaq.io.deq.ready := vpfpaq.io.enq.ready
-  vpfvaq.io.ack := tlb_vecpf_hit && vpfpaq.io.enq.ready
-  vpfvaq.io.nack := tlb_vecpf_miss || !vpfpaq.io.enq.ready
+  vpfvaq.io.ack := tlb_vecpf_ack
+  vpfvaq.io.nack := tlb_vecpf_nack
  
   // tlb vpfpaq hookup
   // enqueue everything but the page number from virtual queue
@@ -232,23 +246,23 @@ class vu extends Component
   // since the counter only retires non speculatively
   val vpaq_deq_head_ok = !vpaq.io.deq.bits.checkcnt || !prev_vpaq_deq_fire_checkcnt && vpaq_count.io.watermark2
   val vpaq_deq_valid = vpaq.io.deq.valid && vpaq_deq_head_ok
-  val vpaq_deq_ready = vpaq_arb.io.in(0).ready && vpaq_deq_head_ok
+  val vpaq_deq_ready = vpaq_arb.io.in(VPAQARB_VPAQ).ready && vpaq_deq_head_ok
   val vpaq_deq_fire_checkcnt = vpaq_deq_valid && vpaq_deq_ready && vpaq.io.deq.bits.checkcnt
-  vpaq_arb.io.in(0).valid := vpaq_deq_valid
+  vpaq_arb.io.in(VPAQARB_VPAQ).valid := vpaq_deq_valid
   vpaq.io.deq.ready := vpaq_deq_ready
-  vpaq_arb.io.in(0).bits <> vpaq.io.deq.bits
+  vpaq_arb.io.in(VPAQARB_VPAQ).bits <> vpaq.io.deq.bits
   // vpaq arbiter, port1: vpfpaq
-  vpaq_arb.io.in(1) <> vpfpaq.io.deq
+  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> vpfpaq.io.deq
   // vpaq arbiter, output
   memif.io.vaq_deq <> vpaq_arb.io.out
   // vpaq arbiter, register chosen
   val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
 
   // ack, nacks
-  val vpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(0)
+  val vpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPAQ)
   val vpaq_nack = memif.io.vaq_nack
   
-  val vpfpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(1)
+  val vpfpaq_ack = memif.io.vaq_ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPFPAQ)
   val vpfpaq_nack = memif.io.vaq_nack
   
   vpaq.io.ack := vpaq_ack
@@ -263,7 +277,7 @@ class vu extends Component
   // vpaq counts occupied space
   vpaq_count.io.qcnt := vxu.io.qcnt
   // vpaq occupies an entry, when it accepts an entry from vvaq
-  vpaq_count.io.inc := tlb_vec_hit && vpaq.io.enq.ready
+  vpaq_count.io.inc := tlb_vec_ack
   // vpaq frees an entry, when the memory system drains it
   vpaq_count.io.dec := vpaq_ack
 
@@ -299,16 +313,13 @@ class vu extends Component
   val vsdq_arb = new Arbiter(2)( new io_vsdq() )
   val vsdq = new queue_spec(16)({ Bits(width = 65) })
 
-  // vsdq arbiter, port 0: lane vsdq
-  vsdq_arb.io.in(0).valid := vxu.io.lane_vsdq.valid
-  vsdq_arb.io.in(0).bits := vxu.io.lane_vsdq.bits
-  vxu.io.lane_vsdq.ready := vsdq_arb.io.in(0).ready
-  
-  // vsdq arbiter, port 1: evac
-  vsdq_arb.io.in(1).valid := evac.io.vsdq.valid
-  vsdq_arb.io.in(1).bits := evac.io.vsdq.bits
-  evac.io.vsdq.ready := vsdq_arb.io.in(1).ready
+  val VSDQARB_LANE = 0
+  val VSDQARB_EVAC = 1
 
+  // vsdq arbiter, port 0: lane vsdq
+  vsdq_arb.io.in(VSDQARB_LANE) <> vxu.io.lane_vsdq
+  // vsdq arbiter, port 1: evac
+  vsdq_arb.io.in(VSDQARB_EVAC) <> evac.io.vsdq
   // vsdq arbiter, output
   vsdq_arb.io.out.ready := vsdq_count.io.watermark && vpaq_count.io.watermark // vsdq.io.enq.ready
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
