@@ -403,7 +403,7 @@ class vuEvac extends Component
       io.evac_to_seq.flush := Bool(true)
       when(!io.cpu_exception.exception) 
       {
-        state := STATE_IDLE
+        state_next := STATE_IDLE
       }
     }
 
