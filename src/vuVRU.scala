@@ -75,12 +75,18 @@ class vuVRU extends Component
   val stride_decoded::setvl::Nil = cs
 
   val state = Reg(resetVal = VRU_Idle)
-  val addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
-  val last_addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
-  val stride_reg = Reg(resetVal = UFix(0, SZ_VIMM))
-  val cmd_reg = Reg(resetVal = Bits(0,SZ_XCMD_CMD))
+
   val vlen_reg = Reg(resetVal = UFix(0, SZ_VLEN))
+
+  val addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
+  val cmd_reg = Reg(resetVal = Bits(0,SZ_XCMD_CMD))
+  val vec_count_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
+  val stride_reg = Reg(resetVal = UFix(0, SZ_VIMM))
   
+  val vec_per_pf_reg = Reg(resetVal = UFix(0, OFFSET_BITS+1))
+  val vec_pf_remainder_reg = Reg(resetVal = UFix(0, OFFSET_BITS))
+  val stride_remaining_reg = Reg(resetVal = UFix(0, OFFSET_BITS))
+
   val unit_stride = (stride_decoded != Bits(0,4))
   
   val addr = io.vec_pfximm1q.bits.toUFix
@@ -95,6 +101,9 @@ class vuVRU extends Component
   val cmd_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid
   val setvl_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && setvl
 
+  val pf_len = UFix(pow(2,OFFSET_BITS).toInt)
+  val pf_len_int = pow(2,OFFSET_BITS).toInt
+
   // cmd(4)==1 -> vector store
   io.vpfvaq.bits.cmd := Mux(cmd_reg(4), M_PFW, M_PFR)
   io.vpfvaq.bits.typ := Bits(0)
@@ -102,10 +111,12 @@ class vuVRU extends Component
   io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
   io.vpfvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 
+  val idle = (state === VRU_Idle)
+
   io.vpfvaq.valid := Bool(false)
-  io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid
-  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_vec_pfximm1q && mask_vec_pfximm2q_valid
-  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_vec_pfximm2q
+  io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && idle
+  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_vec_pfximm1q && mask_vec_pfximm2q_valid && idle
+  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_vec_pfximm2q && idle
 
   switch (state)
   {
@@ -113,22 +124,64 @@ class vuVRU extends Component
     {
       when (setvl_val)
       {
-        vlen_reg := io.vec_pfcmdq.bits(RG_XCMD_VLEN).toUFix
+        vlen_reg := io.vec_pfximm1q.bits(RG_XCMD_VLEN).toUFix
       }
       .elsewhen (cmd_val)
       {
         addr_reg := addr
         cmd_reg := cmd
-        last_addr_reg := addr + (vlen_reg * stride)
         stride_reg := stride
 
-        when (stride < UFix(pow(2,OFFSET_BITS).toInt)) { state := VRU_IssueShort }
-        .otherwise { state := VRU_IssueLong }
+        when (stride < pf_len)
+        {
+          state := VRU_IssueShort
+
+          // vec_per_pf_reg = 2**OFFSET_BITS / stride(OFFSET_BITS-1, 0)
+          // Assume OFFSET_BITS >= 4, reasonable since you wouldn't
+          // want a cache line with less than two double words
+          val stride_lobits = stride(OFFSET_BITS,0)
+          var div = MuxLookup(stride(4,0),
+                        UFix(0,OFFSET_BITS+1), Array(
+            Bits(1)  -> UFix(pf_len_int/1,OFFSET_BITS+1),
+            Bits(2)  -> UFix(pf_len_int/2,OFFSET_BITS+1),
+            Bits(3)  -> UFix(pf_len_int/3,OFFSET_BITS+1),
+            Bits(4)  -> UFix(pf_len_int/4,OFFSET_BITS+1),
+            Bits(5)  -> UFix(pf_len_int/5,OFFSET_BITS+1),
+            Bits(6)  -> UFix(pf_len_int/6,OFFSET_BITS+1),
+            Bits(7)  -> UFix(pf_len_int/7,OFFSET_BITS+1),
+            Bits(8)  -> UFix(pf_len_int/8,OFFSET_BITS+1),
+            Bits(9)  -> UFix(pf_len_int/9,OFFSET_BITS+1),
+            Bits(10) -> UFix(pf_len_int/10,OFFSET_BITS+1),
+            Bits(11) -> UFix(pf_len_int/11,OFFSET_BITS+1),
+            Bits(12) -> UFix(pf_len_int/12,OFFSET_BITS+1),
+            Bits(13) -> UFix(pf_len_int/13,OFFSET_BITS+1),
+            Bits(14) -> UFix(pf_len_int/14,OFFSET_BITS+1),
+            Bits(15) -> UFix(pf_len_int/15,OFFSET_BITS+1),
+            Bits(16) -> UFix(pf_len_int/16,OFFSET_BITS+1)
+          ))
+
+          for (i <- (pf_len_int/16)-1 to 1 by -1)
+          {
+            val lo = UFix(pf_len_int/(i+1)+1)
+            val high = UFix(pf_len_int/i)
+            div = Mux(stride_lobits <= high && stride_lobits >= lo, UFix(i), div)
+          }
+
+          vec_count_reg := Mux(stride_lobits === UFix(0), Fix(0), vlen_reg)
+          vec_per_pf_reg := div
+          vec_pf_remainder_reg := pf_len - (div * stride_lobits)
+          stride_remaining_reg := stride
+        }
+        .otherwise
+        {
+          state := VRU_IssueLong
+          vec_count_reg := vlen_reg
+        }
       }
     }
     is (VRU_IssueShort)
     {
-      when (addr_reg > last_addr_reg)
+      when (vec_count_reg <= Fix(0))
       {
         state := VRU_Idle
       }
@@ -137,13 +190,17 @@ class vuVRU extends Component
         io.vpfvaq.valid := Bool(true)
         when (io.vpfvaq.ready)
         {
-          addr_reg := addr_reg + UFix(pow(2,OFFSET_BITS).toInt)
+          vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, Fix(1), Fix(0))
+          stride_remaining_reg := Mux(stride_remaining_reg <= vec_pf_remainder_reg,
+                                      stride_reg + stride_remaining_reg - vec_pf_remainder_reg,
+                                      stride_remaining_reg - vec_pf_remainder_reg)
+          addr_reg := addr_reg + pf_len
         }
       }
     }
     is (VRU_IssueLong)
     {
-      when (addr_reg > last_addr_reg)
+      when (vec_count_reg === Fix(0))
       {
         state := VRU_Idle
       }
@@ -153,6 +210,7 @@ class vuVRU extends Component
         when (io.vpfvaq.ready)
         {
           addr_reg := addr_reg + stride_reg
+          vec_count_reg := vec_count_reg - Fix(1)
         }
       }
     }
