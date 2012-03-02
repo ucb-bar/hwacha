@@ -15,14 +15,14 @@ object log2down
   def apply(x : Int)=floor(log(x)/log(2.0)).toInt
 }
 
-class io_ready_valid[T <: Data]()(data: => T) extends Bundle
+class ioDecoupled[T <: Data]()(data: => T) extends Bundle
 {
   val ready = Bool(INPUT)
   val valid = Bool(OUTPUT)
   val bits = data.asOutput
 }
 
-class io_valid[T <: Data]()(data: => T) extends Bundle
+class ioPipe[T <: Data]()(data: => T) extends Bundle
 {
   val valid = Bool(OUTPUT)
   val bits = data.asOutput
@@ -198,8 +198,8 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
 
 class io_queue[T <: Data](data: => T) extends Bundle()
 {
-  val enq = new io_ready_valid()( data ).flip()
-  val deq = new io_ready_valid()( data )
+  val enq = new ioDecoupled()( data ).flip
+  val deq = new ioDecoupled()( data )
 }
 
 class queueSimplePF[T <: Data](entries: Int)(data: => T) extends Component
@@ -410,8 +410,8 @@ class qcnt(reset_cnt: Int, max_cnt: Int) extends Component
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {
-  val enq = new io_ready_valid()( data ).flip()
-  val deq = new io_ready_valid()( data )
+  val enq = new ioDecoupled()( data ).flip
+  val deq = new ioDecoupled()( data )
 
   val ack = Bool(INPUT)
   val nack = Bool(INPUT)
@@ -480,9 +480,9 @@ class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) ex
 
 class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
-  val deq_rtag = new io_ready_valid()( {Bits(width=ROQ_TAG_SIZE)} )
-  val deq_data = new io_ready_valid()( {Bits(width=ROQ_DATA_SIZE)} )
-  val enq = new io_valid()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip()
+  val deq_rtag = new ioDecoupled()( {Bits(width=ROQ_TAG_SIZE)} )
+  val deq_data = new ioDecoupled()( {Bits(width=ROQ_DATA_SIZE)} )
+  val enq = new ioPipe()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
 
   val ack = Bool(INPUT)
   val nack = Bool(INPUT)

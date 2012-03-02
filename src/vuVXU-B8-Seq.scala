@@ -56,8 +56,8 @@ class io_vxu_seq_to_expand extends Bundle
 class io_seq_to_irb extends Bundle
 {
   val last = Bool(OUTPUT)
-  val update_imm1 = new io_valid()( new io_irbUpdateReq(SZ_VIMM, 3) )
-  val update_cnt = new io_valid()( new io_irbUpdateReq(SZ_VLEN, 3) )
+  val update_imm1 = new ioPipe()( new io_irbUpdateReq(SZ_VIMM, 3) )
+  val update_cnt = new ioPipe()( new io_irbUpdateReq(SZ_VLEN, 3) )
 }
 
 class io_vxu_seq extends Bundle
@@ -78,7 +78,7 @@ class io_vxu_seq extends Bundle
 
   val seq_to_irb = new io_seq_to_irb()
 
-  val cpu_exception = new io_cpu_exception().flip()  
+  val cpu_exception = new io_cpu_exception().flip  
 }
 
 class vuVXU_Banked8_Seq extends Component

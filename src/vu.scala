@@ -9,34 +9,34 @@ class io_vu extends Bundle
 {
   val illegal = Bool(OUTPUT)
 
-  val vec_cmdq = new io_vec_cmdq().flip()
-  val vec_ximm1q = new io_vec_ximm1q().flip()
-  val vec_ximm2q = new io_vec_ximm2q().flip()
-  val vec_cntq = new io_vec_cntq().flip()
+  val vec_cmdq = new io_vec_cmdq().flip
+  val vec_ximm1q = new io_vec_ximm1q().flip
+  val vec_ximm2q = new io_vec_ximm2q().flip
+  val vec_cntq = new io_vec_cntq().flip
   val vec_ackq = new io_vec_ackq()
 
-  val vec_pfcmdq = new io_vec_cmdq().flip()
-  val vec_pfximm1q = new io_vec_ximm1q().flip()
-  val vec_pfximm2q = new io_vec_ximm2q().flip()
+  val vec_pfcmdq = new io_vec_cmdq().flip
+  val vec_pfximm1q = new io_vec_ximm1q().flip
+  val vec_pfximm2q = new io_vec_ximm2q().flip
 
-  val cp_imul_req = new io_imul_req().flip()
+  val cp_imul_req = new io_imul_req().flip
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
   
   val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip()
+  val imem_resp = new io_imem_resp().flip
 
   val dmem_req = new io_dmem_req()
-  val dmem_resp = new io_dmem_resp().flip()
+  val dmem_resp = new io_dmem_resp().flip
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 
   val vec_tlb_req = new ioDTLB_CPU_req()
-  val vec_tlb_resp = new ioDTLB_CPU_resp().flip()
+  val vec_tlb_resp = new ioDTLB_CPU_resp().flip
 
   val vec_pftlb_req = new ioDTLB_CPU_req()
-  val vec_pftlb_resp = new ioDTLB_CPU_resp().flip()
+  val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
 }
 
 class vu extends Component

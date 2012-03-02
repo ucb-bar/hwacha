@@ -6,9 +6,9 @@ import Constants._
 
 class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
-  val enq = new io_ready_valid()( Bits(width=DATA_SIZE) ).flip()
-  val deq = new io_ready_valid()( Bits(width=DATA_SIZE) )
-  val update = new io_valid()( new io_irbUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip()
+  val enq = new ioDecoupled()( Bits(width=DATA_SIZE) ).flip
+  val deq = new ioDecoupled()( Bits(width=DATA_SIZE) )
+  val update = new ioPipe()( new io_irbUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
 
   val markLast = Bool(INPUT)
   val deq_last = Bool(OUTPUT)

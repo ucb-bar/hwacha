@@ -43,7 +43,7 @@ class vuVXU_Banked8_BankIO extends Bundle
   val active = Bool(INPUT)
   
   val in  = new BankToBankIO()
-  val out = new BankToBankIO().flip()
+  val out = new BankToBankIO().flip
   
   val rw  = new BankRWIO() 
 }

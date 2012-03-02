@@ -8,14 +8,14 @@ import scala.math._
 
 class io_vru extends Bundle
 {
-  val vpfvaq = new io_ready_valid()({ new io_vvaq_bundle() })
+  val vpfvaq = new ioDecoupled()({ new io_vvaq_bundle() })
   
   // command
-  val vec_pfcmdq = new io_vec_cmdq().flip()
+  val vec_pfcmdq = new io_vec_cmdq().flip
   // base
-  val vec_pfximm1q = new io_vec_ximm1q().flip()
+  val vec_pfximm1q = new io_vec_ximm1q().flip
   // stride
-  val vec_pfximm2q = new io_vec_ximm2q().flip()
+  val vec_pfximm2q = new io_vec_ximm2q().flip
 }
 
 class vuVRU extends Component

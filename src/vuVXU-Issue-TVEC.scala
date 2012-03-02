@@ -18,9 +18,9 @@ class io_vxu_issue_tvec extends Bundle
 
   val vec_ackq = new io_vec_ackq
 
-  val vxu_cmdq = new io_vxu_cmdq().flip()
-  val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
+  val vxu_cmdq = new io_vxu_cmdq().flip
+  val vxu_immq = new io_vxu_immq().flip
+  val vxu_imm2q = new io_vxu_imm2q().flip
   
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
@@ -36,9 +36,9 @@ class io_vxu_issue_tvec extends Bundle
   val irb_imm1b = new io_vxu_immq()
   val irb_imm2b = new io_vxu_imm2q()
   val irb_cntb = new io_vxu_cntq()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 }
 
 class vuVXU_Issue_TVEC extends Component

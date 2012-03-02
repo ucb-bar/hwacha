@@ -17,7 +17,7 @@ class CPIO extends Bundle
 
 class ExpanderIO extends Bundle
 {
-  val bank = new BankToBankIO().flip()
+  val bank = new BankToBankIO().flip
   val lfu = new ExpanderToLFUIO()
 }
 

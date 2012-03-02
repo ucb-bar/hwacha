@@ -99,13 +99,13 @@ class io_vxu_issue extends Bundle
   val illegal = Bool(OUTPUT)
 
   val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip()
+  val imem_resp = new io_imem_resp().flip
 
   val vec_ackq = new io_vec_ackq  
 
-  val vxu_cmdq = new io_vxu_cmdq().flip()
-  val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
+  val vxu_cmdq = new io_vxu_cmdq().flip
+  val vxu_immq = new io_vxu_immq().flip
+  val vxu_imm2q = new io_vxu_imm2q().flip
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
@@ -136,9 +136,9 @@ class io_vxu_issue extends Bundle
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 }
 
 class vuVXU_Issue extends Component

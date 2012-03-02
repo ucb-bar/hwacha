@@ -8,18 +8,18 @@ import Commands._
 
 class io_vu_evac extends Bundle
 {
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 
-  val irb_cmdb = new io_vxu_cmdq().flip()
-  val irb_imm1b = new io_vxu_immq().flip()
-  val irb_imm2b = new io_vxu_imm2q().flip()
-  val irb_cntb = new io_vxu_cntq().flip()
+  val irb_cmdb = new io_vxu_cmdq().flip
+  val irb_imm1b = new io_vxu_immq().flip
+  val irb_imm2b = new io_vxu_imm2q().flip
+  val irb_cntb = new io_vxu_cntq().flip
   val irb_cntb_last = Bool(INPUT)
 
-  val vcmdq = new io_vxu_cmdq().flip()
-  val vimm1q = new io_vxu_immq().flip()
-  val vimm2q = new io_vxu_imm2q().flip()
-  val vcntq = new io_vxu_cntq().flip()
+  val vcmdq = new io_vxu_cmdq().flip
+  val vimm1q = new io_vxu_immq().flip
+  val vimm2q = new io_vxu_imm2q().flip
+  val vcntq = new io_vxu_cntq().flip
 
   val vsdq = new io_vsdq()
   val vaq  = new io_vvaq()

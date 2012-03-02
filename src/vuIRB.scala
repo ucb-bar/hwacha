@@ -14,15 +14,15 @@ class io_irb_to_issue extends Bundle
 
 class io_vu_irb extends Bundle 
 {
-  val irb_enq_cmdb = new io_vxu_cmdq().flip()
-  val irb_enq_imm1b = new io_vxu_immq().flip()
-  val irb_enq_imm2b = new io_vxu_imm2q().flip()
-  val irb_enq_cntb = new io_vxu_cntq().flip()
+  val irb_enq_cmdb = new io_vxu_cmdq().flip
+  val irb_enq_imm1b = new io_vxu_immq().flip
+  val irb_enq_imm2b = new io_vxu_imm2q().flip
+  val irb_enq_cntb = new io_vxu_cntq().flip
 
-  val issue_to_irb = new io_issue_to_irb().flip()
+  val issue_to_irb = new io_issue_to_irb().flip
   val irb_to_issue = new io_irb_to_issue()
 
-  val seq_to_irb = new io_seq_to_irb().flip()
+  val seq_to_irb = new io_seq_to_irb().flip
 
   val irb_deq_cmdb = new io_vxu_cmdq()
   val irb_deq_imm1b = new io_vxu_immq()
