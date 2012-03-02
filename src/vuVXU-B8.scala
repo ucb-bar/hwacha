@@ -45,6 +45,8 @@ class io_vxu extends Bundle
   val seq_to_irb = new io_seq_to_irb()
 
   val cpu_exception = new io_cpu_exception().flip
+
+  val evac_to_seq = new io_evac_to_seq().flip()
 }
 
 class vuVXU extends Component
@@ -135,6 +137,8 @@ class vuVXU extends Component
   b8seq.io.seq_to_irb <> io.seq_to_irb
 
   b8seq.io.cpu_exception <> io.cpu_exception
+
+  b8seq.io.evac_to_seq <> io.evac_to_seq
 
   val b8expand = new vuVXU_Banked8_Expand()
 

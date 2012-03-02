@@ -32,6 +32,8 @@ class io_vu extends Bundle
 
   val cpu_exception = new io_cpu_exception().flip
 
+  val done = Bool(OUTPUT)
+
   val vec_tlb_req = new ioDTLB_CPU_req()
   val vec_tlb_resp = new ioDTLB_CPU_resp().flip
 
@@ -134,6 +136,7 @@ class vu extends Component
   evac.io.vcntq.bits := vxcntq.io.deq.bits
   evac.io.vcntq.valid := vxcntq.io.deq.valid
 
+  evac.io.evac_to_seq <> vxu.io.evac_to_seq
 
   // vmu
   val memif = new vuMemIF()

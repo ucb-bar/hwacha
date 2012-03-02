@@ -9,6 +9,8 @@ import Commands._
 class io_vu_evac extends Bundle
 {
   val cpu_exception = new io_cpu_exception().flip
+  
+  val done = Bool(OUTPUT)
 
   val irb_cmdb = new io_vxu_cmdq().flip
   val irb_imm1b = new io_vxu_immq().flip
@@ -23,6 +25,13 @@ class io_vu_evac extends Bundle
 
   val vsdq = new io_vsdq()
   val vaq  = new io_vvaq()
+
+  val evac_to_seq = new io_evac_to_seq()
+}
+
+class io_evac_to_seq extends Bundle
+{
+  val flush = Bool(OUTPUT)
 }
 
 class vuEvac extends Component
@@ -139,6 +148,9 @@ class vuEvac extends Component
 
   io.vsdq.valid := Bool(false)
   io.vsdq.bits := Bits(0)
+
+  io.done := Bool(false)
+  io.evac_to_seq.flush := Bool(false)
 
   switch (state)
   {
@@ -382,6 +394,16 @@ class vuEvac extends Component
       } . elsewhen(!io.vcntq.valid && vf) {
         state_next := STATE_VCMDQ
         io.vcmdq.ready := Bool(true)
+      }
+    }
+
+    is (STATE_DONE)
+    {
+      io.done := Bool(true)
+      io.evac_to_seq.flush := Bool(true)
+      when(!io.cpu_exception.exception) 
+      {
+        state := STATE_IDLE
       }
     }
 

@@ -79,6 +79,8 @@ class io_vxu_seq extends Bundle
   val seq_to_irb = new io_seq_to_irb()
 
   val cpu_exception = new io_cpu_exception().flip  
+
+  val evac_to_seq = new io_evac_to_seq().flip
 }
 
 class vuVXU_Banked8_Seq extends Component
@@ -529,6 +531,23 @@ class vuVXU_Banked8_Seq extends Component
   when(io.seq.vaq && !io.seq_regid_imm.utmemop)
   {
     next_imm(reg_ptr) := array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
+  }
+
+  when(io.evac_to_seq.flush) 
+  {
+    for(i <- 0 until SZ_BANK) 
+    {
+      next_val(i) := Bool(false)      
+      next_last(i) := Bool(false)
+      next_viu(i) := Bool(false)
+      next_vau0(i) := Bool(false)
+      next_vau1(i) := Bool(false)
+      next_vau2(i) := Bool(false)
+      next_vaq(i) := Bool(false)
+      next_vldq(i) := Bool(false)
+      next_vsdq(i) := Bool(false)
+      next_utmemop(i) := Bool(false)
+    }
   }
 
   val next_dep_vaq = Vec(SZ_BANK){ Wire(){ Bool() } }
