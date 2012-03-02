@@ -138,6 +138,8 @@ class vu extends Component
 
   evac.io.evac_to_seq <> vxu.io.evac_to_seq
 
+  io.done := evac.io.done
+
   // vmu
   val memif = new vuMemIF()
 
