@@ -370,7 +370,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
-  io.decoded.cnt.bits := cnt
+  io.decoded.cnt := cnt
   io.decoded.irb.imm1_rtag := io.irb_to_issue.imm1_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
   io.decoded.irb.update_imm1 := !io.valid.viu
