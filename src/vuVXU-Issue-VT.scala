@@ -34,7 +34,7 @@ class io_vxu_issue_vt extends Bundle
   val fn = new io_vxu_issue_fn().asOutput
   val decoded = new io_vxu_issue_regid_imm().asOutput
 
-  val vxu_cntq = new io_vxu_cntq()
+  val vxu_cntq = new io_vxu_cntq().flip()
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
