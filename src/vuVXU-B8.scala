@@ -61,6 +61,7 @@ class vuVXU extends Component
   issue.io.vxu_cmdq <> io.vxu_cmdq
   issue.io.vxu_immq <> io.vxu_immq
   issue.io.vxu_imm2q <> io.vxu_imm2q
+  issue.io.vxu_cntq <> io.vxu_cntq
   issue.io.pending_store <> io.pending_store
   
   issue.io.irb_cmdb <> io.irb_cmdb

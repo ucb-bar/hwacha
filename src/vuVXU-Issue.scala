@@ -44,8 +44,11 @@ class io_vxu_issue_reg extends Bundle
   val vd = Bool()
 }
 
+class io_vxu_cnt_valid extends ioPipe()( Bits(width = SZ_VLEN) )
+
 class io_vxu_issue_regid_imm extends Bundle
 {
+  val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
   val vr_zero = Bool()
@@ -57,6 +60,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_DATA)
+  val cnt = Bits(width = SZ_VLEN)
   val irb = new io_vxu_irb_bundle()
 }
 
@@ -106,6 +110,7 @@ class io_vxu_issue extends Bundle
   val vxu_cmdq = new io_vxu_cmdq().flip
   val vxu_immq = new io_vxu_immq().flip
   val vxu_imm2q = new io_vxu_imm2q().flip
+  val vxu_cntq = new io_vxu_cntq().flip
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
@@ -157,6 +162,8 @@ class vuVXU_Issue extends Component
   tvec.io.vxu_cmdq <> io.vxu_cmdq
   tvec.io.vxu_immq <> io.vxu_immq
   tvec.io.vxu_imm2q <> io.vxu_imm2q
+  tvec.io.vxu_cntq.valid := io.vxu_cntq.valid
+  tvec.io.vxu_cntq.bits := io.vxu_cntq.bits
 
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
@@ -190,11 +197,16 @@ class vuVXU_Issue extends Component
   vt.io.fn <> io.vt_fn
   vt.io.decoded <> io.vt_regid_imm
 
+  vt.io.vxu_cntq.valid := io.vxu_cntq.valid
+  vt.io.vxu_cntq.bits := io.vxu_cntq.bits
+
   vt.io.irb_cntb.ready := io.irb_cntb.ready
   vt.io.irb_to_issue <> io.irb_to_issue
   vt.io.issue_to_irb <> io.issue_to_irb
 
   vt.io.cpu_exception <> io.cpu_exception
+
+  io.vxu_cntq.ready := tvec.io.vxu_cntq.ready || vt.io.vxu_cntq.ready
 
   io.irb_cntb.valid := Mux(tvec.io.active, tvec.io.irb_cntb.valid, vt.io.irb_cntb.valid)
   io.irb_cntb.bits := Mux(tvec.io.active, tvec.io.irb_cntb.bits, vt.io.irb_cntb.bits)

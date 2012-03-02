@@ -240,7 +240,7 @@ class vuVXU_Issue_TVEC extends Component
   val reg_stride = Reg(next_stride, resetVal = Bits(63,SZ_REGLEN))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
-  val regid_base = (cnt >> 3) * reg_stride
+  val regid_base = (cnt >> UFix(3)) * reg_stride
 
   next_state := reg_state
   next_vlen := reg_vlen
@@ -281,8 +281,8 @@ class vuVXU_Issue_TVEC extends Component
   io.vf.fire := fire_vf
   io.vf.pc := io.vxu_immq.bits(31,0)
   io.vf.nxregs := reg_nxregs
-  io.vf.vlen := reg_vlen
   io.vf.imm1_rtag := io.irb_to_issue.imm1_rtag
+  io.vf.stride := reg_stride
 
   io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_seq.vlen := reg_vlen - cnt
@@ -356,8 +356,8 @@ class vuVXU_Issue_TVEC extends Component
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UFix(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
 
+  io.decoded.utidx := Bits(0)
   io.decoded.vs := Bits(0,SZ_REGLEN)
-  //io.decoded.vt := Mux(vt(5), vt_m1 + reg_nxregs, vt_m1) 
   io.decoded.vt := Mux(vt(5), vt_m1 + reg_nxregs, vt_m1) + regid_base
   io.decoded.vr := Bits(0,SZ_REGLEN)
   io.decoded.vd := Mux(vd(5), vd_m1 + reg_nxregs, vd_m1) + regid_base
@@ -371,7 +371,6 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
   io.decoded.cnt.bits := cnt
-  io.decoded.cnt.valid := io.vxu_cntq.valid
   io.decoded.irb.imm1_rtag := io.irb_to_issue.imm1_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
   io.decoded.irb.update_imm1 := !io.valid.viu

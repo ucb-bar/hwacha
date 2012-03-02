@@ -12,9 +12,9 @@ class io_vf extends Bundle
   val fire = Bool(OUTPUT)
   val stop = Bool(INPUT)
   val pc = Bits(SZ_ADDR, OUTPUT)
-  val vlen = Bits(SZ_VLEN, OUTPUT)
   val nxregs = Bits(SZ_REGCNT, OUTPUT)
   val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
+  val stride = Bits(SZ_REGLEN, OUTPUT)
 }
 
 class io_vxu_issue_vt extends Bundle
@@ -34,6 +34,7 @@ class io_vxu_issue_vt extends Bundle
   val fn = new io_vxu_issue_fn().asOutput
   val decoded = new io_vxu_issue_regid_imm().asOutput
 
+  val vxu_cntq = new io_vxu_cntq()
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
@@ -278,6 +279,8 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
+  io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.cpu_exception.exception
+
   io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.cpu_exception.exception
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
@@ -332,10 +335,14 @@ class vuVXU_Issue_VT extends Component
   val vr_m1 = Cat(Bits(0,1),vr(4,0)) - UFix(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
 
-  io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
-  io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
-  io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
-  io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1)
+  val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  val regid_base = (cnt >> UFix(3)) * io.vf.stride
+
+  io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
+  io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
+  io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base
+  io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1) + regid_base
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
@@ -344,6 +351,7 @@ class vuVXU_Issue_VT extends Component
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
+  io.decoded.cnt := cnt
 
   io.illegal := Reg(io.vf.active && (~unmasked_valid && ~decode_stop), resetVal = Bool(false))
 }

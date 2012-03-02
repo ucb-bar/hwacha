@@ -277,7 +277,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
   }
@@ -298,7 +298,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
   }
@@ -321,7 +321,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
   }
@@ -340,7 +340,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
   }
@@ -377,7 +377,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr3) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr3) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr3) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr3) := io.fire_regid_imm.irb.update_imm1
   }
@@ -405,7 +405,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -435,7 +435,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -462,7 +462,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -489,7 +489,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := Bits(0)
+    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
