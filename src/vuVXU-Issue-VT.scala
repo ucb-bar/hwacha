@@ -22,9 +22,9 @@ class io_vxu_issue_vt extends Bundle
   val illegal = Bool(OUTPUT)
 
   val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip()
+  val imem_resp = new io_imem_resp().flip
 
-  val vf = new io_vf().flip()
+  val vf = new io_vf().flip
 
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
@@ -37,9 +37,9 @@ class io_vxu_issue_vt extends Bundle
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 }
 
 class vuVXU_Issue_VT extends Component

@@ -25,7 +25,7 @@ class LFUIO extends Bundle
   val expand_rcnt = UFix(SZ_BVLEN, INPUT)
   val expand_wcnt = UFix(SZ_BVLEN, INPUT)
   
-  val expand = new ExpanderToLFUIO().flip()
+  val expand = new ExpanderToLFUIO().flip
 
   val vau0_val = Bool(OUTPUT)
   val vau0_fn = Bits(SZ_VAU0_FN, OUTPUT)

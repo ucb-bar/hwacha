@@ -8,23 +8,23 @@ class io_vxu extends Bundle
 {
   val illegal = Bool(OUTPUT)
 
-  val vxu_cmdq = new io_vxu_cmdq().flip()
-  val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
-  val vxu_cntq = new io_vxu_cntq().flip()
+  val vxu_cmdq = new io_vxu_cmdq().flip
+  val vxu_immq = new io_vxu_immq().flip
+  val vxu_imm2q = new io_vxu_imm2q().flip
+  val vxu_cntq = new io_vxu_cntq().flip
 
   val vec_ackq = new io_vec_ackq
 
-  val cp_imul_req = new io_imul_req().flip()
+  val cp_imul_req = new io_imul_req().flip
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
 
   val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip()
+  val imem_resp = new io_imem_resp().flip
 
   val lane_vaq = new io_vvaq()
-  val lane_vldq = new io_vldq().flip()
+  val lane_vldq = new io_vldq().flip
   val lane_vsdq = new io_vsdq()
 
   val lane_vaq_dec = Bool(OUTPUT)
@@ -40,11 +40,11 @@ class io_vxu extends Bundle
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val irb_to_issue = new io_irb_to_issue().flip
 
   val seq_to_irb = new io_seq_to_irb()
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 }
 
 class vuVXU extends Component

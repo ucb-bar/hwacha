@@ -17,7 +17,7 @@ class CPIO extends Bundle
 
 class ExpanderIO extends Bundle
 {
-  val bank = new BankToBankIO().flip()
+  val bank = new BankToBankIO().flip
   val lfu = new ExpanderToLFUIO()
 }
 
@@ -78,7 +78,7 @@ class vuVXU_Banked8_Lane extends Component
   for (i <- 0 until SZ_BANK) 
   {
     val bank = new vuVXU_Banked8_Bank()
-    bank.io.active := io.issue_to_lane.bactive(i).toBool
+    bank.io.active := io.issue_to_lane.bactive(i)
     
     if (first)
     { 

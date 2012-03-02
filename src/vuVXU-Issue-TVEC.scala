@@ -37,9 +37,9 @@ class io_vxu_issue_tvec extends Bundle
   val irb_imm1b = new io_vxu_immq()
   val irb_imm2b = new io_vxu_imm2q()
   val irb_cntb = new io_vxu_cntq()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip()
+  val cpu_exception = new io_cpu_exception().flip
 }
 
 class vuVXU_Issue_TVEC extends Component

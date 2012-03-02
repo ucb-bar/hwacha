@@ -176,6 +176,6 @@ class vuVXU_Banked8_FU_alu extends Component
   reg_mask   := next_mask
   reg_result := next_result
 
-  io.wen_masked := io.wen & reg_mask.toBool
+  io.wen_masked := io.wen & reg_mask
   io.out        := reg_result
 }
