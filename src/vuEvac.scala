@@ -140,6 +140,8 @@ class vuEvac extends Component
   io.vcntq.ready := Bool(false)
 
   io.vaq.valid := Bool(false)
+  io.vaq.bits.checkcnt := Bool(false)
+  io.vaq.bits.cnt := UFix(0)
   io.vaq.bits.cmd := M_XWR
   io.vaq.bits.typ := MT_D
   io.vaq.bits.typ_float := MTF_N
