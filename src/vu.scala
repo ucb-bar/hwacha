@@ -32,7 +32,11 @@ class io_vu extends Bundle
 
   val cpu_exception = new io_cpu_exception().flip
 
-  val done = Bool(OUTPUT)
+  val exception_ack_valid = Bool(OUTPUT)
+  val exception_ack_ready = Bool(INPUT)
+
+  val kill_ack_valid = Bool(OUTPUT)
+  val kill_ack_ready = Bool(INPUT)
 
   val vec_tlb_req = new ioDTLB_CPU_req()
   val vec_tlb_resp = new ioDTLB_CPU_resp().flip
@@ -138,7 +142,8 @@ class vu extends Component
 
   evac.io.evac_to_seq <> vxu.io.evac_to_seq
 
-  io.done := evac.io.done
+  io.exception_ack_valid := evac.io.done
+  io.kill_ack_valid := Bool(false)
 
   // vmu
   val memif = new vuMemIF()
