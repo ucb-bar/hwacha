@@ -76,6 +76,8 @@ class io_cpu_exception extends Bundle
 {
   val supervisor_mode = Bool(OUTPUT)
   val exception = Bool(OUTPUT)
+  val kill = Bool(OUTPUT)
+  val hold = Bool(OUTPUT)
   val addr = UFix(SZ_ADDR, OUTPUT)
 }
 
