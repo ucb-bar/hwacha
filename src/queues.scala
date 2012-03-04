@@ -375,8 +375,10 @@ class io_qcnt(w: Int) extends Bundle
 {
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
+  // this port looks at the next count
   val qcnt = UFix(w, INPUT)
   val watermark = Bool(OUTPUT)
+  // this port looks at the registered count
   val qcnt2 = UFix(w, INPUT)
   val watermark2 = Bool(OUTPUT)
   val full = Bool(OUTPUT)
@@ -402,7 +404,7 @@ class qcnt(reset_cnt: Int, max_cnt: Int) extends Component
 
   // we need to look at what's in the queue on the next cycle
   io.watermark := next_count >= io.qcnt
-  io.watermark2 := next_count >= io.qcnt2
+  io.watermark2 := count >= io.qcnt2
 
   io.full := (count === UFix(reset_cnt,size))
   io.empty := (count === UFix(0,size))
