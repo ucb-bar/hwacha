@@ -31,48 +31,62 @@ class vuVRU extends Component
 
   val cmd = io.vec_pfcmdq.bits(RG_XCMD_CMCODE)
 
-  val cs = ListLookup(cmd, 
-  //                stride     setvl
-  //                     |         |
-                    List(Bits(0,4),n), Array(
-    CMD_VVCFGIVL -> List(Bits(0,4),y),
-    CMD_VSETVL   -> List(Bits(0,4),y),
+  val cs = ListLookup(cmd,
+  //                               deq_imm2q
+  //                             deq_imm1q |
+  //                                  pf | |
+  //                  stride     setvl | | |
+  //                       |         | | | |
+                      List(Bits(0,4),n,n,n,n), Array(
+    CMD_VVCFGIVL   -> List(Bits(0,4),y,y,y,n),
+    CMD_VSETVL     -> List(Bits(0,4),y,y,y,n),
 
-    CMD_VLD      -> List(Bits(8,4),n),
-    CMD_VLW      -> List(Bits(4,4),n),
-    CMD_VLWU     -> List(Bits(4,4),n),
-    CMD_VLH      -> List(Bits(2,4),n),
-    CMD_VLHU     -> List(Bits(2,4),n),
-    CMD_VLB      -> List(Bits(1,4),n),
-    CMD_VLBU     -> List(Bits(1,4),n),
-    CMD_VSD      -> List(Bits(8,4),n),
-    CMD_VSW      -> List(Bits(4,4),n),
-    CMD_VSH      -> List(Bits(2,4),n),
-    CMD_VSB      -> List(Bits(1,4),n),
+    CMD_VLD        -> List(Bits(8,4),n,y,y,n),
+    CMD_VLW        -> List(Bits(4,4),n,y,y,n),
+    CMD_VLWU       -> List(Bits(4,4),n,y,y,n),
+    CMD_VLH        -> List(Bits(2,4),n,y,y,n),
+    CMD_VLHU       -> List(Bits(2,4),n,y,y,n),
+    CMD_VLB        -> List(Bits(1,4),n,y,y,n),
+    CMD_VLBU       -> List(Bits(1,4),n,y,y,n),
+    CMD_VSD        -> List(Bits(8,4),n,y,y,n),
+    CMD_VSW        -> List(Bits(4,4),n,y,y,n),
+    CMD_VSH        -> List(Bits(2,4),n,y,y,n),
+    CMD_VSB        -> List(Bits(1,4),n,y,y,n),
     
-    CMD_VFLD     -> List(Bits(8,4),n),
-    CMD_VFLW     -> List(Bits(4,4),n),
-    CMD_VFSD     -> List(Bits(8,4),n),
-    CMD_VFSW     -> List(Bits(4,4),n),
+    CMD_VFLD       -> List(Bits(8,4),n,y,y,n),
+    CMD_VFLW       -> List(Bits(4,4),n,y,y,n),
+    CMD_VFSD       -> List(Bits(8,4),n,y,y,n),
+    CMD_VFSW       -> List(Bits(4,4),n,y,y,n),
     
-    CMD_VLSTD    -> List(Bits(0,4),n),
-    CMD_VLSTW    -> List(Bits(0,4),n),
-    CMD_VLSTWU   -> List(Bits(0,4),n),
-    CMD_VLSTH    -> List(Bits(0,4),n),
-    CMD_VLSTHU   -> List(Bits(0,4),n),
-    CMD_VLSTB    -> List(Bits(0,4),n),
-    CMD_VLSTBU   -> List(Bits(0,4),n),
-    CMD_VSSTD    -> List(Bits(0,4),n),
-    CMD_VSSTW    -> List(Bits(0,4),n),
-    CMD_VSSTH    -> List(Bits(0,4),n),
-    CMD_VSSTB    -> List(Bits(0,4),n),
+    CMD_VLSTD      -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTW      -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTWU     -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTH      -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTHU     -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTB      -> List(Bits(0,4),n,y,y,y),
+    CMD_VLSTBU     -> List(Bits(0,4),n,y,y,y),
+    CMD_VSSTD      -> List(Bits(0,4),n,y,y,y),
+    CMD_VSSTW      -> List(Bits(0,4),n,y,y,y),
+    CMD_VSSTH      -> List(Bits(0,4),n,y,y,y),
+    CMD_VSSTB      -> List(Bits(0,4),n,y,y,y),
     
-    CMD_VFLSTD   -> List(Bits(0,4),n),
-    CMD_VFLSTW   -> List(Bits(0,4),n),
-    CMD_VFSSTD   -> List(Bits(0,4),n),
-    CMD_VFSSTW   -> List(Bits(0,4),n)))
+    CMD_VFLSTD     -> List(Bits(0,4),n,y,y,y),
+    CMD_VFLSTW     -> List(Bits(0,4),n,y,y,y),
+    CMD_VFSSTD     -> List(Bits(0,4),n,y,y,y),
+    CMD_VFSSTW     -> List(Bits(0,4),n,y,y,y),
 
-  val stride_decoded::setvl::Nil = cs
+    // instructions not relevant for prefetch (just dequeue them)
+    CMD_VF         -> List(Bits(1,4),n,n,y,n),
+    CMD_FENCE_L_V  -> List(Bits(1,4),n,n,n,n),
+    CMD_FENCE_G_V  -> List(Bits(1,4),n,n,n,n),
+    CMD_FENCE_L_CV -> List(Bits(1,4),n,n,n,n),
+    CMD_FENCE_G_CV -> List(Bits(1,4),n,n,n,n),
+    CMD_VMVV       -> List(Bits(1,4),n,n,n,n),
+    CMD_VMSV       -> List(Bits(1,4),n,n,y,n),
+    CMD_VFMVV      -> List(Bits(1,4),n,n,n,n)
+  ))
+
+  val stride_decoded::setvl::pf::deq_imm1q::deq_imm2q::Nil = cs
 
   val state = Reg(resetVal = VRU_Idle)
 
@@ -92,14 +106,11 @@ class vuVRU extends Component
   val addr = io.vec_pfximm1q.bits.toUFix
   val stride = Mux(unit_stride, stride_decoded.toUFix, io.vec_pfximm2q.bits.toUFix)
 
-  val mask_vec_pfximm1q_valid = io.vec_pfximm1q.valid
-  val mask_vec_pfximm2q_valid = setvl || unit_stride || io.vec_pfximm2q.valid
+  val mask_vec_pfximm1q_valid = io.vec_pfximm1q.valid || !deq_imm1q
+  val mask_vec_pfximm2q_valid = io.vec_pfximm2q.valid || !deq_imm2q
 
-  val deq_vec_pfximm1q = Bool(true)
-  val deq_vec_pfximm2q = !unit_stride && !setvl
-
-  val cmd_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid
-  val setvl_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && setvl
+  val cmd_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && pf
+  val setvl_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && setvl && pf
 
   val pf_len = UFix(pow(2,OFFSET_BITS).toInt)
   val pf_len_int = pow(2,OFFSET_BITS).toInt
@@ -115,8 +126,8 @@ class vuVRU extends Component
 
   io.vpfvaq.valid := Bool(false)
   io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && idle
-  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_vec_pfximm1q && mask_vec_pfximm2q_valid && idle
-  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_vec_pfximm2q && idle
+  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_imm1q && mask_vec_pfximm2q_valid && idle
+  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_imm2q && idle
 
   switch (state)
   {
