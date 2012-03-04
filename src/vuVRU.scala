@@ -8,7 +8,7 @@ import scala.math._
 
 class io_vru extends Bundle
 {
-  val vpfvaq = new ioDecoupled()({ new io_vvaq_bundle() })
+  val vpfvaq = new io_vvaq()
   
   // command
   val vec_pfcmdq = new io_vec_cmdq().flip
