@@ -91,11 +91,12 @@ class vuVRU extends Component
 
   val state = Reg(resetVal = VRU_Idle)
 
-  val vlen_reg = Reg(resetVal = UFix(0, SZ_VLEN))
+  val vlen_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
 
   val addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
   val cmd_reg = Reg(resetVal = Bits(0,SZ_XCMD_CMD))
   val vec_count_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
+  val vec_pfed_count_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
   val stride_reg = Reg(resetVal = UFix(0, SZ_VIMM))
   
   val vec_per_pf_reg = Reg(resetVal = UFix(0, OFFSET_BITS+1))
@@ -181,8 +182,8 @@ class vuVRU extends Component
             div = Mux(stride_lobits <= high && stride_lobits >= lo, UFix(i), div)
           }
 
-          vec_count_reg := Mux(io.vec_pfcntq.valid, vlen_reg - io.vec_pfcntq.bits.toUFix,
-                              Mux(stride_lobits === UFix(0), Fix(0), vlen_reg))
+          vec_pfed_count_reg := Mux(!io.vec_pfcntq.valid, Fix(0), io.vec_pfcntq.bits.toUFix)
+          vec_count_reg := Mux(stride_lobits === UFix(0), Fix(0), vlen_reg)
           vec_per_pf_reg := div
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)
           stride_remaining_reg := stride
@@ -202,7 +203,10 @@ class vuVRU extends Component
       }
       .otherwise
       {
-        io.vpfvaq.valid := Bool(true)
+        when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
+        {
+          io.vpfvaq.valid := Bool(true)
+        }
         when (io.vpfvaq.ready)
         {
           vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, Fix(1), Fix(0))
@@ -221,7 +225,10 @@ class vuVRU extends Component
       }
       .otherwise
       {
-        io.vpfvaq.valid := Bool(true)
+        when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
+        {
+          io.vpfvaq.valid := Bool(true)
+        }
         when (io.vpfvaq.ready)
         {
           addr_reg := addr_reg + stride_reg
