@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import queues._
 
 class io_vu extends Bundle 
 {

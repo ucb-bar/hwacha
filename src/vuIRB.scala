@@ -4,7 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 import Commands._
-import queues._
 
 class io_irb_to_issue extends Bundle 
 {

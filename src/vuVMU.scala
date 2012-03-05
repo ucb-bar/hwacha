@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import queues._
 
 class io_vmu extends Bundle
 {
@@ -38,21 +37,6 @@ class vuVMU extends Component
 {
   val io = new io_vmu()
 
-  // address queues and counters
-  val vvaq_arb = new Arbiter(2)( new io_vvaq() )
-  val vvaq = new queue_spec(16)({ new io_vvaq_bundle() })
-  val vpfvaq = new queue_spec(16)({ new io_vvaq_bundle() })
-
-  val vpaq = new queue_spec(16)({ new io_vpaq_bundle() })
-  val vpfpaq = new queue_spec(16)({ new io_vpaq_bundle() })
-  val vpaq_arb = new Arbiter(2)( new io_vpaq() )
-
-  val VVAQARB_LANE = 0
-  val VVAQARB_EVAC = 1
-  val VPAQARB_VPAQ = 0
-  val VPAQARB_VPFPAQ = 1
-
-  // vmu
   val memif = new vuMemIF()
 
   val vvaq_count = new qcnt(16,16)
@@ -61,22 +45,14 @@ class vuVMU extends Component
   val vsreq_count = new qcnt(31,31) // vector stores in flight
   val vlreq_count = new qcnt(128,128) // vector loads in flight
 
-  // tlb signals
-  val tlb_vec_req = vvaq.io.deq.valid && vpaq.io.enq.ready
-  val tlb_vec_req_kill = Wire(){ Bool() }
-  val tlb_vec_hit = Reg(tlb_vec_req) && !tlb_vec_req_kill && Reg(io.vec_tlb_req.ready) && !io.vec_tlb_resp.miss
-  val tlb_vec_miss = Reg(tlb_vec_req) && !tlb_vec_req_kill && (Reg(!io.vec_tlb_req.ready) || io.vec_tlb_resp.miss)
-  val tlb_vec_ack = tlb_vec_hit && vpaq.io.enq.ready
-  val tlb_vec_nack = tlb_vec_miss || !vpaq.io.enq.ready
-  tlb_vec_req_kill := Reg(tlb_vec_nack)
+  // VVAQ
+  val vvaq_arb = new Arbiter(2)( new io_vvaq() )
+  val VVAQARB_LANE = 0
+  val VVAQARB_EVAC = 1
 
-  val tlb_vecpf_req = vpfvaq.io.deq.valid && vpfpaq.io.enq.ready
-  val tlb_vecpf_req_kill = Wire(){ Bool() }
-  val tlb_vecpf_hit = Reg(tlb_vecpf_req) && !tlb_vecpf_req_kill && Reg(io.vec_pftlb_req.ready) && !io.vec_pftlb_resp.miss
-  val tlb_vecpf_miss = Reg(tlb_vecpf_req) && !tlb_vecpf_req_kill && (Reg(!io.vec_pftlb_req.ready) || io.vec_pftlb_resp.miss)
-  val tlb_vecpf_ack = tlb_vecpf_hit && vpaq.io.enq.ready
-  val tlb_vecpf_nack = tlb_vecpf_miss || !vpaq.io.enq.ready
-  tlb_vecpf_req_kill := Reg(tlb_vecpf_nack)
+  val vvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
+  val vvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
+  val vpaq = (new queue_spec(16)){ new io_vpaq_bundle() }
 
   // vvaq arbiter, port 0: lane vaq
   vvaq_arb.io.in(VVAQARB_LANE) <> io.lane_vvaq
@@ -91,55 +67,37 @@ class vuVMU extends Component
   vvaq.io.enq.valid := vvaq_arb.io.out.valid
   vvaq.io.enq.bits := vvaq_arb.io.out.bits
 
+  // vvaq address translation
+  vvaq_tlb.io.vvaq <> vvaq.io.deq
+  vpaq.io.enq <> vvaq_tlb.io.vpaq
+  io.vec_tlb_req <> vvaq_tlb.io.tlb_req
+  vvaq_tlb.io.tlb_resp <> io.vec_tlb_resp
+
   // vvaq counts available space
   vvaq_count.io.qcnt := io.qcnt
   // vvaq frees an entry, when vvaq kicks out an entry to vpaq
-  vvaq_count.io.inc := tlb_vec_ack
+  vvaq_count.io.inc := vvaq_tlb.io.ack
   // vvaq occupies an entry, when the lane kicks out an entry
   vvaq_count.io.dec := io.lane_vaq_dec
 
-  // vvaq tlb hookup
-  io.vec_tlb_req.valid := tlb_vec_req
-  io.vec_tlb_req.bits.kill := Bool(false)
-  io.vec_tlb_req.bits.cmd := vvaq.io.deq.bits.cmd
-  io.vec_tlb_req.bits.vpn := vvaq.io.deq.bits.vpn
-  io.vec_tlb_req.bits.asid := Bits(0)
-  vvaq.io.deq.ready := vpaq.io.enq.ready
-  vvaq.io.ack := tlb_vec_ack
-  vvaq.io.nack := tlb_vec_nack
-
-  // tlb vpaq hookup
-  // enqueue everything but the page number from virtual queue
-  vpaq.io.enq.valid := tlb_vec_hit
-  vpaq.io.enq.bits.checkcnt := Reg(vvaq.io.deq.bits.checkcnt)
-  vpaq.io.enq.bits.cnt := Reg(vvaq.io.deq.bits.cnt)
-  vpaq.io.enq.bits.cmd := Reg(vvaq.io.deq.bits.cmd)
-  vpaq.io.enq.bits.typ := Reg(vvaq.io.deq.bits.typ)
-  vpaq.io.enq.bits.typ_float := Reg(vvaq.io.deq.bits.typ_float)
-  vpaq.io.enq.bits.idx := Reg(vvaq.io.deq.bits.idx)
-  vpaq.io.enq.bits.ppn := io.vec_tlb_resp.ppn
+  // VPFVAQ
+  val vpfvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
+  val vpfvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
+  val vpfpaq = (new queue_spec(16)){ new io_vpaq_bundle() }
 
   // vpfvaq hookup
   vpfvaq.io.enq <> io.pf_vvaq
 
-  // vpfvaq tlb hookup
-  io.vec_pftlb_req.valid := tlb_vecpf_req
-  io.vec_pftlb_req.bits.kill := Bool(false)
-  io.vec_pftlb_req.bits.cmd := vpfvaq.io.deq.bits.cmd
-  io.vec_pftlb_req.bits.vpn := vpfvaq.io.deq.bits.vpn
-  io.vec_pftlb_req.bits.asid := Bits(0) // FIXME
-  vpfvaq.io.deq.ready := vpfpaq.io.enq.ready
-  vpfvaq.io.ack := tlb_vecpf_ack
-  vpfvaq.io.nack := tlb_vecpf_nack
+  // vpfvaq address translation
+  vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
+  vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
+  io.vec_pftlb_req <> vpfvaq_tlb.io.tlb_req
+  vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
 
-  // tlb vpfpaq hookup
-  // enqueue everything but the page number from virtual queue
-  vpfpaq.io.enq.valid := tlb_vecpf_hit
-  vpfpaq.io.enq.bits.cmd := Reg(vpfvaq.io.deq.bits.cmd)
-  vpfpaq.io.enq.bits.typ := Reg(vpfvaq.io.deq.bits.typ)
-  vpfpaq.io.enq.bits.typ_float := Reg(vpfvaq.io.deq.bits.typ_float)
-  vpfpaq.io.enq.bits.idx := Reg(vpfvaq.io.deq.bits.idx)
-  vpfpaq.io.enq.bits.ppn := io.vec_pftlb_resp.ppn
+  val vpaq_arb = new Arbiter(2)( new io_vpaq() )
+
+  val VPAQARB_VPAQ = 0
+  val VPAQARB_VPFPAQ = 1
 
   // vpaq arbiter, port 0: vpaq
   // vpaq deq port is valid when it's not checking the cnt or when the cnt is higher than expected
@@ -180,7 +138,7 @@ class vuVMU extends Component
   // vpaq counts occupied space
   vpaq_count.io.qcnt := io.qcnt
   // vpaq occupies an entry, when it accepts an entry from vvaq
-  vpaq_count.io.inc := tlb_vec_ack
+  vpaq_count.io.inc := vvaq_tlb.io.ack
   // vpaq frees an entry, when the memory system drains it
   vpaq_count.io.dec := vpaq_ack
 

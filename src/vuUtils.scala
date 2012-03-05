@@ -2,7 +2,6 @@ package hwacha
 
 import Chisel._
 import Node._
-import queues._
 import scala.collection.mutable.ArrayBuffer
 import scala.math._
 

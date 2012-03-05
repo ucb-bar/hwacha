@@ -1,31 +1,13 @@
-package queues
+package hwacha
 
 import Chisel._
 import Node._
 import scala.math._
 
 // Util stuff
-object log2up
-{
-  def apply(in: Int) = if (in == 1) 1 else ceil(log(in)/log(2)).toInt
-}
-
 object log2down
 {
   def apply(x : Int)=floor(log(x)/log(2.0)).toInt
-}
-
-class ioDecoupled[T <: Data]()(data: => T) extends Bundle
-{
-  val ready = Bool(INPUT)
-  val valid = Bool(OUTPUT)
-  val bits = data.asOutput
-}
-
-class ioPipe[T <: Data]()(data: => T) extends Bundle
-{
-  val valid = Bool(OUTPUT)
-  val bits = data.asOutput
 }
 // end util stuff
 
@@ -408,6 +390,48 @@ class qcnt(reset_cnt: Int, max_cnt: Int) extends Component
 
   io.full := (count === UFix(reset_cnt,size))
   io.empty := (count === UFix(0,size))
+}
+
+class io_skidbuf[T <: Data](data: => T) extends Bundle
+{
+  val enq = new ioDecoupled()(data).flip
+  val deq = new ioDecoupled()(data)
+  val nack = Bool(INPUT)
+  val kill = Bool(OUTPUT)
+}
+
+class skidbuf[T <: Data](late_nack: Boolean)(data: => T) extends Component
+{
+  val io = new io_skidbuf(data)
+
+  val pipereg = new queuePipe1PF(data)
+
+  pipereg.io.enq <> io.enq
+
+  var rejected = !Reg(io.deq.ready) || io.nack
+  pipereg.io.deq.ready := !rejected
+  io.kill := Bool(false)
+
+  if (late_nack)
+  {
+    rejected = !Reg(io.deq.ready) || Reg(io.nack)
+    pipereg.io.deq.ready := !rejected && !io.nack
+    io.kill := Reg(io.nack)
+  }
+
+  val sel_pipereg = rejected && pipereg.io.deq.valid
+  io.deq.valid := Mux(sel_pipereg, pipereg.io.deq.valid, io.enq.valid)
+  io.deq.bits := Mux(sel_pipereg, pipereg.io.deq.bits, io.enq.bits)
+}
+
+object SkidBuffer
+{
+  def apply[T <: Data](enq: ioDecoupled[T], late_nack: Boolean = false) =
+  {
+    val sb = (new skidbuf(late_nack)){ enq.bits.clone }
+    sb.io.enq <> enq
+    sb
+  }
 }
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle

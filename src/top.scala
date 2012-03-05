@@ -4,7 +4,6 @@ import Chisel._
 import Node._
 import hardfloat._
 import Constants._
-import queues._
 
 object top_main
 {
