@@ -16,6 +16,7 @@ class io_vru extends Bundle
   val vec_pfximm1q = new io_vec_ximm1q().flip
   // stride
   val vec_pfximm2q = new io_vec_ximm2q().flip
+  val vec_pfcntq = new io_vec_cntq().flip
 }
 
 class vuVRU extends Component
@@ -108,6 +109,7 @@ class vuVRU extends Component
 
   val mask_vec_pfximm1q_valid = io.vec_pfximm1q.valid || !deq_imm1q
   val mask_vec_pfximm2q_valid = io.vec_pfximm2q.valid || !deq_imm2q
+  val mask_vec_pfcntq_valid = Bool(true)
 
   val cmd_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && pf
   val setvl_val = io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && setvl && pf
@@ -125,9 +127,10 @@ class vuVRU extends Component
   val idle = (state === VRU_Idle)
 
   io.vpfvaq.valid := Bool(false)
-  io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && idle
-  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_imm1q && mask_vec_pfximm2q_valid && idle
-  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_imm2q && idle
+  io.vec_pfcmdq.ready := Bool(true) && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && mask_vec_pfcntq_valid && idle
+  io.vec_pfximm1q.ready := io.vec_pfcmdq.valid && deq_imm1q && mask_vec_pfximm2q_valid && mask_vec_pfcntq_valid && idle
+  io.vec_pfximm2q.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && deq_imm2q && mask_vec_pfcntq_valid && idle
+  io.vec_pfcntq.ready := io.vec_pfcmdq.valid && mask_vec_pfximm1q_valid && mask_vec_pfximm2q_valid && Bool(true) && idle
 
   switch (state)
   {
@@ -178,7 +181,8 @@ class vuVRU extends Component
             div = Mux(stride_lobits <= high && stride_lobits >= lo, UFix(i), div)
           }
 
-          vec_count_reg := Mux(stride_lobits === UFix(0), Fix(0), vlen_reg)
+          vec_count_reg := Mux(io.vec_pfcntq.valid, vlen_reg - io.vec_pfcntq.bits.toUFix,
+                              Mux(stride_lobits === UFix(0), Fix(0), vlen_reg))
           vec_per_pf_reg := div
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)
           stride_remaining_reg := stride

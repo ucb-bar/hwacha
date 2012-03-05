@@ -18,6 +18,7 @@ class io_vu extends Bundle
   val vec_pfcmdq = new io_vec_cmdq().flip
   val vec_pfximm1q = new io_vec_ximm1q().flip
   val vec_pfximm2q = new io_vec_ximm2q().flip
+  val vec_pfcntq = new io_vec_cntq().flip
 
   val cp_imul_req = new io_imul_req().flip
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
@@ -62,10 +63,12 @@ class vu extends Component
   val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
   val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
   val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
+  val vpfcntq = new queueSimplePF(16)({Bits(width=SZ_VLEN)})
 
   vpfcmdq.io.enq <> io.vec_pfcmdq
   vpfximm1q.io.enq <> io.vec_pfximm1q
   vpfximm2q.io.enq <> io.vec_pfximm2q
+  vpfcntq.io.enq <> io.vec_pfcntq
 
   val vru = new vuVRU()
   val vxu = new vuVXU()
@@ -107,6 +110,7 @@ class vu extends Component
   vru.io.vec_pfcmdq <> vpfcmdq.io.deq
   vru.io.vec_pfximm1q <> vpfximm1q.io.deq
   vru.io.vec_pfximm2q <> vpfximm2q.io.deq
+  vru.io.vec_pfcntq <> vpfcntq.io.deq
 
   // vmu
   vmu.io.pf_vvaq <> vru.io.vpfvaq
