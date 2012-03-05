@@ -203,7 +203,7 @@ class vuEvac extends Component
       // set ready signal
       when (deq_ircmdb && io.vsdq.ready && io.vaq.ready) 
       {
-        irb_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
+        io.irb_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
       }
     }
 
@@ -353,7 +353,7 @@ class vuEvac extends Component
       // ready signal
       when (deq_vcmdq && io.vsdq.ready && io.vaq.ready) 
       {
-        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q && !deq_cntq
+        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q && !deq_vcntq
       }
     }
 
