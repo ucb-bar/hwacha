@@ -168,6 +168,7 @@ class vuEvac extends Component
 
     is (STATE_CMDB) 
     {
+      // set valid signal
       when (io.irb_cmdb.valid && deq_ircmdb)
       {
         io.vaq.valid := Bool(true)
@@ -190,7 +191,6 @@ class vuEvac extends Component
           } . otherwise
           {
             state_next := STATE_CMDB
-            io.irb_cmdb.ready := Bool(true)
           }
         }
 
@@ -199,10 +199,17 @@ class vuEvac extends Component
         state_next := STATE_VCMDQ
         cmd_sel_next := SEL_VCMDQ
       }
+      
+      // set ready signal
+      when (deq_ircmdb && io.vsdq.ready && io.vaq.ready) 
+      {
+        irb_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
+      }
     }
 
     is (STATE_IMM1B)
     {
+      // set valid signal
       when (io.irb_imm1b.valid && deq_irimm1b)
       {
         io.vaq.valid := Bool(true)
@@ -212,7 +219,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8          
-          io.irb_imm1b.ready := Bool(true)
           when (deq_irimm2b)
           {
             state_next := STATE_IMM2B
@@ -227,10 +233,17 @@ class vuEvac extends Component
         }
 
       }
+
+      // set ready signal
+      when (deq_irimm1b && io.vsdq.ready && io.vaq.ready)
+      {
+        io.irb_imm1b.ready := Bool(true)
+      }
     }
 
     is (STATE_IMM2B)
     {
+      // set valid signals
       when (io.irb_imm2b.valid && deq_irimm2b)
       {
         io.vaq.valid := Bool(true)
@@ -240,7 +253,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          io.irb_imm2b.ready := Bool(true)
           when (deq_ircntb)
           {
             state_next := STATE_CNTB
@@ -251,10 +263,17 @@ class vuEvac extends Component
         }
 
       }
+
+      // set ready signal
+      when (deq_irimm2b && io.vsdq.ready && io.vaq.ready) 
+      {
+        io.irb_imm2b.ready := Bool(true)
+      }
     }
 
     is (STATE_CNTB)
     {
+      // set valid signal
       when (io.irb_cntb.valid && deq_ircntb)
       {
         io.vaq.valid := Bool(true)
@@ -264,7 +283,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8          
-          io.irb_cntb.ready := Bool(true)
           when (vf)
           {
             when (!io.irb_cntb_last)
@@ -284,10 +302,17 @@ class vuEvac extends Component
         state_next := STATE_CMDB
         io.irb_cmdb.ready := Bool(true)
       }
+
+      // set ready signal
+      when (deq_ircntb && io.vsdq.ready && io.vaq.ready)
+      {
+        io.irb_cntb.ready := Bool(true)
+      }
     }
 
     is (STATE_VCMDQ)
     {
+      // valid signal
       when (io.vcmdq.valid && deq_vcmdq)
       {
         io.vaq.valid := Bool(true)
@@ -310,18 +335,31 @@ class vuEvac extends Component
           } . otherwise 
           {
             state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
           }
         }
 
       } . elsewhen (!io.vcmdq.valid) 
       {
-        state_next := STATE_DONE
+        io.vaq.valid := Bool(true)
+        io.vsdq.valid := Bool(true)
+        io.vsdq.bits := Bits("hffff_ffff_ffff_ffff")
+        when (io.vsdq.ready && io.vaq.ready)
+        {
+          addr_next := addr_plus_8
+          state_next := STATE_DONE
+        }
+      }
+
+      // ready signal
+      when (deq_vcmdq && io.vsdq.ready && io.vaq.ready) 
+      {
+        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q && !deq_cntq
       }
     }
 
     is (STATE_VIMM1Q)
     {
+      // valid signal
       when (io.vimm1q.valid && deq_vimm1q)
       {
         io.vaq.valid := Bool(true)
@@ -331,7 +369,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          io.vimm1q.ready := Bool(true)
           when (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
@@ -346,10 +383,17 @@ class vuEvac extends Component
         }
 
       }
+
+      // ready signal
+      when(deq_vimm1q && io.vsdq.ready && io.vaq.ready) 
+      {
+        io.vimm1q.ready := Bool(true)
+      }
     }
 
     is (STATE_VIMM2Q)
     {
+      // valid signal
       when (io.vimm2q.valid && deq_vimm2q)
       {
         io.vaq.valid := Bool(true)
@@ -359,7 +403,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          io.vimm2q.ready := Bool(true)
           when (deq_vcntq)
           {
             state_next := STATE_VCNTQ
@@ -370,10 +413,17 @@ class vuEvac extends Component
         }
 
       }
+
+      // ready signal
+      when (deq_vimm2q && io.vsdq.ready && io.vaq.ready)
+      {
+        io.vimm2q.ready := Bool(true)
+      }
     }
 
     is (STATE_VCNTQ)
     {
+      // valid signal
       when (io.vcntq.valid && deq_vcntq)
       {
         io.vaq.valid := Bool(true)
@@ -383,7 +433,6 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          io.vcntq.ready := Bool(true)
           when (vf)
           {
             state_next := STATE_VCNTQ
@@ -396,6 +445,12 @@ class vuEvac extends Component
       } . elsewhen(!io.vcntq.valid && vf) {
         state_next := STATE_VCMDQ
         io.vcmdq.ready := Bool(true)
+      }
+
+      // ready signal
+      when(deq_vcntq && io.vsdq.ready && io.vaq.ready)
+      {
+        io.vcntq.ready := Bool(true)
       }
     }
 
