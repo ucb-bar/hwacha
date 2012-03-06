@@ -540,7 +540,7 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_read.rcnt := reg_rcnt(0)
   io.expand_read.raddr := reg_raddr(0)
   io.expand_read.roplen := reg_roplen(0)
-  io.expand_read.rblen := reg_rblen(0).toBits()
+  io.expand_read.rblen := reg_rblen(0).toBits
 
   io.expand_write.wen := reg_wen(0)
   io.expand_write.wlast := reg_wlast(0)

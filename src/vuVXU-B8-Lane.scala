@@ -49,11 +49,11 @@ class io_vxu_lane extends Bundle
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
 
-  val issue_to_lane = new io_vxu_issue_to_lane().asInput()
+  val issue_to_lane = new io_vxu_issue_to_lane().asInput
   val expand_read = new io_vxu_expand_read().asInput
   val expand_write = new io_vxu_expand_write().asInput
   val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
-  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput()
+  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
   val lane_to_hazard = new io_lane_to_hazard().asOutput
   val vmu = new VMUIO()
 }

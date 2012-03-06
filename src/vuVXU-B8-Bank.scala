@@ -52,8 +52,8 @@ class vuVXU_Banked8_Bank extends Component
 {
   val io = new vuVXU_Banked8_BankIO()
 
-  val rpass = io.in.rcnt.orR()
-  val wpass = io.in.wcnt.orR()
+  val rpass = io.in.rcnt.orR
+  val wpass = io.in.wcnt.orR
 
   val reg_ren    = Reg(rpass & io.in.ren)
   val reg_rlast  = Reg(io.in.rlast)

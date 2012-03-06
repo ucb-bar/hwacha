@@ -187,16 +187,16 @@ class vuVXU_Banked8_Seq extends Component
   val array_irb_pc_next = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
   val array_irb_update_imm1 = Vec(SZ_BANK){ Reg(){ Bool() } }
 
-  array_val := next_val.toBits()
-  array_last := next_last.toBits()
-  array_viu := next_viu.toBits()
-  array_vau0 := next_vau0.toBits()
-  array_vau1 := next_vau1.toBits()
-  array_vau2 := next_vau2.toBits()
-  array_vaq := next_vaq.toBits()
-  array_vldq := next_vldq.toBits()
-  array_vsdq := next_vsdq.toBits()
-  array_utmemop := next_utmemop.toBits()
+  array_val := next_val.toBits
+  array_last := next_last.toBits
+  array_viu := next_viu.toBits
+  array_vau0 := next_vau0.toBits
+  array_vau1 := next_vau1.toBits
+  array_vau2 := next_vau2.toBits
+  array_vaq := next_vaq.toBits
+  array_vldq := next_vldq.toBits
+  array_vsdq := next_vsdq.toBits
+  array_utmemop := next_utmemop.toBits
 
   array_fn_viu := next_fn_viu
   array_fn_vau0 := next_fn_vau0
