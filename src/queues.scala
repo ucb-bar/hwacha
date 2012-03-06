@@ -4,13 +4,6 @@ import Chisel._
 import Node._
 import scala.math._
 
-// Util stuff
-object log2down
-{
-  def apply(x : Int)=floor(log(x)/log(2.0)).toInt
-}
-// end util stuff
-
 class IOqueueCtrl1_pipe extends Bundle
 {
   val enq_val = Bool(INPUT)
