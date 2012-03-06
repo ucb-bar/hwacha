@@ -88,6 +88,32 @@ object Constants
   val SHIFT_BUF_READ = 3
   val SHIFT_BUF_WRITE = FMA_STAGES + 4
 
+  // constants for vmu
+  val VVAQARB_LANE = 0
+  val VVAQARB_EVAC = 1
+
+  val VPAQARB_VPAQ = 0
+  val VPAQARB_VPFPAQ = 1
+
+  val VSDQARB_LANE = 0
+  val VSDQARB_EVAC = 1
+
+  val LATE_TLB_MISS = true
+  val LATE_DMEM_NACK = true
+
+  val ENTRIES_VVAQ = 16
+  val ENTRIES_VPAQ = 16
+  val ENTRIES_VPFVAQ = 16
+  val ENTRIES_VPFPAQ = 16
+  val ENTRIES_VLDQ = 128
+  val ENTRIES_VSDQ = 16
+  val ENTRIES_VSREQ = 31
+  val ENTRIES_VLREQ = ENTRIES_VLDQ
+
+  val LG_ENTRIES_VLDQ = log2up(ENTRIES_VLDQ)
+
+  val SZ_QCNT = SZ_LGBANK1
+
   // constans for vau0, vau1, vau2
   val M0 = Bits("b00", 2)
   val MR = Bits("b01", 2)

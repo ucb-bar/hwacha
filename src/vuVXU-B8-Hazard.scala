@@ -437,19 +437,19 @@ class vuVXU_Banked8_Hazard extends Component
   }
 
   // hazard check logic for tvec/vt
-  val shazard_vau0 = (array_rport_val.toBits() & array_rport_vau0.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau0.toBits()).orR()
-  val shazard_vau1 = (array_rport_val.toBits() & array_rport_vau1.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau1.toBits()).orR()
-  val shazard_vau2 = (array_rport_val.toBits() & array_rport_vau2.toBits()).orR() | (array_wport_val.toBits() & array_wport_vau2.toBits()).orR()
-  val shazard_vgu = (array_rport_val.toBits() & array_rport_vgu.toBits()).orR()
-  val shazard_vlu = (array_wport_val.toBits() & array_wport_vlu.toBits()).orR()
-  val shazard_vsu = (array_rport_val.toBits() & array_rport_vsu.toBits()).orR()
+  val shazard_vau0 = (array_rport_val.toBits & array_rport_vau0.toBits).orR | (array_wport_val.toBits & array_wport_vau0.toBits).orR
+  val shazard_vau1 = (array_rport_val.toBits & array_rport_vau1.toBits).orR | (array_wport_val.toBits & array_wport_vau1.toBits).orR
+  val shazard_vau2 = (array_rport_val.toBits & array_rport_vau2.toBits).orR | (array_wport_val.toBits & array_wport_vau2.toBits).orR
+  val shazard_vgu = (array_rport_val.toBits & array_rport_vgu.toBits).orR
+  val shazard_vlu = (array_wport_val.toBits & array_wport_vlu.toBits).orR
+  val shazard_vsu = (array_rport_val.toBits & array_rport_vsu.toBits).orR
 
   val seqhazard_1slot = array_sport_val.read(next_ptr1)
   val seqhazard_2slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2)
   val seqhazard_3slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2) | array_sport_val.read(next_ptr3)
 
   // checking any pending memory ops for fences
-  io.hazard_to_issue.pending_memop := array_rport_vsu.toBits().orR() || array_rport_vgu.toBits().orR() || array_wport_vlu.toBits().orR()
+  io.hazard_to_issue.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
 
   // hazard check logic for tvec
   val tvec_comp_vt =
@@ -476,8 +476,8 @@ class vuVXU_Banked8_Hazard extends Component
       io.tvec_regid_imm.vd === array_wport_vd(0)
     )
 
-  val tvec_dhazard_vt = (array_wport_val.toBits() & array_wport_head.toBits() & tvec_comp_vt).orR()
-  val tvec_dhazard_vd = (array_wport_val.toBits() & array_wport_head.toBits() & tvec_comp_vd).orR()
+  val tvec_dhazard_vt = (array_wport_val.toBits & array_wport_head.toBits & tvec_comp_vt).orR
+  val tvec_dhazard_vd = (array_wport_val.toBits & array_wport_head.toBits & tvec_comp_vd).orR
 
   val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr)
   val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
@@ -485,7 +485,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val tvec_stall =
     Cat(
-      io.tvec_valid.viu & io.seq_to_hazard.stall.orR(),
+      io.tvec_valid.viu & io.seq_to_hazard.stall.orR,
       io.tvec_valid.vld & io.seq_to_hazard.stall(RG_VSDQ),
       io.tvec_valid.vst & io.seq_to_hazard.stall(RG_VLDQ)
     )
@@ -517,7 +517,7 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vst & io.tvec_bhazard.vst
     )
 
-  io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR() & !tvec_dhazard.orR() & !tvec_shazard.orR() & !tvec_seqhazard.orR() & !tvec_bhazard.orR()
+  io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR & !tvec_dhazard.orR & !tvec_shazard.orR & !tvec_seqhazard.orR & !tvec_bhazard.orR
 
   // hazard check logic for vt
   val vt_comp_vs =
@@ -568,10 +568,10 @@ class vuVXU_Banked8_Hazard extends Component
       io.vt_regid_imm.vd === array_wport_vd(0)
     )
 
-  val vt_dhazard_vs = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vs).orR()
-  val vt_dhazard_vt = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vt).orR()
-  val vt_dhazard_vr = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vr).orR()
-  val vt_dhazard_vd = (array_wport_val.toBits() & array_wport_head.toBits() & vt_comp_vd).orR()
+  val vt_dhazard_vs = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vs).orR
+  val vt_dhazard_vt = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vt).orR
+  val vt_dhazard_vr = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vr).orR
+  val vt_dhazard_vd = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vd).orR
 
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr)
@@ -582,10 +582,10 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_stall =
     Cat(
-      io.vt_valid.viu & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.vau0 & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.vau1 & io.seq_to_hazard.stall.orR(),
-      io.vt_valid.vau2 & io.seq_to_hazard.stall.orR(),
+      io.vt_valid.viu & io.seq_to_hazard.stall.orR,
+      io.vt_valid.vau0 & io.seq_to_hazard.stall.orR,
+      io.vt_valid.vau1 & io.seq_to_hazard.stall.orR,
+      io.vt_valid.vau2 & io.seq_to_hazard.stall.orR,
       Bool(false), // io.vt_valid.amo
       io.vt_valid.utld & io.seq_to_hazard.stall(RG_VSDQ),
       io.vt_valid.utst & io.seq_to_hazard.stall(RG_VLDQ)
@@ -630,5 +630,5 @@ class vuVXU_Banked8_Hazard extends Component
       vt_bhazard_utst & io.vt_bhazard.utst
     )
 
-  io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR() & !vt_dhazard.orR() & !vt_shazard.orR() & !vt_seqhazard.orR() & !vt_bhazard.orR()
+  io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR & !vt_dhazard.orR & !vt_shazard.orR & !vt_seqhazard.orR & !vt_bhazard.orR
 }

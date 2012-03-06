@@ -125,7 +125,8 @@ class vu extends Component
   vmu.io.lane_vaq_dec := vxu.io.lane_vaq_dec
   vmu.io.lane_vsdq_dec := vxu.io.lane_vsdq_dec
 
-  vmu.io.qcnt := vxu.io.qcnt
+  vmu.io.qcntp1 := vxu.io.qcntp1
+  vmu.io.qcntp2 := vxu.io.qcntp2
 
   vxu.io.pending_store := vmu.io.pending_store
 
