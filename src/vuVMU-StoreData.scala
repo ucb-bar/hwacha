@@ -28,10 +28,7 @@ class vuVMU_StoreData extends Component
   val io = new io_vmu_store_data()
 
   val vsdq_arb = new Arbiter(2)( new io_vsdq() )
-  val vsdq = new queueSimplePF(16)({ Bits(width = 65) })
-
-  val VSDQARB_LANE = 0
-  val VSDQARB_EVAC = 1
+  val vsdq = new queueSimplePF(ENTRIES_VSDQ)({ Bits(width = 65) })
 
   // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(VSDQARB_LANE) <> io.vsdq_lane
@@ -42,7 +39,7 @@ class vuVMU_StoreData extends Component
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
-  val vsdq_skid = SkidBuffer(vsdq.io.deq, late_nack = true)
+  val vsdq_skid = SkidBuffer(vsdq.io.deq, LATE_DMEM_NACK)
 
   io.vsdq <> vsdq_skid.io.deq
   vsdq_skid.io.nack := io.vsdq_nack

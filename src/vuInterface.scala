@@ -161,7 +161,7 @@ class io_vpaq_bundle extends Bundle
 
 class io_vxu_to_vmu extends Bundle
 {
-  val qcnt = UFix(width = 5)
+  val qcnt = UFix(width = SZ_QCNT)
 }
 
 class io_vxu_irb_bundle extends Bundle

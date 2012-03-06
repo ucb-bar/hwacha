@@ -19,7 +19,7 @@ class io_vmu extends Bundle
   val lane_vaq_dec = Bool(INPUT)
   val lane_vsdq_dec = Bool(INPUT)
 
-  val qcnt = UFix(5, INPUT)
+  val qcnt = UFix(SZ_QCNT, INPUT)
 
   val pending_store = Bool(OUTPUT)
 

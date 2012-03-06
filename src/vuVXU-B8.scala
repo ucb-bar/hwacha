@@ -30,7 +30,7 @@ class io_vxu extends Bundle
   val lane_vaq_dec = Bool(OUTPUT)
   val lane_vsdq_dec = Bool(OUTPUT)
 
-  val qcnt = UFix(5, OUTPUT)
+  val qcnt = UFix(SZ_QCNT, OUTPUT)
   
   val pending_store = Bool(INPUT)
 

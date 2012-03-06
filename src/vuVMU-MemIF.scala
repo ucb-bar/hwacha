@@ -15,8 +15,8 @@ class io_vmu_memif extends Bundle
   val vsdq_ack = Bool(OUTPUT)
   val vsdq_nack = Bool(OUTPUT)
 
-  val vldq = new ioDecoupled()({ new io_queue_reorder_qcnt_enq_bundle(65, 8) })
-  val vldq_rtag = new ioDecoupled()({ Bits(width = 7) }).flip
+  val vldq = new ioDecoupled()({ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) })
+  val vldq_rtag = new ioDecoupled()({ Bits(width = LG_ENTRIES_VLDQ) }).flip
   val vldq_ack = Bool(OUTPUT)
   val vldq_nack = Bool(OUTPUT)
 

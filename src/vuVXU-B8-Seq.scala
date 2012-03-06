@@ -34,7 +34,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
-  val qcnt = UFix(width = 5)
+  val qcnt = UFix(width = SZ_QCNT)
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
@@ -710,7 +710,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.vt := array_vt(reg_ptr)
   io.seq_regid_imm.vr := array_vr(reg_ptr)
   io.seq_regid_imm.vd := array_vd(reg_ptr)
-  io.seq_regid_imm.qcnt := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, 5), io.seq_regid_imm.cnt + UFix(2, 5))
+  io.seq_regid_imm.qcnt := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(2, SZ_QCNT))
   io.seq_regid_imm.mem := array_mem(reg_ptr)
 
   io.seq_regid_imm.imm := array_imm(reg_ptr)

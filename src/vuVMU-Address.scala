@@ -57,7 +57,7 @@ class checkcnt extends Component
   {
     val input = new io_vpaq().flip
     val output = new io_vpaq()
-    val qcnt = UFix(5, OUTPUT)
+    val qcnt = UFix(SZ_QCNT, OUTPUT)
     val watermark = Bool(INPUT)
   }
 
@@ -83,7 +83,7 @@ class io_vmu_address_arbiter extends Bundle
 {
   val vpaq = new io_vpaq().flip
   val vpfpaq = new io_vpaq().flip
-  val qcnt = UFix(5, OUTPUT)
+  val qcnt = UFix(SZ_QCNT, OUTPUT)
   val watermark = Bool(INPUT)
   val vaq = new io_vpaq()
   val ack = Bool(INPUT)
@@ -100,9 +100,6 @@ class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
   val vpfpaq_skid = SkidBuffer(io.vpfpaq, late_nack)
 
   val vpaq_arb = new Arbiter(2)( new io_vpaq() )
-
-  val VPAQARB_VPAQ = 0
-  val VPAQARB_VPFPAQ = 1
 
   vpaq_arb.io.in(VPAQARB_VPAQ) <> CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
   vpaq_arb.io.in(VPAQARB_VPFPAQ) <> vpfpaq_skid.io.deq
@@ -139,7 +136,7 @@ class io_vmu_address extends Bundle
   val vvaq_dec = Bool(OUTPUT)
   val vpaq_inc = Bool(OUTPUT)
   val vpaq_dec = Bool(OUTPUT)
-  val vpaq_qcnt = UFix(5, OUTPUT)
+  val vpaq_qcnt = UFix(SZ_QCNT, OUTPUT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
   val vsreq_watermark = Bool(INPUT)
@@ -152,12 +149,10 @@ class vuVMU_Address extends Component
 
   // VVAQ
   val vvaq_arb = new Arbiter(2)( new io_vvaq() )
-  val VVAQARB_LANE = 0
-  val VVAQARB_EVAC = 1
 
-  val vvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
-  val vvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
-  val vpaq = (new queueSimplePF(16)){ new io_vpaq_bundle() }
+  val vvaq = (new queueSimplePF(ENTRIES_VVAQ)){ new io_vvaq_bundle() }
+  val vvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
+  val vpaq = (new queueSimplePF(ENTRIES_VPAQ)){ new io_vpaq_bundle() }
 
   // vvaq arbiter, port 0: lane vaq
   vvaq_arb.io.in(VVAQARB_LANE) <> io.vvaq_lane
@@ -184,9 +179,9 @@ class vuVMU_Address extends Component
   io.vvaq_dec := io.vvaq_lane_dec
 
   // VPFVAQ
-  val vpfvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
-  val vpfvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
-  val vpfpaq = (new queueSimplePF(16)){ new io_vpaq_bundle() }
+  val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ)){ new io_vvaq_bundle() }
+  val vpfvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
+  val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ)){ new io_vpaq_bundle() }
 
   // vpfvaq hookup
   vpfvaq.io.enq <> io.vvaq_pf
@@ -198,7 +193,7 @@ class vuVMU_Address extends Component
   vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
 
   // VPAQ and VPFPAQ arbiter
-  val vpaq_arb = new vuVMU_AddressArbiter(late_nack = true)
+  val vpaq_arb = new vuVMU_AddressArbiter(LATE_DMEM_NACK)
 
   vpaq_arb.io.vpaq <> vpaq.io.deq
   vpaq_arb.io.vpfpaq <> vpfpaq.io.deq
