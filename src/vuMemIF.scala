@@ -28,15 +28,36 @@ class vuMemIF extends Component
 {
   val io = new io_vu_memif()
 
-  val ex_pf_cmd = (io.vaq_deq.bits.cmd === M_PFW || io.vaq_deq.bits.cmd === M_PFR)
-  val ex_load_cmd = (io.vaq_deq.bits.cmd === M_XRD)
-  val ex_store_cmd = (io.vaq_deq.bits.cmd === M_XWR)
-  val ex_amo_cmd = (M_XA_ADD <= io.vaq_deq.bits.cmd) && (io.vaq_deq.bits.cmd <= M_XA_MAXU) // assuing amos are contiguous
+  val mem_pf_val = Reg(resetVal = Bool(false))
+  val mem_load_val = Reg(resetVal = Bool(false))
+  val mem_store_val = Reg(resetVal = Bool(false))
+  val mem_amo_val = Reg(resetVal = Bool(false))
+
+  val ex_pf_cmd =
+    (io.vaq_deq.bits.cmd === M_PFW || io.vaq_deq.bits.cmd === M_PFR) &&
+    !(Bool(false) || mem_load_val || mem_store_val || mem_amo_val)
+
+  val ex_load_cmd =
+    (io.vaq_deq.bits.cmd === M_XRD) &&
+    !(mem_pf_val || Bool(false) || mem_store_val || mem_amo_val)
+
+  val ex_store_cmd =
+    (io.vaq_deq.bits.cmd === M_XWR) &&
+    !(mem_pf_val || mem_load_val || Bool(false) || mem_amo_val)
+
+  val ex_amo_cmd =
+    (M_XA_ADD <= io.vaq_deq.bits.cmd) && (io.vaq_deq.bits.cmd <= M_XA_MAXU) && // assuing amos are contiguous
+    !(mem_pf_val || mem_load_val || mem_store_val || Bool(false))
 
   val ex_pf_val = ex_pf_cmd && io.vaq_deq.valid
   val ex_load_val = ex_load_cmd && io.vaq_deq.valid && io.vldq_deq_rtag.valid
   val ex_store_val = ex_store_cmd && io.vaq_deq.valid && io.vsdq_deq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq_deq.valid && io.vsdq_deq.valid && io.vldq_deq_rtag.valid
+
+  mem_pf_val := ex_pf_val
+  mem_load_val := ex_load_val
+  mem_store_val := ex_store_val
+  mem_amo_val := ex_amo_val
 
   val ex_vaq_val = ex_pf_val || ex_load_val || ex_store_val || ex_amo_val
   val ex_vsdq_val = ex_store_val || ex_amo_val
@@ -46,10 +67,11 @@ class vuMemIF extends Component
   val mem_vsdq_val = Reg(ex_vsdq_val, resetVal = Bool(false))
   val mem_vldq_val = Reg(ex_vldq_val, resetVal = Bool(false))
 
-  val nack_ex_reg = Reg(io.mem_resp.bits.nack, resetVal = Bool(false))
+  val nack = io.mem_resp.bits.nack
+  val reg_nack = Reg(nack, resetVal = Bool(false))
 
   // when the request is nacked, the processor implicitly kills the request in decode and execute
-  val ack_common = !io.mem_resp.bits.nack && !nack_ex_reg
+  val ack_common = !nack && !reg_nack
 
   io.vaq_deq.ready :=
     ex_pf_cmd ||
@@ -57,19 +79,19 @@ class vuMemIF extends Component
     ex_store_cmd && io.vsdq_deq.valid ||
     ex_amo_cmd && io.vsdq_deq.valid && io.vldq_deq_rtag.valid
   io.vaq_ack := mem_vaq_val && ack_common
-  io.vaq_nack := (ex_vaq_val || mem_vaq_val) && io.mem_resp.bits.nack
+  io.vaq_nack := mem_vaq_val && nack
 
   io.vsdq_deq.ready :=
     ex_store_cmd && io.vaq_deq.valid ||
     ex_amo_cmd && io.vaq_deq.valid && io.vldq_deq_rtag.valid
   io.vsdq_ack := mem_vsdq_val && ack_common
-  io.vsdq_nack := (ex_vsdq_val || mem_vsdq_val) && io.mem_resp.bits.nack
+  io.vsdq_nack := mem_vsdq_val && nack
 
   io.vldq_deq_rtag.ready :=
     ex_load_cmd && io.vaq_deq.valid ||
     ex_amo_cmd && io.vaq_deq.valid && io.vsdq_deq.valid
   io.vldq_ack := mem_vldq_val && ack_common
-  io.vldq_nack := (ex_vldq_val || mem_vldq_val) && io.mem_resp.bits.nack
+  io.vldq_nack := mem_vldq_val && nack
 
   io.mem_req.valid := ex_vaq_val
   io.mem_req.bits.kill := io.mem_resp.bits.nack // get's delayed one cycle in cpu

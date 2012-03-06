@@ -510,9 +510,6 @@ class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundl
   val deq_data = new ioDecoupled()( {Bits(width=ROQ_DATA_SIZE)} )
   val enq = new ioPipe()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
 
-  val ack = Bool(INPUT)
-  val nack = Bool(INPUT)
-
   val qcnt = UFix(ROQ_TAG_SIZE, INPUT)
   val watermark = Bool(OUTPUT)
 }
@@ -525,14 +522,12 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
-  val write_ptr_spec = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
   val read_ptr_next = read_ptr + UFix(1)
-  val full = Reg(resetVal = Bool(true))
-  val full_spec = Reg(resetVal = Bool(true))
+  val write_ptr_next = write_ptr + UFix(1)
+  val full = Reg(resetVal = Bool(false))
 
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
-  val roq_rtag_deq_spec = io.deq_rtag.ready && io.deq_rtag.valid
-  val roq_rtag_deq = io.ack
+  val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
 
   val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
   data_array.setReadLatency(1)
@@ -547,38 +542,22 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   deq_data_val_int := vb_array(read_ptr)
 
-  when(roq_rtag_deq) { write_ptr := write_ptr + UFix(1) }
-  when(roq_rtag_deq_spec) { write_ptr_spec := write_ptr_spec + UFix(1) }
+  when(roq_rtag_deq) { write_ptr := write_ptr_next }
   when(roq_data_deq)
   {
     deq_data_val_int := vb_array(read_ptr_next)
     read_ptr := read_ptr_next
   }
 
-  // since nack is a very late signal
-  // don't mask deq_rtag.valid with !io.nack, the d$ kills the request
-  io.deq_rtag.valid := full_spec || (read_ptr != write_ptr_spec)
-  io.deq_rtag.bits := write_ptr_spec.toBits
+  io.deq_rtag.valid := !full
+  io.deq_rtag.bits := write_ptr
 
   val full_next =
-    Mux(roq_data_deq && !roq_rtag_deq && (read_ptr_next === write_ptr), Bool(true),
-    Mux(roq_rtag_deq && full, Bool(false),
+    Mux(roq_rtag_deq && !roq_data_deq && (write_ptr_next === read_ptr), Bool(true),
+    Mux(roq_data_deq && full, Bool(false),
         full))
 
   full := full_next
-
-  when (io.nack)
-  {
-    write_ptr_spec := write_ptr
-    full_spec := full_next
-  }
-  .otherwise
-  {
-    full_spec :=
-      Mux(roq_data_deq && !roq_rtag_deq_spec && (read_ptr_next === write_ptr_spec), Bool(true),
-      Mux(roq_rtag_deq_spec && full_spec, Bool(false),
-          full_spec))
-  }
 
 
   io.deq_data.valid := deq_data_val_int
