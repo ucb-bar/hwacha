@@ -27,6 +27,7 @@ class io_vmu_counters extends Bundle
   val vpaq_qcnt2 = UFix(SZ_QCNT, INPUT)
   val vpaq_watermark2 = Bool(OUTPUT)
 
+  val pending_load = Bool(OUTPUT)
   val pending_store = Bool(OUTPUT)
 }
 
@@ -72,6 +73,8 @@ class vuVMU_Counters extends Component
   vsreq_count.io.qcnt := io.qcnt
   io.vsreq_watermark := vsreq_count.io.watermark
 
+  // there is no loads in flight, when the counter is full
+  io.pending_load := !vlreq_count.io.full
   // there is no stores in flight, when the counter is full
   io.pending_store := !vsreq_count.io.full
 }

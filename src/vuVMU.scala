@@ -114,5 +114,5 @@ class vuVMU extends Component
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
 
-  io.vmu_to_xcpt.no_pending_load_store := vsreq_count.io.full && vlreq_count.io.full
+  io.vmu_to_xcpt.no_pending_load_store := !counters.io.pending_load && !counters.io.pending_store
 }
