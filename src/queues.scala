@@ -6,6 +6,7 @@ import scala.math._
 
 class IOqueueCtrl1_pipe extends Bundle
 {
+  val flush = Bool(INPUT)
   val enq_val = Bool(INPUT)
   val enq_rdy = Bool(OUTPUT)
   val deq_val = Bool(OUTPUT)
@@ -15,7 +16,7 @@ class IOqueueCtrl1_pipe extends Bundle
 
 class queueCtrl1_pipe extends Component
 {
-  override val io = new IOqueueCtrl1_pipe()
+  val io = new IOqueueCtrl1_pipe()
 
   val full = Reg(width = 1, resetVal = Bool(false))
   val empty = !full
@@ -31,18 +32,14 @@ class queueCtrl1_pipe extends Component
   io.enq_rdy := enq_rdy_int
   io.deq_val := deq_val_int
 
-  when(do_deq && !do_pipe)
-  {
-    full := Bool(false)
-  }
-  when(do_enq)
-  {
-    full := Bool(true)
-  }
+  when (do_deq && !do_pipe) { full := Bool(false) }
+  when (do_enq) { full := Bool(true) }
+  when (io.flush) { full := Bool(false) }
 }
 
 class IOqueueCtrl(addr_sz: Int) extends Bundle()
 {
+  val flush = Bool(INPUT)
   val enq_val = Bool(INPUT)
   val enq_rdy = Bool(OUTPUT)
   val deq_val = Bool(OUTPUT)
@@ -54,7 +51,7 @@ class IOqueueCtrl(addr_sz: Int) extends Bundle()
 
 class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
 {
-  override val io = new IOqueueCtrl(addr_sz)
+  val io = new IOqueueCtrl(addr_sz)
 
   // Enqueue and dequeue pointers
 
@@ -112,11 +109,18 @@ class queueCtrl_pipe(entries: Int, addr_sz: Int) extends Component
   enq_ptr := enq_ptr_next
   deq_ptr := deq_ptr_next
   full    := full_next
+
+  when (io.flush)
+  {
+    enq_ptr := UFix(0)
+    deq_ptr := UFix(0)
+    full := Bool(false)
+  }
 }
 
 class queueCtrl(entries: Int, addr_sz: Int) extends Component
 {
-  override val io = new IOqueueCtrl(addr_sz)
+  val io = new IOqueueCtrl(addr_sz)
 
   // Enqueue and dequeue pointers
 
@@ -169,10 +173,18 @@ class queueCtrl(entries: Int, addr_sz: Int) extends Component
   enq_ptr := enq_ptr_next
   deq_ptr := deq_ptr_next
   full    := full_next
+
+  when (io.flush)
+  {
+    enq_ptr := UFix(0)
+    deq_ptr := UFix(0)
+    full := Bool(false)
+  }
 }
 
 class io_queue[T <: Data](data: => T) extends Bundle()
 {
+  val flush = Bool(INPUT)
   val enq = new ioDecoupled()( data ).flip
   val deq = new ioDecoupled()( data )
 }
@@ -180,8 +192,9 @@ class io_queue[T <: Data](data: => T) extends Bundle()
 class queueSimplePF[T <: Data](entries: Int)(data: => T) extends Component
 {
   val addr_sz = log2up(entries)
-  override val io = new io_queue({data})
+  val io = new io_queue({data})
   val ctrl = new queueCtrl(entries, addr_sz)
+  ctrl.io.flush <> io.flush
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
@@ -192,8 +205,9 @@ class queueSimplePF[T <: Data](entries: Int)(data: => T) extends Component
 class queuePipePF[T <: Data](entries: Int)(data: => T) extends Component
 {
   val addr_sz = log2up(entries)
-  override val io = new io_queue({data})
+  val io = new io_queue({data})
   val ctrl = new queueCtrl_pipe(entries, addr_sz)
+  ctrl.io.flush <> io.flush
   ctrl.io.deq_val <> io.deq.valid
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
@@ -217,7 +231,7 @@ class IOqueueCtrlFlow(addr_sz: Int) extends Bundle() /* IOqueueCtrl */
 
 class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
 {
-  override val io = new IOqueueCtrlFlow(addr_sz)
+  val io = new IOqueueCtrlFlow(addr_sz)
   // Enqueue and dequeue pointers
 
   val enq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
@@ -285,7 +299,7 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
 //
 //class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
 //{
-//  override val io = new IOqueueDpathFlow(data_sz, addr_sz)
+//  val io = new IOqueueDpathFlow(data_sz, addr_sz)
 //  val ram  = Mem(entries, io.wen, io.waddr, io.enq_bits)
 //  val rout = ram(io.raddr)
 //  io.deq_bits := Mux(io.flowthru, io.enq_bits, rout)
@@ -299,7 +313,7 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
 /*
 class queue1PF(data_sz:Int) extends Component
 {
-  override val io = new IOqueue1PF(data_sz)
+  val io = new IOqueue1PF(data_sz)
   val ctrl = new queue1Simple(data_sz)
   val deq_bits = Reg(width=data_sz)
   io.deq_bits := deq_bits
@@ -312,8 +326,9 @@ class queue1PF(data_sz:Int) extends Component
 class queuePipe1PF[T <: Data](data: => T) extends Component
 {
   val wen = Wire(){Bool()}
-  override val io = new io_queue({data})
+  val io = new io_queue({data})
   val ctrl = new queueCtrl1_pipe()
+  ctrl.io.flush <> io.flush
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.deq_val <> io.deq.valid
@@ -329,7 +344,7 @@ class queuePipe1PF[T <: Data](data: => T) extends Component
 
 //class queueFlowPF[T <: Data](entries: Int)(data: => T) extends Component
 //{
-//  override val io = new io_queue({data})
+//  val io = new io_queue({data})
 //  val addr_sz = log2up(entries)
 //  val ctrl  = new queueCtrlFlow(entries, addr_sz)
 //  val dpath = new queueDpathFlow(data_sz, entries, addr_sz)
@@ -348,6 +363,7 @@ class queuePipe1PF[T <: Data](data: => T) extends Component
 
 class io_qcnt(w: Int) extends Bundle
 {
+  val flush = Bool(INPUT)
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
   val qcnt = UFix(w, INPUT)
@@ -381,10 +397,13 @@ class qcnt(reset_cnt: Int, max_cnt: Int) extends Component
 
   io.full := (count === UFix(reset_cnt,size))
   io.empty := (count === UFix(0,size))
+
+  when (io.flush) { count := UFix(reset_cnt) }
 }
 
 class io_skidbuf[T <: Data](data: => T) extends Bundle
 {
+  val flush = Bool(INPUT)
   val enq = new ioDecoupled()(data).flip
   val deq = new ioDecoupled()(data)
   val nack = Bool(INPUT)
@@ -397,22 +416,35 @@ class skidbuf[T <: Data](late_nack: Boolean)(data: => T) extends Component
 
   val pipereg = new queuePipe1PF(data)
 
+  pipereg.io.flush := io.flush
   pipereg.io.enq <> io.enq
 
-  var rejected = !Reg(io.deq.ready) || io.nack
+  val reg_ready = Reg(resetVal = Bool(true))
+  val reg_nack = Reg(resetVal = Bool(false))
+
+  reg_ready := io.deq.ready
+  reg_nack := io.nack
+
+  var rejected = !reg_ready || io.nack
   pipereg.io.deq.ready := !rejected
   io.kill := Bool(false)
 
   if (late_nack)
   {
-    rejected = !Reg(io.deq.ready) || Reg(io.nack)
+    rejected = !reg_ready || reg_nack
     pipereg.io.deq.ready := !rejected && !io.nack
-    io.kill := Reg(io.nack)
+    io.kill := reg_nack
   }
 
   val sel_pipereg = rejected && pipereg.io.deq.valid
   io.deq.valid := Mux(sel_pipereg, pipereg.io.deq.valid, io.enq.valid)
   io.deq.bits := Mux(sel_pipereg, pipereg.io.deq.bits, io.enq.bits)
+
+  when (io.flush)
+  {
+    reg_ready := Bool(true)
+    reg_nack := Bool(false)
+  }
 }
 
 object SkidBuffer
@@ -427,6 +459,7 @@ object SkidBuffer
 
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {
+  val flush = Bool(INPUT)
   val enq = new ioDecoupled()( data ).flip
   val deq = new ioDecoupled()( data )
 
@@ -487,6 +520,15 @@ class queue_spec[T <: Data](entries: Int)(data: => T) extends Component
   }
 
   io.deq.bits <> Mem(entries, do_enq, enq_ptr, io.enq.bits).read(deq_ptr_spec)
+
+  when (io.flush)
+  {
+    enq_ptr := UFix(0)
+    deq_ptr := UFix(0)
+    deq_ptr_spec := UFix(0)
+    full := Bool(false)
+    full_spec := Bool(false)
+  }
 }
 
 class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
@@ -497,6 +539,7 @@ class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) ex
 
 class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
+  val flush = Bool(INPUT)
   val deq_rtag = new ioDecoupled()( {Bits(width=ROQ_TAG_SIZE)} )
   val deq_data = new ioDecoupled()( {Bits(width=ROQ_DATA_SIZE)} )
   val enq = new ioPipe()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
@@ -579,5 +622,15 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   }
 
   io.watermark := locnt >= io.qcnt
+
+  when (io.flush)
+  {
+    read_ptr := UFix(0)
+    write_ptr := UFix(0)
+    full := Bool(false)
+    vb_array := Bits(0)
+    deq_data_val_int := Bool(false)
+    shifted_vb_array := Bits(0)
+  }
 }
 
