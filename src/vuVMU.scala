@@ -4,6 +4,11 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vmu_to_xcpt_handler extends Bundle 
+{
+  val no_pending_load_store = Bool(OUTPUT)
+}
+
 class io_vmu extends Bundle
 {
   val pf_vvaq = new io_vvaq().flip
@@ -31,6 +36,8 @@ class io_vmu extends Bundle
 
   val vec_pftlb_req = new ioDTLB_CPU_req()
   val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
+
+  val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 }
 
 class vuVMU extends Component
@@ -211,4 +218,6 @@ class vuVMU extends Component
   // memif interface
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
+
+  io.vmu_to_xcpt.no_pending_load_store := vsreq_count.io.full && vlreq_count.io.full
 }

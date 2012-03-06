@@ -54,6 +54,11 @@ class io_vxu_expand_to_hazard extends Bundle
   val wen = Bool()
 }
 
+class io_expand_to_xcpt_handler extends Bundle
+{
+  val empty = Bool(OUTPUT)
+}
+
 class io_vxu_expand extends Bundle
 {
   val seq_to_expand = new io_vxu_seq_to_expand().asInput
@@ -67,6 +72,8 @@ class io_vxu_expand extends Bundle
   val expand_write = new io_vxu_expand_write().asOutput
   val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
+
+  val expand_to_xcpt = new io_expand_to_xcpt_handler()
 }
 
 class vuVXU_Banked8_Expand extends Component 
@@ -565,4 +572,6 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.vldq := reg_vldq(0)
   io.expand_lfu_fn.vsdq := reg_vsdq(0)
   io.expand_lfu_fn.utmemop := reg_utmemop(0)
+
+  io.expand_to_xcpt.empty := !reg_ren.toBits().orR() && !reg_wen.toBits().orR && !reg_viu.toBits().orR()
 }
