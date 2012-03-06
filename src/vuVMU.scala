@@ -37,146 +37,70 @@ class vuVMU extends Component
 {
   val io = new io_vmu()
 
-  val memif = new vuMemIF()
+  val addr = new vuVMU_Address()
+  val ldata = new vuVMU_LoadData()
+  val sdata = new vuVMU_StoreData()
+  val memif = new vuVMU_MemIF()
+  val counters = new vuVMU_Counters()
 
-  val vvaq_count = new qcnt(16,16)
-  val vpaq_count = new qcnt(0,16)
-  val vsdq_count = new qcnt(16,16)
-  val vsreq_count = new qcnt(31,31) // vector stores in flight
-  val vlreq_count = new qcnt(128,128) // vector loads in flight
+  // address unit
+  addr.io.vvaq_pf <> io.pf_vvaq
+  addr.io.vvaq_lane <> io.lane_vvaq
+  addr.io.vvaq_evac <> io.evac_vvaq
 
-  // VVAQ
-  val vvaq_arb = new Arbiter(2)( new io_vvaq() )
-  val VVAQARB_LANE = 0
-  val VVAQARB_EVAC = 1
+  io.vec_tlb_req <> addr.io.vec_tlb_req
+  addr.io.vec_tlb_resp <> io.vec_tlb_resp
+  io.vec_pftlb_req <> addr.io.vec_pftlb_req
+  addr.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
-  val vvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
-  val vvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
-  val vpaq = (new queueSimplePF(16)){ new io_vpaq_bundle() }
+  memif.io.vaq <> addr.io.vaq
+  addr.io.vaq_ack := memif.io.vaq_ack
+  addr.io.vaq_nack := memif.io.vaq_nack
 
-  // vvaq arbiter, port 0: lane vaq
-  vvaq_arb.io.in(VVAQARB_LANE) <> io.lane_vvaq
-  // vvaq arbiter, port 1: evac
-  vvaq_arb.io.in(VVAQARB_EVAC) <> io.evac_vvaq
-  // vvaq arbiter, output
-  // ready signal a little bit conservative, since checking space for both
-  // vsreq and vlreq, not looking at the request type
-  // however, this is okay since normally you don't hit this limit
-  vvaq_arb.io.out.ready :=
-    vvaq_count.io.watermark && vsreq_count.io.watermark && vlreq_count.io.watermark // vaq.io.enq.ready
-  vvaq.io.enq.valid := vvaq_arb.io.out.valid
-  vvaq.io.enq.bits := vvaq_arb.io.out.bits
+  addr.io.vvaq_lane_dec := io.lane_vaq_dec
 
-  // vvaq address translation
-  vvaq_tlb.io.vvaq <> vvaq.io.deq
-  vpaq.io.enq <> vvaq_tlb.io.vpaq
-  io.vec_tlb_req <> vvaq_tlb.io.tlb_req
-  vvaq_tlb.io.tlb_resp <> io.vec_tlb_resp
+  counters.io.vvaq_inc := addr.io.vvaq_inc
+  counters.io.vvaq_dec := addr.io.vvaq_dec
+  counters.io.vpaq_inc := addr.io.vpaq_inc
+  counters.io.vpaq_dec := addr.io.vpaq_dec
+  counters.io.vpaq_qcnt2 := addr.io.vpaq_qcnt
+  addr.io.vvaq_watermark := counters.io.vvaq_watermark
+  addr.io.vpaq_watermark := counters.io.vpaq_watermark2
+  addr.io.vsreq_watermark := counters.io.vsreq_watermark
+  addr.io.vlreq_watermark := counters.io.vlreq_watermark
 
-  // vvaq counts available space
-  vvaq_count.io.qcnt := io.qcnt
-  // vvaq frees an entry, when vvaq kicks out an entry to the skid buffer
-  vvaq_count.io.inc := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
-  // vvaq occupies an entry, when the lane kicks out an entry
-  vvaq_count.io.dec := io.lane_vaq_dec
+  // load data unit
+  io.lane_vldq <> ldata.io.vldq_lane
 
-  // VPFVAQ
-  val vpfvaq = (new queueSimplePF(16)){ new io_vvaq_bundle() }
-  val vpfvaq_tlb = new vuVMU_AddressTLB(late_tlb_miss = true)
-  val vpfpaq = (new queueSimplePF(16)){ new io_vpaq_bundle() }
+  ldata.io.vldq <> memif.io.vldq
+  memif.io.vldq_rtag <> ldata.io.vldq_rtag
+  ldata.io.vldq_ack := memif.io.vldq_ack
+  ldata.io.vldq_nack := memif.io.vldq_nack
 
-  // vpfvaq hookup
-  vpfvaq.io.enq <> io.pf_vvaq
+  ldata.io.qcnt := io.qcnt
+  counters.io.vlreq_inc := ldata.io.vlreq_inc
+  counters.io.vlreq_dec := ldata.io.vlreq_dec
 
-  // vpfvaq address translation
-  vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
-  vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
-  io.vec_pftlb_req <> vpfvaq_tlb.io.tlb_req
-  vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
+  // store data unit
+  sdata.io.vsdq_lane <> io.lane_vsdq
+  sdata.io.vsdq_evac <> io.evac_vsdq
 
-  // VPAQ and VPFPAQ arbiter
-  val vpaq_arb = new vuVMU_AddressArbiter(late_nack = true)
+  memif.io.vsdq <> sdata.io.vsdq
+  sdata.io.vsdq_ack := memif.io.vsdq_ack
+  sdata.io.vsdq_nack := memif.io.vsdq_nack
 
-  vpaq_arb.io.vpaq <> vpaq.io.deq
-  vpaq_arb.io.vpfpaq <> vpfpaq.io.deq
-  vpaq_count.io.qcnt2 := vpaq_arb.io.qcnt
-  vpaq_arb.io.watermark := vpaq_count.io.watermark2
-  memif.io.vaq_deq <> vpaq_arb.io.vaq
-  vpaq_arb.io.ack := memif.io.vaq_ack
-  vpaq_arb.io.nack := memif.io.vaq_nack
+  sdata.io.vsdq_lane_dec := io.lane_vsdq_dec
 
-  // vpaq counts occupied space
-  vpaq_count.io.qcnt := io.qcnt
-  // vpaq occupies an entry, when it accepts an entry from vvaq
-  vpaq_count.io.inc := vvaq_tlb.io.ack
-  // vpaq frees an entry, when the memory system drains it
-  vpaq_count.io.dec := vpaq_arb.io.vpaq_ack
+  counters.io.vsdq_inc := sdata.io.vsdq_inc
+  counters.io.vsdq_dec := sdata.io.vsdq_dec
+  counters.io.vsreq_inc := sdata.io.vsreq_inc
+  counters.io.vsreq_dec := sdata.io.vsreq_dec
+  sdata.io.vpaq_watermark := counters.io.vpaq_watermark
+  sdata.io.vsdq_watermark := counters.io.vsdq_watermark
 
-
-  // vector load data queue and counter
-  val vldq = new queue_reorder_qcnt(65,128,9) // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq_skid = SkidBuffer(vldq.io.deq_rtag, late_nack = true)
-
-  vldq.io.deq_data.ready := io.lane_vldq.ready
-  io.lane_vldq.valid := vldq.io.watermark // vldq.deq_data.valid
-  io.lane_vldq.bits := vldq.io.deq_data.bits
-
-  vldq.io.enq <> memif.io.vldq_enq
-  memif.io.vldq_deq_rtag <> vldq_skid.io.deq
-
-  vldq_skid.io.nack := memif.io.vldq_nack
-
-  // vldq has an embedded counter
-  // vldq counts occupied space
-  // vldq occupies an entry, when it accepts an entry from the memory system
-  // vldq frees an entry, when the lane consumes it
-  vldq.io.qcnt := io.qcnt
-
-  // vlreq counts available space
-  vlreq_count.io.qcnt := io.qcnt
-  // vlreq frees an entry, when the vector load data queue consumes an entry
-  vlreq_count.io.inc := io.lane_vldq.ready
-  // vlreq occupies an entry, when the memory system kicks out an entry
-  vlreq_count.io.dec := memif.io.vldq_ack
-
-
-  // vector store data queue and counter
-  val vsdq_arb = new Arbiter(2)( new io_vsdq() )
-  val vsdq = new queueSimplePF(16)({ Bits(width = 65) })
-
-  val VSDQARB_LANE = 0
-  val VSDQARB_EVAC = 1
-
-  // vsdq arbiter, port 0: lane vsdq
-  vsdq_arb.io.in(VSDQARB_LANE) <> io.lane_vsdq
-  // vsdq arbiter, port 1: evac
-  vsdq_arb.io.in(VSDQARB_EVAC) <> io.evac_vsdq
-  // vsdq arbiter, output
-  vsdq_arb.io.out.ready := vsdq_count.io.watermark && vpaq_count.io.watermark // vsdq.io.enq.ready
-  vsdq.io.enq.valid := vsdq_arb.io.out.valid
-  vsdq.io.enq.bits := vsdq_arb.io.out.bits
-
-  val vsdq_skid = SkidBuffer(vsdq.io.deq, late_nack = true)
-
-  memif.io.vsdq_deq <> vsdq_skid.io.deq
-  vsdq_skid.io.nack := memif.io.vsdq_nack
-
-  // vsdq counts available space
-  vsdq_count.io.qcnt := io.qcnt
-  // vsdq frees an entry, when the memory system drains it
-  vsdq_count.io.inc := vsdq_skid.io.enq.ready && vsdq.io.deq.valid
-  // vsdq occupies an entry, when the lane kicks out an entry
-  vsdq_count.io.dec := io.lane_vsdq_dec
-
-  // vsreq counts available space
-  vsreq_count.io.qcnt := io.qcnt
-  // vsreq frees an entry, when the memory system acks the store
-  vsreq_count.io.inc := memif.io.vsdq_ack
-  // vsreq occupies an entry, when the lane kicks out an entry
-  vsreq_count.io.dec := io.lane_vsdq.valid && vsdq.io.enq.ready
-  // there is no stores in flight, when the counter is full
-  io.pending_store := !vsreq_count.io.full
-
+  // counters
+  counters.io.qcnt := io.qcnt
+  io.pending_store := counters.io.pending_store
 
   // memif interface
   io.dmem_req <> memif.io.mem_req
