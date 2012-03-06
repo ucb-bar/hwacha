@@ -34,7 +34,6 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
-  val qcnt = UFix(width = SZ_QCNT)
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
@@ -66,6 +65,8 @@ class io_vxu_seq extends Bundle
   val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
   val seq_to_expand = new io_vxu_seq_to_expand().asOutput
 
+  val qcntp1 = UFix(SZ_QCNT, OUTPUT)
+  val qcntp2 = UFix(SZ_QCNT, OUTPUT)
   val qstall = new io_qstall().asInput
 
   val fire = new io_vxu_issue_fire().asInput
@@ -710,12 +711,15 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.vt := array_vt(reg_ptr)
   io.seq_regid_imm.vr := array_vr(reg_ptr)
   io.seq_regid_imm.vd := array_vd(reg_ptr)
-  io.seq_regid_imm.qcnt := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(2, SZ_QCNT))
   io.seq_regid_imm.mem := array_mem(reg_ptr)
-
   io.seq_regid_imm.imm := array_imm(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
+
+  // looking for one cycle ahead
+  io.qcntp1 := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(2, SZ_QCNT))
+  // looking for two cycles ahead
+  io.qcntp2 := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(3, SZ_QCNT))
 
   // irb
   io.seq_to_irb.update_imm1.valid := Bool(false)

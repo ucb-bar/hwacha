@@ -19,7 +19,8 @@ class io_vmu extends Bundle
   val lane_vaq_dec = Bool(INPUT)
   val lane_vsdq_dec = Bool(INPUT)
 
-  val qcnt = UFix(SZ_QCNT, INPUT)
+  val qcntp1 = UFix(SZ_QCNT, INPUT)
+  val qcntp2 = UFix(SZ_QCNT, INPUT)
 
   val pending_store = Bool(OUTPUT)
 
@@ -77,7 +78,7 @@ class vuVMU extends Component
   ldata.io.vldq_ack := memif.io.vldq_ack
   ldata.io.vldq_nack := memif.io.vldq_nack
 
-  ldata.io.qcnt := io.qcnt
+  ldata.io.qcnt := io.qcntp1
   counters.io.vlreq_inc := ldata.io.vlreq_inc
   counters.io.vlreq_dec := ldata.io.vlreq_dec
 
@@ -99,7 +100,7 @@ class vuVMU extends Component
   sdata.io.vsdq_watermark := counters.io.vsdq_watermark
 
   // counters
-  counters.io.qcnt := io.qcnt
+  counters.io.qcnt := io.qcntp2
   io.pending_store := counters.io.pending_store
 
   // memif interface

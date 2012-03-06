@@ -30,7 +30,8 @@ class io_vxu extends Bundle
   val lane_vaq_dec = Bool(OUTPUT)
   val lane_vsdq_dec = Bool(OUTPUT)
 
-  val qcnt = UFix(SZ_QCNT, OUTPUT)
+  val qcntp1 = UFix(SZ_QCNT, OUTPUT)
+  val qcntp2 = UFix(SZ_QCNT, OUTPUT)
   
   val pending_store = Bool(INPUT)
 
@@ -195,5 +196,6 @@ class vuVXU extends Component
   io.lane_vsdq.bits := b8mem.io.vmu_vsdq_bits
   io.lane_vsdq_dec := b8lane.io.vmu.vsdq_val
   
-  io.qcnt := b8seq.io.seq_regid_imm.qcnt
+  io.qcntp1 := b8seq.io.qcntp1
+  io.qcntp2 := b8seq.io.qcntp2
 }
