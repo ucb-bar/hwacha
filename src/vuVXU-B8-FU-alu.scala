@@ -148,8 +148,8 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val next_mask = MuxCase(
     Bits(1, 1), Array(
-      VIU_FN(VIU_MOVZ) -> ~reg_in0(0).toBits,
-      VIU_FN(VIU_MOVN) ->  reg_in0(0).toBits
+      VIU_FN(VIU_MOVZ) -> ~reg_in0(0),
+      VIU_FN(VIU_MOVN) ->  reg_in0(0)
     ))
 
   val next_result64 = MuxCase(
