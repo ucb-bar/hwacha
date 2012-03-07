@@ -18,7 +18,7 @@ class io_vru extends Bundle
   val vec_pfximm2q = new io_vec_ximm2q().flip
   val vec_pfcntq = new io_vec_cntq().flip
 
-  val xcpt_to_vru = new io_xcpt_handler_to_vru().flip()
+  val xcpt_to_vru = new io_xcpt_handler_to_vru().flip
 }
 
 class vuVRU extends Component
@@ -139,6 +139,11 @@ class vuVRU extends Component
   {
     is (VRU_Idle)
     {
+      when (io.xcpt_to_vru.flush)
+      {
+        // do nothing
+        state := VRU_Idle
+      }
       when (setvl_val)
       {
         vlen_reg := io.vec_pfximm1q.bits(RG_XCMD_VLEN).toUFix
@@ -199,7 +204,13 @@ class vuVRU extends Component
     }
     is (VRU_IssueShort)
     {
-      when (vec_count_reg <= Fix(0))
+      // can leave regs intact, next prefetch command
+      // will set them as needed
+      when (io.xcpt_to_vru.flush)
+      {
+        state := VRU_Idle
+      }
+      .elsewhen (vec_count_reg <= Fix(0))
       {
         state := VRU_Idle
       }
@@ -221,7 +232,13 @@ class vuVRU extends Component
     }
     is (VRU_IssueLong)
     {
-      when (vec_count_reg === Fix(0))
+      // can leave regs intact, next prefetch command
+      // will set them as needed
+      when (io.xcpt_to_vru.flush)
+      {
+        state := VRU_Idle
+      }
+      .elsewhen (vec_count_reg === Fix(0))
       {
         state := VRU_Idle
       }
