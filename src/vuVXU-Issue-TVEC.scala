@@ -39,7 +39,8 @@ class io_vxu_issue_tvec extends Bundle
   val irb_cntb = new io_vxu_cntq()
   val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip
+  val flush = Bool(INPUT)
+  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
 class vuVXU_Issue_TVEC extends Component
@@ -161,7 +162,7 @@ class vuVXU_Issue_TVEC extends Component
   val mask_irb_cntb_ready = !decode_irb_cntb_valid || io.irb_cntb.ready
 
   val valid_common =
-    !io.cpu_exception.exception && 
+    !io.xcpt_to_issue.stall && 
     tvec_active_fence_clear &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_irb_cmdb_ready && mask_irb_imm1b_ready && mask_irb_imm2b_ready && mask_irb_cntb_ready
@@ -173,7 +174,7 @@ class vuVXU_Issue_TVEC extends Component
   val fire_vf = fire_common && decode_vf
   val fire_fence_cv = fire_common && decode_fence_cv
 
-  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.cpu_exception.exception
+  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.xcpt_to_issue.stall
 
   io.vxu_cmdq.ready := 
     queue_common && 
@@ -271,6 +272,18 @@ class vuVXU_Issue_TVEC extends Component
   {
     next_state := ISSUE_TVEC
   }
+
+  when(io.flush) 
+  {
+    next_state := ISSUE_TVEC
+    next_vlen := Bits(0,SZ_VLEN)
+    next_nxregs := Bits(32,SZ_REGCNT)
+    next_nfregs := Bits(32,SZ_REGCNT)
+    next_bactive := Bits("b1111_1111",SZ_BANK)
+    next_bcnt := Bits(8,SZ_LGBANK1)
+    next_stride := Bits(63,SZ_REGLEN)
+  }
+
 
 
 //-------------------------------------------------------------------------\\

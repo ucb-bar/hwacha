@@ -38,6 +38,7 @@ class io_vmu extends Bundle
   val vec_pftlb_req = new ioDTLB_CPU_req()
   val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
 
+  val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
   val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 }
 

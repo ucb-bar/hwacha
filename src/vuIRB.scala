@@ -28,6 +28,8 @@ class io_vu_irb extends Bundle
   val irb_deq_imm2b = new io_vxu_imm2q()
   val irb_deq_cntb = new io_vxu_cntq()
   val irb_deq_cntb_last = Bool(OUTPUT)
+
+  val xcpt_to_aiw = new io_xcpt_handler_to_aiw().flip()
 }
 
 class vuIRB extends Component 
@@ -39,14 +41,18 @@ class vuIRB extends Component
   val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
   val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH, true)
 
+  ircmdb.io.flush <> io.xcpt_to_aiw.flush
   ircmdb.io.enq <> io.irb_enq_cmdb
 
+  irimm1b.io.flush <> io.xcpt_to_aiw.flush
   irimm1b.io.enq <> io.irb_enq_imm1b
   irimm1b.io.update <> io.seq_to_irb.update_imm1
   irimm1b.io.rtag <> io.irb_to_issue.imm1_rtag
 
+  irimm2b.io.flush <> io.xcpt_to_aiw.flush
   irimm2b.io.enq <> io.irb_enq_imm2b
   
+  ircntb.io.flush <> io.xcpt_to_aiw.flush
   ircntb.io.enq <> io.irb_enq_cntb
   ircntb.io.update <> io.seq_to_irb.update_cnt
   ircntb.io.markLast <> io.issue_to_irb.markLast

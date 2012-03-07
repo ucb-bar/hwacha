@@ -4,6 +4,12 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vxu_to_xcpt_handler extends Bundle
+{
+  val seq = new io_seq_to_xcpt_handler()
+  val expand = new io_expand_to_xcpt_handler()
+}
+
 class io_vxu extends Bundle
 {
   val illegal = Bool(OUTPUT)
@@ -41,13 +47,12 @@ class io_vxu extends Bundle
   val irb_cntb = new io_vxu_cntq()
 
   val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip
+  val irb_to_issue = new io_irb_to_issue().flip()
 
   val seq_to_irb = new io_seq_to_irb()
 
-  val cpu_exception = new io_cpu_exception().flip
-
-  val evac_to_seq = new io_evac_to_seq().flip()
+  val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
+  val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
 }
 
 class vuVXU extends Component
@@ -75,7 +80,8 @@ class vuVXU extends Component
   issue.io.issue_to_irb <> io.issue_to_irb
   issue.io.irb_to_issue <> io.irb_to_issue
 
-  issue.io.cpu_exception <> io.cpu_exception
+  issue.io.flush <> io.xcpt_to_vxu.flush
+  issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
 
   val b8fire = new vuVXU_Banked8_Fire()
 
@@ -121,6 +127,8 @@ class vuVXU extends Component
   b8hazard.io.fire_fn <> b8fire.io.fire_fn
   b8hazard.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
+  b8hazard.io.flush <> io.xcpt_to_vxu.flush
+
 
   val b8seq = new vuVXU_Banked8_Seq()
 
@@ -137,9 +145,9 @@ class vuVXU extends Component
 
   b8seq.io.seq_to_irb <> io.seq_to_irb
 
-  b8seq.io.cpu_exception <> io.cpu_exception
-
-  b8seq.io.evac_to_seq <> io.evac_to_seq
+  b8seq.io.flush <> io.xcpt_to_vxu.flush
+  b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
+  b8seq.io.seq_to_xcpt <> io.vxu_to_xcpt.seq
 
   val b8expand = new vuVXU_Banked8_Expand()
 
@@ -150,6 +158,7 @@ class vuVXU extends Component
   b8expand.io.seq_fn <> b8seq.io.seq_fn
   b8expand.io.seq_regid_imm <> b8seq.io.seq_regid_imm
 
+  b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
   val b8lane = new vuVXU_Banked8_Lane()
 

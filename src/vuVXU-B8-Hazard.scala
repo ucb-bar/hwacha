@@ -36,6 +36,8 @@ class io_vxu_hazard extends Bundle
   val fire = new io_vxu_issue_fire().asInput
   val fire_fn = new io_vxu_issue_fn().asInput
   val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+
+  val flush = Bool(INPUT)
 }
 
 class vuVXU_Banked8_Hazard extends Component
@@ -180,6 +182,20 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_vau2.write(reg_ptr, Bool(false))
     next_rport_vsu.write(reg_ptr, Bool(false))
     next_rport_vgu.write(reg_ptr, Bool(false))
+  }
+
+  when (io.flush) 
+  {
+    for (i <- 0 until SZ_BANK)
+      {
+        next_rport_val(i)  := Bool(false)
+        next_rport_vau0(i) := Bool(false)
+        next_rport_vau1(i) := Bool(false)
+        next_rport_vau2(i) := Bool(false)
+        next_rport_vsu(i)  := Bool(false)
+        next_rport_vgu(i)  := Bool(false)
+      }
+
   }
 
   // I had to change this structure to the following in order to cut the
@@ -391,6 +407,20 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vlu.write(reg_ptr, Bool(false))
   }
 
+  when (io.flush) 
+  {
+    for (i <- 0 until SZ_BANK)
+      {
+        next_wport_val(i)  := Bool(false)
+        next_wport_head(i) := Bool(false)
+        next_wport_vau0(i) := Bool(false)
+        next_wport_vau1(i) := Bool(false)
+        next_wport_vau2(i) := Bool(false)
+        next_wport_vlu(i)  := Bool(false)
+        next_wport_vd(i)   := Bool(false)
+      }
+  }
+
   val array_sport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
 
   val next_sport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -435,6 +465,14 @@ class vuVXU_Banked8_Hazard extends Component
   {
     next_sport_val.write(reg_ptr, Bool(false))
   }
+
+  when (io.flush)
+  {
+    for (i <- 0 until SZ_BANK)
+      {
+        next_sport_val(i) := Bool(false)
+      }
+  }  
 
   // hazard check logic for tvec/vt
   val shazard_vau0 = (array_rport_val.toBits & array_rport_vau0.toBits).orR | (array_wport_val.toBits & array_wport_vau0.toBits).orR

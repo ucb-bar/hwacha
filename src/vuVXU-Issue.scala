@@ -143,7 +143,8 @@ class io_vxu_issue extends Bundle
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip
+  val flush = Bool(INPUT)
+  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
 class vuVXU_Issue extends Component
@@ -186,8 +187,9 @@ class vuVXU_Issue extends Component
   tvec.io.irb_imm2b <> io.irb_imm2b
   tvec.io.irb_cntb.ready := io.irb_cntb.ready
   tvec.io.irb_to_issue <> io.irb_to_issue
-  
-  tvec.io.cpu_exception <> io.cpu_exception
+
+  tvec.io.flush := io.flush
+  tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
@@ -204,7 +206,8 @@ class vuVXU_Issue extends Component
   vt.io.irb_to_issue <> io.irb_to_issue
   vt.io.issue_to_irb <> io.issue_to_irb
 
-  vt.io.cpu_exception <> io.cpu_exception
+  vt.io.flush := io.flush
+  vt.io.xcpt_to_issue <> io.xcpt_to_issue
 
   io.vxu_cntq.ready := tvec.io.vxu_cntq.ready || vt.io.vxu_cntq.ready
 

@@ -40,14 +40,15 @@ class io_vxu_issue_vt extends Bundle
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip
 
-  val cpu_exception = new io_cpu_exception().flip
+  val flush = Bool(INPUT)
+  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
 class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val vt_ready = io.ready && io.irb_cntb.ready & !io.cpu_exception.exception
+  val vt_ready = io.ready && io.irb_cntb.ready & !io.xcpt_to_issue.stall
 
   val stalld = !vt_ready
   val stallf = ~io.imem_req.ready || ~io.imem_resp.valid || stalld
@@ -58,7 +59,12 @@ class vuVXU_Issue_VT extends Component
 
   val imm1_rtag = Reg(resetVal = Bits(0, SZ_IRB_IMM1))
 
-  when (io.vf.fire) 
+  when(io.flush) 
+  {
+    if_reg_pc := Bits(0,SZ_ADDR)
+    imm1_rtag := Bits(0, SZ_IRB_IMM1)
+  } 
+  .elsewhen (io.vf.fire) 
   { 
     if_reg_pc := io.vf.pc 
     imm1_rtag := io.vf.imm1_rtag
@@ -81,7 +87,12 @@ class vuVXU_Issue_VT extends Component
   io.decoded.irb.pc_next := id_pc_next
   io.decoded.irb.update_imm1 := Bool(true)
 
-  when (io.vf.fire)
+  when (io.flush)
+  {
+    id_reg_inst := Bits(0,SZ_INST)
+    id_pc_next := Bits(0,SZ_ADDR)
+  }
+  . elsewhen (io.vf.fire)
   {
     id_reg_inst := NOP
   }
@@ -279,14 +290,14 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
-  io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.cpu_exception.exception
+  io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
 
-  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.cpu_exception.exception
+  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
   io.irb_cntb.bits := Bits(0, SZ_VLEN)
 
   io.issue_to_irb.markLast := decode_stop
 
-  val valid_common = io.vf.active & io.irb_cntb.ready & !io.cpu_exception.exception
+  val valid_common = io.vf.active & io.irb_cntb.ready & !io.xcpt_to_issue.stall
 
   io.valid.viu := valid_common && unmasked_valid_viu 
   io.valid.vau0 := valid_common && unmasked_valid_vau0

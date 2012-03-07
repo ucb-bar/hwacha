@@ -6,6 +6,8 @@ import Constants._
 
 class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
+  val flush = Bool(INPUT)
+  
   val enq = new ioDecoupled()( Bits(width=DATA_SIZE) ).flip
   val deq = new ioDecoupled()( Bits(width=DATA_SIZE) )
   val update = new ioPipe()( new io_irbUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
@@ -44,14 +46,26 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int, useLastPtr: Boolean = false) extends Co
   val do_enq = io.enq.valid && io.enq.ready
   val do_deq = io.deq.ready && io.deq.valid
 
-  when(do_deq) { read_ptr_next := read_ptr + UFix(1) }
+  when (do_deq) { read_ptr_next := read_ptr + UFix(1) }
+
   when(do_enq) 
   { 
     write_ptr_next := write_ptr + UFix(1) 
     last_write_ptr_next := write_ptr
   }
 
-  when (do_enq && !do_deq && (write_ptr_next === read_ptr))
+  when (io.flush) 
+  {
+    read_ptr_next := UFix(0, ADDR_SIZE)
+    write_ptr_next := UFix(0, ADDR_SIZE)
+    last_write_ptr_next := UFix(0, ADDR_SIZE)
+  }
+
+  when (io.flush)
+  {
+    full_next := Bool(false)
+  }
+  . elsewhen (do_enq && !do_deq && (write_ptr_next === read_ptr))
   {
     full_next := Bool(true)
   }
@@ -78,8 +92,8 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int, useLastPtr: Boolean = false) extends Co
   data_next := data_array
   last_next := last_array
 
-  when(do_enq) { data_next.write(write_ptr, io.enq.bits) }
-  when(io.update.valid) { data_next.write(io.update.bits.addr, io.update.bits.data) }
+  when (do_enq) { data_next.write(write_ptr, io.enq.bits) }
+  when (io.update.valid) { data_next.write(io.update.bits.addr, io.update.bits.data) }
 
   if (useLastPtr)
   {

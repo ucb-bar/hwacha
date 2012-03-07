@@ -59,6 +59,12 @@ class io_seq_to_irb extends Bundle
   val update_cnt = new ioPipe()( new io_irbUpdateReq(SZ_VLEN, 3) )
 }
 
+class io_seq_to_xcpt_handler extends Bundle
+{
+  val fire_any = Bool(OUTPUT)
+  val next_ptr1 = UFix(SZ_LGBANK, OUTPUT)
+}
+
 class io_vxu_seq extends Bundle
 {
   val issue_to_seq = new io_vxu_issue_to_seq().asInput
@@ -79,9 +85,9 @@ class io_vxu_seq extends Bundle
 
   val seq_to_irb = new io_seq_to_irb()
 
-  val cpu_exception = new io_cpu_exception().flip  
-
-  val evac_to_seq = new io_evac_to_seq().flip
+  val flush = Bool(INPUT)
+  val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
+  val seq_to_xcpt = new io_seq_to_xcpt_handler()
 }
 
 class vuVXU_Banked8_Seq extends Component
@@ -534,7 +540,7 @@ class vuVXU_Banked8_Seq extends Component
     next_imm(reg_ptr) := array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
   }
 
-  when(io.evac_to_seq.flush) 
+  when(io.flush) 
   {
     for(i <- 0 until SZ_BANK) 
     {
@@ -668,8 +674,10 @@ class vuVXU_Banked8_Seq extends Component
   when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
   when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
 
+  val masked_xcpt_stall = !current_vldq_val && io.xcpt_to_seq.stall
+
   val stall =
-    io.cpu_exception.exception |
+    masked_xcpt_stall |
     array_dep_vaq(reg_ptr) & reg_vaq_stall |
     array_dep_vldq(reg_ptr) & reg_vldq_stall |
     array_dep_vsdq(reg_ptr) & reg_vsdq_stall |
@@ -759,4 +767,6 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_irb.update_cnt.bits.addr := array_irb_cnt_rtag(reg_ptr).toUFix
   io.seq_to_irb.update_cnt.bits.data := array_irb_cnt(reg_ptr) + io.seq_regid_imm.cnt
 
+  io.seq_to_xcpt.next_ptr1 := next_ptr1
+  io.seq_to_xcpt.fire_any := io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2 || io.fire.amo || io.fire.utld || io.fire.utst || io.fire.vld || io.fire.vst
 }

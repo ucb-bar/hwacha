@@ -17,6 +17,8 @@ class io_vru extends Bundle
   // stride
   val vec_pfximm2q = new io_vec_ximm2q().flip
   val vec_pfcntq = new io_vec_cntq().flip
+
+  val xcpt_to_vru = new io_xcpt_handler_to_vru().flip()
 }
 
 class vuVRU extends Component

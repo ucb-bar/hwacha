@@ -4,6 +4,26 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_xcpt_backup extends Bundle 
+{
+  val exception = Bool(OUTPUT)
+  val exception_addr = UFix(SZ_ADDR, OUTPUT)
+  val exception_ack_valid = Bool(INPUT)
+  val exception_ack_ready = Bool(OUTPUT)
+}
+
+class io_xcpt_resume extends Bundle
+{
+  val hold = Bool(OUTPUT)
+}
+
+class io_xcpt_kill extends Bundle 
+{
+  val kill = Bool(OUTPUT)
+  val kill_ack_valid = Bool(INPUT)
+  val kill_ack_ready = Bool(OUTPUT)
+}
+
 class io_vu extends Bundle 
 {
   val illegal = Bool(OUTPUT)
@@ -30,13 +50,9 @@ class io_vu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
-  val cpu_exception = new io_cpu_exception().flip
-
-  val exception_ack_valid = Bool(OUTPUT)
-  val exception_ack_ready = Bool(INPUT)
-
-  val kill_ack_valid = Bool(OUTPUT)
-  val kill_ack_ready = Bool(INPUT)
+  val xcpt_backup = new io_xcpt_backup().flip()
+  val xcpt_resume = new io_xcpt_resume().flip()
+  val xcpt_kill  = new io_xcpt_kill().flip()
 
   val vec_tlb_req = new ioDTLB_CPU_req()
   val vec_tlb_resp = new ioDTLB_CPU_resp().flip
@@ -73,6 +89,22 @@ class vu extends Component
   val vxu = new vuVXU()
   val vmu = new vuVMU()
   val evac = new vuEvac()
+  val xcpt = new vuXCPTHandler()
+
+  // xcpt
+  xcpt.io.xcpt_backup <> io.xcpt_backup
+  xcpt.io.xcpt_resume <> io.xcpt_resume
+  xcpt.io.xcpt_kill <> io.xcpt_kill
+
+  vcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
+  vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
+  vximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
+  vxcntq.io.flush := xcpt.io.xcpt_to_vu.flush
+
+  vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
+  vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
+  vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
+  vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush
 
   // vxu
   io.illegal <> vxu.io.illegal
@@ -103,13 +135,16 @@ class vu extends Component
   vxu.io.imem_req <> io.imem_req
   vxu.io.imem_resp <> io.imem_resp
 
-  vxu.io.cpu_exception <> io.cpu_exception
+  vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
+  vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt
 
   // vru
   vru.io.vec_pfcmdq <> vpfcmdq.io.deq
   vru.io.vec_pfximm1q <> vpfximm1q.io.deq
   vru.io.vec_pfximm2q <> vpfximm2q.io.deq
   vru.io.vec_pfcntq <> vpfcntq.io.deq
+
+  vru.io.xcpt_to_vru <> xcpt.io.xcpt_to_vru
 
   // vmu
   vmu.io.pf_vvaq <> vru.io.vpfvaq
@@ -139,6 +174,9 @@ class vu extends Component
   vmu.io.vec_pftlb_req <> io.vec_pftlb_req
   vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
+  vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
+  vmu.io.vmu_to_xcpt <> xcpt.io.vmu_to_xcpt
+
   val irb = new vuIRB()
 
   // irb
@@ -151,9 +189,9 @@ class vu extends Component
   irb.io.irb_to_issue <> vxu.io.irb_to_issue
   irb.io.seq_to_irb <> vxu.io.seq_to_irb
 
-  // evac
-  evac.io.cpu_exception <> io.cpu_exception
+  irb.io.xcpt_to_aiw <> xcpt.io.xcpt_to_aiw
 
+  // evac
   evac.io.irb_cmdb <> irb.io.irb_deq_cmdb
   evac.io.irb_imm1b <> irb.io.irb_deq_imm1b
   evac.io.irb_imm2b <> irb.io.irb_deq_imm2b
@@ -172,9 +210,6 @@ class vu extends Component
   evac.io.vcntq.bits := vxcntq.io.deq.bits
   evac.io.vcntq.valid := vxcntq.io.deq.valid
 
-  evac.io.evac_to_seq <> vxu.io.evac_to_seq
-
-  io.exception_ack_valid := evac.io.done
-  io.kill_ack_valid := Bool(false)
-
+  evac.io.xcpt_to_evac <> xcpt.io.xcpt_to_evac
+  evac.io.evac_to_xcpt <> xcpt.io.evac_to_xcpt
 }

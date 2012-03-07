@@ -6,12 +6,13 @@ import Constants._
 import Instructions._
 import Commands._
 
+class io_evac_to_xcpt_handler extends Bundle
+{
+  val done = Bool(OUTPUT)
+}
+
 class io_vu_evac extends Bundle
 {
-  val cpu_exception = new io_cpu_exception().flip
-  
-  val done = Bool(OUTPUT)
-
   val irb_cmdb = new io_vxu_cmdq().flip
   val irb_imm1b = new io_vxu_immq().flip
   val irb_imm2b = new io_vxu_imm2q().flip
@@ -26,12 +27,8 @@ class io_vu_evac extends Bundle
   val vsdq = new io_vsdq()
   val vaq  = new io_vvaq()
 
-  val evac_to_seq = new io_evac_to_seq()
-}
-
-class io_evac_to_seq extends Bundle
-{
-  val flush = Bool(OUTPUT)
+  val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
+  val evac_to_xcpt = new io_evac_to_xcpt_handler()
 }
 
 class vuEvac extends Component
@@ -151,18 +148,17 @@ class vuEvac extends Component
   io.vsdq.valid := Bool(false)
   io.vsdq.bits := Bits(0)
 
-  io.done := Bool(false)
-  io.evac_to_seq.flush := Bool(false)
+  io.evac_to_xcpt.done := Bool(false)
 
   switch (state)
   {
 
     is (STATE_IDLE) 
     {
-      when (io.cpu_exception.exception) 
+      when (io.xcpt_to_evac.start) 
       { 
         state_next := STATE_CMDB 
-        addr_next := io.cpu_exception.addr
+        addr_next := io.xcpt_to_evac.addr
       }
     }
 
@@ -456,9 +452,8 @@ class vuEvac extends Component
 
     is (STATE_DONE)
     {
-      io.done := Bool(true)
-      io.evac_to_seq.flush := Bool(true)
-      when(!io.cpu_exception.exception) 
+      io.evac_to_xcpt.done := Bool(true)
+      when(!io.xcpt_to_evac.start) 
       {
         state_next := STATE_IDLE
       }

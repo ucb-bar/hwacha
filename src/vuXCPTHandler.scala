@@ -4,19 +4,14 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_xcpt_backup extends Bundle 
+class io_xcpt_handler_to_vu extends Bundle
 {
-  val exception = Bool(OUTPUT)
-  val exception_addr = UFix(SZ_ADDR, OUTPUT)
-  val exception_ack_valid = Bool(INPUT)
-  val exception_ack_ready = Bool(OUTPUT)
+  val flush = Bool(OUTPUT)
 }
 
-class io_xcpt_kill extends Bundle 
+class io_xcpt_handler_to_aiw extends Bundle
 {
-  val kill = Bool(OUTPUT)
-  val kill_ack_valid = Bool(INPUT)
-  val kill_ack_ready = Bool(OUTPUT)
+  val flush = Bool(OUTPUT)
 }
 
 class io_xcpt_handler_to_issue extends Bundle 
@@ -26,8 +21,7 @@ class io_xcpt_handler_to_issue extends Bundle
 
 class io_xcpt_handler_to_seq extends Bundle 
 {
-  val stall_viu = Bool(OUTPUT)
-  val stall_all = Bool(OUTPUT)
+  val stall = Bool(OUTPUT)
 }
 
 class io_xcpt_handler_to_tlb extends Bundle 
@@ -50,6 +44,7 @@ class io_xcpt_handler_to_vxu extends Bundle
 class io_xcpt_handler_to_vmu extends Bundle 
 {
   val flush = Bool(OUTPUT)
+  val tlb = new io_xcpt_handler_to_tlb()
 }
 
 class io_xcpt_handler_to_evac extends Bundle
@@ -58,22 +53,19 @@ class io_xcpt_handler_to_evac extends Bundle
   val addr = UFix(SZ_ADDR, OUTPUT)
 }
 
-class io_evac_to_xcpt_handler extends Bundle
-{
-  val done = Bool(OUTPUT)
-}
-
 class io_xcpt_handler extends Bundle {
   val xcpt_backup = new io_xcpt_backup().flip()
+  val xcpt_resume = new io_xcpt_resume().flip()
   val xcpt_kill  = new io_xcpt_kill().flip()
 
+  val xcpt_to_vu = new io_xcpt_handler_to_vu()
   val xcpt_to_vru = new io_xcpt_handler_to_vru()
   val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
-  val xcpt_to_tlb = new io_xcpt_handler_to_tlb()
   val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
+  val xcpt_to_aiw = new io_xcpt_handler_to_aiw()
   val xcpt_to_evac = new io_xcpt_handler_to_evac()
 
-  val expand_to_xcpt = new io_expand_to_xcpt_handler().flip()
+  val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
   val vmu_to_xcpt = new io_vmu_to_xcpt_handler().flip()
   val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
 }
@@ -83,27 +75,32 @@ class vuXCPTHandler extends Component
   val io = new io_xcpt_handler()
 
   val next_hold_issue = Wire(){ Bool() }
-  val next_hold_seq_viu = Wire(){ Bool() }
-  val next_hold_seq_all = Wire(){ Bool() }
+  val next_hold_seq = Wire(){ Bool() }
   val next_hold_tlb = Wire(){ Bool() }
 
   val hold_issue = Reg(next_hold_issue, resetVal = Bool(false))
-  val hold_seq_viu = Reg(next_hold_seq_viu, resetVal = Bool(false))
-  val hold_seq_all = Reg(next_hold_seq_all, resetVal = Bool(false))
+  val hold_seq = Reg(next_hold_seq, resetVal = Bool(false))
   val hold_tlb = Reg(next_hold_tlb, resetVal = Bool(false))
 
   next_hold_issue := hold_issue
-  next_hold_seq_viu := hold_seq_viu
-  next_hold_seq_all := hold_seq_all
+  next_hold_seq := hold_seq
   next_hold_tlb := hold_tlb
 
   // output assignments
   io.xcpt_to_vxu.issue.stall := hold_issue
-  io.xcpt_to_vxu.seq.stall_viu := hold_seq_viu
-  io.xcpt_to_vxu.seq.stall_all := hold_seq_all
-  io.xcpt_to_tlb.stall := hold_tlb
+  io.xcpt_to_vxu.seq.stall := hold_seq
+  io.xcpt_to_vmu.tlb.stall := hold_tlb
 
   io.xcpt_to_evac.addr := io.xcpt_backup.exception_addr
+
+  val next_saved_earliest_ptr = Wire(){ Bool() }
+  val next_earliest_ptr = Wire(){ UFix(width=SZ_LGBANK) }
+
+  val saved_earliest_ptr = Reg(next_saved_earliest_ptr, resetVal = Bool(false) )
+  val earliest_ptr = Reg(next_earliest_ptr, resetVal = UFix(0, SZ_LGBANK) )
+
+  next_saved_earliest_ptr := saved_earliest_ptr
+  next_earliest_ptr := earliest_ptr
 
   val NORMAL = Bits(0, 3)
   val XCPT_REQUEST = Bits(1, 3)
@@ -123,6 +120,8 @@ class vuXCPTHandler extends Component
   io.xcpt_backup.exception_ack_valid := Bool(false)
   io.xcpt_kill.kill_ack_valid := Bool(false)
 
+  io.xcpt_to_vu.flush := Bool(false)
+  io.xcpt_to_aiw.flush := Bool(false)
   io.xcpt_to_vru.flush := Bool(false)
   io.xcpt_to_vxu.flush := Bool(false)
   io.xcpt_to_vmu.flush := Bool(false)
@@ -139,12 +138,19 @@ class vuXCPTHandler extends Component
         state_next := XCPT_REQUEST
       }
 
+      when (io.xcpt_resume.hold)
+      {
+        next_hold_seq := Bool(true)
+
+        state_next := HOLD
+      }
+
     }
 
     is (XCPT_REQUEST)
     {
       next_hold_issue := Bool(true)
-      next_hold_seq_viu := Bool(true)
+      next_hold_seq := Bool(true)
       next_hold_tlb := Bool(true)
 
       state_next := XCPT_DRAIN
@@ -152,11 +158,8 @@ class vuXCPTHandler extends Component
 
     is (XCPT_DRAIN)
     {
-      when(io.expand_to_xcpt.empty && io.vmu_to_xcpt.no_pending_load_store)
+      when(io.vxu_to_xcpt.expand.empty && io.vmu_to_xcpt.no_pending_load_store)
       {
-        next_hold_seq_viu := Bool(false)
-        next_hold_seq_all := Bool(true)
-
         state_next := XCPT_FLUSH
       }
 
@@ -167,7 +170,13 @@ class vuXCPTHandler extends Component
       io.xcpt_to_vru.flush := Bool(true)
       io.xcpt_to_vxu.flush := Bool(true)
       io.xcpt_to_vmu.flush := Bool(true)
+      when (io.xcpt_kill.kill) 
+      { 
+        io.xcpt_to_vu.flush := Bool(true)
+        io.xcpt_to_aiw.flush := Bool(true)
+      }
       next_hold_tlb := Bool(false)
+
       state_next := XCPT_EVAC
     }
 
@@ -189,7 +198,10 @@ class vuXCPTHandler extends Component
 
         when (io.xcpt_backup.exception_ack_ready) 
         {
-          state_next := HOLD
+          next_hold_issue := Bool(false)
+          next_hold_seq := Bool(false)
+
+          state_next := NORMAL
         }
       }
 
@@ -199,7 +211,10 @@ class vuXCPTHandler extends Component
         
         when (io.xcpt_kill.kill_ack_ready)
         {
-          state := NORMAL
+          next_hold_issue := Bool(false)
+          next_hold_seq := Bool(false)
+
+          state_next := NORMAL
         }
       }
       
@@ -207,12 +222,28 @@ class vuXCPTHandler extends Component
 
     is (HOLD)
     {
+      when(!saved_earliest_ptr && io.vxu_to_xcpt.seq.fire_any)
+      {
+        next_saved_earliest_ptr := Bool(true)
+        next_earliest_ptr := io.vxu_to_xcpt.seq.next_ptr1
+      }
       
+      when (!io.xcpt_resume.hold) 
+      {
+        next_saved_earliest_ptr := Bool(false)
+
+        state_next := HOLD_WAIT
+      }
     }
 
     is (HOLD_WAIT)
     {
-
+      when(earliest_ptr === io.vxu_to_xcpt.seq.next_ptr1)
+      {
+        next_hold_seq := Bool(false)
+        
+        state_next := NORMAL
+      }
     }
   }
 }
