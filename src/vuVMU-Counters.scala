@@ -29,17 +29,19 @@ class io_vmu_counters extends Bundle
 
   val pending_load = Bool(OUTPUT)
   val pending_store = Bool(OUTPUT)
+
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_Counters extends Component
 {
   val io = new io_vmu_counters()
 
-  val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ)
-  val vpaq_count = new qcnt(0, ENTRIES_VPAQ)
-  val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ)
-  val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ) // vector stores in flight
-  val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ) // vector loads in flight
+  val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ, flushable = true)
+  val vpaq_count = new qcnt(0, ENTRIES_VPAQ, flushable = true)
+  val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ, flushable = true)
+  val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ, flushable = true) // vector stores in flight
+  val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ, flushable = true) // vector loads in flight
 
   // vvaq counts available space
   vvaq_count.io.inc := io.vvaq_inc
@@ -77,4 +79,11 @@ class vuVMU_Counters extends Component
   io.pending_load := !vlreq_count.io.full
   // there is no stores in flight, when the counter is full
   io.pending_store := !vsreq_count.io.full
+
+  // exception handler
+  vvaq_count.io.flush := io.flush
+  vpaq_count.io.flush := io.flush
+  vsdq_count.io.flush := io.flush
+  vsreq_count.io.flush := io.flush
+  vlreq_count.io.flush := io.flush
 }
