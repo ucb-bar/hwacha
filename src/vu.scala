@@ -139,6 +139,8 @@ class vu extends Component
   vmu.io.vec_pftlb_req <> io.vec_pftlb_req
   vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
+  vmu.io.xcpt_to_vmu.flush := Bool(false)
+
   val irb = new vuIRB()
 
   // irb

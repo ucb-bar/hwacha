@@ -21,6 +21,8 @@ class io_vmu_store_data extends Bundle
   val vsreq_dec = Bool(OUTPUT)
   val vpaq_watermark = Bool(INPUT)
   val vsdq_watermark = Bool(INPUT)
+
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_StoreData extends Component
@@ -28,7 +30,7 @@ class vuVMU_StoreData extends Component
   val io = new io_vmu_store_data()
 
   val vsdq_arb = new Arbiter(2)( new io_vsdq() )
-  val vsdq = new queueSimplePF(ENTRIES_VSDQ)({ Bits(width = 65) })
+  val vsdq = new queueSimplePF(ENTRIES_VSDQ, flushable = true)({ Bits(width = 65) })
 
   // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(VSDQARB_LANE) <> io.vsdq_lane
@@ -39,7 +41,7 @@ class vuVMU_StoreData extends Component
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
-  val vsdq_skid = SkidBuffer(vsdq.io.deq, LATE_DMEM_NACK)
+  val vsdq_skid = SkidBuffer(vsdq.io.deq, LATE_DMEM_NACK, flushable = true)
 
   io.vsdq <> vsdq_skid.io.deq
   vsdq_skid.io.nack := io.vsdq_nack
@@ -55,4 +57,8 @@ class vuVMU_StoreData extends Component
   io.vsreq_inc := io.vsdq_ack
   // vsreq occupies an entry, when the lane kicks out an entry
   io.vsreq_dec := io.vsdq_lane_dec
+
+  // exception handler
+  vsdq.io.flush := io.flush
+  vsdq_skid.io.flush := io.flush
 }

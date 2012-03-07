@@ -38,6 +38,7 @@ class io_vmu extends Bundle
   val vec_pftlb_req = new ioDTLB_CPU_req()
   val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
 
+  val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
   val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 }
 
@@ -114,5 +115,10 @@ class vuVMU extends Component
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
 
+  // exception handler
+  addr.io.flush := io.xcpt_to_vmu.flush
+  ldata.io.flush := io.xcpt_to_vmu.flush
+  sdata.io.flush := io.xcpt_to_vmu.flush
+  counters.io.flush := io.xcpt_to_vmu.flush
   io.vmu_to_xcpt.no_pending_load_store := !counters.io.pending_load && !counters.io.pending_store
 }

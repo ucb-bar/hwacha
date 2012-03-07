@@ -16,6 +16,8 @@ class io_vmu_load_data extends Bundle
   val qcnt = UFix(SZ_QCNT, INPUT)
   val vlreq_inc = Bool(OUTPUT)
   val vlreq_dec = Bool(OUTPUT)
+
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_LoadData extends Component
@@ -23,8 +25,8 @@ class vuVMU_LoadData extends Component
   val io = new io_vmu_load_data()
 
   // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = new queue_reorder_qcnt(65,ENTRIES_VLDQ,9)
-  val vldq_skid = SkidBuffer(vldq.io.deq_rtag, LATE_DMEM_NACK)
+  val vldq = new queue_reorder_qcnt(65,ENTRIES_VLDQ,9, flushable = true)
+  val vldq_skid = SkidBuffer(vldq.io.deq_rtag, LATE_DMEM_NACK, flushable = true)
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
@@ -46,4 +48,8 @@ class vuVMU_LoadData extends Component
   io.vlreq_inc := io.vldq_lane.ready
   // vlreq occupies an entry, when the memory system kicks out an entry
   io.vlreq_dec := io.vldq_ack
+
+  // exception handler
+  vldq.io.flush := io.flush
+  vldq_skid.io.flush := io.flush
 }

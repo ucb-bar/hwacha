@@ -11,13 +11,14 @@ class io_vmu_address_tlb extends Bundle
   val tlb_req = new ioDTLB_CPU_req()
   val tlb_resp = new ioDTLB_CPU_resp().flip
   val ack = Bool(OUTPUT)
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
 {
   val io = new io_vmu_address_tlb()
 
-  val vvaq_skid = SkidBuffer(io.vvaq, late_tlb_miss)
+  val vvaq_skid = SkidBuffer(io.vvaq, late_tlb_miss, flushable = true)
 
   // tlb signals
   var tlb_vec_valid = vvaq_skid.io.deq.valid
@@ -49,6 +50,9 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   io.vpaq.bits.typ_float := Reg(vvaq_skid.io.deq.bits.typ_float)
   io.vpaq.bits.idx := Reg(vvaq_skid.io.deq.bits.idx)
   io.vpaq.bits.ppn := io.tlb_resp.ppn
+
+  // exception handler
+  vvaq_skid.io.flush := io.flush
 }
 
 class checkcnt extends Component
@@ -141,6 +145,8 @@ class io_vmu_address extends Bundle
   val vpaq_watermark = Bool(INPUT)
   val vsreq_watermark = Bool(INPUT)
   val vlreq_watermark = Bool(INPUT)
+
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_Address extends Component
@@ -150,9 +156,9 @@ class vuVMU_Address extends Component
   // VVAQ
   val vvaq_arb = new Arbiter(2)( new io_vvaq() )
 
-  val vvaq = (new queueSimplePF(ENTRIES_VVAQ)){ new io_vvaq_bundle() }
+  val vvaq = (new queueSimplePF(ENTRIES_VVAQ, flushable = true)){ new io_vvaq_bundle() }
   val vvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
-  val vpaq = (new queueSimplePF(ENTRIES_VPAQ)){ new io_vpaq_bundle() }
+  val vpaq = (new queueSimplePF(ENTRIES_VPAQ, flushable = true)){ new io_vpaq_bundle() }
 
   // vvaq arbiter, port 0: lane vaq
   vvaq_arb.io.in(VVAQARB_LANE) <> io.vvaq_lane
@@ -179,9 +185,9 @@ class vuVMU_Address extends Component
   io.vvaq_dec := io.vvaq_lane_dec
 
   // VPFVAQ
-  val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ)){ new io_vvaq_bundle() }
+  val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
   val vpfvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
-  val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ)){ new io_vpaq_bundle() }
+  val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ, flushable = true)){ new io_vpaq_bundle() }
 
   // vpfvaq hookup
   vpfvaq.io.enq <> io.vvaq_pf
@@ -208,4 +214,12 @@ class vuVMU_Address extends Component
   io.vpaq_inc := vvaq_tlb.io.ack
   // vpaq frees an entry, when the memory system drains it
   io.vpaq_dec := vpaq_arb.io.vpaq_ack
+
+  // exception handler
+  vvaq.io.flush := io.flush
+  vvaq_tlb.io.flush := io.flush
+  vpaq.io.flush := io.flush
+  vpfvaq.io.flush := io.flush
+  vpfvaq_tlb.io.flush := io.flush
+  vpfpaq.io.flush := io.flush
 }
