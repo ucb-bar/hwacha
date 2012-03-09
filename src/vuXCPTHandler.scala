@@ -54,9 +54,7 @@ class io_xcpt_handler_to_evac extends Bundle
 }
 
 class io_xcpt_handler extends Bundle {
-  val xcpt_backup = new io_xcpt_backup().flip()
-  val xcpt_resume = new io_xcpt_resume().flip()
-  val xcpt_kill  = new io_xcpt_kill().flip()
+  val xcpt = new io_xcpt().flip()
 
   val xcpt_to_vu = new io_xcpt_handler_to_vu()
   val xcpt_to_vru = new io_xcpt_handler_to_vru()
@@ -115,24 +113,32 @@ class vuXCPTHandler extends Component
   val next_addr = Wire(){ UFix(width = SZ_ADDR) }
   val addr = Reg(next_addr, resetVal = UFix(0, SZ_ADDR) )
 
-  val next_addr_valid = Wire(){ Bool() }
-  val addr_valid = Reg(next_addr_valid, resetVal = Bool(false))
+  val next_backup = Wire(){ Bool() }
+  val backup = Reg(next_backup, resetVal = Bool(false))
+
+  val next_kill = Wire(){ Bool() }
+  val kill = Reg(next_kill, resetVal = Bool(false))
 
   next_state := state
   next_addr := addr
-  next_addr_valid := addr_valid
+  next_backup := backup
+  next_kill := kill
 
-  when(io.xcpt_backup.exception_addr_valid)
+  when (io.xcpt.backup)
   {
-    next_addr_valid := Bool(true)
-    next_addr := io.xcpt_backup.exception_addr
+    next_backup := Bool(true)
+    next_addr := io.xcpt.backup_addr
+  }
+
+  when (io.xcpt.kill)
+  {
+    next_kill := Bool(true)
   }
 
   io.xcpt_to_evac.addr := addr
 
   //set defaults
-  io.xcpt_backup.exception_ack_valid := Bool(false)
-  io.xcpt_kill.kill_ack_valid := Bool(false)
+  io.xcpt.exception_ack_valid := Bool(false)
 
   io.xcpt_to_vu.flush := Bool(false)
   io.xcpt_to_aiw.flush := Bool(false)
@@ -147,16 +153,19 @@ class vuXCPTHandler extends Component
     is (NORMAL)
     {
 
-      when (io.xcpt_backup.exception || io.xcpt_kill.kill) 
+      when (io.xcpt.exception) 
       {
         next_hold_issue := Bool(true)
         next_hold_seq := Bool(true)
-        next_hold_tlb := Bool(true)        
+        next_hold_tlb := Bool(true)
+
+        next_backup := Bool(false)
+        next_kill := Bool(false)
 
         next_state := XCPT_DRAIN
       }
 
-      when (io.xcpt_resume.hold)
+      when (io.xcpt.hold)
       {
         next_hold_seq := Bool(true)
 
@@ -176,22 +185,22 @@ class vuXCPTHandler extends Component
 
     is (XCPT_FLUSH)
     {
-      next_hold_tlb := Bool(false)      
-
       io.xcpt_to_vru.flush := Bool(true)
       io.xcpt_to_vxu.flush := Bool(true)
       io.xcpt_to_vmu.flush := Bool(true)
-      when (io.xcpt_kill.kill) 
+      when (kill)
       { 
         io.xcpt_to_vu.flush := Bool(true)
         io.xcpt_to_aiw.flush := Bool(true)
       }
 
-      when(io.xcpt_backup.exception && addr_valid)
+      when(backup)
       {
+        next_hold_tlb := Bool(false)
+
         next_state := XCPT_EVAC
       }
-      when(io.xcpt_kill.kill)
+      when(kill)
       {
         next_state := XCPT_ACK
       }
@@ -203,48 +212,25 @@ class vuXCPTHandler extends Component
 
       when (io.evac_to_xcpt.done) 
       {
-        next_addr_valid := Bool(false)
-        
         next_state := XCPT_ACK
       }
     }
 
     is (XCPT_ACK)
     {
-      when (io.xcpt_backup.exception)
+      io.xcpt.exception_ack_valid := Bool(true)
+
+      when (io.xcpt.exception_ack_ready) 
       {
-        io.xcpt_backup.exception_ack_valid := Bool(true)
-
-        when (io.xcpt_backup.exception_ack_ready) 
-        {
-          next_hold_issue := Bool(false)
-          next_hold_seq := Bool(false)
-
-          next_state := XCPT_WAIT
-        }
-      }
-
-      when(io.xcpt_kill.kill)
-      {
-        io.xcpt_kill.kill_ack_valid := Bool(true)
+        next_hold_issue := Bool(false)
+        next_hold_seq := Bool(false)
+        next_hold_tlb := Bool(false)
+        next_backup := Bool(false)
+        next_kill := Bool(false)
         
-        when (io.xcpt_kill.kill_ack_ready)
-        {
-          next_hold_issue := Bool(false)
-          next_hold_seq := Bool(false)
-
-          next_state := XCPT_WAIT
-        }
-      }
-      
-    }
-
-    is (XCPT_WAIT)
-    {
-      when (!io.xcpt_backup.exception && !io.xcpt_kill.kill)
-      {
         next_state := NORMAL
       }
+
     }
 
     is (HOLD)

@@ -4,25 +4,15 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_xcpt_backup extends Bundle 
+class io_xcpt extends Bundle 
 {
   val exception = Bool(OUTPUT)
-  val exception_addr = UFix(SZ_ADDR, OUTPUT)
-  val exception_addr_valid = Bool(OUTPUT)
+  val backup_addr = UFix(SZ_ADDR, OUTPUT)
+  val backup = Bool(OUTPUT)
   val exception_ack_valid = Bool(INPUT)
   val exception_ack_ready = Bool(OUTPUT)
-}
-
-class io_xcpt_resume extends Bundle
-{
   val hold = Bool(OUTPUT)
-}
-
-class io_xcpt_kill extends Bundle 
-{
   val kill = Bool(OUTPUT)
-  val kill_ack_valid = Bool(INPUT)
-  val kill_ack_ready = Bool(OUTPUT)
 }
 
 class io_vu extends Bundle 
@@ -51,9 +41,7 @@ class io_vu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
-  val xcpt_backup = new io_xcpt_backup().flip()
-  val xcpt_resume = new io_xcpt_resume().flip()
-  val xcpt_kill  = new io_xcpt_kill().flip()
+  val xcpt = new io_xcpt().flip()
 
   val vec_tlb_req = new ioDTLB_CPU_req()
   val vec_tlb_resp = new ioDTLB_CPU_resp().flip
@@ -96,9 +84,7 @@ class vu extends Component
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_memop && !vmu.io.pending_store
 
   // xcpt
-  xcpt.io.xcpt_backup <> io.xcpt_backup
-  xcpt.io.xcpt_resume <> io.xcpt_resume
-  xcpt.io.xcpt_kill <> io.xcpt_kill
+  xcpt.io.xcpt <> io.xcpt
 
   vcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
   vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
