@@ -77,12 +77,10 @@ class vuXCPTHandler extends Component
   val next_hold_issue = Wire(){ Bool() }
   val next_hold_seq = Wire(){ Bool() }
   val next_hold_tlb = Wire(){ Bool() }
-  val next_mask_vpaq = Wire(){ Bool() }
 
   val hold_issue = Reg(next_hold_issue, resetVal = Bool(false))
   val hold_seq = Reg(next_hold_seq, resetVal = Bool(false))
   val hold_tlb = Reg(next_hold_tlb, resetVal = Bool(false))
-  val mask_vpaq = Reg(next_mask_vpaq, resetVal = Bool(false))
 
   next_hold_issue := hold_issue
   next_hold_seq := hold_seq

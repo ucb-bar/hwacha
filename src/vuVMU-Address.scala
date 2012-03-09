@@ -110,6 +110,11 @@ object MaskStall
   }
 }
 
+class io_vpaq_to_xcpt_handler extends Bundle 
+{
+  val vpaq_valid = Bool(OUTPUT)
+}
+
 class io_vmu_address_arbiter extends Bundle
 {
   val vpaq = new io_vpaq().flip
@@ -121,9 +126,10 @@ class io_vmu_address_arbiter extends Bundle
   val nack = Bool(INPUT)
   val vpaq_ack = Bool(OUTPUT)
   val vpfpaq_ack = Bool(OUTPUT)
-  val vpaq_valid = Bool(OUTPUT)
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
+
+  val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
 }
 
 class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
@@ -135,7 +141,7 @@ class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
 
   val vpaq_arb = new Arbiter(2)( new io_vpaq() )
 
-  io.vpaq_valid := vpaq_skid.io.deq.valid
+  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid.io.deq.valid
 
   vpaq_arb.io.in(VPAQARB_VPAQ) <> CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
   vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq_skid.io.deq, io.stall)
@@ -176,11 +182,12 @@ class io_vmu_address extends Bundle
   val vpaq_inc = Bool(OUTPUT)
   val vpaq_dec = Bool(OUTPUT)
   val vpaq_qcnt = UFix(SZ_QCNT, OUTPUT)
-  val vpaq_valid = Bool(OUTPUT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
   val vsreq_watermark = Bool(INPUT)
   val vlreq_watermark = Bool(INPUT)
+
+  val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
 
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
@@ -246,7 +253,7 @@ class vuVMU_Address extends Component
   vpaq_arb.io.ack := io.vaq_ack
   vpaq_arb.io.nack := io.vaq_nack
 
-  io.vpaq_valid := vpaq_arb.io.vpaq_valid
+  io.vpaq_to_xcpt <> vpaq_arb.io.vpaq_to_xcpt
 
   // vpaq counts occupied space
   // vpaq occupies an entry, when it accepts an entry from vvaq
