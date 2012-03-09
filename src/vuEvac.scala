@@ -13,7 +13,7 @@ class io_evac_to_xcpt_handler extends Bundle
 
 class io_evac_to_vmu extends Bundle
 {
-  val bypass_watermark = Bool(OUTPUT)
+  val evac_mode = Bool(OUTPUT)
 }
 
 class io_vu_evac extends Bundle
@@ -160,7 +160,7 @@ class vuEvac extends Component
   io.vsdq.bits := Bits(0)
 
   io.evac_to_xcpt.done := Bool(false)
-  io.evac_to_vmu.bypass_watermark := state != STATE_IDLE
+  io.evac_to_vmu.evac_mode := state != STATE_IDLE
 
   switch (state)
   {

@@ -215,7 +215,7 @@ class vuVMU_Address extends Component
   // vsreq and vlreq, not looking at the request type
   // however, this is okay since normally you don't hit this limit
   vvaq_arb.io.out.ready :=
-    Mux(io.evac_to_vmu.bypass_watermark, vvaq.io.enq.ready,
+    Mux(io.evac_to_vmu.evac_mode, vvaq.io.enq.ready,
         io.vvaq_watermark && io.vsreq_watermark && io.vlreq_watermark)
   vvaq.io.enq.valid := vvaq_arb.io.out.valid
   vvaq.io.enq.bits := vvaq_arb.io.out.bits

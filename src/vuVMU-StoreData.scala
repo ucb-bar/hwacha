@@ -39,7 +39,7 @@ class vuVMU_StoreData extends Component
   vsdq_arb.io.in(VSDQARB_EVAC) <> io.vsdq_evac
   // vsdq arbiter, output
   vsdq_arb.io.out.ready :=
-    Mux(io.evac_to_vmu.bypass_watermark, vsdq.io.enq.ready,
+    Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready,
         io.vsdq_watermark && io.vpaq_watermark)
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
@@ -58,8 +58,10 @@ class vuVMU_StoreData extends Component
   // vsreq counts available space
   // vsreq frees an entry, when the memory system acks the store
   io.vsreq_inc := io.vsdq_ack
-  // vsreq occupies an entry, when the lane kicks out an entry
-  io.vsreq_dec := io.vsdq_lane_dec
+  // vsreq occupies an entry, when the lane/evac kicks out an entry
+  io.vsreq_dec :=
+    Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready && io.vsdq_evac.valid,
+        io.vsdq_lane_dec)
 
   // exception handler
   vsdq.io.flush := io.flush
