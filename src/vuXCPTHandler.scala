@@ -102,8 +102,8 @@ class vuXCPTHandler extends Component
   val XCPT_DRAIN = Bits(1, 3)
   val XCPT_FLUSH = Bits(2, 3)
   val XCPT_EVAC = Bits(3, 3)
-  val XCPT_ACK = Bits(4, 3)
-  val XCPT_WAIT = Bits(5, 3)
+  val XCPT_DRAIN_EVAC = Bits(4, 3)  
+  val XCPT_ACK = Bits(5, 3)
   val HOLD = Bits(6, 3)
   val HOLD_WAIT = Bits(7, 3)
 
@@ -211,6 +211,14 @@ class vuXCPTHandler extends Component
       io.xcpt_to_evac.start := Bool(true)
 
       when (io.evac_to_xcpt.done) 
+      {
+        next_state := XCPT_DRAIN_EVAC
+      }
+    }
+
+    is (XCPT_DRAIN_EVAC)
+    {
+      when (io.vmu_to_xcpt.no_pending_load_store)
       {
         next_state := XCPT_ACK
       }
