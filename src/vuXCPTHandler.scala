@@ -249,7 +249,7 @@ class vuXCPTHandler extends Component
         next_earliest_ptr := io.vxu_to_xcpt.seq.next_ptr1
       }
       
-      when (!io.xcpt_resume.hold) 
+      when (!io.xcpt.hold) 
       {
         next_saved_earliest_ptr := Bool(false)
 

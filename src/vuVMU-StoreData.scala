@@ -22,6 +22,7 @@ class io_vmu_store_data extends Bundle
   val vpaq_watermark = Bool(INPUT)
   val vsdq_watermark = Bool(INPUT)
 
+  val evac_to_vmu = new io_evac_to_vmu().flip
   val flush = Bool(INPUT)
 }
 
@@ -37,7 +38,9 @@ class vuVMU_StoreData extends Component
   // vsdq arbiter, port 1: evac
   vsdq_arb.io.in(VSDQARB_EVAC) <> io.vsdq_evac
   // vsdq arbiter, output
-  vsdq_arb.io.out.ready := io.vsdq_watermark && io.vpaq_watermark // vsdq.io.enq.ready
+  vsdq_arb.io.out.ready :=
+    Mux(io.evac_to_vmu.bypass_watermark, vsdq.io.enq.ready,
+        io.vsdq_watermark && io.vpaq_watermark)
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 

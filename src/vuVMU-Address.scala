@@ -189,6 +189,7 @@ class io_vmu_address extends Bundle
   val vlreq_watermark = Bool(INPUT)
 
   val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
+  val evac_to_vmu = new io_evac_to_vmu().flip
 
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
@@ -213,7 +214,9 @@ class vuVMU_Address extends Component
   // ready signal a little bit conservative, since checking space for both
   // vsreq and vlreq, not looking at the request type
   // however, this is okay since normally you don't hit this limit
-  vvaq_arb.io.out.ready := io.vvaq_watermark && io.vsreq_watermark && io.vlreq_watermark // vaq.io.enq.ready
+  vvaq_arb.io.out.ready :=
+    Mux(io.evac_to_vmu.bypass_watermark, vvaq.io.enq.ready,
+        io.vvaq_watermark && io.vsreq_watermark && io.vlreq_watermark)
   vvaq.io.enq.valid := vvaq_arb.io.out.valid
   vvaq.io.enq.bits := vvaq_arb.io.out.bits
 

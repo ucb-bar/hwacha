@@ -11,6 +11,11 @@ class io_evac_to_xcpt_handler extends Bundle
   val done = Bool(OUTPUT)
 }
 
+class io_evac_to_vmu extends Bundle
+{
+  val bypass_watermark = Bool(OUTPUT)
+}
+
 class io_vu_evac extends Bundle
 {
   val irb_cmdb = new io_vxu_cmdq().flip
@@ -29,6 +34,7 @@ class io_vu_evac extends Bundle
 
   val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
   val evac_to_xcpt = new io_evac_to_xcpt_handler()
+  val evac_to_vmu = new io_evac_to_vmu()
 }
 
 class vuEvac extends Component
@@ -154,6 +160,7 @@ class vuEvac extends Component
   io.vsdq.bits := Bits(0)
 
   io.evac_to_xcpt.done := Bool(false)
+  io.evac_to_vmu.bypass_watermark := state != STATE_IDLE
 
   switch (state)
   {
@@ -172,8 +179,8 @@ class vuEvac extends Component
       // set valid signal
       when (io.irb_cmdb.valid && deq_ircmdb)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Cat(Bits(0, 27), is_prefetch, deq_irimm1b, deq_irimm2b, deq_ircntb, Bits(1,1),
                             Bits(0, 32 - SZ_VCMD), io.irb_cmdb.bits)
 
@@ -213,8 +220,8 @@ class vuEvac extends Component
       // set valid signal
       when (io.irb_imm1b.valid && deq_irimm1b)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.irb_imm1b.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -247,8 +254,8 @@ class vuEvac extends Component
       // set valid signals
       when (io.irb_imm2b.valid && deq_irimm2b)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.irb_imm2b.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -277,8 +284,8 @@ class vuEvac extends Component
       // set valid signal
       when (io.irb_cntb.valid && deq_ircntb)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.irb_cntb.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -316,8 +323,8 @@ class vuEvac extends Component
       // valid signal
       when (io.vcmdq.valid && deq_vcmdq)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Cat(Bits(0,28), deq_vimm1q, deq_vimm2q, deq_vcntq, Bits(1,1),
                             Bits(0, 32 - SZ_VCMD), io.vcmdq.bits)
 
@@ -341,8 +348,8 @@ class vuEvac extends Component
 
       } . elsewhen (!io.vcmdq.valid) 
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Bits("hffff_ffff_ffff_ffff")
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -363,8 +370,8 @@ class vuEvac extends Component
       // valid signal
       when (io.vimm1q.valid && deq_vimm1q)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.vimm1q.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -397,8 +404,8 @@ class vuEvac extends Component
       // valid signal
       when (io.vimm2q.valid && deq_vimm2q)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.vimm2q.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -427,8 +434,8 @@ class vuEvac extends Component
       // valid signal
       when (io.vcntq.valid && deq_vcntq)
       {
-        io.vaq.valid := Bool(true)
-        io.vsdq.valid := Bool(true)
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := io.vcntq.bits
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -458,10 +465,7 @@ class vuEvac extends Component
     is (STATE_DONE)
     {
       io.evac_to_xcpt.done := Bool(true)
-      when(!io.xcpt_to_evac.start) 
-      {
-        state_next := STATE_IDLE
-      }
+      state_next := STATE_IDLE
     }
 
   }

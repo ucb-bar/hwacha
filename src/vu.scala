@@ -163,6 +163,7 @@ class vu extends Component
   vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
+  vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
   vmu.io.vmu_to_xcpt <> xcpt.io.vmu_to_xcpt
 
   val irb = new vuIRB()
