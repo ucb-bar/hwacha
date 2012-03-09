@@ -59,56 +59,57 @@ class vuEvac extends Component
                      //   |  |  |  |  |  |  deq_vimm1q
                      //   |  |  |  |  |  |  |  deq_vimm2q
                      //   |  |  |  |  |  |  |  |  deq_vcntq
-                     //   |  |  |  |  |  |  |  |  |
-                     List(n, n, n, n, n, n, n, n, n), Array(
+                     //   |  |  |  |  |  |  |  |  |  is_prefetch
+                     //   |  |  |  |  |  |  |  |  |  |
+                     List(n, n, n, n, n, n, n, n, n, n), Array(
 
-    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n), 
-    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n), 
-    CMD_FENCE_L_CV-> List(n, y, n, n, n, y, n, n, n), 
-    CMD_FENCE_G_CV-> List(n, y, n, n, n, y, n, n, n), 
+    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n, n), 
+    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n, n), 
+    CMD_FENCE_L_CV-> List(n, y, n, n, n, y, n, n, n, n), 
+    CMD_FENCE_G_CV-> List(n, y, n, n, n, y, n, n, n, n), 
 
-    CMD_VF->         List(y, y, y, n, y, y, y, n, y),
+    CMD_VF->         List(y, y, y, n, y, y, y, n, y, n),
 
-    CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y),
-    CMD_VMSV      -> List(n, y, y, n, y, y, n, n, y),
-    CMD_VFMVV     -> List(n, y, n, n, y, y, n, n, y),
+    CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y, n),
+    CMD_VMSV      -> List(n, y, y, n, y, y, n, n, y, n),
+    CMD_VFMVV     -> List(n, y, n, n, y, y, n, n, y, n),
 
-    CMD_VLD       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLW       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLWU      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLH       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLHU      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLB       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VLBU      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VSD       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VSW       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VSH       -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VSB       -> List(n, y, y, n, y, y, y, n, y),
-                     
-    CMD_VFLD      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VFLW      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VFSD      -> List(n, y, y, n, y, y, y, n, y),
-    CMD_VFSW      -> List(n, y, y, n, y, y, y, n, y),
-                     
-    CMD_VLSTD     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTW     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTWU    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTH     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTHU    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTB     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VLSTBU    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VSSTD     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VSSTW     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VSSTH     -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VSSTB     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLD       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLW       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLWU      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLH       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLHU      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLB       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLBU      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VSD       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VSW       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VSH       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VSB       -> List(n, y, y, n, y, y, y, n, y, y),
 
-    CMD_VFLSTD    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VFLSTW    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VFSSTD    -> List(n, y, y, y, y, y, y, y, y),
-    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y)
+    CMD_VFLD      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFLW      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFSD      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFSW      -> List(n, y, y, n, y, y, y, n, y, y),
+
+    CMD_VLSTD     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTW     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTWU    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTH     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTHU    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTB     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTBU    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VSSTD     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VSSTW     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VSSTH     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VSSTB     -> List(n, y, y, y, y, y, y, y, y, y),
+
+    CMD_VFLSTD    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VFLSTW    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VFSSTD    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: Nil = cs
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: is_prefetch :: Nil = cs
 
   val STATE_IDLE = Bits(0,4)
   val STATE_CMDB = Bits(1,4)
@@ -175,7 +176,7 @@ class vuEvac extends Component
       {
         io.vaq.valid := Bool(true)
         io.vsdq.valid := Bool(true)
-        io.vsdq.bits := Cat(Bits(0, 28), deq_irimm1b, deq_irimm2b, deq_ircntb, Bits(1,1),
+        io.vsdq.bits := Cat(Bits(0, 27), is_prefetch, deq_irimm1b, deq_irimm2b, deq_ircntb, Bits(1,1),
                             Bits(0, 32 - SZ_VCMD), io.irb_cmdb.bits)
 
         when (io.vsdq.ready && io.vaq.ready) 
