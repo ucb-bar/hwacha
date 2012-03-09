@@ -33,7 +33,7 @@ class io_vu extends Bundle
   val vec_ximm1q = new io_vec_ximm1q().flip
   val vec_ximm2q = new io_vec_ximm2q().flip
   val vec_cntq = new io_vec_cntq().flip
-  val vec_ackq = new io_vec_ackq()
+  val vec_fence_ready = Bool(OUTPUT)
 
   val vec_pfcmdq = new io_vec_cmdq().flip
   val vec_pfximm1q = new io_vec_ximm1q().flip
@@ -92,6 +92,9 @@ class vu extends Component
   val evac = new vuEvac()
   val xcpt = new vuXCPTHandler()
 
+  // fence
+  io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_memop && !vmu.io.pending_store
+
   // xcpt
   xcpt.io.xcpt_backup <> io.xcpt_backup
   xcpt.io.xcpt_resume <> io.xcpt_resume
@@ -125,8 +128,6 @@ class vu extends Component
   vxu.io.vxu_cntq.bits := vxcntq.io.deq.bits
   vxu.io.vxu_cntq.valid := vxcntq.io.deq.valid
   vxcntq.io.deq.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
-
-  vxu.io.vec_ackq <> io.vec_ackq
 
   vxu.io.cp_imul_req <> io.cp_imul_req
   vxu.io.cp_imul_resp <> io.cp_imul_resp

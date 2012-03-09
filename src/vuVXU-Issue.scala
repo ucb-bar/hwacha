@@ -105,8 +105,6 @@ class io_vxu_issue extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
-  val vec_ackq = new io_vec_ackq  
-
   val vxu_cmdq = new io_vxu_cmdq().flip
   val vxu_immq = new io_vxu_immq().flip
   val vxu_imm2q = new io_vxu_imm2q().flip
@@ -170,8 +168,6 @@ class vuVXU_Issue extends Component
   tvec.io.issue_to_seq <> io.issue_to_seq
   tvec.io.issue_to_lane <> io.issue_to_lane
   tvec.io.hazard_to_issue <> io.hazard_to_issue
-
-  tvec.io.vec_ackq <> io.vec_ackq
 
   tvec.io.valid <> io.tvec_valid
   tvec.io.ready <> io.tvec_ready

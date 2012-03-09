@@ -19,8 +19,6 @@ class io_vxu extends Bundle
   val vxu_imm2q = new io_vxu_imm2q().flip
   val vxu_cntq = new io_vxu_cntq().flip
 
-  val vec_ackq = new io_vec_ackq
-
   val cp_imul_req = new io_imul_req().flip
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
   val cp_dfma = new io_cp_dfma()
@@ -40,6 +38,7 @@ class io_vxu extends Bundle
   val qcntp2 = UFix(SZ_QCNT, OUTPUT)
   
   val pending_store = Bool(INPUT)
+  val pending_memop = Bool(OUTPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
@@ -65,7 +64,6 @@ class vuVXU extends Component
   issue.io.illegal <> io.illegal
   issue.io.imem_req <> io.imem_req
   issue.io.imem_resp <> io.imem_resp
-  issue.io.vec_ackq <> io.vec_ackq
   issue.io.vxu_cmdq <> io.vxu_cmdq
   issue.io.vxu_immq <> io.vxu_immq
   issue.io.vxu_imm2q <> io.vxu_imm2q
@@ -128,6 +126,8 @@ class vuVXU extends Component
   b8hazard.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
   b8hazard.io.flush <> io.xcpt_to_vxu.flush
+
+  io.pending_memop := b8hazard.io.hazard_to_issue.pending_memop
 
 
   val b8seq = new vuVXU_Banked8_Seq()
