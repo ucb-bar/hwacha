@@ -82,8 +82,6 @@ class vuVRU extends Component
     CMD_VF         -> List(Bits(1,4),n,n,y,n),
     CMD_FENCE_L_V  -> List(Bits(1,4),n,n,n,n),
     CMD_FENCE_G_V  -> List(Bits(1,4),n,n,n,n),
-    CMD_FENCE_L_CV -> List(Bits(1,4),n,n,n,n),
-    CMD_FENCE_G_CV -> List(Bits(1,4),n,n,n,n),
     CMD_VMVV       -> List(Bits(1,4),n,n,n,n),
     CMD_VMSV       -> List(Bits(1,4),n,n,y,n),
     CMD_VFMVV      -> List(Bits(1,4),n,n,n,n)

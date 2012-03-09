@@ -65,8 +65,6 @@ class vuEvac extends Component
 
     CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n, n), 
     CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n, n), 
-    CMD_FENCE_L_CV-> List(n, y, n, n, n, y, n, n, n, n), 
-    CMD_FENCE_G_CV-> List(n, y, n, n, n, y, n, n, n, n), 
 
     CMD_VF->         List(y, y, y, n, y, y, y, n, y, n),
 
