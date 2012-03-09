@@ -54,20 +54,20 @@ class vu extends Component
 {
   val io = new io_vu()
 
-  val vcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
-  val vximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
-  val vximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
-  val vxcntq = new queueSimplePF(16)( Bits(width=SZ_VLEN) )
+  val vcmdq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VCMD)})
+  val vximm1q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VIMM)})
+  val vximm2q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VSTRIDE)})
+  val vxcntq = new queueSimplePF(16, flushable = true)( Bits(width=SZ_VLEN) )
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
   vximm2q.io.enq <> io.vec_ximm2q
   vxcntq.io.enq <> io.vec_cntq
   
-  val vpfcmdq = new queueSimplePF(16)({Bits(width=SZ_VCMD)})
-  val vpfximm1q = new queueSimplePF(16)({Bits(width=SZ_VIMM)})
-  val vpfximm2q = new queueSimplePF(16)({Bits(width=SZ_VSTRIDE)})
-  val vpfcntq = new queueSimplePF(16)({Bits(width=SZ_VLEN)})
+  val vpfcmdq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VCMD)})
+  val vpfximm1q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VIMM)})
+  val vpfximm2q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VSTRIDE)})
+  val vpfcntq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VLEN)})
 
   vpfcmdq.io.enq <> io.vec_pfcmdq
   vpfximm1q.io.enq <> io.vec_pfximm1q
