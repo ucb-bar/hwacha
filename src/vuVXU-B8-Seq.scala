@@ -674,7 +674,7 @@ class vuVXU_Banked8_Seq extends Component
   when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
   when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
 
-  val masked_xcpt_stall = !current_vldq_val && io.xcpt_to_seq.stall
+  val masked_xcpt_stall = (!current_vldq_val && !current_vsdq_val) && io.xcpt_to_seq.stall
 
   val stall =
     masked_xcpt_stall |

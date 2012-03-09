@@ -77,10 +77,12 @@ class vuXCPTHandler extends Component
   val next_hold_issue = Wire(){ Bool() }
   val next_hold_seq = Wire(){ Bool() }
   val next_hold_tlb = Wire(){ Bool() }
+  val next_mask_vpaq = Wire(){ Bool() }
 
   val hold_issue = Reg(next_hold_issue, resetVal = Bool(false))
   val hold_seq = Reg(next_hold_seq, resetVal = Bool(false))
   val hold_tlb = Reg(next_hold_tlb, resetVal = Bool(false))
+  val mask_vpaq = Reg(next_mask_vpaq, resetVal = Bool(false))
 
   next_hold_issue := hold_issue
   next_hold_seq := hold_seq
@@ -103,18 +105,18 @@ class vuXCPTHandler extends Component
   next_earliest_ptr := earliest_ptr
 
   val NORMAL = Bits(0, 3)
-  val XCPT_REQUEST = Bits(1, 3)
-  val XCPT_DRAIN = Bits(2, 3)
-  val XCPT_FLUSH = Bits(3, 3)
-  val XCPT_EVAC = Bits(4, 3)
-  val XCPT_ACK = Bits(5, 3)
+  val XCPT_DRAIN = Bits(1, 3)
+  val XCPT_FLUSH = Bits(2, 3)
+  val XCPT_EVAC = Bits(3, 3)
+  val XCPT_ACK = Bits(4, 3)
+  val XCPT_WAIT = Bits(5, 3)
   val HOLD = Bits(6, 3)
   val HOLD_WAIT = Bits(7, 3)
 
-  val state_next = Wire(){ Bits(width = 3) }
-  val state = Reg(state_next, resetVal = NORMAL)
+  val next_state = Wire(){ Bits(width = 4) }
+  val state = Reg(next_state, resetVal = NORMAL)
 
-  state_next := state
+  next_state := state
 
   //set defaults
   io.xcpt_backup.exception_ack_valid := Bool(false)
@@ -135,32 +137,27 @@ class vuXCPTHandler extends Component
 
       when (io.xcpt_backup.exception || io.xcpt_kill.kill) 
       {
-        state_next := XCPT_REQUEST
+        next_hold_issue := Bool(true)
+        next_hold_seq := Bool(true)
+        next_hold_tlb := Bool(true)        
+
+        next_state := XCPT_DRAIN
       }
 
       when (io.xcpt_resume.hold)
       {
         next_hold_seq := Bool(true)
 
-        state_next := HOLD
+        next_state := HOLD
       }
 
     }
 
-    is (XCPT_REQUEST)
-    {
-      next_hold_issue := Bool(true)
-      next_hold_seq := Bool(true)
-      next_hold_tlb := Bool(true)
-
-      state_next := XCPT_DRAIN
-    }
-
     is (XCPT_DRAIN)
     {
-      when(io.vxu_to_xcpt.expand.empty && io.vmu_to_xcpt.no_pending_load_store)
+      when (io.vxu_to_xcpt.expand.empty && io.vmu_to_xcpt.no_pending_load_store)
       {
-        state_next := XCPT_FLUSH
+        next_state := XCPT_FLUSH
       }
 
     }
@@ -177,7 +174,7 @@ class vuXCPTHandler extends Component
       }
       next_hold_tlb := Bool(false)
 
-      state_next := XCPT_EVAC
+      next_state := XCPT_EVAC
     }
 
     is (XCPT_EVAC)
@@ -186,7 +183,7 @@ class vuXCPTHandler extends Component
 
       when (io.evac_to_xcpt.done) 
       {
-        state_next := XCPT_ACK
+        next_state := XCPT_ACK
       }
     }
 
@@ -201,7 +198,7 @@ class vuXCPTHandler extends Component
           next_hold_issue := Bool(false)
           next_hold_seq := Bool(false)
 
-          state_next := NORMAL
+          next_state := XCPT_WAIT
         }
       }
 
@@ -214,10 +211,18 @@ class vuXCPTHandler extends Component
           next_hold_issue := Bool(false)
           next_hold_seq := Bool(false)
 
-          state_next := NORMAL
+          next_state := XCPT_WAIT
         }
       }
       
+    }
+
+    is (XCPT_WAIT)
+    {
+      when (!io.xcpt_backup.exception && !io.xcpt_kill.kill)
+      {
+        next_state := NORMAL
+      }
     }
 
     is (HOLD)
@@ -232,7 +237,7 @@ class vuXCPTHandler extends Component
       {
         next_saved_earliest_ptr := Bool(false)
 
-        state_next := HOLD_WAIT
+        next_state := HOLD_WAIT
       }
     }
 
@@ -242,7 +247,7 @@ class vuXCPTHandler extends Component
       {
         next_hold_seq := Bool(false)
         
-        state_next := NORMAL
+        next_state := NORMAL
       }
     }
   }

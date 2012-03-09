@@ -61,6 +61,12 @@ class vuEvac extends Component
                      //   |  |  |  |  |  |  |  |  deq_vcntq
                      //   |  |  |  |  |  |  |  |  |
                      List(n, n, n, n, n, n, n, n, n), Array(
+
+    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n), 
+    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n), 
+    CMD_FENCE_L_CV-> List(n, y, n, n, n, y, n, n, n), 
+    CMD_FENCE_G_CV-> List(n, y, n, n, n, y, n, n, n), 
+
     CMD_VF->         List(y, y, y, n, y, y, y, n, y),
 
     CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y),

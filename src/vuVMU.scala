@@ -120,5 +120,5 @@ class vuVMU extends Component
   ldata.io.flush := io.xcpt_to_vmu.flush
   sdata.io.flush := io.xcpt_to_vmu.flush
   counters.io.flush := io.xcpt_to_vmu.flush
-  io.vmu_to_xcpt.no_pending_load_store := !counters.io.pending_load && !counters.io.pending_store
+  io.vmu_to_xcpt.no_pending_load_store := !counters.io.pending_load && !counters.io.pending_store && !addr.io.vpaq_valid
 }

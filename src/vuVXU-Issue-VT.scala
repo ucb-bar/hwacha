@@ -290,10 +290,13 @@ class vuVXU_Issue_VT extends Component
       IL -> Cat(Bits(0,1),Fill(32,id_reg_inst(26)),id_reg_inst(26,7),Bits(0,12))
     ))
 
+  val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  val regid_base = (cnt >> UFix(3)) * io.vf.stride
+
   io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
 
   io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
-  io.irb_cntb.bits := Bits(0, SZ_VLEN)
+  io.irb_cntb.bits := cnt
 
   io.issue_to_irb.markLast := decode_stop
 
@@ -345,9 +348,6 @@ class vuVXU_Issue_VT extends Component
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UFix(1,1)
   val vr_m1 = Cat(Bits(0,1),vr(4,0)) - UFix(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
-
-  val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
-  val regid_base = (cnt >> UFix(3)) * io.vf.stride
 
   io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
   io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
