@@ -12,6 +12,7 @@ class io_vmu_address_tlb extends Bundle
   val tlb_resp = new ioDTLB_CPU_resp().flip
   val ack = Bool(OUTPUT)
   val flush = Bool(INPUT)
+  val stall = Bool(INPUT)
 }
 
 class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
@@ -21,9 +22,10 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   val vvaq_skid = SkidBuffer(io.vvaq, late_tlb_miss, flushable = true)
 
   // tlb signals
+  val tlb_ready = io.tlb_req.ready && !io.stall
   var tlb_vec_valid = vvaq_skid.io.deq.valid
   if (late_tlb_miss) tlb_vec_valid = vvaq_skid.io.deq.valid && io.vpaq.ready
-  val tlb_vec_requested = Reg(tlb_vec_valid && io.tlb_req.ready) && !vvaq_skid.io.kill
+  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !io.stall
   val tlb_vec_hit = tlb_vec_requested && !io.tlb_resp.miss
   val tlb_vec_miss = tlb_vec_requested && io.tlb_resp.miss
 
@@ -31,8 +33,8 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   io.ack := tlb_vec_hit && io.vpaq.ready
 
   // skid control
-  vvaq_skid.io.deq.ready := io.tlb_req.ready
-  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready
+  vvaq_skid.io.deq.ready := tlb_ready
+  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready || io.stall
 
   // tlb hookup
   io.tlb_req.valid := tlb_vec_valid
@@ -83,6 +85,31 @@ object CheckCnt
   }
 }
 
+class maskstall extends Component
+{
+  val io = new Bundle()
+  {
+    val input = new io_vpaq().flip
+    val output = new io_vpaq()
+    val stall = Bool(INPUT)
+  }
+
+  io.output.valid := io.input.valid && !io.stall
+  io.output.bits := io.input.bits
+  io.input.ready := io.output.ready && !io.stall
+}
+
+object MaskStall
+{
+  def apply(deq: ioDecoupled[io_vpaq_bundle], stall: Bool) =
+  {
+    val ms = new maskstall
+    ms.io.input <> deq
+    ms.io.stall := stall
+    ms.io.output
+  }
+}
+
 class io_vmu_address_arbiter extends Bundle
 {
   val vpaq = new io_vpaq().flip
@@ -94,19 +121,21 @@ class io_vmu_address_arbiter extends Bundle
   val nack = Bool(INPUT)
   val vpaq_ack = Bool(OUTPUT)
   val vpfpaq_ack = Bool(OUTPUT)
+  val flush = Bool(INPUT)
+  val stall = Bool(INPUT)
 }
 
 class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
 {
   val io = new io_vmu_address_arbiter()
 
-  val vpaq_skid = SkidBuffer(io.vpaq, late_nack)
-  val vpfpaq_skid = SkidBuffer(io.vpfpaq, late_nack)
+  val vpaq_skid = SkidBuffer(io.vpaq, late_nack, flushable = true)
+  val vpfpaq_skid = SkidBuffer(io.vpfpaq, late_nack, flushable = true)
 
   val vpaq_arb = new Arbiter(2)( new io_vpaq() )
 
   vpaq_arb.io.in(VPAQARB_VPAQ) <> CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
-  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> vpfpaq_skid.io.deq
+  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq_skid.io.deq, io.stall)
   io.vaq <> vpaq_arb.io.out
   val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
 
@@ -115,6 +144,9 @@ class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
 
   vpaq_skid.io.nack := io.nack
   vpfpaq_skid.io.nack := io.nack
+
+  vpaq_skid.io.flush := io.flush
+  vpfpaq_skid.io.flush := io.flush
 }
 
 class io_vmu_address extends Bundle
@@ -147,6 +179,7 @@ class io_vmu_address extends Bundle
   val vlreq_watermark = Bool(INPUT)
 
   val flush = Bool(INPUT)
+  val stall = Bool(INPUT)
 }
 
 class vuVMU_Address extends Component
@@ -218,8 +251,14 @@ class vuVMU_Address extends Component
   // exception handler
   vvaq.io.flush := io.flush
   vvaq_tlb.io.flush := io.flush
-  vpaq.io.flush := io.flush
+  vvaq_tlb.io.stall := io.stall
+
   vpfvaq.io.flush := io.flush
   vpfvaq_tlb.io.flush := io.flush
+  vpfvaq_tlb.io.stall := io.stall
+
+  vpaq.io.flush := io.flush
   vpfpaq.io.flush := io.flush
+  vpaq_arb.io.flush := io.flush
+  vpaq_arb.io.stall := io.stall
 }

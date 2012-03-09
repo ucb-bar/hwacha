@@ -117,6 +117,7 @@ class vuVMU extends Component
 
   // exception handler
   addr.io.flush := io.xcpt_to_vmu.flush
+  addr.io.stall := io.xcpt_to_vmu.tlb.stall
   ldata.io.flush := io.xcpt_to_vmu.flush
   sdata.io.flush := io.xcpt_to_vmu.flush
   counters.io.flush := io.xcpt_to_vmu.flush
