@@ -91,8 +91,6 @@ class vuXCPTHandler extends Component
   io.xcpt_to_vxu.seq.stall := hold_seq
   io.xcpt_to_vmu.tlb.stall := hold_tlb
 
-  io.xcpt_to_evac.addr := io.xcpt_backup.exception_addr
-
   val next_saved_earliest_ptr = Wire(){ Bool() }
   val next_earliest_ptr = Wire(){ UFix(width=SZ_LGBANK) }
 
@@ -114,7 +112,23 @@ class vuXCPTHandler extends Component
   val next_state = Wire(){ Bits(width = 4) }
   val state = Reg(next_state, resetVal = NORMAL)
 
+  val next_addr = Wire(){ UFix(width = SZ_ADDR) }
+  val addr = Reg(next_addr, resetVal = UFix(0, SZ_ADDR) )
+
+  val next_addr_valid = Wire(){ Bool() }
+  val addr_valid = Reg(next_addr_valid, resetVal = Bool(false))
+
   next_state := state
+  next_addr := addr
+  next_addr_valid := addr_valid
+
+  when(io.xcpt_backup.exception_addr_valid)
+  {
+    next_addr_valid := Bool(true)
+    next_addr := io.xcpt_backup.exception_addr
+  }
+
+  io.xcpt_to_evac.addr := addr
 
   //set defaults
   io.xcpt_backup.exception_ack_valid := Bool(false)
@@ -162,6 +176,8 @@ class vuXCPTHandler extends Component
 
     is (XCPT_FLUSH)
     {
+      next_hold_tlb := Bool(false)      
+
       io.xcpt_to_vru.flush := Bool(true)
       io.xcpt_to_vxu.flush := Bool(true)
       io.xcpt_to_vmu.flush := Bool(true)
@@ -170,9 +186,15 @@ class vuXCPTHandler extends Component
         io.xcpt_to_vu.flush := Bool(true)
         io.xcpt_to_aiw.flush := Bool(true)
       }
-      next_hold_tlb := Bool(false)
 
-      next_state := XCPT_EVAC
+      when(io.xcpt_backup.exception && addr_valid)
+      {
+        next_state := XCPT_EVAC
+      }
+      when(io.xcpt_kill.kill)
+      {
+        next_state := XCPT_ACK
+      }
     }
 
     is (XCPT_EVAC)
@@ -181,6 +203,8 @@ class vuXCPTHandler extends Component
 
       when (io.evac_to_xcpt.done) 
       {
+        next_addr_valid := Bool(false)
+        
         next_state := XCPT_ACK
       }
     }

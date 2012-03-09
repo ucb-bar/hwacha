@@ -8,6 +8,7 @@ class io_xcpt_backup extends Bundle
 {
   val exception = Bool(OUTPUT)
   val exception_addr = UFix(SZ_ADDR, OUTPUT)
+  val exception_addr_valid = Bool(OUTPUT)
   val exception_ack_valid = Bool(INPUT)
   val exception_ack_ready = Bool(OUTPUT)
 }

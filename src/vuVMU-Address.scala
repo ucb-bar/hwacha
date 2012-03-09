@@ -141,12 +141,13 @@ class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
 
   val vpaq_arb = new Arbiter(2)( new io_vpaq() )
 
-  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid.io.deq.valid
-
-  vpaq_arb.io.in(VPAQARB_VPAQ) <> CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
+  val vpaq_skid_check_cnt = CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
+  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_skid_check_cnt
   vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq_skid.io.deq, io.stall)
   io.vaq <> vpaq_arb.io.out
   val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
+
+  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid_check_cnt.valid
 
   io.vpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPAQ)
   io.vpfpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPFPAQ)
