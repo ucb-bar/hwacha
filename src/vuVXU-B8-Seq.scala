@@ -365,6 +365,8 @@ class vuVXU_Banked8_Seq extends Component
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
     next_mem(next_ptr1) := io.fire_regid_imm.mem
+    // should always write 0, amo's don't take immediates
+    next_imm(next_ptr1) := Bits(0)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
