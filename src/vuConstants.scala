@@ -125,6 +125,7 @@ object Constants
   val RF = Bits("b1", 1)
 
   val I_ = UFix(0, 2)
+  val I0 = UFix(0, 2)
   val II = UFix(1, 2)
   val IB = UFix(2, 2)
   val IL = UFix(3, 2)
