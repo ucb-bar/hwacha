@@ -267,12 +267,12 @@ class vuVXU_Issue_TVEC extends Component
   when(io.flush) 
   {
     next_state := ISSUE_TVEC
-    next_vlen := Bits(0,SZ_VLEN)
-    next_nxregs := Bits(32,SZ_REGCNT)
-    next_nfregs := Bits(32,SZ_REGCNT)
-    next_bactive := Bits("b1111_1111",SZ_BANK)
-    next_bcnt := Bits(8,SZ_LGBANK1)
-    next_stride := Bits(63,SZ_REGLEN)
+    //next_vlen := Bits(0,SZ_VLEN)
+    //next_nxregs := Bits(32,SZ_REGCNT)
+    //next_nfregs := Bits(32,SZ_REGCNT)
+    //next_bactive := Bits("b1111_1111",SZ_BANK)
+    //next_bcnt := Bits(8,SZ_LGBANK1)
+    //next_stride := Bits(63,SZ_REGLEN)
   }
 
 
@@ -353,6 +353,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
+  io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
   io.decoded.irb.imm1_rtag := io.irb_to_issue.imm1_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
