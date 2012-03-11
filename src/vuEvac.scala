@@ -64,56 +64,55 @@ class vuEvac extends Component
                      //   |  |  |  |  |  deq_vcmdq
                      //   |  |  |  |  |  |  deq_vimm1q
                      //   |  |  |  |  |  |  |  deq_vimm2q
-                     //   |  |  |  |  |  |  |  |  deq_vcntq
-                     //   |  |  |  |  |  |  |  |  |  is_prefetch
-                     //   |  |  |  |  |  |  |  |  |  |
-                     List(n, n, n, n, n, n, n, n, n, n), Array(
+                     //   |  |  |  |  |  |  |  |  is_prefetch
+                     //   |  |  |  |  |  |  |  |  |
+                     List(n, n, n, n, n, n, n, n, n), Array(
 
-    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n, n), 
-    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n, n), 
+    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n), 
+    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n), 
 
-    CMD_VF->         List(y, y, y, n, y, y, y, n, y, n),
+    CMD_VF->         List(y, y, y, n, y, y, y, n, n),
 
-    CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y, n),
-    CMD_VMSV      -> List(n, y, y, n, y, y, n, n, y, n),
-    CMD_VFMVV     -> List(n, y, n, n, y, y, n, n, y, n),
+    CMD_VMVV      -> List(n, y, n, n, y, y, n, n, n),
+    CMD_VMSV      -> List(n, y, y, n, y, y, n, n, n),
+    CMD_VFMVV     -> List(n, y, n, n, y, y, n, n, n),
 
-    CMD_VLD       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLW       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLWU      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLH       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLHU      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLB       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VLBU      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VSD       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VSW       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VSH       -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VSB       -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VLD       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLW       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLWU      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLH       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLHU      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLB       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VLBU      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VSD       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VSW       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VSH       -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VSB       -> List(n, y, y, n, y, y, y, n, y),
 
-    CMD_VFLD      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VFLW      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VFSD      -> List(n, y, y, n, y, y, y, n, y, y),
-    CMD_VFSW      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFLD      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VFLW      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VFSD      -> List(n, y, y, n, y, y, y, n, y),
+    CMD_VFSW      -> List(n, y, y, n, y, y, y, n, y),
 
-    CMD_VLSTD     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTW     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTWU    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTH     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTHU    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTB     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VLSTBU    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VSSTD     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VSSTW     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VSSTH     -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VSSTB     -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VLSTD     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTW     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTWU    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTH     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTHU    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTB     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VLSTBU    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VSSTD     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VSSTW     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VSSTH     -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VSSTB     -> List(n, y, y, y, y, y, y, y, y),
 
-    CMD_VFLSTD    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VFLSTW    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VFSSTD    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y, y)
+    CMD_VFLSTD    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VFLSTW    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VFSSTD    -> List(n, y, y, y, y, y, y, y, y),
+    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: is_prefetch :: Nil = cs
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: is_prefetch :: Nil = cs
 
   val STATE_IDLE = Bits(0,4)
   val STATE_CMDB = Bits(1,4)
@@ -337,9 +336,6 @@ class vuEvac extends Component
           } . elsewhen (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } . elsewhen (deq_vcntq)
-          {
-            state_next := STATE_VCNTQ
           } . otherwise 
           {
             state_next := STATE_VCMDQ
@@ -380,9 +376,6 @@ class vuEvac extends Component
           when (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } . elsewhen (deq_vcntq) 
-          {
-            state_next := STATE_VCNTQ
           } .otherwise 
           {
             state_next := STATE_VCMDQ
@@ -411,13 +404,8 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          when (deq_vcntq)
-          {
-            state_next := STATE_VCNTQ
-          } . otherwise {
-            state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
-          }
+          state_next := STATE_VCMDQ
+          io.vcmdq.ready := Bool(true)
         }
 
       }
@@ -426,39 +414,6 @@ class vuEvac extends Component
       when (deq_vimm2q && io.vsdq.ready && io.vaq.ready)
       {
         io.vimm2q.ready := Bool(true)
-      }
-    }
-
-    is (STATE_VCNTQ)
-    {
-      // valid signal
-      when (io.vcntq.valid && deq_vcntq)
-      {
-        io.vaq.valid := io.vsdq.ready
-        io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcntq.bits
-
-        when (io.vsdq.ready && io.vaq.ready)
-        {
-          addr_next := addr_plus_8
-          when (vf)
-          {
-            state_next := STATE_VCNTQ
-          } . otherwise {
-            state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
-          }
-        }
-
-      } . elsewhen(!io.vcntq.valid && vf) {
-        state_next := STATE_VCMDQ
-        io.vcmdq.ready := Bool(true)
-      }
-
-      // ready signal
-      when(deq_vcntq && io.vsdq.ready && io.vaq.ready)
-      {
-        io.vcntq.ready := Bool(true)
       }
     }
 
