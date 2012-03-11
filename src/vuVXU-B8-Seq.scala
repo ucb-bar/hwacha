@@ -497,6 +497,8 @@ class vuVXU_Banked8_Seq extends Component
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
     next_vt(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
     next_mem(next_ptr2) := io.fire_regid_imm.mem
+    next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
+    next_imm2(next_ptr2) := io.fire_regid_imm.imm2
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
@@ -537,7 +539,7 @@ class vuVXU_Banked8_Seq extends Component
 
   }
 
-  when(io.seq.vaq && !io.seq_regid_imm.utmemop)
+  when((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
   {
     next_imm(reg_ptr) := array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
   }
@@ -675,6 +677,13 @@ class vuVXU_Banked8_Seq extends Component
   when (current_vaq_val) { reg_vaq_stall := io.qstall.vaq }
   when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
   when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
+
+  when (io.flush)
+  {
+    reg_vaq_stall := Bool(false)
+    reg_vldq_stall := Bool(false)
+    reg_vsdq_stall := Bool(false)
+  }
 
   val masked_xcpt_stall = (!current_vldq_val && !current_vsdq_val) && io.xcpt_to_seq.stall
 
