@@ -24,6 +24,7 @@ class io_vu extends Bundle
   val vec_ximm2q = new io_vec_ximm2q().flip
   val vec_cntq = new io_vec_cntq().flip
   val vec_fence_ready = Bool(OUTPUT)
+  val vec_hold_ready = Bool(OUTPUT)
 
   val vec_pfcmdq = new io_vec_cmdq().flip
   val vec_pfximm1q = new io_vec_ximm1q().flip
@@ -82,6 +83,7 @@ class vu extends Component
 
   // fence
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_memop && !vmu.io.pending_store
+  io.vec_hold_ready := !vxcntq.io.deq.valid
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
