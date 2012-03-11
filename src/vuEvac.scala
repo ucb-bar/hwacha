@@ -169,6 +169,7 @@ class vuEvac extends Component
       when (io.xcpt_to_evac.start) 
       { 
         state_next := STATE_CMDB 
+        cmd_sel_next := SEL_CMDB
         addr_next := io.xcpt_to_evac.addr
       }
     }
@@ -324,7 +325,7 @@ class vuEvac extends Component
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := Cat(Bits(0,28), deq_vimm1q, deq_vimm2q, deq_vcntq, Bits(1,1),
+        io.vsdq.bits := Cat(Bits(0,28), deq_vimm1q, deq_vimm2q, Bits(0,1), Bits(1,1),
                             Bits(0, 32 - SZ_VCMD), io.vcmdq.bits)
 
         when (io.vsdq.ready && io.vaq.ready)
@@ -357,7 +358,7 @@ class vuEvac extends Component
       // ready signal
       when (deq_vcmdq && io.vsdq.ready && io.vaq.ready) 
       {
-        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q && !deq_vcntq
+        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q
       }
     }
 
