@@ -73,9 +73,10 @@ class vuVMU extends Component
   counters.io.vvaq_dec := addr.io.vvaq_dec
   counters.io.vpaq_inc := addr.io.vpaq_inc
   counters.io.vpaq_dec := addr.io.vpaq_dec
-  counters.io.vpaq_qcnt2 := addr.io.vpaq_qcnt
+  counters.io.vpasdq_inc := addr.io.vpasdq_inc
+  counters.io.vpaq_qcnt := addr.io.vpaq_qcnt
   addr.io.vvaq_watermark := counters.io.vvaq_watermark
-  addr.io.vpaq_watermark := counters.io.vpaq_watermark2
+  addr.io.vpaq_watermark := counters.io.vpaq_watermark
   addr.io.vsreq_watermark := counters.io.vsreq_watermark
   addr.io.vlreq_watermark := counters.io.vlreq_watermark
 
@@ -105,7 +106,8 @@ class vuVMU extends Component
   counters.io.vsdq_dec := sdata.io.vsdq_dec
   counters.io.vsreq_inc := sdata.io.vsreq_inc
   counters.io.vsreq_dec := sdata.io.vsreq_dec
-  sdata.io.vpaq_watermark := counters.io.vpaq_watermark
+  counters.io.vpasdq_dec := sdata.io.vpasdq_dec
+  sdata.io.vpasdq_watermark := counters.io.vpasdq_watermark
   sdata.io.vsdq_watermark := counters.io.vsdq_watermark
 
   // counters

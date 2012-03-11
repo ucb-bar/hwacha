@@ -12,6 +12,8 @@ class io_vmu_counters extends Bundle
   val vpaq_dec = Bool(INPUT)
   val vsdq_inc = Bool(INPUT)
   val vsdq_dec = Bool(INPUT)
+  val vpasdq_inc = Bool(INPUT)
+  val vpasdq_dec = Bool(INPUT)
   val vlreq_inc = Bool(INPUT)
   val vlreq_dec = Bool(INPUT)
   val vsreq_inc = Bool(INPUT)
@@ -19,13 +21,13 @@ class io_vmu_counters extends Bundle
 
   val qcnt = UFix(SZ_QCNT, INPUT)
   val vvaq_watermark = Bool(OUTPUT)
-  val vpaq_watermark = Bool(OUTPUT)
   val vsdq_watermark = Bool(OUTPUT)
+  val vpasdq_watermark = Bool(OUTPUT)
   val vlreq_watermark = Bool(OUTPUT)
   val vsreq_watermark = Bool(OUTPUT)
 
-  val vpaq_qcnt2 = UFix(SZ_QCNT, INPUT)
-  val vpaq_watermark2 = Bool(OUTPUT)
+  val vpaq_qcnt = UFix(SZ_QCNT, INPUT)
+  val vpaq_watermark = Bool(OUTPUT)
 
   val pending_load = Bool(OUTPUT)
   val pending_store = Bool(OUTPUT)
@@ -40,6 +42,7 @@ class vuVMU_Counters extends Component
   val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ, flushable = true)
   val vpaq_count = new qcnt(0, ENTRIES_VPAQ, flushable = true)
   val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ, flushable = true)
+  val vpasdq_count = new qcnt(0, ENTRIES_VPASDQ, flushable = true)
   val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ, flushable = true) // vector stores in flight
   val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ, flushable = true) // vector loads in flight
 
@@ -52,16 +55,20 @@ class vuVMU_Counters extends Component
   // vpaq counts occupied space
   vpaq_count.io.inc := io.vpaq_inc
   vpaq_count.io.dec := io.vpaq_dec
-  vpaq_count.io.qcnt := io.qcnt
+  vpaq_count.io.qcnt := io.vpaq_qcnt
   io.vpaq_watermark := vpaq_count.io.watermark
-  vpaq_count.io.qcnt2 := io.vpaq_qcnt2
-  io.vpaq_watermark2 := vpaq_count.io.watermark2
 
   // vsdq counts available space
   vsdq_count.io.inc := io.vsdq_inc
   vsdq_count.io.dec := io.vsdq_dec
   vsdq_count.io.qcnt := io.qcnt
   io.vsdq_watermark := vsdq_count.io.watermark
+
+  // vpasdq counts occupied space
+  vpasdq_count.io.inc := io.vpasdq_inc
+  vpasdq_count.io.dec := io.vpasdq_dec
+  vpasdq_count.io.qcnt := io.qcnt
+  io.vpasdq_watermark := vpasdq_count.io.watermark
 
   // vlreq counts available space
   vlreq_count.io.inc := io.vlreq_inc
@@ -84,6 +91,7 @@ class vuVMU_Counters extends Component
   vvaq_count.io.flush := io.flush
   vpaq_count.io.flush := io.flush
   vsdq_count.io.flush := io.flush
+  vpasdq_count.io.flush := io.flush
   vsreq_count.io.flush := io.flush
   vlreq_count.io.flush := io.flush
 }

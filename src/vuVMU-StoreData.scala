@@ -19,7 +19,8 @@ class io_vmu_store_data extends Bundle
   val vsdq_dec = Bool(OUTPUT)
   val vsreq_inc = Bool(OUTPUT)
   val vsreq_dec = Bool(OUTPUT)
-  val vpaq_watermark = Bool(INPUT)
+  val vpasdq_dec = Bool(OUTPUT)
+  val vpasdq_watermark = Bool(INPUT)
   val vsdq_watermark = Bool(INPUT)
 
   val evac_to_vmu = new io_evac_to_vmu().flip
@@ -40,7 +41,7 @@ class vuVMU_StoreData extends Component
   // vsdq arbiter, output
   vsdq_arb.io.out.ready :=
     Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready,
-        io.vsdq_watermark && io.vpaq_watermark)
+        io.vsdq_watermark && io.vpasdq_watermark)
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 
@@ -60,6 +61,12 @@ class vuVMU_StoreData extends Component
   io.vsreq_inc := io.vsdq_ack
   // vsreq occupies an entry, when the lane/evac kicks out an entry
   io.vsreq_dec :=
+    Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready && io.vsdq_evac.valid,
+        io.vsdq_lane_dec)
+
+  // vpasdq counts occupied space
+  // vpasdq frees an entry, when the lane pushes a store data entry
+  io.vpasdq_dec :=
     Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready && io.vsdq_evac.valid,
         io.vsdq_lane_dec)
 

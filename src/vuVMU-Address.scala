@@ -182,6 +182,7 @@ class io_vmu_address extends Bundle
   val vvaq_dec = Bool(OUTPUT)
   val vpaq_inc = Bool(OUTPUT)
   val vpaq_dec = Bool(OUTPUT)
+  val vpasdq_inc = Bool(OUTPUT)
   val vpaq_qcnt = UFix(SZ_QCNT, OUTPUT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
@@ -266,6 +267,12 @@ class vuVMU_Address extends Component
   io.vpaq_inc := vvaq_tlb.io.ack
   // vpaq frees an entry, when the memory system drains it
   io.vpaq_dec := vpaq_arb.io.vpaq_ack
+
+  // vpasdq counts occupied space
+  // vpasdq occupies an entry, when it accepts an entry from vvaq
+  io.vpasdq_inc :=
+    vvaq_tlb.io.ack &&
+    (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
 
   // exception handler
   vvaq.io.flush := io.flush
