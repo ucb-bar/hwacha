@@ -33,21 +33,10 @@ class vuVMU_MemIF extends Component
   val mem_store_val = Reg(resetVal = Bool(false))
   val mem_amo_val = Reg(resetVal = Bool(false))
 
-  val ex_pf_cmd =
-    (io.vaq.bits.cmd === M_PFW || io.vaq.bits.cmd === M_PFR) &&
-    !(Bool(false) || mem_load_val || mem_store_val || mem_amo_val)
-
-  val ex_load_cmd =
-    (io.vaq.bits.cmd === M_XRD) &&
-    !(mem_pf_val || Bool(false) || mem_store_val || mem_amo_val)
-
-  val ex_store_cmd =
-    (io.vaq.bits.cmd === M_XWR) &&
-    !(mem_pf_val || mem_load_val || Bool(false) || mem_amo_val)
-
-  val ex_amo_cmd =
-    (M_XA_ADD <= io.vaq.bits.cmd) && (io.vaq.bits.cmd <= M_XA_MAXU) && // assuing amos are contiguous
-    !(mem_pf_val || mem_load_val || mem_store_val || Bool(false))
+  val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd) && !(Bool(false) || mem_load_val || mem_store_val || mem_amo_val)
+  val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd) && !(mem_pf_val || Bool(false) || mem_store_val || mem_amo_val)
+  val ex_store_cmd = is_mcmd_store(io.vaq.bits.cmd) && !(mem_pf_val || mem_load_val || Bool(false) || mem_amo_val)
+  val ex_amo_cmd = is_mcmd_amo(io.vaq.bits.cmd) &&  !(mem_pf_val || mem_load_val || mem_store_val || Bool(false))
 
   val ex_pf_val = ex_pf_cmd && io.vaq.valid
   val ex_load_val = ex_load_cmd && io.vaq.valid && io.vldq_rtag.valid
@@ -68,7 +57,7 @@ class vuVMU_MemIF extends Component
   val mem_vldq_val = Reg(ex_vldq_val, resetVal = Bool(false))
 
   val nack = io.mem_resp.bits.nack
-  val reg_nack = Reg(nack, resetVal = Bool(false))
+  val reg_nack = Reg(mem_vaq_val && nack, resetVal = Bool(false))
 
   // when the request is nacked, the processor implicitly kills the request in decode and execute
   val ack_common = !nack && !reg_nack
@@ -94,7 +83,7 @@ class vuVMU_MemIF extends Component
   io.vldq_nack := mem_vldq_val && nack
 
   io.mem_req.valid := ex_vaq_val
-  io.mem_req.bits.kill := io.mem_resp.bits.nack // get's delayed one cycle in cpu
+  io.mem_req.bits.kill := mem_vaq_val && nack // get's delayed one cycle in cpu
   io.mem_req.bits.cmd := io.vaq.bits.cmd
   io.mem_req.bits.typ := io.vaq.bits.typ
   io.mem_req.bits.idx := io.vaq.bits.idx

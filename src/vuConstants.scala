@@ -107,6 +107,7 @@ object Constants
   val ENTRIES_VPFPAQ = 16
   val ENTRIES_VLDQ = 128
   val ENTRIES_VSDQ = 16
+  val ENTRIES_VPASDQ = 31
   val ENTRIES_VSREQ = 31
   val ENTRIES_VLREQ = ENTRIES_VLDQ
 
@@ -263,6 +264,11 @@ object Constants
   val M_XA_MAX  = Bits("b1101", 4)
   val M_XA_MINU = Bits("b1110", 4)
   val M_XA_MAXU = Bits("b1111", 4)
+
+  def is_mcmd_load(cmd: Bits) = (cmd === M_XRD)
+  def is_mcmd_store(cmd: Bits) = (cmd === M_XWR)
+  def is_mcmd_pf(cmd: Bits) = (cmd === M_PFR || cmd === M_PFW)
+  def is_mcmd_amo(cmd: Bits) = (M_XA_ADD <= cmd && cmd <= M_XA_MAXU)
 
   val HAVE_FMA = false
 
