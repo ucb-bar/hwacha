@@ -230,7 +230,9 @@ class vuVMU_Address extends Component
   // vvaq frees an entry, when vvaq kicks out an entry to the skid buffer
   io.vvaq_inc := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
   // vvaq occupies an entry, when the lane kicks out an entry
-  io.vvaq_dec := io.vvaq_lane_dec
+  io.vvaq_dec :=
+    Mux(io.evac_to_vmu.evac_mode, vvaq.io.enq.ready && io.vvaq_evac.valid,
+        io.vvaq_lane_dec)
 
   // VPFVAQ
   val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
