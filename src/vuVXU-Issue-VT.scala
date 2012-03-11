@@ -363,6 +363,7 @@ class vuVXU_Issue_VT extends Component
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float
   io.decoded.imm := imm
+  io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
 
   io.illegal := Reg(io.vf.active && (~unmasked_valid && ~decode_stop), resetVal = Bool(false))

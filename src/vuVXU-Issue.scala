@@ -60,6 +60,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_DATA)
+  val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
   val irb = new io_vxu_irb_bundle()
 }

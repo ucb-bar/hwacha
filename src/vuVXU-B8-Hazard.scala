@@ -555,7 +555,7 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vst & io.tvec_bhazard.vst
     )
 
-  io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR & !tvec_dhazard.orR & !tvec_shazard.orR & !tvec_seqhazard.orR & !tvec_bhazard.orR
+  io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR & (io.fire_regid_imm.cnt_valid || !tvec_dhazard.orR) & !tvec_shazard.orR & !tvec_seqhazard.orR & !tvec_bhazard.orR
 
   // hazard check logic for vt
   val vt_comp_vs =
@@ -668,5 +668,5 @@ class vuVXU_Banked8_Hazard extends Component
       vt_bhazard_utst & io.vt_bhazard.utst
     )
 
-  io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR & !vt_dhazard.orR & !vt_shazard.orR & !vt_seqhazard.orR & !vt_bhazard.orR
+  io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR & (io.fire_regid_imm.cnt_valid || !vt_dhazard.orR) & !vt_shazard.orR & !vt_seqhazard.orR & !vt_bhazard.orR
 }
