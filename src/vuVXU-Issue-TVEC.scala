@@ -340,9 +340,9 @@ class vuVXU_Issue_TVEC extends Component
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
 
   io.decoded.utidx := Bits(0)
-  io.decoded.vs := Bits(0,SZ_REGLEN)
+  io.decoded.vs := Bits(0,SZ_BREGLEN)
   io.decoded.vt := Mux(vt(5), vt_m1 + reg_nxregs, vt_m1) + regid_base
-  io.decoded.vr := Bits(0,SZ_REGLEN)
+  io.decoded.vr := Bits(0,SZ_BREGLEN)
   io.decoded.vd := Mux(vd(5), vd_m1 + reg_nxregs, vd_m1) + regid_base
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)
