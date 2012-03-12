@@ -279,9 +279,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
-    next_vt(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
-    next_vd(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
+    next_vt(next_ptr1) := io.fire_regid_imm.vt
+    next_vd(next_ptr1) := io.fire_regid_imm.vd
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
@@ -301,9 +301,9 @@ class vuVXU_Banked8_Seq extends Component
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
-    next_vt(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
-    next_vd(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
+    next_vt(next_ptr1) := io.fire_regid_imm.vt
+    next_vd(next_ptr1) := io.fire_regid_imm.vd
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
@@ -323,10 +323,10 @@ class vuVXU_Banked8_Seq extends Component
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
     next_vr_zero(next_ptr1) := io.fire_regid_imm.vr_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
-    next_vt(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
-    next_vr(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vr)
-    next_vd(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
+    next_vt(next_ptr1) := io.fire_regid_imm.vt
+    next_vr(next_ptr1) := io.fire_regid_imm.vr
+    next_vd(next_ptr1) := io.fire_regid_imm.vd
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
@@ -344,8 +344,8 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr1) := io.issue_to_seq.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
-    next_vd(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
+    next_vd(next_ptr1) := io.fire_regid_imm.vd
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
@@ -363,7 +363,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr1) := io.issue_to_seq.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     // should always write 0, amo's don't take immediates
     next_imm(next_ptr1) := Bits(0)
@@ -375,7 +375,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr2) := io.issue_to_seq.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
+    next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_mem(next_ptr2) := io.fire_regid_imm.mem
 
     next_val(next_ptr3) := Bool(true)
@@ -384,11 +384,11 @@ class vuVXU_Banked8_Seq extends Component
     next_utmemop(next_ptr3) := Bool(true)
     next_vlen(next_ptr3) := io.issue_to_seq.vlen
     next_stride(next_ptr3) := io.issue_to_seq.stride
-    next_vd(next_ptr3) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vd(next_ptr3) := io.fire_regid_imm.vd
 
     next_irb_imm1_rtag(next_ptr3) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr3) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
+    next_irb_cnt(next_ptr3) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr3) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr3) := io.fire_regid_imm.irb.update_imm1
   }
@@ -402,7 +402,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr1) := io.issue_to_seq.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
@@ -412,11 +412,11 @@ class vuVXU_Banked8_Seq extends Component
     next_utmemop(next_ptr2) := Bool(true)
     next_vlen(next_ptr2) := io.issue_to_seq.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
-    next_vd(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vd(next_ptr2) := io.fire_regid_imm.vd
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
+    next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -430,7 +430,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr1) := io.issue_to_seq.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := Cat(Bits("d0",2),io.fire_regid_imm.vs)
+    next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
@@ -441,12 +441,12 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr2) := io.issue_to_seq.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
+    next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_mem(next_ptr2) := io.fire_regid_imm.mem  
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
+    next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -467,13 +467,13 @@ class vuVXU_Banked8_Seq extends Component
     next_vldq(next_ptr2) := Bool(true)
     next_vlen(next_ptr2) := io.issue_to_seq.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
-    next_vd(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vd)
+    next_vd(next_ptr2) := io.fire_regid_imm.vd
     next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr2) := io.fire_regid_imm.imm2
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
+    next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
@@ -495,21 +495,21 @@ class vuVXU_Banked8_Seq extends Component
     next_vlen(next_ptr2) := io.issue_to_seq.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := Cat(Bits("d0",2),io.fire_regid_imm.vt)
+    next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_mem(next_ptr2) := io.fire_regid_imm.mem
     next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr2) := io.fire_regid_imm.imm2
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
-    next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
+    next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
   }
 
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
   {
-    next_vlen(reg_ptr) := array_vlen(reg_ptr) - io.seq_regid_imm.cnt - Bits("b1",1)
+    next_vlen(reg_ptr) := array_vlen(reg_ptr) - io.seq_regid_imm.cnt - UFix(1)
     next_utidx(reg_ptr) := array_utidx(reg_ptr) + io.issue_to_seq.bcnt
     next_vs(reg_ptr) := array_vs(reg_ptr) + array_stride(reg_ptr)
     next_vt(reg_ptr) := array_vt(reg_ptr) + array_stride(reg_ptr)
@@ -772,11 +772,11 @@ class vuVXU_Banked8_Seq extends Component
 
   io.seq_to_irb.update_imm1.bits.addr := array_irb_imm1_rtag(reg_ptr).toUFix
   io.seq_to_irb.update_imm1.bits.data := 
-    Mux(io.seq.vldq || io.seq.vsdq, array_imm(reg_ptr), 
+    Mux(io.seq.vldq || io.seq.vsdq, next_imm(reg_ptr), 
         array_irb_pc_next(reg_ptr))
 
   io.seq_to_irb.update_cnt.bits.addr := array_irb_cnt_rtag(reg_ptr).toUFix
-  io.seq_to_irb.update_cnt.bits.data := array_irb_cnt(reg_ptr) + io.seq_regid_imm.cnt
+  io.seq_to_irb.update_cnt.bits.data := array_irb_cnt(reg_ptr) + io.seq_regid_imm.cnt + UFix(1)
 
   io.seq_to_xcpt.next_ptr1 := next_ptr1
   io.seq_to_xcpt.fire_any := io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2 || io.fire.amo || io.fire.utld || io.fire.utst || io.fire.vld || io.fire.vst
