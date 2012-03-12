@@ -167,6 +167,7 @@ class vuXCPTHandler extends Component
 
       when (io.xcpt.hold)
       {
+        next_hold_issue := Bool(true)
         next_hold_seq := Bool(true)
         next_hold_tlb := Bool(true)
 
@@ -244,29 +245,15 @@ class vuXCPTHandler extends Component
 
     is (HOLD)
     {
-      when(!saved_earliest_ptr && io.vxu_to_xcpt.seq.fire_any)
-      {
-        next_saved_earliest_ptr := Bool(true)
-        next_earliest_ptr := io.vxu_to_xcpt.seq.next_ptr1
-      }
-      
       when (!io.xcpt.hold) 
       {
-        next_saved_earliest_ptr := Bool(false)
-
-        next_state := HOLD_WAIT
-      }
-    }
-
-    is (HOLD_WAIT)
-    {
-      when(earliest_ptr === io.vxu_to_xcpt.seq.next_ptr1)
-      {
+        next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)
         next_hold_tlb := Bool(false)
-        
+
         next_state := NORMAL
       }
     }
+
   }
 }
