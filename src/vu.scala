@@ -23,8 +23,11 @@ class io_vu extends Bundle
   val vec_ximm1q = new io_vec_ximm1q().flip
   val vec_ximm2q = new io_vec_ximm2q().flip
   val vec_cntq = new io_vec_cntq().flip
+
+  val vec_cmdq_user_ready = Bool(OUTPUT)
+  val vec_ximm1q_user_ready = Bool(OUTPUT)
+  val vec_ximm2q_user_ready = Bool(OUTPUT)
   val vec_fence_ready = Bool(OUTPUT)
-  val vec_hold_ready = Bool(OUTPUT)
 
   val vec_pfcmdq = new io_vec_cmdq().flip
   val vec_pfximm1q = new io_vec_ximm1q().flip
@@ -55,20 +58,20 @@ class vu extends Component
 {
   val io = new io_vu()
 
-  val vcmdq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VCMD)})
-  val vximm1q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VIMM)})
-  val vximm2q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VSTRIDE)})
-  val vxcntq = new queueSimplePF(16, flushable = true)( Bits(width=SZ_VLEN) )
+  val vcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
+  val vximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
+  val vximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
+  val vxcntq = new queueSimplePF(8, flushable = true)( Bits(width=SZ_VLEN) )
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
   vximm2q.io.enq <> io.vec_ximm2q
   vxcntq.io.enq <> io.vec_cntq
   
-  val vpfcmdq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VCMD)})
-  val vpfximm1q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VIMM)})
-  val vpfximm2q = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VSTRIDE)})
-  val vpfcntq = new queueSimplePF(16, flushable = true)({Bits(width=SZ_VLEN)})
+  val vpfcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
+  val vpfximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
+  val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
+  val vpfcntq = new queueSimplePF(8, flushable = true)({Bits(width=SZ_VLEN)})
 
   vpfcmdq.io.enq <> io.vec_pfcmdq
   vpfximm1q.io.enq <> io.vec_pfximm1q
@@ -81,9 +84,27 @@ class vu extends Component
   val evac = new vuEvac()
   val xcpt = new vuXCPTHandler()
 
+  // counters
+  val vcmdq_count = new qcnt(32, 32, flushable = true)
+  val vximm1q_count = new qcnt(32, 32, flushable = true)
+  val vximm2q_count = new qcnt(32, 32, flushable = true)
+
+  vcmdq_count.io.dec := vcmdq.io.enq.ready && io.vec_cmdq.valid
+  vcmdq_count.io.inc := (vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready) && vcmdq.io.deq.valid
+  vximm1q_count.io.dec := vximm1q.io.enq.ready && io.vec_ximm1q.valid
+  vximm1q_count.io.inc := (vxu.io.vxu_immq.ready || evac.io.vimm1q.ready) && vximm1q.io.deq.valid
+  vximm2q_count.io.dec := vximm2q.io.enq.ready && io.vec_ximm2q.valid
+  vximm2q_count.io.inc := (vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready) && vximm2q.io.deq.valid
+
+  vcmdq_count.io.qcnt := UFix(9)
+  vximm1q_count.io.qcnt := UFix(9)
+  vximm2q_count.io.qcnt := UFix(9)
+  io.vec_cmdq_user_ready := vcmdq_count.io.watermark
+  io.vec_ximm1q_user_ready := vximm1q_count.io.watermark
+  io.vec_ximm2q_user_ready := vximm2q_count.io.watermark
+
   // fence
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_memop && !vmu.io.pending_store
-  io.vec_hold_ready := !vxcntq.io.deq.valid
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
@@ -92,6 +113,10 @@ class vu extends Component
   vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
   vximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
   vxcntq.io.flush := xcpt.io.xcpt_to_vu.flush
+
+  vcmdq_count.io.flush := xcpt.io.xcpt_to_vu.flush
+  vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush
+  vximm2q_count.io.flush := xcpt.io.xcpt_to_vu.flush
 
   vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
   vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
