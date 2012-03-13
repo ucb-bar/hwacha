@@ -44,6 +44,7 @@ class io_vxu extends Bundle
   val irb_imm1b = new io_vxu_immq()
   val irb_imm2b = new io_vxu_imm2q()
   val irb_cntb = new io_vxu_cntq()
+  val irb_numCntB = new io_vxu_numcntq()
 
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip()
@@ -74,6 +75,7 @@ class vuVXU extends Component
   issue.io.irb_imm1b <> io.irb_imm1b
   issue.io.irb_imm2b <> io.irb_imm2b
   issue.io.irb_cntb <> io.irb_cntb
+  issue.io.irb_numCntB <> io.irb_numCntB
 
   issue.io.issue_to_irb <> io.issue_to_irb
   issue.io.irb_to_issue <> io.irb_to_issue

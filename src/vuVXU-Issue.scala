@@ -97,6 +97,7 @@ class io_vxu_issue_to_lane extends Bundle
 class io_issue_to_irb extends Bundle
 {
   val markLast = Bool(OUTPUT)
+  val update_numCnt = new io_update_num_cnt()
 }
 
 class io_vxu_issue extends Bundle
@@ -138,6 +139,7 @@ class io_vxu_issue extends Bundle
   val irb_imm1b = new io_vxu_immq()
   val irb_imm2b = new io_vxu_imm2q()
   val irb_cntb = new io_vxu_cntq()
+  val irb_numCntB = new io_vxu_numcntq()
 
   val issue_to_irb = new io_issue_to_irb()
   val irb_to_issue = new io_irb_to_issue().flip
@@ -183,6 +185,7 @@ class vuVXU_Issue extends Component
   tvec.io.irb_imm1b <> io.irb_imm1b
   tvec.io.irb_imm2b <> io.irb_imm2b
   tvec.io.irb_cntb.ready := io.irb_cntb.ready
+  tvec.io.irb_numCntB <> io.irb_numCntB
   tvec.io.irb_to_issue <> io.irb_to_issue
 
   tvec.io.flush := io.flush
@@ -201,7 +204,10 @@ class vuVXU_Issue extends Component
 
   vt.io.irb_cntb.ready := io.irb_cntb.ready
   vt.io.irb_to_issue <> io.irb_to_issue
-  vt.io.issue_to_irb <> io.issue_to_irb
+  vt.io.issue_to_irb.update_numCnt <> io.issue_to_irb.update_numCnt
+
+  io.issue_to_irb.markLast := 
+    Mux(tvec.io.active, tvec.io.issue_to_irb.markLast, vt.io.issue_to_irb.markLast)
 
   vt.io.flush := io.flush
   vt.io.xcpt_to_issue <> io.xcpt_to_issue

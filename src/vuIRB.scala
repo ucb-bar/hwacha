@@ -8,6 +8,7 @@ import Commands._
 class io_irb_to_issue extends Bundle 
 {
   val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
+  val numCnt_rtag = Bits(SZ_IRB_NUMCNT, OUTPUT)
   val cnt_rtag = Bits(SZ_IRB_CNT, OUTPUT)
 }
 
@@ -17,6 +18,7 @@ class io_vu_irb extends Bundle
   val irb_enq_imm1b = new io_vxu_immq().flip
   val irb_enq_imm2b = new io_vxu_imm2q().flip
   val irb_enq_cntb = new io_vxu_cntq().flip
+  val irb_enq_numCntB = new io_vxu_numcntq().flip
 
   val issue_to_irb = new io_issue_to_irb().flip
   val irb_to_issue = new io_irb_to_issue()
@@ -27,7 +29,10 @@ class io_vu_irb extends Bundle
   val irb_deq_imm1b = new io_vxu_immq()
   val irb_deq_imm2b = new io_vxu_imm2q()
   val irb_deq_cntb = new io_vxu_cntq()
-  val irb_deq_cntb_last = Bool(OUTPUT)
+  val irb_deq_numCntB = new io_vxu_numcntq()
+  val irb_deq_numCntB_last = Bool(OUTPUT)
+
+  val evac_to_irb = new io_evac_to_irb().flip
 
   val xcpt_to_aiw = new io_xcpt_handler_to_aiw().flip()
 }
@@ -39,7 +44,8 @@ class vuIRB extends Component
   val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=SZ_VCMD)})
   val irimm1b = new Buffer(SZ_VIMM, IRB_IMM1_DEPTH)
   val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
-  val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH, true)
+  val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH)
+  val irNumCntB = new CounterVec(IRB_NUMCNT_DEPTH)
 
   ircmdb.io.flush <> io.xcpt_to_aiw.flush
   ircmdb.io.enq <> io.irb_enq_cmdb
@@ -51,12 +57,19 @@ class vuIRB extends Component
 
   irimm2b.io.flush <> io.xcpt_to_aiw.flush
   irimm2b.io.enq <> io.irb_enq_imm2b
-  
+
   ircntb.io.flush <> io.xcpt_to_aiw.flush
   ircntb.io.enq <> io.irb_enq_cntb
   ircntb.io.update <> io.seq_to_irb.update_cnt
-  ircntb.io.markLast <> io.issue_to_irb.markLast
   ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
+
+  irNumCntB.io.flush <> io.xcpt_to_aiw.flush
+  irNumCntB.io.enq <> io.irb_enq_numCntB
+  irNumCntB.io.update_from_issue <> io.issue_to_irb.update_numCnt
+  irNumCntB.io.update_from_seq <> io.seq_to_irb.update_numCnt
+  irNumCntB.io.update_from_evac <> io.evac_to_irb.update_numCnt
+  irNumCntB.io.markLast <> io.issue_to_irb.markLast
+  irNumCntB.io.rtag <> io.irb_to_issue.numCnt_rtag
 
   val cmd = ircmdb.io.deq.bits(RG_XCMD_CMCODE)
   val n = Bool(false)
@@ -119,30 +132,36 @@ class vuIRB extends Component
   val decode_deq_irimm2b = deq_irimm2b
   val decode_deq_ircntb = deq_ircntb
 
-  ircmdb.io.deq.ready  := 
-    io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_ircmdb) | 
+  // count buffer is dequeued whenever sequencer or evacuator says so
+  ircntb.io.deq.ready  := io.seq_to_irb.last | io.irb_deq_cntb.ready
+
+  // other buffers are dequeued based on NumCntB or when evacuator says so
+  ircmdb.io.deq.ready := 
+    irNumCntB.io.deq.bits & irNumCntB.io.deq_last |
     io.irb_deq_cmdb.ready
 
-  irimm1b.io.deq.ready := 
-    io.seq_to_irb.last & ((decode_vf & ircntb.io.deq_last) | decode_deq_irimm1b) | 
+  irimm1b.io.deq.ready :=
+    irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm1b |
     io.irb_deq_imm1b.ready
 
   irimm2b.io.deq.ready := 
-    io.seq_to_irb.last & decode_deq_irimm2b | 
+    irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm2b |
     io.irb_deq_imm2b.ready
 
-  ircntb.io.deq.ready  := 
-    io.seq_to_irb.last & decode_deq_ircntb | 
-    io.irb_deq_cntb.ready
+  irNumCntB.io.deq.ready := 
+    irNumCntB.io.deq.bits & irNumCntB.io.deq_last | 
+    io.irb_deq_numCntB.ready
     
   io.irb_deq_cmdb.bits := ircmdb.io.deq.bits
   io.irb_deq_imm1b.bits := irimm1b.io.deq.bits
   io.irb_deq_imm2b.bits := irimm2b.io.deq.bits
   io.irb_deq_cntb.bits := ircntb.io.deq.bits
-  io.irb_deq_cntb_last := ircntb.io.deq_last
+  io.irb_deq_numCntB.bits := irNumCntB.io.deq.bits
+  io.irb_deq_numCntB_last := irNumCntB.io.deq_last
 
   io.irb_deq_cmdb.valid := ircmdb.io.deq.valid
   io.irb_deq_imm1b.valid := irimm1b.io.deq.valid
   io.irb_deq_imm2b.valid := irimm2b.io.deq.valid
   io.irb_deq_cntb.valid := ircntb.io.deq.valid
+  io.irb_deq_numCntB.valid := irNumCntB.io.deq.valid
 }

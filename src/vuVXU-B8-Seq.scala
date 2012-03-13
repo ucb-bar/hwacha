@@ -57,6 +57,7 @@ class io_seq_to_irb extends Bundle
   val last = Bool(OUTPUT)
   val update_imm1 = new ioPipe()( new io_irbUpdateReq(SZ_VIMM, 3) )
   val update_cnt = new ioPipe()( new io_irbUpdateReq(SZ_VLEN, 3) )
+  val update_numCnt = new io_update_num_cnt()
 }
 
 class io_seq_to_xcpt_handler extends Bundle
@@ -154,6 +155,7 @@ class vuVXU_Banked8_Seq extends Component
   val next_imm2 = Vec(8){ Wire(){Bits(width=SZ_XIMM2)} }
   val next_irb_imm1_rtag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_IMM1) } }
   val next_irb_cnt_rtag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_CNT) } }
+  val next_irb_numCnt_rtag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_IRB_NUMCNT) } }
   val next_irb_cnt = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_VLEN) } }
   val next_irb_pc_next = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_ADDR) } }
   val next_irb_update_imm1 = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -190,6 +192,7 @@ class vuVXU_Banked8_Seq extends Component
   val array_imm2 = Vec(8){ Reg(){Bits(width=SZ_XIMM2)} }
   val array_irb_imm1_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_IMM1) } }
   val array_irb_cnt_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_CNT) } }
+  val array_irb_numCnt_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_IRB_NUMCNT) } }
   val array_irb_cnt = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_VLEN) } }
   val array_irb_pc_next = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
   val array_irb_update_imm1 = Vec(SZ_BANK){ Reg(){ Bool() } }
@@ -226,6 +229,7 @@ class vuVXU_Banked8_Seq extends Component
   array_imm2 := next_imm2
   array_irb_imm1_rtag := next_irb_imm1_rtag
   array_irb_cnt_rtag := next_irb_cnt_rtag
+  array_irb_numCnt_rtag := next_irb_numCnt_rtag
   array_irb_cnt := next_irb_cnt
   array_irb_pc_next := next_irb_pc_next
   array_irb_update_imm1 := next_irb_update_imm1
@@ -264,6 +268,7 @@ class vuVXU_Banked8_Seq extends Component
   next_imm2 := array_imm2
   next_irb_imm1_rtag := array_irb_imm1_rtag
   next_irb_cnt_rtag := array_irb_cnt_rtag
+  next_irb_numCnt_rtag := array_irb_numCnt_rtag  
   next_irb_cnt := array_irb_cnt
   next_irb_pc_next := array_irb_pc_next
   next_irb_update_imm1 := array_irb_update_imm1
@@ -286,6 +291,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr1) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
@@ -307,6 +313,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr1) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
@@ -330,6 +337,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr1) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
@@ -349,6 +357,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr1) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr1) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr1) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr1) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr1) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr1) := io.fire_regid_imm.irb.update_imm1
@@ -388,6 +397,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr3) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr3) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr3) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr3) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr3) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr3) := io.fire_regid_imm.irb.update_imm1
@@ -416,6 +426,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr2) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
@@ -446,6 +457,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr2) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
@@ -473,6 +485,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr2) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
@@ -502,6 +515,7 @@ class vuVXU_Banked8_Seq extends Component
 
     next_irb_imm1_rtag(next_ptr2) := io.fire_regid_imm.irb.imm1_rtag
     next_irb_cnt_rtag(next_ptr2) := io.fire_regid_imm.irb.cnt_rtag
+    next_irb_numCnt_rtag(next_ptr2) := io.fire_regid_imm.irb.numCnt_rtag
     next_irb_cnt(next_ptr2) := io.fire_regid_imm.cnt
     next_irb_pc_next(next_ptr2) := io.fire_regid_imm.irb.pc_next
     next_irb_update_imm1(next_ptr2) := io.fire_regid_imm.irb.update_imm1
@@ -744,6 +758,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_irb.update_imm1.valid := Bool(false)
   io.seq_to_irb.update_cnt.valid := Bool(false)
   io.seq_to_irb.last := Bool(false)
+  io.seq_to_irb.update_numCnt.valid := Bool(false)
   
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vldq || io.seq.vsdq)
   {
@@ -754,6 +769,7 @@ class vuVXU_Banked8_Seq extends Component
     when(array_last(reg_ptr))
     {
       io.seq_to_irb.last := Bool(true)
+      io.seq_to_irb.update_numCnt.valid := Bool(true)
     }
   }
 
@@ -777,6 +793,8 @@ class vuVXU_Banked8_Seq extends Component
 
   io.seq_to_irb.update_cnt.bits.addr := array_irb_cnt_rtag(reg_ptr).toUFix
   io.seq_to_irb.update_cnt.bits.data := array_irb_cnt(reg_ptr) + io.seq_regid_imm.cnt + UFix(1)
+
+  io.seq_to_irb.update_numCnt.bits := array_irb_numCnt_rtag(reg_ptr)
 
   io.seq_to_xcpt.next_ptr1 := next_ptr1
   io.seq_to_xcpt.fire_any := io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2 || io.fire.amo || io.fire.utld || io.fire.utst || io.fire.vld || io.fire.vst

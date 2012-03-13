@@ -72,11 +72,13 @@ object Constants
   val IRB_IMM1_DEPTH = 8
   val IRB_IMM2_DEPTH = 8
   val IRB_CNT_DEPTH = 8
+  val IRB_NUMCNT_DEPTH = IRB_CMD_DEPTH
 
   val SZ_IRB_CMD = log2up(IRB_CMD_DEPTH)
   val SZ_IRB_IMM1 = log2up(IRB_IMM1_DEPTH)
   val SZ_IRB_IMM2E = log2up(IRB_IMM2_DEPTH)
   val SZ_IRB_CNT = log2up(IRB_IMM2_DEPTH)
+  val SZ_IRB_NUMCNT = log2up(IRB_NUMCNT_DEPTH)
 
   // pipe stages
   val INT_STAGES   = 2

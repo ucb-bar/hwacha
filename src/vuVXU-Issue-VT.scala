@@ -14,6 +14,7 @@ class io_vf extends Bundle
   val pc = Bits(SZ_ADDR, OUTPUT)
   val nxregs = Bits(SZ_REGCNT, OUTPUT)
   val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
+  val numCnt_rtag = Bits(SZ_IRB_NUMCNT, OUTPUT)
   val stride = Bits(SZ_REGLEN, OUTPUT)
 }
 
@@ -58,16 +59,19 @@ class vuVXU_Issue_VT extends Component
   val if_next_pc = if_reg_pc + UFix(4)
 
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_IRB_IMM1))
+  val numCnt_rtag = Reg(resetVal = Bits(0,SZ_IRB_CMD))
 
   when(io.flush) 
   {
     if_reg_pc := Bits(0,SZ_ADDR)
     imm1_rtag := Bits(0,SZ_IRB_IMM1)
+    numCnt_rtag := Bits(0,SZ_IRB_CMD)
   } 
   .elsewhen (io.vf.fire) 
   { 
     if_reg_pc := io.vf.pc 
     imm1_rtag := io.vf.imm1_rtag
+    numCnt_rtag := io.vf.numCnt_rtag
   }
   .elsewhen (!killf && !reg_killf && !stalld)
   { 
@@ -83,6 +87,7 @@ class vuVXU_Issue_VT extends Component
   val id_pc_next = Reg(resetVal = Bits(0,SZ_ADDR))
 
   io.decoded.irb.imm1_rtag := imm1_rtag
+  io.decoded.irb.numCnt_rtag := numCnt_rtag
   io.decoded.irb.cnt_rtag := io.irb_to_issue.cnt_rtag
   io.decoded.irb.pc_next := id_pc_next
   io.decoded.irb.update_imm1 := Bool(true)
@@ -300,6 +305,8 @@ class vuVXU_Issue_VT extends Component
   io.irb_cntb.bits := cnt
 
   io.issue_to_irb.markLast := decode_stop
+  io.issue_to_irb.update_numCnt.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall;
+  io.issue_to_irb.update_numCnt.bits := numCnt_rtag;
 
   val valid_common = io.vf.active & io.irb_cntb.ready & !io.xcpt_to_issue.stall
 

@@ -200,6 +200,7 @@ class vu extends Component
   irb.io.irb_enq_imm1b <> vxu.io.irb_imm1b
   irb.io.irb_enq_imm2b <> vxu.io.irb_imm2b
   irb.io.irb_enq_cntb <> vxu.io.irb_cntb
+  irb.io.irb_enq_numCntB <> vxu.io.irb_numCntB
 
   irb.io.issue_to_irb <> vxu.io.issue_to_irb
   irb.io.irb_to_issue <> vxu.io.irb_to_issue
@@ -212,7 +213,10 @@ class vu extends Component
   evac.io.irb_imm1b <> irb.io.irb_deq_imm1b
   evac.io.irb_imm2b <> irb.io.irb_deq_imm2b
   evac.io.irb_cntb <> irb.io.irb_deq_cntb
-  evac.io.irb_cntb_last <> irb.io.irb_deq_cntb_last
+  evac.io.irb_numCntB <> irb.io.irb_deq_numCntB
+  evac.io.irb_numCntB_last <> irb.io.irb_deq_numCntB_last
+
+  evac.io.evac_to_irb <> irb.io.evac_to_irb
 
   evac.io.vcmdq.bits := vcmdq.io.deq.bits
   evac.io.vcmdq.valid := vcmdq.io.deq.valid

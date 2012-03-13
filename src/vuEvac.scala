@@ -16,13 +16,21 @@ class io_evac_to_vmu extends Bundle
   val evac_mode = Bool(OUTPUT)
 }
 
+class io_evac_to_irb extends Bundle
+{
+  val update_numCnt = new io_update_num_cnt()
+}
+
 class io_vu_evac extends Bundle
 {
   val irb_cmdb = new io_vxu_cmdq().flip
   val irb_imm1b = new io_vxu_immq().flip
   val irb_imm2b = new io_vxu_imm2q().flip
   val irb_cntb = new io_vxu_cntq().flip
-  val irb_cntb_last = Bool(INPUT)
+  val irb_numCntB = new io_vxu_numcntq().flip
+  val irb_numCntB_last = Bool(INPUT)
+
+  val evac_to_irb = new io_evac_to_irb()
 
   val vcmdq = new io_vxu_cmdq().flip
   val vimm1q = new io_vxu_immq().flip
@@ -141,6 +149,8 @@ class vuEvac extends Component
   io.irb_imm1b.ready := Bool(false)
   io.irb_imm2b.ready := Bool(false)
   io.irb_cntb.ready := Bool(false)
+  io.irb_numCntB.ready := Bool(false)
+  io.evac_to_irb.update_numCnt.valid := Bool(false)
 
   io.vcmdq.ready := Bool(false)
   io.vimm1q.ready := Bool(false)
@@ -209,7 +219,6 @@ class vuEvac extends Component
         cmd_sel_next := SEL_VCMDQ
       }
       
-      // set ready signal
       when (deq_ircmdb && io.vsdq.ready && io.vaq.ready) 
       {
         io.irb_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
@@ -243,11 +252,6 @@ class vuEvac extends Component
 
       }
 
-      // set ready signal
-      when (deq_irimm1b && io.vsdq.ready && io.vaq.ready)
-      {
-        io.irb_imm1b.ready := Bool(true)
-      }
     }
 
     is (STATE_IMM2B)
@@ -273,17 +277,12 @@ class vuEvac extends Component
 
       }
 
-      // set ready signal
-      when (deq_irimm2b && io.vsdq.ready && io.vaq.ready) 
-      {
-        io.irb_imm2b.ready := Bool(true)
-      }
     }
 
     is (STATE_CNTB)
     {
       // set valid signal
-      when (io.irb_cntb.valid && deq_ircntb)
+      when (io.irb_numCntB.valid && !io.irb_numCntB.bits && deq_ircntb)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
@@ -291,32 +290,23 @@ class vuEvac extends Component
 
         when (io.vsdq.ready && io.vaq.ready)
         {
-          addr_next := addr_plus_8          
-          when (vf)
-          {
-            when (!io.irb_cntb_last)
-            {
-              state_next := STATE_CNTB
-            } . otherwise {
-              state_next := STATE_CMDB
-              io.irb_cmdb.ready := Bool(true)
-            }
-          } . otherwise {
-            state_next := STATE_CMDB
-            io.irb_cmdb.ready := Bool(true)
-          }
+          addr_next := addr_plus_8
+          io.irb_cntb.ready := Bool(true)
+          io.evac_to_irb.update_numCnt.valid := Bool(true)
+          state_next := STATE_CNTB
         }
-      } .elsewhen (!io.irb_cntb.valid && vf) 
+      } .elsewhen (io.irb_numCntB.valid && io.irb_numCntB.bits)
       {
         state_next := STATE_CMDB
-        io.irb_cmdb.ready := Bool(true)
+        when (!io.irb_numCntB_last)
+        { 
+          io.irb_cmdb.ready := Bool(true) 
+          io.irb_imm1b.ready := deq_irimm1b
+          io.irb_imm2b.ready := deq_irimm2b
+          io.irb_numCntB.ready := Bool(true)
+        }
       }
 
-      // set ready signal
-      when (deq_ircntb && io.vsdq.ready && io.vaq.ready)
-      {
-        io.irb_cntb.ready := Bool(true)
-      }
     }
 
     is (STATE_VCMDQ)
