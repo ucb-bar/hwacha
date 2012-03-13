@@ -84,7 +84,7 @@ class vuIRB extends Component
                      //   |  |  |  |  deq_ircntb
                      //   |  |  |  |  |
                      List(n, n, n, n, n), Array(
-    CMD_VF->         List(y, n, n, n, y),
+    CMD_VF->         List(y, n, y, n, y),
 
     CMD_VMVV->       List(n, y, n, n, y),
     CMD_VMSV->       List(n, y, y, n, y),
