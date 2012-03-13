@@ -521,13 +521,6 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
   val tvec_bhazard_vst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) // not sure about this 
 
-  val tvec_stall =
-    Cat(
-      io.tvec_valid.viu & io.seq_to_hazard.stall.orR,
-      io.tvec_valid.vld & io.seq_to_hazard.stall(RG_VSDQ),
-      io.tvec_valid.vst & io.seq_to_hazard.stall(RG_VLDQ)
-    )
-
   val tvec_dhazard =
     Cat(
       ~io.tvec_regid_imm.vt_zero & tvec_dhazard_vt & io.tvec_dhazard.vt,
@@ -555,7 +548,7 @@ class vuVXU_Banked8_Hazard extends Component
       tvec_bhazard_vst & io.tvec_bhazard.vst
     )
 
-  io.tvec_ready := io.tvec_regid_imm.vd_zero | !tvec_stall.orR & !tvec_dhazard.orR & !tvec_shazard.orR & !tvec_seqhazard.orR & !tvec_bhazard.orR
+  io.tvec_ready := io.tvec_regid_imm.vd_zero || !io.seq_to_hazard.stall && !tvec_dhazard.orR && !tvec_shazard.orR && !tvec_seqhazard.orR && !tvec_bhazard.orR
 
   // hazard check logic for vt
   val vt_comp_vs =
@@ -618,17 +611,6 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_bhazard_utld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
   val vt_bhazard_utst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3)
 
-  val vt_stall =
-    Cat(
-      io.vt_valid.viu & io.seq_to_hazard.stall.orR,
-      io.vt_valid.vau0 & io.seq_to_hazard.stall.orR,
-      io.vt_valid.vau1 & io.seq_to_hazard.stall.orR,
-      io.vt_valid.vau2 & io.seq_to_hazard.stall.orR,
-      Bool(false), // io.vt_valid.amo
-      io.vt_valid.utld & io.seq_to_hazard.stall(RG_VSDQ),
-      io.vt_valid.utst & io.seq_to_hazard.stall(RG_VLDQ)
-    )
-
   val vt_dhazard =
     Cat(
       ~io.vt_regid_imm.vs_zero & vt_dhazard_vs & io.vt_dhazard.vs,
@@ -668,5 +650,5 @@ class vuVXU_Banked8_Hazard extends Component
       vt_bhazard_utst & io.vt_bhazard.utst
     )
 
-  io.vt_ready := io.vt_regid_imm.vd_zero | !vt_stall.orR & !vt_dhazard.orR & !vt_shazard.orR & !vt_seqhazard.orR & !vt_bhazard.orR
+  io.vt_ready := io.vt_regid_imm.vd_zero || !io.seq_to_hazard.stall && !vt_dhazard.orR && !vt_shazard.orR && !vt_seqhazard.orR && !vt_bhazard.orR
 }

@@ -43,7 +43,7 @@ class io_vxu_seq_regid_imm extends Bundle
 
 class io_vxu_seq_to_hazard extends Bundle
 {
-  val stall = Bits(width = SZ_STALL)
+  val stall = Bool()
   val last = Bool()
 }
 
@@ -123,6 +123,7 @@ class vuVXU_Banked8_Seq extends Component
         next_ptr3_add_bcnt(SZ_LGBANK-1,0))
 
   val next_val = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_stall = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_last = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_viu = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_vau0 = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -159,6 +160,7 @@ class vuVXU_Banked8_Seq extends Component
   val next_irb_update_imm1 = Vec(SZ_BANK){ Wire(){ Bool() } }
 
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
+  val array_stall = Reg(resetVal = Bits(0, SZ_BANK))
   val array_last = Reg(resetVal = Bits(0, SZ_BANK))
   val array_viu = Reg(resetVal = Bits(0, SZ_BANK))
   val array_vau0 = Reg(resetVal = Bits(0, SZ_BANK))
@@ -195,6 +197,7 @@ class vuVXU_Banked8_Seq extends Component
   val array_irb_update_imm1 = Vec(SZ_BANK){ Reg(){ Bool() } }
 
   array_val := next_val.toBits
+  array_stall := next_stall.toBits
   array_last := next_last.toBits
   array_viu := next_viu.toBits
   array_vau0 := next_vau0.toBits
@@ -233,6 +236,7 @@ class vuVXU_Banked8_Seq extends Component
   val last = io.issue_to_seq.vlen < io.issue_to_seq.bcnt
 
   next_val := array_val
+  next_stall := array_stall
   next_last := array_last
   next_viu := array_viu
   next_vau0 := array_vau0
@@ -544,23 +548,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm(reg_ptr) := array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
   }
 
-  when(io.flush) 
-  {
-    for(i <- 0 until SZ_BANK) 
-    {
-      next_val(i) := Bool(false)      
-      next_last(i) := Bool(false)
-      next_viu(i) := Bool(false)
-      next_vau0(i) := Bool(false)
-      next_vau1(i) := Bool(false)
-      next_vau2(i) := Bool(false)
-      next_vaq(i) := Bool(false)
-      next_vldq(i) := Bool(false)
-      next_vsdq(i) := Bool(false)
-      next_utmemop(i) := Bool(false)
-    }
-  }
-
   val next_dep_vaq = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_dep_vldq = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_dep_vsdq = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -678,13 +665,6 @@ class vuVXU_Banked8_Seq extends Component
   when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
   when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
 
-  when (io.flush)
-  {
-    reg_vaq_stall := Bool(false)
-    reg_vldq_stall := Bool(false)
-    reg_vsdq_stall := Bool(false)
-  }
-
   val masked_xcpt_stall = (!current_vldq_val && !current_vsdq_val) && io.xcpt_to_seq.stall
 
   val stall =
@@ -701,7 +681,9 @@ class vuVXU_Banked8_Seq extends Component
     current_vldq_val & reg_vldq_stall |
     current_vsdq_val & reg_vsdq_stall
 
-  io.seq_to_hazard.stall := Cat(reg_vaq_stall, reg_vldq_stall, reg_vsdq_stall)
+  next_stall(reg_ptr) := stall
+
+  io.seq_to_hazard.stall := (array_stall & array_val).orR
 
   io.seq_to_hazard.last := ~stall & current_val & array_last(reg_ptr)
   io.seq_to_expand.last := ~stall & current_val & array_last(reg_ptr)
@@ -780,4 +762,26 @@ class vuVXU_Banked8_Seq extends Component
 
   io.seq_to_xcpt.next_ptr1 := next_ptr1
   io.seq_to_xcpt.fire_any := io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2 || io.fire.amo || io.fire.utld || io.fire.utst || io.fire.vld || io.fire.vst
+
+  when(io.flush)
+  {
+    for(i <- 0 until SZ_BANK)
+    {
+      next_val(i) := Bool(false)
+      next_stall(i) := Bool(false)
+      next_last(i) := Bool(false)
+      next_viu(i) := Bool(false)
+      next_vau0(i) := Bool(false)
+      next_vau1(i) := Bool(false)
+      next_vau2(i) := Bool(false)
+      next_vaq(i) := Bool(false)
+      next_vldq(i) := Bool(false)
+      next_vsdq(i) := Bool(false)
+      next_utmemop(i) := Bool(false)
+    }
+
+    reg_vaq_stall := Bool(false)
+    reg_vldq_stall := Bool(false)
+    reg_vsdq_stall := Bool(false)
+  }
 }
