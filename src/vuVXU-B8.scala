@@ -39,6 +39,7 @@ class io_vxu extends Bundle
   
   val pending_store = Bool(INPUT)
   val pending_memop = Bool(OUTPUT)
+  val pending_vf = Bool(OUTPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
@@ -128,6 +129,7 @@ class vuVXU extends Component
   b8hazard.io.flush <> io.xcpt_to_vxu.flush
 
   io.pending_memop := b8hazard.io.hazard_to_issue.pending_memop
+  io.pending_vf := issue.io.pending_vf
 
 
   val b8seq = new vuVXU_Banked8_Seq()

@@ -104,7 +104,7 @@ class vu extends Component
   io.vec_ximm2q_user_ready := vximm2q_count.io.watermark
 
   // fence
-  io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_memop && !vmu.io.pending_store
+  io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt

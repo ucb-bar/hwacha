@@ -133,6 +133,7 @@ class io_vxu_issue extends Bundle
   val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
   
   val pending_store = Bool(INPUT)
+  val pending_vf = Bool(OUTPUT)
 
   val irb_cmdb = new io_vxu_cmdq()
   val irb_imm1b = new io_vxu_immq()
@@ -154,6 +155,7 @@ class vuVXU_Issue extends Component
   val vt = new vuVXU_Issue_VT()
 
   tvec.io.vf <> vt.io.vf
+  io.pending_vf := tvec.io.vf.active
 
   vt.io.illegal <> io.illegal
   vt.io.imem_req <> io.imem_req
