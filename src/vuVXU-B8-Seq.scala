@@ -284,7 +284,7 @@ class vuVXU_Banked8_Seq extends Component
     next_viu(next_ptr1) := Bool(true)
     next_fn_viu(next_ptr1) := io.fire_fn.viu
     next_vlen(next_ptr1) := io.issue_to_seq.vlen
-    next_utidx(next_ptr1) := Bits(0, SZ_VLEN)
+    next_utidx(next_ptr1) := io.fire_regid_imm.utidx
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
@@ -755,15 +755,14 @@ class vuVXU_Banked8_Seq extends Component
     }
   }
 
-  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2)
+  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || (( io.seq.vldq || io.seq.vsdq ) && array_utmemop(reg_ptr)))
   {
     when(array_last(reg_ptr))
     {
       io.seq_to_irb.update_imm1.valid := array_irb_update_imm1(reg_ptr)
     }
-  }
-
-  when (io.seq.vldq || io.seq.vsdq)
+  } 
+  . elsewhen ((io.seq.vldq || io.seq.vsdq) && !array_utmemop(reg_ptr))
   {
     io.seq_to_irb.update_imm1.valid := Bool(true)
   }
