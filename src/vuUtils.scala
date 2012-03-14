@@ -52,12 +52,17 @@ object ShiftRegister
 
 object log2up
 {
-  def apply(in: Int) = if (in == 1) 1 else ceil(log(in)/log(2)).toInt
+  def apply(x: Int) = if (x == 1) 1 else ceil(log(x)/log(2.0)).toInt
 }
 
 object log2down
 {
-  def apply(x : Int)=floor(log(x)/log(2.0)).toInt
+  def apply(x : Int) = if (x == 1) 1 else floor(log(x)/log(2.0)).toInt
+}
+
+object isPow2
+{
+  def apply(x: Int) = (x == pow(2,log2down(x)))
 }
 
 object UFixToOH
