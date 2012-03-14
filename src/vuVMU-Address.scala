@@ -136,18 +136,19 @@ class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
 {
   val io = new io_vmu_address_arbiter()
 
-  val vpaq_skid = SkidBuffer(io.vpaq, late_nack, flushable = true)
+  //val vpaq_skid = SkidBuffer(io.vpaq, late_nack, flushable = true)
+  val vpaq_check_cnt = CheckCnt(io.vpaq, io.qcnt, io.watermark)
+  val vpaq_skid = SkidBuffer(vpaq_check_cnt, late_nack, flushable = true)
   val vpfpaq_skid = SkidBuffer(io.vpfpaq, late_nack, flushable = true)
 
   val vpaq_arb = new Arbiter(2)( new io_vpaq() )
 
-  val vpaq_skid_check_cnt = CheckCnt(vpaq_skid.io.deq, io.qcnt, io.watermark)
-  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_skid_check_cnt
+  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_skid.io.deq
   vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq_skid.io.deq, io.stall)
   io.vaq <> vpaq_arb.io.out
   val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
 
-  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid_check_cnt.valid
+  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid.io.deq.valid || vpaq_check_cnt.valid
 
   io.vpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPAQ)
   io.vpfpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPFPAQ)
@@ -266,7 +267,7 @@ class vuVMU_Address extends Component
   // vpaq occupies an entry, when it accepts an entry from vvaq
   io.vpaq_inc := vvaq_tlb.io.ack
   // vpaq frees an entry, when the memory system drains it
-  io.vpaq_dec := vpaq_arb.io.vpaq_ack
+  io.vpaq_dec := vpaq.io.deq.valid && vpaq_arb.io.vpaq.ready
 
   // vpasdq counts occupied space
   // vpasdq occupies an entry, when it accepts an entry from vvaq
