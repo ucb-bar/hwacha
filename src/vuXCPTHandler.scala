@@ -113,21 +113,21 @@ class vuXCPTHandler extends Component
   val next_addr = Wire(){ UFix(width = SZ_ADDR) }
   val addr = Reg(next_addr, resetVal = UFix(0, SZ_ADDR) )
 
-  val next_backup = Wire(){ Bool() }
-  val backup = Reg(next_backup, resetVal = Bool(false))
+  val next_evac = Wire(){ Bool() }
+  val evac = Reg(next_evac, resetVal = Bool(false))
 
   val next_kill = Wire(){ Bool() }
   val kill = Reg(next_kill, resetVal = Bool(false))
 
   next_state := state
   next_addr := addr
-  next_backup := backup
+  next_evac := evac
   next_kill := kill
 
-  when (io.xcpt.backup)
+  when (io.xcpt.evac)
   {
-    next_backup := Bool(true)
-    next_addr := io.xcpt.backup_addr
+    next_evac := Bool(true)
+    next_addr := io.xcpt.evac_addr
   }
 
   when (io.xcpt.kill)
@@ -159,7 +159,7 @@ class vuXCPTHandler extends Component
         next_hold_seq := Bool(true)
         next_hold_tlb := Bool(true)
 
-        next_backup := Bool(false)
+        next_evac := Bool(false)
         next_kill := Bool(false)
 
         next_state := XCPT_DRAIN
@@ -196,7 +196,7 @@ class vuXCPTHandler extends Component
         io.xcpt_to_aiw.flush := Bool(true)
       }
 
-      when(backup)
+      when(evac)
       {
         next_hold_tlb := Bool(false)
 
@@ -235,7 +235,7 @@ class vuXCPTHandler extends Component
         next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)
         next_hold_tlb := Bool(false)
-        next_backup := Bool(false)
+        next_evac := Bool(false)
         next_kill := Bool(false)
         
         next_state := NORMAL

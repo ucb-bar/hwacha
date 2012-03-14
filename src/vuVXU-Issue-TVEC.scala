@@ -289,12 +289,12 @@ class vuVXU_Issue_TVEC extends Component
   when(io.flush) 
   {
     next_state := ISSUE_TVEC
-    //next_vlen := Bits(0,SZ_VLEN)
-    //next_nxregs := Bits(32,SZ_REGCNT)
-    //next_nfregs := Bits(32,SZ_REGCNT)
-    //next_bactive := Bits("b1111_1111",SZ_BANK)
-    //next_bcnt := Bits(8,SZ_LGBANK1)
-    //next_stride := Bits(63,SZ_REGLEN)
+    next_vlen := Bits(0,SZ_VLEN)
+    next_nxregs := Bits(32,SZ_REGCNT)
+    next_nfregs := Bits(32,SZ_REGCNT)
+    next_bactive := Bits("b1111_1111",SZ_BANK)
+    next_bcnt := Bits(8,SZ_LGBANK1)
+    next_stride := Bits(63,SZ_REGLEN)
   }
 
 

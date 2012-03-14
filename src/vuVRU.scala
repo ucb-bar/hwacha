@@ -141,8 +141,9 @@ class vuVRU extends Component
       {
         // do nothing
         state := VRU_Idle
+        vlen_reg := Fix(0)
       }
-      when (setvl_val)
+      .elsewhen (setvl_val)
       {
         vlen_reg := io.vec_pfximm1q.bits(RG_XCMD_VLEN).toUFix
       }
@@ -207,6 +208,7 @@ class vuVRU extends Component
       when (io.xcpt_to_vru.flush)
       {
         state := VRU_Idle
+        vlen_reg := Fix(0)
       }
       .elsewhen (vec_count_reg <= Fix(0))
       {
@@ -235,6 +237,7 @@ class vuVRU extends Component
       when (io.xcpt_to_vru.flush)
       {
         state := VRU_Idle
+        vlen_reg := Fix(0)
       }
       .elsewhen (vec_count_reg === Fix(0))
       {

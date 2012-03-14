@@ -20,7 +20,10 @@ class io_vf extends Bundle
 
 class io_vxu_issue_vt extends Bundle
 {
-  val illegal = Bool(OUTPUT)
+  val irq_ma_inst = Bool(OUTPUT)
+  val irq_illegal = Bool(OUTPUT)
+  val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
+  val irq_pc_id = Bits(SZ_ADDR, OUTPUT)
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
@@ -49,9 +52,13 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val vt_ready = io.ready && io.irb_cntb.ready & !io.xcpt_to_issue.stall
+  val stall_sticky = Reg(io.irq_ma_inst || io.irq_illegal, resetVal = Bool(false))
+  val stall = stall_sticky || io.xcpt_to_issue.stall
 
-  val stalld = !vt_ready
+  when (io.irq_ma_inst || io.irq_illegal) { stall_sticky := Bool(true) }
+  when (io.flush) { stall_sticky := Bool(false) }
+
+  val stalld = !(io.ready && io.irb_cntb.ready & !stall)
   val killf = !io.imem_resp.valid || !io.imem_req.ready
   val reg_killf = Reg(killf)
 
@@ -83,6 +90,7 @@ class vuVXU_Issue_VT extends Component
   io.imem_req.bits := req_pc
   io.imem_req.valid := io.vf.active
 
+  val id_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
   val id_reg_inst = Reg(resetVal = Bits(0,SZ_INST))
   val id_pc_next = Reg(resetVal = Bits(0,SZ_ADDR))
 
@@ -94,6 +102,7 @@ class vuVXU_Issue_VT extends Component
 
   when (io.flush)
   {
+    id_reg_pc := Bits(0,SZ_ADDR)
     id_reg_inst := Bits(0,SZ_INST)
     id_pc_next := Bits(0,SZ_ADDR)
   }
@@ -103,6 +112,7 @@ class vuVXU_Issue_VT extends Component
   }
   .elsewhen (!stalld)
   {
+    id_reg_pc := if_reg_pc
     id_reg_inst := io.imem_resp.bits
     id_pc_next := req_pc
     when (killf || reg_killf)
@@ -299,16 +309,16 @@ class vuVXU_Issue_VT extends Component
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
   val regid_base = (cnt >> UFix(3)) * io.vf.stride
 
-  io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
+  io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
 
-  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall
+  io.irb_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
   io.irb_cntb.bits := cnt
 
   io.issue_to_irb.markLast := decode_stop
-  io.issue_to_irb.update_numCnt.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !io.xcpt_to_issue.stall;
-  io.issue_to_irb.update_numCnt.bits := numCnt_rtag;
+  io.issue_to_irb.update_numCnt.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
+  io.issue_to_irb.update_numCnt.bits := numCnt_rtag
 
-  val valid_common = io.vf.active & io.irb_cntb.ready & !io.xcpt_to_issue.stall
+  val valid_common = io.vf.active & io.irb_cntb.ready & !stall
 
   io.valid.viu := valid_common && unmasked_valid_viu 
   io.valid.vau0 := valid_common && unmasked_valid_vau0
@@ -373,5 +383,8 @@ class vuVXU_Issue_VT extends Component
   io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
 
-  io.illegal := Reg(io.vf.active && (~unmasked_valid && ~decode_stop), resetVal = Bool(false))
+  io.irq_ma_inst := req_pc(1,0) != Bits(0)
+  io.irq_illegal := io.vf.active && (~unmasked_valid && ~decode_stop)
+  io.irq_pc_if := req_pc
+  io.irq_pc_id := id_reg_pc
 }

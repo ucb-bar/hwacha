@@ -24,20 +24,27 @@ class io_arbiter[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Bundle
   val chosen = Bits(log2up(n),OUTPUT)
 }
 
-class Arbiter[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Component
+class io_arbiterdpath[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Bundle
+{
+  val in = Vec(n){ data.flip }
+  val out = data
+  val chosen = Bits(log2up(n),INPUT)
+}
+
+class ArbiterCtrl[T <: Data](n :Int)(data: => ioDecoupled[T]) extends Component
 {
   val io = new io_arbiter(n)(data)
 
   io.in(0).ready := io.out.ready
   for (i <- 1 to n-1)
+  {
     io.in(i).ready := !io.in(i-1).valid && io.in(i-1).ready
+  }
 
-  var dout = io.in(n-1).bits
   var choose = Bits(n-1)
   for (i <- 1 to n-1)
   {
     val actual = n-1-i
-    dout = Mux(io.in(actual).valid, io.in(actual).bits, dout)
     choose = Mux(io.in(actual).valid, Bits(actual,log2up(n)), choose)
   }
 
@@ -48,7 +55,110 @@ class Arbiter[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Component
     vout = vout || io.in(i).valid
 
   vout <> io.out.valid
-  dout <> io.out.bits
+}
+
+class ArbiterDPath[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Component
+{
+  val io = new io_arbiterdpath(n)(data)
+
+  io.out.bits := io.in(io.chosen).bits
+}
+
+class Arbiter[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Component
+{
+  val io = new io_arbiter(n)(data)
+
+  val ctrl = new ArbiterCtrl(n)(data)
+  val dpath = new ArbiterDPath(n)(data)
+
+  dpath.io.chosen := ctrl.io.chosen
+  io.chosen := ctrl.io.chosen
+
+  for (i <- 0 to n-1)
+  {
+    dpath.io.in(i).bits := io.in(i).bits
+    io.in(i).ready := ctrl.io.in(i).ready
+    ctrl.io.in(i).valid := io.in(i).valid
+  }
+
+  ctrl.io.out.ready := io.out.ready
+  io.out.valid := ctrl.io.out.valid
+  io.out.bits := dpath.io.out.bits
+}
+
+class RoundRobinArbiterCtrl[T <: Data](n :Int)(data: => ioDecoupled[T]) extends Component
+{
+  val io = new io_arbiter(n)(data)
+
+  // Round robin counter
+  val cnt = Reg(resetVal = UFix(0, log2up(n)))
+
+  if (isPow2(n))
+  {
+    cnt := cnt + UFix(1)
+  }
+  else
+  {
+    // Only need reset if n isn't a power of 2
+    when (cnt === UFix(n-1)) { cnt := UFix(0) }
+    .otherwise { cnt := cnt + UFix(1) }
+  }
+
+  val sel_vec = Vec(n) {Wire() {Bits(width=log2up(n))}}
+  // val in_ready_vec = Vec(n) {Vec(n) {Wire() {Bool()}}}
+  // make a sel value for every possible value of cnt
+  for (i <- 0 to n-1)
+  {
+    // initialize sel value
+    var sel = Bits(n-1-i)
+    // in_ready_vec(i)(i) := io.out.ready
+    for (j <- 1 to n-1)
+    {
+      val actual_sel = (i + (n-1-j)) % n
+      val actual_ready = (i + j) % n
+      val actual_ready_prev = (i + j - 1) % n
+      sel = Mux(io.in(actual_sel).valid, Bits(actual_sel,log2up(n)), sel)
+      // in_ready_vec(i)(actual_ready) := !io.in(actual_ready_prev).valid && in_ready_vec(i)(actual_ready_prev)
+    }
+    sel_vec(i) := sel
+  }
+
+  for (i <- 0 to n-1)
+  {
+    // only the chosen gets the true out ready signal
+    // io.in(i).ready := in_ready_vec(sel_vec(cnt))(i)
+    io.in(i).ready := Mux(UFix(i) === sel_vec(cnt), io.out.ready, Bool(false))
+  }
+
+  io.chosen := sel_vec(cnt)
+
+  var vout = io.in(0).valid
+  for (i <- 1 to n-1)
+    vout = vout || io.in(i).valid
+
+  vout <> io.out.valid
+}
+
+class RoundRobinArbiter[T <: Data](n: Int)(data: => ioDecoupled[T]) extends Component
+{
+  val io = new io_arbiter(n)(data)
+
+  val ctrl = new RoundRobinArbiterCtrl(n)(data)
+  val dpath = new ArbiterDPath(n)(data)
+
+  dpath.io.chosen := ctrl.io.chosen
+  io.chosen := ctrl.io.chosen
+
+  for (i <- 0 to n-1)
+  {
+    io.in(i).ready := ctrl.io.in(i).ready
+    ctrl.io.in(i).valid := io.in(i).valid
+    dpath.io.in(i).bits := io.in(i).bits
+  }
+
+  ctrl.io.out.ready := io.out.ready
+  io.out.valid := ctrl.io.out.valid
+  io.out.bits := dpath.io.out.bits
 }
 
 class io_imem_req extends ioDecoupled()( { Bits(width = SZ_ADDR) } )

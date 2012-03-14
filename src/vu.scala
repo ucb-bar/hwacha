@@ -7,17 +7,19 @@ import Constants._
 class io_xcpt extends Bundle 
 {
   val exception = Bool(OUTPUT)
-  val backup_addr = UFix(SZ_ADDR, OUTPUT)
-  val backup = Bool(OUTPUT)
   val exception_ack_valid = Bool(INPUT)
   val exception_ack_ready = Bool(OUTPUT)
+  val evac_addr = UFix(SZ_ADDR, OUTPUT)
+  val evac = Bool(OUTPUT)
   val hold = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
 }
 
 class io_vu extends Bundle 
 {
-  val illegal = Bool(OUTPUT)
+  val irq = Bool(OUTPUT)
+  val irq_cause = UFix(5, OUTPUT)
+  val irq_aux = Bits(64, OUTPUT)
 
   val vec_cmdq = new io_vec_cmdq().flip
   val vec_ximm1q = new io_vec_ximm1q().flip
@@ -81,6 +83,7 @@ class vu extends Component
   val vru = new vuVRU()
   val vxu = new vuVXU()
   val vmu = new vuVMU()
+  val irq = new vuIRQHandler()
   val evac = new vuEvac()
   val xcpt = new vuXCPTHandler()
 
@@ -106,6 +109,18 @@ class vu extends Component
   // fence
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
+  // irq
+  irq.io.flush := xcpt.io.xcpt_to_vu.flush
+
+  irq.io.irq_ma_inst := vxu.io.irq_ma_inst
+  irq.io.irq_illegal := vxu.io.irq_illegal
+  irq.io.irq_pc_if := vxu.io.irq_pc_if
+  irq.io.irq_pc_id := vxu.io.irq_pc_id
+
+  io.irq := irq.io.irq
+  io.irq_cause := irq.io.irq_cause
+  io.irq_aux := irq.io.irq_aux
+
   // xcpt
   xcpt.io.xcpt <> io.xcpt
 
@@ -124,8 +139,6 @@ class vu extends Component
   vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush
 
   // vxu
-  io.illegal <> vxu.io.illegal
-
   vxu.io.vxu_cmdq.bits := vcmdq.io.deq.bits
   vxu.io.vxu_cmdq.valid := vcmdq.io.deq.valid
   vcmdq.io.deq.ready := vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready
