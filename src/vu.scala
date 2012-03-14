@@ -7,10 +7,10 @@ import Constants._
 class io_xcpt extends Bundle 
 {
   val exception = Bool(OUTPUT)
-  val backup_addr = UFix(SZ_ADDR, OUTPUT)
-  val backup = Bool(OUTPUT)
   val exception_ack_valid = Bool(INPUT)
   val exception_ack_ready = Bool(OUTPUT)
+  val evac_addr = UFix(SZ_ADDR, OUTPUT)
+  val evac = Bool(OUTPUT)
   val hold = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
 }
