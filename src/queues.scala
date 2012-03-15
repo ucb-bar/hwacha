@@ -420,6 +420,7 @@ class io_skidbuf[T <: Data](data: => T) extends Bundle
   val enq = new ioDecoupled()(data).flip
   val deq = new ioDecoupled()(data)
   val nack = Bool(INPUT)
+  val empty = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
 }
 
@@ -440,6 +441,7 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
 
   var rejected = !reg_ready || io.nack
   pipereg.io.deq.ready := !rejected
+  io.empty := !pipereg.io.deq.valid
   io.kill := Bool(false)
 
   if (late_nack)

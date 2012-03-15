@@ -76,7 +76,7 @@ class vuVMU_MemIF extends Component
   sb.io.deq.ready := io.mem_req.ready
   sb.io.nack := io.mem_resp.bits.nack
 
-  io.pending_skidbuf := sb.io.deq.valid
+  io.pending_skidbuf := !sb.io.empty
 
   // exception hanlder
   sb.io.flush := io.flush
