@@ -231,7 +231,6 @@ class vuVXU_Issue_TVEC extends Component
   io.irb_cmdb.bits := io.vxu_cmdq.bits
   io.irb_imm1b.bits := io.vxu_immq.bits
   io.irb_imm2b.bits := io.vxu_imm2q.bits
-  io.irb_cntb.bits := Bits(0, SZ_VLEN)
   io.irb_numCntB.bits := Mux(decode_vf, Bits(0, 1), Bits(1, 1))
 
 
@@ -255,6 +254,8 @@ class vuVXU_Issue_TVEC extends Component
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
   val regid_base = (cnt >> UFix(3)) * reg_stride
+
+  io.irb_cntb.bits := cnt
 
   next_state := reg_state
   next_vlen := reg_vlen
