@@ -182,7 +182,7 @@ class io_vpaq extends ioDecoupled()( { new io_vpaq_bundle() } )
 class io_vldq extends ioDecoupled()( { Bits(width = SZ_DATA) } )
 class io_vsdq extends ioDecoupled()( { Bits(width = SZ_DATA) } )
 
-class io_update_num_cnt extends ioPipe()( { Bits(width=SZ_IRB_NUMCNT) } )
+class io_update_num_cnt extends ioPipe()( { Bits(width=SZ_AIW_NUMCNT) } )
 
 class io_cpu_exception extends Bundle 
 {
@@ -224,7 +224,7 @@ class io_dmem_resp_bundle extends Bundle
 class io_dmem_req extends ioDecoupled()({ new io_dmem_req_bundle() })
 class io_dmem_resp extends ioPipe()({ new io_dmem_resp_bundle() })
 
-class io_irbUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
+class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
   val data = Bits(width=DATA_SIZE)
   val addr = UFix(width=ADDR_SIZE)
@@ -277,11 +277,11 @@ class io_vxu_to_vmu extends Bundle
   val qcnt = UFix(width = SZ_QCNT)
 }
 
-class io_vxu_irb_bundle extends Bundle
+class io_vxu_aiw_bundle extends Bundle
 {
-  val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
-  val numCnt_rtag = Bits(SZ_IRB_CMD, OUTPUT)
-  val cnt_rtag = Bits(SZ_IRB_CNT, OUTPUT)
+  val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
+  val numCnt_rtag = Bits(SZ_AIW_CMD, OUTPUT)
+  val cnt_rtag = Bits(SZ_AIW_CNT, OUTPUT)
   val pc_next = Bits(SZ_ADDR, OUTPUT)
   val update_imm1 = Bool(OUTPUT)
 }

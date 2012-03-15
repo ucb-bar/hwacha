@@ -206,30 +206,30 @@ class vu extends Component
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
   vmu.io.vmu_to_xcpt <> xcpt.io.vmu_to_xcpt
 
-  val irb = new vuIRB()
+  val aiw = new vuAIW()
 
-  // irb
-  irb.io.irb_enq_cmdb <> vxu.io.irb_cmdb
-  irb.io.irb_enq_imm1b <> vxu.io.irb_imm1b
-  irb.io.irb_enq_imm2b <> vxu.io.irb_imm2b
-  irb.io.irb_enq_cntb <> vxu.io.irb_cntb
-  irb.io.irb_enq_numCntB <> vxu.io.irb_numCntB
+  // aiw
+  aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
+  aiw.io.aiw_enq_imm1b <> vxu.io.aiw_imm1b
+  aiw.io.aiw_enq_imm2b <> vxu.io.aiw_imm2b
+  aiw.io.aiw_enq_cntb <> vxu.io.aiw_cntb
+  aiw.io.aiw_enq_numCntB <> vxu.io.aiw_numCntB
 
-  irb.io.issue_to_irb <> vxu.io.issue_to_irb
-  irb.io.irb_to_issue <> vxu.io.irb_to_issue
-  irb.io.seq_to_irb <> vxu.io.seq_to_irb
+  aiw.io.issue_to_aiw <> vxu.io.issue_to_aiw
+  aiw.io.aiw_to_issue <> vxu.io.aiw_to_issue
+  aiw.io.seq_to_aiw <> vxu.io.seq_to_aiw
 
-  irb.io.xcpt_to_aiw <> xcpt.io.xcpt_to_aiw
+  aiw.io.xcpt_to_aiw <> xcpt.io.xcpt_to_aiw
 
   // evac
-  evac.io.irb_cmdb <> irb.io.irb_deq_cmdb
-  evac.io.irb_imm1b <> irb.io.irb_deq_imm1b
-  evac.io.irb_imm2b <> irb.io.irb_deq_imm2b
-  evac.io.irb_cntb <> irb.io.irb_deq_cntb
-  evac.io.irb_numCntB <> irb.io.irb_deq_numCntB
-  evac.io.irb_numCntB_last <> irb.io.irb_deq_numCntB_last
+  evac.io.aiw_cmdb <> aiw.io.aiw_deq_cmdb
+  evac.io.aiw_imm1b <> aiw.io.aiw_deq_imm1b
+  evac.io.aiw_imm2b <> aiw.io.aiw_deq_imm2b
+  evac.io.aiw_cntb <> aiw.io.aiw_deq_cntb
+  evac.io.aiw_numCntB <> aiw.io.aiw_deq_numCntB
+  evac.io.aiw_numCntB_last <> aiw.io.aiw_deq_numCntB_last
 
-  evac.io.evac_to_irb <> irb.io.evac_to_irb
+  evac.io.evac_to_aiw <> aiw.io.evac_to_aiw
 
   evac.io.vcmdq.bits := vcmdq.io.deq.bits
   evac.io.vcmdq.valid := vcmdq.io.deq.valid

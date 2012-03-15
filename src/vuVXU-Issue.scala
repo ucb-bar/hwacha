@@ -62,7 +62,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val imm2 = Bits(width = SZ_DATA)
   val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
-  val irb = new io_vxu_irb_bundle()
+  val aiw = new io_vxu_aiw_bundle()
 }
 
 class io_vxu_issue_op extends Bundle
@@ -94,7 +94,7 @@ class io_vxu_issue_to_lane extends Bundle
   val bactive = Bits(width = SZ_BANK)
 }
 
-class io_issue_to_irb extends Bundle
+class io_issue_to_aiw extends Bundle
 {
   val markLast = Bool(OUTPUT)
   val update_numCnt = new io_update_num_cnt()
@@ -139,14 +139,14 @@ class io_vxu_issue extends Bundle
   val pending_store = Bool(INPUT)
   val pending_vf = Bool(OUTPUT)
 
-  val irb_cmdb = new io_vxu_cmdq()
-  val irb_imm1b = new io_vxu_immq()
-  val irb_imm2b = new io_vxu_imm2q()
-  val irb_cntb = new io_vxu_cntq()
-  val irb_numCntB = new io_vxu_numcntq()
+  val aiw_cmdb = new io_vxu_cmdq()
+  val aiw_imm1b = new io_vxu_immq()
+  val aiw_imm2b = new io_vxu_imm2q()
+  val aiw_cntb = new io_vxu_cntq()
+  val aiw_numCntB = new io_vxu_numcntq()
 
-  val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip
+  val issue_to_aiw = new io_issue_to_aiw()
+  val aiw_to_issue = new io_aiw_to_issue().flip
 
   val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
@@ -190,12 +190,12 @@ class vuVXU_Issue extends Component
   tvec.io.decoded <> io.tvec_regid_imm
   tvec.io.pending_store <> io.pending_store
 
-  tvec.io.irb_cmdb <> io.irb_cmdb
-  tvec.io.irb_imm1b <> io.irb_imm1b
-  tvec.io.irb_imm2b <> io.irb_imm2b
-  tvec.io.irb_cntb.ready := io.irb_cntb.ready
-  tvec.io.irb_numCntB <> io.irb_numCntB
-  tvec.io.irb_to_issue <> io.irb_to_issue
+  tvec.io.aiw_cmdb <> io.aiw_cmdb
+  tvec.io.aiw_imm1b <> io.aiw_imm1b
+  tvec.io.aiw_imm2b <> io.aiw_imm2b
+  tvec.io.aiw_cntb.ready := io.aiw_cntb.ready
+  tvec.io.aiw_numCntB <> io.aiw_numCntB
+  tvec.io.aiw_to_issue <> io.aiw_to_issue
 
   tvec.io.flush := io.flush
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
@@ -211,18 +211,18 @@ class vuVXU_Issue extends Component
   vt.io.vxu_cntq.valid := io.vxu_cntq.valid
   vt.io.vxu_cntq.bits := io.vxu_cntq.bits
 
-  vt.io.irb_cntb.ready := io.irb_cntb.ready
-  vt.io.irb_to_issue <> io.irb_to_issue
-  vt.io.issue_to_irb.update_numCnt <> io.issue_to_irb.update_numCnt
+  vt.io.aiw_cntb.ready := io.aiw_cntb.ready
+  vt.io.aiw_to_issue <> io.aiw_to_issue
+  vt.io.issue_to_aiw.update_numCnt <> io.issue_to_aiw.update_numCnt
 
-  io.issue_to_irb.markLast := 
-    Mux(tvec.io.active, tvec.io.issue_to_irb.markLast, vt.io.issue_to_irb.markLast)
+  io.issue_to_aiw.markLast := 
+    Mux(tvec.io.active, tvec.io.issue_to_aiw.markLast, vt.io.issue_to_aiw.markLast)
 
   vt.io.flush := io.flush
   vt.io.xcpt_to_issue <> io.xcpt_to_issue
 
   io.vxu_cntq.ready := tvec.io.vxu_cntq.ready || vt.io.vxu_cntq.ready
 
-  io.irb_cntb.valid := Mux(tvec.io.active, tvec.io.irb_cntb.valid, vt.io.irb_cntb.valid)
-  io.irb_cntb.bits := Mux(tvec.io.active, tvec.io.irb_cntb.bits, vt.io.irb_cntb.bits)
+  io.aiw_cntb.valid := Mux(tvec.io.active, tvec.io.aiw_cntb.valid, vt.io.aiw_cntb.valid)
+  io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)
 }

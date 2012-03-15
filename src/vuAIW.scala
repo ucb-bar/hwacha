@@ -5,71 +5,71 @@ import Node._
 import Constants._
 import Commands._
 
-class io_irb_to_issue extends Bundle 
+class io_aiw_to_issue extends Bundle 
 {
-  val imm1_rtag = Bits(SZ_IRB_IMM1, OUTPUT)
-  val numCnt_rtag = Bits(SZ_IRB_NUMCNT, OUTPUT)
-  val cnt_rtag = Bits(SZ_IRB_CNT, OUTPUT)
+  val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
+  val numCnt_rtag = Bits(SZ_AIW_NUMCNT, OUTPUT)
+  val cnt_rtag = Bits(SZ_AIW_CNT, OUTPUT)
 }
 
-class io_vu_irb extends Bundle 
+class io_vu_aiw extends Bundle 
 {
-  val irb_enq_cmdb = new io_vxu_cmdq().flip
-  val irb_enq_imm1b = new io_vxu_immq().flip
-  val irb_enq_imm2b = new io_vxu_imm2q().flip
-  val irb_enq_cntb = new io_vxu_cntq().flip
-  val irb_enq_numCntB = new io_vxu_numcntq().flip
+  val aiw_enq_cmdb = new io_vxu_cmdq().flip
+  val aiw_enq_imm1b = new io_vxu_immq().flip
+  val aiw_enq_imm2b = new io_vxu_imm2q().flip
+  val aiw_enq_cntb = new io_vxu_cntq().flip
+  val aiw_enq_numCntB = new io_vxu_numcntq().flip
 
-  val issue_to_irb = new io_issue_to_irb().flip
-  val irb_to_issue = new io_irb_to_issue()
+  val issue_to_aiw = new io_issue_to_aiw().flip
+  val aiw_to_issue = new io_aiw_to_issue()
 
-  val seq_to_irb = new io_seq_to_irb().flip
+  val seq_to_aiw = new io_seq_to_aiw().flip
 
-  val irb_deq_cmdb = new io_vxu_cmdq()
-  val irb_deq_imm1b = new io_vxu_immq()
-  val irb_deq_imm2b = new io_vxu_imm2q()
-  val irb_deq_cntb = new io_vxu_cntq()
-  val irb_deq_numCntB = new io_vxu_numcntq()
-  val irb_deq_numCntB_last = Bool(OUTPUT)
+  val aiw_deq_cmdb = new io_vxu_cmdq()
+  val aiw_deq_imm1b = new io_vxu_immq()
+  val aiw_deq_imm2b = new io_vxu_imm2q()
+  val aiw_deq_cntb = new io_vxu_cntq()
+  val aiw_deq_numCntB = new io_vxu_numcntq()
+  val aiw_deq_numCntB_last = Bool(OUTPUT)
 
-  val evac_to_irb = new io_evac_to_irb().flip
+  val evac_to_aiw = new io_evac_to_aiw().flip
 
   val xcpt_to_aiw = new io_xcpt_handler_to_aiw().flip()
 }
 
-class vuIRB extends Component 
+class vuAIW extends Component 
 {
-  val io = new io_vu_irb()
+  val io = new io_vu_aiw()
 
-  val ircmdb = new queueSimplePF(IRB_CMD_DEPTH)({Bits(width=SZ_VCMD)})
-  val irimm1b = new Buffer(SZ_VIMM, IRB_IMM1_DEPTH)
-  val irimm2b = new queueSimplePF(IRB_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
-  val ircntb = new Buffer(SZ_VLEN, IRB_CNT_DEPTH)
-  val irNumCntB = new CounterVec(IRB_NUMCNT_DEPTH)
+  val ircmdb = new queueSimplePF(AIW_CMD_DEPTH)({Bits(width=SZ_VCMD)})
+  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH)
+  val irimm2b = new queueSimplePF(AIW_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
+  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH)
+  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH)
 
   ircmdb.io.flush <> io.xcpt_to_aiw.flush
-  ircmdb.io.enq <> io.irb_enq_cmdb
+  ircmdb.io.enq <> io.aiw_enq_cmdb
 
   irimm1b.io.flush <> io.xcpt_to_aiw.flush
-  irimm1b.io.enq <> io.irb_enq_imm1b
-  irimm1b.io.update <> io.seq_to_irb.update_imm1
-  irimm1b.io.rtag <> io.irb_to_issue.imm1_rtag
+  irimm1b.io.enq <> io.aiw_enq_imm1b
+  irimm1b.io.update <> io.seq_to_aiw.update_imm1
+  irimm1b.io.rtag <> io.aiw_to_issue.imm1_rtag
 
   irimm2b.io.flush <> io.xcpt_to_aiw.flush
-  irimm2b.io.enq <> io.irb_enq_imm2b
+  irimm2b.io.enq <> io.aiw_enq_imm2b
 
   ircntb.io.flush <> io.xcpt_to_aiw.flush
-  ircntb.io.enq <> io.irb_enq_cntb
-  ircntb.io.update <> io.seq_to_irb.update_cnt
-  ircntb.io.rtag <> io.irb_to_issue.cnt_rtag
+  ircntb.io.enq <> io.aiw_enq_cntb
+  ircntb.io.update <> io.seq_to_aiw.update_cnt
+  ircntb.io.rtag <> io.aiw_to_issue.cnt_rtag
 
   irNumCntB.io.flush <> io.xcpt_to_aiw.flush
-  irNumCntB.io.enq <> io.irb_enq_numCntB
-  irNumCntB.io.update_from_issue <> io.issue_to_irb.update_numCnt
-  irNumCntB.io.update_from_seq <> io.seq_to_irb.update_numCnt
-  irNumCntB.io.update_from_evac <> io.evac_to_irb.update_numCnt
-  irNumCntB.io.markLast <> io.issue_to_irb.markLast
-  irNumCntB.io.rtag <> io.irb_to_issue.numCnt_rtag
+  irNumCntB.io.enq <> io.aiw_enq_numCntB
+  irNumCntB.io.update_from_issue <> io.issue_to_aiw.update_numCnt
+  irNumCntB.io.update_from_seq <> io.seq_to_aiw.update_numCnt
+  irNumCntB.io.update_from_evac <> io.evac_to_aiw.update_numCnt
+  irNumCntB.io.markLast <> io.issue_to_aiw.markLast
+  irNumCntB.io.rtag <> io.aiw_to_issue.numCnt_rtag
 
   val cmd = ircmdb.io.deq.bits(RG_XCMD_CMCODE)
   val n = Bool(false)
@@ -133,35 +133,35 @@ class vuIRB extends Component
   val decode_deq_ircntb = deq_ircntb
 
   // count buffer is dequeued whenever sequencer or evacuator says so
-  ircntb.io.deq.ready  := io.seq_to_irb.last | io.irb_deq_cntb.ready
+  ircntb.io.deq.ready  := io.seq_to_aiw.last | io.aiw_deq_cntb.ready
 
   // other buffers are dequeued based on NumCntB or when evacuator says so
   ircmdb.io.deq.ready := 
     irNumCntB.io.deq.bits & irNumCntB.io.deq_last |
-    io.irb_deq_cmdb.ready
+    io.aiw_deq_cmdb.ready
 
   irimm1b.io.deq.ready :=
     irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm1b |
-    io.irb_deq_imm1b.ready
+    io.aiw_deq_imm1b.ready
 
   irimm2b.io.deq.ready := 
     irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm2b |
-    io.irb_deq_imm2b.ready
+    io.aiw_deq_imm2b.ready
 
   irNumCntB.io.deq.ready := 
     irNumCntB.io.deq.bits & irNumCntB.io.deq_last | 
-    io.irb_deq_numCntB.ready
+    io.aiw_deq_numCntB.ready
     
-  io.irb_deq_cmdb.bits := ircmdb.io.deq.bits
-  io.irb_deq_imm1b.bits := irimm1b.io.deq.bits
-  io.irb_deq_imm2b.bits := irimm2b.io.deq.bits
-  io.irb_deq_cntb.bits := ircntb.io.deq.bits
-  io.irb_deq_numCntB.bits := irNumCntB.io.deq.bits
-  io.irb_deq_numCntB_last := irNumCntB.io.deq_last
+  io.aiw_deq_cmdb.bits := ircmdb.io.deq.bits
+  io.aiw_deq_imm1b.bits := irimm1b.io.deq.bits
+  io.aiw_deq_imm2b.bits := irimm2b.io.deq.bits
+  io.aiw_deq_cntb.bits := ircntb.io.deq.bits
+  io.aiw_deq_numCntB.bits := irNumCntB.io.deq.bits
+  io.aiw_deq_numCntB_last := irNumCntB.io.deq_last
 
-  io.irb_deq_cmdb.valid := ircmdb.io.deq.valid
-  io.irb_deq_imm1b.valid := irimm1b.io.deq.valid
-  io.irb_deq_imm2b.valid := irimm2b.io.deq.valid
-  io.irb_deq_cntb.valid := ircntb.io.deq.valid
-  io.irb_deq_numCntB.valid := irNumCntB.io.deq.valid
+  io.aiw_deq_cmdb.valid := ircmdb.io.deq.valid
+  io.aiw_deq_imm1b.valid := irimm1b.io.deq.valid
+  io.aiw_deq_imm2b.valid := irimm2b.io.deq.valid
+  io.aiw_deq_cntb.valid := ircntb.io.deq.valid
+  io.aiw_deq_numCntB.valid := irNumCntB.io.deq.valid
 }

@@ -16,21 +16,21 @@ class io_evac_to_vmu extends Bundle
   val evac_mode = Bool(OUTPUT)
 }
 
-class io_evac_to_irb extends Bundle
+class io_evac_to_aiw extends Bundle
 {
   val update_numCnt = new io_update_num_cnt()
 }
 
 class io_vu_evac extends Bundle
 {
-  val irb_cmdb = new io_vxu_cmdq().flip
-  val irb_imm1b = new io_vxu_immq().flip
-  val irb_imm2b = new io_vxu_imm2q().flip
-  val irb_cntb = new io_vxu_cntq().flip
-  val irb_numCntB = new io_vxu_numcntq().flip
-  val irb_numCntB_last = Bool(INPUT)
+  val aiw_cmdb = new io_vxu_cmdq().flip
+  val aiw_imm1b = new io_vxu_immq().flip
+  val aiw_imm2b = new io_vxu_imm2q().flip
+  val aiw_cntb = new io_vxu_cntq().flip
+  val aiw_numCntB = new io_vxu_numcntq().flip
+  val aiw_numCntB_last = Bool(INPUT)
 
-  val evac_to_irb = new io_evac_to_irb()
+  val evac_to_aiw = new io_evac_to_aiw()
 
   val vcmdq = new io_vxu_cmdq().flip
   val vimm1q = new io_vxu_immq().flip
@@ -60,7 +60,7 @@ class vuEvac extends Component
 
   cmd_sel_next := cmd_sel
 
-  val cmd = Mux(cmd_sel, io.vcmdq.bits(RG_XCMD_CMCODE), io.irb_cmdb.bits(RG_XCMD_CMCODE))
+  val cmd = Mux(cmd_sel, io.vcmdq.bits(RG_XCMD_CMCODE), io.aiw_cmdb.bits(RG_XCMD_CMCODE))
 
   val cs =
     ListLookup(cmd,
@@ -145,12 +145,12 @@ class vuEvac extends Component
 
   val addr_plus_8 = addr_reg + UFix(8)
 
-  io.irb_cmdb.ready := Bool(false)
-  io.irb_imm1b.ready := Bool(false)
-  io.irb_imm2b.ready := Bool(false)
-  io.irb_cntb.ready := Bool(false)
-  io.irb_numCntB.ready := Bool(false)
-  io.evac_to_irb.update_numCnt.valid := Bool(false)
+  io.aiw_cmdb.ready := Bool(false)
+  io.aiw_imm1b.ready := Bool(false)
+  io.aiw_imm2b.ready := Bool(false)
+  io.aiw_cntb.ready := Bool(false)
+  io.aiw_numCntB.ready := Bool(false)
+  io.evac_to_aiw.update_numCnt.valid := Bool(false)
 
   io.vcmdq.ready := Bool(false)
   io.vimm1q.ready := Bool(false)
@@ -188,12 +188,12 @@ class vuEvac extends Component
     is (STATE_CMDB) 
     {
       // set valid signal
-      when (io.irb_cmdb.valid && deq_ircmdb)
+      when (io.aiw_cmdb.valid && deq_ircmdb)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Cat(Bits(0, 27), is_prefetch, deq_irimm1b, deq_irimm2b, deq_ircntb, Bits(1,1),
-                            Bits(0, 32 - SZ_VCMD), io.irb_cmdb.bits)
+                            Bits(0, 32 - SZ_VCMD), io.aiw_cmdb.bits)
 
         when (io.vsdq.ready && io.vaq.ready) 
         {
@@ -213,7 +213,7 @@ class vuEvac extends Component
           }
         }
 
-      } . elsewhen (!io.irb_cmdb.valid) 
+      } . elsewhen (!io.aiw_cmdb.valid) 
       {
         state_next := STATE_VCMDQ
         cmd_sel_next := SEL_VCMDQ
@@ -221,18 +221,18 @@ class vuEvac extends Component
       
       when (deq_ircmdb && io.vsdq.ready && io.vaq.ready) 
       {
-        io.irb_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
+        io.aiw_cmdb.ready := !deq_irimm1b && !deq_irimm1b && !deq_ircntb
       }
     }
 
     is (STATE_IMM1B)
     {
       // set valid signal
-      when (io.irb_imm1b.valid && deq_irimm1b)
+      when (io.aiw_imm1b.valid && deq_irimm1b)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.irb_imm1b.bits
+        io.vsdq.bits := io.aiw_imm1b.bits
 
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -246,7 +246,7 @@ class vuEvac extends Component
           } . otherwise 
           {
             state_next := STATE_CMDB
-            io.irb_cmdb.ready := Bool(true)
+            io.aiw_cmdb.ready := Bool(true)
           }
         }
 
@@ -257,11 +257,11 @@ class vuEvac extends Component
     is (STATE_IMM2B)
     {
       // set valid signals
-      when (io.irb_imm2b.valid && deq_irimm2b)
+      when (io.aiw_imm2b.valid && deq_irimm2b)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.irb_imm2b.bits
+        io.vsdq.bits := io.aiw_imm2b.bits
 
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -271,7 +271,7 @@ class vuEvac extends Component
             state_next := STATE_CNTB
           } . otherwise {
             state_next := STATE_CMDB
-            io.irb_cmdb.ready := Bool(true)
+            io.aiw_cmdb.ready := Bool(true)
           }
         }
 
@@ -282,28 +282,28 @@ class vuEvac extends Component
     is (STATE_CNTB)
     {
       // set valid signal
-      when (io.irb_numCntB.valid && !io.irb_numCntB.bits && deq_ircntb)
+      when (io.aiw_numCntB.valid && !io.aiw_numCntB.bits && deq_ircntb)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.irb_cntb.bits
+        io.vsdq.bits := io.aiw_cntb.bits
 
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          io.irb_cntb.ready := Bool(true)
-          io.evac_to_irb.update_numCnt.valid := Bool(true)
+          io.aiw_cntb.ready := Bool(true)
+          io.evac_to_aiw.update_numCnt.valid := Bool(true)
           state_next := STATE_CNTB
         }
-      } .elsewhen (io.irb_numCntB.valid && io.irb_numCntB.bits)
+      } .elsewhen (io.aiw_numCntB.valid && io.aiw_numCntB.bits)
       {
         state_next := STATE_CMDB
-        when (!io.irb_numCntB_last)
+        when (!io.aiw_numCntB_last)
         { 
-          io.irb_cmdb.ready := Bool(true) 
-          io.irb_imm1b.ready := deq_irimm1b
-          io.irb_imm2b.ready := deq_irimm2b
-          io.irb_numCntB.ready := Bool(true)
+          io.aiw_cmdb.ready := Bool(true) 
+          io.aiw_imm1b.ready := deq_irimm1b
+          io.aiw_imm2b.ready := deq_irimm2b
+          io.aiw_numCntB.ready := Bool(true)
         }
       }
 

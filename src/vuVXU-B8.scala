@@ -44,16 +44,16 @@ class io_vxu extends Bundle
   val pending_memop = Bool(OUTPUT)
   val pending_vf = Bool(OUTPUT)
 
-  val irb_cmdb = new io_vxu_cmdq()
-  val irb_imm1b = new io_vxu_immq()
-  val irb_imm2b = new io_vxu_imm2q()
-  val irb_cntb = new io_vxu_cntq()
-  val irb_numCntB = new io_vxu_numcntq()
+  val aiw_cmdb = new io_vxu_cmdq()
+  val aiw_imm1b = new io_vxu_immq()
+  val aiw_imm2b = new io_vxu_imm2q()
+  val aiw_cntb = new io_vxu_cntq()
+  val aiw_numCntB = new io_vxu_numcntq()
 
-  val issue_to_irb = new io_issue_to_irb()
-  val irb_to_issue = new io_irb_to_issue().flip()
+  val issue_to_aiw = new io_issue_to_aiw()
+  val aiw_to_issue = new io_aiw_to_issue().flip()
 
-  val seq_to_irb = new io_seq_to_irb()
+  val seq_to_aiw = new io_seq_to_aiw()
 
   val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
   val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
@@ -79,14 +79,14 @@ class vuVXU extends Component
   issue.io.vxu_cntq <> io.vxu_cntq
   issue.io.pending_store <> io.pending_store
   
-  issue.io.irb_cmdb <> io.irb_cmdb
-  issue.io.irb_imm1b <> io.irb_imm1b
-  issue.io.irb_imm2b <> io.irb_imm2b
-  issue.io.irb_cntb <> io.irb_cntb
-  issue.io.irb_numCntB <> io.irb_numCntB
+  issue.io.aiw_cmdb <> io.aiw_cmdb
+  issue.io.aiw_imm1b <> io.aiw_imm1b
+  issue.io.aiw_imm2b <> io.aiw_imm2b
+  issue.io.aiw_cntb <> io.aiw_cntb
+  issue.io.aiw_numCntB <> io.aiw_numCntB
 
-  issue.io.issue_to_irb <> io.issue_to_irb
-  issue.io.irb_to_issue <> io.irb_to_issue
+  issue.io.issue_to_aiw <> io.issue_to_aiw
+  issue.io.aiw_to_issue <> io.aiw_to_issue
 
   issue.io.flush <> io.xcpt_to_vxu.flush
   issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
@@ -154,7 +154,7 @@ class vuVXU extends Component
   b8seq.io.fire_fn <> b8fire.io.fire_fn
   b8seq.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
-  b8seq.io.seq_to_irb <> io.seq_to_irb
+  b8seq.io.seq_to_aiw <> io.seq_to_aiw
 
   b8seq.io.flush <> io.xcpt_to_vxu.flush
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
