@@ -54,27 +54,29 @@ class vuVXU_Banked8_Fire extends Component
   io.fire.vld := fire_tvec_vld
   io.fire.vst := fire_tvec_vst
 
-  io.fire_fn.viu := Mux(fire_tvec, io.tvec_fn.viu, io.vt_fn.viu)
+  val switch_tvec = io.tvec_valid.toBits.orR
+
+  io.fire_fn.viu := Mux(switch_tvec, io.tvec_fn.viu, io.vt_fn.viu)
   io.fire_fn.vau0 := io.vt_fn.vau0
   io.fire_fn.vau1 := io.vt_fn.vau1
   io.fire_fn.vau2 := io.vt_fn.vau2
 
-  io.fire_regid_imm.utidx := Mux(fire_tvec, io.tvec_regid_imm.utidx, io.vt_regid_imm.utidx)
+  io.fire_regid_imm.utidx := Mux(switch_tvec, io.tvec_regid_imm.utidx, io.vt_regid_imm.utidx)
   io.fire_regid_imm.vs_zero := io.vt_regid_imm.vs_zero
-  io.fire_regid_imm.vt_zero := Mux(fire_tvec, io.tvec_regid_imm.vt_zero, io.vt_regid_imm.vt_zero)
+  io.fire_regid_imm.vt_zero := Mux(switch_tvec, io.tvec_regid_imm.vt_zero, io.vt_regid_imm.vt_zero)
   io.fire_regid_imm.vr_zero := io.vt_regid_imm.vr_zero
   io.fire_regid_imm.vs := io.vt_regid_imm.vs
-  io.fire_regid_imm.vt := Mux(fire_tvec, io.tvec_regid_imm.vt, io.vt_regid_imm.vt)
+  io.fire_regid_imm.vt := Mux(switch_tvec, io.tvec_regid_imm.vt, io.vt_regid_imm.vt)
   io.fire_regid_imm.vr := io.vt_regid_imm.vr
-  io.fire_regid_imm.vd := Mux(fire_tvec, io.tvec_regid_imm.vd, io.vt_regid_imm.vd)
-  io.fire_regid_imm.mem <> Mux(fire_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
-  io.fire_regid_imm.imm := Mux(fire_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm)
+  io.fire_regid_imm.vd := Mux(switch_tvec, io.tvec_regid_imm.vd, io.vt_regid_imm.vd)
+  io.fire_regid_imm.mem <> Mux(switch_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
+  io.fire_regid_imm.imm := Mux(switch_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm)
   io.fire_regid_imm.imm2 := io.tvec_regid_imm.imm2
-  io.fire_regid_imm.cnt_valid := Mux(io.tvec_valid.toBits.orR, io.tvec_regid_imm.cnt_valid, io.vt_regid_imm.cnt_valid)
-  io.fire_regid_imm.cnt := Mux(fire_tvec, io.tvec_regid_imm.cnt, io.vt_regid_imm.cnt)
-  io.fire_regid_imm.irb.imm1_rtag := Mux(fire_tvec, io.tvec_regid_imm.irb.imm1_rtag, io.vt_regid_imm.irb.imm1_rtag)
-  io.fire_regid_imm.irb.numCnt_rtag := Mux(fire_tvec, io.tvec_regid_imm.irb.numCnt_rtag, io.vt_regid_imm.irb.numCnt_rtag)
-  io.fire_regid_imm.irb.cnt_rtag := Mux(fire_tvec, io.tvec_regid_imm.irb.cnt_rtag, io.vt_regid_imm.irb.cnt_rtag)
+  io.fire_regid_imm.cnt_valid := Mux(switch_tvec, io.tvec_regid_imm.cnt_valid, io.vt_regid_imm.cnt_valid)
+  io.fire_regid_imm.cnt := Mux(switch_tvec, io.tvec_regid_imm.cnt, io.vt_regid_imm.cnt)
+  io.fire_regid_imm.irb.imm1_rtag := Mux(switch_tvec, io.tvec_regid_imm.irb.imm1_rtag, io.vt_regid_imm.irb.imm1_rtag)
+  io.fire_regid_imm.irb.numCnt_rtag := Mux(switch_tvec, io.tvec_regid_imm.irb.numCnt_rtag, io.vt_regid_imm.irb.numCnt_rtag)
+  io.fire_regid_imm.irb.cnt_rtag := Mux(switch_tvec, io.tvec_regid_imm.irb.cnt_rtag, io.vt_regid_imm.irb.cnt_rtag)
   io.fire_regid_imm.irb.pc_next := io.vt_regid_imm.irb.pc_next
   io.fire_regid_imm.irb.update_imm1 := io.tvec_regid_imm.irb.update_imm1
 }
