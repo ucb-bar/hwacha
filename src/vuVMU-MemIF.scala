@@ -8,88 +8,78 @@ import hardfloat._
 class io_vmu_memif extends Bundle
 {
   val vaq = new ioDecoupled()({ new io_vpaq_bundle() }).flip
-  val vaq_ack = Bool(OUTPUT)
-  val vaq_nack = Bool(OUTPUT)
-
   val vsdq = new ioDecoupled()({ Bits(width = 65) }).flip
-  val vsdq_ack = Bool(OUTPUT)
-  val vsdq_nack = Bool(OUTPUT)
-
   val vldq = new ioDecoupled()({ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) })
   val vldq_rtag = new ioDecoupled()({ Bits(width = LG_ENTRIES_VLDQ) }).flip
-  val vldq_ack = Bool(OUTPUT)
-  val vldq_nack = Bool(OUTPUT)
 
   val mem_req = new io_dmem_req()
   val mem_resp = new io_dmem_resp().flip
+
+  val pending_skidbuf = Bool(OUTPUT)
+
+  val flush = Bool(INPUT)
 }
 
 class vuVMU_MemIF extends Component
 {
   val io = new io_vmu_memif()
 
-  val mem_pf_val = Reg(resetVal = Bool(false))
-  val mem_load_val = Reg(resetVal = Bool(false))
-  val mem_store_val = Reg(resetVal = Bool(false))
-  val mem_amo_val = Reg(resetVal = Bool(false))
-
-  val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd) && !(Bool(false) || mem_load_val || mem_store_val || mem_amo_val)
-  val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd) && !(mem_pf_val || Bool(false) || mem_store_val || mem_amo_val)
-  val ex_store_cmd = is_mcmd_store(io.vaq.bits.cmd) && !(mem_pf_val || mem_load_val || Bool(false) || mem_amo_val)
-  val ex_amo_cmd = is_mcmd_amo(io.vaq.bits.cmd) &&  !(mem_pf_val || mem_load_val || mem_store_val || Bool(false))
+  val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd)
+  val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd)
+  val ex_store_cmd = is_mcmd_store(io.vaq.bits.cmd)
+  val ex_amo_cmd = is_mcmd_amo(io.vaq.bits.cmd)
 
   val ex_pf_val = ex_pf_cmd && io.vaq.valid
   val ex_load_val = ex_load_cmd && io.vaq.valid && io.vldq_rtag.valid
   val ex_store_val = ex_store_cmd && io.vaq.valid && io.vsdq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
-  mem_pf_val := ex_pf_val
-  mem_load_val := ex_load_val
-  mem_store_val := ex_store_val
-  mem_amo_val := ex_amo_val
-
-  val ex_vaq_val = ex_pf_val || ex_load_val || ex_store_val || ex_amo_val
-  val ex_vsdq_val = ex_store_val || ex_amo_val
-  val ex_vldq_val = ex_load_val || ex_amo_val
-
-  val mem_vaq_val = Reg(ex_vaq_val, resetVal = Bool(false))
-  val mem_vsdq_val = Reg(ex_vsdq_val, resetVal = Bool(false))
-  val mem_vldq_val = Reg(ex_vldq_val, resetVal = Bool(false))
-
-  val nack = io.mem_resp.bits.nack
-  val reg_nack = Reg(mem_vaq_val && nack, resetVal = Bool(false))
-
-  // when the request is nacked, the processor implicitly kills the request in decode and execute
-  val ack_common = !nack && !reg_nack
+  val sb = (new skidbuf(late_nack = LATE_DMEM_NACK, flushable = true)){ new io_dmem_req_bundle() }
 
   io.vaq.ready :=
-    ex_pf_cmd ||
-    ex_load_cmd && io.vldq_rtag.valid ||
-    ex_store_cmd && io.vsdq.valid ||
-    ex_amo_cmd && io.vsdq.valid && io.vldq_rtag.valid
-  io.vaq_ack := mem_vaq_val && ack_common
-  io.vaq_nack := mem_vaq_val && nack
+    sb.io.enq.ready && ( 
+      ex_pf_cmd ||
+      ex_load_cmd && io.vldq_rtag.valid ||
+      ex_store_cmd && io.vsdq.valid ||
+      ex_amo_cmd && io.vsdq.valid && io.vldq_rtag.valid
+    )
 
   io.vsdq.ready :=
-    ex_store_cmd && io.vaq.valid ||
-    ex_amo_cmd && io.vaq.valid && io.vldq_rtag.valid
-  io.vsdq_ack := mem_vsdq_val && ack_common
-  io.vsdq_nack := mem_vsdq_val && nack
+    sb.io.enq.ready && (
+      ex_store_cmd && io.vaq.valid ||
+      ex_amo_cmd && io.vaq.valid && io.vldq_rtag.valid
+    )
 
   io.vldq_rtag.ready :=
-    ex_load_cmd && io.vaq.valid ||
-    ex_amo_cmd && io.vaq.valid && io.vsdq.valid
-  io.vldq_ack := mem_vldq_val && ack_common
-  io.vldq_nack := mem_vldq_val && nack
+    sb.io.enq.ready && (
+      ex_load_cmd && io.vaq.valid ||
+      ex_amo_cmd && io.vaq.valid && io.vsdq.valid
+    )
 
-  io.mem_req.valid := ex_vaq_val
-  io.mem_req.bits.kill := mem_vaq_val && nack // get's delayed one cycle in cpu
-  io.mem_req.bits.cmd := io.vaq.bits.cmd
-  io.mem_req.bits.typ := io.vaq.bits.typ
-  io.mem_req.bits.idx := io.vaq.bits.idx
-  io.mem_req.bits.ppn := io.vaq.bits.ppn // get's delayed one cycle in cpu
-  io.mem_req.bits.data := io.vsdq.bits // get's delayed one cycle in cpu
-  io.mem_req.bits.tag := Cat(io.vldq_rtag.bits, io.vaq.bits.typ_float)
+  sb.io.enq.valid := ex_pf_val || ex_load_val || ex_store_val || ex_amo_val
+  sb.io.enq.bits.cmd := io.vaq.bits.cmd
+  sb.io.enq.bits.typ := io.vaq.bits.typ
+  sb.io.enq.bits.idx := io.vaq.bits.idx
+  sb.io.enq.bits.ppn := io.vaq.bits.ppn
+  sb.io.enq.bits.data := io.vsdq.bits // delayed one cycle in cpu
+  sb.io.enq.bits.tag := Cat(io.vldq_rtag.bits, io.vaq.bits.typ_float) // delayed one cycle in cpu
+
+  io.mem_req.valid := sb.io.deq.valid
+  io.mem_req.bits.kill := sb.io.kill
+  io.mem_req.bits.cmd := sb.io.deq.bits.cmd
+  io.mem_req.bits.typ := sb.io.deq.bits.typ
+  io.mem_req.bits.idx := sb.io.deq.bits.idx
+  io.mem_req.bits.ppn := sb.io.deq.bits.ppn
+  io.mem_req.bits.data := sb.io.deq.bits.data
+  io.mem_req.bits.tag := sb.io.deq.bits.tag
+
+  sb.io.deq.ready := io.mem_req.ready
+  sb.io.nack := io.mem_resp.bits.nack
+
+  io.pending_skidbuf := sb.io.deq.valid
+
+  // exception hanlder
+  sb.io.flush := io.flush
   
   // load data conversion
   val reg_mem_resp = Reg(io.mem_resp)

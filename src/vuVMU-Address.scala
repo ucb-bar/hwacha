@@ -115,51 +115,6 @@ class io_vpaq_to_xcpt_handler extends Bundle
   val vpaq_valid = Bool(OUTPUT)
 }
 
-class io_vmu_address_arbiter extends Bundle
-{
-  val vpaq = new io_vpaq().flip
-  val vpfpaq = new io_vpaq().flip
-  val qcnt = UFix(SZ_QCNT, OUTPUT)
-  val watermark = Bool(INPUT)
-  val vaq = new io_vpaq()
-  val ack = Bool(INPUT)
-  val nack = Bool(INPUT)
-  val vpaq_ack = Bool(OUTPUT)
-  val vpfpaq_ack = Bool(OUTPUT)
-  val flush = Bool(INPUT)
-  val stall = Bool(INPUT)
-
-  val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
-}
-
-class vuVMU_AddressArbiter(late_nack: Boolean = false) extends Component
-{
-  val io = new io_vmu_address_arbiter()
-
-  //val vpaq_skid = SkidBuffer(io.vpaq, late_nack, flushable = true)
-  val vpaq_check_cnt = CheckCnt(io.vpaq, io.qcnt, io.watermark)
-  val vpaq_skid = SkidBuffer(vpaq_check_cnt, late_nack, flushable = true)
-  val vpfpaq_skid = SkidBuffer(io.vpfpaq, late_nack, flushable = true)
-
-  val vpaq_arb = new Arbiter(2)( new io_vpaq() )
-
-  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_skid.io.deq
-  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq_skid.io.deq, io.stall)
-  io.vaq <> vpaq_arb.io.out
-  val reg_vpaq_arb_chosen = Reg(vpaq_arb.io.chosen)
-
-  io.vpaq_to_xcpt.vpaq_valid :=  vpaq_skid.io.deq.valid || vpaq_check_cnt.valid
-
-  io.vpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPAQ)
-  io.vpfpaq_ack := io.ack && reg_vpaq_arb_chosen === Bits(VPAQARB_VPFPAQ)
-
-  vpaq_skid.io.nack := io.nack
-  vpfpaq_skid.io.nack := io.nack
-
-  vpaq_skid.io.flush := io.flush
-  vpfpaq_skid.io.flush := io.flush
-}
-
 class io_vmu_address extends Bundle
 {
   val vvaq_pf = new io_vvaq().flip
@@ -174,16 +129,14 @@ class io_vmu_address extends Bundle
   val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
 
   val vaq = new io_vpaq()
-  val vaq_ack = Bool(INPUT)
-  val vaq_nack = Bool(INPUT)
 
   val vvaq_lane_dec = Bool(INPUT)
 
-  val vvaq_inc = Bool(OUTPUT)
-  val vvaq_dec = Bool(OUTPUT)
-  val vpaq_inc = Bool(OUTPUT)
-  val vpaq_dec = Bool(OUTPUT)
-  val vpasdq_inc = Bool(OUTPUT)
+  val vvaq_do_enq = Bool(OUTPUT)
+  val vvaq_do_deq = Bool(OUTPUT)
+  val vpaq_do_enq = Bool(OUTPUT)
+  val vpaq_do_deq = Bool(OUTPUT)
+  val vpaq_do_enq_vsdq = Bool(OUTPUT)
   val vpaq_qcnt = UFix(SZ_QCNT, OUTPUT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
@@ -202,17 +155,14 @@ class vuVMU_Address extends Component
   val io = new io_vmu_address()
 
   // VVAQ
-  val vvaq_arb = new Arbiter(2)( new io_vvaq() )
-
+  val vvaq_arb = (new Arbiter(2)){ new io_vvaq() }
   val vvaq = (new queueSimplePF(ENTRIES_VVAQ, flushable = true)){ new io_vvaq_bundle() }
   val vvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
   val vpaq = (new queueSimplePF(ENTRIES_VPAQ, flushable = true)){ new io_vpaq_bundle() }
 
-  // vvaq arbiter, port 0: lane vaq
+  // vvaq hookup
   vvaq_arb.io.in(VVAQARB_LANE) <> io.vvaq_lane
-  // vvaq arbiter, port 1: evac
   vvaq_arb.io.in(VVAQARB_EVAC) <> io.vvaq_evac
-  // vvaq arbiter, output
   // ready signal a little bit conservative, since checking space for both
   // vsreq and vlreq, not looking at the request type
   // however, this is okay since normally you don't hit this limit
@@ -228,13 +178,10 @@ class vuVMU_Address extends Component
   io.vec_tlb_req <> vvaq_tlb.io.tlb_req
   vvaq_tlb.io.tlb_resp <> io.vec_tlb_resp
 
-  // vvaq counts available space
-  // vvaq frees an entry, when vvaq kicks out an entry to the skid buffer
-  io.vvaq_inc := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
-  // vvaq occupies an entry, when the lane kicks out an entry
-  io.vvaq_dec :=
+  io.vvaq_do_enq :=
     Mux(io.evac_to_vmu.evac_mode, vvaq.io.enq.ready && io.vvaq_evac.valid,
         io.vvaq_lane_dec)
+  io.vvaq_do_deq := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
 
   // VPFVAQ
   val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
@@ -251,27 +198,18 @@ class vuVMU_Address extends Component
   vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
 
   // VPAQ and VPFPAQ arbiter
-  val vpaq_arb = new vuVMU_AddressArbiter(LATE_DMEM_NACK)
+  val vpaq_arb = (new Arbiter(2)){ new io_vpaq() }
 
-  vpaq_arb.io.vpaq <> vpaq.io.deq
-  vpaq_arb.io.vpfpaq <> vpfpaq.io.deq
-  io.vpaq_qcnt := vpaq_arb.io.qcnt
-  vpaq_arb.io.watermark := io.vpaq_watermark
-  io.vaq <> vpaq_arb.io.vaq
-  vpaq_arb.io.ack := io.vaq_ack
-  vpaq_arb.io.nack := io.vaq_nack
+  val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
+  io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
 
-  io.vpaq_to_xcpt <> vpaq_arb.io.vpaq_to_xcpt
+  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
+  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
+  io.vaq <> vpaq_arb.io.out
 
-  // vpaq counts occupied space
-  // vpaq occupies an entry, when it accepts an entry from vvaq
-  io.vpaq_inc := vvaq_tlb.io.ack
-  // vpaq frees an entry, when the memory system drains it
-  io.vpaq_dec := vpaq.io.deq.valid && vpaq_arb.io.vpaq.ready
-
-  // vpasdq counts occupied space
-  // vpasdq occupies an entry, when it accepts an entry from vvaq
-  io.vpasdq_inc :=
+  io.vpaq_do_enq := vvaq_tlb.io.ack
+  io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(VPAQARB_VPAQ).ready
+  io.vpaq_do_enq_vsdq :=
     vvaq_tlb.io.ack &&
     (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
 
@@ -286,6 +224,4 @@ class vuVMU_Address extends Component
 
   vpaq.io.flush := io.flush
   vpfpaq.io.flush := io.flush
-  vpaq_arb.io.flush := io.flush
-  vpaq_arb.io.stall := io.stall
 }

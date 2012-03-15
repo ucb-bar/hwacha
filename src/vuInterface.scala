@@ -221,7 +221,7 @@ class io_dmem_resp_bundle extends Bundle
   val typ = Bits(width = 3)
 }
 
-class io_dmem_req extends ioPipe()({ new io_dmem_req_bundle() })
+class io_dmem_req extends ioDecoupled()({ new io_dmem_req_bundle() })
 class io_dmem_resp extends ioPipe()({ new io_dmem_resp_bundle() })
 
 class io_irbUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 

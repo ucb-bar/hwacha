@@ -8,14 +8,12 @@ class io_vmu_load_data extends Bundle
 {
   val vldq_lane = new io_vldq()
 
-  val vldq = new ioDecoupled()({ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) }).flip
+  val vldq = (new ioDecoupled()){ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) }.flip
   val vldq_rtag = (new ioDecoupled()){ Bits(width = LG_ENTRIES_VLDQ) }
-  val vldq_ack = Bool(INPUT)
-  val vldq_nack = Bool(INPUT)
 
   val qcnt = UFix(SZ_QCNT, INPUT)
-  val vlreq_inc = Bool(OUTPUT)
-  val vlreq_dec = Bool(OUTPUT)
+  val vldq_rtag_do_enq = Bool(OUTPUT)
+  val vldq_rtag_do_deq = Bool(OUTPUT)
 
   val flush = Bool(INPUT)
 }
@@ -26,16 +24,13 @@ class vuVMU_LoadData extends Component
 
   // needs to make sure log2up(vldq_entries)+1 <= CPU_TAG_BITS-1
   val vldq = new queue_reorder_qcnt(65,ENTRIES_VLDQ,9, flushable = true)
-  val vldq_skid = SkidBuffer(vldq.io.deq_rtag, LATE_DMEM_NACK, flushable = true)
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
   io.vldq_lane.bits := vldq.io.deq_data.bits
 
   vldq.io.enq <> io.vldq
-  io.vldq_rtag <> vldq_skid.io.deq
-
-  vldq_skid.io.nack := io.vldq_nack
+  io.vldq_rtag <> vldq.io.deq_rtag
 
   // vldq has an embedded counter
   // vldq counts occupied space
@@ -43,13 +38,9 @@ class vuVMU_LoadData extends Component
   // vldq frees an entry, when the lane consumes it
   vldq.io.qcnt := io.qcnt
 
-  // vlreq counts available space
-  // vlreq frees an entry, when the vector load data queue consumes an entry
-  io.vlreq_inc := io.vldq_lane.ready
-  // vlreq occupies an entry, when the memory system kicks out an entry
-  io.vlreq_dec := io.vldq_ack
+  io.vldq_rtag_do_enq := io.vldq_lane.ready
+  io.vldq_rtag_do_deq := io.vldq_rtag.ready && vldq.io.deq_rtag.valid
 
   // exception handler
   vldq.io.flush := io.flush
-  vldq_skid.io.flush := io.flush
 }
