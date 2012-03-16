@@ -115,8 +115,8 @@ class RoundRobinArbiterCtrl[T <: Data](n :Int)(data: => ioDecoupled[T]) extends 
     for (j <- 1 to n-1)
     {
       val actual_sel = (i + (n-1-j)) % n
-      val actual_ready = (i + j) % n
-      val actual_ready_prev = (i + j - 1) % n
+      // val actual_ready = (i + j) % n
+      // val actual_ready_prev = (i + j - 1) % n
       sel = Mux(io.in(actual_sel).valid, Bits(actual_sel,log2up(n)), sel)
       // in_ready_vec(i)(actual_ready) := !io.in(actual_ready_prev).valid && in_ready_vec(i)(actual_ready_prev)
     }

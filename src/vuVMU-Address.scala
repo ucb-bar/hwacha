@@ -240,7 +240,7 @@ class vuVMU_Address extends Component
   vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
 
   // VPAQ and VPFPAQ arbiter
-  val vpaq_arb = (new Arbiter(2)){ new io_vpaq() }
+  val vpaq_arb = (new RoundRobinArbiter(2)){ new io_vpaq() }
 
   val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
   io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
