@@ -41,6 +41,9 @@ class io_vxu_issue_tvec extends Bundle
 
   val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+
+  val irq_illegal_tvec = Bool(OUTPUT)
+  val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
 }
 
 class vuVXU_Issue_TVEC extends Component
@@ -69,6 +72,13 @@ class vuVXU_Issue_TVEC extends Component
 
   val n = Bool(false)
   val y = Bool(true)
+
+  val stall_sticky = Reg(resetVal = Bool(false))
+  val stall = io.irq_illegal_tvec || stall_sticky || io.xcpt_to_issue.stall
+
+  when (io.irq_illegal_tvec) { stall_sticky := Bool(true) }
+  when (io.flush) { stall_sticky := Bool(false) }
+  
 
   val cs =
   ListLookup(cmd,
@@ -158,7 +168,7 @@ class vuVXU_Issue_TVEC extends Component
   val mask_aiw_numCntB_ready = !decode_aiw_numCntB_valid || io.aiw_numCntB.ready
 
   val valid_common =
-    !io.xcpt_to_issue.stall && 
+    !stall &&
     tvec_active_fence_clear &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
@@ -169,7 +179,7 @@ class vuVXU_Issue_TVEC extends Component
   val fire_setvl = fire_common && decode_setvl
   val fire_vf = fire_common && decode_vf
 
-  val queue_common = tvec_active_fence_clear && mask_issue_ready && !io.xcpt_to_issue.stall
+  val queue_common = tvec_active_fence_clear && mask_issue_ready && !stall 
 
   val queue_valid_cmmon = 
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid
@@ -383,4 +393,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
+
+  io.irq_illegal_tvec := tvec_active && !valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf
+  io.irq_cmd_tvec := io.vxu_cmdq.bits
 }

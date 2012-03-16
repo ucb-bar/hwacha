@@ -4,6 +4,14 @@ import Chisel._
 import Node._
 import Constants._
 
+class io_vmu_addr_tlb_irq extends Bundle {
+  val ma_ld = Bool(OUTPUT)
+  val ma_st = Bool(OUTPUT)
+  val faulted_ld = Bool(OUTPUT)
+  val faulted_st = Bool(OUTPUT)
+  val mem_xcpt_addr = Bits(SZ_ADDR, OUTPUT)
+}
+
 class io_vmu_address_tlb extends Bundle
 {
   val vvaq = new io_vvaq().flip
@@ -13,6 +21,8 @@ class io_vmu_address_tlb extends Bundle
   val ack = Bool(OUTPUT)
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
+  
+  val irq = new io_vmu_addr_tlb_irq()
 }
 
 class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
@@ -21,11 +31,39 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
 
   val vvaq_skid = SkidBuffer(io.vvaq, late_tlb_miss, flushable = true)
 
+  // check if address misaligned
+  val mem_cmd = vvaq_skid.io.pipereg.bits.cmd
+  val mem_type = vvaq_skid.io.pipereg.bits.typ
+  val mem_idx = vvaq_skid.io.pipereg.bits.idx
+  val mem_vpn = vvaq_skid.io.pipereg.bits.vpn
+  val ma_half = mem_type === MT_H && mem_idx(0) != UFix(0)
+  val ma_word = mem_type === MT_W && mem_idx(1,0) != UFix(0)
+  val ma_double = mem_type === MT_D && mem_idx(2,0) != UFix(0)
+  val ma_addr = ma_half || ma_word || ma_double
+  val ma_ld = ma_addr && (is_mcmd_load(mem_cmd) || is_mcmd_amo(mem_cmd))
+  val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd)) // TODO: VALID SIGNAL!
+
+  // sticky stall
+  val sticky_stall = Reg(resetVal = Bool(false))
+  val xcpt_ready = !vvaq_skid.io.kill && vvaq_skid.io.pipereg.valid
+  val xcpt = (ma_addr || io.tlb_resp.xcpt_ld || io.tlb_resp.xcpt_st) && xcpt_ready
+  val stall = xcpt || sticky_stall || io.stall
+
+  when (xcpt) { sticky_stall := Bool(true) }
+  when (io.flush) { sticky_stall := Bool(false) }
+
+  // irq stuff
+  io.irq.ma_ld := ma_ld && xcpt_ready
+  io.irq.ma_st := ma_st && xcpt_ready
+  io.irq.faulted_ld := io.tlb_resp.xcpt_ld && xcpt_ready
+  io.irq.faulted_st := io.tlb_resp.xcpt_st && xcpt_ready
+  io.irq.mem_xcpt_addr := Cat(mem_vpn, mem_idx)
+
   // tlb signals
-  val tlb_ready = io.tlb_req.ready && !io.stall
+  val tlb_ready = io.tlb_req.ready && !stall
   var tlb_vec_valid = vvaq_skid.io.deq.valid
   if (late_tlb_miss) tlb_vec_valid = vvaq_skid.io.deq.valid && io.vpaq.ready
-  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !io.stall
+  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !stall
   val tlb_vec_hit = tlb_vec_requested && !io.tlb_resp.miss
   val tlb_vec_miss = tlb_vec_requested && io.tlb_resp.miss
 
@@ -34,7 +72,7 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
 
   // skid control
   vvaq_skid.io.deq.ready := tlb_ready
-  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready || io.stall
+  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready || stall
 
   // tlb hookup
   io.tlb_req.valid := tlb_vec_valid
@@ -148,6 +186,8 @@ class io_vmu_address extends Bundle
 
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
+
+  val irq = new io_vmu_addr_tlb_irq()
 }
 
 class vuVMU_Address extends Component
@@ -159,6 +199,8 @@ class vuVMU_Address extends Component
   val vvaq = (new queueSimplePF(ENTRIES_VVAQ, flushable = true)){ new io_vvaq_bundle() }
   val vvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
   val vpaq = (new queueSimplePF(ENTRIES_VPAQ, flushable = true)){ new io_vpaq_bundle() }
+
+  vvaq_tlb.io.irq <> io.irq
 
   // vvaq hookup
   vvaq_arb.io.in(VVAQARB_LANE) <> io.vvaq_lane

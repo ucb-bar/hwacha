@@ -52,7 +52,7 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val stall_sticky = Reg(io.irq_ma_inst || io.irq_illegal, resetVal = Bool(false))
+  val stall_sticky = Reg(resetVal = Bool(false))
   val stall = stall_sticky || io.xcpt_to_issue.stall
 
   when (io.irq_ma_inst || io.irq_illegal) { stall_sticky := Bool(true) }

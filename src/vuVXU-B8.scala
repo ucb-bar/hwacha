@@ -12,6 +12,8 @@ class io_vxu_to_xcpt_handler extends Bundle
 
 class io_vxu extends Bundle
 {
+  val irq_illegal_tvec = Bool(OUTPUT)
+  val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
   val irq_ma_inst = Bool(OUTPUT)
   val irq_illegal = Bool(OUTPUT)
   val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
@@ -66,6 +68,8 @@ class vuVXU extends Component
 
   val issue = new vuVXU_Issue()
 
+  io.irq_illegal_tvec := issue.io.irq_illegal_tvec
+  io.irq_cmd_tvec := issue.io.irq_cmd_tvec
   io.irq_ma_inst := issue.io.irq_ma_inst
   io.irq_illegal := issue.io.irq_illegal
   io.irq_pc_if := issue.io.irq_pc_if

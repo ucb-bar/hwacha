@@ -419,6 +419,7 @@ class io_skidbuf[T <: Data](data: => T) extends Bundle
   val flush = Bool(INPUT)
   val enq = new ioDecoupled()(data).flip
   val deq = new ioDecoupled()(data)
+  val pipereg = new ioPipe()(data)
   val nack = Bool(INPUT)
   val empty = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
@@ -463,6 +464,9 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
       reg_nack := Bool(false)
     }
   }
+
+  io.pipereg.bits <> pipereg.io.deq.bits
+  io.pipereg.valid := pipereg.io.deq.valid
 }
 
 object SkidBuffer

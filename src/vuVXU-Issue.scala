@@ -102,6 +102,8 @@ class io_issue_to_aiw extends Bundle
 
 class io_vxu_issue extends Bundle
 {
+  val irq_illegal_tvec = Bool(OUTPUT)
+  val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
   val irq_ma_inst = Bool(OUTPUT)
   val irq_illegal = Bool(OUTPUT)
   val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
@@ -161,6 +163,9 @@ class vuVXU_Issue extends Component
 
   tvec.io.vf <> vt.io.vf
   io.pending_vf := tvec.io.vf.active
+
+  io.irq_illegal_tvec := tvec.io.irq_illegal_tvec
+  io.irq_cmd_tvec := tvec.io.irq_cmd_tvec
 
   io.irq_ma_inst := vt.io.irq_ma_inst
   io.irq_illegal := vt.io.irq_illegal

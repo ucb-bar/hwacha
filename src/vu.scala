@@ -112,6 +112,8 @@ class vu extends Component
   // irq
   irq.io.flush := xcpt.io.xcpt_to_vu.flush
 
+  irq.io.irq_illegal_tvec := vxu.io.irq_illegal_tvec
+  irq.io.irq_cmd_tvec := vxu.io.irq_cmd_tvec
   irq.io.irq_ma_inst := vxu.io.irq_ma_inst
   irq.io.irq_illegal := vxu.io.irq_illegal
   irq.io.irq_pc_if := vxu.io.irq_pc_if
@@ -205,6 +207,8 @@ class vu extends Component
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
   vmu.io.vmu_to_xcpt <> xcpt.io.vmu_to_xcpt
+
+  vmu.io.irq <> irq.io.vmu_to_irq
 
   val aiw = new vuAIW()
 

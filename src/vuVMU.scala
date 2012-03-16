@@ -41,6 +41,8 @@ class io_vmu extends Bundle
   val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
   val evac_to_vmu = new io_evac_to_vmu().flip
   val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
+
+  val irq = new io_vmu_addr_tlb_irq()
 }
 
 class vuVMU extends Component
@@ -65,6 +67,8 @@ class vuVMU extends Component
   addr.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
   memif.io.vaq <> addr.io.vaq
+
+  addr.io.irq <> io.irq
 
   addr.io.vvaq_lane_dec := io.lane_vaq_dec
   // vvaq counts available space
