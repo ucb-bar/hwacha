@@ -40,7 +40,7 @@ class io_vu extends Bundle
   val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
-  
+
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
@@ -69,18 +69,47 @@ class vu extends Component
   vximm1q.io.enq <> io.vec_ximm1q
   vximm2q.io.enq <> io.vec_ximm2q
   vxcntq.io.enq <> io.vec_cntq
-  
-  val vpfcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
-  val vpfximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
-  val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
-  val vpfcntq = new queueSimplePF(8, flushable = true)({Bits(width=SZ_VLEN)})
 
-  vpfcmdq.io.enq <> io.vec_pfcmdq
-  vpfximm1q.io.enq <> io.vec_pfximm1q
-  vpfximm2q.io.enq <> io.vec_pfximm2q
-  vpfcntq.io.enq <> io.vec_pfcntq
+  if (HAVE_VRU)
+  {
+    val vpfcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
+    val vpfximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
+    val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
+    val vpfcntq = new queueSimplePF(8, flushable = true)({Bits(width=SZ_VLEN)})
 
-  val vru = new vuVRU()
+    vpfcmdq.io.enq <> io.vec_pfcmdq
+    vpfximm1q.io.enq <> io.vec_pfximm1q
+    vpfximm2q.io.enq <> io.vec_pfximm2q
+    vpfcntq.io.enq <> io.vec_pfcntq
+
+    val vru = new vuVRU()
+    // vru
+    vru.io.vec_pfcmdq <> vpfcmdq.io.deq
+    vru.io.vec_pfximm1q <> vpfximm1q.io.deq
+    vru.io.vec_pfximm2q <> vpfximm2q.io.deq
+    vru.io.vec_pfcntq <> vpfcntq.io.deq
+
+    vru.io.xcpt_to_vru <> xcpt.io.xcpt_to_vru
+
+    // vmu
+    vmu.io.pf_vvaq <> vru.io.vpfvaq
+
+    vmu.io.vec_pftlb_req <> io.vec_pftlb_req
+    vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
+
+    vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
+    vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
+    vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
+    vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush
+  }
+  else
+  {
+    io.vec_pfcmdq.ready := Bool(true)
+    io.vec_pfximm1q.ready := Bool(true)
+    io.vec_pfximm2q.ready := Bool(true)
+    io.vec_pfcntq.ready := Bool(true)
+  }
+
   val vxu = new vuVXU()
   val vmu = new vuVMU()
   val irq = new vuIRQHandler()
@@ -135,11 +164,6 @@ class vu extends Component
   vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush
   vximm2q_count.io.flush := xcpt.io.xcpt_to_vu.flush
 
-  vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
-  vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
-  vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
-  vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush
-
   // vxu
   vxu.io.vxu_cmdq.bits := vcmdq.io.deq.bits
   vxu.io.vxu_cmdq.valid := vcmdq.io.deq.valid
@@ -168,17 +192,7 @@ class vu extends Component
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
   vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt
 
-  // vru
-  vru.io.vec_pfcmdq <> vpfcmdq.io.deq
-  vru.io.vec_pfximm1q <> vpfximm1q.io.deq
-  vru.io.vec_pfximm2q <> vpfximm2q.io.deq
-  vru.io.vec_pfcntq <> vpfcntq.io.deq
-
-  vru.io.xcpt_to_vru <> xcpt.io.xcpt_to_vru
-
   // vmu
-  vmu.io.pf_vvaq <> vru.io.vpfvaq
-
   vmu.io.lane_vvaq <> vxu.io.lane_vaq
   vmu.io.evac_vvaq <> evac.io.vaq
 
@@ -200,9 +214,6 @@ class vu extends Component
 
   vmu.io.vec_tlb_req <> io.vec_tlb_req
   vmu.io.vec_tlb_resp <> io.vec_tlb_resp
-
-  vmu.io.vec_pftlb_req <> io.vec_pftlb_req
-  vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
@@ -240,7 +251,7 @@ class vu extends Component
 
   evac.io.vimm1q.bits := vximm1q.io.deq.bits
   evac.io.vimm1q.valid := vximm1q.io.deq.valid
-  
+
   evac.io.vimm2q.bits := vximm2q.io.deq.bits
   evac.io.vimm2q.valid := vximm2q.io.deq.valid
 

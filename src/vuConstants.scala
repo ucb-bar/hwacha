@@ -5,6 +5,8 @@ import Node._
 
 object Constants
 {
+  val HAVE_VRU = true
+
   val SZ_VLENMAX  = 11
 
   val SZ_VCMD = 20

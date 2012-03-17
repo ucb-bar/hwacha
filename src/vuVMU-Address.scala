@@ -21,7 +21,7 @@ class io_vmu_address_tlb extends Bundle
   val ack = Bool(OUTPUT)
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
-  
+
   val irq = new io_vmu_addr_tlb_irq()
 }
 
@@ -225,45 +225,61 @@ class vuVMU_Address extends Component
         io.vvaq_lane_dec)
   io.vvaq_do_deq := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
 
-  // VPFVAQ
-  val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
-  val vpfvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
-  val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ, flushable = true)){ new io_vpaq_bundle() }
+  if (HAVE_VRU)
+  {
+    // VPFVAQ
+    val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
+    val vpfvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
+    val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ, flushable = true)){ new io_vpaq_bundle() }
 
-  // vpfvaq hookup
-  vpfvaq.io.enq <> io.vvaq_pf
+    // vpfvaq hookup
+    vpfvaq.io.enq <> io.vvaq_pf
 
-  // vpfvaq address translation
-  vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
-  vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
-  io.vec_pftlb_req <> vpfvaq_tlb.io.tlb_req
-  vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
+    // vpfvaq address translation
+    vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
+    vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
+    io.vec_pftlb_req <> vpfvaq_tlb.io.tlb_req
+    vpfvaq_tlb.io.tlb_resp <> io.vec_pftlb_resp
 
-  // VPAQ and VPFPAQ arbiter
-  val vpaq_arb = (new RoundRobinArbiter(2)){ new io_vpaq() }
+    vpfvaq.io.flush := io.flush
+    vpfvaq_tlb.io.flush := io.flush
+    vpfvaq_tlb.io.stall := io.stall
 
-  val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
-  io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
+    vpfpaq.io.flush := io.flush
+    // VPAQ and VPFPAQ arbiter
+    val vpaq_arb = (new RoundRobinArbiter(2)){ new io_vpaq() }
 
-  vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
-  vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
-  io.vaq <> vpaq_arb.io.out
+    val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
+    io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
 
-  io.vpaq_do_enq := vvaq_tlb.io.ack
-  io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(VPAQARB_VPAQ).ready
-  io.vpaq_do_enq_vsdq :=
-    vvaq_tlb.io.ack &&
-    (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
+    vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
+    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
+    io.vaq <> vpaq_arb.io.out
+
+    io.vpaq_do_enq := vvaq_tlb.io.ack
+    io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(VPAQARB_VPAQ).ready
+    io.vpaq_do_enq_vsdq :=
+      vvaq_tlb.io.ack &&
+      (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
+  }
+  else
+  {
+    val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
+    io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
+
+    io.vaq <> vpaq_check_cnt
+    io.vpaq_do_enq := vvaq_tlb.io.ack
+    io.vpaq_do_deq := vpaq_check_cnt.valid && io.vaq.ready
+    io.vpaq_do_enq_vsdq :=
+      vvaq_tlb.io.ack &&
+      (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
+
+  }
 
   // exception handler
   vvaq.io.flush := io.flush
   vvaq_tlb.io.flush := io.flush
   vvaq_tlb.io.stall := io.stall
 
-  vpfvaq.io.flush := io.flush
-  vpfvaq_tlb.io.flush := io.flush
-  vpfvaq_tlb.io.stall := io.stall
-
   vpaq.io.flush := io.flush
-  vpfpaq.io.flush := io.flush
 }
