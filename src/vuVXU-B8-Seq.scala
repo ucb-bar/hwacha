@@ -572,9 +572,11 @@ class vuVXU_Banked8_Seq extends Component
 
   }
 
+  val mem_base_plus_stride = array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
+
   when((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
   {
-    next_imm(reg_ptr) := array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
+    next_imm(reg_ptr) := mem_base_plus_stride
   }
 
   val next_dep_vaq = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -784,7 +786,7 @@ class vuVXU_Banked8_Seq extends Component
 
   io.seq_to_aiw.update_imm1.bits.addr := array_aiw_imm1_rtag(reg_ptr).toUFix
   io.seq_to_aiw.update_imm1.bits.data := 
-    Mux(io.seq.vldq || io.seq.vsdq, next_imm(reg_ptr), 
+    Mux(io.seq.vldq || io.seq.vsdq, mem_base_plus_stride,
         array_aiw_pc_next(reg_ptr))
 
   io.seq_to_aiw.update_cnt.bits.addr := array_aiw_cnt_rtag(reg_ptr).toUFix
