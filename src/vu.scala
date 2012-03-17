@@ -70,8 +70,21 @@ class vu extends Component
   vximm2q.io.enq <> io.vec_ximm2q
   vxcntq.io.enq <> io.vec_cntq
 
+  val vxu = new vuVXU()
+  val vmu = new vuVMU()
+  val irq = new vuIRQHandler()
+  val evac = new vuEvac()
+  val xcpt = new vuXCPTHandler()
+
+  // counters
+  val vcmdq_count = new qcnt(32, 32, flushable = true)
+  val vximm1q_count = new qcnt(32, 32, flushable = true)
+  val vximm2q_count = new qcnt(32, 32, flushable = true)
+  var vru: vuVRU = null
+
   if (HAVE_VRU)
   {
+    vru = new vuVRU()
     val vpfcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
     val vpfximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
     val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
@@ -82,7 +95,6 @@ class vu extends Component
     vpfximm2q.io.enq <> io.vec_pfximm2q
     vpfcntq.io.enq <> io.vec_pfcntq
 
-    val vru = new vuVRU()
     // vru
     vru.io.vec_pfcmdq <> vpfcmdq.io.deq
     vru.io.vec_pfximm1q <> vpfximm1q.io.deq
@@ -109,17 +121,6 @@ class vu extends Component
     io.vec_pfximm2q.ready := Bool(true)
     io.vec_pfcntq.ready := Bool(true)
   }
-
-  val vxu = new vuVXU()
-  val vmu = new vuVMU()
-  val irq = new vuIRQHandler()
-  val evac = new vuEvac()
-  val xcpt = new vuXCPTHandler()
-
-  // counters
-  val vcmdq_count = new qcnt(32, 32, flushable = true)
-  val vximm1q_count = new qcnt(32, 32, flushable = true)
-  val vximm2q_count = new qcnt(32, 32, flushable = true)
 
   vcmdq_count.io.dec := vcmdq.io.enq.ready && io.vec_cmdq.valid
   vcmdq_count.io.inc := (vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready) && vcmdq.io.deq.valid
