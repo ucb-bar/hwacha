@@ -44,16 +44,18 @@ class io_vu extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
+  val vitlb_exception = Bool(INPUT)
+
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
-
-  val xcpt = new io_xcpt().flip()
 
   val vec_tlb_req = new ioDTLB_CPU_req()
   val vec_tlb_resp = new ioDTLB_CPU_resp().flip
 
   val vec_pftlb_req = new ioDTLB_CPU_req()
   val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
+
+  val xcpt = new io_xcpt().flip()
 }
 
 class vu extends Component
@@ -129,8 +131,8 @@ class vu extends Component
   vximm2q_count.io.dec := vximm2q.io.enq.ready && io.vec_ximm2q.valid
   vximm2q_count.io.inc := (vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready) && vximm2q.io.deq.valid
 
-  vcmdq_count.io.qcnt := UFix(9)
-  vximm1q_count.io.qcnt := UFix(9)
+  vcmdq_count.io.qcnt := UFix(11)
+  vximm1q_count.io.qcnt := UFix(11)
   vximm2q_count.io.qcnt := UFix(9)
   io.vec_cmdq_user_ready := vcmdq_count.io.watermark
   io.vec_ximm1q_user_ready := vximm1q_count.io.watermark
@@ -141,13 +143,6 @@ class vu extends Component
 
   // irq
   irq.io.flush := xcpt.io.xcpt_to_vu.flush
-
-  irq.io.irq_illegal_tvec := vxu.io.irq_illegal_tvec
-  irq.io.irq_cmd_tvec := vxu.io.irq_cmd_tvec
-  irq.io.irq_ma_inst := vxu.io.irq_ma_inst
-  irq.io.irq_illegal := vxu.io.irq_illegal
-  irq.io.irq_pc_if := vxu.io.irq_pc_if
-  irq.io.irq_pc_id := vxu.io.irq_pc_id
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -190,8 +185,12 @@ class vu extends Component
   vxu.io.imem_req <> io.imem_req
   vxu.io.imem_resp <> io.imem_resp
 
+  vxu.io.vitlb_exception := io.vitlb_exception
+
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
   vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt
+
+  irq.io.issue_to_irq <> vxu.io.irq
 
   // vmu
   vmu.io.lane_vvaq <> vxu.io.lane_vaq

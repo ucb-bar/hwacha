@@ -4,7 +4,8 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vmu_addr_tlb_irq extends Bundle {
+class io_vmu_to_irq_handler extends Bundle
+{
   val ma_ld = Bool(OUTPUT)
   val ma_st = Bool(OUTPUT)
   val faulted_ld = Bool(OUTPUT)
@@ -22,7 +23,7 @@ class io_vmu_address_tlb extends Bundle
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
-  val irq = new io_vmu_addr_tlb_irq()
+  val irq = new io_vmu_to_irq_handler()
 }
 
 class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
@@ -36,9 +37,9 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   val mem_type = vvaq_skid.io.pipereg.bits.typ
   val mem_idx = vvaq_skid.io.pipereg.bits.idx
   val mem_vpn = vvaq_skid.io.pipereg.bits.vpn
-  val ma_half = mem_type === mtyp_H && mem_idx(0) != UFix(0)
-  val ma_word = mem_type === mtyp_W && mem_idx(1,0) != UFix(0)
-  val ma_double = mem_type === mtyp_D && mem_idx(2,0) != UFix(0)
+  val ma_half = is_mtype_halfword(mem_type) && mem_idx(0) != UFix(0)
+  val ma_word = is_mtype_word(mem_type) && mem_idx(1,0) != UFix(0)
+  val ma_double = is_mtype_doubleword(mem_type) && mem_idx(2,0) != UFix(0)
   val ma_addr = ma_half || ma_word || ma_double
   val ma_ld = ma_addr && (is_mcmd_load(mem_cmd) || is_mcmd_amo(mem_cmd))
   val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd)) // TODO: VALID SIGNAL!
@@ -187,7 +188,7 @@ class io_vmu_address extends Bundle
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
-  val irq = new io_vmu_addr_tlb_irq()
+  val irq = new io_vmu_to_irq_handler()
 }
 
 class vuVMU_Address extends Component

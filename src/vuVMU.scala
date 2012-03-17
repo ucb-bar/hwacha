@@ -42,7 +42,7 @@ class io_vmu extends Bundle
   val evac_to_vmu = new io_evac_to_vmu().flip
   val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 
-  val irq = new io_vmu_addr_tlb_irq()
+  val irq = new io_vmu_to_irq_handler()
 }
 
 class vuVMU extends Component

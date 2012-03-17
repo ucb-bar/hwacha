@@ -5,10 +5,17 @@ import Node._
 import Constants._
 import Commands._
 
+class io_issue_tvec_to_irq_handler extends Bundle
+{
+  val illegal = Bool(OUTPUT)
+  val cmd = Bits(SZ_XCMD, OUTPUT)
+}
+
 class io_vxu_issue_tvec extends Bundle
 {
-  val vf = new io_vf()
+  val irq = new io_issue_tvec_to_irq_handler()
 
+  val vf = new io_vf()
   val active = Bool(OUTPUT)
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
@@ -41,9 +48,6 @@ class io_vxu_issue_tvec extends Bundle
 
   val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-
-  val irq_illegal_tvec = Bool(OUTPUT)
-  val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
 }
 
 class vuVXU_Issue_TVEC extends Component
@@ -74,9 +78,9 @@ class vuVXU_Issue_TVEC extends Component
   val y = Bool(true)
 
   val stall_sticky = Reg(resetVal = Bool(false))
-  val stall = io.irq_illegal_tvec || stall_sticky || io.xcpt_to_issue.stall
+  val stall = io.irq.illegal || stall_sticky || io.xcpt_to_issue.stall
 
-  when (io.irq_illegal_tvec) { stall_sticky := Bool(true) }
+  when (io.irq.illegal) { stall_sticky := Bool(true) }
   when (io.flush) { stall_sticky := Bool(false) }
   
 
@@ -394,6 +398,6 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
 
-  io.irq_illegal_tvec := tvec_active && !valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf
-  io.irq_cmd_tvec := io.vxu_cmdq.bits
+  io.irq.illegal := tvec_active && !valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf
+  io.irq.cmd := io.vxu_cmdq.bits
 }

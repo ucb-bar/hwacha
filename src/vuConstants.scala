@@ -228,6 +228,11 @@ object Constants
   val SZ_MTYPS = mtyp_B.getWidth
   val mtyp_X = Bits(0, SZ_MTYPS)
 
+  def is_mtype_byte(typ: Bits) = (typ === mtyp_B || typ === mtyp_BU)
+  def is_mtype_halfword(typ: Bits) = (typ === mtyp_H || typ === mtyp_HU)
+  def is_mtype_word(typ: Bits) = (typ === mtyp_W || typ === mtyp_WU)
+  def is_mtype_doubleword(typ: Bits) = (typ === mtyp_D)
+
   val ENUM_MCMDS = 16
   val mcmd_XRD :: mcmd_XWR :: mcmd_PFR :: mcmd_PFW :: mcmd_FLA :: mcmd_FENCE :: mcmd_INV :: mcmd_CLN ::  mcmd_XA_ADD :: mcmd_XA_SWAP :: mcmd_XA_AND :: mcmd_XA_OR :: mcmd_XA_MIN :: mcmd_XA_MAX :: mcmd_XA_MINU :: mcmd_XA_MAXU :: Nil = Enum(ENUM_MCMDS){ Bits() }
   // First few:
