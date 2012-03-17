@@ -43,8 +43,8 @@ class vuVXU_Banked8_Mem extends Component
   io.vmu_vaq_bits.vpn := addr(VADDR_BITS, PGIDX_BITS)
 
   val store_fp = io.lane_vsdq_mem.typ_float
-  val store_fp_d = store_fp && io.lane_vsdq_mem.typ === MT_D
-  val store_fp_w = store_fp && io.lane_vsdq_mem.typ === MT_W
+  val store_fp_d = store_fp && io.lane_vsdq_mem.typ === mtyp_D
+  val store_fp_w = store_fp && io.lane_vsdq_mem.typ === mtyp_W
 
   val reg_lane_vsdq_valid = Reg(io.lane_vsdq_valid)
   val reg_lane_vsdq_bits = Reg(io.lane_vsdq_bits)

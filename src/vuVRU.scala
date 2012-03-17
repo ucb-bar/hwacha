@@ -119,7 +119,7 @@ class vuVRU extends Component
   val pf_len_int = pow(2,OFFSET_BITS).toInt
 
   // cmd(4)==1 -> vector store
-  io.vpfvaq.bits.cmd := Mux(cmd_reg(4), M_PFW, M_PFR)
+  io.vpfvaq.bits.cmd := Mux(cmd_reg(4), mcmd_PFW, mcmd_PFR)
   io.vpfvaq.bits.typ := Bits(0)
   io.vpfvaq.bits.typ_float := Bits(0)
   io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)

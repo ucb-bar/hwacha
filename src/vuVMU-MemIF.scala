@@ -88,8 +88,8 @@ class vuVMU_MemIF extends Component
   val ldq_dp_bits = Wire(){Bits(width=65)}
   
   val load_fp = reg_mem_resp.bits.tag(0)
-  val load_fp_d = load_fp && reg_mem_resp.bits.typ === MT_D 
-  val load_fp_w = load_fp && reg_mem_resp.bits.typ === MT_W
+  val load_fp_d = load_fp && reg_mem_resp.bits.typ === mtyp_D 
+  val load_fp_w = load_fp && reg_mem_resp.bits.typ === mtyp_W
 
   val recode_sp = new float32ToRecodedFloat32()
   recode_sp.io.in := reg_mem_resp.bits.data(31,0)

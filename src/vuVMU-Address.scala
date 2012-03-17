@@ -36,9 +36,9 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   val mem_type = vvaq_skid.io.pipereg.bits.typ
   val mem_idx = vvaq_skid.io.pipereg.bits.idx
   val mem_vpn = vvaq_skid.io.pipereg.bits.vpn
-  val ma_half = mem_type === MT_H && mem_idx(0) != UFix(0)
-  val ma_word = mem_type === MT_W && mem_idx(1,0) != UFix(0)
-  val ma_double = mem_type === MT_D && mem_idx(2,0) != UFix(0)
+  val ma_half = mem_type === mtyp_H && mem_idx(0) != UFix(0)
+  val ma_word = mem_type === mtyp_W && mem_idx(1,0) != UFix(0)
+  val ma_double = mem_type === mtyp_D && mem_idx(2,0) != UFix(0)
   val ma_addr = ma_half || ma_word || ma_double
   val ma_ld = ma_addr && (is_mcmd_load(mem_cmd) || is_mcmd_amo(mem_cmd))
   val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd)) // TODO: VALID SIGNAL!

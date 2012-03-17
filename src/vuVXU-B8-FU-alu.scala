@@ -17,23 +17,23 @@ class Shifter extends Component
 
   val left = MuxLookup(
     io.fn(RG_VIU_FN), Bits(0, 1), Array(
-      VIU_SLL -> Bits(1, 1),
-      VIU_SRL -> Bits(0, 1),
-      VIU_SRA -> Bits(0, 1)
+      viu_SLL -> Bits(1, 1),
+      viu_SRL -> Bits(0, 1),
+      viu_SRA -> Bits(0, 1)
     ))
 
   val arith = MuxLookup(
     io.fn(RG_VIU_FN), Bits(0, 1), Array(
-      VIU_SLL -> Bits(0, 1),
-      VIU_SRL -> Bits(0, 1),
-      VIU_SRA -> Bits(1, 1)
+      viu_SLL -> Bits(0, 1),
+      viu_SRL -> Bits(0, 1),
+      viu_SRA -> Bits(1, 1)
     ))
 
   val trunc = MuxCase(
     Bits(0, 1), Array(
-      (io.fn(RG_VIU_FN) === VIU_SRL && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1),
-      (io.fn(RG_VIU_FN) === VIU_SRL && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
-      (io.fn(RG_VIU_FN) === VIU_SRA) -> Bits(0,1)
+      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1),
+      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
+      (io.fn(RG_VIU_FN) === viu_SRA) -> Bits(0,1)
     ))
 
   val shift_in = Mux(
@@ -61,9 +61,9 @@ class vuVXU_Banked8_FU_alu extends Component
     val out        = Bits(SZ_DATA, OUTPUT)
   }
 
-  def VIU_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
-  def VIU_FP(fp: Bits) = reg_fn(RG_VIU_FP) === fp
-  def VIU_DW(dw: Bits) = reg_fn(RG_VIU_DW) === dw
+  def viu_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
+  def viu_FP(fp: Bits) = reg_fn(RG_VIU_FP) === fp
+  def viu_DW(dw: Bits) = reg_fn(RG_VIU_DW) === dw
 
   val reg_fn     = Reg(io.fn)
   val reg_utidx  = Reg(io.utidx)
@@ -74,8 +74,8 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val sub = MuxCase(
     Bits(0, 1), Array(
-      VIU_FN(VIU_ADD) -> Bits(0, 1),
-      VIU_FN(VIU_SUB) -> Bits(1, 1)
+      viu_FN(viu_ADD) -> Bits(0, 1),
+      viu_FN(viu_SUB) -> Bits(1, 1)
     ))
 
   val adder_out =
@@ -84,8 +84,8 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val shamt = MuxCase(
     UFix(0, 6), Array(
-      VIU_DW(DW64) -> reg_in1(5,0).toUFix,
-      VIU_DW(DW32) -> Cat(Bits(0, 1), reg_in1(4,0)).toUFix
+      viu_DW(DW64) -> reg_in1(5,0).toUFix,
+      viu_DW(DW32) -> Cat(Bits(0, 1), reg_in1(4,0)).toUFix
     ))
 
   val shifter = new Shifter()
@@ -110,37 +110,37 @@ class vuVXU_Banked8_FU_alu extends Component
   val equal_dp = comp_dp.io.a_eq_b
 
   val comp = 
-    VIU_FN(VIU_SLT)  & lt  |
-    VIU_FN(VIU_SLTU) & ltu |
-    VIU_FN(VIU_FEQ)  & (VIU_FP(FPS) & equal_sp | VIU_FP(FPD) & equal_dp) |
-    VIU_FN(VIU_FLE)  & (VIU_FP(FPS) & (equal_sp | less_sp) | VIU_FP(FPD) & (equal_dp | less_dp)) |
-    VIU_FN(VIU_FLT)  & (VIU_FP(FPS) & less_sp | VIU_FP(FPD) & less_dp)
+    viu_FN(viu_SLT)  & lt  |
+    viu_FN(viu_SLTU) & ltu |
+    viu_FN(viu_FEQ)  & (viu_FP(FPS) & equal_sp | viu_FP(FPD) & equal_dp) |
+    viu_FN(viu_FLE)  & (viu_FP(FPS) & (equal_sp | less_sp) | viu_FP(FPD) & (equal_dp | less_dp)) |
+    viu_FN(viu_FLT)  & (viu_FP(FPS) & less_sp | viu_FP(FPD) & less_dp)
 
   val sj_sp =
-    VIU_FN(VIU_FSJ) & reg_in1(32)   |
-    VIU_FN(VIU_FSJN) & ~reg_in1(32) |
-    VIU_FN(VIU_FSJX) & (reg_in1(32) ^ reg_in0(32))
+    viu_FN(viu_FSJ) & reg_in1(32)   |
+    viu_FN(viu_FSJN) & ~reg_in1(32) |
+    viu_FN(viu_FSJX) & (reg_in1(32) ^ reg_in0(32))
 
   val sj_dp = 
-    VIU_FN(VIU_FSJ) & reg_in1(64)   |
-    VIU_FN(VIU_FSJN) & ~reg_in1(64) |
-    VIU_FN(VIU_FSJX) & (reg_in1(64) ^ reg_in0(64))
+    viu_FN(viu_FSJ) & reg_in1(64)   |
+    viu_FN(viu_FSJN) & ~reg_in1(64) |
+    viu_FN(viu_FSJX) & (reg_in1(64) ^ reg_in0(64))
 
   val is_in0_nan =
-    VIU_FP(FPS) & (reg_in0(31,29) === Bits("b111", 3)) |
-    VIU_FP(FPD) & (reg_in0(63,61) === Bits("b111", 3))
+    viu_FP(FPS) & (reg_in0(31,29) === Bits("b111", 3)) |
+    viu_FP(FPD) & (reg_in0(63,61) === Bits("b111", 3))
 
   val is_in1_nan = 
-    VIU_FP(FPS) & (reg_in1(31,29) === Bits("b111", 3)) |
-    VIU_FP(FPD) & (reg_in1(63,61) === Bits("b111", 3))
+    viu_FP(FPS) & (reg_in1(31,29) === Bits("b111", 3)) |
+    viu_FP(FPD) & (reg_in1(63,61) === Bits("b111", 3))
 
   val want_min = MuxCase(Bool(false), Array(
-    VIU_FN(VIU_FMIN) -> Bool(true),
-    VIU_FN(VIU_FMAX) -> Bool(false)))
+    viu_FN(viu_FMIN) -> Bool(true),
+    viu_FN(viu_FMAX) -> Bool(false)))
 
   val less_fp = 
-    VIU_FP(FPS) & less_sp | 
-    VIU_FP(FPD) & less_dp
+    viu_FP(FPS) & less_sp | 
+    viu_FP(FPD) & less_dp
 
   val fminmax = Mux(
     is_in1_nan || ~is_in0_nan && (want_min === less_fp), reg_in0,
@@ -148,29 +148,29 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val next_mask = MuxCase(
     Bits(1, 1), Array(
-      VIU_FN(VIU_MOVZ) -> ~reg_in0(0),
-      VIU_FN(VIU_MOVN) ->  reg_in0(0)
+      viu_FN(viu_MOVZ) -> ~reg_in0(0),
+      viu_FN(viu_MOVN) ->  reg_in0(0)
     ))
 
   val next_result64 = MuxCase(
     Bits(0, SZ_DATA), Array(
-      VIU_FN(VIU_IDX) -> Cat(Fill(SZ_DATA-SZ_VLEN, Bits("b0", 1)), reg_utidx),
-      VIU_FN(VIU_MOV,VIU_MOVZ,VIU_MOVN) -> reg_in1,
-      VIU_FN(VIU_ADD,VIU_SUB) -> Cat(Bits(0, 1), adder_out),
-      VIU_FN(VIU_SLL,VIU_SRL,VIU_SRA) -> Cat(Bits(0, 1), shift_out),
-      VIU_FN(VIU_SLT,VIU_SLTU,VIU_FEQ,VIU_FLE,VIU_FLT) -> Cat(Bits(0, 64), comp),
-      VIU_FN(VIU_AND) -> (reg_in0 & reg_in1),
-      VIU_FN(VIU_OR) -> (reg_in0 | reg_in1),
-      VIU_FN(VIU_XOR) -> (reg_in0 ^ reg_in1),
-      (VIU_FN(VIU_FSJ,VIU_FSJN,VIU_FSJX) && VIU_FP(FPS)) -> Cat(Bits("hFFFFFFFF", 32), sj_sp, reg_in0(31,0)),
-      (VIU_FN(VIU_FSJ,VIU_FSJN,VIU_FSJX) && VIU_FP(FPD)) -> Cat(sj_dp, reg_in0(63,0)),
-      VIU_FN(VIU_FMIN,VIU_FMAX) -> fminmax
+      viu_FN(viu_IDX) -> Cat(Fill(SZ_DATA-SZ_VLEN, Bits("b0", 1)), reg_utidx),
+      viu_FN(viu_MOV,viu_MOVZ,viu_MOVN) -> reg_in1,
+      viu_FN(viu_ADD,viu_SUB) -> Cat(Bits(0, 1), adder_out),
+      viu_FN(viu_SLL,viu_SRL,viu_SRA) -> Cat(Bits(0, 1), shift_out),
+      viu_FN(viu_SLT,viu_SLTU,viu_FEQ,viu_FLE,viu_FLT) -> Cat(Bits(0, 64), comp),
+      viu_FN(viu_AND) -> (reg_in0 & reg_in1),
+      viu_FN(viu_OR) -> (reg_in0 | reg_in1),
+      viu_FN(viu_XOR) -> (reg_in0 ^ reg_in1),
+      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPS)) -> Cat(Bits("hFFFFFFFF", 32), sj_sp, reg_in0(31,0)),
+      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPD)) -> Cat(sj_dp, reg_in0(63,0)),
+      viu_FN(viu_FMIN,viu_FMAX) -> fminmax
     ))
 
   val next_result = MuxCase(
     Bits(0, SZ_DATA), Array(
-      VIU_DW(DW64) -> next_result64,
-      VIU_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
+      viu_DW(DW64) -> next_result64,
+      viu_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
     ))
 
   reg_mask   := next_mask
