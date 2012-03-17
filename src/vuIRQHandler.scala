@@ -29,6 +29,7 @@ class io_irq_handler extends Bundle
 
   val irq_ma_inst = Bool(INPUT)
   val irq_illegal = Bool(INPUT)
+  val irq_tlb_fault = Bool(INPUT)
   val irq_pc_if = Bits(SZ_ADDR, INPUT)
   val irq_pc_id = Bits(SZ_ADDR, INPUT)
 
@@ -48,6 +49,7 @@ class vuIRQHandler extends Component
 
   val reg_irq_ma_inst = Reg(){ Bool() }
   val reg_irq_illegal = Reg(){ Bool() }
+  val reg_irq_tlb_fault = Reg(){ Bool() }
   val reg_irq_pc_if = Reg(){ Bits(width = SZ_ADDR) }
   val reg_irq_pc_id = Reg(){ Bits(width = SZ_ADDR) }
 
@@ -63,13 +65,14 @@ class vuIRQHandler extends Component
 
     reg_irq_ma_inst := io.irq_ma_inst
     reg_irq_illegal := io.irq_illegal
+    reg_irq_tlb_fault := io.irq_tlb_fault
 
     reg_irq_ma_ld := io.vmu_to_irq.ma_ld
     reg_irq_ma_st := io.vmu_to_irq.ma_st
     reg_irq_faulted_ld := io.vmu_to_irq.faulted_ld
     reg_irq_faulted_st := io.vmu_to_irq.faulted_st
 
-    when (io.irq_ma_inst) { reg_irq_pc_if := io.irq_pc_if }
+    when (io.irq_ma_inst || io.irq_tlb_fault) { reg_irq_pc_if := io.irq_pc_if }
     when (io.irq_illegal) { reg_irq_pc_id := io.irq_pc_id }
     when (io.irq_illegal_tvec) { reg_irq_cmd_tvec := io.irq_cmd_tvec }
 
@@ -82,20 +85,21 @@ class vuIRQHandler extends Component
   val dmem_xcpt = reg_irq_ma_ld || reg_irq_ma_st || reg_irq_faulted_ld || reg_irq_faulted_st
 
   io.irq :=
-    reg_irq_ma_inst || reg_irq_illegal || reg_irq_illegal_tvec || dmem_xcpt
+    reg_irq_ma_inst || reg_irq_illegal || reg_irq_tlb_fault || reg_irq_illegal_tvec || dmem_xcpt
 
   io.irq_cause :=
     Mux(reg_irq_ma_inst, UFix(24),
+    Mux(reg_irq_tlb_fault, UFix(25),
     Mux(reg_irq_illegal, UFix(26),
     Mux(reg_irq_illegal_tvec, UFix(27),
     Mux(reg_irq_ma_ld, UFix(28),
     Mux(reg_irq_ma_st, UFix(29),
     Mux(reg_irq_faulted_ld, UFix(30),
     Mux(reg_irq_faulted_st, UFix(31),
-        UFix(0))))))))
+        UFix(0)))))))))
 
   io.irq_aux :=
-    Mux(reg_irq_ma_inst, reg_irq_pc_if,
+    Mux(reg_irq_ma_inst || reg_irq_tlb_fault, reg_irq_pc_if,
     Mux(reg_irq_illegal, reg_irq_pc_id,
     Mux(reg_irq_illegal_tvec, reg_irq_cmd_tvec,
     Mux(dmem_xcpt, reg_mem_xcpt_addr,
@@ -107,6 +111,7 @@ class vuIRQHandler extends Component
 
     reg_irq_ma_inst := Bool(false)
     reg_irq_illegal := Bool(false)
+    reg_irq_tlb_fault := Bool(false)
 
     reg_irq_ma_ld := Bool(false)
     reg_irq_ma_st := Bool(false)

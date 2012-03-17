@@ -16,6 +16,7 @@ class io_vxu extends Bundle
   val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
   val irq_ma_inst = Bool(OUTPUT)
   val irq_illegal = Bool(OUTPUT)
+  val irq_tlb_fault = Bool(OUTPUT)
   val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
   val irq_pc_id = Bits(SZ_ADDR, OUTPUT)
 
@@ -31,6 +32,8 @@ class io_vxu extends Bundle
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
+
+  val vitlb_exception = Bool(INPUT)
 
   val lane_vaq = new io_vvaq()
   val lane_vldq = new io_vldq().flip
@@ -72,11 +75,15 @@ class vuVXU extends Component
   io.irq_cmd_tvec := issue.io.irq_cmd_tvec
   io.irq_ma_inst := issue.io.irq_ma_inst
   io.irq_illegal := issue.io.irq_illegal
+  io.irq_tlb_fault := issue.io.irq_tlb_fault
   io.irq_pc_if := issue.io.irq_pc_if
   io.irq_pc_id := issue.io.irq_pc_id
 
   issue.io.imem_req <> io.imem_req
   issue.io.imem_resp <> io.imem_resp
+
+  issue.io.vitlb_exception := io.vitlb_exception
+
   issue.io.vxu_cmdq <> io.vxu_cmdq
   issue.io.vxu_immq <> io.vxu_immq
   issue.io.vxu_imm2q <> io.vxu_imm2q
