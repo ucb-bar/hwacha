@@ -100,15 +100,15 @@ class io_issue_to_aiw extends Bundle
   val update_numCnt = new io_update_num_cnt()
 }
 
+class io_issue_to_irq_handler extends Bundle
+{
+  val tvec = new io_issue_tvec_to_irq_handler()
+  val vt = new io_issue_vt_to_irq_handler()
+}
+
 class io_vxu_issue extends Bundle
 {
-  val irq_illegal_tvec = Bool(OUTPUT)
-  val irq_cmd_tvec = Bits(SZ_XCMD, OUTPUT)
-  val irq_ma_inst = Bool(OUTPUT)
-  val irq_illegal = Bool(OUTPUT)
-  val irq_tlb_fault = Bool(OUTPUT)
-  val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
-  val irq_pc_id = Bits(SZ_ADDR, OUTPUT)
+  val irq = new io_issue_to_irq_handler()
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
@@ -167,14 +167,8 @@ class vuVXU_Issue extends Component
   tvec.io.vf <> vt.io.vf
   io.pending_vf := tvec.io.vf.active
 
-  io.irq_illegal_tvec := tvec.io.irq_illegal_tvec
-  io.irq_cmd_tvec := tvec.io.irq_cmd_tvec
-
-  io.irq_ma_inst := vt.io.irq_ma_inst
-  io.irq_illegal := vt.io.irq_illegal
-  io.irq_tlb_fault := vt.io.irq_tlb_fault
-  io.irq_pc_if := vt.io.irq_pc_if
-  io.irq_pc_id := vt.io.irq_pc_id
+  io.irq.tvec := tvec.io.irq
+  io.irq.vt := vt.io.irq
 
   vt.io.imem_req <> io.imem_req
   vt.io.imem_resp <> io.imem_resp

@@ -4,7 +4,8 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vmu_addr_tlb_irq extends Bundle {
+class io_vmu_to_irq_handler extends Bundle
+{
   val ma_ld = Bool(OUTPUT)
   val ma_st = Bool(OUTPUT)
   val faulted_ld = Bool(OUTPUT)
@@ -22,7 +23,7 @@ class io_vmu_address_tlb extends Bundle
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
-  val irq = new io_vmu_addr_tlb_irq()
+  val irq = new io_vmu_to_irq_handler()
 }
 
 class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
@@ -187,7 +188,7 @@ class io_vmu_address extends Bundle
   val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
-  val irq = new io_vmu_addr_tlb_irq()
+  val irq = new io_vmu_to_irq_handler()
 }
 
 class vuVMU_Address extends Component

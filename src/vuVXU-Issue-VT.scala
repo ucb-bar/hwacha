@@ -18,13 +18,18 @@ class io_vf extends Bundle
   val stride = Bits(SZ_REGLEN, OUTPUT)
 }
 
+class io_issue_vt_to_irq_handler extends Bundle
+{
+  val ma_inst = Bool(OUTPUT)
+  val fault_inst = Bool(OUTPUT)
+  val illegal = Bool(OUTPUT)
+  val pc_if = Bits(SZ_ADDR, OUTPUT)
+  val pc_id = Bits(SZ_ADDR, OUTPUT)
+}
+
 class io_vxu_issue_vt extends Bundle
 {
-  val irq_ma_inst = Bool(OUTPUT)
-  val irq_tlb_fault = Bool(OUTPUT)
-  val irq_illegal = Bool(OUTPUT)
-  val irq_pc_if = Bits(SZ_ADDR, OUTPUT)
-  val irq_pc_id = Bits(SZ_ADDR, OUTPUT)
+  val irq = new io_issue_vt_to_irq_handler()
 
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
@@ -56,13 +61,13 @@ class vuVXU_Issue_VT extends Component
   val io = new io_vxu_issue_vt()
 
   val stall_sticky = Reg(resetVal = Bool(false))
-  val stall = stall_sticky || io.irq_illegal || io.xcpt_to_issue.stall
+  val stall = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
 
-  when (io.irq_ma_inst || io.irq_tlb_fault || io.irq_illegal) { stall_sticky := Bool(true) }
+  when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
   when (io.flush) { stall_sticky := Bool(false) }
 
   val stalld = !(io.ready && io.aiw_cntb.ready & !stall)
-  val killf = !io.imem_resp.valid || !io.imem_req.ready || io.irq_ma_inst || io.irq_tlb_fault
+  val killf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
   val reg_killf = Reg(killf)
 
   val if_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
@@ -386,9 +391,9 @@ class vuVXU_Issue_VT extends Component
   io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
 
-  io.irq_ma_inst := io.vf.active && if_reg_pc(1,0) != Bits(0)
-  io.irq_tlb_fault := io.vf.active && io.vitlb_exception
-  io.irq_illegal := io.vf.active && (~unmasked_valid && ~decode_stop)
-  io.irq_pc_if := if_reg_pc
-  io.irq_pc_id := id_reg_pc
+  io.irq.ma_inst := io.vf.active && if_reg_pc(1,0) != Bits(0)
+  io.irq.fault_inst := io.vf.active && io.vitlb_exception
+  io.irq.illegal := io.vf.active && (~unmasked_valid && ~decode_stop)
+  io.irq.pc_if := if_reg_pc
+  io.irq.pc_id := id_reg_pc
 }

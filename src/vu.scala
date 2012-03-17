@@ -144,14 +144,6 @@ class vu extends Component
   // irq
   irq.io.flush := xcpt.io.xcpt_to_vu.flush
 
-  irq.io.irq_illegal_tvec := vxu.io.irq_illegal_tvec
-  irq.io.irq_cmd_tvec := vxu.io.irq_cmd_tvec
-  irq.io.irq_ma_inst := vxu.io.irq_ma_inst
-  irq.io.irq_illegal := vxu.io.irq_illegal
-  irq.io.irq_tlb_fault := vxu.io.irq_tlb_fault
-  irq.io.irq_pc_if := vxu.io.irq_pc_if
-  irq.io.irq_pc_id := vxu.io.irq_pc_id
-
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
   io.irq_aux := irq.io.irq_aux
@@ -197,6 +189,8 @@ class vu extends Component
 
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
   vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt
+
+  irq.io.issue_to_irq <> vxu.io.irq
 
   // vmu
   vmu.io.lane_vvaq <> vxu.io.lane_vaq
