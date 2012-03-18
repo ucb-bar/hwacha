@@ -35,7 +35,7 @@ class io_vu_evac extends Bundle
   val vcmdq = new io_vxu_cmdq().flip
   val vimm1q = new io_vxu_immq().flip
   val vimm2q = new io_vxu_imm2q().flip
-  val vcntq = new io_vxu_cntq().flip
+  val vcntq = new io_vec_cntq().flip
 
   val vsdq = new io_vsdq()
   val vaq  = new io_vvaq()
@@ -128,11 +128,12 @@ class vuEvac extends Component
   val STATE_IMM1B = Bits(2,4)
   val STATE_IMM2B = Bits(3,4)
   val STATE_CNTB = Bits(4,4)
-  val STATE_VCMDQ = Bits(5,4)
-  val STATE_VIMM1Q = Bits(6,4)
-  val STATE_VIMM2Q = Bits(7,4)
-  val STATE_VCNTQ = Bits(8,4)
-  val STATE_DONE = Bits(9,4)
+  val STATE_PRE_VCMDQ = Bits(5,4)
+  val STATE_VCMDQ = Bits(6,4)
+  val STATE_VIMM1Q = Bits(7,4)
+  val STATE_VIMM2Q = Bits(8,4)
+  val STATE_VCNTQ = Bits(9,4)
+  val STATE_DONE = Bits(10,4)
 
   val state_next = Wire(){ Bits(width=4) }
   val addr_next = Wire(){ UFix(width=SZ_ADDR) }
@@ -304,9 +305,48 @@ class vuEvac extends Component
           io.aiw_imm1b.ready := deq_irimm1b
           io.aiw_imm2b.ready := deq_irimm2b
           io.aiw_numCntB.ready := Bool(true)
+
+          state_next := STATE_PRE_VCMDQ
         }
       }
 
+    }
+
+    is (STATE_PRE_VCMDQ) // in this state we are saving a vf that is partially in CNTB and partially in VCNTQ
+    {
+      // valid signal
+      when (io.vcntq.valid)
+      {
+        io.vaq.valid := io.vsdq.ready
+        io.vsdq.valid := io.vaq.ready
+        io.vsdq.bits := io.vcntq.bits(10,0)
+
+        when (io.vsdq.ready && io.vaq.ready)
+        {
+          addr_next := addr_plus_8
+
+          when (io.vcntq.bits(11)) // the last count of a VF
+          {
+            state_next := STATE_VCMDQ
+            cmd_sel_next := SEL_VCMDQ
+          }
+          . otherwise // there are more counts to save
+          {
+            state_next := STATE_PRE_VCMDQ
+          }
+        }
+      }
+      . otherwise // nothing in the vcntq, so no forward progress was made on the VF
+      {
+        state_next := STATE_VCMDQ
+        cmd_sel_next := SEL_VCMDQ
+      }
+
+      // ready signal
+      when (io.vsdq.ready && io.vaq.ready)
+      {
+        io.vcntq.ready := Bool(true)
+      }
     }
 
     is (STATE_VCMDQ)
@@ -428,7 +468,7 @@ class vuEvac extends Component
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcntq.bits
+        io.vsdq.bits := io.vcntq.bits(10,0)
 
         when (io.vsdq.ready && io.vaq.ready)
         {

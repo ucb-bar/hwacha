@@ -174,7 +174,7 @@ class io_vxu_ackq extends ioDecoupled()( { Bits(width = SZ_XRESP) } )
 class io_vec_cmdq extends ioDecoupled()( { Bits(width = SZ_VCMD) } )
 class io_vec_ximm1q extends ioDecoupled()( { Bits(width = SZ_VIMM) } )
 class io_vec_ximm2q extends ioDecoupled()( { Bits(width = SZ_VSTRIDE) } )
-class io_vec_cntq() extends ioDecoupled()( Bits(width=SZ_VLEN) )
+class io_vec_cntq() extends ioDecoupled()( Bits(width=SZ_VLEN+1) )
 class io_vec_ackq extends ioDecoupled()( { Bits(width = SZ_VRESP) } )
 
 class io_vvaq extends ioDecoupled()( { new io_vvaq_bundle() } )

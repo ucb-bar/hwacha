@@ -65,7 +65,7 @@ class vu extends Component
   val vcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
   val vximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
   val vximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
-  val vxcntq = new queueSimplePF(8, flushable = true)( Bits(width=SZ_VLEN) )
+  val vxcntq = new queueSimplePF(8, flushable = true)( Bits(width=SZ_VLEN+1) )
 
   vcmdq.io.enq <> io.vec_cmdq
   vximm1q.io.enq <> io.vec_ximm1q
@@ -173,7 +173,7 @@ class vu extends Component
   vxu.io.vxu_imm2q.valid := vximm2q.io.deq.valid
   vximm2q.io.deq.ready := vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready
 
-  vxu.io.vxu_cntq.bits := vxcntq.io.deq.bits
+  vxu.io.vxu_cntq.bits := vxcntq.io.deq.bits(10,0)
   vxu.io.vxu_cntq.valid := vxcntq.io.deq.valid
   vxcntq.io.deq.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
 
