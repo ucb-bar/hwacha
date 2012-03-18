@@ -89,15 +89,6 @@ class vuXCPTHandler extends Component
   io.xcpt_to_vxu.seq.stall := hold_seq
   io.xcpt_to_vmu.tlb.stall := hold_tlb
 
-  val next_saved_earliest_ptr = Wire(){ Bool() }
-  val next_earliest_ptr = Wire(){ UFix(width=SZ_LGBANK) }
-
-  val saved_earliest_ptr = Reg(next_saved_earliest_ptr, resetVal = Bool(false) )
-  val earliest_ptr = Reg(next_earliest_ptr, resetVal = UFix(0, SZ_LGBANK) )
-
-  next_saved_earliest_ptr := saved_earliest_ptr
-  next_earliest_ptr := earliest_ptr
-
   val NORMAL = Bits(0, 3)
   val XCPT_DRAIN = Bits(1, 3)
   val XCPT_FLUSH = Bits(2, 3)

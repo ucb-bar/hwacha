@@ -60,12 +60,6 @@ class io_seq_to_aiw extends Bundle
   val update_numCnt = new io_update_num_cnt()
 }
 
-class io_seq_to_xcpt_handler extends Bundle
-{
-  val fire_any = Bool(OUTPUT)
-  val next_ptr1 = UFix(SZ_LGBANK, OUTPUT)
-}
-
 class io_vxu_seq extends Bundle
 {
   val issue_to_seq = new io_vxu_issue_to_seq().asInput
@@ -88,7 +82,6 @@ class io_vxu_seq extends Bundle
 
   val flush = Bool(INPUT)
   val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
-  val seq_to_xcpt = new io_seq_to_xcpt_handler()
 }
 
 class vuVXU_Banked8_Seq extends Component
@@ -793,9 +786,6 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + io.seq_regid_imm.cnt + UFix(1)
 
   io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
-
-  io.seq_to_xcpt.next_ptr1 := next_ptr1
-  io.seq_to_xcpt.fire_any := io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2 || io.fire.amo || io.fire.utld || io.fire.utst || io.fire.vld || io.fire.vst
 
   when(io.flush)
   {

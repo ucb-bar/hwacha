@@ -6,7 +6,6 @@ import Constants._
 
 class io_vxu_to_xcpt_handler extends Bundle
 {
-  val seq = new io_seq_to_xcpt_handler()
   val expand = new io_expand_to_xcpt_handler()
 }
 
@@ -157,7 +156,6 @@ class vuVXU extends Component
 
   b8seq.io.flush <> io.xcpt_to_vxu.flush
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
-  b8seq.io.seq_to_xcpt <> io.vxu_to_xcpt.seq
 
   val b8expand = new vuVXU_Banked8_Expand()
 
