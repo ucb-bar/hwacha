@@ -26,7 +26,7 @@ class io_vmu_address_tlb extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
+class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false) extends Component
 {
   val io = new io_vmu_address_tlb()
 
@@ -44,27 +44,30 @@ class vuVMU_AddressTLB(late_tlb_miss: Boolean = false) extends Component
   val ma_ld = ma_addr && (is_mcmd_load(mem_cmd) || is_mcmd_amo(mem_cmd))
   val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd)) // TODO: VALID SIGNAL!
 
-  // sticky stall
-  val sticky_stall = Reg(resetVal = Bool(false))
-  val xcpt_ready = !vvaq_skid.io.kill && vvaq_skid.io.pipereg.valid
-  val xcpt = (ma_addr || io.tlb_resp.xcpt_ld || io.tlb_resp.xcpt_st) && xcpt_ready
-  val stall = xcpt || sticky_stall || io.stall
+  val xcpt_common = !vvaq_skid.io.kill && vvaq_skid.io.pipereg.valid
+  val xcpt = (ma_addr || io.tlb_resp.xcpt_ld || io.tlb_resp.xcpt_st || io.tlb_resp.xcpt_pf) && xcpt_common
+  var stall = io.stall
 
-  when (xcpt) { sticky_stall := Bool(true) }
-  when (io.flush) { sticky_stall := Bool(false) }
+  if (sticky_stall_bit)
+  {
+    val sticky_stall = Reg(resetVal = Bool(false))
+    stall = xcpt || sticky_stall || stall
+    when (xcpt) { sticky_stall := Bool(true) }
+    when (io.flush) { sticky_stall := Bool(false) }
+  }
 
   // irq stuff
-  io.irq.ma_ld := ma_ld && xcpt_ready
-  io.irq.ma_st := ma_st && xcpt_ready
-  io.irq.faulted_ld := io.tlb_resp.xcpt_ld && xcpt_ready
-  io.irq.faulted_st := io.tlb_resp.xcpt_st && xcpt_ready
+  io.irq.ma_ld := ma_ld && xcpt_common
+  io.irq.ma_st := ma_st && xcpt_common
+  io.irq.faulted_ld := io.tlb_resp.xcpt_ld && xcpt_common
+  io.irq.faulted_st := io.tlb_resp.xcpt_st && xcpt_common
   io.irq.mem_xcpt_addr := Cat(mem_vpn, mem_idx)
 
   // tlb signals
   val tlb_ready = io.tlb_req.ready && !stall
   var tlb_vec_valid = vvaq_skid.io.deq.valid
   if (late_tlb_miss) tlb_vec_valid = vvaq_skid.io.deq.valid && io.vpaq.ready
-  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !stall
+  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !stall && !xcpt
   val tlb_vec_hit = tlb_vec_requested && !io.tlb_resp.miss
   val tlb_vec_miss = tlb_vec_requested && io.tlb_resp.miss
 
@@ -198,7 +201,7 @@ class vuVMU_Address extends Component
   // VVAQ
   val vvaq_arb = (new Arbiter(2)){ new io_vvaq() }
   val vvaq = (new queueSimplePF(ENTRIES_VVAQ, flushable = true)){ new io_vvaq_bundle() }
-  val vvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
+  val vvaq_tlb = new vuVMU_AddressTLB(sticky_stall_bit = true, LATE_TLB_MISS)
   val vpaq = (new queueSimplePF(ENTRIES_VPAQ, flushable = true)){ new io_vpaq_bundle() }
 
   vvaq_tlb.io.irq <> io.irq
@@ -230,7 +233,7 @@ class vuVMU_Address extends Component
   {
     // VPFVAQ
     val vpfvaq = (new queueSimplePF(ENTRIES_VPFVAQ, flushable = true)){ new io_vvaq_bundle() }
-    val vpfvaq_tlb = new vuVMU_AddressTLB(LATE_TLB_MISS)
+    val vpfvaq_tlb = new vuVMU_AddressTLB(sticky_stall_bit = false, LATE_TLB_MISS)
     val vpfpaq = (new queueSimplePF(ENTRIES_VPFPAQ, flushable = true)){ new io_vpaq_bundle() }
 
     // vpfvaq hookup

@@ -304,5 +304,6 @@ class ioDTLB_CPU_resp extends Bundle
   val ppn = Bits(PPN_BITS, OUTPUT)
   val xcpt_ld = Bool(OUTPUT)
   val xcpt_st = Bool(OUTPUT)
+  val xcpt_pf = Bool(OUTPUT)
 }
 
