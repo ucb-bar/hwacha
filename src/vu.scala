@@ -142,7 +142,7 @@ class vu extends Component
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
   // irq
-  irq.io.flush := xcpt.io.xcpt_to_vu.flush
+  irq.io.flush := xcpt.io.xcpt_to_vru.flush
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
