@@ -199,7 +199,7 @@ class vuVMU_Address extends Component
   val io = new io_vmu_address()
 
   // VVAQ
-  val vvaq_arb = (new Arbiter(2)){ new io_vvaq() }
+  val vvaq_arb = (new Arbiter(2)){ new io_vvaq_bundle() }
   val vvaq = (new queueSimplePF(ENTRIES_VVAQ, flushable = true)){ new io_vvaq_bundle() }
   val vvaq_tlb = new vuVMU_AddressTLB(sticky_stall_bit = true, LATE_TLB_MISS)
   val vpaq = (new queueSimplePF(ENTRIES_VPAQ, flushable = true)){ new io_vpaq_bundle() }
@@ -251,7 +251,7 @@ class vuVMU_Address extends Component
 
     vpfpaq.io.flush := io.flush
     // VPAQ and VPFPAQ arbiter
-    val vpaq_arb = (new RoundRobinArbiter(2)){ new io_vpaq() }
+    val vpaq_arb = (new RRArbiter(2)){ new io_vpaq_bundle() }
 
     val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
     io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
