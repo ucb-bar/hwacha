@@ -135,22 +135,13 @@ class vuAIW extends Component
   // count buffer is dequeued whenever sequencer or evacuator says so
   ircntb.io.deq.ready  := io.seq_to_aiw.last | io.aiw_deq_cntb.ready
 
+  val do_deq = irNumCntB.io.deq.bits && irNumCntB.io.deq.valid && irNumCntB.io.deq_last
+
   // other buffers are dequeued based on NumCntB or when evacuator says so
-  ircmdb.io.deq.ready := 
-    irNumCntB.io.deq.bits & irNumCntB.io.deq_last |
-    io.aiw_deq_cmdb.ready
-
-  irimm1b.io.deq.ready :=
-    irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm1b |
-    io.aiw_deq_imm1b.ready
-
-  irimm2b.io.deq.ready := 
-    irNumCntB.io.deq.bits & irNumCntB.io.deq_last & decode_deq_irimm2b |
-    io.aiw_deq_imm2b.ready
-
-  irNumCntB.io.deq.ready := 
-    irNumCntB.io.deq.bits & irNumCntB.io.deq_last | 
-    io.aiw_deq_numCntB.ready
+  ircmdb.io.deq.ready :=  do_deq || io.aiw_deq_cmdb.ready
+  irimm1b.io.deq.ready := do_deq && decode_deq_irimm1b || io.aiw_deq_imm1b.ready
+  irimm2b.io.deq.ready := do_deq && decode_deq_irimm2b || io.aiw_deq_imm2b.ready
+  irNumCntB.io.deq.ready := irNumCntB.io.deq.bits && irNumCntB.io.deq_last || io.aiw_deq_numCntB.ready
     
   io.aiw_deq_cmdb.bits := ircmdb.io.deq.bits
   io.aiw_deq_imm1b.bits := irimm1b.io.deq.bits

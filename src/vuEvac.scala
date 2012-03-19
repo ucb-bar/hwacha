@@ -299,7 +299,7 @@ class vuEvac extends Component
       } .elsewhen (io.aiw_numCntB.valid && io.aiw_numCntB.bits)
       {
         state_next := STATE_CMDB
-        when (!io.aiw_numCntB_last)
+        when (!(io.aiw_numCntB.valid && io.aiw_numCntB_last))
         { 
           io.aiw_cmdb.ready := Bool(true) 
           io.aiw_imm1b.ready := deq_irimm1b
