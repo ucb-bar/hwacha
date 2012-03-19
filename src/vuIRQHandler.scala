@@ -36,18 +36,18 @@ class vuIRQHandler extends Component
 {
   val io = new io_irq_handler()
 
-  val reg_irq_ma_inst = Reg(){ Bool() }
-  val reg_irq_fault_inst = Reg(){ Bool() }
-  val reg_irq_illegal_vt = Reg(){ Bool() }
-  val reg_irq_illegal_tvec = Reg(){ Bool() }
+  val reg_irq_ma_inst = Reg(resetVal = Bool(false))
+  val reg_irq_fault_inst = Reg(resetVal = Bool(false))
+  val reg_irq_illegal_vt = Reg(resetVal = Bool(false))
+  val reg_irq_illegal_tvec = Reg(resetVal = Bool(false))
   val reg_irq_pc_if = Reg(){ Bits(width = SZ_ADDR) }
   val reg_irq_pc_id = Reg(){ Bits(width = SZ_ADDR) }
   val reg_irq_cmd_tvec = Reg(){ Bits(width = SZ_XCMD) }
 
-  val reg_irq_ma_ld = Reg(){ Bool() }
-  val reg_irq_ma_st = Reg(){ Bool() }
-  val reg_irq_faulted_ld = Reg(){ Bool() }
-  val reg_irq_faulted_st = Reg(){ Bool() }
+  val reg_irq_ma_ld = Reg(resetVal = Bool(false))
+  val reg_irq_ma_st = Reg(resetVal = Bool(false))
+  val reg_irq_faulted_ld = Reg(resetVal = Bool(false))
+  val reg_irq_faulted_st = Reg(resetVal = Bool(false))
   val reg_mem_xcpt_addr = Reg(){ Bits(width = SZ_ADDR) }
 
   when (!io.irq)
@@ -85,7 +85,7 @@ class vuIRQHandler extends Component
     Mux(reg_irq_ma_st, UFix(29),
     Mux(reg_irq_faulted_ld, UFix(30),
     Mux(reg_irq_faulted_st, UFix(31),
-        UFix(0)))))))))
+        UFix(31)))))))))
 
   io.irq_aux :=
     Mux(reg_irq_ma_inst || reg_irq_fault_inst, reg_irq_pc_if,

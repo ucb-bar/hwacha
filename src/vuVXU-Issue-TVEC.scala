@@ -185,31 +185,25 @@ class vuVXU_Issue_TVEC extends Component
 
   val queue_common = tvec_active_fence_clear && mask_issue_ready && !stall 
 
-  val queue_valid_cmmon = 
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid
-
-  val queue_ready_common = 
-    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
-
   io.vxu_cmdq.ready := 
     queue_common && 
     Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-    queue_ready_common
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.vxu_immq.ready := 
     queue_common &&
     io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
-    queue_ready_common
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.vxu_imm2q.ready := 
     queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
-    queue_ready_common
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.vxu_cntq.ready :=
     queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && deq_vxu_cntq &&
-    queue_ready_common
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_cmdb.valid := 
     queue_common &&
@@ -225,16 +219,16 @@ class vuVXU_Issue_TVEC extends Component
     queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && decode_aiw_imm2b_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && deq_vxu_imm2q && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
-  
-  io.aiw_numCntB.valid := 
-    queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
-    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && decode_aiw_numCntB_valid
 
   io.aiw_cntb.valid :=
     queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && decode_aiw_cntb_valid && mask_aiw_numCntB_ready
+  
+  io.aiw_numCntB.valid := 
+    queue_common &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && decode_aiw_numCntB_valid
 
   io.issue_to_aiw.markLast := 
     queue_common && valid.orR &&
@@ -398,6 +392,6 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
 
-  io.irq.illegal := tvec_active && !valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf
+  io.irq.illegal := io.vxu_cmdq.valid && !valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf
   io.irq.cmd := io.vxu_cmdq.bits
 }
