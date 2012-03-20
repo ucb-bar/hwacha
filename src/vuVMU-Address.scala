@@ -42,19 +42,22 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
   val ma_double = is_mtype_doubleword(mem_type) && mem_idx(2,0) != UFix(0)
   val ma_addr = ma_half || ma_word || ma_double
   val ma_ld = ma_addr && (is_mcmd_load(mem_cmd) || is_mcmd_amo(mem_cmd))
-  val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd)) // TODO: VALID SIGNAL!
+  val ma_st = ma_addr && (is_mcmd_store(mem_cmd) || is_mcmd_amo(mem_cmd))
 
   val xcpt_common = !vvaq_skid.io.kill && vvaq_skid.io.pipereg.valid
   val xcpt = (ma_addr || io.tlb_resp.xcpt_ld || io.tlb_resp.xcpt_st || io.tlb_resp.xcpt_pf) && xcpt_common
-  var stall = io.stall
+
+  val sticky_stall = Reg(resetVal = Bool(false))
+  val stall = io.stall || sticky_stall
+  var nack = stall
 
   if (sticky_stall_bit)
   {
-    val sticky_stall = Reg(resetVal = Bool(false))
-    stall = xcpt || sticky_stall || stall
     when (xcpt) { sticky_stall := Bool(true) }
-    when (io.flush) { sticky_stall := Bool(false) }
+    nack = nack || xcpt
   }
+
+  when (io.flush) { sticky_stall := Bool(false) }
 
   // irq stuff
   io.irq.ma_ld := ma_ld && xcpt_common
@@ -64,19 +67,19 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
   io.irq.mem_xcpt_addr := Cat(mem_vpn, mem_idx)
 
   // tlb signals
-  val tlb_ready = io.tlb_req.ready && !stall
-  var tlb_vec_valid = vvaq_skid.io.deq.valid
-  if (late_tlb_miss) tlb_vec_valid = vvaq_skid.io.deq.valid && io.vpaq.ready
-  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill && !stall && !xcpt
-  val tlb_vec_hit = tlb_vec_requested && !io.tlb_resp.miss
-  val tlb_vec_miss = tlb_vec_requested && io.tlb_resp.miss
+  val tlb_ready = io.tlb_req.ready
+  var tlb_vec_valid = vvaq_skid.io.deq.valid && !stall
+  if (late_tlb_miss) tlb_vec_valid = tlb_vec_valid && io.vpaq.ready
+  val tlb_vec_requested = Reg(tlb_vec_valid && tlb_ready) && !vvaq_skid.io.kill
+  val tlb_vec_hit = tlb_vec_requested && !stall && !xcpt && !io.tlb_resp.miss
+  val tlb_vec_miss = tlb_vec_requested && !stall && !xcpt && io.tlb_resp.miss
 
   // ack
   io.ack := tlb_vec_hit && io.vpaq.ready
 
   // skid control
   vvaq_skid.io.deq.ready := tlb_ready
-  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready || stall
+  vvaq_skid.io.nack := tlb_vec_miss || !io.vpaq.ready || nack
 
   // tlb hookup
   io.tlb_req.valid := tlb_vec_valid
