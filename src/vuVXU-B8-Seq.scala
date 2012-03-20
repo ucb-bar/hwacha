@@ -274,7 +274,7 @@ class vuVXU_Banked8_Seq extends Component
   next_aiw_update_imm1 := array_aiw_update_imm1
   next_aiw_update_numCnt := array_aiw_update_numCnt
 
-  when(io.fire.viu)
+  when (io.fire.viu)
   {
     next_val(next_ptr1) := Bool(true)
     next_last(next_ptr1) := last
@@ -409,7 +409,7 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr3) := Bool(true)
   }
 
-  when(io.fire.utld)
+  when (io.fire.utld)
   {
     next_val(next_ptr1) := Bool(true)
     next_last(next_ptr1) := last
@@ -567,7 +567,7 @@ class vuVXU_Banked8_Seq extends Component
 
   val mem_base_plus_stride = array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
 
-  when((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
+  when ((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
   {
     next_imm(reg_ptr) := mem_base_plus_stride
   }
@@ -751,30 +751,34 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_aiw.update_cnt.valid := Bool(false)
   io.seq_to_aiw.last := Bool(false)
   io.seq_to_aiw.update_numCnt.valid := Bool(false)
+
+  val seq_alu = io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2
+  val seq_mem = io.seq.vldq || io.seq.vsdq
+  val seq_vmem = seq_mem && !array_utmemop(reg_ptr)
+  val seq_utmem = seq_mem && array_utmemop(reg_ptr)
   
-  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vldq || io.seq.vsdq)
+  when (seq_alu || seq_mem)
   {
+    io.seq_to_aiw.update_cnt.valid := array_aiw_update_numCnt(reg_ptr)
     next_aiw_cnt(reg_ptr) := io.seq_to_aiw.update_cnt.bits.data
 
-    io.seq_to_aiw.update_cnt.valid := Bool(true)
-
-    when(array_last(reg_ptr))
+    when (array_last(reg_ptr))
     {
-      io.seq_to_aiw.last := Bool(true)
+      io.seq_to_aiw.last := array_aiw_update_numCnt(reg_ptr)
       io.seq_to_aiw.update_numCnt.valid := array_aiw_update_numCnt(reg_ptr)
     }
   }
 
-  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || (( io.seq.vldq || io.seq.vsdq ) && array_utmemop(reg_ptr)))
+  when (seq_alu || seq_utmem)
   {
-    when(array_last(reg_ptr))
+    when (array_last(reg_ptr))
     {
       io.seq_to_aiw.update_imm1.valid := array_aiw_update_imm1(reg_ptr)
     }
   } 
-  . elsewhen ((io.seq.vldq || io.seq.vsdq) && !array_utmemop(reg_ptr))
+  .elsewhen (seq_vmem)
   {
-    io.seq_to_aiw.update_imm1.valid := Bool(true)
+    io.seq_to_aiw.update_imm1.valid := array_aiw_update_imm1(reg_ptr)
   }
 
   io.seq_to_aiw.update_imm1.bits.addr := array_aiw_imm1_rtag(reg_ptr).toUFix
@@ -787,7 +791,7 @@ class vuVXU_Banked8_Seq extends Component
 
   io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
 
-  when(io.flush)
+  when (io.flush)
   {
     for(i <- 0 until SZ_BANK)
     {
