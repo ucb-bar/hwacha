@@ -6,7 +6,9 @@ import Constants._
 
 class io_xcpt_handler_to_vu extends Bundle
 {
-  val flush = Bool(OUTPUT)
+  val busy = Bool(OUTPUT)
+  val flush_kill = Bool(OUTPUT)
+  val flush_irq = Bool(OUTPUT)
 }
 
 class io_xcpt_handler_to_aiw extends Bundle
@@ -94,9 +96,7 @@ class vuXCPTHandler extends Component
   val XCPT_FLUSH = Bits(2, 3)
   val XCPT_EVAC = Bits(3, 3)
   val XCPT_DRAIN_EVAC = Bits(4, 3)  
-  val XCPT_ACK = Bits(5, 3)
-  val HOLD = Bits(6, 3)
-  val HOLD_WAIT = Bits(7, 3)
+  val HOLD = Bits(5, 3)
 
   val next_state = Wire(){ Bits(width = 4) }
   val state = Reg(next_state, resetVal = NORMAL)
@@ -129,9 +129,9 @@ class vuXCPTHandler extends Component
   io.xcpt_to_evac.addr := addr
 
   //set defaults
-  io.xcpt.exception_ack_valid := Bool(false)
-
-  io.xcpt_to_vu.flush := Bool(false)
+  io.xcpt_to_vu.busy := (state != NORMAL) && (state != HOLD)
+  io.xcpt_to_vu.flush_kill := Bool(false)
+  io.xcpt_to_vu.flush_irq := Bool(false)
   io.xcpt_to_aiw.flush := Bool(false)
   io.xcpt_to_vru.flush := Bool(false)
   io.xcpt_to_vxu.flush := Bool(false)
@@ -178,12 +178,13 @@ class vuXCPTHandler extends Component
 
     is (XCPT_FLUSH)
     {
+      io.xcpt_to_vu.flush_irq := Bool(true)
       io.xcpt_to_vru.flush := Bool(true)
       io.xcpt_to_vxu.flush := Bool(true)
       io.xcpt_to_vmu.flush := Bool(true)
       when (kill)
       { 
-        io.xcpt_to_vu.flush := Bool(true)
+        io.xcpt_to_vu.flush_kill := Bool(true)
         io.xcpt_to_aiw.flush := Bool(true)
       }
 
@@ -195,7 +196,12 @@ class vuXCPTHandler extends Component
       }
       when(kill)
       {
-        next_state := XCPT_ACK
+        next_hold_issue := Bool(false)
+        next_hold_seq := Bool(false)
+        next_hold_tlb := Bool(false)
+        next_kill := Bool(false)
+        
+        next_state := NORMAL
       }
     }
 
@@ -213,25 +219,13 @@ class vuXCPTHandler extends Component
     {
       when (io.vmu_to_xcpt.no_pending_load_store)
       {
-        next_state := XCPT_ACK
-      }
-    }
-
-    is (XCPT_ACK)
-    {
-      io.xcpt.exception_ack_valid := Bool(true)
-
-      when (io.xcpt.exception_ack_ready) 
-      {
         next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)
         next_hold_tlb := Bool(false)
         next_evac := Bool(false)
-        next_kill := Bool(false)
         
         next_state := NORMAL
       }
-
     }
 
     is (HOLD)

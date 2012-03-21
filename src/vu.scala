@@ -7,8 +7,6 @@ import Constants._
 class io_xcpt extends Bundle 
 {
   val exception = Bool(OUTPUT)
-  val exception_ack_valid = Bool(INPUT)
-  val exception_ack_ready = Bool(OUTPUT)
   val evac_addr = UFix(SZ_ADDR, OUTPUT)
   val evac = Bool(OUTPUT)
   val hold = Bool(OUTPUT)
@@ -62,21 +60,22 @@ class vu extends Component
 {
   val io = new io_vu()
 
+  val xcpt = new vuXCPTHandler()
+
   val vcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
   val vximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
   val vximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
   val vxcntq = new queueSimplePF(8, flushable = true)( Bits(width=SZ_VLEN+1) )
 
-  vcmdq.io.enq <> io.vec_cmdq
-  vximm1q.io.enq <> io.vec_ximm1q
-  vximm2q.io.enq <> io.vec_ximm2q
-  vxcntq.io.enq <> io.vec_cntq
+  vcmdq.io.enq <> MaskStall(io.vec_cmdq, xcpt.io.xcpt_to_vu.busy)
+  vximm1q.io.enq <> MaskStall(io.vec_ximm1q, xcpt.io.xcpt_to_vu.busy)
+  vximm2q.io.enq <> MaskStall(io.vec_ximm2q, xcpt.io.xcpt_to_vu.busy)
+  vxcntq.io.enq <> MaskStall(io.vec_cntq, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = new vuVXU()
   val vmu = new vuVMU()
   val irq = new vuIRQHandler()
   val evac = new vuEvac()
-  val xcpt = new vuXCPTHandler()
 
   // counters
   val vcmdq_count = new qcnt(32, 32, flushable = true)
@@ -92,10 +91,10 @@ class vu extends Component
     val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
     val vpfcntq = new queueSimplePF(8, flushable = true)({Bits(width=SZ_VLEN)})
 
-    vpfcmdq.io.enq <> io.vec_pfcmdq
-    vpfximm1q.io.enq <> io.vec_pfximm1q
-    vpfximm2q.io.enq <> io.vec_pfximm2q
-    vpfcntq.io.enq <> io.vec_pfcntq
+    vpfcmdq.io.enq <> MaskStall(io.vec_pfcmdq, xcpt.io.xcpt_to_vu.busy)
+    vpfximm1q.io.enq <> MaskStall(io.vec_pfximm1q, xcpt.io.xcpt_to_vu.busy)
+    vpfximm2q.io.enq <> MaskStall(io.vec_pfximm2q, xcpt.io.xcpt_to_vu.busy)
+    vpfcntq.io.enq <> MaskStall(io.vec_pfcntq, xcpt.io.xcpt_to_vu.busy)
 
     // vru
     vru.io.vec_pfcmdq <> vpfcmdq.io.deq
@@ -111,10 +110,10 @@ class vu extends Component
     vmu.io.vec_pftlb_req <> io.vec_pftlb_req
     vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
 
-    vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
-    vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
-    vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
-    vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush
+    vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+    vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+    vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+    vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
   }
   else
   {
@@ -134,15 +133,15 @@ class vu extends Component
   vcmdq_count.io.qcnt := UFix(11)
   vximm1q_count.io.qcnt := UFix(11)
   vximm2q_count.io.qcnt := UFix(9)
-  io.vec_cmdq_user_ready := vcmdq_count.io.watermark
-  io.vec_ximm1q_user_ready := vximm1q_count.io.watermark
-  io.vec_ximm2q_user_ready := vximm2q_count.io.watermark
+  io.vec_cmdq_user_ready := vcmdq_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vec_ximm1q_user_ready := vximm1q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vec_ximm2q_user_ready := vximm2q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
 
   // fence
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
   // irq
-  irq.io.flush := xcpt.io.xcpt_to_vru.flush
+  irq.io.flush := xcpt.io.xcpt_to_vu.flush_irq
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -151,14 +150,14 @@ class vu extends Component
   // xcpt
   xcpt.io.xcpt <> io.xcpt
 
-  vcmdq.io.flush := xcpt.io.xcpt_to_vu.flush
-  vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush
-  vximm2q.io.flush := xcpt.io.xcpt_to_vu.flush
-  vxcntq.io.flush := xcpt.io.xcpt_to_vu.flush
+  vcmdq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+  vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+  vximm2q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+  vxcntq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
 
-  vcmdq_count.io.flush := xcpt.io.xcpt_to_vu.flush
-  vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush
-  vximm2q_count.io.flush := xcpt.io.xcpt_to_vu.flush
+  vcmdq_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+  vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
+  vximm2q_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
 
   // vxu
   vxu.io.vxu_cmdq.bits := vcmdq.io.deq.bits

@@ -130,31 +130,6 @@ object CheckCnt
   }
 }
 
-class maskstall extends Component
-{
-  val io = new Bundle()
-  {
-    val input = new io_vpaq().flip
-    val output = new io_vpaq()
-    val stall = Bool(INPUT)
-  }
-
-  io.output.valid := io.input.valid && !io.stall
-  io.output.bits := io.input.bits
-  io.input.ready := io.output.ready && !io.stall
-}
-
-object MaskStall
-{
-  def apply(deq: ioDecoupled[io_vpaq_bundle], stall: Bool) =
-  {
-    val ms = new maskstall
-    ms.io.input <> deq
-    ms.io.stall := stall
-    ms.io.output
-  }
-}
-
 class io_vpaq_to_xcpt_handler extends Bundle 
 {
   val vpaq_valid = Bool(OUTPUT)
@@ -260,7 +235,7 @@ class vuVMU_Address extends Component
     io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
 
     vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
-    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
+    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall2(vpfpaq.io.deq, io.stall)
     io.vaq <> vpaq_arb.io.out
 
     io.vpaq_do_enq := vvaq_tlb.io.ack
