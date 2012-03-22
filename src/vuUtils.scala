@@ -179,36 +179,11 @@ class maskstall[T <: Data](data: => T) extends Component
   io.input.ready := io.output.ready && !io.stall
 }
 
-class maskstall2[T <: Data](data: => T) extends Component
-{
-  val io = new Bundle()
-  {
-    val input = (new ioDecoupled()){ data }.flip
-    val output = (new ioDecoupled()){ data }
-    val stall = Bool(INPUT)
-  }
-
-  io.output.valid := io.input.valid && !io.stall
-  io.output.bits := io.input.bits
-  io.input.ready := io.output.ready && !io.stall
-}
-
 object MaskStall
 {
   def apply[T <: Data](deq: ioDecoupled[T], stall: Bool) =
   {
     val ms = new maskstall( deq.bits.clone )
-    ms.io.input <> deq
-    ms.io.stall := stall
-    ms.io.output
-  }
-}
-
-object MaskStall2
-{
-  def apply[T <: Data](deq: ioDecoupled[T], stall: Bool) =
-  {
-    val ms = new maskstall2( deq.bits.clone )
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output

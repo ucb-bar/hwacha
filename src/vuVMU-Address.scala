@@ -235,7 +235,7 @@ class vuVMU_Address extends Component
     io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
 
     vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
-    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall2(vpfpaq.io.deq, io.stall)
+    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
     io.vaq <> vpaq_arb.io.out
 
     io.vpaq_do_enq := vvaq_tlb.io.ack
