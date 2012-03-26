@@ -33,12 +33,14 @@ class Shifter extends Component
     Bits(0, 1), Array(
       (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1),
       (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
-      (io.fn(RG_VIU_FN) === viu_SRA) -> Bits(0,1)
+      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
+      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1)
     ))
 
-  val shift_in = Mux(
-    left, Reverse(io.in), 
-    Cat(Fill(32, ~trunc) & io.in(63,32), io.in(31,0)))
+  val shift_in_hi_32 = Mux(io.fn(RG_VIU_FN) === viu_SRA, Fill(32, io.in(31)), UFix(0,32))
+  val shift_in_hi = Mux(io.fn(RG_VIU_DW) === DW64, io.in(63,32), shift_in_hi_32)
+  val shift_in_r = Cat(shift_in_hi, io.in(31,0))
+  val shift_in = Mux(left, Reverse(shift_in_r), shift_in_r)
 
   val shift_out = (Cat(arith & shift_in(63), shift_in).toFix >> io.shamt)(63,0)
 
@@ -82,17 +84,18 @@ class vuVXU_Banked8_FU_alu extends Component
     (Cat(reg_in0(63, 0), sub).toUFix +
      Cat(reg_in1(63, 0) ^ Fill(64, sub), sub).toUFix)(64, 1)
 
-  val shamt = MuxCase(
-    UFix(0, 6), Array(
-      viu_DW(DW64) -> reg_in1(5,0).toUFix,
-      viu_DW(DW32) -> Cat(Bits(0, 1), reg_in1(4,0)).toUFix
-    ))
+  // SLL, SRL, SRA
+  val dw = reg_fn(RG_VIU_DW)
+  val sra = (reg_fn(RG_VIU_FN) === viu_SRA)
+  val shamt = Cat(reg_in1(5) & (dw === DW64), reg_in1(4,0)).toUFix
+  val shright = sra || (reg_fn(RG_VIU_FN) === viu_SRL)
+  val shin_hi_32 = Mux(sra, Fill(32, reg_in0(31)), UFix(0,32))
+  val shin_hi = Mux(dw === DW64, reg_in0(63,32), shin_hi_32)
+  val shin_r = Cat(shin_hi, reg_in0(31,0))
+  val shin = Mux(shright, shin_r, Reverse(shin_r))
+  val shout_r = (Cat(sra & shin_r(63), shin).toFix >> shamt)(63,0)
+  val shift_out = Mux(reg_fn(RG_VIU_FN) === viu_SLL, Reverse(shout_r), shout_r)
 
-  val shifter = new Shifter()
-  shifter.io.fn    := reg_fn
-  shifter.io.shamt := shamt
-  shifter.io.in    := reg_in0(63,0)
-  val shift_out     = shifter.io.out
 
   val ltu = (reg_in0.toUFix < reg_in1.toUFix)
   val lt = (reg_in0(63) === reg_in1(63)) & ltu | reg_in0(63) & ~reg_in1(63)
