@@ -41,7 +41,7 @@ class vuVXU_Banked8_Bank_Regfile extends Component
       Bits(4, SZ_BWPORT) -> io.viu_wdata
     ))
 
-  val rfile = Mem(256, io.wen, io.waddr.toUFix, wdata, resetVal = null)
+  val rfile = Mem(256, io.wen, io.waddr.toUFix, wdata, resetVal = null, cs = io.wen || io.ren)
   rfile.setReadLatency(1)
   rfile.setTarget('inst)
   val rdata_rf = Mux(Reg(io.ren), rfile(io.raddr), Bits(0)) 
