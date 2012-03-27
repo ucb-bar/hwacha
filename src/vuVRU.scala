@@ -145,7 +145,7 @@ class vuVRU extends Component
       }
       .elsewhen (setvl_val)
       {
-        vlen_reg := io.vec_pfximm1q.bits(RG_XCMD_VLEN).toUFix
+        vlen_reg := io.vec_pfximm1q.bits(RG_XIMM1_VLEN).toUFix
       }
       .elsewhen (cmd_val)
       {

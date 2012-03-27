@@ -13,6 +13,7 @@ class io_vf extends Bundle
   val stop = Bool(INPUT)
   val pc = Bits(SZ_ADDR, OUTPUT)
   val nxregs = Bits(SZ_REGCNT, OUTPUT)
+  val nfregs = Bits(SZ_REGCNT, OUTPUT)
   val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
   val numCnt_rtag = Bits(SZ_AIW_NUMCNT, OUTPUT)
   val stride = Bits(SZ_REGLEN, OUTPUT)
@@ -277,7 +278,13 @@ class vuVXU_Issue_VT extends Component
   ))
 
   val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
-  val rtype_vs::rtype_vt::rtype_vr::rtype_vd::itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0
+  val rtype = cs0.slice(0, 4)
+  val itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0.slice(4, cs0.length)
+
+  def decode_rtype(x: Bits): Bits = x(1)
+  def active_rtype(x: Bits): Bool = x(0).toBool
+  val rtype_vs :: rtype_vt :: rtype_vr :: rtype_vd :: Nil = rtype.map(x => decode_rtype(x))
+  val vs_active :: vt_active :: vr_active :: vd_active :: Nil = rtype.map(x => active_rtype(x))
 
   val unmasked_valid_viu = valid(6)
   val unmasked_valid_vau0 = valid(5)
@@ -383,7 +390,11 @@ class vuVXU_Issue_VT extends Component
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
-  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid
+  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid || decode_stop
+  io.decoded.vs_active := vs_active
+  io.decoded.vt_active := vt_active
+  io.decoded.vr_active := vr_active
+  io.decoded.vd_active := vd_active
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float
@@ -391,9 +402,14 @@ class vuVXU_Issue_VT extends Component
   io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
 
+  val illegal_vd = vd_active && (vd(4,0) >= io.vf.nfregs && rtype_vd || vd(4,0) >= io.vf.nxregs && !rtype_vd)
+  val illegal_vt = vt_active && (vt(4,0) >= io.vf.nfregs && rtype_vt || vt(4,0) >= io.vf.nxregs && !rtype_vt)
+  val illegal_vs = vs_active && (vs(4,0) >= io.vf.nfregs && rtype_vs || vs(4,0) >= io.vf.nxregs && !rtype_vs)
+  val illegal_vr = vr_active && (vs(4,0) >= io.vf.nfregs && rtype_vr || vr(4,0) >= io.vf.nxregs && !rtype_vr)
+
   io.irq.ma_inst := io.vf.active && if_reg_pc(1,0) != Bits(0)
   io.irq.fault_inst := io.vf.active && io.vitlb_exception
-  io.irq.illegal := io.vf.active && (~unmasked_valid && ~decode_stop)
+  io.irq.illegal := io.vf.active && (~unmasked_valid && ~decode_stop || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
   io.irq.pc_if := if_reg_pc
   io.irq.pc_id := id_reg_pc
 }

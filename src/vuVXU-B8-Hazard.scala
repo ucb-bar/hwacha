@@ -523,8 +523,8 @@ class vuVXU_Banked8_Hazard extends Component
 
   val tvec_dhazard =
     Cat(
-      ~io.tvec_regid_imm.vt_zero & tvec_dhazard_vt & io.tvec_dhazard.vt,
-      tvec_dhazard_vd & io.tvec_dhazard.vd
+      ~io.tvec_regid_imm.vt_zero & tvec_dhazard_vt & io.tvec_dhazard.vt & io.tvec_regid_imm.vt_active,
+      tvec_dhazard_vd & io.tvec_dhazard.vd & io.tvec_regid_imm.vd_active
     )
 
   val tvec_shazard =
@@ -613,10 +613,10 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_dhazard =
     Cat(
-      ~io.vt_regid_imm.vs_zero & vt_dhazard_vs & io.vt_dhazard.vs,
-      ~io.vt_regid_imm.vt_zero & vt_dhazard_vt & io.vt_dhazard.vt,
-      ~io.vt_regid_imm.vr_zero & vt_dhazard_vr & io.vt_dhazard.vr,
-      vt_dhazard_vd & io.vt_dhazard.vd
+      ~io.vt_regid_imm.vs_zero & vt_dhazard_vs & io.vt_dhazard.vs & io.vt_regid_imm.vs_active,
+      ~io.vt_regid_imm.vt_zero & vt_dhazard_vt & io.vt_dhazard.vt & io.vt_regid_imm.vt_active,
+      ~io.vt_regid_imm.vr_zero & vt_dhazard_vr & io.vt_dhazard.vr & io.vt_regid_imm.vr_active,
+      vt_dhazard_vd & io.vt_dhazard.vd & io.vt_regid_imm.vd_active
     )
 
   val vt_shazard =

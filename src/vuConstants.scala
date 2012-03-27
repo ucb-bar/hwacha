@@ -20,12 +20,12 @@ object Constants
   val SZ_XCMD_VS = 6
   val RG_XCMD_CMCODE = (19,12)
   val RG_XCMD_VD = (11,6)
-  val RG_XCMD_VS = (5,0)
-  val RG_XCMD_VLEN = (10,0)
-  val RG_XCMD_NXREGS = (16,11)
-  val RG_XCMD_NFREGS = (22,17)
-  val RG_XCMD_BACTIVE = (30,23)
-  val RG_XCMD_BCNT = (34,31)
+  val RG_XCMD_VT = (5,0)
+  val RG_XIMM1_VLEN = (10,0)
+  val RG_XIMM1_NXREGS = (16,11)
+  val RG_XIMM1_NFREGS = (22,17)
+  val RG_XIMM1_BACTIVE = (30,23)
+  val RG_XIMM1_BCNT = (34,31)
 
   val SZ_VIMM      = 64
   val SZ_XIMM      = 64
@@ -125,9 +125,9 @@ object Constants
   val ML = Bits("b10", 2)
   val MI = Bits("b11", 2)
 
-  val R_ = Bits("b0", 1)
-  val RX = Bits("b0", 1)
-  val RF = Bits("b1", 1)
+  val R_ = Bits("b00", 2)
+  val RX = Bits("b01", 2)
+  val RF = Bits("b11", 2)
 
   val ENUM_I = 4
   val imm_0 :: imm_I :: imm_B :: imm_L :: Nil = Enum(ENUM_I){UFix()}
