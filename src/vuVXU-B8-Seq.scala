@@ -191,8 +191,8 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_numCnt_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_AIW_NUMCNT) } }
   val array_aiw_cnt = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_VLEN) } }
   val array_aiw_pc_next = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
-  val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(){ Bool() } }
-  val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(){ Bool() } }
+  val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
+  val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
   array_val := next_val.toBits
   array_stall := next_stall.toBits

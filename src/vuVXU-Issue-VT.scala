@@ -77,12 +77,18 @@ class vuVXU_Issue_VT extends Component
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
 
+  val stop = Wire(){ Bool() }
+
   when(io.flush) 
   {
     if_reg_pc := Bits(0,SZ_ADDR)
     imm1_rtag := Bits(0,SZ_AIW_IMM1)
     numCnt_rtag := Bits(0,SZ_AIW_CMD)
-  } 
+  }
+  .elsewhen (stop)
+  {
+    if_reg_pc := Bits(0,SZ_ADDR)
+  }
   .elsewhen (io.vf.fire) 
   { 
     if_reg_pc := io.vf.pc 
@@ -114,6 +120,10 @@ class vuVXU_Issue_VT extends Component
     id_reg_pc := Bits(0,SZ_ADDR)
     id_reg_inst := Bits(0,SZ_INST)
     id_pc_next := Bits(0,SZ_ADDR)
+  }
+  .elsewhen (stop)
+  {
+    id_reg_inst := NOP
   }
   .elsewhen (io.vf.fire)
   {
@@ -280,6 +290,8 @@ class vuVXU_Issue_VT extends Component
   val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
   val rtype = cs0.slice(0, 4)
   val itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0.slice(4, cs0.length)
+
+  stop := decode_stop
 
   def decode_rtype(x: Bits): Bits = x(1)
   def active_rtype(x: Bits): Bool = x(0).toBool
