@@ -291,7 +291,7 @@ class vuVXU_Issue_VT extends Component
   val rtype = cs0.slice(0, 4)
   val itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0.slice(4, cs0.length)
 
-  stop := decode_stop
+  stop := decode_stop && io.vf.active
 
   def decode_rtype(x: Bits): Bits = x(1)
   def active_rtype(x: Bits): Bool = x(0).toBool
@@ -323,7 +323,7 @@ class vuVXU_Issue_VT extends Component
     unmasked_valid_vau0 || unmasked_valid_vau1 || unmasked_valid_vau2 ||
     unmasked_valid_amo || unmasked_valid_utld || unmasked_valid_utst
 
-  io.vf.stop := decode_stop
+  io.vf.stop := decode_stop && io.vf.active
 
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
