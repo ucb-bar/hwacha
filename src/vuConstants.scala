@@ -142,8 +142,8 @@ object Constants
   val FPS = Bits("b0", 1)
   val FPD = Bits("b1", 1)
 
-  val ENUM_VIU = 22
-  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: Nil = Enum(ENUM_VIU){Bits()}
+  val ENUM_VIU = 28
+  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = Enum(ENUM_VIU){Bits()}
   val SZ_VIU_OP = viu_ADD.getWidth
   val viu_X = Bits(0, SZ_VIU_OP)
   val SZ_VIU_FP = 1
@@ -188,6 +188,7 @@ object Constants
   val SZ_VAU2 = vau2_CLTF.getWidth
   val vau2_X = Bits(0, SZ_VAU2)
 
+  val SZ_VBR_FN = 11
   val SZ_VIU_FN  = 11
   val SZ_VAU0_FN = 3
   val SZ_VAU1_FN = 7
@@ -266,6 +267,11 @@ object Constants
 
   val DFMA_STAGES = 6
   val SFMA_STAGES = 4
+
+  // PVFB Constants
+  val NUM_PVFB = 1
+  val WIDTH_PVFB = 32
+  val DEPTH_PVFB = 32
 }
 
 object Commands

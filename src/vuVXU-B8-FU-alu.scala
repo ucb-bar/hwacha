@@ -61,6 +61,7 @@ class vuVXU_Banked8_FU_alu extends Component
     val in0        = Bits(SZ_DATA, INPUT)
     val in1        = Bits(SZ_DATA, INPUT)
     val out        = Bits(SZ_DATA, OUTPUT)
+    val branch_result = Bool(OUTPUT)
   }
 
   def viu_FN(fn: Bits*) = fn.toList.map(x => {reg_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
@@ -73,6 +74,7 @@ class vuVXU_Banked8_FU_alu extends Component
   val reg_in1    = Reg(io.in1)
   val reg_mask   = Reg(){Bits(width = 1)}
   val reg_result = Reg(){Bits(width = 65)}
+  val reg_branch_result = Reg(){ Bool() }
 
   val sub = MuxCase(
     Bits(0, 1), Array(
@@ -99,6 +101,7 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val ltu = (reg_in0.toUFix < reg_in1.toUFix)
   val lt = (reg_in0(63) === reg_in1(63)) & ltu | reg_in0(63) & ~reg_in1(63)
+  val eq = reg_in0 === reg_in1
 
   val comp_sp = new recodedFloat32Compare(24,8)
   comp_sp.io.a := reg_in0(32,0)
@@ -176,9 +179,21 @@ class vuVXU_Banked8_FU_alu extends Component
       viu_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
     ))
 
+  val branch_result = MuxCase(
+    Bool(false), Array(
+      viu_FN(viu_BR_EQ) -> eq,
+      viu_FN(viu_BR_NE) -> !eq,
+      viu_FN(viu_BR_LT) -> lt,
+      viu_FN(viu_BR_LTU) -> ltu,
+      viu_FN(viu_BR_GE) -> !lt,
+      viu_FN(viu_BR_GEU) -> !ltu,
+    ))
+
   reg_mask   := next_mask
   reg_result := next_result
+  reg_branch_result := branch_result
 
   io.wen_masked := io.wen & reg_mask
   io.out        := reg_result
+  io.branch_result := reg_branch_result
 }

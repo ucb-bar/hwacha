@@ -30,6 +30,7 @@ class io_vxu_issue_fu extends Bundle
 
 class io_vxu_issue_fn extends Bundle
 {
+  val vbr = Bits(width = SZ_VBR_FN)
   val viu = Bits(width = SZ_VIU_FN)
   val vau0 = Bits(width = SZ_VAU0_FN)
   val vau1 = Bits(width = SZ_VAU1_FN)
@@ -71,6 +72,7 @@ class io_vxu_issue_regid_imm extends Bundle
 
 class io_vxu_issue_op extends Bundle
 {
+  val r2wm = Bool()
   val r1w1 = Bool()
   val r2w1 = Bool()
   val r3w1 = Bool()

@@ -9,8 +9,14 @@ class io_vxu_hazard_to_issue extends Bundle
   val pending_memop = Bool()
 }
 
+class io_vxu_hazard_to_pvfb extends Bundle
+{
+  val pending_branch = Bool()
+}
+
 class io_vxu_hazard extends Bundle
 {
+  val hazard_to_pvfb = new io_vxu_hazard_to_pvfb().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
   val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
   val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
@@ -110,7 +116,11 @@ class vuVXU_Banked8_Hazard extends Component
     next_rport_vsu(i) := array_rport_vsu(i)
     next_rport_vgu(i) := array_rport_vgu(i)
   }
-
+  
+  when (io.fire.vbr) {
+    next_rport_val.write(next_ptr2, Bool(true))
+    next_rport_val.write(next_ptr3, Bool(true))
+  } 
   when (io.fire.viu)
   {
     next_rport_val.write(next_ptr2, Bool(true))
@@ -233,15 +243,21 @@ class vuVXU_Banked8_Hazard extends Component
 
   // vt wptr calculation
 
+  val vt_vbr_incr = UFix(INT_STAGES,SZ_LGBANK+1) + UFix(2, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
   val vt_viu_incr = UFix(INT_STAGES,SZ_LGBANK+1) + UFix(1, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
   val vt_vau0_incr = UFix(IMUL_STAGES,SZ_LGBANK+1) + UFix(2, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
   val vt_vau1_incr = UFix(FMA_STAGES,SZ_LGBANK+1) + UFix(2, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
   val vt_vau2_incr = UFix(FCONV_STAGES,SZ_LGBANK+1) + UFix(1, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
 
+  val vt_vbrwprt = new vuVXU_Pointer()
   val vt_viuwptr = new vuVXU_Pointer()
   val vt_vau0wptr = new vuVXU_Pointer()
   val vt_vau1wptr = new vuVXU_Pointer()
   val vt_vau2wptr = new vuVXU_Pointer()
+
+  vt_vbrwptr.io.ptr := reg_ptr
+  vt_vbrwptr.io.incr := vt_vbr_incr
+  vt_vbrwptr.io.bcnt <> io.issue_to_hazard.bcnt
 
   vt_viuwptr.io.ptr := reg_ptr
   vt_viuwptr.io.incr := vt_viu_incr
@@ -259,6 +275,7 @@ class vuVXU_Banked8_Hazard extends Component
   vt_vau2wptr.io.incr := vt_vau2_incr
   vt_vau2wptr.io.bcnt <> io.issue_to_hazard.bcnt
 
+  val vt_vbr_wptr = vt_vbrwptr.io.nptr
   val vt_viu_wptr1 = vt_viuwptr.io.nptr
   val vt_vau0_wptr = vt_vau0wptr.io.nptr
   val vt_vau1_wptr2 = vt_vau1wptr.io.nptr
@@ -306,6 +323,9 @@ class vuVXU_Banked8_Hazard extends Component
   val vau1_wptr = vt_vau1_wptr
   val vau2_wptr = vt_vau2_wptr
 
+  val array_wmask_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_wmask_head = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  
   val array_wport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wport_head = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wport_vau0 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
@@ -313,6 +333,9 @@ class vuVXU_Banked8_Hazard extends Component
   val array_wport_vau2 = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wport_vlu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wport_vd = Vec(SZ_BANK){ Reg(){ Bits(width = SZ_BREGLEN) } }
+
+  val next_wmask_val = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wmask_head = Vec(SZ_BANK){ Wire(){ Bool() } }
 
   val next_wport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_wport_head = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -324,6 +347,9 @@ class vuVXU_Banked8_Hazard extends Component
 
   for (i <- 0 until SZ_BANK)
   {
+    array_wmask_val(i) := next_wmask_val(i)
+    array_wmask_head(i) := next_wmask_head(i)
+
     array_wport_val(i) := next_wport_val(i)
     array_wport_head(i) := next_wport_head(i)
     array_wport_vau0(i) := next_wport_vau0(i)
@@ -335,6 +361,9 @@ class vuVXU_Banked8_Hazard extends Component
 
   for (i <- 0 until SZ_BANK)
   {
+    next_wmask_val(i) := array_wmask_val(i)
+    next_wmask_head(i) := array_wmask_head(i)
+    
     next_wport_val(i) := array_wport_val(i)
     next_wport_head(i) := array_wport_head(i)
     next_wport_vau0(i) := array_wport_vau0(i)
@@ -344,6 +373,11 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vd(i) := array_wport_vd(i)
   }
 
+  when (io.fire.vbr)
+  {
+    next_wmask_val.write(vbr_wptr, Bool(true))
+    next_wmask_head.wite(vbr_wptr, Bool(true))
+  }
   when (io.fire.viu)
   {
     next_wport_val.write(viu_wptr, Bool(true))
@@ -395,11 +429,15 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.expand_to_hazard.wen)
   {
+    next_wmask_head.write(reg_ptr, Bool(false))
+    
     next_wport_head.write(reg_ptr, Bool(false))
   }
 
   when (io.lane_to_hazard.wlast)
   {
+    next_wmask_val.write(reg_ptr, Bool(false))
+
     next_wport_val.write(reg_ptr, Bool(false))
     next_wport_vau0.write(reg_ptr, Bool(false))
     next_wport_vau1.write(reg_ptr, Bool(false))
@@ -411,6 +449,9 @@ class vuVXU_Banked8_Hazard extends Component
   {
     for (i <- 0 until SZ_BANK)
       {
+        next_wmask_val(i) := Bool(false)
+        next_wmask_head(i) := Bool(false)
+
         next_wport_val(i)  := Bool(false)
         next_wport_head(i) := Bool(false)
         next_wport_vau0(i) := Bool(false)
@@ -435,7 +476,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val(i) := array_sport_val(i)
   }
 
-  when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
+  when (io.fire.vbr || io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
     next_sport_val.write(next_ptr1, Bool(true))
   }
@@ -488,6 +529,9 @@ class vuVXU_Banked8_Hazard extends Component
 
   // checking any pending memory ops for fences
   io.hazard_to_issue.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
+
+  // checking any pending branch ops 
+  io.hazard_to_pvfb.pending_branch := array_wmask_val.toBits.orR
 
   // hazard check logic for tvec
   val tvec_comp_vt =
@@ -604,6 +648,7 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_dhazard_vr = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vr).orR
   val vt_dhazard_vd = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vd).orR
 
+  val vt_bhazard_r2wm = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wmask_val.ready(vbr_wptr)
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r3w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_rport_val.read(next_ptr4) | array_wport_val.read(vt_wptr)
@@ -631,6 +676,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_seqhazard =
     Cat(
+      io.vt_valid.vbr & seqhazard_1slot,
       io.vt_valid.viu & seqhazard_1slot,
       io.vt_valid.vau0 & seqhazard_1slot,
       io.vt_valid.vau1 & seqhazard_1slot,
@@ -642,6 +688,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_bhazard =
     Cat(
+      vt_bhazard_r2wm & io.vt_bhzard.r2wm,
       vt_bhazard_r1w1 & io.vt_bhazard.r1w1,
       vt_bhazard_r2w1 & io.vt_bhazard.r2w1,
       vt_bhazard_r3w1 & io.vt_bhazard.r3w1,

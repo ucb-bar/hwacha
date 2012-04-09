@@ -334,6 +334,7 @@ class vuVXU_Issue_TVEC extends Component
 // ISSUE                                                                   \\
 //-------------------------------------------------------------------------\\
 
+  io.valid.vbr := Bool(false)
   io.valid.viu := valid_common && valid(0)
   io.valid.vau0 := Bool(false)
   io.valid.vau1 := Bool(false)
@@ -357,6 +358,7 @@ class vuVXU_Issue_TVEC extends Component
   io.shazard.vlu := shazard(1)
   io.shazard.vsu := shazard(0)
 
+  io.bhazard.r2wm := Bool(false)
   io.bhazard.r1w1 := bhazard(0)
   io.bhazard.r2w1 := Bool(false)
   io.bhazard.r3w1 := Bool(false)
@@ -366,6 +368,7 @@ class vuVXU_Issue_TVEC extends Component
   io.bhazard.vld := bhazard(1)
   io.bhazard.vst := bhazard(2)
 
+  io.fn.vbr := Bits(0, SZ_VBR_FN)
   io.fn.viu := Cat(M0,vmsrc,DW64,FP_,viu_MOV)
   io.fn.vau0 := Bits(0,SZ_VAU0_FN)
   io.fn.vau1 := Bits(0,SZ_VAU1_FN)
@@ -400,6 +403,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
+  io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))
 
   val illegal_vd = vd_active && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
   val illegal_vt = vt_active && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)
