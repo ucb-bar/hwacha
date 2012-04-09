@@ -370,6 +370,11 @@ class vuVXU_Banked8_Hazard extends Component
     next_wport_vd(i) := array_wport_vd(i)
   }
 
+  when (io.fire.vbr)
+  {
+    next_wmask_val.write(vbr_wptr, Bool(true))
+    next_wmask_head.wite(vbr_wptr, Bool(true))
+  }
   when (io.fire.viu)
   {
     when(isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
@@ -429,6 +434,8 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.expand_to_hazard.wen)
   {
+    next_wmask_head.write(reg_ptr, Bool(false))
+    
     next_wport_head.write(reg_ptr, Bool(false))
   }
 
@@ -444,6 +451,8 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.lane_to_hazard.wlast)
   {
+    next_wmask_val.write(reg_ptr, Bool(false))
+
     next_wport_val.write(reg_ptr, Bool(false))
     next_wport_vau0.write(reg_ptr, Bool(false))
     next_wport_vau1.write(reg_ptr, Bool(false))
@@ -482,7 +491,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val(i) := array_sport_val(i)
   }
 
-  when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
+  when (io.fire.vbr || io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
     next_sport_val.write(next_ptr1, Bool(true))
   }
@@ -682,6 +691,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_seqhazard =
     Cat(
+      io.vt_valid.vbr & seqhazard_1slot,
       io.vt_valid.viu & seqhazard_1slot,
       io.vt_valid.vau0 & seqhazard_1slot,
       io.vt_valid.vau1 & seqhazard_1slot,

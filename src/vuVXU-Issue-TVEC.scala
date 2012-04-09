@@ -334,6 +334,7 @@ class vuVXU_Issue_TVEC extends Component
 // ISSUE                                                                   \\
 //-------------------------------------------------------------------------\\
 
+  io.valid.vbr := Bool(false)
   io.valid.viu := valid_common && valid(0)
   io.valid.vau0 := Bool(false)
   io.valid.vau1 := Bool(false)
@@ -367,6 +368,7 @@ class vuVXU_Issue_TVEC extends Component
   io.bhazard.vld := bhazard(1)
   io.bhazard.vst := bhazard(2)
 
+  io.fn.vbr := Bits(0, SZ_VBR_FN)
   io.fn.viu := Cat(M0,vmsrc,DW64,FP_,viu_MOV)
   io.fn.vau0 := Bits(0,SZ_VAU0_FN)
   io.fn.vau1 := Bits(0,SZ_VAU1_FN)
