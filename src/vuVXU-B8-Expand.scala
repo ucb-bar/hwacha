@@ -86,6 +86,7 @@ class vuVXU_Banked8_Expand extends Component
   val next_raddr = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_roplen = Vec(SHIFT_BUF_READ){ Wire(){Bits(width=SZ_BOPL)} }
   val next_rblen = VecBuf(SHIFT_BUF_READ){ Vec(SZ_BRPORT){ Wire(){Bool()} } }
+  val next_rmask = Vec(SHIFT_BUF_READ){ Wire(){ Bits(width=SZ_BANK) } }
 
   val reg_ren = Vec(SHIFT_BUF_READ){ Reg(resetVal=Bool(false))}
   val reg_rlast = Vec(SHIFT_BUF_READ){ Reg(){ Bool() } }
@@ -93,6 +94,7 @@ class vuVXU_Banked8_Expand extends Component
   val reg_raddr = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BREGLEN)} }
   val reg_roplen = Vec(SHIFT_BUF_READ){ Reg(){Bits(width=SZ_BOPL)} }
   val reg_rblen = VecBuf(SHIFT_BUF_READ){ Vec(SZ_BRPORT){ Reg(){Bool()} } }
+  val reg_rmask = Vec(SHIFT_BUF_READ){ Reg(){ Bits(width=SZ_BANK) } }
 
   for (i <- 0 until SHIFT_BUF_READ){
     reg_ren(i) := next_ren(i)
@@ -102,6 +104,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_roplen(i) := next_roplen(i)
     for(j <- 0 until SZ_BRPORT)
       reg_rblen(i)(j) := next_rblen(i)(j)
+    reg_rmask(i) := next_rmask(i)
   }
 
   for (i <- 0 until SHIFT_BUF_READ-1)
@@ -113,6 +116,7 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(i) := reg_roplen(i+1)
     for(j <- 0 until SZ_BRPORT)
       next_rblen(i)(j) := reg_rblen(i+1)(j)
+    next_rmask(i) := reg_rmask(i+1)
   }
 
   next_ren(SHIFT_BUF_READ-1) := Bool(false)
@@ -122,6 +126,7 @@ class vuVXU_Banked8_Expand extends Component
   next_roplen(SHIFT_BUF_READ-1) := Bits("d0", 2)
   for(i <- 0 until SZ_BRPORT)
     next_rblen(SHIFT_BUF_READ-1)(i) := Bool(false)
+  next_rmask(SHIFT_BUF_READ-1) := Bits(0,SZ_BANK)
 
   when (io.seq.viu) 
   {
@@ -132,6 +137,7 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(0) := Bits("b01", 2)
     for(i <- 0 until SZ_BRPORT)
       next_rblen(0)(i) := Bool(false)
+    next_rmask(0) := io.seq_regid_imm.mask
 
     when (io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
     {
@@ -142,6 +148,7 @@ class vuVXU_Banked8_Expand extends Component
       next_roplen(1) := Bits("b00", 2)
       for(i <- 0 until SZ_BRPORT)
         next_rblen(1)(i) := Bool(false)
+      next_rmask(1) := io.seq_regid_imm.mask
     }
     when (io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR))
     {
@@ -157,6 +164,7 @@ class vuVXU_Banked8_Expand extends Component
     next_roplen(0) := Bits("b01", 2)
     for(i <- 0 until SZ_BRPORT)
       next_rblen(0)(i) := Bool(false)
+    next_rmask(0) := io.seq_regid_imm.mask
     
     next_ren(1) := Bool(true)
     next_rlast(1) := io.seq_to_expand.last
@@ -168,6 +176,7 @@ class vuVXU_Banked8_Expand extends Component
         next_rblen(1)(i) := Bool(true)
       else
         next_rblen(1)(i) := Bool(false)
+    next_rmask(1) := io.seq_regid_imm.mask
 
     when (io.seq_regid_imm.vs_zero) { next_rblen(1)(0) := Bool(false) }
     when (io.seq_regid_imm.vt_zero) { next_rblen(1)(1) := Bool(false) }
@@ -183,6 +192,7 @@ class vuVXU_Banked8_Expand extends Component
       next_roplen(0) := Bits("b10", 2)
       for(i <- 0 until SZ_BRPORT)
         next_rblen(0)(i) := Bool(false)
+      next_rmask(0) := io.seq_regid_imm.mask
         
       next_ren(1) := Bool(true)
       next_rlast(1) := io.seq_to_expand.last
@@ -191,6 +201,7 @@ class vuVXU_Banked8_Expand extends Component
       next_roplen(1) := Bits("b01", 2)
       for(i <- 0 until SZ_BRPORT)
         next_rblen(1)(i) := Bool(false)
+      next_rmask(1) := io.seq_regid_imm.mask
       
       next_ren(2) := Bool(true)
       next_rlast(2) := io.seq_to_expand.last
@@ -202,6 +213,7 @@ class vuVXU_Banked8_Expand extends Component
           next_rblen(2)(i) := Bool(true)
         else
           next_rblen(2)(i) := Bool(false)
+      next_rmask(2) := io.seq_regid_imm.mask
 
 
       when (io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
@@ -217,6 +229,7 @@ class vuVXU_Banked8_Expand extends Component
       next_roplen(0) := Bits("b10", 2)
       for(i <- 0 until SZ_BRPORT)
         next_rblen(0)(i) := Bool(false)
+      next_rmask(0) := io.seq_regid_imm.mask
       
       next_ren(1) := Bool(true)
       next_rlast(1) := io.seq_to_expand.last
@@ -229,6 +242,7 @@ class vuVXU_Banked8_Expand extends Component
         else
           next_rblen(1)(i) := Bool(false)
       }
+      next_rmask(1) := io.seq_regid_imm.mask
 
       when (io.seq_regid_imm.vs_zero) { next_rblen(2)(2) := Bool(false) }
       when (io.seq_regid_imm.vt_zero) { next_rblen(2)(4) := Bool(false) }
@@ -246,6 +260,7 @@ class vuVXU_Banked8_Expand extends Component
         next_rblen(0)(i) := Bool(true)
       else
         next_rblen(0)(i) := Bool(false) 
+    next_rmask(0) := io.seq_regid_imm.mask
 
     when (io.seq_regid_imm.vs_zero) { next_rblen(0)(5) := Bool(false) }
   }
@@ -266,6 +281,7 @@ class vuVXU_Banked8_Expand extends Component
 
       when (io.seq_regid_imm.vs_zero) { next_rblen(0)(6) := Bool(false) }
     }
+    next_rmask(0) := io.seq_regid_imm.mask
   }
   when (io.seq.vsdq)
   {
@@ -279,6 +295,7 @@ class vuVXU_Banked8_Expand extends Component
         next_rblen(0)(i) := Bool(true)
       else
         next_rblen(0)(i) := Bool(false)
+    next_rmask(0) := io.seq_regid_imm.mask
 
     when (io.seq_regid_imm.vt_zero) { next_rblen(0)(7) := Bool(false) }
   }
@@ -288,12 +305,14 @@ class vuVXU_Banked8_Expand extends Component
   val next_wcnt = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BVLEN)} }
   val next_waddr = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_wsel = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
+  val next_wmask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
 
   val reg_wen = Vec(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
   val reg_wlast = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
   val reg_wcnt = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
   val reg_waddr = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
   val reg_wsel = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
+  val reg_wmask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
 
   for (i <- 0 until SHIFT_BUF_WRITE)
   {
@@ -302,6 +321,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_wcnt(i) := next_wcnt(i)
     reg_waddr(i) := next_waddr(i)
     reg_wsel(i) := next_wsel(i)
+    reg_wmask(i) := next_wmask(i)
   }
 
   val viu_wptr = 
@@ -325,6 +345,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wcnt(i) := reg_wcnt(i+1)
     next_waddr(i) := reg_waddr(i+1)
     next_wsel(i) := reg_wsel(i+1)
+    next_wmask(i) := reg_wmask(i+1)
   }
 
   next_wen(SHIFT_BUF_WRITE-1) := Bool(false)
@@ -332,6 +353,7 @@ class vuVXU_Banked8_Expand extends Component
   next_wcnt(SHIFT_BUF_WRITE-1) := Bits("d0", 3)
   next_waddr(SHIFT_BUF_WRITE-1) := Bits("d0", 8)
   next_wsel(SHIFT_BUF_WRITE-1) := Bits("d0", 3)
+  next_wmask(SHIFT_BUF_WRITE-1) := Bits(0,SZ_BANK)
       
   when (io.seq.viu)
   {
@@ -339,7 +361,14 @@ class vuVXU_Banked8_Expand extends Component
     next_wlast.write(viu_wptr, io.seq_to_expand.last)
     next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt)
     next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
-    next_wsel.write(viu_wptr, Bits("d4", 3))
+    when (isVIUBranch(io.seq_fn.viu) )
+    {
+
+    }
+    .otherwise 
+    {
+      next_wsel.write(viu_wptr, Bits("d4", 3))
+    }
   }
   when (io.seq.vau0)
   {

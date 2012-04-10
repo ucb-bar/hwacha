@@ -152,6 +152,8 @@ object Constants
   val SZ_VIU_T0 = 2
   val SZ_VIU_T = SZ_VIU_T1 + SZ_VIU_T0
 
+  def isVIUBranch(viu: Bits) = viu >= viu_BNE && viu <= VIU_BGEU
+
   // in the decode table
   val ENUM_VAU0 = 4
   val vau0_M :: vau0_MH :: vau0_MHSU :: vau0_MHU :: Nil = Enum(ENUM_VAU0) { Bits() }
@@ -272,6 +274,8 @@ object Constants
   val NUM_PVFB = 1
   val WIDTH_PVFB = 32
   val DEPTH_PVFB = 32
+  val SZ_MASK = log2up(WIDTH_PVFB)
+  val SZ_BMASK = log2up(NUM_PVFB * WIDTH_PVFB / SZ_BANK)
 }
 
 object Commands

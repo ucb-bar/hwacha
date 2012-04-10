@@ -101,7 +101,7 @@ class PVFB extends Component {
     next_valid := Bool(true)
   }
 
-  next_pc := reg_pc + UFix(4)
+  next_pc := reg_pc
   next_mask := reg_mask
   when (reg_do_deq)
   {
@@ -112,6 +112,10 @@ class PVFB extends Component {
   {
     next_pc := io.issueToPVFB.pc
     next_mask := Fill(WIDTH_PVFB, Bits(1,1))
+  }
+  when (io.issueToPVFB.ready)
+  {
+    next_pc := reg_pc + UFix(4)
   }
 
   val pc = Mux(reg_do_deq, pcRam_dout, reg_pc)

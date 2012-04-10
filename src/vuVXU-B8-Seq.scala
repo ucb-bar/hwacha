@@ -39,6 +39,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val imm2 = Bits(width = SZ_XIMM2)
   val utmemop = Bool()
   val aiw = new io_vxu_aiw_bundle()
+  val mask = Bits(width=SZ_BANK)
 }
 
 class io_vxu_seq_to_hazard extends Bundle
@@ -155,6 +156,9 @@ class vuVXU_Banked8_Seq extends Component
   val next_aiw_update_imm1 = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_aiw_update_numCnt = Vec(SZ_BANK){ Wire(){ Bool() } }
 
+  val next_mask = Vec(SZ_BANK){ Wire(){ Bits(width=WIDTH_PVFB) } }
+  val next_mask_ptr = Vec(SZ_BANK){ Wire(){ UFix(width=SZ_MASK) } }
+
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
   val array_stall = Reg(resetVal = Bits(0, SZ_BANK))
   val array_last = Reg(resetVal = Bits(0, SZ_BANK))
@@ -194,6 +198,9 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
   val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
+  val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
+  val array_mask_ptr = Vec(SZ_BANK){ Reg(){ UFix(width=SZ_MASK) } }
+
   array_val := next_val.toBits
   array_stall := next_stall.toBits
   array_last := next_last.toBits
@@ -232,6 +239,9 @@ class vuVXU_Banked8_Seq extends Component
   array_aiw_pc_next := next_aiw_pc_next
   array_aiw_update_imm1 := next_aiw_update_imm1
   array_aiw_update_numCnt := next_aiw_update_numCnt
+
+  array_mask := next_mask
+  array_mask_ptr := next_mask_ptr
 
   val last = io.issue_to_seq.vlen < io.issue_to_seq.bcnt
 
@@ -274,6 +284,9 @@ class vuVXU_Banked8_Seq extends Component
   next_aiw_update_imm1 := array_aiw_update_imm1
   next_aiw_update_numCnt := array_aiw_update_numCnt
 
+  next_mask := array_mask
+  next_mask_ptr := array_mask_ptr
+
   when (io.fire.viu)
   {
     next_val(next_ptr1) := Bool(true)
@@ -288,6 +301,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_vt(next_ptr1) := io.fire_regid_imm.vt
     next_vd(next_ptr1) := io.fire_regid_imm.vd
+    next_vm(next_ptr1) := io.fire_regid_imm.vm
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
     next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
@@ -297,6 +311,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau0)
@@ -320,6 +337,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau1)
@@ -345,6 +365,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau2)
@@ -366,6 +389,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.amo)
@@ -382,6 +408,9 @@ class vuVXU_Banked8_Seq extends Component
     // should always write 0, amo's don't take immediates
     next_imm(next_ptr1) := Bits(0)
 
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
+
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vsdq(next_ptr2) := Bool(true)
@@ -391,6 +420,9 @@ class vuVXU_Banked8_Seq extends Component
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
     next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_mem(next_ptr2) := io.fire_regid_imm.mem
+
+    next_mask(next_ptr2) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
 
     next_val(next_ptr3) := Bool(true)
     next_last(next_ptr3) := last
@@ -407,6 +439,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr3) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr3) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr3) := Bool(true)
+
+    next_mask(next_ptr3) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr3) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.utld)
@@ -421,6 +456,9 @@ class vuVXU_Banked8_Seq extends Component
     next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -437,6 +475,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
+
+    next_mask(next_ptr2) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.utst)
@@ -451,6 +492,9 @@ class vuVXU_Banked8_Seq extends Component
     next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -469,6 +513,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
+
+    next_mask(next_ptr2) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vld)
@@ -481,6 +528,9 @@ class vuVXU_Banked8_Seq extends Component
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -498,6 +548,9 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
+
+    next_mask(next_ptr2) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vst)
@@ -510,6 +563,9 @@ class vuVXU_Banked8_Seq extends Component
     next_mem(next_ptr1) := io.fire_regid_imm.mem 
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
+
+    next_mask(next_ptr1) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -529,16 +585,23 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
+
+    next_mask(next_ptr2) := io.fire_regid_imm.mask
+    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
+
+  val next_vlen_update = Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0), bcntm1(SZ_LGBANK-1,0))
 
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
   {
-    next_vlen(reg_ptr) := array_vlen(reg_ptr) - io.seq_regid_imm.cnt - UFix(1)
+    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UFix(1)
     next_utidx(reg_ptr) := array_utidx(reg_ptr) + io.issue_to_seq.bcnt
     next_vs(reg_ptr) := array_vs(reg_ptr) + array_stride(reg_ptr)
     next_vt(reg_ptr) := array_vt(reg_ptr) + array_stride(reg_ptr)
     next_vr(reg_ptr) := array_vr(reg_ptr) + array_stride(reg_ptr)
     next_vd(reg_ptr) := array_vd(reg_ptr) + array_stride(reg_ptr)
+    next_vm(reg_ptr) := array_vm(reg_ptr) + UFix(1)
+    next_mask_ptr(reg_ptr) := array_mask_ptr(reg_ptr) + io.issue_to_seq.bcnt
 
     when (array_last(reg_ptr))
     {
@@ -676,6 +739,13 @@ class vuVXU_Banked8_Seq extends Component
     next_dep_vsdq(next_ptr2) := Bool(false)
   }
 
+  val mask_base = array_mask_ptr(reg_ptr)
+  val mask = array_mask(reg_ptr)(mask_base + bcntm1, mask_base)(SZ_BANK-1,0)
+
+  var pop_count = Bits(0,SZ_BPTR)
+  for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
+  val skip = !mask.orR()
+
   val current_val = array_val(reg_ptr)
   val current_vaq_val = current_val & array_vaq(reg_ptr)
   val current_vldq_val = current_val & array_vldq(reg_ptr)
@@ -712,6 +782,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_hazard.last := ~stall & current_val & array_last(reg_ptr)
   io.seq_to_expand.last := ~stall & current_val & array_last(reg_ptr)
 
+  io.seq.vbr := ~stall & current_val & array_vbr(reg_ptr)
   io.seq.viu := ~stall & current_val & array_viu(reg_ptr)
   io.seq.vau0 := ~stall & current_val & array_vau0(reg_ptr)
   io.seq.vau1 := ~stall & current_val & array_vau1(reg_ptr)
@@ -725,9 +796,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_fn.vau1 := array_fn_vau1(reg_ptr)
   io.seq_fn.vau2 := array_fn_vau2(reg_ptr)
 
-  io.seq_regid_imm.cnt :=
-    Mux(array_vlen(reg_ptr) < bcntm1,  array_vlen(reg_ptr)(SZ_LGBANK-1,0),
-        bcntm1(SZ_LGBANK-1,0))
+  io.seq_regid_imm.cnt := pop_count(SZ_LGBANK-1,0)
   io.seq_regid_imm.utidx := array_utidx(reg_ptr)
   io.seq_regid_imm.vs_zero := array_vs_zero(reg_ptr)
   io.seq_regid_imm.vt_zero := array_vt_zero(reg_ptr)
@@ -740,6 +809,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.imm := array_imm(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
+  io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
   io.qcntp1 := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(2, SZ_QCNT))
@@ -787,7 +857,7 @@ class vuVXU_Banked8_Seq extends Component
         array_aiw_pc_next(reg_ptr))
 
   io.seq_to_aiw.update_cnt.bits.addr := array_aiw_cnt_rtag(reg_ptr).toUFix
-  io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + io.seq_regid_imm.cnt + UFix(1)
+  io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + next_vlen_update + UFix(1)
 
   io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
 

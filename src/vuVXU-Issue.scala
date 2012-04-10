@@ -58,6 +58,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
+  val vm = Bits(width = SZ_BMAKS)
   val vs_active = Bool()
   val vt_active = Bool()
   val vr_active = Bool()
@@ -68,6 +69,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
   val aiw = new io_vxu_aiw_bundle()
+  val mask = Bis(width=WIDTH_PVFB)
 }
 
 class io_vxu_issue_op extends Bundle

@@ -368,7 +368,6 @@ class vuVXU_Issue_TVEC extends Component
   io.bhazard.vld := bhazard(1)
   io.bhazard.vst := bhazard(2)
 
-  io.fn.vbr := Bits(0, SZ_VBR_FN)
   io.fn.viu := Cat(M0,vmsrc,DW64,FP_,viu_MOV)
   io.fn.vau0 := Bits(0,SZ_VAU0_FN)
   io.fn.vau1 := Bits(0,SZ_VAU1_FN)
@@ -384,6 +383,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
   io.decoded.vr := Bits(0,SZ_BREGLEN)
   io.decoded.vd := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
+  io.decoded.vm := Bits(0, SZ_BMASK)  
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := Bool(true)
