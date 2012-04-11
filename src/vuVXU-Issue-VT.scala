@@ -316,7 +316,7 @@ class vuVXU_Issue_VT extends Component
     STOP->      List(Bits("b0_0_000_000",8),Bits("b000_0",4),Bits("b000_000",6),Bits("b0_000_000",6),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    R_,R_,R_,R_,imm_X,n,y,MTF_X,mtyp_X,mcmd_X)
   ))
 
-  val valid::dhazard::shazard::bhazard::br_type::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
+  val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
   val rtype = cs0.slice(0, 4)
   val itype::vd_valid::decode_stop::mem_type_float::mem_type::mem_cmd::Nil = cs0.slice(4, cs0.length)
 
