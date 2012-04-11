@@ -143,7 +143,9 @@ object Constants
   val FPD = Bits("b1", 1)
 
   val ENUM_VIU = 28
-  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = Enum(ENUM_VIU){Bits()}
+  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FP_BRANCH = Enum(ENUM_VIU){Bits()}
+  val viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: viu_BRANCH = viu_FP_BRANCH
+  val viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = viu_BRANCH
   val SZ_VIU_OP = viu_ADD.getWidth
   val viu_X = Bits(0, SZ_VIU_OP)
   val SZ_VIU_FP = 1
@@ -152,7 +154,7 @@ object Constants
   val SZ_VIU_T0 = 2
   val SZ_VIU_T = SZ_VIU_T1 + SZ_VIU_T0
 
-  def isVIUBranch(viu: Bits) = viu >= viu_BNE && viu <= VIU_BGEU
+  def isVIUBranch(viu: Bits) = viu >= viu_BNE && viu <= viu_BGEU
 
   // in the decode table
   val ENUM_VAU0 = 4

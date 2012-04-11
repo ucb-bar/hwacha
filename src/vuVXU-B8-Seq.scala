@@ -159,7 +159,6 @@ class vuVXU_Banked8_Seq extends Component
   val next_aiw_update_numCnt = Vec(SZ_BANK){ Wire(){ Bool() } }
 
   val next_mask = Vec(SZ_BANK){ Wire(){ Bits(width=WIDTH_PVFB) } }
-  val next_mask_ptr = Vec(SZ_BANK){ Wire(){ UFix(width=SZ_MASK) } }
 
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
   val array_stall = Reg(resetVal = Bits(0, SZ_BANK))
@@ -202,7 +201,6 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
   val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
-  val array_mask_ptr = Vec(SZ_BANK){ Reg(){ UFix(width=SZ_MASK) } }
 
   array_val := next_val.toBits
   array_stall := next_stall.toBits
@@ -245,7 +243,6 @@ class vuVXU_Banked8_Seq extends Component
   array_aiw_update_numCnt := next_aiw_update_numCnt
 
   array_mask := next_mask
-  array_mask_ptr := next_mask_ptr
 
   val last = io.issue_to_seq.vlen < io.issue_to_seq.bcnt
 
@@ -290,7 +287,6 @@ class vuVXU_Banked8_Seq extends Component
   next_aiw_update_numCnt := array_aiw_update_numCnt
 
   next_mask := array_mask
-  next_mask_ptr := array_mask_ptr
 
   when (io.fire.viu)
   {
@@ -318,7 +314,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau0)
@@ -344,7 +339,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau1)
@@ -372,7 +366,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vau2)
@@ -396,7 +389,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.amo)
@@ -414,7 +406,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm(next_ptr1) := Bits(0)
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -427,7 +418,6 @@ class vuVXU_Banked8_Seq extends Component
     next_mem(next_ptr2) := io.fire_regid_imm.mem
 
     next_mask(next_ptr2) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
 
     next_val(next_ptr3) := Bool(true)
     next_last(next_ptr3) := last
@@ -446,7 +436,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr3) := Bool(true)
 
     next_mask(next_ptr3) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr3) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.utld)
@@ -463,7 +452,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -482,7 +470,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
     next_mask(next_ptr2) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.utst)
@@ -499,7 +486,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -520,7 +506,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
     next_mask(next_ptr2) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vld)
@@ -535,7 +520,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -555,7 +539,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
     next_mask(next_ptr2) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   when (io.fire.vst)
@@ -570,7 +553,6 @@ class vuVXU_Banked8_Seq extends Component
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
 
     next_mask(next_ptr1) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr1) := UFix(0, SZ_MASK)
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -592,7 +574,6 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
     next_mask(next_ptr2) := io.fire_regid_imm.mask
-    next_mask_ptr(next_ptr2) := UFix(0, SZ_MASK)
   }
 
   val next_vlen_update = Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0), bcntm1(SZ_LGBANK-1,0))
@@ -606,7 +587,7 @@ class vuVXU_Banked8_Seq extends Component
     next_vr(reg_ptr) := array_vr(reg_ptr) + array_stride(reg_ptr)
     next_vd(reg_ptr) := array_vd(reg_ptr) + array_stride(reg_ptr)
     next_vm(reg_ptr) := array_vm(reg_ptr) + UFix(1)
-    next_mask_ptr(reg_ptr) := array_mask_ptr(reg_ptr) + io.issue_to_seq.bcnt
+    next_mask(reg_ptr) := array_mask(reg_ptr) >> io.issue_to_seq.bcnt
 
     when (array_last(reg_ptr))
     {
@@ -744,8 +725,18 @@ class vuVXU_Banked8_Seq extends Component
     next_dep_vsdq(next_ptr2) := Bool(false)
   }
 
-  val mask_base = array_mask_ptr(reg_ptr)
-  val mask = array_mask(reg_ptr)(mask_base + bcntm1, mask_base)(SZ_BANK-1,0)
+  val bcnt_mask = MuxLookup(
+    io.issue_to_seq.bcnt, Bits(0,SZ_BANK), Array(
+      Bits(1) -> Bits("b0000_0001",8),
+      Bits(2) -> Bits("b0000_0011",8),
+      Bits(3) -> Bits("b0000_0111",8),
+      Bits(4) -> Bits("b0000_1111",8),
+      Bits(5) -> Bits("b0001_1111",8),
+      Bits(6) -> Bits("b0011_1111",8),
+      Bits(7) -> Bits("b0111_1111",8),
+      Bits(8) -> Bits("b1111_1111",8)
+    ))
+  val mask = array_mask(reg_ptr) & bcnt_mask
 
   var pop_count = Bits(0,SZ_BPTR)
   for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
@@ -787,7 +778,6 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_hazard.last := ~stall & current_val & array_last(reg_ptr)
   io.seq_to_expand.last := ~stall & current_val & array_last(reg_ptr)
 
-  io.seq.vbr := ~stall & current_val & array_vbr(reg_ptr)
   io.seq.viu := ~stall & current_val & array_viu(reg_ptr)
   io.seq.vau0 := ~stall & current_val & array_vau0(reg_ptr)
   io.seq.vau1 := ~stall & current_val & array_vau1(reg_ptr)

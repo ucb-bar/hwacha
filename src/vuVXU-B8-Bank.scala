@@ -138,7 +138,7 @@ class vuVXU_Banked8_Bank extends Component
     ))
 
   val branch_resolution_register = Vec(WIDTH_BMASK){ Reg(){ Bool() } }
-  when (io.wen_mask && io.wmask(0)){ branch_resolution_register(io.waddr_mask) := alu.io.branch_result  }
+  when (io.in.wen_mask && io.in.wmask(0)){ branch_resolution_register(io.in.waddr_mask) := alu.io.branch_result  }
   io.branch_resolution_mask := branch_resolution_register.toBits
 
   alu.io.valid := delay_viu_val

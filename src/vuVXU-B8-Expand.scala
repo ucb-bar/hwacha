@@ -334,7 +334,7 @@ class vuVXU_Banked8_Expand extends Component
     reg_waddr(i) := next_waddr(i)
     reg_wsel(i) := next_wsel(i)
     reg_wmask(i) := next_wmask(i)
-    reg_wen_mask(i) := next_waddr_mask(i)
+    reg_wen_mask(i) := next_wen_mask(i)
     reg_wlast_mask(i) := next_wlast_mask(i)
     reg_waddr_mask(i) := next_waddr_mask(i)
   }
@@ -385,10 +385,10 @@ class vuVXU_Banked8_Expand extends Component
     next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
     next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
 
-    when (isVIUBranch(io.fire_fn.viu))
+    when (isVIUBranch(io.seq_fn.viu))
     {
       next_wen_mask.write(viu_wptr, Bool(true))
-      next_wlast_mask.write(viu_wptr, io.seq_to_expand.lsat)
+      next_wlast_mask.write(viu_wptr, io.seq_to_expand.last)
     }
     . otherwise
     {

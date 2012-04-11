@@ -334,7 +334,6 @@ class vuVXU_Issue_TVEC extends Component
 // ISSUE                                                                   \\
 //-------------------------------------------------------------------------\\
 
-  io.valid.vbr := Bool(false)
   io.valid.viu := valid_common && valid(0)
   io.valid.vau0 := Bool(false)
   io.valid.vau1 := Bool(false)

@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import Cosntants._
+import Constants._
 import Commands._
 import Instructions._
 
@@ -15,7 +15,7 @@ class pvfBundle extends Bundle
 class IoPVFBToIssue extends Bundle 
 {
   val empty = Bool(OUTPUT)
-  val pvf = new ioDcoupled()( new pvfbBundle() )
+  val pvf = new ioDecoupled()( new pvfBundle() )
 }
 
 class IoPVFB extends Bundle
@@ -31,10 +31,10 @@ class IoSeqToPVFB extends Bundle
   val valid = Bool(OUTPUT)
 }
 
-class PVFB extends Component {
+class vuPVFB extends Component {
   val io = new IoPVFB
 
-  val SIZE_ADDR = Log2Up(DEPTH_PVFB)
+  val SIZE_ADDR = log2up(DEPTH_PVFB)
 
   val enq_ptr_next = Wire(){ UFix(width=SIZE_ADDR) }
   val deq_ptr_next = Wire(){ UFix(width=SIZE_ADDR) }
@@ -46,7 +46,7 @@ class PVFB extends Component {
 
   enq_ptr_next := enq_ptr
   deq_ptr_next := deq_ptr
-  full := full_next
+  full_next := full
 
   val ram_empty = ~full && (enq_ptr === deq_ptr)
 
@@ -57,10 +57,10 @@ class PVFB extends Component {
   val do_enq = io.laneToPVFB.valid && maskRam_wdata.orR
   val do_deq = io.issueToPVFB.stop && !ram_empty
 
-  when (do_deq) { read_ptr_next := read_ptr + UFix(1) }
-  when (do_enq) { write_ptr_next := write_ptr + UFix(1) }
+  when (do_deq) { deq_ptr_next := deq_ptr + UFix(1) }
+  when (do_enq) { enq_ptr_next := enq_ptr + UFix(1) }
 
-  when (do_enq && ! do_deq && (write_ptr_next === read_ptr))
+  when (do_enq && ! do_deq && (enq_ptr_next === deq_ptr))
   {
     full_next := Bool(true)
   }

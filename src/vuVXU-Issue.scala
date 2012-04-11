@@ -58,7 +58,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
-  val vm = Bits(width = SZ_BMAKS)
+  val vm = Bits(width = SZ_BMASK)
   val vs_active = Bool()
   val vt_active = Bool()
   val vr_active = Bool()
@@ -69,7 +69,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
   val aiw = new io_vxu_aiw_bundle()
-  val mask = Bis(width=WIDTH_PVFB)
+  val mask = Bits(width=WIDTH_PVFB)
 }
 
 class io_vxu_issue_op extends Bundle
@@ -121,7 +121,7 @@ class IoIssueToPVFB extends Bundle
   val enq = new ioPipe()( Bits(width=SZ_ADDR) )
   val stop = Bool(OUTPUT)
   val replay = Bool(OUTPUT)
-  val replay_pc = Bits(width=SZ_ADDR, OUTPUT)
+  val replay_pc = Bits(SZ_ADDR, OUTPUT)
 }
 
 class io_vxu_issue extends Bundle

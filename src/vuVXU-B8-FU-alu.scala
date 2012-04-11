@@ -181,12 +181,12 @@ class vuVXU_Banked8_FU_alu extends Component
 
   val branch_result = MuxCase(
     Bool(false), Array(
-      viu_FN(viu_BR_EQ) -> eq,
-      viu_FN(viu_BR_NE) -> !eq,
-      viu_FN(viu_BR_LT) -> lt,
-      viu_FN(viu_BR_LTU) -> ltu,
-      viu_FN(viu_BR_GE) -> !lt,
-      viu_FN(viu_BR_GEU) -> !ltu,
+      viu_FN(viu_BEQ) -> eq,
+      viu_FN(viu_BNE) -> !eq,
+      viu_FN(viu_BLT) -> lt,
+      viu_FN(viu_BLTU) -> ltu,
+      viu_FN(viu_BGE) -> !lt,
+      viu_FN(viu_BGEU) -> !ltu
     ))
 
   reg_mask   := next_mask

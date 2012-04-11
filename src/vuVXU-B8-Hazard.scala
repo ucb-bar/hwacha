@@ -245,7 +245,7 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_vau1_incr = UFix(FMA_STAGES,SZ_LGBANK+1) + UFix(2, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
   val vt_vau2_incr = UFix(FCONV_STAGES,SZ_LGBANK+1) + UFix(1, SZ_LGBANK) + UFix(DELAY, SZ_LGBANK)
 
-  val vt_vbrwprt = new vuVXU_Pointer()
+  val vt_vbrwptr = new vuVXU_Pointer()
   val vt_viuwptr = new vuVXU_Pointer()
   val vt_vau0wptr = new vuVXU_Pointer()
   val vt_vau1wptr = new vuVXU_Pointer()
@@ -314,6 +314,7 @@ class vuVXU_Banked8_Hazard extends Component
   // for the fire port
   // we can look at the issue port because we're firing at the same cycle
 
+  val vbr_wptr = vt_vbr_wptr
   val viu_wptr = Mux(io.tvec_valid.viu, tvec_viu_wptr, vt_viu_wptr)
   val vau0_wptr = vt_vau0_wptr
   val vau1_wptr = vt_vau1_wptr
@@ -374,7 +375,7 @@ class vuVXU_Banked8_Hazard extends Component
     when(isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
     {
       next_wmask_val.write(vbr_wptr, Bool(true))
-      next_wmask_head.wite(vbr_wptr, Bool(true))
+      next_wmask_head.write(vbr_wptr, Bool(true))
     }
     . otherwise 
     {
@@ -653,7 +654,7 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_dhazard_vr = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vr).orR
   val vt_dhazard_vd = (array_wport_val.toBits & array_wport_head.toBits & vt_comp_vd).orR
 
-  val vt_bhazard_r2wm = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wmask_val.ready(vbr_wptr)
+  val vt_bhazard_r2wm = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wmask_val.read(vbr_wptr)
   val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr)
   val vt_bhazard_r3w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_rport_val.read(next_ptr4) | array_wport_val.read(vt_wptr)
@@ -692,7 +693,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val vt_bhazard =
     Cat(
-      vt_bhazard_r2wm & io.vt_bhzard.r2wm,
+      vt_bhazard_r2wm & io.vt_bhazard.r2wm,
       vt_bhazard_r1w1 & io.vt_bhazard.r1w1,
       vt_bhazard_r2w1 & io.vt_bhazard.r2w1,
       vt_bhazard_r3w1 & io.vt_bhazard.r3w1,

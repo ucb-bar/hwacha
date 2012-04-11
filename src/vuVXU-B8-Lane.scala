@@ -62,7 +62,7 @@ class io_vxu_lane extends Bundle
   val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
   val lane_to_hazard = new io_lane_to_hazard().asOutput
-  val laneToPVFB = new IoLaneToPVFB().flip()
+  val laneToPVFB = new IoLaneToPVFB()
   val vmu = new VMUIO()
 }
 
@@ -116,7 +116,7 @@ class vuVXU_Banked8_Lane extends Component
 
   }
 
-  def calcMask(n: Int) {
+  def calcMask(n: Int): Bits = {
     val strip = masks.map(x => x(n)).reverse.reduceLeft(Cat( _ , _ ))
     if(n == WIDTH_BMASK-1)
       strip
