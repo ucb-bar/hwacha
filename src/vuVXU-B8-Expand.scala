@@ -12,6 +12,7 @@ class io_vxu_expand_read extends Bundle
   val raddr = Bits(width = SZ_BREGLEN)
   val roplen = Bits(width = SZ_BOPL)
   val rblen = Bits(width = SZ_BRPORT)
+  val rmask = Bits(width = SZ_BANK)
 }
 
 class io_vxu_expand_write extends Bundle
@@ -21,6 +22,10 @@ class io_vxu_expand_write extends Bundle
   val wcnt = Bits(width = SZ_BVLEN)
   val waddr = Bits(width = SZ_BREGLEN)
   val wsel = Bits(width = SZ_BWPORT)
+  val wmask = Bits(width = SZ_BANK)
+  val wen_mask = Bool()
+  val wlast_mask = Bool()
+  val waddr_mask = Bits(width = SZ_BMASK)
 }
 
 class io_vxu_expand_fu_fn extends Bundle
@@ -52,6 +57,7 @@ class io_vxu_expand_to_hazard extends Bundle
 {
   val ren = Bool()
   val wen = Bool()
+  val wen_mask = Bool()
 }
 
 class io_expand_to_xcpt_handler extends Bundle
@@ -306,13 +312,19 @@ class vuVXU_Banked8_Expand extends Component
   val next_waddr = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_wsel = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
   val next_wmask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
+  val next_wen_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
+  val next_wlast_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
+  val next_waddr_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bits(width=SZ_BMASK) } }
 
   val reg_wen = Vec(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
   val reg_wlast = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
   val reg_wcnt = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
   val reg_waddr = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
   val reg_wsel = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
-  val reg_wmask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
+  val reg_wmask = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BANK) } }
+  val reg_wen_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
+  val reg_wlast_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
+  val reg_waddr_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bits(width=SZ_BMASK) } }
 
   for (i <- 0 until SHIFT_BUF_WRITE)
   {
@@ -322,6 +334,9 @@ class vuVXU_Banked8_Expand extends Component
     reg_waddr(i) := next_waddr(i)
     reg_wsel(i) := next_wsel(i)
     reg_wmask(i) := next_wmask(i)
+    reg_wen_mask(i) := next_waddr_mask(i)
+    reg_wlast_mask(i) := next_wlast_mask(i)
+    reg_waddr_mask(i) := next_waddr_mask(i)
   }
 
   val viu_wptr = 
@@ -346,6 +361,9 @@ class vuVXU_Banked8_Expand extends Component
     next_waddr(i) := reg_waddr(i+1)
     next_wsel(i) := reg_wsel(i+1)
     next_wmask(i) := reg_wmask(i+1)
+    next_wen_mask(i) := reg_wen_mask(i+1)
+    next_wlast_mask(i) := reg_wlast_mask(i+1)
+    next_waddr_mask(i) := reg_waddr_mask(i+1)
   }
 
   next_wen(SHIFT_BUF_WRITE-1) := Bool(false)
@@ -354,20 +372,27 @@ class vuVXU_Banked8_Expand extends Component
   next_waddr(SHIFT_BUF_WRITE-1) := Bits("d0", 8)
   next_wsel(SHIFT_BUF_WRITE-1) := Bits("d0", 3)
   next_wmask(SHIFT_BUF_WRITE-1) := Bits(0,SZ_BANK)
+  next_wen_mask(SHIFT_BUF_WRITE-1) := Bool(false)
+  next_wlast_mask(SHIFT_BUF_WRITE-1) := Bool(false)
+  next_waddr_mask(SHIFT_BUF_WRITE-1) := Bits(0, SZ_BMASK)
       
   when (io.seq.viu)
   {
-    next_wen.write(viu_wptr, Bool(true))
     next_wlast.write(viu_wptr, io.seq_to_expand.last)
     next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt)
     next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
-    when (isVIUBranch(io.seq_fn.viu) )
-    {
+    next_wsel.write(viu_wptr, Bits("d4", 3))
+    next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
+    next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
 
-    }
-    .otherwise 
+    when (isVIUBranch(io.fire_fn.viu))
     {
-      next_wsel.write(viu_wptr, Bits("d4", 3))
+      next_wen_mask.write(viu_wptr, Bool(true))
+      next_wlast_mask.write(viu_wptr, io.seq_to_expand.lsat)
+    }
+    . otherwise
+    {
+      next_wen.write(viu_wptr, Bool(true))
     }
   }
   when (io.seq.vau0)
@@ -377,6 +402,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wcnt.write(vau0_wptr, io.seq_regid_imm.cnt)
     next_waddr.write(vau0_wptr, io.seq_regid_imm.vd)
     next_wsel.write(vau0_wptr, Bits("d0", 3))
+    next_waddr_mask(vau0_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vau1)
   {
@@ -385,6 +411,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wcnt.write(vau1_wptr, io.seq_regid_imm.cnt)
     next_waddr.write(vau1_wptr, io.seq_regid_imm.vd)
     next_wsel.write(vau1_wptr, Bits("d1", 3))
+    next_waddr_mask(vau1_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vau2)
   {
@@ -393,6 +420,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wcnt.write(vau2_wptr, io.seq_regid_imm.cnt)
     next_waddr.write(vau2_wptr, io.seq_regid_imm.vd)
     next_wsel.write(vau2_wptr, Bits("d2", 3))
+    next_waddr_mask(vau2_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vldq)
   {
@@ -401,6 +429,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wcnt(0) := io.seq_regid_imm.cnt
     next_waddr(0) := io.seq_regid_imm.vd
     next_wsel(0) := Bits("d3", 3)
+    next_waddr_mask(0) := io.seq_regid_imm.mask
   }
 
   val next_viu = Vec(SHIFT_BUF_READ){ Wire(){ Bool() } }
@@ -570,6 +599,7 @@ class vuVXU_Banked8_Expand extends Component
 
   io.expand_to_hazard.ren := reg_ren(0)
   io.expand_to_hazard.wen := reg_wen(0)
+  io.expand_to_hazard.wen_mask := reg_wen_mask(0)
 
   io.expand_read.ren := reg_ren(0)
   io.expand_read.rlast := reg_rlast(0)
@@ -577,12 +607,17 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_read.raddr := reg_raddr(0)
   io.expand_read.roplen := reg_roplen(0)
   io.expand_read.rblen := reg_rblen(0).toBits
+  io.expand_read.rmask := reg_rmask(0).toBits
 
   io.expand_write.wen := reg_wen(0)
   io.expand_write.wlast := reg_wlast(0)
   io.expand_write.wcnt := reg_wcnt(0)
   io.expand_write.waddr := reg_waddr(0)
   io.expand_write.wsel := reg_wsel(0)
+  io.expand_write.wmask := reg_wmask(0)
+  io.expand_write.wen_mask := reg_wen_mask(0)
+  io.expand_write.wlast_mask := reg_wlast_mask(0)
+  io.expand_write.waddr_mask := reg_waddr_mask(0)
 
   io.expand_fu_fn.viu := reg_viu(0)
   io.expand_fu_fn.viu_fn := reg_viu_fn(0)
@@ -602,5 +637,5 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_lfu_fn.vsdq := reg_vsdq(0)
   io.expand_lfu_fn.utmemop := reg_utmemop(0)
 
-  io.expand_to_xcpt.empty := !reg_ren.toBits().orR() && !reg_wen.toBits().orR && !reg_viu.toBits().orR()
+  io.expand_to_xcpt.empty := !reg_ren.toBits().orR() && !reg_wen.toBits().orR && !reg_viu.toBits().orR() && !reg_wen_mask.toBits().orR()
 }

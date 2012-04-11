@@ -34,6 +34,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
+  val vm = Bits(width = SZ_BMASK)
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
@@ -144,6 +145,7 @@ class vuVXU_Banked8_Seq extends Component
   val next_vt = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_vr = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_vd = Vec(8){ Wire(){Bits(width=SZ_BREGLEN)} }
+  val next_vm = Vec(8){ Wire(){Bits(width=SZ_BMASK)} }
   val next_mem = Vec(8){ Wire(){ new io_vxu_mem_cmd() } }
 
   val next_imm = Vec(8){ Wire(){Bits(width=SZ_DATA)} }
@@ -186,6 +188,7 @@ class vuVXU_Banked8_Seq extends Component
   val array_vt = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
   val array_vr = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
   val array_vd = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
+  val array_vm = Vec(8){ Reg(){Bits(width=SZ_BMASK)} }
   val array_mem = Vec(8){ Reg(){ new io_vxu_mem_cmd() } }
 
   val array_imm = Vec(8){ Reg(){Bits(width=SZ_DATA)} }
@@ -228,6 +231,7 @@ class vuVXU_Banked8_Seq extends Component
   array_vt := next_vt
   array_vr := next_vr
   array_vd := next_vd
+  array_vm := next_vm
   array_mem := next_mem
 
   array_imm := next_imm
@@ -272,6 +276,7 @@ class vuVXU_Banked8_Seq extends Component
   next_vt := array_vt
   next_vr := array_vr
   next_vd := array_vd
+  next_vm := array_vm
   next_mem := array_mem
 
   next_imm := array_imm
@@ -805,6 +810,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.vt := array_vt(reg_ptr)
   io.seq_regid_imm.vr := array_vr(reg_ptr)
   io.seq_regid_imm.vd := array_vd(reg_ptr)
+  io.seq_regid_imm.vm := array_vm(reg_ptr)
   io.seq_regid_imm.mem := array_mem(reg_ptr)
   io.seq_regid_imm.imm := array_imm(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)

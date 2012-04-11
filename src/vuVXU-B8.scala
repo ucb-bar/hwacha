@@ -63,6 +63,10 @@ class vuVXU extends Component
 
 
   val issue = new vuVXU_Issue()
+  val pvfb = new vuPVFB()
+
+  issue.io.pvfbToIssue <> pvfb.io.pvfbToIssue
+  issue.io.issueToPVFB <> pvfb.io.issueToPVFB
 
   io.irq := issue.io.irq
 
@@ -107,6 +111,8 @@ class vuVXU extends Component
 
 
   val b8hazard = new vuVXU_Banked8_Hazard()
+
+  b8hazard.io.hazardToPVFB <> pvfb.io.hazardToPVFB
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
   b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
@@ -169,6 +175,8 @@ class vuVXU extends Component
   b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
   val b8lane = new vuVXU_Banked8_Lane()
+
+  b8lane.io.laneToPVFB <> pvfb.io.laneToPVFB
 
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
 

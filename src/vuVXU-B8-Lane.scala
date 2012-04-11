@@ -41,6 +41,13 @@ class io_lane_to_hazard extends Bundle
 {
   val rlast = Bool()
   val wlast = Bool()
+  val wlast_mask = Bool()
+}
+
+class IoLaneToPVFB extends Bundle
+{
+  val branch_resolution_mask = Bits(WIDTH_PVFB, OUTPUT)
+  val valid = Bool(OUTPUT)
 }
 
 class io_vxu_lane extends Bundle 
@@ -55,6 +62,7 @@ class io_vxu_lane extends Bundle
   val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
   val lane_to_hazard = new io_lane_to_hazard().asOutput
+  val laneToPVFB = new IoLaneToPVFB().flip()
   val vmu = new VMUIO()
 }
 
@@ -69,6 +77,8 @@ class vuVXU_Banked8_Lane extends Component
   val rdata = new ArrayBuffer[Bits]
   val ropl0 = new ArrayBuffer[Bits]
   val ropl1 = new ArrayBuffer[Bits]
+
+  val masks = new ArrayBuffer[Bits]
 
   //forward declaring imul, fma, and conv units
   val imul = new vuVXU_Banked8_FU_imul()
@@ -97,15 +107,29 @@ class vuVXU_Banked8_Lane extends Component
     rdata += bank.io.rw.rdata
     ropl0 += bank.io.rw.ropl0
     ropl1 += bank.io.rw.ropl1
+    masks += bank.io.branch_resolution_mask
 
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma.io.out
     bank.io.rw.wbl2 := conv.io.out
     bank.io.rw.wbl3 := io.vmu.vldq_bits
+
   }
+
+  def calcMask(n: Int) {
+    val strip = masks.map(x => x(n)).reverse.reduceLeft(Cat( _ , _ ))
+    if(n == WIDTH_BMASK-1)
+      strip
+    else
+      Cat(calcMask(n+1), strip)
+  }
+
+  io.laneToPVFB.branch_resolution_mask := calcMask(0)
+  io.laneToPVFB.valid := conn.last.wlast_mask
 
   io.lane_to_hazard.rlast := conn.last.rlast
   io.lane_to_hazard.wlast := conn.last.wlast
+  io.lane_to_hazard.wlast_mask := conn.last.wlast_mask
 
   val xbar = new vuVXU_Banked8_Lane_Xbar()
   xbar.io.rblen <> rblen

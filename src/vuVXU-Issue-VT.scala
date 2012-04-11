@@ -19,14 +19,6 @@ class io_vf extends Bundle
   val stride = Bits(SZ_REGLEN, OUTPUT)
 }
 
-class IoIssueToPVFB extends Bundle
-{
-  val fire = Bool(OUTPUT)
-  var ready = Bool(OUTPUT)
-  val pc = Bits(width=SZ_ADDR)
-  val stop = Bool(OUTPUT)
-}
-
 class io_issue_vt_to_irq_handler extends Bundle
 {
   val ma_inst = Bool(OUTPUT)
@@ -78,8 +70,10 @@ class vuVXU_Issue_VT extends Component
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
   when (io.flush) { stall_sticky := Bool(false) }
 
+  val stop = Wire(){ Bool() }
   val stalld = !(io.ready && io.aiw_cntb.ready & !stall)
-  val killf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
+  val killb = Wire(){ Bool() }  
+  val killf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst || killb
   val reg_killf = Reg(killf)
 
   val INACTIVE = UFix(0,2)
@@ -94,8 +88,6 @@ class vuVXU_Issue_VT extends Component
 
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
-
-  val stop = Wire(){ Bool() }
 
   when(io.flush) 
   {
@@ -338,8 +330,10 @@ class vuVXU_Issue_VT extends Component
   val vs_active :: vt_active :: vr_active :: vd_active :: Nil = rtype.map(x => active_rtype(x))
 
   next_state := reg_state
-  io.issueToPVFB.fire := Bool(false)
-  io.issueToPVFB.pc := id_reg_pc + Cat(Fill(20, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10))
+  killb := Bool(false)
+  io.issueToPVFB.fire.valid := Bool(false)
+  io.issueToPVFB.fire.bits := id_pc_next
+  io.issueToPVFB.stop := reg_state === ACTIVE_DIV && stop
 
 
   val unmasked_valid_viu = valid(6)
@@ -351,6 +345,8 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utst = valid(0)
 
   val valid_branch = unmasked_valid_viu && isVIUBranch(viu_fn)
+  io.issueToPVFB.enq.valid := valid_branch && io.ready
+  io.issueToPVFB.enq.bits := id_reg_pc + Cat(Fill(20, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10))
 
   switch(reg_state) 
   {
@@ -365,8 +361,8 @@ class vuVXU_Issue_VT extends Component
       when (valid_branch && io.ready) 
       { 
         next_state := ACTIVE_DIV 
-        io.issueToPVFB.fire := Bool(true)
-        io.issueToPVFB.pc := id_pc_next
+        io.issueToPVFB.fire.valid := Bool(true)
+        killb := Bool(true)
       }
     }
 
@@ -413,7 +409,7 @@ class vuVXU_Issue_VT extends Component
   io.aiw_cntb.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
   io.aiw_cntb.bits := cnt
 
-  io.issue_to_aiw.markLast := decode_stop
+  io.issue_to_aiw.markLast := stop
   io.issue_to_aiw.update_numCnt.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
   io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
 

@@ -114,6 +114,16 @@ class io_issue_to_irq_handler extends Bundle
   val vt = new io_issue_vt_to_irq_handler()
 }
 
+class IoIssueToPVFB extends Bundle
+{
+  var ready = Bool(OUTPUT)
+  val fire = new ioPipe()( Bits(width=SZ_ADDR) )
+  val enq = new ioPipe()( Bits(width=SZ_ADDR) )
+  val stop = Bool(OUTPUT)
+  val replay = Bool(OUTPUT)
+  val replay_pc = Bits(width=SZ_ADDR, OUTPUT)
+}
+
 class io_vxu_issue extends Bundle
 {
   val irq = new io_issue_to_irq_handler()
@@ -132,6 +142,8 @@ class io_vxu_issue extends Bundle
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
+  val issueToPVFB = new IoIssueToPVFB()
+  val pvfbToIssue = new IoPVFBToIssue().flip()
 
   val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
@@ -212,6 +224,9 @@ class vuVXU_Issue extends Component
 
   tvec.io.flush := io.flush
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
+
+  vt.io.issueToPVFB <> io.issueToPVFB
+  vt.io.pvfbToIssue <> io.pvfbToIssue
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready

@@ -9,14 +9,14 @@ class io_vxu_hazard_to_issue extends Bundle
   val pending_memop = Bool()
 }
 
-class io_vxu_hazard_to_pvfb extends Bundle
+class IoVXUHazardToPVFB extends Bundle
 {
   val pending_branch = Bool()
 }
 
 class io_vxu_hazard extends Bundle
 {
-  val hazard_to_pvfb = new io_vxu_hazard_to_pvfb().asOutput
+  val hazardToPVFB = new IoVXUHazardToPVFB().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
   val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
   val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
@@ -428,15 +428,21 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.expand_to_hazard.wen)
   {
-    next_wmask_head.write(reg_ptr, Bool(false))
-    
     next_wport_head.write(reg_ptr, Bool(false))
+  }
+
+  when (io.expand_to_hazard.wen_mask)
+  {
+    next_wmask_head.write(reg_ptr, Bool(false))
+  }
+
+  when (io.lane_to_hazard.wlast_mask)
+  {
+    next_wmask_val.write(reg_ptr, Bool(false))
   }
 
   when (io.lane_to_hazard.wlast)
   {
-    next_wmask_val.write(reg_ptr, Bool(false))
-
     next_wport_val.write(reg_ptr, Bool(false))
     next_wport_vau0.write(reg_ptr, Bool(false))
     next_wport_vau1.write(reg_ptr, Bool(false))
@@ -530,7 +536,7 @@ class vuVXU_Banked8_Hazard extends Component
   io.hazard_to_issue.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
 
   // checking any pending branch ops 
-  io.hazard_to_pvfb.pending_branch := array_wmask_val.toBits.orR
+  io.hazardToPVFB.pending_branch := array_wmask_val.toBits.orR
 
   // hazard check logic for tvec
   val tvec_comp_vt =
