@@ -235,6 +235,9 @@ class vuVXU_Issue extends Component
   pcUnit.io.pc <> vt.io.pc
   pcUnit.io.vtToPC <> vt.io.vtToPC
 
+  vt.io.issueToPVFB <> io.issueToPVFB
+  vt.io.pvfbToIssue <> io.pvfbToIssue
+
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
   vt.io.dhazard <> io.vt_dhazard

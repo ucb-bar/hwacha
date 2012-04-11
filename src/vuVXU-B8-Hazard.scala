@@ -434,8 +434,6 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.expand_to_hazard.wen)
   {
-    next_wmask_head.write(reg_ptr, Bool(false))
-    
     next_wport_head.write(reg_ptr, Bool(false))
   }
 
@@ -452,7 +450,10 @@ class vuVXU_Banked8_Hazard extends Component
   when (io.lane_to_hazard.wlast)
   {
     next_wmask_val.write(reg_ptr, Bool(false))
+  }
 
+  when (io.lane_to_hazard.wlast)
+  {
     next_wport_val.write(reg_ptr, Bool(false))
     next_wport_vau0.write(reg_ptr, Bool(false))
     next_wport_vau1.write(reg_ptr, Bool(false))
