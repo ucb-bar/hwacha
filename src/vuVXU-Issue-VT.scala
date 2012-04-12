@@ -6,6 +6,11 @@ import Constants._
 import Commands._
 import Instructions._
 
+class IoVTToPC extends Bundle
+{
+  val stop = Bool(OUTPUT)
+}
+
 class io_vf extends Bundle
 {
   val active = Bool(OUTPUT)
@@ -38,6 +43,8 @@ class io_vxu_issue_vt extends Bundle
   val vitlb_exception = Bool(INPUT)
 
   val vf = new io_vf().flip
+  val pc = new IoPCToVT().flip()
+  val vtToPC = new IoVTToPC()
 
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
@@ -84,10 +91,12 @@ class vuVXU_Issue_VT extends Component
   val reg_state = Reg(next_state, resetVal = INACTIVE)
 
   val if_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
-  val if_next_pc = if_reg_pc + UFix(4)
 
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
+
+  val stop = Wire(){ Bool() }
+  io.pc.ready := !Reg(io.imem_req.valid) || (Reg(io.imem_req.valid) && !killf && !reg_killf && !stalld)
 
   when(io.flush) 
   {
@@ -95,34 +104,20 @@ class vuVXU_Issue_VT extends Component
     imm1_rtag := Bits(0,SZ_AIW_IMM1)
     numCnt_rtag := Bits(0,SZ_AIW_CMD)
   }
-  .elsewhen (stop)
-  {
-    if_reg_pc := Bits(0,SZ_ADDR)
-  }
   .elsewhen (io.vf.fire) 
   { 
-    if_reg_pc := io.vf.pc 
     imm1_rtag := io.vf.imm1_rtag
     numCnt_rtag := io.vf.numCnt_rtag
   }
-  .elsewhen (!killf && !reg_killf && !stalld)
+  .elsewhen (io.pc.ready && io.pc.valid)
   { 
-    if_reg_pc := if_next_pc 
+    if_reg_pc := io.pc.bits
   }
 
-  val pvfb_skid_pc = Reg(resetVal = Bits(0,SZ_ADDR))
-
-  when (!killf && !reg_killf && !stalld) 
-  { 
-    pvfb_skid_pc := io.pvfbToIssue.pvf.bits.pc
-  }
-
-  val pvfb_req_pc = Mux(reg_killf || stalld, pvfb_skid_pc, io.pvfbToIssue.pvf.bits.pc)
-  val full_req_pc = Mux(reg_killf || stalld, if_reg_pc, if_next_pc)
-  val req_pc = Mux(reg_state === ACTIVE_FULL, full_req_pc, pvfb_req_pc)
+  val req_pc = Mux(reg_killf || stalld, if_reg_pc, io.pc)
 
   io.imem_req.bits := req_pc
-  io.imem_req.valid := io.vf.active && (reg_state != ACTIVE_DIV || io.pvfbToIssue.pvf.valid)
+  io.imem_req.valid := io.pc.valid && !stop
 
   val id_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
   val id_reg_inst = Reg(resetVal = Bits(0,SZ_INST))
@@ -140,10 +135,6 @@ class vuVXU_Issue_VT extends Component
     id_reg_inst := Bits(0,SZ_INST)
     id_pc_next := Bits(0,SZ_ADDR)
   }
-  .elsewhen (stop)
-  {
-    id_reg_inst := NOP
-  }
   .elsewhen (io.vf.fire)
   {
     id_reg_inst := NOP
@@ -153,7 +144,7 @@ class vuVXU_Issue_VT extends Component
     id_reg_pc := if_reg_pc
     id_reg_inst := io.imem_resp.bits
     id_pc_next := req_pc
-    when (killf || reg_killf)
+    when (killf || reg_killf || stop)
     { 
       id_reg_inst := NOP
     }
@@ -391,7 +382,8 @@ class vuVXU_Issue_VT extends Component
     unmasked_valid_vau0 || unmasked_valid_vau1 || unmasked_valid_vau2 ||
     unmasked_valid_amo || unmasked_valid_utld || unmasked_valid_utst
 
-  io.vf.stop := decode_stop && io.vf.active && (reg_state != ACTIVE_DIV || io.pvfbToIssue.empty)
+  io.vf.stop := decode_stop && io.vf.active
+  io.vtToPC.stop := decode_stop && io.vf.active
 
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(

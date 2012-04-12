@@ -182,6 +182,7 @@ class vuVXU_Issue extends Component
   val io = new io_vxu_issue()
 
   val tvec = new vuVXU_Issue_TVEC()
+  val pcUnit = new vuPC()
   val vt = new vuVXU_Issue_VT()
 
   tvec.io.vf <> vt.io.vf
@@ -227,6 +228,12 @@ class vuVXU_Issue extends Component
 
   vt.io.issueToPVFB <> io.issueToPVFB
   vt.io.pvfbToIssue <> io.pvfbToIssue
+
+  pcUnit.io.flush := io.flush
+  pcUnit.io.tvecToPC.pc := tvec.io.vf.pc
+  pcUnit.io.tvecToPC.fire := tvec.io.vf.fire
+  pcUnit.io.pc <> vt.io.pc
+  pcUnit.io.vtToPC <> vt.io.vtToPC
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
