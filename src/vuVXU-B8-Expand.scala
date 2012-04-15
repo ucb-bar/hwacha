@@ -389,7 +389,7 @@ class vuVXU_Banked8_Expand extends Component
     next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
     next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
 
-    when (isVIUBranch(io.seq_fn.viu))
+    when (isVIUBranch(io.seq_fn.viu(RG_VIU_FN)))
     {
       next_wen_mask.write(viu_wptr, Bool(true))
       next_wlast_mask.write(viu_wptr, io.seq_to_expand.last)

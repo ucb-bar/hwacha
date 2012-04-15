@@ -345,7 +345,7 @@ class vuVXU_Issue_VT extends Component
 
   io.vtToPVFB.stop := stop
   io.vtToPVFB.pc.valid := fire_branch
-  io.vtToPVFB.pc.bits.taken := id_reg_pc + Cat(Fill(20, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10))
+  io.vtToPVFB.pc.bits.taken := id_reg_pc + Cat(Fill(19, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10), Bits(0,1))
   io.vtToPVFB.pc.bits.not_taken := id_pc_next
 
   val vau1_rm = Wire(){Bits(width = 3)}
