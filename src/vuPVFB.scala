@@ -12,27 +12,47 @@ class pvfBundle extends Bundle
   val mask = Bits(width=WIDTH_PVFB)
 }
 
-class IoPVFBToIssue extends Bundle 
+class ioPVFPipe extends ioPipe()( new pvfBundle() )
+
+class ioPVFB extends Bundle
 {
+  val vtToPVFB = new ioIssueVTToPVFB().flip()
+  val mask = new ioMaskPipe().flip()
+  val pvf = new ioPVFPipe()
   val empty = Bool(OUTPUT)
-  val pvf = new ioDecoupled()( new pvfBundle() )
 }
 
-class IoPVFB extends Bundle
+class ioPVFBCtrl() extends Bundle
 {
-  val issueToPVFB = new IoIssueToPVFB().flip()
-  val hazardToPVFB = new IoVXUHazardToPVFB().asInput
-  val pvfbToIssue = new IoPVFBToIssue()
-  val laneToPVFB = new IoLaneToPVFB().flip()
+  val flush = Bool(INPUT)
+
+  val enq_val = Bool(INPUT)
+
+  val resolved_mask = Bits(WIDTH_PVFB, INPUT)
+  val active_mask = Bits(WIDTH_PVFB, INPUT)
+  val taken_pc = Bits(SZ_ADDR, INPUT)
+  val not_taken_pc = Bits(SZ_ADDR, INPUT)
+
+  val deq_rdy = Bool(INPUT)
+
+  val wen = Bool(OUTPUT)
+  val waddr = UFix(log2up(DEPTH_PVFB), OUTPUT)
+  val mask_wdata = Bits(WIDTH_PVFB, OUTPUT)
+  val pc_wdata = Bits(SZ_ADDR, OUTPUT)
+
+  val next_valid = Bool(OUTPUT)
+  val next_mask = Bits(WIDTH_PVFB, OUTPUT)
+  val next_pc = Bits(SZ_ADDR, OUTPUT)
+
+  val ren = Bool(OUTPUT)
+  val raddr = UFix(log2up(DEPTH_PVFB), OUTPUT)
+
+  val empty = Bool(OUTPUT)
 }
 
-class IoSeqToPVFB extends Bundle
+class vuPVFBCtrl extends Component 
 {
-  val valid = Bool(OUTPUT)
-}
-
-class vuPVFB extends Component {
-  val io = new IoPVFB
+  val io = new ioPVFBCtrl()
 
   val SIZE_ADDR = log2up(DEPTH_PVFB)
 
@@ -48,14 +68,16 @@ class vuPVFB extends Component {
   deq_ptr_next := deq_ptr
   full_next := full
 
-  val ram_empty = ~full && (enq_ptr === deq_ptr)
+  val empty = ~full && (enq_ptr === deq_ptr)
 
-  val maskRam_wdata = io.laneToPVFB.branch_resolution_mask & io.pvfbToIssue.pvf.bits.mask
-  val pcRam_wdata = Reg(resetVal = Bits(0,SZ_ADDR))
-  when(io.issueToPVFB.enq.valid) { pcRam_wdata := io.issueToPVFB.enq.bits}
+  val taken_mask = io.resolved_mask & io.active_mask
+  val not_taken_mask = ~io.resolved_mask & io.active_mask
 
-  val do_enq = io.laneToPVFB.valid && maskRam_wdata.orR
-  val do_deq = io.issueToPVFB.stop && !ram_empty
+  val active_taken = taken_mask.orR
+  val active_not_taken = not_taken_mask.orR
+
+  val do_enq = io.enq_val && active_taken && active_not_taken
+  val do_deq = io.deq_rdy && !empty
 
   when (do_deq) { deq_ptr_next := deq_ptr + UFix(1) }
   when (do_enq) { enq_ptr_next := enq_ptr + UFix(1) }
@@ -73,58 +95,68 @@ class vuPVFB extends Component {
     full_next := full
   }
 
-  val maskRam = Mem(DEPTH_PVFB, do_enq, enq_ptr, maskRam_wdata, resetVal = null, cs = do_enq || do_deq)
-  val pcRam = Mem(DEPTH_PVFB, do_enq, enq_ptr, pcRam_wdata, resetVal = null, cs = do_enq || do_deq)
+  io.wen := do_enq
+  io.waddr := enq_ptr
+  io.mask_wdata := taken_mask
+  io.pc_wdata := io.taken_pc
+
+  io.next_valid := io.enq_val && (active_taken || active_not_taken)
+  io.next_pc := Mux(active_not_taken, io.not_taken_pc, io.taken_pc)
+  io.next_mask := Mux(active_not_taken, not_taken_mask, taken_mask)
+
+  io.ren := do_deq
+  io.raddr := deq_ptr
+
+  io.empty := empty
+}
+
+class vuPVFB extends Component 
+{
+  val io = new ioPVFB
+
+  val pvfb_ctrl = new vuPVFBCtrl()
+
+  val reg_taken_pc = Reg(resetVal = Bits(0, SZ_ADDR))
+  val reg_not_taken_pc = Reg(resetVal = Bits(0, SZ_ADDR))
+  when (io.vtToPVFB.pc.valid) 
+  { 
+    reg_taken_pc := io.vtToPVFB.pc.bits.taken
+    reg_not_taken_pc := io.vtToPVFB.pc.bits.not_taken
+  }
+
+  pvfb_ctrl.io.enq_val := io.mask.valid
+
+  pvfb_ctrl.io.resolved_mask := io.mask.bits.resolved
+  pvfb_ctrl.io.active_mask := io.mask.bits.active
+  pvfb_ctrl.io.taken_pc := reg_taken_pc
+  pvfb_ctrl.io.not_taken_pc := reg_not_taken_pc
+
+  pvfb_ctrl.io.deq_rdy := io.vtToPVFB.stop
+
+  val maskRam = Mem(DEPTH_PVFB, 
+                    pvfb_ctrl.io.wen,
+                    pvfb_ctrl.io.waddr,
+                    pvfb_ctrl.io.mask_wdata,
+                    resetVal = null,
+                    cs = pvfb_ctrl.io.wen || pvfb_ctrl.io.ren)
+
+  val pcRam = Mem(DEPTH_PVFB,
+                  pvfb_ctrl.io.wen,
+                  pvfb_ctrl.io.waddr,
+                  pvfb_ctrl.io.pc_wdata,
+                  resetVal = null,
+                  cs = pvfb_ctrl.io.wen || pvfb_ctrl.io.ren)
+
   maskRam.setReadLatency(1)
   maskRam.setTarget('inst)
   pcRam.setReadLatency(1)
   pcRam.setTarget('inst)
 
-  val next_valid = Wire(){ Bool() }
-  val next_pc = Wire(){ Bits(width=SZ_ADDR) }
-  val next_mask = Wire(){ Bits(width=WIDTH_PVFB) }
+  val reg_ren = Reg(pvfb_ctrl.io.ren)
 
-  val reg_valid = Reg(next_valid, resetVal = Bool(false))
-  val reg_pc = Reg(next_pc, resetVal = Bits(0,SZ_ADDR))
-  val reg_mask = Reg(next_mask, resetVal = Bits(0, WIDTH_PVFB))
+  io.pvf.valid := pvfb_ctrl.io.next_valid || reg_ren
+  io.pvf.bits.mask := Mux(reg_ren, maskRam(pvfb_ctrl.io.raddr), pvfb_ctrl.io.next_mask)
+  io.pvf.bits.pc := Mux(reg_ren, pcRam(pvfb_ctrl.io.raddr), pvfb_ctrl.io.next_pc)
 
-  val reg_do_deq = Reg(do_deq)
-  val maskRam_dout = maskRam(deq_ptr)
-  val pcRam_dout = pcRam(deq_ptr)
-
-  next_valid := reg_valid
-  next_pc := reg_pc
-  next_mask := reg_mask
-  when (io.issueToPVFB.stop)
-  {
-    next_valid := Bool(false)
-  }
-  when (reg_do_deq)
-  {
-    next_valid := Bool(true)
-    next_pc := pcRam_dout
-    next_mask := maskRam_dout
-  }
-  when (io.issueToPVFB.fire.valid)
-  {
-    next_valid := Bool(true)
-    next_pc := io.issueToPVFB.fire.bits
-    next_mask := Fill(WIDTH_PVFB, Bits(1,1))
-  }
-  when (io.issueToPVFB.ready)
-  {
-    next_pc := reg_pc + UFix(4)
-  }
-  when (io.laneToPVFB.valid)
-  {
-    next_mask := ~io.laneToPVFB.branch_resolution_mask & io.pvfbToIssue.pvf.bits.mask
-  }
-
-  val pc = Mux(reg_do_deq, pcRam_dout, reg_pc)
-  val mask = Mux(reg_do_deq, maskRam_dout, reg_mask)
-
-  io.pvfbToIssue.pvf.valid := (reg_valid || reg_do_deq) && !io.issueToPVFB.stop && !io.hazardToPVFB.pending_branch
-  io.pvfbToIssue.pvf.bits.pc := pc
-  io.pvfbToIssue.pvf.bits.mask := mask
-  io.pvfbToIssue.empty := ram_empty && !reg_valid && !reg_do_deq
+  io.empty := pvfb_ctrl.io.empty
 }

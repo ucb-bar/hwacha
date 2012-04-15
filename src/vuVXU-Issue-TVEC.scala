@@ -11,12 +11,21 @@ class io_issue_tvec_to_irq_handler extends Bundle
   val cmd = Bits(SZ_XCMD, OUTPUT)
 }
 
+class ioIssueTVECToPC extends Bundle
+{
+  val pc = Bits(SZ_ADDR, OUTPUT)
+  val fire = Bool(OUTPUT)
+}
+
 class io_vxu_issue_tvec extends Bundle
 {
   val irq = new io_issue_tvec_to_irq_handler()
 
   val vf = new io_vf()
   val active = Bool(OUTPUT)
+
+  val pcToTVEC = new ioPCToIssueTVEC().flip()
+  val tvecToPC = new ioIssueTVECToPC()
 
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
@@ -292,7 +301,7 @@ class vuVXU_Issue_TVEC extends Component
   {
     next_state := ISSUE_VT
   }
-  when (io.vf.stop)
+  when (io.pcToTVEC.stop)
   {
     next_state := ISSUE_TVEC
   }
@@ -322,6 +331,9 @@ class vuVXU_Issue_TVEC extends Component
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.vf.stride := reg_stride
+
+  io.tvecToPC.fire := fire_vf
+  io.tvecToPC.pc := io.vxu_immq.bits(31,0)
 
   io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_seq.vlen := reg_vlen - cnt

@@ -36,7 +36,6 @@ class vuVXU_Banked8_Fire extends Component
   val fire_tvec_vst = ~io.tvec_regid_imm.vd_zero & io.tvec_valid.vst & io.tvec_ready
   val fire_tvec = fire_tvec_viu | fire_tvec_vld | fire_tvec_vst
 
-  val fire_vt_vbr = ~io.vt_regid_imm.vd_zero & io.vt_valid.vbr & io.vt_ready
   val fire_vt_viu = ~io.vt_regid_imm.vd_zero & io.vt_valid.viu & io.vt_ready
   val fire_vt_vau0 = ~io.vt_regid_imm.vd_zero & io.vt_valid.vau0 & io.vt_ready
   val fire_vt_vau1 = ~io.vt_regid_imm.vd_zero & io.vt_valid.vau1 & io.vt_ready
@@ -45,7 +44,6 @@ class vuVXU_Banked8_Fire extends Component
   val fire_vt_utld = ~io.vt_regid_imm.vd_zero & io.vt_valid.utld & io.vt_ready
   val fire_vt_utst = ~io.vt_regid_imm.vd_zero & io.vt_valid.utst & io.vt_ready
 
-  io.fire.vbr := fire_vt_vbr
   io.fire.viu := fire_tvec_viu | fire_vt_viu
   io.fire.vau0 := fire_vt_vau0
   io.fire.vau1 := fire_vt_vau1
@@ -58,7 +56,6 @@ class vuVXU_Banked8_Fire extends Component
 
   val switch_tvec = io.tvec_valid.toBits.orR
 
-  io.fire_fn.vbr := io.vt_fn.vbr
   io.fire_fn.viu := Mux(switch_tvec, io.tvec_fn.viu, io.vt_fn.viu)
   io.fire_fn.vau0 := io.vt_fn.vau0
   io.fire_fn.vau1 := io.vt_fn.vau1

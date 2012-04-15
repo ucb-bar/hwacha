@@ -142,8 +142,7 @@ class io_vxu_issue extends Bundle
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
-  val issueToPVFB = new IoIssueToPVFB()
-  val pvfbToIssue = new IoPVFBToIssue().flip()
+  val laneToPVFB = new ioLaneToPVFB().flip()
 
   val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
@@ -196,6 +195,7 @@ class vuVXU_Issue extends Component
 
   vt.io.vitlb_exception := io.vitlb_exception
 
+  // tvec
   tvec.io.vxu_cmdq <> io.vxu_cmdq
   tvec.io.vxu_immq <> io.vxu_immq
   tvec.io.vxu_imm2q <> io.vxu_imm2q
@@ -226,18 +226,22 @@ class vuVXU_Issue extends Component
   tvec.io.flush := io.flush
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
-  vt.io.issueToPVFB <> io.issueToPVFB
-  vt.io.pvfbToIssue <> io.pvfbToIssue
-
+  // pcUnit
   pcUnit.io.flush := io.flush
-  pcUnit.io.tvecToPC.pc := tvec.io.vf.pc
-  pcUnit.io.tvecToPC.fire := tvec.io.vf.fire
-  pcUnit.io.pc <> vt.io.pc
+
+  pcUnit.io.tvecToPC <> tvec.io.tvecToPC
+  pcUnit.io.pcToTVEC <> tvec.io.pcToTVEC
+  
+  pcUnit.io.pcToVT <> vt.io.pcToVT
   pcUnit.io.vtToPC <> vt.io.vtToPC
 
-  vt.io.issueToPVFB <> io.issueToPVFB
-  vt.io.pvfbToIssue <> io.pvfbToIssue
+  pcUnit.io.vtToPVFB <> vt.io.vtToPVFB
 
+  pcUnit.io.hazardToIssue <> io.hazard_to_issue
+  
+  pcUnit.io.laneToPVFB <> io.laneToPVFB
+
+  // vt
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
   vt.io.dhazard <> io.vt_dhazard

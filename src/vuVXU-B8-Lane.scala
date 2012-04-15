@@ -44,10 +44,9 @@ class io_lane_to_hazard extends Bundle
   val wlast_mask = Bool()
 }
 
-class IoLaneToPVFB extends Bundle
+class ioLaneToPVFB extends Bundle
 {
-  val branch_resolution_mask = Bits(WIDTH_PVFB, OUTPUT)
-  val valid = Bool(OUTPUT)
+  val mask = new ioPipe()( Bits(width=WIDTH_PVFB) )
 }
 
 class io_vxu_lane extends Bundle 
@@ -62,7 +61,7 @@ class io_vxu_lane extends Bundle
   val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
   val lane_to_hazard = new io_lane_to_hazard().asOutput
-  val laneToPVFB = new IoLaneToPVFB()
+  val laneToPVFB = new ioLaneToPVFB()
   val vmu = new VMUIO()
 }
 
@@ -124,8 +123,8 @@ class vuVXU_Banked8_Lane extends Component
       Cat(calcMask(n+1), strip)
   }
 
-  io.laneToPVFB.branch_resolution_mask := calcMask(0)
-  io.laneToPVFB.valid := conn.last.wlast_mask
+  io.laneToPVFB.mask.bits := calcMask(0)
+  io.laneToPVFB.mask.valid := conn.last.wlast_mask
 
   io.lane_to_hazard.rlast := conn.last.rlast
   io.lane_to_hazard.wlast := conn.last.wlast
