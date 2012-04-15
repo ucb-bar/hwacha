@@ -64,7 +64,7 @@ class vuVXU_Banked8_Bank extends Component
 
   val reg_ren    = Reg(rpass & io.in.ren)
   val reg_rlast  = Reg(io.in.rlast)
-  val reg_rcnt   = Reg(Mux(rpass, io.in.rcnt.toUFix - io.in.rmask(0), UFix(0)))
+  val reg_rcnt   = Reg(Mux(rpass, io.in.rcnt.toUFix - UFix(1), UFix(0)))
   val reg_raddr  = Reg(io.in.raddr)
   val reg_roplen = Reg(io.in.roplen)
   val reg_rblen  = Reg(io.in.rblen) 
@@ -72,7 +72,7 @@ class vuVXU_Banked8_Bank extends Component
 
   val reg_wen        = Reg(wpass & io.in.wen)
   val reg_wlast      = Reg(io.in.wlast)
-  val reg_wcnt       = Reg(Mux(wpass, io.in.wcnt.toUFix - io.in.wmask(0), UFix(0)))
+  val reg_wcnt       = Reg(Mux(wpass, io.in.wcnt.toUFix - UFix(1), UFix(0)))
   val reg_waddr      = Reg(io.in.waddr)
   val reg_wsel       = Reg(io.in.wsel)
   val reg_wmask      = Reg(io.in.wmask >> UFix(1))
@@ -88,8 +88,8 @@ class vuVXU_Banked8_Bank extends Component
   // every signal related to the read port is delayed by one cycle 
   // because of the register file is an sram
 
-  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, io.in.rmask(0))
-  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, io.in.rmask(0))
+  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, Reg(io.in.rmask(0)))
+  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, Reg(io.in.rmask(0)))
 
   val delay_viu_fn  = reg_viu_fn
   val delay_viu_imm = reg_viu_imm

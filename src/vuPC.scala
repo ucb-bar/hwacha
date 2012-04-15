@@ -75,7 +75,7 @@ class vuPC extends Component
   {
     next_pc := io.vtToPC.replay.bits
   }
-  . elsewhen (io.pcToVT.ready) 
+  . elsewhen (io.pcToVT.ready && io.pcToVT.valid) 
   {
     next_pc := reg_pc + UFix(4)
   }
@@ -93,6 +93,6 @@ class vuPC extends Component
 
   io.pcToVT.bits.pc := reg_pc
   io.pcToVT.bits.mask := reg_mask
-  io.pcToVT.valid := reg_valid && io.hazardToIssue.pending_branch
+  io.pcToVT.valid := reg_valid && !io.hazardToIssue.pending_branch
   io.pcToTVEC.stop := io.vtToPC.stop && pvfb.io.empty
 }

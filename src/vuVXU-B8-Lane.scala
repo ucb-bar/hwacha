@@ -138,6 +138,7 @@ class vuVXU_Banked8_Lane extends Component
   val rbl = xbar.io.rbl
 
   val lfu = new vuVXU_Banked8_Lane_LFU()
+
   lfu.io.expand_rcnt := io.expand_read.rcnt.toUFix
   lfu.io.expand_wcnt := io.expand_write.wcnt.toUFix
   lfu.io.expand <> io.expand_lfu_fn

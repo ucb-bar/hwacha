@@ -15,8 +15,12 @@ class ExpanderToLFUIO extends Bundle
   val imm = Bits(SZ_DATA, OUTPUT)
   val imm2 = Bits(SZ_XIMM2, OUTPUT)
   val vaq = Bool(OUTPUT)
+  val vaq_mask = Bits(SZ_BANK, OUTPUT)
+  val vaq_pop_cnt = UFix(SZ_LGBANK1, OUTPUT)
   val vldq = Bool(OUTPUT)
+  val vldq_mask = Bits(SZ_BANK, OUTPUT)
   val vsdq = Bool(OUTPUT)
+  val vsdq_mask = Bits(SZ_BANK, OUTPUT)
   val utmemop = Bool(OUTPUT)
 }
 
@@ -53,6 +57,9 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val next_vgu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
   val next_vlu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
   val next_vsu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
+  val next_vgu_mask = Wire(){ Bits(width = SZ_BANK) }
+  val next_vlu_mask = Wire(){ Bits(width = SZ_BANK) }
+  val next_vsu_mask = Wire(){ Bits(width = SZ_BANK) }
 
   val reg_vau0_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
   val reg_vau1_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
@@ -60,6 +67,9 @@ class vuVXU_Banked8_Lane_LFU extends Component
   val reg_vgu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
   val reg_vlu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
   val reg_vsu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
+  val reg_vgu_mask = Reg(resetVal = Bits(0, SZ_BANK))
+  val reg_vlu_mask = Reg(resetVal = Bits(0, SZ_BANK))
+  val reg_vsu_mask = Reg(resetVal = Bits(0, SZ_BANK))
 
   reg_vau0_cnt := next_vau0_cnt
   reg_vau1_cnt := next_vau1_cnt
@@ -67,6 +77,9 @@ class vuVXU_Banked8_Lane_LFU extends Component
   reg_vgu_cnt := next_vgu_cnt
   reg_vlu_cnt := next_vlu_cnt
   reg_vsu_cnt := next_vsu_cnt
+  reg_vgu_mask := next_vgu_mask
+  reg_vlu_mask := next_vlu_mask
+  reg_vsu_mask := next_vsu_mask
 
   next_vau0_cnt := UFix(0, SZ_BVLEN)
   next_vau1_cnt := UFix(0, SZ_BVLEN)
@@ -74,20 +87,53 @@ class vuVXU_Banked8_Lane_LFU extends Component
   next_vgu_cnt := UFix(0, SZ_BVLEN)
   next_vlu_cnt := UFix(0, SZ_BVLEN)
   next_vsu_cnt := UFix(0, SZ_BVLEN)
+  next_vgu_mask := Bits(0, SZ_BANK)
+  next_vlu_mask := Bits(0, SZ_BANK)
+  next_vsu_mask := Bits(0, SZ_BANK)
 
   when (io.expand.vau0) { next_vau0_cnt := io.expand_rcnt}
   when (io.expand.vau1) { next_vau1_cnt := io.expand_rcnt}
   when (io.expand.vau2) { next_vau2_cnt := io.expand_rcnt}
-  when (io.expand.vaq) { next_vgu_cnt := io.expand_rcnt}
-  when (io.expand.vldq) { next_vlu_cnt := io.expand_wcnt}
-  when (io.expand.vsdq) { next_vsu_cnt := io.expand_rcnt}
+  
+  when (io.expand.vaq) 
+  { 
+    next_vgu_cnt := io.expand_rcnt
+    next_vgu_mask := io.expand.vaq_mask
+  }
+
+  when (io.expand.vldq) 
+  { 
+    next_vlu_cnt := io.expand_wcnt
+    next_vlu_mask := io.expand.vldq_mask >> UFix(1,1)
+  }
+
+  when (io.expand.vsdq) 
+  { 
+    next_vsu_cnt := io.expand_rcnt
+    next_vsu_mask := io.expand.vsdq_mask
+  }
   
   when (reg_vau0_cnt.orR) { next_vau0_cnt := reg_vau0_cnt - UFix(1,1)}
   when (reg_vau1_cnt.orR) { next_vau1_cnt := reg_vau1_cnt - UFix(1,1)}
   when (reg_vau2_cnt.orR) { next_vau2_cnt := reg_vau2_cnt - UFix(1,1)}
-  when (reg_vgu_cnt.orR) { next_vgu_cnt := reg_vgu_cnt - UFix(1,1)}
-  when (reg_vlu_cnt.orR) { next_vlu_cnt := reg_vlu_cnt - UFix(1,1)}
-  when (reg_vsu_cnt.orR) { next_vsu_cnt := reg_vsu_cnt - UFix(1,1)}
+
+  when (reg_vgu_cnt.orR) 
+  { 
+    next_vgu_cnt := reg_vgu_cnt - UFix(1,1)
+    next_vgu_mask := reg_vgu_mask >> UFix(1,1)
+  }
+
+  when (reg_vlu_cnt.orR) 
+  {
+    next_vlu_cnt := reg_vlu_cnt - UFix(1,1)
+    next_vlu_mask := reg_vlu_mask >> UFix(1,1)
+  }
+  
+  when (reg_vsu_cnt.orR) 
+  { 
+    next_vsu_cnt := reg_vsu_cnt - UFix(1,1)
+    next_vsu_mask := reg_vsu_mask >> UFix(1,1)
+  }
 
   val reg_vau0 = Reg(resetVal = Bool(false))
   val reg_vau0_fn = Reg(){ Bits(width = SZ_VAU0_FN) }
@@ -141,7 +187,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   {
     reg_vaq := Bool(true)
     reg_vaq_checkcnt := Bool(true)
-    reg_vaq_cnt := io.expand_rcnt + UFix(1,4)
+    reg_vaq_cnt := io.expand.vaq_pop_cnt
     reg_vaq_mem := io.expand.mem
     reg_imm := io.expand.imm
     reg_imm2 := io.expand.imm2
@@ -152,7 +198,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
     reg_vaq := Bool(false)
   }
 
-  when (reg_vaq && !reg_utmemop)
+  when (reg_vaq && !reg_utmemop && reg_vgu_mask(0))
   {
     reg_imm := reg_imm.toUFix + reg_imm2.toUFix
   }
@@ -187,13 +233,13 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau1_fn := reg_vau1_fn
   io.vau2_val := reg_vau2
   io.vau2_fn := reg_vau2_fn
-  io.vaq_val := reg_vaq
+  io.vaq_val := reg_vaq & reg_vgu_mask(0)
   io.vaq_check.checkcnt := reg_vaq_checkcnt
   io.vaq_check.cnt := reg_vaq_cnt
   io.vaq_mem <> reg_vaq_mem
   io.vaq_imm := reg_imm
   io.vaq_utmemop := reg_utmemop
-  io.vldq_rdy := io.expand.vldq | reg_vldq
-  io.vsdq_val := reg_vsdq
+  io.vldq_rdy := (io.expand.vldq & io.expand.vldq_mask(0)) | (reg_vldq & reg_vlu_mask(0))
+  io.vsdq_val := reg_vsdq & reg_vsu_mask(0)
   io.vsdq_mem <> reg_vsdq_mem
 }

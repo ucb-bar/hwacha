@@ -41,6 +41,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val utmemop = Bool()
   val aiw = new io_vxu_aiw_bundle()
   val mask = Bits(width=SZ_BANK)
+  val pop_count = UFix(width=SZ_LGBANK1)
 }
 
 class io_vxu_seq_to_hazard extends Bundle
@@ -725,8 +726,9 @@ class vuVXU_Banked8_Seq extends Component
     next_dep_vsdq(next_ptr2) := Bool(false)
   }
 
+  val mask_sel = Mux(array_last(reg_ptr), array_vlen(reg_ptr) + UFix(1), io.issue_to_seq.bcnt)
   val bcnt_mask = MuxLookup(
-    io.issue_to_seq.bcnt, Bits(0,SZ_BANK), Array(
+    mask_sel, Bits(0,SZ_BANK), Array(
       Bits(1) -> Bits("b0000_0001",8),
       Bits(2) -> Bits("b0000_0011",8),
       Bits(3) -> Bits("b0000_0111",8),
@@ -738,9 +740,10 @@ class vuVXU_Banked8_Seq extends Component
     ))
   val mask = array_mask(reg_ptr) & bcnt_mask
 
-  var pop_count = Bits(0,SZ_BPTR)
+  var pop_count = Bits(0,SZ_LGBANK1)
   for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
   val skip = !mask.orR()
+  io.seq_regid_imm.pop_count := pop_count
 
   val current_val = array_val(reg_ptr)
   val current_vaq_val = current_val & array_vaq(reg_ptr)
@@ -791,7 +794,10 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_fn.vau1 := array_fn_vau1(reg_ptr)
   io.seq_fn.vau2 := array_fn_vau2(reg_ptr)
 
-  io.seq_regid_imm.cnt := pop_count(SZ_LGBANK-1,0)
+  io.seq_regid_imm.cnt := 
+    Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0),
+        bcntm1(SZ_LGBANK-1,0))
+
   io.seq_regid_imm.utidx := array_utidx(reg_ptr)
   io.seq_regid_imm.vs_zero := array_vs_zero(reg_ptr)
   io.seq_regid_imm.vt_zero := array_vt_zero(reg_ptr)
@@ -808,9 +814,9 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
-  io.qcntp1 := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(2, SZ_QCNT))
+  io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UFix(1, SZ_QCNT))
   // looking for two cycles ahead
-  io.qcntp2 := Mux(reg_stall, io.seq_regid_imm.cnt + UFix(1, SZ_QCNT), io.seq_regid_imm.cnt + UFix(3, SZ_QCNT))
+  io.qcntp2 := Mux(reg_stall, pop_count, pop_count + UFix(2, SZ_QCNT))
 
   // aiw
   io.seq_to_aiw.update_imm1.valid := Bool(false)
