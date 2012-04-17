@@ -30,7 +30,7 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
 {
   val io = new io_vmu_address_tlb()
 
-  val vvaq_skid = SkidBuffer(io.vvaq, late_tlb_miss, flushable = true)
+  val vvaq_skid = SkidBuffer(io.vvaq, late_nack = late_tlb_miss, flushable = true)
 
   // check if address misaligned
   val mem_cmd = vvaq_skid.io.pipereg.bits.cmd

@@ -421,11 +421,12 @@ class io_skidbuf[T <: Data](data: => T) extends Bundle
   val deq = new ioDecoupled()(data)
   val pipereg = new ioPipe()(data)
   val nack = Bool(INPUT)
+  val early_nack = Bool(INPUT)
   val empty = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
 }
 
-class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: => T) extends Component
+class skidbuf[T <: Data](late_nack: Boolean, early_nack: Boolean, flushable: Boolean = false)(data: => T) extends Component
 {
   val io = new io_skidbuf(data)
 
@@ -448,6 +449,7 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
   if (late_nack)
   {
     rejected = !reg_ready || reg_nack
+    if(early_nack) rejected = rejected || io.early_nack
     pipereg.io.deq.ready := !rejected && !io.nack
     io.kill := reg_nack
   }
@@ -471,9 +473,9 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
 
 object SkidBuffer
 {
-  def apply[T <: Data](enq: ioDecoupled[T], late_nack: Boolean = false, flushable: Boolean = false) =
+  def apply[T <: Data](enq: ioDecoupled[T], late_nack: Boolean = false, early_nack: Boolean = false, flushable: Boolean = false) =
   {
-    val sb = (new skidbuf(late_nack, flushable)){ enq.bits.clone }
+    val sb = (new skidbuf(late_nack, early_nack, flushable)){ enq.bits.clone }
     sb.io.enq <> enq
     sb
   }

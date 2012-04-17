@@ -34,7 +34,7 @@ class vuVMU_MemIF extends Component
   val ex_store_val = ex_store_cmd && io.vaq.valid && io.vsdq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
-  val sb = (new skidbuf(late_nack = LATE_DMEM_NACK, flushable = true)){ new io_dmem_req_bundle() }
+  val sb = (new skidbuf(late_nack = LATE_DMEM_NACK, early_nack = false, flushable = true)){ new io_dmem_req_bundle() }
 
   io.vaq.ready :=
     sb.io.enq.ready && ( 
