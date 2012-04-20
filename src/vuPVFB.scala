@@ -10,6 +10,8 @@ class pvfBundle extends Bundle
 {
   val pc = Bits(width=SZ_ADDR)
   val mask = Bits(width=WIDTH_PVFB)
+  val id = Bits(width=SZ_NUM_PVFB)
+  val vlen = Bits(width=SZ_VLEN)
 }
 
 class ioPVFPipe extends ioPipe()( new pvfBundle() )

@@ -61,6 +61,7 @@ class vuVXU_Banked8_Fire extends Component
   io.fire_fn.vau1 := io.vt_fn.vau1
   io.fire_fn.vau2 := io.vt_fn.vau2
 
+  io.fire_regid_imm.vlen := Mux(switch_tvec, io.tvec_regid_imm.vlen, io.vt_regid_imm.vlen)
   io.fire_regid_imm.utidx := Mux(switch_tvec, io.tvec_regid_imm.utidx, io.vt_regid_imm.utidx)
   io.fire_regid_imm.vs_zero := io.vt_regid_imm.vs_zero
   io.fire_regid_imm.vt_zero := Mux(switch_tvec, io.tvec_regid_imm.vt_zero, io.vt_regid_imm.vt_zero)
@@ -80,5 +81,7 @@ class vuVXU_Banked8_Fire extends Component
   io.fire_regid_imm.aiw.cnt_rtag := Mux(switch_tvec, io.tvec_regid_imm.aiw.cnt_rtag, io.vt_regid_imm.aiw.cnt_rtag)
   io.fire_regid_imm.aiw.pc_next := io.vt_regid_imm.aiw.pc_next
   io.fire_regid_imm.aiw.update_imm1 := io.tvec_regid_imm.aiw.update_imm1
+  io.fire_regid_imm.pvfb_tag := Mux(switch_tvec, io.tvec_regid_imm.pvfb_tag, io.vt_regid_imm.pvfb_tag)
+  io.fire_regid_imm.active_mask := Mux(switch_tvec, io.tvec_regid_imm.active_mask, io.vt_regid_imm.active_mask)
   io.fire_regid_imm.mask := Mux(switch_tvec, io.tvec_regid_imm.mask, io.vt_regid_imm.mask)
 }

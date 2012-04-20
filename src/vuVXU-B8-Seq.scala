@@ -25,6 +25,7 @@ class io_vxu_seq_fn extends Bundle
 
 class io_vxu_seq_regid_imm extends Bundle
 {
+  val vlen = Bits(width = SZ_VLEN)
   val cnt = Bits(width = SZ_BVLEN)
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
@@ -41,6 +42,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val utmemop = Bool()
   val aiw = new io_vxu_aiw_bundle()
   val mask = Bits(width=SZ_BANK)
+  val pvfb_tag = Bits(width=SZ_NUM_PVFB)
   val pop_count = UFix(width=SZ_LGBANK1)
 }
 
@@ -159,6 +161,8 @@ class vuVXU_Banked8_Seq extends Component
   val next_aiw_update_imm1 = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_aiw_update_numCnt = Vec(SZ_BANK){ Wire(){ Bool() } }
 
+  val next_pvfb_tag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_NUM_PVFB) } }
+  val next_active_mask = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_mask = Vec(SZ_BANK){ Wire(){ Bits(width=WIDTH_PVFB) } }
 
   val array_val = Reg(resetVal = Bits(0, SZ_BANK))
@@ -201,6 +205,8 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
   val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
+  val array_pvfb_tag = Vec(SZ_BANK){ Reg(resetVal = Bits(0, SZ_NUM_PVFB)) }
+  val array_active_mask = Vec(SZ_BANK){ Reg(resetVal = Bool(false) ) }
   val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
 
   array_val := next_val.toBits
@@ -243,9 +249,11 @@ class vuVXU_Banked8_Seq extends Component
   array_aiw_update_imm1 := next_aiw_update_imm1
   array_aiw_update_numCnt := next_aiw_update_numCnt
 
+  array_pvfb_tag := next_pvfb_tag
+  array_active_mask := next_active_mask
   array_mask := next_mask
 
-  val last = io.issue_to_seq.vlen < io.issue_to_seq.bcnt
+  val last = io.fire_regid_imm.vlen < io.issue_to_seq.bcnt
 
   next_val := array_val
   next_stall := array_stall
@@ -287,6 +295,8 @@ class vuVXU_Banked8_Seq extends Component
   next_aiw_update_imm1 := array_aiw_update_imm1
   next_aiw_update_numCnt := array_aiw_update_numCnt
 
+  next_pvfb_tag := array_pvfb_tag
+  next_active_mask := array_active_mask
   next_mask := array_mask
 
   when (io.fire.viu)
@@ -295,7 +305,7 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_viu(next_ptr1) := Bool(true)
     next_fn_viu(next_ptr1) := io.fire_fn.viu
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_utidx(next_ptr1) := io.fire_regid_imm.utidx
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
@@ -314,6 +324,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
@@ -323,7 +335,7 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vau0(next_ptr1) := Bool(true)
     next_fn_vau0(next_ptr1) := io.fire_fn.vau0
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
@@ -339,6 +351,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
@@ -348,7 +362,7 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vau1(next_ptr1) := Bool(true)
     next_fn_vau1(next_ptr1) := io.fire_fn.vau1
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
@@ -366,6 +380,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
@@ -375,7 +391,7 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vau2(next_ptr1) := Bool(true)
     next_fn_vau2(next_ptr1) := io.fire_fn.vau2
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vs(next_ptr1) := io.fire_regid_imm.vs
@@ -389,6 +405,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
@@ -398,7 +416,7 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vaq(next_ptr1) := Bool(true)
     next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vs(next_ptr1) := io.fire_regid_imm.vs
@@ -406,25 +424,29 @@ class vuVXU_Banked8_Seq extends Component
     // should always write 0, amo's don't take immediates
     next_imm(next_ptr1) := Bits(0)
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vsdq(next_ptr2) := Bool(true)
     next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.issue_to_seq.vlen
+    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
     next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_mem(next_ptr2) := io.fire_regid_imm.mem
 
+    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
     next_mask(next_ptr2) := io.fire_regid_imm.mask
 
     next_val(next_ptr3) := Bool(true)
     next_last(next_ptr3) := last
     next_vldq(next_ptr3) := Bool(true)
     next_utmemop(next_ptr3) := Bool(true)
-    next_vlen(next_ptr3) := io.issue_to_seq.vlen
+    next_vlen(next_ptr3) := io.fire_regid_imm.vlen
     next_stride(next_ptr3) := io.issue_to_seq.stride
     next_vd(next_ptr3) := io.fire_regid_imm.vd
 
@@ -436,6 +458,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr3) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr3) := Bool(true)
 
+    next_pvfb_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr3) := io.fire_regid_imm.active_mask
     next_mask(next_ptr3) := io.fire_regid_imm.mask
   }
 
@@ -445,20 +469,22 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vaq(next_ptr1) := Bool(true)
     next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vldq(next_ptr2) := Bool(true)
     next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.issue_to_seq.vlen
+    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vd(next_ptr2) := io.fire_regid_imm.vd
 
@@ -470,6 +496,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
+    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
     next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
@@ -479,20 +507,22 @@ class vuVXU_Banked8_Seq extends Component
     next_last(next_ptr1) := last
     next_vaq(next_ptr1) := Bool(true)
     next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
     next_vs(next_ptr1) := io.fire_regid_imm.vs
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vsdq(next_ptr2) := Bool(true)
     next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.issue_to_seq.vlen
+    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
     next_vt(next_ptr2) := io.fire_regid_imm.vt
@@ -506,6 +536,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
+    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
     next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
@@ -514,18 +546,20 @@ class vuVXU_Banked8_Seq extends Component
     next_val(next_ptr1) := Bool(true)
     next_last(next_ptr1) := last
     next_vaq(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vldq(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.issue_to_seq.vlen
+    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vd(next_ptr2) := io.fire_regid_imm.vd
     next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
@@ -539,6 +573,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
+    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
     next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
@@ -547,18 +583,20 @@ class vuVXU_Banked8_Seq extends Component
     next_val(next_ptr1) := Bool(true)
     next_last(next_ptr1) := last
     next_vaq(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.issue_to_seq.vlen
+    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
     next_stride(next_ptr1) := io.issue_to_seq.stride
     next_mem(next_ptr1) := io.fire_regid_imm.mem 
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
 
+    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vsdq(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.issue_to_seq.vlen
+    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
     next_stride(next_ptr2) := io.issue_to_seq.stride
     next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
     next_vt(next_ptr2) := io.fire_regid_imm.vt
@@ -574,6 +612,8 @@ class vuVXU_Banked8_Seq extends Component
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
 
+    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
+    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
     next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
@@ -604,6 +644,8 @@ class vuVXU_Banked8_Seq extends Component
       next_utmemop(reg_ptr) := Bool(false)
       next_aiw_update_imm1(reg_ptr) := Bool(false)
       next_aiw_update_numCnt(reg_ptr) := Bool(false)
+
+      next_active_mask(reg_ptr) := Bool(false)
     }
     .otherwise
     {
@@ -738,7 +780,7 @@ class vuVXU_Banked8_Seq extends Component
       Bits(7) -> Bits("b0111_1111",8),
       Bits(8) -> Bits("b1111_1111",8)
     ))
-  val mask = array_mask(reg_ptr) & bcnt_mask
+  val mask = (array_mask(reg_ptr) & bcnt_mask) | (Fill(SZ_BANK, ~array_active_mask(reg_ptr)) & bcnt_mask)
 
   var pop_count = Bits(0,SZ_LGBANK1)
   for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
@@ -811,6 +853,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.imm := array_imm(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
+  io.seq_regid_imm.pvfb_tag := array_pvfb_tag(reg_ptr)
   io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
@@ -880,6 +923,8 @@ class vuVXU_Banked8_Seq extends Component
       next_utmemop(i) := Bool(false)
       next_aiw_update_imm1(i) := Bool(false)
       next_aiw_update_numCnt(i) := Bool(false)
+
+      next_active_mask(i) := Bool(false)
     }
 
     reg_vaq_stall := Bool(false)

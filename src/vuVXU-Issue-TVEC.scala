@@ -14,6 +14,7 @@ class io_issue_tvec_to_irq_handler extends Bundle
 class ioIssueTVECToPC extends Bundle
 {
   val pc = Bits(SZ_ADDR, OUTPUT)
+  val vlen = Bits(SZ_VLEN, OUTPUT)
   val fire = Bool(OUTPUT)
 }
 
@@ -27,7 +28,7 @@ class io_vxu_issue_tvec extends Bundle
   val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
-  val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
+  val hazard_to_issue = new io_vxu_hazard_to_issue_tvec().asInput
 
   val vxu_cmdq = new io_vxu_cmdq().flip()
   val vxu_immq = new io_vxu_immq().flip()
@@ -328,6 +329,7 @@ class vuVXU_Issue_TVEC extends Component
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.vf.stride := reg_stride
+  io.vf.vlen := reg_vlen
 
   io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_seq.vlen := reg_vlen - cnt
@@ -384,6 +386,7 @@ class vuVXU_Issue_TVEC extends Component
   val rtype_vd = vd(5)
   val rtype_vt = vt(5)
 
+  io.decoded.vlen := reg_vlen - cnt
   io.decoded.utidx := Bits(0)
   io.decoded.vs := Bits(0,SZ_BREGLEN)
   io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
@@ -409,7 +412,9 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
+  io.decoded.active_mask := Bool(false)
   io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))
+  io.decoded.pvfb_tag := Bits(0, SZ_NUM_PVFB)
 
   val illegal_vd = vd_active && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
   val illegal_vt = vt_active && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)

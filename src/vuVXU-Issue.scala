@@ -49,6 +49,7 @@ class io_vxu_cnt_valid extends ioPipe()( Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
+  val vlen = Bits(width = SZ_VLEN)
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
@@ -69,7 +70,9 @@ class io_vxu_issue_regid_imm extends Bundle
   val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
   val aiw = new io_vxu_aiw_bundle()
+  val active_mask  = Bool()
   val mask = Bits(width=WIDTH_PVFB)
+  val pvfb_tag = Bits(width=SZ_NUM_PVFB)
 }
 
 class io_vxu_issue_op extends Bundle
@@ -142,7 +145,7 @@ class io_vxu_issue extends Bundle
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
-  val laneToPVFB = new ioLaneToPVFB().flip()
+  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }.flip()
 
   val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
@@ -204,7 +207,7 @@ class vuVXU_Issue extends Component
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
   tvec.io.issue_to_lane <> io.issue_to_lane
-  tvec.io.hazard_to_issue <> io.hazard_to_issue
+  tvec.io.hazard_to_issue <> io.hazard_to_issue.tvec
 
   tvec.io.valid <> io.tvec_valid
   tvec.io.ready <> io.tvec_ready
@@ -226,7 +229,7 @@ class vuVXU_Issue extends Component
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
   // vt
-  vt.io.hazardToIssue <> io.hazard_to_issue
+  vt.io.hazardToIssue <> io.hazard_to_issue.vt
   vt.io.laneToPVFB <> io.laneToPVFB
 
   vt.io.valid <> io.vt_valid

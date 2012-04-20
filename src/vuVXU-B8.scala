@@ -135,7 +135,7 @@ class vuVXU extends Component
 
   b8hazard.io.flush <> io.xcpt_to_vxu.flush
 
-  io.pending_memop := b8hazard.io.hazard_to_issue.pending_memop
+  io.pending_memop := b8hazard.io.hazard_to_issue.tvec.pending_memop
   io.pending_vf := issue.io.pending_vf
 
 

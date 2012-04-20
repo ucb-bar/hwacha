@@ -23,6 +23,7 @@ class BankToBankIO extends Bundle
   val wen_mask   = Bool(INPUT)
   val wlast_mask = Bool(INPUT)
   val waddr_mask = Bits(SZ_BMASK, INPUT)
+  val pvfb_tag   = Bits(SZ_NUM_PVFB, INPUT)
 
   val viu       = Bool(INPUT)
   val viu_fn    = Bits(SZ_VIU_FN, INPUT)
@@ -79,6 +80,7 @@ class vuVXU_Banked8_Bank extends Component
   val reg_wen_mask   = Reg(wpass & io.in.wen_mask)
   val reg_wlast_mask = Reg(io.in.wlast_mask)
   val reg_waddr_mask = Reg(io.in.waddr_mask)
+  val reg_pvfb_tag   = Reg(io.in.pvfb_tag)
 
   val reg_viu_val   = Reg(rpass & io.in.viu)
   val reg_viu_fn    = Reg(io.in.viu_fn)
@@ -165,6 +167,7 @@ class vuVXU_Banked8_Bank extends Component
   io.out.wen_mask   := Mux(io.active, reg_wen_mask, io.in.wen_mask)
   io.out.wlast_mask := Mux(io.active, reg_wlast_mask, io.in.wlast_mask)
   io.out.waddr_mask := Mux(io.active, reg_waddr_mask, io.in.waddr_mask)
+  io.out.pvfb_tag   := Mux(io.active, reg_pvfb_tag, io.in.pvfb_tag)
 
   io.out.viu   := Mux(io.active, reg_viu_val, io.in.viu)
   io.out.viu_fn    := Mux(io.active, reg_viu_fn, io.in.viu_fn)

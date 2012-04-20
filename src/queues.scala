@@ -21,7 +21,7 @@ class queueCtrl1_pipe(flushable: Boolean = false) extends Component
   val full = Reg(width = 1, resetVal = Bool(false))
   val empty = !full
 
-  val enq_rdy_int = !full || (full && io.deq_rdy)
+  val enq_rdy_int = (!full || (full && io.deq_rdy))
   val deq_val_int = !empty
   val do_enq = enq_rdy_int && io.enq_val
   val do_deq = io.deq_rdy && deq_val_int
@@ -37,7 +37,7 @@ class queueCtrl1_pipe(flushable: Boolean = false) extends Component
 
   if (flushable)
   {
-    when (io.flush) { full := Bool(false) }
+    when (io.flush && !do_enq) { full := Bool(false) }
   }
 }
 

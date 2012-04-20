@@ -42,11 +42,12 @@ class io_lane_to_hazard extends Bundle
   val rlast = Bool()
   val wlast = Bool()
   val wlast_mask = Bool()
+  val pvfb_tag = Bits(width=SZ_NUM_PVFB)
 }
 
 class ioLaneToPVFB extends Bundle
 {
-  val mask = new ioPipe()( Bits(width=WIDTH_PVFB) )
+  val mask = new ioPipe()( Bits(width=WIDTH_PVFB) ) 
 }
 
 class io_vxu_lane extends Bundle 
@@ -61,7 +62,7 @@ class io_vxu_lane extends Bundle
   val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
   val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
   val lane_to_hazard = new io_lane_to_hazard().asOutput
-  val laneToPVFB = new ioLaneToPVFB()
+  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }
   val vmu = new VMUIO()
 }
 
@@ -117,18 +118,23 @@ class vuVXU_Banked8_Lane extends Component
 
   def calcMask(n: Int): Bits = {
     val strip = masks.map(x => x(n)).reverse.reduceLeft(Cat( _ , _ ))
-    if(n == WIDTH_BMASK-1)
+    if(n == 0)
       strip
     else
-      Cat(calcMask(n+1), strip)
+      Cat(strip, calcMask(n-1))
   }
 
-  io.laneToPVFB.mask.bits := calcMask(0)
-  io.laneToPVFB.mask.valid := conn.last.wlast_mask
+  val mask = calcMask(WIDTH_BMASK-1)
+  val sel = UFix(1) << conn.last.pvfb_tag
+  for (i <- 0 until NUM_PVFB) {
+    io.laneToPVFB(i).mask.bits := mask(i * WIDTH_PVFB + WIDTH_PVFB - 1, i * WIDTH_PVFB)
+    io.laneToPVFB(i).mask.valid := conn.last.wlast_mask && sel(i)
+  }
 
   io.lane_to_hazard.rlast := conn.last.rlast
   io.lane_to_hazard.wlast := conn.last.wlast
   io.lane_to_hazard.wlast_mask := conn.last.wlast_mask
+  io.lane_to_hazard.pvfb_tag := conn.last.pvfb_tag
 
   val xbar = new vuVXU_Banked8_Lane_Xbar()
   xbar.io.rblen <> rblen

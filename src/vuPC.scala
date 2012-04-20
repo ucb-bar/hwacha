@@ -22,15 +22,17 @@ class ioPCToIssueVT extends ioDecoupled()( new pvfBundle )
 class ioPC extends Bundle
 {
   val flush = Bool(INPUT)
+
+  val in = new pcUnitBundle().asInput()
+  val out = new pcUnitBundle().asOutput()
   
   val pcToTVEC = new ioPCToIssueTVEC()
   val pcToVT = new ioPCToIssueVT()
 
-  val tvecToPC = new ioIssueTVECToPC().flip()
   val vtToPC = new ioIssueVTToPC().flip()
   val vtToPVFB = new ioIssueVTToPVFB().flip()
 
-  val hazardToIssue = new io_vxu_hazard_to_issue().asInput()
+  val hazardToIssue = new io_vxu_hazard_to_issue_vt().asInput()
 
   val laneToPVFB = new ioLaneToPVFB().flip()
 }
@@ -49,6 +51,19 @@ class vuPC extends Component
   val reg_mask = Reg(next_mask, resetVal = Bits(0,WIDTH_PVFB))
   val reg_valid = Reg(next_valid, resetVal = Bool(false))
 
+  val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
+  val vlen = Mux(fire_pass, Bits(WIDTH_PVFB-1), io.in.vlen)
+
+  val delay_id = Reg(io.in.id + UFix(1))
+  val delay_fire = Reg(io.in.fire && fire_pass)
+  val delay_pc = Reg(io.in.pc)
+  val delay_vlen = Reg(Mux(fire_pass, io.in.vlen - Bits(WIDTH_PVFB), Bits(0)))
+
+  io.out.id := delay_id
+  io.out.fire := delay_fire
+  io.out.pc := delay_pc
+  io.out.vlen := delay_vlen
+
   pvfb.io.vtToPVFB <> io.vtToPVFB
 
   pvfb.io.mask.valid := io.laneToPVFB.mask.valid
@@ -59,9 +74,9 @@ class vuPC extends Component
   next_mask := reg_mask
   next_valid := reg_valid
 
-  when (io.tvecToPC.fire) 
+  when (io.in.fire) 
   {
-    next_pc := io.tvecToPC.pc
+    next_pc := io.in.pc
     next_mask := Fill(WIDTH_PVFB, Bits(1,1))
     next_valid := Bool(true)
   }
@@ -93,6 +108,8 @@ class vuPC extends Component
 
   io.pcToVT.bits.pc := reg_pc
   io.pcToVT.bits.mask := reg_mask
-  io.pcToVT.valid := reg_valid && !io.hazardToIssue.pending_branch
+  io.pcToVT.bits.id := io.in.id
+  io.pcToVT.bits.vlen := vlen
+  io.pcToVT.valid := reg_valid && !io.hazardToIssue.pending_branch && !io.vtToPC.replay.valid && !io.vtToPC.stop
   io.pcToTVEC.stop := io.vtToPC.stop && pvfb.io.empty
 }

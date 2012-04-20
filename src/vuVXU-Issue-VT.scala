@@ -37,6 +37,7 @@ class io_vf extends Bundle
   val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
   val numCnt_rtag = Bits(SZ_AIW_NUMCNT, OUTPUT)
   val stride = Bits(SZ_REGLEN, OUTPUT)
+  val vlen = Bits(SZ_VLEN, OUTPUT)
 }
 
 class io_issue_vt_to_irq_handler extends Bundle
@@ -59,8 +60,8 @@ class io_vxu_issue_vt extends Bundle
 
   val vf = new io_vf().flip
 
-  val hazardToIssue = new io_vxu_hazard_to_issue().asInput
-  val laneToPVFB = new ioLaneToPVFB().flip()
+  val hazardToIssue = Vec(NUM_PVFB){ new io_vxu_hazard_to_issue_vt() }.asInput
+  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }.flip()
 
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
@@ -84,17 +85,19 @@ class vuVXU_Issue_VT extends Component
 {
   val io = new io_vxu_issue_vt()
 
-  val pcUnit = new vuPC()
+  val pcStage = new vuPCStage()
 
-  io.vf.stop := pcUnit.io.pcToTVEC.stop
+  io.vf.stop := pcStage.io.pcToTVEC.stop
 
-  pcUnit.io.flush := io.flush
+  pcStage.io.flush := io.flush
 
-  pcUnit.io.tvecToPC.pc := io.vf.pc
-  pcUnit.io.tvecToPC.fire := io.vf.fire
+  pcStage.io.pc.id := UFix(0)
+  pcStage.io.pc.fire := io.vf.fire
+  pcStage.io.pc.pc := io.vf.pc
+  pcStage.io.pc.vlen := io.vf.vlen
 
-  pcUnit.io.hazardToIssue <> io.hazardToIssue
-  pcUnit.io.laneToPVFB <> io.laneToPVFB
+  pcStage.io.hazardToIssue <> io.hazardToIssue
+  pcStage.io.laneToPVFB <> io.laneToPVFB
 
   val stall_sticky = Reg(resetVal = Bool(false))
   val stall = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
@@ -107,15 +110,16 @@ class vuVXU_Issue_VT extends Component
   val reg_killf = Reg(killf)
 
   val flush = Wire(){ Bool() }
+  val id = Wire(){ Bits(width=SZ_NUM_PVFB) }
 
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
 
-  val imem_sb = SkidBuffer(pcUnit.io.pcToVT, true, true, flushable = true)
+  val imem_sb = SkidBuffer(pcStage.io.pcToVT, true, true, flushable = true)
   imem_sb.io.nack := killf
   imem_sb.io.early_nack := stalld
   imem_sb.io.deq.ready := Bool(true)
-  imem_sb.io.flush := io.flush || flush
+  imem_sb.io.flush := io.flush || (flush && imem_sb.io.pipereg.valid && id === imem_sb.io.pipereg.bits.id)
 
   when(io.flush) 
   {
@@ -129,16 +133,19 @@ class vuVXU_Issue_VT extends Component
   }
 
   io.imem_req.bits := imem_sb.io.deq.bits.pc
-  io.imem_req.valid := imem_sb.io.deq.valid && !flush
+  io.imem_req.valid := imem_sb.io.deq.valid && !(flush && id === imem_sb.io.deq.bits.id)
 
   val id_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
+  val id_reg_mask = Reg(resetVal = Bits(0,WIDTH_PVFB))
+  val id_reg_tag = Reg(resetVal = Bits(0, SZ_NUM_PVFB))
+  val id_reg_vlen = Reg(resetVal = Bits(0, SZ_VLEN))
   val id_reg_inst = Reg(resetVal = Bits(0,SZ_INST))
   val id_pc_next = Reg(resetVal = Bits(0,SZ_ADDR))
 
   io.decoded.aiw.imm1_rtag := imm1_rtag
   io.decoded.aiw.numCnt_rtag := numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
-  io.decoded.aiw.pc_next := id_pc_next
+  io.decoded.aiw.pc_next := id_reg_pc + UFix(4, SZ_ADDR)
   io.decoded.aiw.update_imm1 := Bool(true)
 
   when (io.flush)
@@ -154,9 +161,12 @@ class vuVXU_Issue_VT extends Component
   .elsewhen (!stalld)
   {
     id_reg_pc := imem_sb.io.pipereg.bits.pc
+    id_reg_mask := imem_sb.io.pipereg.bits.mask
+    id_reg_tag := imem_sb.io.pipereg.bits.id
+    id_reg_vlen := imem_sb.io.pipereg.bits.vlen
     id_reg_inst := io.imem_resp.bits
     id_pc_next := imem_sb.io.deq.bits.pc
-    when (killf || imem_sb.io.kill || flush)
+    when (killf || imem_sb.io.kill || (flush && id === imem_sb.io.pipereg.bits.id))
     { 
       id_reg_inst := NOP
     }
@@ -339,6 +349,7 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utld = valid(1)
   val unmasked_valid_utst = valid(0)
 
+  id := id_reg_tag
   val stop = decode_stop && io.vf.active
   val valid_branch = unmasked_valid_viu && isVIUBranch(viu_fn)
   val valid_jump = decode_jump && io.vf.active
@@ -351,14 +362,20 @@ class vuVXU_Issue_VT extends Component
     valid_jump -> (id_reg_pc + Cat(Fill(6, id_reg_inst(31)), id_reg_inst(31,7), Bits(0,1)))
   ))
 
-  pcUnit.io.vtToPC.stop := stop
-  pcUnit.io.vtToPC.replay.valid := replay
-  pcUnit.io.vtToPC.replay.bits := replay_bits
+  val sel = UFix(1,1) << id_reg_tag
+  val br_taken_pc = id_reg_pc + Cat(Fill(19, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10), Bits(0,1))
+  val br_not_taken_pc = id_reg_pc + UFix(4, SZ_ADDR)
+  
+  for(i <- 0 until NUM_PVFB){
+    pcStage.io.vtToPC(i).stop:= stop && sel(i)
+    pcStage.io.vtToPC(i).replay.valid:= replay && sel(i)
+    pcStage.io.vtToPC(i).replay.bits:= replay_bits
 
-  pcUnit.io.vtToPVFB.stop := stop
-  pcUnit.io.vtToPVFB.pc.valid := valid_branch
-  pcUnit.io.vtToPVFB.pc.bits.taken := id_reg_pc + Cat(Fill(19, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10), Bits(0,1))
-  pcUnit.io.vtToPVFB.pc.bits.not_taken := id_pc_next
+    pcStage.io.vtToPVFB(i).stop:= stop && sel(i)
+    pcStage.io.vtToPVFB(i).pc.valid:= valid_branch && sel(i)
+    pcStage.io.vtToPVFB(i).pc.bits.taken:= br_taken_pc
+    pcStage.io.vtToPVFB(i).pc.bits.not_taken:= br_not_taken_pc
+  }
 
   val vau1_rm = Wire(){Bits(width = 3)}
   val vau2_rm = Wire(){Bits(width = 3)}
@@ -386,7 +403,9 @@ class vuVXU_Issue_VT extends Component
     ))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
-  val regid_base = (cnt >> UFix(3)) * io.vf.stride
+  val pvfb_regid_base = id_reg_tag * UFix(WIDTH_PVFB)
+  val maskid_base = pvfb_regid_base >> UFix(3)
+  val regid_base = ((cnt + pvfb_regid_base) >> UFix(3)) * io.vf.stride
 
   io.vxu_cntq.ready := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
 
@@ -450,12 +469,14 @@ class vuVXU_Issue_VT extends Component
 
   val inactive_valid_inst = decode_stop || decode_jump
 
-  io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+
+  io.decoded.vlen := id_reg_vlen - cnt
+  io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0)) + pvfb_regid_base
   io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
   io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
   io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base
   io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1) + regid_base
-  io.decoded.vm := Bits(0,SZ_BMASK)
+  io.decoded.vm := Bits(0,SZ_BMASK) + maskid_base
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
@@ -470,7 +491,9 @@ class vuVXU_Issue_VT extends Component
   io.decoded.imm := imm
   io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt
-  io.decoded.mask := pcUnit.io.pcToVT.bits.mask
+  io.decoded.active_mask := Bool(true)
+  io.decoded.mask := id_reg_mask
+  io.decoded.pvfb_tag := id_reg_tag
 
   val illegal_vd = vd_active && (vd(4,0) >= io.vf.nfregs && rtype_vd || vd(4,0) >= io.vf.nxregs && !rtype_vd)
   val illegal_vt = vt_active && (vt(4,0) >= io.vf.nfregs && rtype_vt || vt(4,0) >= io.vf.nxregs && !rtype_vt)
