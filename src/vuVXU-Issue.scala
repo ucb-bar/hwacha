@@ -49,12 +49,17 @@ class io_vxu_cnt_valid extends ioPipe()( Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
+  val tvec = Bool()
   val vlen = Bits(width = SZ_VLEN)
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
   val vr_zero = Bool()
   val vd_zero = Bool()
+  val vs_base = Bits(width = SZ_BREGLEN)
+  val vt_base = Bits(width = SZ_BREGLEN)
+  val vr_base = Bits(width = SZ_BREGLEN)
+  val vd_base = Bits(width = SZ_BREGLEN)
   val vs = Bits(width = SZ_BREGLEN)
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
@@ -91,6 +96,7 @@ class io_vxu_issue_op extends Bundle
 class io_vxu_issue_to_hazard extends Bundle
 {
   val bcnt = Bits(width = SZ_BCNT)
+  val stride = Bits(width = SZ_REGLEN)
 }
 
 class io_vxu_issue_to_seq extends Bundle

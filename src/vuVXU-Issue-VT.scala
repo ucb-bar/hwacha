@@ -495,6 +495,10 @@ class vuVXU_Issue_VT extends Component
 
   io.decoded.vlen := id_reg_vlen - cnt
   io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0)) + pvfb_regid_base
+  io.decoded.vs_base := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
+  io.decoded.vt_base := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
+  io.decoded.vr_base := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
+  io.decoded.vd_base := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1)
   io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
   io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
   io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base

@@ -273,7 +273,7 @@ object Constants
   val SFMA_STAGES = 4
 
   // PVFB Constants
-  val NUM_PVFB = 2
+  val NUM_PVFB = 8
   val WIDTH_PVFB = 32
   val DEPTH_PVFB = 32
   val SZ_PVFB_TAG = log2up(NUM_PVFB)

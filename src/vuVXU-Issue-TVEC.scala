@@ -332,6 +332,7 @@ class vuVXU_Issue_TVEC extends Component
   io.vf.vlen := reg_vlen
 
   io.issue_to_hazard.bcnt := reg_bcnt
+  io.issue_to_hazard.stride := reg_stride
   io.issue_to_seq.vlen := reg_vlen - cnt
   io.issue_to_seq.stride := reg_stride
   io.issue_to_seq.bcnt := reg_bcnt
@@ -388,6 +389,7 @@ class vuVXU_Issue_TVEC extends Component
 
   io.decoded.vlen := reg_vlen - cnt
   io.decoded.utidx := Bits(0)
+  io.decoded.vd_base := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1)
   io.decoded.vs := Bits(0,SZ_BREGLEN)
   io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
   io.decoded.vr := Bits(0,SZ_BREGLEN)
