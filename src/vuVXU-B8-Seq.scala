@@ -42,7 +42,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val utmemop = Bool()
   val aiw = new io_vxu_aiw_bundle()
   val mask = Bits(width=SZ_BANK)
-  val pvfb_tag = Bits(width=SZ_NUM_PVFB)
+  val pvfb_tag = Bits(width=SZ_PVFB_TAG)
   val pop_count = UFix(width=SZ_LGBANK1)
 }
 
@@ -161,7 +161,7 @@ class vuVXU_Banked8_Seq extends Component
   val next_aiw_update_imm1 = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_aiw_update_numCnt = Vec(SZ_BANK){ Wire(){ Bool() } }
 
-  val next_pvfb_tag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_NUM_PVFB) } }
+  val next_pvfb_tag = Vec(SZ_BANK){ Wire(){ Bits(width=SZ_PVFB_TAG) } }
   val next_active_mask = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_mask = Vec(SZ_BANK){ Wire(){ Bits(width=WIDTH_PVFB) } }
 
@@ -205,7 +205,7 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
   val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
-  val array_pvfb_tag = Vec(SZ_BANK){ Reg(resetVal = Bits(0, SZ_NUM_PVFB)) }
+  val array_pvfb_tag = Vec(SZ_BANK){ Reg(resetVal = Bits(0, SZ_PVFB_TAG)) }
   val array_active_mask = Vec(SZ_BANK){ Reg(resetVal = Bool(false) ) }
   val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
 

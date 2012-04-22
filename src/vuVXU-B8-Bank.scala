@@ -20,10 +20,13 @@ class BankToBankIO extends Bundle
   val waddr      = Bits(SZ_BREGLEN, INPUT)
   val wsel       = Bits(SZ_BWPORT, INPUT)
   val wmask      = Bits(SZ_BANK, INPUT)
+
   val wen_mask   = Bool(INPUT)
   val wlast_mask = Bool(INPUT)
+  val wcnt_mask  = Bits(SZ_BVLEN, INPUT)
+  val wmask_mask = Bits(SZ_BANK, INPUT)
   val waddr_mask = Bits(SZ_BMASK, INPUT)
-  val pvfb_tag   = Bits(SZ_NUM_PVFB, INPUT)
+  val pvfb_tag   = Bits(SZ_PVFB_TAG, INPUT)
 
   val viu       = Bool(INPUT)
   val viu_fn    = Bits(SZ_VIU_FN, INPUT)
@@ -77,8 +80,14 @@ class vuVXU_Banked8_Bank extends Component
   val reg_waddr      = Reg(io.in.waddr)
   val reg_wsel       = Reg(io.in.wsel)
   val reg_wmask      = Reg(io.in.wmask >> UFix(1))
-  val reg_wen_mask   = Reg(wpass & io.in.wen_mask)
+
+
+  val wpass_mask = io.in.wcnt_mask.orR
+
+  val reg_wen_mask   = Reg(wpass_mask & io.in.wen_mask)
   val reg_wlast_mask = Reg(io.in.wlast_mask)
+  val reg_wcnt_mask  = Reg(Mux(wpass_mask, io.in.wcnt_mask.toUFix - UFix(1), UFix(0)))
+  val reg_wmask_mask = Reg(io.in.wmask_mask >> UFix(1))
   val reg_waddr_mask = Reg(io.in.waddr_mask)
   val reg_pvfb_tag   = Reg(io.in.pvfb_tag)
 
@@ -140,7 +149,10 @@ class vuVXU_Banked8_Bank extends Component
     ))
 
   val branch_resolution_register = Vec(WIDTH_BMASK){ Reg(resetVal=Bool(false)) }
-  when (io.in.wen_mask && io.in.wmask(0)){ branch_resolution_register(io.in.waddr_mask) := alu.io.branch_result  }
+  when (io.in.wen_mask && io.in.wmask_mask(0))
+  { 
+    branch_resolution_register(io.in.waddr_mask) := alu.io.branch_result  
+  }
   io.branch_resolution_mask := branch_resolution_register.toBits
 
   alu.io.valid := delay_viu_val
@@ -164,8 +176,11 @@ class vuVXU_Banked8_Bank extends Component
   io.out.waddr      := Mux(io.active, reg_waddr, io.in.waddr)
   io.out.wsel       := Mux(io.active, reg_wsel, io.in.wsel)
   io.out.wmask      := Mux(io.active, reg_wmask, io.in.wmask)
+
   io.out.wen_mask   := Mux(io.active, reg_wen_mask, io.in.wen_mask)
   io.out.wlast_mask := Mux(io.active, reg_wlast_mask, io.in.wlast_mask)
+  io.out.wcnt_mask  := Mux(io.active, reg_wcnt_mask, io.in.wcnt_mask)
+  io.out.wmask_mask := Mux(io.active, reg_wmask_mask, io.in.wmask_mask)
   io.out.waddr_mask := Mux(io.active, reg_waddr_mask, io.in.waddr_mask)
   io.out.pvfb_tag   := Mux(io.active, reg_pvfb_tag, io.in.pvfb_tag)
 

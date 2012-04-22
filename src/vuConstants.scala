@@ -276,7 +276,7 @@ object Constants
   val NUM_PVFB = 2
   val WIDTH_PVFB = 32
   val DEPTH_PVFB = 32
-  val SZ_NUM_PVFB = log2up(NUM_PVFB)
+  val SZ_PVFB_TAG = log2up(NUM_PVFB)
   val SZ_MASK = log2up(WIDTH_PVFB)
   val WIDTH_BMASK = NUM_PVFB * WIDTH_PVFB / SZ_BANK
   val SZ_BMASK = log2up(WIDTH_BMASK)

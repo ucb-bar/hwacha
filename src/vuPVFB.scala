@@ -10,7 +10,7 @@ class pvfBundle extends Bundle
 {
   val pc = Bits(width=SZ_ADDR)
   val mask = Bits(width=WIDTH_PVFB)
-  val id = Bits(width=SZ_NUM_PVFB)
+  val id = Bits(width=SZ_PVFB_TAG)
   val vlen = Bits(width=SZ_VLEN)
 }
 

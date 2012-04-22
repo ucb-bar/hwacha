@@ -5,7 +5,7 @@ import Node._
 import Constants._
 
 class pcUnitBundle extends Bundle {
-  val id = Bits(width=SZ_NUM_PVFB)
+  val id = Bits(width=SZ_PVFB_TAG)
   val fire = Bool()
   val pc = Bits(width=SZ_ADDR)
   val vlen = Bits(width=SZ_VLEN)
@@ -18,12 +18,10 @@ class ioPCStage extends Bundle {
   val pcToVT = new ioPCToIssueVT()
 
   val pc = new pcUnitBundle().asInput()
-  val vtToPC = Vec(NUM_PVFB){ new ioIssueVTToPC() }.flip()
-  val vtToPVFB = Vec(NUM_PVFB){ new ioIssueVTToPVFB() }.flip()
+  val vtToPC = new ioIssueVTToPC().flip()
+  val vtToPVFB = new ioIssueVTToPVFB().flip()
 
-  val hazardToIssue = Vec(NUM_PVFB){ new io_vxu_hazard_to_issue_vt() }.asInput()
-
-  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }.flip()
+  val laneToIssue = new ioLaneToIssue()flip()
 }
 
 class vuPCStage extends Component {
@@ -31,8 +29,19 @@ class vuPCStage extends Component {
 
   val rrArb = new RRArbiter(NUM_PVFB)( new pvfBundle )
   
-  var fire = Bool(false)
+  val pvfb_sel = UFix(1) << io.vtToPVFB.pvfb_tag
+
+  val replay_pre_if_sel = UFix(1) << io.vtToPC.replay_pre_if.bits.tag
+  val replay_if_sel = UFix(1) << io.vtToPC.replay_if.bits.tag
+  val replay_jump_sel = UFix(1) << io.vtToPC.replay_jump.bits.tag
+  val replay_branch_sel = UFix(1) << io.vtToPC.replay_branch.bits.tag
+  val replay_stop_sel = UFix(1) << io.vtToPC.replay_stop.bits.tag
+
+  val lane_sel = UFix(1) << io.laneToIssue.pvfb_tag
+
+  var valid = Bool(false)
   var stop = Bool(false)
+  var pending = Bool(false)
 
   def gen(pcBundle: pcUnitBundle, n: Int): Unit = {
     if(n >= 0) {
@@ -42,17 +51,33 @@ class vuPCStage extends Component {
 
       pcUnit.io.in <> pcBundle
 
-      fire = fire || pcBundle.fire
+      val i = NUM_PVFB - 1 - n
 
+      rrArb.io.in(i).bits <> pcUnit.io.pcToVT.bits
+      rrArb.io.in(i).valid := pcUnit.io.pcToVT.valid && !pcUnit.io.pending
+      pcUnit.io.pcToVT.ready := rrArb.io.in(i).ready && !pcUnit.io.pending
+
+      pcUnit.io.vtToPC.replay_pre_if.valid := io.vtToPC.replay_pre_if.valid && replay_pre_if_sel(i)
+      pcUnit.io.vtToPC.replay_if.valid := io.vtToPC.replay_if.valid && replay_if_sel(i)
+      pcUnit.io.vtToPC.replay_jump.valid := io.vtToPC.replay_jump.valid && replay_jump_sel(i)
+      pcUnit.io.vtToPC.replay_branch.valid := io.vtToPC.replay_branch.valid && replay_branch_sel(i)
+      pcUnit.io.vtToPC.replay_stop.valid := io.vtToPC.replay_stop.valid && replay_stop_sel(i)
+
+      pcUnit.io.vtToPC.replay_pre_if.bits <> io.vtToPC.replay_pre_if.bits
+      pcUnit.io.vtToPC.replay_if.bits <> io.vtToPC.replay_if.bits
+      pcUnit.io.vtToPC.replay_jump.bits <> io.vtToPC.replay_jump.bits
+      pcUnit.io.vtToPC.replay_branch.bits <> io.vtToPC.replay_branch.bits
+
+      pcUnit.io.vtToPVFB.stop := io.vtToPVFB.stop && pvfb_sel(i)
+      pcUnit.io.vtToPVFB.pc.valid := io.vtToPVFB.pc.valid && pvfb_sel(i)
+      pcUnit.io.vtToPVFB.pc.bits <> io.vtToPVFB.pc.bits
+
+      pcUnit.io.laneToPVFB.mask.valid := io.laneToIssue.mask.valid && lane_sel(i)
+      pcUnit.io.laneToPVFB.mask.bits := io.laneToIssue.mask.bits((i+1) * WIDTH_PVFB  - 1, i * WIDTH_PVFB)
+
+      valid = valid || (pcUnit.io.pcToVT.valid && !pcUnit.io.pcToTVEC.stop)
       stop = stop || pcUnit.io.pcToTVEC.stop
-      pcUnit.io.pcToVT <> rrArb.io.in(NUM_PVFB - 1 - n)
-
-      pcUnit.io.vtToPC <> io.vtToPC(NUM_PVFB - 1 - n)
-      pcUnit.io.vtToPVFB <> io.vtToPVFB(NUM_PVFB - 1 - n)
-
-      pcUnit.io.hazardToIssue <> io.hazardToIssue(NUM_PVFB - 1 - n)
-
-      pcUnit.io.laneToPVFB <> io.laneToPVFB(NUM_PVFB - 1 - n)
+      pending = pending || pcUnit.io.pending
 
       gen(pcUnit.io.out, n-1)
     }
@@ -60,13 +85,7 @@ class vuPCStage extends Component {
 
   gen(io.pc, NUM_PVFB-1)
 
-  val counter = new qcnt(0, NUM_PVFB, true)
-  counter.io.flush := io.flush
-  counter.io.inc := fire
-  counter.io.dec := stop
-  counter.io.qcnt := UFix(2)
-
-  io.pcToTVEC.stop := !fire && !counter.io.watermark && stop
+  io.pcToTVEC.stop := stop && !pending && !valid
 
   io.pcToVT <> rrArb.io.out
 

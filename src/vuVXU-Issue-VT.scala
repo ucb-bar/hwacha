@@ -18,12 +18,22 @@ class ioIssueVTToPVFB extends Bundle
 {
   val stop = Bool(OUTPUT)
   val pc = new ioPCPipe()
+  val pvfb_tag = Bits(SZ_PVFB_TAG, OUTPUT)
+}
+
+class ReplayBundle extends Bundle
+{
+  val pc = Bits(width=SZ_ADDR)
+  val tag = Bits(width=SZ_PVFB_TAG)
 }
 
 class ioIssueVTToPC extends Bundle
 {
-  val stop = Bool(OUTPUT)
-  val replay = new ioPipe()( Bits(width=SZ_ADDR) )
+  val replay_pre_if = new ioPipe()( new ReplayBundle )
+  val replay_if = new ioPipe()( new ReplayBundle )
+  val replay_jump = new ioPipe()( new ReplayBundle )
+  val replay_branch = new ioPipe()( new ReplayBundle )
+  val replay_stop = new ioPipe()( new ReplayBundle )
 }
 
 class io_vf extends Bundle
@@ -60,8 +70,7 @@ class io_vxu_issue_vt extends Bundle
 
   val vf = new io_vf().flip
 
-  val hazardToIssue = Vec(NUM_PVFB){ new io_vxu_hazard_to_issue_vt() }.asInput
-  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }.flip()
+  val laneToIssue = new ioLaneToIssue().flip()
 
   val valid = new io_vxu_issue_fire().asOutput
   val ready = Bool(INPUT)
@@ -96,8 +105,7 @@ class vuVXU_Issue_VT extends Component
   pcStage.io.pc.pc := io.vf.pc
   pcStage.io.pc.vlen := io.vf.vlen
 
-  pcStage.io.hazardToIssue <> io.hazardToIssue
-  pcStage.io.laneToPVFB <> io.laneToPVFB
+  pcStage.io.laneToIssue <> io.laneToIssue
 
   val stall_sticky = Reg(resetVal = Bool(false))
   val stall = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
@@ -105,21 +113,36 @@ class vuVXU_Issue_VT extends Component
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
   when (io.flush) { stall_sticky := Bool(false) }
 
-  val stalld = !(io.ready && io.aiw_cntb.ready & !stall)
-  val killf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
-  val reg_killf = Reg(killf)
+  val mask_stall = Wire(){ Bool() }
+  val stalld = !(io.ready && (mask_stall || io.aiw_cntb.ready) & !stall)
+  val stallf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
 
-  val flush = Wire(){ Bool() }
-  val id = Wire(){ Bits(width=SZ_NUM_PVFB) }
+  val flushd = Wire(){ Bool() }
+  val tagd = Wire(){ Bits(width=SZ_PVFB_TAG) }
+
+  val reg_flushd = Reg(flushd)
+  val reg_tagd = Reg(tagd)
 
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
 
-  val imem_sb = SkidBuffer(pcStage.io.pcToVT, true, true, flushable = true)
-  imem_sb.io.nack := killf
-  imem_sb.io.early_nack := stalld
+  val imem_sb = SkidBuffer(pcStage.io.pcToVT, true, flushable = true)
+
+  val pre_if = imem_sb.io.deq
+  val if_reg = imem_sb.io.pipereg
+  val killf = imem_sb.io.kill || io.vf.fire
+
+  imem_sb.io.nack := stallf || stalld
   imem_sb.io.deq.ready := Bool(true)
-  imem_sb.io.flush := io.flush || (flush && imem_sb.io.pipereg.valid && id === imem_sb.io.pipereg.bits.id)
+  imem_sb.io.flush := io.flush || flushd
+
+  pcStage.io.vtToPC.replay_pre_if.valid := flushd && pre_if.bits.id != tagd
+  pcStage.io.vtToPC.replay_pre_if.bits.pc := pre_if.bits.pc
+  pcStage.io.vtToPC.replay_pre_if.bits.tag := pre_if.bits.id
+
+  pcStage.io.vtToPC.replay_if.valid := flushd && if_reg.bits.id != tagd
+  pcStage.io.vtToPC.replay_if.bits.pc := if_reg.bits.pc
+  pcStage.io.vtToPC.replay_if.bits.tag := if_reg.bits.id
 
   when(io.flush) 
   {
@@ -132,12 +155,12 @@ class vuVXU_Issue_VT extends Component
     numCnt_rtag := io.vf.numCnt_rtag
   }
 
-  io.imem_req.bits := imem_sb.io.deq.bits.pc
-  io.imem_req.valid := imem_sb.io.deq.valid && !(flush && id === imem_sb.io.deq.bits.id)
+  io.imem_req.bits := pre_if.bits.pc
+  io.imem_req.valid := pre_if.valid
 
   val id_reg_pc = Reg(resetVal = Bits(0,SZ_ADDR))
   val id_reg_mask = Reg(resetVal = Bits(0,WIDTH_PVFB))
-  val id_reg_tag = Reg(resetVal = Bits(0, SZ_NUM_PVFB))
+  val id_reg_tag = Reg(resetVal = Bits(0, SZ_PVFB_TAG))
   val id_reg_vlen = Reg(resetVal = Bits(0, SZ_VLEN))
   val id_reg_inst = Reg(resetVal = Bits(0,SZ_INST))
   val id_pc_next = Reg(resetVal = Bits(0,SZ_ADDR))
@@ -154,10 +177,6 @@ class vuVXU_Issue_VT extends Component
     id_reg_inst := Bits(0,SZ_INST)
     id_pc_next := Bits(0,SZ_ADDR)
   }
-  .elsewhen (io.vf.fire)
-  {
-    id_reg_inst := NOP
-  }
   .elsewhen (!stalld)
   {
     id_reg_pc := imem_sb.io.pipereg.bits.pc
@@ -166,7 +185,7 @@ class vuVXU_Issue_VT extends Component
     id_reg_vlen := imem_sb.io.pipereg.bits.vlen
     id_reg_inst := io.imem_resp.bits
     id_pc_next := imem_sb.io.deq.bits.pc
-    when (killf || imem_sb.io.kill || (flush && id === imem_sb.io.pipereg.bits.id))
+    when (killf || stallf || flushd || reg_flushd)
     { 
       id_reg_inst := NOP
     }
@@ -349,33 +368,38 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utld = valid(1)
   val unmasked_valid_utst = valid(0)
 
-  id := id_reg_tag
+  tagd := id_reg_tag
   val stop = decode_stop && io.vf.active
   val valid_branch = unmasked_valid_viu && isVIUBranch(viu_fn)
   val valid_jump = decode_jump && io.vf.active
 
-  flush := stop || valid_branch || valid_jump
+  flushd := stop || valid_branch || valid_jump
 
-  val replay = valid_branch || valid_jump
   val replay_bits = MuxCase(Bits(0, SZ_ADDR), Array(
     valid_branch -> id_reg_pc,
     valid_jump -> (id_reg_pc + Cat(Fill(6, id_reg_inst(31)), id_reg_inst(31,7), Bits(0,1)))
   ))
 
-  val sel = UFix(1,1) << id_reg_tag
   val br_taken_pc = id_reg_pc + Cat(Fill(19, id_reg_inst(31)),id_reg_inst(31,27),id_reg_inst(16,10), Bits(0,1))
   val br_not_taken_pc = id_reg_pc + UFix(4, SZ_ADDR)
   
-  for(i <- 0 until NUM_PVFB){
-    pcStage.io.vtToPC(i).stop:= stop && sel(i)
-    pcStage.io.vtToPC(i).replay.valid:= replay && sel(i)
-    pcStage.io.vtToPC(i).replay.bits:= replay_bits
+  pcStage.io.vtToPC.replay_stop.valid := stop
+  pcStage.io.vtToPC.replay_stop.bits.tag := id_reg_tag
 
-    pcStage.io.vtToPVFB(i).stop:= stop && sel(i)
-    pcStage.io.vtToPVFB(i).pc.valid:= valid_branch && sel(i)
-    pcStage.io.vtToPVFB(i).pc.bits.taken:= br_taken_pc
-    pcStage.io.vtToPVFB(i).pc.bits.not_taken:= br_not_taken_pc
-  }
+  pcStage.io.vtToPC.replay_branch.valid := valid_branch
+  pcStage.io.vtToPC.replay_branch.bits.pc := replay_bits
+  pcStage.io.vtToPC.replay_branch.bits.tag := id_reg_tag
+
+  pcStage.io.vtToPC.replay_jump.valid := valid_jump
+  pcStage.io.vtToPC.replay_jump.bits.pc := replay_bits
+  pcStage.io.vtToPC.replay_jump.bits.tag := id_reg_tag
+
+  pcStage.io.vtToPVFB.stop:= stop
+  pcStage.io.vtToPVFB.pc.valid:= valid_branch
+  pcStage.io.vtToPVFB.pc.bits.taken:= br_taken_pc
+  pcStage.io.vtToPVFB.pc.bits.not_taken:= br_not_taken_pc
+  pcStage.io.vtToPVFB.pvfb_tag := id_reg_tag
+
 
   val vau1_rm = Wire(){Bits(width = 3)}
   val vau2_rm = Wire(){Bits(width = 3)}
@@ -467,8 +491,7 @@ class vuVXU_Issue_VT extends Component
   val vr_m1 = Cat(Bits(0,1),vr(4,0)) - UFix(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
 
-  val inactive_valid_inst = decode_stop || decode_jump
-
+  mask_stall := decode_stop || decode_jump
 
   io.decoded.vlen := id_reg_vlen - cnt
   io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0)) + pvfb_regid_base
@@ -480,7 +503,7 @@ class vuVXU_Issue_VT extends Component
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
-  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid || inactive_valid_inst
+  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid || mask_stall
   io.decoded.vs_active := vs_active
   io.decoded.vt_active := vt_active
   io.decoded.vr_active := vr_active
@@ -502,7 +525,7 @@ class vuVXU_Issue_VT extends Component
 
   io.irq.ma_inst := io.vf.active && imem_sb.io.pipereg.valid && imem_sb.io.pipereg.bits.pc(1,0) != Bits(0)
   io.irq.fault_inst := io.vf.active && io.vitlb_exception
-  io.irq.illegal := io.vf.active && (~unmasked_valid && ~inactive_valid_inst || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
+  io.irq.illegal := io.vf.active && (~unmasked_valid && ~mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
   io.irq.pc_if := imem_sb.io.pipereg.bits.pc
   io.irq.pc_id := id_reg_pc
 }

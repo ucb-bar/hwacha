@@ -72,7 +72,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val aiw = new io_vxu_aiw_bundle()
   val active_mask  = Bool()
   val mask = Bits(width=WIDTH_PVFB)
-  val pvfb_tag = Bits(width=SZ_NUM_PVFB)
+  val pvfb_tag = Bits(width=SZ_PVFB_TAG)
 }
 
 class io_vxu_issue_op extends Bundle
@@ -145,7 +145,7 @@ class io_vxu_issue extends Bundle
   val issue_to_seq = new io_vxu_issue_to_seq().asOutput
   val issue_to_lane = new io_vxu_issue_to_lane().asOutput
   val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
-  val laneToPVFB = Vec(NUM_PVFB){ new ioLaneToPVFB() }.flip()
+  val laneToIssue = new ioLaneToIssue().flip()
 
   val tvec_valid = new io_vxu_issue_fire().asOutput
   val tvec_ready = Bool(INPUT)
@@ -229,8 +229,7 @@ class vuVXU_Issue extends Component
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
   // vt
-  vt.io.hazardToIssue <> io.hazard_to_issue.vt
-  vt.io.laneToPVFB <> io.laneToPVFB
+  vt.io.laneToIssue <> io.laneToIssue
 
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready

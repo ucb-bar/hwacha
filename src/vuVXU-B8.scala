@@ -170,7 +170,7 @@ class vuVXU extends Component
 
   val b8lane = new vuVXU_Banked8_Lane()
 
-  b8lane.io.laneToPVFB <> issue.io.laneToPVFB
+  b8lane.io.laneToIssue <> issue.io.laneToIssue
 
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
 

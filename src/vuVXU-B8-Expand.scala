@@ -23,10 +23,13 @@ class io_vxu_expand_write extends Bundle
   val waddr = Bits(width = SZ_BREGLEN)
   val wsel = Bits(width = SZ_BWPORT)
   val wmask = Bits(width = SZ_BANK)
+
   val wen_mask = Bool()
   val wlast_mask = Bool()
+  val wcnt_mask = Bits(width = SZ_BVLEN)
+  val wmask_mask = Bits(width = SZ_BANK)
   val waddr_mask = Bits(width = SZ_BMASK)
-  val pvfb_tag = Bits(width = SZ_NUM_PVFB)
+  val pvfb_tag = Bits(width = SZ_PVFB_TAG)
 }
 
 class io_vxu_expand_fu_fn extends Bundle
@@ -317,10 +320,13 @@ class vuVXU_Banked8_Expand extends Component
   val next_waddr = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BREGLEN)} }
   val next_wsel = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BWPORT)} }
   val next_wmask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
+
   val next_wen_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
   val next_wlast_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bool() } }
+  val next_wcnt_mask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BVLEN)} }
+  val next_wmask_mask = Vec(SHIFT_BUF_WRITE){ Wire(){Bits(width=SZ_BANK) } }
   val next_waddr_mask = Vec(SHIFT_BUF_WRITE){ Wire(){ Bits(width=SZ_BMASK) } }
-  val next_pvfb_tag = Vec(SHIFT_BUF_WRITE){ Wire(){ Bits(width=SZ_NUM_PVFB) } }
+  val next_pvfb_tag = Vec(SHIFT_BUF_WRITE){ Wire(){ Bits(width=SZ_PVFB_TAG) } }
 
   val reg_wen = Vec(SHIFT_BUF_WRITE){ Reg(resetVal=Bool(false)) }
   val reg_wlast = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
@@ -328,10 +334,13 @@ class vuVXU_Banked8_Expand extends Component
   val reg_waddr = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BREGLEN)} }
   val reg_wsel = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BWPORT)} }
   val reg_wmask = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BANK) } }
+
   val reg_wen_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
   val reg_wlast_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bool() } }
+  val reg_wcnt_mask = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BVLEN)} }
+  val reg_wmask_mask = Vec(SHIFT_BUF_WRITE){ Reg(){Bits(width=SZ_BANK) } }
   val reg_waddr_mask = Vec(SHIFT_BUF_WRITE){ Reg(){ Bits(width=SZ_BMASK) } }
-  val reg_pvfb_tag = Vec(SHIFT_BUF_WRITE){ Reg(){ Bits(width=SZ_NUM_PVFB) } }
+  val reg_pvfb_tag = Vec(SHIFT_BUF_WRITE){ Reg(){ Bits(width=SZ_PVFB_TAG) } }
 
   for (i <- 0 until SHIFT_BUF_WRITE)
   {
@@ -341,8 +350,11 @@ class vuVXU_Banked8_Expand extends Component
     reg_waddr(i) := next_waddr(i)
     reg_wsel(i) := next_wsel(i)
     reg_wmask(i) := next_wmask(i)
+
     reg_wen_mask(i) := next_wen_mask(i)
     reg_wlast_mask(i) := next_wlast_mask(i)
+    reg_wcnt_mask(i) := next_wcnt_mask(i)
+    reg_wmask_mask(i) := next_wmask_mask(i)
     reg_waddr_mask(i) := next_waddr_mask(i)
     reg_pvfb_tag(i) := next_pvfb_tag(i)
   }
@@ -369,8 +381,11 @@ class vuVXU_Banked8_Expand extends Component
     next_waddr(i) := reg_waddr(i+1)
     next_wsel(i) := reg_wsel(i+1)
     next_wmask(i) := reg_wmask(i+1)
+
     next_wen_mask(i) := reg_wen_mask(i+1)
     next_wlast_mask(i) := reg_wlast_mask(i+1)
+    next_wcnt_mask(i) := reg_wcnt_mask(i+1)
+    next_wmask_mask(i) := reg_wmask_mask(i+1)
     next_waddr_mask(i) := reg_waddr_mask(i+1)
     next_pvfb_tag(i) := reg_pvfb_tag(i+1)
   }
@@ -381,29 +396,33 @@ class vuVXU_Banked8_Expand extends Component
   next_waddr(SHIFT_BUF_WRITE-1) := Bits("d0", 8)
   next_wsel(SHIFT_BUF_WRITE-1) := Bits("d0", 3)
   next_wmask(SHIFT_BUF_WRITE-1) := Bits(0,SZ_BANK)
+
   next_wen_mask(SHIFT_BUF_WRITE-1) := Bool(false)
   next_wlast_mask(SHIFT_BUF_WRITE-1) := Bool(false)
+  next_wcnt_mask(SHIFT_BUF_WRITE-1) := Bits("d0", 3)
+  next_wmask_mask(SHIFT_BUF_WRITE-1) := Bits(0, SZ_BANK)
   next_waddr_mask(SHIFT_BUF_WRITE-1) := Bits(0, SZ_BMASK)
-  next_pvfb_tag(SHIFT_BUF_WRITE-1) := Bits(0, SZ_NUM_PVFB)
+  next_pvfb_tag(SHIFT_BUF_WRITE-1) := Bits(0, SZ_PVFB_TAG)
       
   when (io.seq.viu)
   {
-    next_wlast.write(viu_wptr, io.seq_to_expand.last)
-    next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt)
-    next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
-    next_wsel.write(viu_wptr, Bits("d4", 3))
-    next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
-    next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
-
     when (isVIUBranch(io.seq_fn.viu(RG_VIU_FN)))
     {
       next_wen_mask.write(viu_wptr, Bool(true))
       next_wlast_mask.write(viu_wptr, io.seq_to_expand.last)
+      next_wcnt_mask.write(viu_wptr, io.seq_regid_imm.cnt)
+      next_wmask_mask.write(viu_wptr, io.seq_regid_imm.mask)
+      next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
       next_pvfb_tag.write(viu_wptr, io.seq_regid_imm.pvfb_tag)
     }
     . otherwise
     {
       next_wen.write(viu_wptr, Bool(true))
+      next_wlast.write(viu_wptr, io.seq_to_expand.last)
+      next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt)
+      next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
+      next_wsel.write(viu_wptr, Bits("d4", 3))
+      next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
     }
   }
   when (io.seq.vau0)
@@ -658,8 +677,11 @@ class vuVXU_Banked8_Expand extends Component
   io.expand_write.waddr := reg_waddr(0)
   io.expand_write.wsel := reg_wsel(0)
   io.expand_write.wmask := reg_wmask(0)
+
   io.expand_write.wen_mask := reg_wen_mask(0)
   io.expand_write.wlast_mask := reg_wlast_mask(0)
+  io.expand_write.wcnt_mask := reg_wcnt_mask(0)
+  io.expand_write.wmask_mask := reg_wmask_mask(0)
   io.expand_write.waddr_mask := reg_waddr_mask(0)
   io.expand_write.pvfb_tag := reg_pvfb_tag(0)
 

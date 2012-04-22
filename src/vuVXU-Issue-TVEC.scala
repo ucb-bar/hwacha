@@ -414,7 +414,7 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.aiw.update_imm1 := !io.valid.viu
   io.decoded.active_mask := Bool(false)
   io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))
-  io.decoded.pvfb_tag := Bits(0, SZ_NUM_PVFB)
+  io.decoded.pvfb_tag := Bits(0, SZ_PVFB_TAG)
 
   val illegal_vd = vd_active && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
   val illegal_vt = vt_active && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)

@@ -9,15 +9,9 @@ class io_vxu_hazard_to_issue_tvec extends Bundle
   val pending_memop = Bool()
 }
 
-class io_vxu_hazard_to_issue_vt extends Bundle
-{
-  val pending_branch = Bool()
-}
-
 class io_vxu_hazard_to_issue extends Bundle
 {
   val tvec = new io_vxu_hazard_to_issue_tvec()
-  val vt = Vec(NUM_PVFB){ new io_vxu_hazard_to_issue_vt() }
 }
 
 class io_vxu_hazard extends Bundle
@@ -327,7 +321,6 @@ class vuVXU_Banked8_Hazard extends Component
 
   val array_wmask_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wmask_head = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_pending_br = Vec(NUM_PVFB){ Reg(resetVal=Bool(false)) }
   
   val array_wport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_wport_head = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
@@ -339,7 +332,6 @@ class vuVXU_Banked8_Hazard extends Component
 
   val next_wmask_val = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_wmask_head = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_pending_br = Vec(NUM_PVFB){ Wire(){ Bool() } }
 
   val next_wport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_wport_head = Vec(SZ_BANK){ Wire(){ Bool() } }
@@ -348,8 +340,6 @@ class vuVXU_Banked8_Hazard extends Component
   val next_wport_vau2 = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_wport_vlu = Vec(SZ_BANK){ Wire(){ Bool() } }
   val next_wport_vd = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_BREGLEN) } }
-
-  array_pending_br := next_pending_br
 
   for (i <- 0 until SZ_BANK)
   {
@@ -364,8 +354,6 @@ class vuVXU_Banked8_Hazard extends Component
     array_wport_vlu(i) := next_wport_vlu(i)
     array_wport_vd(i) := next_wport_vd(i)
   }
-
-  next_pending_br := array_pending_br
 
   for (i <- 0 until SZ_BANK)
   {
@@ -387,7 +375,6 @@ class vuVXU_Banked8_Hazard extends Component
     {
       next_wmask_val.write(vbr_wptr, Bool(true))
       next_wmask_head.write(vbr_wptr, Bool(true))
-      next_pending_br.write(io.fire_regid_imm.pvfb_tag, Bool(true))
     }
     . otherwise 
     {
@@ -452,7 +439,6 @@ class vuVXU_Banked8_Hazard extends Component
   when (io.lane_to_hazard.wlast_mask)
   {
     next_wmask_val.write(reg_ptr, Bool(false))
-    next_pending_br.write(io.lane_to_hazard.pvfb_tag, Bool(false))
   }
 
   when (io.lane_to_hazard.wlast)
@@ -480,10 +466,6 @@ class vuVXU_Banked8_Hazard extends Component
         next_wport_vd(i)   := Bool(false)
       }
 
-    for (i <- 0 until NUM_PVFB) 
-      {
-        next_pending_br(i) := Bool(false)
-      }
   }
 
   val array_sport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
@@ -553,10 +535,6 @@ class vuVXU_Banked8_Hazard extends Component
 
   // checking any pending memory ops for fences
   io.hazard_to_issue.tvec.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
-
-  // checking any pending branch ops 
-  for(i <- 0 until NUM_PVFB)
-    io.hazard_to_issue.vt(i).pending_branch := array_pending_br(i)
 
   // hazard check logic for tvec
   val tvec_comp_vt =
