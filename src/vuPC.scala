@@ -68,8 +68,10 @@ class vuPC extends Component
 
   pvfb.io.vtToPVFB <> io.vtToPVFB
 
+  val vlen_mask = (UFix(1) << (Cat(Bits(0, 1), vlen) + UFix(1)))(WIDTH_PVFB-1,0) - UFix(1)
+
   pvfb.io.mask.valid := io.laneToPVFB.mask.valid
-  pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits
+  pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits & vlen_mask
   pvfb.io.mask.bits.active := reg_mask
 
   next_pc := reg_pc
@@ -80,14 +82,14 @@ class vuPC extends Component
   when (io.in.fire) 
   {
     next_pc := io.in.pc
-    next_mask := Fill(WIDTH_PVFB, Bits(1,1))
+    next_mask := Fill(WIDTH_PVFB, Bits(1,1)) & vlen_mask
     next_pending := Bool(false)
     next_valid := Bool(true)
   }
   . elsewhen (pvfb.io.pvf.valid)
   {
     next_pc := pvfb.io.pvf.bits.pc
-    next_mask := pvfb.io.pvf.bits.mask
+    next_mask := pvfb.io.pvf.bits.mask & vlen_mask
     next_pending := Bool(false)
     next_valid := Bool(true)
   }

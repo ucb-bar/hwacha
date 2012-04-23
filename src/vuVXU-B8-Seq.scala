@@ -796,9 +796,13 @@ class vuVXU_Banked8_Seq extends Component
   val reg_vldq_stall = Reg(resetVal = Bool(false))
   val reg_vsdq_stall = Reg(resetVal = Bool(false))
 
-  when (current_vaq_val) { reg_vaq_stall := io.qstall.vaq }
-  when (current_vldq_val) { reg_vldq_stall := io.qstall.vldq }
-  when (current_vsdq_val) { reg_vsdq_stall := io.qstall.vsdq }
+  val masked_vaq_stall = array_dep_vaq(reg_ptr) & reg_vaq_stall
+  val masked_vldq_stall = array_dep_vldq(reg_ptr) & reg_vldq_stall
+  val masked_vsdq_stall = array_dep_vsdq(reg_ptr) & reg_vsdq_stall
+
+  when (current_vaq_val & !masked_vldq_stall & !masked_vsdq_stall) { reg_vaq_stall := io.qstall.vaq }
+  when (current_vldq_val & !masked_vaq_stall & !masked_vsdq_stall) { reg_vldq_stall := io.qstall.vldq }
+  when (current_vsdq_val & !masked_vldq_stall & !masked_vsdq_stall) { reg_vsdq_stall := io.qstall.vsdq }
 
   val masked_xcpt_stall = (!current_vldq_val && !current_vsdq_val) && io.xcpt_to_seq.stall
 
