@@ -165,6 +165,31 @@ class RRArbiter[T <: Data](n: Int)(data: => T) extends Component {
   io.chosen := choose
 }
 
+class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Component {
+  val io = new ioArbiter(n)(data)
+
+  val last_grant = Reg(resetVal = Bits(0, log2up(n)))
+  val g = ArbiterCtrl((0 until n).map(i => io.in(i).valid && UFix(i) >= last_grant) ++ io.in.map(_.valid))
+  val grant = (0 until n).map(i => g(i) && UFix(i) >= last_grant || g(i+n))
+  (0 until n).map(i => io.in(i).ready := grant(i) && io.out.ready)
+
+  var choose = Bits(n-1)
+  for (i <- n-2 to 0 by -1)
+    choose = Mux(io.in(i).valid, Bits(i), choose)
+  for (i <- n-1 to 0 by -1)
+    choose = Mux(io.in(i).valid && UFix(i) >= last_grant, Bits(i), choose)
+  when (Reg(io.out.valid) && !io.out.valid && io.out.ready) {
+    last_grant := choose
+  }
+
+  val dvec = Vec(n) { Wire() { data } }
+  (0 until n).map(i => dvec(i) := io.in(i).bits )
+
+  io.out.valid := foldR(io.in.map(_.valid))(_||_)
+  io.out.bits := dvec(choose)
+  io.chosen := choose
+}
+
 class maskstall[T <: Data](data: => T) extends Component
 {
   val io = new Bundle()

@@ -273,14 +273,16 @@ object Constants
   val SFMA_STAGES = 4
 
   // PVFB Constants
-  val NUM_PVFB = 1
-  val WIDTH_PVFB = 2048
-  val DEPTH_PVFB = 2048
+  var coarseGrained = false
+  var NUM_PVFB = 4
+  var WIDTH_PVFB = 512
+  var DEPTH_PVFB = 512
   assert(DEPTH_PVFB >= WIDTH_PVFB, println("DEPTH_PVFB MUST BE GREATER THAN OR EQUAL TO DEPTH_PVFB"))
-  val SZ_PVFB_TAG = log2up(NUM_PVFB)
-  val SZ_MASK = log2up(WIDTH_PVFB)
-  val WIDTH_BMASK = NUM_PVFB * WIDTH_PVFB / SZ_BANK
-  val SZ_BMASK = log2up(WIDTH_BMASK)
+  assert(!coarseGrained || (coarseGrained && NUM_PVFB > 1))
+  def SZ_PVFB_TAG = log2up(NUM_PVFB)
+  def SZ_MASK = log2up(WIDTH_PVFB)
+  def WIDTH_BMASK = NUM_PVFB * WIDTH_PVFB / SZ_BANK
+  def SZ_BMASK = log2up(WIDTH_BMASK)
 }
 
 object Commands

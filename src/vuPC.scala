@@ -47,11 +47,13 @@ class vuPC extends Component
   val next_pending = Wire(){ Bool() }
   val next_mask = Wire(){ Bits(width=WIDTH_PVFB) }
   val next_valid = Wire(){ Bool() }
+  val next_stalld = Wire(){ Bool() }
 
   val reg_pc = Reg(next_pc, resetVal = Bits(0,SZ_ADDR))
   val reg_pending = Reg(next_pending, resetVal = Bool(false))
   val reg_mask = Reg(next_mask, resetVal = Bits(0,WIDTH_PVFB))
   val reg_valid = Reg(next_valid, resetVal = Bool(false))
+  val reg_stalld = Reg(next_stalld, resetVal = Bool(false))
 
   val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
   val vlen = Mux(fire_pass, Bits(WIDTH_PVFB-1), io.in.vlen)
@@ -68,7 +70,9 @@ class vuPC extends Component
 
   pvfb.io.vtToPVFB <> io.vtToPVFB
 
-  val vlen_mask = (UFix(1) << (Cat(Bits(0, 1), vlen) + UFix(1)))(WIDTH_PVFB-1,0) - UFix(1)
+  val vlenp1 = Cat(Bits(0, 1), vlen) + UFix(1)
+  val mask_bits = (WIDTH_PVFB-1 to 0 by -1).map(i => (vlen >= UFix(i)))
+  val vlen_mask = Cat(mask_bits.head, mask_bits.tail: _*)
 
   pvfb.io.mask.valid := io.laneToPVFB.mask.valid
   pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits & vlen_mask
@@ -78,6 +82,7 @@ class vuPC extends Component
   next_pending := reg_pending
   next_mask := reg_mask
   next_valid := reg_valid
+  next_stalld := Bool(false)
 
   when (io.in.fire) 
   {
@@ -93,11 +98,6 @@ class vuPC extends Component
     next_pending := Bool(false)
     next_valid := Bool(true)
   }
-  . elsewhen (io.vtToPC.replay_branch.valid)
-  {
-    next_pending := Bool(true)
-    next_valid := Bool(false)
-  }
   . elsewhen (io.vtToPC.replay_jump.valid)
   {
     next_pc := io.vtToPC.replay_jump.bits.pc
@@ -106,6 +106,16 @@ class vuPC extends Component
   {
     next_valid := Bool(false)
     when (!pvfb.io.empty) { next_pending := Bool(true) }
+  }
+  . elsewhen (io.vtToPC.replay_stalld.valid)
+  {
+    next_stalld := Bool(true)
+    next_pc := io.vtToPC.replay_stalld.bits.pc
+  }
+  . elsewhen (io.vtToPC.replay_branch.valid)
+  {
+    next_pending := Bool(true)
+    next_valid := Bool(false)
   }
   . elsewhen (io.vtToPC.replay_if.valid)
   {
@@ -133,5 +143,5 @@ class vuPC extends Component
   io.pcToVT.bits.vlen := vlen
   io.pcToVT.valid := reg_valid
   io.pcToTVEC.stop := io.vtToPC.replay_stop.valid && pvfb.io.empty
-  io.pending := reg_pending || next_pending
+  io.pending := reg_pending || reg_stalld
 }

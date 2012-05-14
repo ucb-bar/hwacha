@@ -34,6 +34,7 @@ class ioIssueVTToPC extends Bundle
   val replay_jump = new ioPipe()( new ReplayBundle )
   val replay_branch = new ioPipe()( new ReplayBundle )
   val replay_stop = new ioPipe()( new ReplayBundle )
+  val replay_stalld = new ioPipe()( new ReplayBundle )
 }
 
 class io_vf extends Bundle
@@ -114,7 +115,7 @@ class vuVXU_Issue_VT extends Component
   when (io.flush) { stall_sticky := Bool(false) }
 
   val mask_stall = Wire(){ Bool() }
-  val stalld = !(io.ready && (mask_stall || io.aiw_cntb.ready) & !stall)
+  val stalld = !(io.ready & (mask_stall || io.aiw_cntb.ready) & !stall)
   val stallf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
 
   val flushd = Wire(){ Bool() }
@@ -132,7 +133,7 @@ class vuVXU_Issue_VT extends Component
   val if_reg = imem_sb.io.pipereg
   val killf = imem_sb.io.kill || io.vf.fire
 
-  imem_sb.io.nack := stallf || stalld
+  imem_sb.io.nack := stallf || stalld || flushd
   imem_sb.io.deq.ready := Bool(true)
   imem_sb.io.flush := io.flush || flushd
 
@@ -368,12 +369,15 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utld = valid(1)
   val unmasked_valid_utst = valid(0)
 
+  val valid_common = io.vf.active & io.aiw_cntb.ready & !stall
+
   tagd := id_reg_tag
   val stop = decode_stop && io.vf.active
   val valid_branch = unmasked_valid_viu && isVIUBranch(viu_fn)
   val valid_jump = decode_jump && io.vf.active
+  val replay_stalld = unmasked_valid_amo || unmasked_valid_utld || unmasked_valid_utst
 
-  flushd := stop || valid_branch || valid_jump
+  flushd := stop || valid_branch || valid_jump || (replay_stalld && Bool(coarseGrained))
 
   val replay_bits = MuxCase(Bits(0, SZ_ADDR), Array(
     valid_branch -> id_reg_pc,
@@ -393,6 +397,10 @@ class vuVXU_Issue_VT extends Component
   pcStage.io.vtToPC.replay_jump.valid := valid_jump
   pcStage.io.vtToPC.replay_jump.bits.pc := replay_bits
   pcStage.io.vtToPC.replay_jump.bits.tag := id_reg_tag
+
+  pcStage.io.vtToPC.replay_stalld.valid := replay_stalld && Bool(coarseGrained)
+  pcStage.io.vtToPC.replay_stalld.bits.pc := id_reg_pc + UFix(4, SZ_ADDR)
+  pcStage.io.vtToPC.replay_stalld.bits.tag := id_reg_tag
 
   pcStage.io.vtToPVFB.stop:= stop
   pcStage.io.vtToPVFB.pc.valid:= valid_branch
@@ -439,8 +447,6 @@ class vuVXU_Issue_VT extends Component
   io.issue_to_aiw.markLast := stop
   io.issue_to_aiw.update_numCnt.valid := io.vf.active & io.ready & unmasked_valid & !io.decoded.vd_zero & !stall
   io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
-
-  val valid_common = io.vf.active & io.aiw_cntb.ready & !stall
 
   io.valid.viu := valid_common && unmasked_valid_viu
   io.valid.vau0 := valid_common && unmasked_valid_vau0

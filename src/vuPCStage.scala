@@ -27,7 +27,11 @@ class ioPCStage extends Bundle {
 class vuPCStage extends Component {
   val io = new ioPCStage()
 
-  val rrArb = new RRArbiter(NUM_PVFB)( new pvfBundle )
+  val rrArbio = 
+    if(coarseGrained) 
+      new CoarseRRArbiter(NUM_PVFB)( new pvfBundle ).io 
+    else
+      new RRArbiter(NUM_PVFB)( new pvfBundle ).io
   
   val pvfb_sel = UFix(1) << io.vtToPVFB.pvfb_tag
 
@@ -36,6 +40,7 @@ class vuPCStage extends Component {
   val replay_jump_sel = UFix(1) << io.vtToPC.replay_jump.bits.tag
   val replay_branch_sel = UFix(1) << io.vtToPC.replay_branch.bits.tag
   val replay_stop_sel = UFix(1) << io.vtToPC.replay_stop.bits.tag
+  val replay_stalld_sel = UFix(1) << io.vtToPC.replay_stalld.bits.tag
 
   val lane_sel = UFix(1) << io.laneToIssue.pvfb_tag
 
@@ -53,20 +58,22 @@ class vuPCStage extends Component {
 
       val i = NUM_PVFB - 1 - n
 
-      rrArb.io.in(i).bits <> pcUnit.io.pcToVT.bits
-      rrArb.io.in(i).valid := pcUnit.io.pcToVT.valid && !pcUnit.io.pending
-      pcUnit.io.pcToVT.ready := rrArb.io.in(i).ready && !pcUnit.io.pending
+      rrArbio.in(i).bits <> pcUnit.io.pcToVT.bits
+      rrArbio.in(i).valid := pcUnit.io.pcToVT.valid && !pcUnit.io.pending
+      pcUnit.io.pcToVT.ready := rrArbio.in(i).ready && !pcUnit.io.pending
 
       pcUnit.io.vtToPC.replay_pre_if.valid := io.vtToPC.replay_pre_if.valid && replay_pre_if_sel(i)
       pcUnit.io.vtToPC.replay_if.valid := io.vtToPC.replay_if.valid && replay_if_sel(i)
       pcUnit.io.vtToPC.replay_jump.valid := io.vtToPC.replay_jump.valid && replay_jump_sel(i)
       pcUnit.io.vtToPC.replay_branch.valid := io.vtToPC.replay_branch.valid && replay_branch_sel(i)
       pcUnit.io.vtToPC.replay_stop.valid := io.vtToPC.replay_stop.valid && replay_stop_sel(i)
+      pcUnit.io.vtToPC.replay_stalld.valid := io.vtToPC.replay_stalld.valid && replay_stalld_sel(i)
 
       pcUnit.io.vtToPC.replay_pre_if.bits <> io.vtToPC.replay_pre_if.bits
       pcUnit.io.vtToPC.replay_if.bits <> io.vtToPC.replay_if.bits
       pcUnit.io.vtToPC.replay_jump.bits <> io.vtToPC.replay_jump.bits
       pcUnit.io.vtToPC.replay_branch.bits <> io.vtToPC.replay_branch.bits
+      pcUnit.io.vtToPC.replay_stalld.bits <> io.vtToPC.replay_stalld.bits
 
       pcUnit.io.vtToPVFB.stop := io.vtToPVFB.stop && pvfb_sel(i)
       pcUnit.io.vtToPVFB.pc.valid := io.vtToPVFB.pc.valid && pvfb_sel(i)
@@ -87,6 +94,6 @@ class vuPCStage extends Component {
 
   io.pcToTVEC.stop := stop && !pending && !valid
 
-  io.pcToVT <> rrArb.io.out
+  io.pcToVT <> rrArbio.out
 
 }
