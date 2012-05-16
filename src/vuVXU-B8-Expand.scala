@@ -408,49 +408,49 @@ class vuVXU_Banked8_Expand extends Component
   {
     when (isVIUBranch(io.seq_fn.viu(RG_VIU_FN)))
     {
-      next_wen_mask.write(viu_wptr, Bool(true))
-      next_wlast_mask.write(viu_wptr, io.seq_to_expand.last)
-      next_wcnt_mask.write(viu_wptr, io.seq_regid_imm.cnt)
-      next_wmask_mask.write(viu_wptr, io.seq_regid_imm.mask)
-      next_waddr_mask.write(viu_wptr, io.seq_regid_imm.vm)
-      next_pvfb_tag.write(viu_wptr, io.seq_regid_imm.pvfb_tag)
+      next_wen_mask(viu_wptr) := Bool(true)
+      next_wlast_mask(viu_wptr) := io.seq_to_expand.last
+      next_wcnt_mask(viu_wptr) := io.seq_regid_imm.cnt
+      next_wmask_mask(viu_wptr) := io.seq_regid_imm.mask
+      next_waddr_mask(viu_wptr) := io.seq_regid_imm.vm
+      next_pvfb_tag(viu_wptr) := io.seq_regid_imm.pvfb_tag
     }
     . otherwise
     {
-      next_wen.write(viu_wptr, Bool(true))
-      next_wlast.write(viu_wptr, io.seq_to_expand.last)
-      next_wcnt.write(viu_wptr, io.seq_regid_imm.cnt)
-      next_waddr.write(viu_wptr, io.seq_regid_imm.vd)
-      next_wsel.write(viu_wptr, Bits("d4", 3))
-      next_wmask.write(viu_wptr, io.seq_regid_imm.mask)
+      next_wen(viu_wptr) := Bool(true)
+      next_wlast(viu_wptr) := io.seq_to_expand.last
+      next_wcnt(viu_wptr) := io.seq_regid_imm.cnt
+      next_waddr(viu_wptr) := io.seq_regid_imm.vd
+      next_wsel(viu_wptr) := Bits("d4", 3)
+      next_wmask(viu_wptr) := io.seq_regid_imm.mask
     }
   }
   when (io.seq.vau0)
   {
-    next_wen.write(vau0_wptr, Bool(true))
-    next_wlast.write(vau0_wptr, io.seq_to_expand.last)
-    next_wcnt.write(vau0_wptr, io.seq_regid_imm.cnt)
-    next_waddr.write(vau0_wptr, io.seq_regid_imm.vd)
-    next_wsel.write(vau0_wptr, Bits("d0", 3))
-    next_wmask.write(vau0_wptr, io.seq_regid_imm.mask)
+    next_wen(vau0_wptr) := Bool(true)
+    next_wlast(vau0_wptr) := io.seq_to_expand.last
+    next_wcnt(vau0_wptr) := io.seq_regid_imm.cnt
+    next_waddr(vau0_wptr) := io.seq_regid_imm.vd
+    next_wsel(vau0_wptr) := Bits("d0", 3)
+    next_wmask(vau0_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vau1)
   {
-    next_wen.write(vau1_wptr, Bool(true))
-    next_wlast.write(vau1_wptr, io.seq_to_expand.last)
-    next_wcnt.write(vau1_wptr, io.seq_regid_imm.cnt)
-    next_waddr.write(vau1_wptr, io.seq_regid_imm.vd)
-    next_wsel.write(vau1_wptr, Bits("d1", 3))
-    next_wmask.write(vau1_wptr, io.seq_regid_imm.mask)
+    next_wen(vau1_wptr) := Bool(true)
+    next_wlast(vau1_wptr) := io.seq_to_expand.last
+    next_wcnt(vau1_wptr) := io.seq_regid_imm.cnt
+    next_waddr(vau1_wptr) := io.seq_regid_imm.vd
+    next_wsel(vau1_wptr) := Bits("d1", 3)
+    next_wmask(vau1_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vau2)
   {
-    next_wen.write(vau2_wptr, Bool(true))
-    next_wlast.write(vau2_wptr, io.seq_to_expand.last)
-    next_wcnt.write(vau2_wptr, io.seq_regid_imm.cnt)
-    next_waddr.write(vau2_wptr, io.seq_regid_imm.vd)
-    next_wsel.write(vau2_wptr, Bits("d2", 3))
-    next_wmask.write(vau2_wptr, io.seq_regid_imm.mask)
+    next_wen(vau2_wptr) := Bool(true)
+    next_wlast(vau2_wptr) := io.seq_to_expand.last
+    next_wcnt(vau2_wptr) := io.seq_regid_imm.cnt
+    next_waddr(vau2_wptr) := io.seq_regid_imm.vd
+    next_wsel(vau2_wptr) := Bits("d2", 3)
+    next_wmask(vau2_wptr) := io.seq_regid_imm.mask
   }
   when (io.seq.vldq)
   {

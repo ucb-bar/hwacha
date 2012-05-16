@@ -118,75 +118,75 @@ class vuVXU_Banked8_Hazard extends Component
   
   when (io.fire.viu)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
 
     when (io.fire_fn.viu(RG_VIU_T) === Cat(ML,MR))
     {
-      next_rport_val.write(next_ptr3, Bool(true))
+      next_rport_val(next_ptr3) := Bool(true)
     }
   }
   when (io.fire.vau0)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vau0.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vau0(next_ptr2) := Bool(true)
 
-    next_rport_val.write(next_ptr3, Bool(true))
-    next_rport_vau0.write(next_ptr3, Bool(true))
+    next_rport_val(next_ptr3) := Bool(true)
+    next_rport_vau0(next_ptr3) := Bool(true)
   }
   when (io.fire.vau1)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vau1.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vau1(next_ptr2) := Bool(true)
 
-    next_rport_val.write(next_ptr3, Bool(true))
-    next_rport_vau1.write(next_ptr3, Bool(true))
+    next_rport_val(next_ptr3) := Bool(true)
+    next_rport_vau1(next_ptr3) := Bool(true)
 
     when (FN_VAU1_FMA(io.fire_fn.vau1))
     {
-      next_rport_val.write(next_ptr4, Bool(true))
-      next_rport_vau1.write(next_ptr4, Bool(true))
+      next_rport_val(next_ptr4) := Bool(true)
+      next_rport_vau1(next_ptr4) := Bool(true)
     }
   }
   when (io.fire.vau2)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vau2.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vau2(next_ptr2) := Bool(true)
   }
   when (io.fire.amo || io.fire.utst)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vgu.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vgu(next_ptr2) := Bool(true)
 
-    next_rport_val.write(next_ptr3, Bool(true))
-    next_rport_vsu.write(next_ptr3, Bool(true))
+    next_rport_val(next_ptr3) := Bool(true)
+    next_rport_vsu(next_ptr3) := Bool(true)
   }
   when (io.fire.utld)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vgu.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vgu(next_ptr2) := Bool(true)
   }
   when (io.fire.vld)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vgu.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vgu(next_ptr2) := Bool(true)
   }
   when (io.fire.vst)
   {
-    next_rport_val.write(next_ptr2, Bool(true))
-    next_rport_vgu.write(next_ptr2, Bool(true))
+    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_vgu(next_ptr2) := Bool(true)
     
-    next_rport_val.write(next_ptr3, Bool(true))
-    next_rport_vsu.write(next_ptr3, Bool(true))
+    next_rport_val(next_ptr3) := Bool(true)
+    next_rport_vsu(next_ptr3) := Bool(true)
   }
 
   when (io.lane_to_hazard.rlast)
   {
-    next_rport_val.write(reg_ptr, Bool(false))
-    next_rport_vau0.write(reg_ptr, Bool(false))
-    next_rport_vau1.write(reg_ptr, Bool(false))
-    next_rport_vau2.write(reg_ptr, Bool(false))
-    next_rport_vsu.write(reg_ptr, Bool(false))
-    next_rport_vgu.write(reg_ptr, Bool(false))
+    next_rport_val(reg_ptr) := Bool(false)
+    next_rport_vau0(reg_ptr) := Bool(false)
+    next_rport_vau1(reg_ptr) := Bool(false)
+    next_rport_vau2(reg_ptr) := Bool(false)
+    next_rport_vsu(reg_ptr) := Bool(false)
+    next_rport_vgu(reg_ptr) := Bool(false)
   }
 
   when (io.flush) 
@@ -389,110 +389,110 @@ class vuVXU_Banked8_Hazard extends Component
   {
     when(isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
     {
-      next_wmask_val.write(vbr_wptr, Bool(true))
-      next_wmask_head.write(vbr_wptr, Bool(true))
+      next_wmask_val(vbr_wptr) := Bool(true)
+      next_wmask_head(vbr_wptr) := Bool(true)
     }
     . otherwise 
     {
-      next_wport_val.write(viu_wptr, Bool(true))
-      next_wport_head.write(viu_wptr, Bool(true))
-      next_wport_vd.write(viu_wptr, io.fire_regid_imm.vd)
-      next_wport_vd_base.write(viu_wptr, io.fire_regid_imm.vd_base)
-      next_wport_stride.write(viu_wptr, io.issue_to_hazard.stride)
-      next_wport_tvec.write(viu_wptr, io.fire_regid_imm.tvec)
-      next_wport_tag.write(viu_wptr, io.fire_regid_imm.pvfb_tag)
+      next_wport_val(viu_wptr) := Bool(true)
+      next_wport_head(viu_wptr) := Bool(true)
+      next_wport_vd(viu_wptr) := io.fire_regid_imm.vd
+      next_wport_vd_base(viu_wptr) := io.fire_regid_imm.vd_base
+      next_wport_stride(viu_wptr) := io.issue_to_hazard.stride
+      next_wport_tvec(viu_wptr) := io.fire_regid_imm.tvec
+      next_wport_tag(viu_wptr) := io.fire_regid_imm.pvfb_tag
     }
   }
   when (io.fire.vau0)
   {
-    next_wport_val.write(vau0_wptr, Bool(true))
-    next_wport_head.write(vau0_wptr, Bool(true))
-    next_wport_vau0.write(vau0_wptr, Bool(true))
-    next_wport_vd.write(vau0_wptr, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(vau0_wptr, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(vau0_wptr, io.issue_to_hazard.stride)
-    next_wport_tvec.write(vau0_wptr, io.fire_regid_imm.tvec)
-    next_wport_tag.write(vau0_wptr, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(vau0_wptr) := Bool(true)
+    next_wport_head(vau0_wptr) := Bool(true)
+    next_wport_vau0(vau0_wptr) := Bool(true)
+    next_wport_vd(vau0_wptr) := io.fire_regid_imm.vd
+    next_wport_vd_base(vau0_wptr) := io.fire_regid_imm.vd_base
+    next_wport_stride(vau0_wptr) := io.issue_to_hazard.stride
+    next_wport_tvec(vau0_wptr) := io.fire_regid_imm.tvec
+    next_wport_tag(vau0_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vau1)
   {
-    next_wport_val.write(vau1_wptr, Bool(true))
-    next_wport_head.write(vau1_wptr, Bool(true))
-    next_wport_vau1.write(vau1_wptr, Bool(true))
-    next_wport_vd.write(vau1_wptr, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(vau1_wptr, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(vau1_wptr, io.issue_to_hazard.stride)
-    next_wport_tvec.write(vau1_wptr, io.fire_regid_imm.tvec)
-    next_wport_tag.write(vau1_wptr, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(vau1_wptr) := Bool(true)
+    next_wport_head(vau1_wptr) := Bool(true)
+    next_wport_vau1(vau1_wptr) := Bool(true)
+    next_wport_vd(vau1_wptr) := io.fire_regid_imm.vd
+    next_wport_vd_base(vau1_wptr) := io.fire_regid_imm.vd_base
+    next_wport_stride(vau1_wptr) := io.issue_to_hazard.stride
+    next_wport_tvec(vau1_wptr) := io.fire_regid_imm.tvec
+    next_wport_tag(vau1_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vau2)
   {
-    next_wport_val.write(vau2_wptr, Bool(true))
-    next_wport_head.write(vau2_wptr, Bool(true))
-    next_wport_vau2.write(vau2_wptr, Bool(true))
-    next_wport_vd.write(vau2_wptr, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(vau2_wptr, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(vau2_wptr, io.issue_to_hazard.stride)
-    next_wport_tvec.write(vau2_wptr, io.fire_regid_imm.tvec)
-    next_wport_tag.write(vau2_wptr, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(vau2_wptr) := Bool(true)
+    next_wport_head(vau2_wptr) := Bool(true)
+    next_wport_vau2(vau2_wptr) := Bool(true)
+    next_wport_vd(vau2_wptr) := io.fire_regid_imm.vd
+    next_wport_vd_base(vau2_wptr) := io.fire_regid_imm.vd_base
+    next_wport_stride(vau2_wptr) := io.issue_to_hazard.stride
+    next_wport_tvec(vau2_wptr) := io.fire_regid_imm.tvec
+    next_wport_tag(vau2_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.amo)
   {
-    next_wport_val.write(next_ptr4, Bool(true))
-    next_wport_head.write(next_ptr4, Bool(true))
-    next_wport_vlu.write(next_ptr4, Bool(true))
-    next_wport_vd.write(next_ptr4, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(next_ptr4, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(next_ptr4, io.issue_to_hazard.stride)
-    next_wport_tvec.write(next_ptr4, io.fire_regid_imm.tvec)
-    next_wport_tag.write(next_ptr4, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(next_ptr4) := Bool(true)
+    next_wport_head(next_ptr4) := Bool(true)
+    next_wport_vlu(next_ptr4) := Bool(true)
+    next_wport_vd(next_ptr4) := io.fire_regid_imm.vd
+    next_wport_vd_base(next_ptr4) := io.fire_regid_imm.vd_base
+    next_wport_stride(next_ptr4) := io.issue_to_hazard.stride
+    next_wport_tvec(next_ptr4) := io.fire_regid_imm.tvec
+    next_wport_tag(next_ptr4) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.utld)
   {
-    next_wport_val.write(next_ptr3, Bool(true))
-    next_wport_head.write(next_ptr3, Bool(true))
-    next_wport_vlu.write(next_ptr3, Bool(true))
-    next_wport_vd.write(next_ptr3, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(next_ptr3, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(next_ptr3, io.issue_to_hazard.stride)
-    next_wport_tvec.write(next_ptr3, io.fire_regid_imm.tvec)
-    next_wport_tag.write(next_ptr3, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(next_ptr3) := Bool(true)
+    next_wport_head(next_ptr3) := Bool(true)
+    next_wport_vlu(next_ptr3) := Bool(true)
+    next_wport_vd(next_ptr3) := io.fire_regid_imm.vd
+    next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
+    next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
+    next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
+    next_wport_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vld)
   {
-    next_wport_val.write(next_ptr3, Bool(true))
-    next_wport_head.write(next_ptr3, Bool(true))
-    next_wport_vlu.write(next_ptr3, Bool(true))
-    next_wport_vd.write(next_ptr3, io.fire_regid_imm.vd)
-    next_wport_vd_base.write(next_ptr3, io.fire_regid_imm.vd_base)
-    next_wport_stride.write(next_ptr3, io.issue_to_hazard.stride)
-    next_wport_tvec.write(next_ptr3, io.fire_regid_imm.tvec)
-    next_wport_tag.write(next_ptr3, io.fire_regid_imm.pvfb_tag)
+    next_wport_val(next_ptr3) := Bool(true)
+    next_wport_head(next_ptr3) := Bool(true)
+    next_wport_vlu(next_ptr3) := Bool(true)
+    next_wport_vd(next_ptr3) := io.fire_regid_imm.vd
+    next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
+    next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
+    next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
+    next_wport_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
   }
 
   when (io.expand_to_hazard.wen)
   {
-    next_wport_head.write(reg_ptr, Bool(false))
-    next_wport_vd.write(reg_ptr, array_wport_vd(reg_ptr) + array_wport_stride(reg_ptr))
+    next_wport_head(reg_ptr) := Bool(false)
+    next_wport_vd(reg_ptr) := array_wport_vd(reg_ptr) + array_wport_stride(reg_ptr)
   }
 
   when (io.expand_to_hazard.wen_mask)
   {
-    next_wmask_head.write(reg_ptr, Bool(false))
+    next_wmask_head(reg_ptr) := Bool(false)
   }
 
   when (io.lane_to_hazard.wlast_mask)
   {
-    next_wmask_val.write(reg_ptr, Bool(false))
+    next_wmask_val(reg_ptr) := Bool(false)
   }
 
   when (io.lane_to_hazard.wlast)
   {
-    next_wport_val.write(reg_ptr, Bool(false))
-    next_wport_vau0.write(reg_ptr, Bool(false))
-    next_wport_vau1.write(reg_ptr, Bool(false))
-    next_wport_vau2.write(reg_ptr, Bool(false))
-    next_wport_vlu.write(reg_ptr, Bool(false))
+    next_wport_val(reg_ptr) := Bool(false)
+    next_wport_vau0(reg_ptr) := Bool(false)
+    next_wport_vau1(reg_ptr) := Bool(false)
+    next_wport_vau2(reg_ptr) := Bool(false)
+    next_wport_vlu(reg_ptr) := Bool(false)
   }
 
   when (io.flush) 
@@ -529,33 +529,33 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
-    next_sport_val.write(next_ptr1, Bool(true))
+    next_sport_val(next_ptr1) := Bool(true)
   }
   when (io.fire.amo)
   {
-    next_sport_val.write(next_ptr1, Bool(true))
-    next_sport_val.write(next_ptr2, Bool(true))
-    next_sport_val.write(next_ptr3, Bool(true))
+    next_sport_val(next_ptr1) := Bool(true)
+    next_sport_val(next_ptr2) := Bool(true)
+    next_sport_val(next_ptr3) := Bool(true)
   }
   when (io.fire.utld || io.fire.utst)
   {
-    next_sport_val.write(next_ptr1, Bool(true))
-    next_sport_val.write(next_ptr2, Bool(true))
+    next_sport_val(next_ptr1) := Bool(true)
+    next_sport_val(next_ptr2) := Bool(true)
   }
   when(io.fire.vld)
   {
-    next_sport_val.write(next_ptr1, Bool(true))
-    next_sport_val.write(next_ptr2, Bool(true))
+    next_sport_val(next_ptr1) := Bool(true)
+    next_sport_val(next_ptr2) := Bool(true)
   }
   when (io.fire.vst)
   {
-    next_sport_val.write(next_ptr1, Bool(true))
-    next_sport_val.write(next_ptr2, Bool(true))
+    next_sport_val(next_ptr1) := Bool(true)
+    next_sport_val(next_ptr2) := Bool(true)
   }
   
   when (io.seq_to_hazard.last)
   {
-    next_sport_val.write(reg_ptr, Bool(false))
+    next_sport_val(reg_ptr) := Bool(false)
   }
 
   when (io.flush)
@@ -574,9 +574,9 @@ class vuVXU_Banked8_Hazard extends Component
   val shazard_vlu = (array_wport_val.toBits & array_wport_vlu.toBits).orR
   val shazard_vsu = (array_rport_val.toBits & array_rport_vsu.toBits).orR
 
-  val seqhazard_1slot = array_sport_val.read(next_ptr1)
-  val seqhazard_2slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2)
-  val seqhazard_3slot = array_sport_val.read(next_ptr1) | array_sport_val.read(next_ptr2) | array_sport_val.read(next_ptr3)
+  val seqhazard_1slot = array_sport_val(next_ptr1)
+  val seqhazard_2slot = array_sport_val(next_ptr1) | array_sport_val(next_ptr2)
+  val seqhazard_3slot = array_sport_val(next_ptr1) | array_sport_val(next_ptr2) | array_sport_val(next_ptr3)
 
   // checking any pending memory ops for fences
   io.hazard_to_issue.tvec.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
@@ -609,9 +609,9 @@ class vuVXU_Banked8_Hazard extends Component
   val tvec_dhazard_vt = (array_wport_val.toBits & tvec_comp_vt).orR
   val tvec_dhazard_vd = (array_wport_val.toBits & tvec_comp_vd).orR
 
-  val tvec_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(tvec_viu_wptr)
-  val tvec_bhazard_vld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
-  val tvec_bhazard_vst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) // not sure about this 
+  val tvec_bhazard_r1w1 = array_rport_val(next_ptr2) | array_wport_val(tvec_viu_wptr)
+  val tvec_bhazard_vld = array_rport_val(next_ptr2) | array_wport_val(next_ptr3)
+  val tvec_bhazard_vst = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) // not sure about this 
 
   val tvec_dhazard =
     Cat(
@@ -708,13 +708,13 @@ class vuVXU_Banked8_Hazard extends Component
   val vt_dhazard_vr = (array_wport_val.toBits & vt_comp_vr).orR
   val vt_dhazard_vd = (array_wport_val.toBits & vt_comp_vd).orR
 
-  val vt_bhazard_r2wm = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wmask_val.read(vbr_wptr)
-  val vt_bhazard_r1w1 = array_rport_val.read(next_ptr2) | array_wport_val.read(vt_wptr)
-  val vt_bhazard_r2w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(vt_wptr)
-  val vt_bhazard_r3w1 = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_rport_val.read(next_ptr4) | array_wport_val.read(vt_wptr)
-  val vt_bhazard_amo = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3) | array_wport_val.read(next_ptr4)
-  val vt_bhazard_utld = array_rport_val.read(next_ptr2) | array_wport_val.read(next_ptr3)
-  val vt_bhazard_utst = array_rport_val.read(next_ptr2) | array_rport_val.read(next_ptr3)
+  val vt_bhazard_r2wm = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wmask_val(vbr_wptr)
+  val vt_bhazard_r1w1 = array_rport_val(next_ptr2) | array_wport_val(vt_wptr)
+  val vt_bhazard_r2w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wport_val(vt_wptr)
+  val vt_bhazard_r3w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_rport_val(next_ptr4) | array_wport_val(vt_wptr)
+  val vt_bhazard_amo = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wport_val(next_ptr4)
+  val vt_bhazard_utld = array_rport_val(next_ptr2) | array_wport_val(next_ptr3)
+  val vt_bhazard_utst = array_rport_val(next_ptr2) | array_rport_val(next_ptr3)
 
   val vt_dhazard =
     Cat(

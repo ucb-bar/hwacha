@@ -79,13 +79,13 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 
   data_next := data_array
 
-  when (do_enq) { data_next.write(write_ptr, io.enq.bits) }
-  when (io.update.valid) { data_next.write(io.update.bits.addr, io.update.bits.data) }
+  when (do_enq) { data_next(write_ptr) := io.enq.bits }
+  when (io.update.valid) { data_next(io.update.bits.addr):= io.update.bits.data }
 
   io.enq.ready := !full
   io.deq.valid := !empty
 
-  io.deq.bits := data_array.read(read_ptr)
+  io.deq.bits := data_array(read_ptr)
 
   io.rtag := write_ptr
 }
