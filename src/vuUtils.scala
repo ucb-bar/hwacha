@@ -157,7 +157,7 @@ class RRArbiter[T <: Data](n: Int)(data: => T) extends Component {
     last_grant := choose
   }
 
-  val dvec = Vec(n) { Wire() { data } }
+  val dvec = Vec(n) { data }
   (0 until n).map(i => dvec(i) := io.in(i).bits )
 
   io.out.valid := foldR(io.in.map(_.valid))(_||_)
@@ -182,7 +182,7 @@ class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Component {
     last_grant := choose
   }
 
-  val dvec = Vec(n) { Wire() { data } }
+  val dvec = Vec(n) { data }
   (0 until n).map(i => dvec(i) := io.in(i).bits )
 
   io.out.valid := foldR(io.in.map(_.valid))(_||_)

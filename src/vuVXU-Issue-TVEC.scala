@@ -64,7 +64,7 @@ class vuVXU_Issue_TVEC extends Component
   val ISSUE_TVEC = Bits(0,1)
   val ISSUE_VT = Bits(1,1)
 
-  val next_state = Wire(){Bits(width = 1)}
+  val next_state = Bits(width = 1)
   val reg_state = Reg(next_state, resetVal = ISSUE_TVEC)
 
   val tvec_active = (reg_state === ISSUE_TVEC)
@@ -255,12 +255,12 @@ class vuVXU_Issue_TVEC extends Component
 // REGISTERS                                                               \\
 //-------------------------------------------------------------------------\\
 
-  val next_vlen = Wire(){Bits(width = SZ_VLEN)}
-  val next_nxregs = Wire(){Bits(width = SZ_REGCNT)}
-  val next_nfregs = Wire(){Bits(width = SZ_REGCNT)}
-  val next_bactive = Wire(){Bits(width = SZ_BANK)}
-  val next_bcnt = Wire(){Bits(width = SZ_BCNT)}
-  val next_stride = Wire(){Bits(width = SZ_REGLEN)}
+  val next_vlen = Bits(width = SZ_VLEN)
+  val next_nxregs = Bits(width = SZ_REGCNT)
+  val next_nfregs = Bits(width = SZ_REGCNT)
+  val next_bactive = Bits(width = SZ_BANK)
+  val next_bcnt = Bits(width = SZ_BCNT)
+  val next_stride = Bits(width = SZ_REGLEN)
 
   val reg_vlen = Reg(next_vlen, resetVal = Bits(0,SZ_VLEN))
   val reg_nxregs = Reg(next_nxregs, resetVal = Bits(32,SZ_REGCNT))

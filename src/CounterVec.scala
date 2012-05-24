@@ -24,16 +24,16 @@ class CounterVec(DEPTH: Int) extends Component {
   val ADDR_SIZE = log2up(DEPTH)
   val io = new io_counter_vec(ADDR_SIZE)
 
-  val next_write_ptr = Wire(){ UFix(width = ADDR_SIZE) }
+  val next_write_ptr = UFix(width = ADDR_SIZE)
   val write_ptr = Reg(next_write_ptr, resetVal = UFix(0, ADDR_SIZE))
 
-  val next_last_write_ptr = Wire(){ UFix(width = ADDR_SIZE) }
+  val next_last_write_ptr = UFix(width = ADDR_SIZE)
   val last_write_ptr = Reg(next_last_write_ptr, resetVal = UFix(0, ADDR_SIZE))
 
-  val next_read_ptr = Wire(){ UFix(width = ADDR_SIZE) }
+  val next_read_ptr = UFix(width = ADDR_SIZE)
   val read_ptr = Reg(next_read_ptr, resetVal = UFix(0, ADDR_SIZE))
 
-  val next_full = Wire(){ Bool() }
+  val next_full = Bool()
   val full = Reg(next_full, resetVal = Bool(false))
 
   next_write_ptr := write_ptr
@@ -81,11 +81,11 @@ class CounterVec(DEPTH: Int) extends Component {
   io.enq.ready := !full
   io.deq.valid := !empty
 
-  val inc_vec = Vec(DEPTH){ Wire(){ Bool() } }
-  val dec_vec = Vec(DEPTH){ Wire(){ Bool() } }
-  val empty_vec = Vec(DEPTH){ Wire(){ Bool() } }
+  val inc_vec = Vec(DEPTH){ Bool() }
+  val dec_vec = Vec(DEPTH){ Bool() }
+  val empty_vec = Vec(DEPTH){ Bool() }
 
-  val next_last = Vec(DEPTH){ Wire(){ Bool() } }
+  val next_last = Vec(DEPTH){ Bool() }
   val array_last = Vec(DEPTH){ Reg(){ Bool() } }
 
   array_last := next_last

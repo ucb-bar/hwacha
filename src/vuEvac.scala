@@ -55,7 +55,7 @@ class vuEvac extends Component
   val SEL_CMDB = Bits(0,1)
   val SEL_VCMDQ = Bits(1,1)
 
-  val cmd_sel_next = Wire(){ Bits(width=1) }
+  val cmd_sel_next = Bits(width=1)
   val cmd_sel = Reg(cmd_sel_next, resetVal = SEL_CMDB)
 
   cmd_sel_next := cmd_sel
@@ -135,8 +135,8 @@ class vuEvac extends Component
   val STATE_VCNTQ = Bits(9,4)
   val STATE_DONE = Bits(10,4)
 
-  val state_next = Wire(){ Bits(width=4) }
-  val addr_next = Wire(){ UFix(width=SZ_ADDR) }
+  val state_next = Bits(width=4)
+  val addr_next = UFix(width=SZ_ADDR)
 
   val state = Reg(state_next, resetVal = STATE_IDLE)
   val addr_reg = Reg(addr_next, resetVal = UFix(0, SZ_ADDR))

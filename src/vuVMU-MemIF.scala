@@ -84,8 +84,8 @@ class vuVMU_MemIF extends Component
   // load data conversion
   val reg_mem_resp = Reg(io.mem_resp)
     
-  val ldq_sp_bits = Wire(){Bits(width=33)}
-  val ldq_dp_bits = Wire(){Bits(width=65)}
+  val ldq_sp_bits = Bits(width=33)
+  val ldq_dp_bits = Bits(width=65)
   
   val load_fp = reg_mem_resp.bits.tag(0)
   val load_fp_d = load_fp && reg_mem_resp.bits.typ === mtyp_D 

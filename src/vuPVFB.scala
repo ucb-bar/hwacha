@@ -58,9 +58,9 @@ class vuPVFBCtrl extends Component
 
   val SIZE_ADDR = log2up(DEPTH_PVFB)
 
-  val enq_ptr_next = Wire(){ UFix(width=SIZE_ADDR) }
-  val deq_ptr_next = Wire(){ UFix(width=SIZE_ADDR) }
-  val full_next = Wire(){ Bool() }
+  val enq_ptr_next = UFix(width=SIZE_ADDR)
+  val deq_ptr_next = UFix(width=SIZE_ADDR)
+  val full_next = Bool()
 
   val enq_ptr = Reg(enq_ptr_next, resetVal = UFix(0, SIZE_ADDR))
   val deq_ptr = Reg(deq_ptr_next, resetVal = UFix(0, SIZE_ADDR))

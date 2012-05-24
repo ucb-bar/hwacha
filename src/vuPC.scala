@@ -43,11 +43,11 @@ class vuPC extends Component
 
   val pvfb = new vuPVFB()
 
-  val next_pc = Wire(){ Bits(width=SZ_ADDR) }
-  val next_pending = Wire(){ Bool() }
-  val next_mask = Wire(){ Bits(width=WIDTH_PVFB) }
-  val next_valid = Wire(){ Bool() }
-  val next_stalld = Wire(){ Bool() }
+  val next_pc = Bits(width=SZ_ADDR)
+  val next_pending = Bool()
+  val next_mask = Bits(width=WIDTH_PVFB)
+  val next_valid = Bool()
+  val next_stalld = Bool()
 
   val reg_pc = Reg(next_pc, resetVal = Bits(0,SZ_ADDR))
   val reg_pending = Reg(next_pending, resetVal = Bool(false))

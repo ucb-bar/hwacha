@@ -114,12 +114,12 @@ class vuVXU_Issue_VT extends Component
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
   when (io.flush) { stall_sticky := Bool(false) }
 
-  val mask_stall = Wire(){ Bool() }
+  val mask_stall = Bool()
   val stalld = !(io.ready & (mask_stall || io.aiw_cntb.ready) & !stall)
   val stallf = !io.imem_resp.valid || !io.imem_req.ready || io.irq.ma_inst || io.irq.fault_inst
 
-  val flushd = Wire(){ Bool() }
-  val tagd = Wire(){ Bits(width=SZ_PVFB_TAG) }
+  val flushd = Bool()
+  val tagd = Bits(width=SZ_PVFB_TAG)
 
   val reg_flushd = Reg(flushd)
   val reg_tagd = Reg(tagd)
@@ -409,8 +409,8 @@ class vuVXU_Issue_VT extends Component
   pcStage.io.vtToPVFB.pvfb_tag := id_reg_tag
 
 
-  val vau1_rm = Wire(){Bits(width = 3)}
-  val vau2_rm = Wire(){Bits(width = 3)}
+  val vau1_rm = Bits(width = 3)
+  val vau2_rm = Bits(width = 3)
 
   vau1_rm := id_reg_inst(11,9)
   vau2_rm := id_reg_inst(11,9)

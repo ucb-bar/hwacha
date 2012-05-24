@@ -89,12 +89,12 @@ class vuVXU_Banked8_Hazard extends Component
   val array_rport_vsu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
   val array_rport_vgu = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
 
-  val next_rport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau0 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau1 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vau2 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vsu = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_rport_vgu = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_rport_val = Vec(SZ_BANK){ Bool() }
+  val next_rport_vau0 = Vec(SZ_BANK){ Bool() }
+  val next_rport_vau1 = Vec(SZ_BANK){ Bool() }
+  val next_rport_vau2 = Vec(SZ_BANK){ Bool() }
+  val next_rport_vsu = Vec(SZ_BANK){ Bool() }
+  val next_rport_vgu = Vec(SZ_BANK){ Bool() }
 
   for (i <- 0 until SZ_BANK)
   {
@@ -334,20 +334,20 @@ class vuVXU_Banked8_Hazard extends Component
   val array_wport_tvec = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
   val array_wport_tag = Vec(SZ_BANK){ Reg(){ Bits(width = SZ_PVFB_TAG) } }
 
-  val next_wmask_val = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wmask_head = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_wmask_val = Vec(SZ_BANK){ Bool() }
+  val next_wmask_head = Vec(SZ_BANK){ Bool() }
 
-  val next_wport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_head = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau0 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau1 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vau2 = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vlu = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_vd = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_BREGLEN) } }
-  val next_wport_vd_base = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_BREGLEN) } }
-  val next_wport_stride = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_REGLEN) } }
-  val next_wport_tvec = Vec(SZ_BANK){ Wire(){ Bool() } }
-  val next_wport_tag = Vec(SZ_BANK){ Wire(){ Bits(width = SZ_PVFB_TAG) } }
+  val next_wport_val = Vec(SZ_BANK){ Bool() }
+  val next_wport_head = Vec(SZ_BANK){ Bool() }
+  val next_wport_vau0 = Vec(SZ_BANK){ Bool() }
+  val next_wport_vau1 = Vec(SZ_BANK){ Bool() }
+  val next_wport_vau2 = Vec(SZ_BANK){ Bool() }
+  val next_wport_vlu = Vec(SZ_BANK){ Bool() }
+  val next_wport_vd = Vec(SZ_BANK){ Bits(width = SZ_BREGLEN) }
+  val next_wport_vd_base = Vec(SZ_BANK){ Bits(width = SZ_BREGLEN) }
+  val next_wport_stride = Vec(SZ_BANK){ Bits(width = SZ_REGLEN) }
+  val next_wport_tvec = Vec(SZ_BANK){ Bool() }
+  val next_wport_tag = Vec(SZ_BANK){ Bits(width = SZ_PVFB_TAG) }
 
   for (i <- 0 until SZ_BANK)
   {
@@ -515,7 +515,7 @@ class vuVXU_Banked8_Hazard extends Component
 
   val array_sport_val = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
 
-  val next_sport_val = Vec(SZ_BANK){ Wire(){ Bool() } }
+  val next_sport_val = Vec(SZ_BANK){ Bool() }
 
   for (i <- 0 until SZ_BANK)
   {

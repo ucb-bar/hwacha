@@ -21,9 +21,9 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 
   val io = new io_buffer(DATA_SIZE, ADDR_SIZE)
 
-  val read_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
-  val write_ptr_next = Wire(){ UFix( width=ADDR_SIZE) }
-  val full_next = Wire(){ Bool() }
+  val read_ptr_next = UFix( width=ADDR_SIZE)
+  val write_ptr_next = UFix( width=ADDR_SIZE)
+  val full_next = Bool()
   
   val read_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
   val write_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
@@ -72,7 +72,7 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 
   val empty = !full && (read_ptr === write_ptr)
 
-  val data_next = Vec(DEPTH){ Wire(){ Bits(width=DATA_SIZE) } }
+  val data_next = Vec(DEPTH){ Bits(width=DATA_SIZE) }
   val data_array = Vec(DEPTH){ Reg(){ Bits(width=DATA_SIZE) } }
   
   data_array := data_next

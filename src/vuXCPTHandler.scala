@@ -74,9 +74,9 @@ class vuXCPTHandler extends Component
 {
   val io = new io_xcpt_handler()
 
-  val next_hold_issue = Wire(){ Bool() }
-  val next_hold_seq = Wire(){ Bool() }
-  val next_hold_tlb = Wire(){ Bool() }
+  val next_hold_issue = Bool()
+  val next_hold_seq = Bool()
+  val next_hold_tlb = Bool()
 
   val hold_issue = Reg(next_hold_issue, resetVal = Bool(false))
   val hold_seq = Reg(next_hold_seq, resetVal = Bool(false))
@@ -98,16 +98,16 @@ class vuXCPTHandler extends Component
   val XCPT_DRAIN_EVAC = Bits(4, 3)  
   val HOLD = Bits(5, 3)
 
-  val next_state = Wire(){ Bits(width = 4) }
+  val next_state = Bits(width = 4)
   val state = Reg(next_state, resetVal = NORMAL)
 
-  val next_addr = Wire(){ UFix(width = SZ_ADDR) }
+  val next_addr = UFix(width = SZ_ADDR)
   val addr = Reg(next_addr, resetVal = UFix(0, SZ_ADDR) )
 
-  val next_evac = Wire(){ Bool() }
+  val next_evac = Bool()
   val evac = Reg(next_evac, resetVal = Bool(false))
 
-  val next_kill = Wire(){ Bool() }
+  val next_kill = Bool()
   val kill = Reg(next_kill, resetVal = Bool(false))
 
   next_state := state

@@ -51,15 +51,15 @@ class vuVXU_Banked8_Lane_LFU extends Component
 {
   val io = new LFUIO()
 
-  val next_vau0_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vau1_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vau2_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vgu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vlu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vsu_cnt = Wire(){ UFix(width = SZ_BVLEN) }
-  val next_vgu_mask = Wire(){ Bits(width = SZ_BANK) }
-  val next_vlu_mask = Wire(){ Bits(width = SZ_BANK) }
-  val next_vsu_mask = Wire(){ Bits(width = SZ_BANK) }
+  val next_vau0_cnt = UFix(width = SZ_BVLEN)
+  val next_vau1_cnt = UFix(width = SZ_BVLEN)
+  val next_vau2_cnt = UFix(width = SZ_BVLEN)
+  val next_vgu_cnt = UFix(width = SZ_BVLEN)
+  val next_vlu_cnt = UFix(width = SZ_BVLEN)
+  val next_vsu_cnt = UFix(width = SZ_BVLEN)
+  val next_vgu_mask = Bits(width = SZ_BANK)
+  val next_vlu_mask = Bits(width = SZ_BANK)
+  val next_vsu_mask = Bits(width = SZ_BANK)
 
   val reg_vau0_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
   val reg_vau1_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))

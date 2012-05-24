@@ -335,7 +335,7 @@ class queue1PF(data_sz:Int) extends Component
 */
 class queuePipe1PF[T <: Data](flushable: Boolean = false)(data: => T) extends Component
 {
-  val wen = Wire(){Bool()}
+  val wen = Bool()
   val io = new io_queue({data})
   val ctrl = new queueCtrl1_pipe(flushable)
   ctrl.io.flush <> io.flush
@@ -390,7 +390,7 @@ class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Com
 
   val io = new io_qcnt(size)
   val count = Reg(resetVal = UFix(reset_cnt, size))
-  val next_count = Wire(){ UFix(width = size) }
+  val next_count = UFix(width = size)
 
   next_count := count
   when (io.inc ^ io.dec)
