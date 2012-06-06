@@ -209,7 +209,10 @@ class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: =
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
-  io.deq.bits <> Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits).read(ctrl.io.raddr)
+
+  val mem = Vec(entries) { Reg() { data } }
+  when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
+  io.deq.bits := mem(ctrl.io.raddr)
 }
 
 class queuePipePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
@@ -222,7 +225,10 @@ class queuePipePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => 
   ctrl.io.enq_rdy <> io.enq.ready
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
-  io.deq.bits <> Mem(entries, ctrl.io.wen, ctrl.io.waddr, io.enq.bits).read(ctrl.io.raddr)
+
+  val mem = Vec(entries) { Reg() { data } }
+  when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
+  io.deq.bits := mem(ctrl.io.raddr)
 }
 
 // TODO: SHOULD USE INHERITANCE BUT BREAKS INTROSPECTION CODE
@@ -541,7 +547,9 @@ class queue_spec[T <: Data](entries: Int, flushable: Boolean = false)(data: => T
           full_spec))
   }
 
-  io.deq.bits <> Mem(entries, do_enq, enq_ptr, io.enq.bits).read(deq_ptr_spec)
+  val mem = Vec(entries) { Reg() { data } }
+  when (do_enq) { mem(enq_ptr) := io.enq.bits }
+  io.deq.bits := mem(deq_ptr_spec)
 
   if (flushable)
   {
@@ -588,9 +596,10 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
   val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
 
-  val data_array = Mem(ROQ_TAG_ENTRIES, io.enq.valid, io.enq.bits.rtag, io.enq.bits.data)
-  data_array.setReadLatency(1)
-  data_array.setTarget('inst)
+  val data_array = Mem(ROQ_TAG_ENTRIES) { io.enq.bits.data.clone }
+  val data_out = Reg() { io.enq.bits.data.clone }
+  when (io.enq.valid) { data_array(io.enq.bits.rtag) := io.enq.bits.data }
+  data_out := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
 
   val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
@@ -620,7 +629,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
 
   io.deq_data.valid := deq_data_val_int
-  io.deq_data.bits := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
+  io.deq_data.bits := data_out
 
   // Logic for watermark
   val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))

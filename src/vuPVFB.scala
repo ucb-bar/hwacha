@@ -135,30 +135,21 @@ class vuPVFB extends Component
 
   pvfb_ctrl.io.deq_rdy := io.vtToPVFB.stop
 
-  val maskRam = Mem(DEPTH_PVFB, 
-                    pvfb_ctrl.io.wen,
-                    pvfb_ctrl.io.waddr,
-                    pvfb_ctrl.io.mask_wdata,
-                    resetVal = null,
-                    cs = pvfb_ctrl.io.wen || pvfb_ctrl.io.ren)
+  val maskRam = Mem(DEPTH_PVFB) { pvfb_ctrl.io.mask_wdata.clone }
+  val maskRamOut = Reg() { pvfb_ctrl.io.mask_wdata.clone }
+  when (pvfb_ctrl.io.wen) { maskRam(pvfb_ctrl.io.waddr) := pvfb_ctrl.io.mask_wdata }
+  when (pvfb_ctrl.io.ren) { maskRamOut := maskRam(pvfb_ctrl.io.raddr) }
 
-  val pcRam = Mem(DEPTH_PVFB,
-                  pvfb_ctrl.io.wen,
-                  pvfb_ctrl.io.waddr,
-                  pvfb_ctrl.io.pc_wdata,
-                  resetVal = null,
-                  cs = pvfb_ctrl.io.wen || pvfb_ctrl.io.ren)
-
-  maskRam.setReadLatency(1)
-  maskRam.setTarget('inst)
-  pcRam.setReadLatency(1)
-  pcRam.setTarget('inst)
+  val pcRam = Mem(DEPTH_PVFB) { pvfb_ctrl.io.pc_wdata.clone }
+  val pcRamOut = Reg() { pvfb_ctrl.io.pc_wdata.clone }
+  when (pvfb_ctrl.io.wen) { pcRam(pvfb_ctrl.io.waddr) := pvfb_ctrl.io.pc_wdata }
+  when (pvfb_ctrl.io.ren) { pcRamOut := pcRam(pvfb_ctrl.io.raddr) }
 
   val reg_ren = Reg(pvfb_ctrl.io.ren)
 
   io.pvf.valid := pvfb_ctrl.io.next_valid || reg_ren
-  io.pvf.bits.mask := Mux(reg_ren, maskRam(pvfb_ctrl.io.raddr), pvfb_ctrl.io.next_mask)
-  io.pvf.bits.pc := Mux(reg_ren, pcRam(pvfb_ctrl.io.raddr), pvfb_ctrl.io.next_pc)
+  io.pvf.bits.mask := Mux(reg_ren, maskRamOut, pvfb_ctrl.io.next_mask)
+  io.pvf.bits.pc := Mux(reg_ren, pcRamOut, pvfb_ctrl.io.next_pc)
 
   io.empty := pvfb_ctrl.io.empty
 }
