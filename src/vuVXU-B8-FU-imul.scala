@@ -45,5 +45,5 @@ class vuVXU_Banked8_FU_imul extends Component
       VAU0_32HSU -> Cat(Fill(32, mul_result(63)), mul_result(63,32))
     ))
 
-  io.out := ShiftRegister(IMUL_STAGES-1, 64, io.valid, mul_output_mux)
+  io.out := ShiftRegister(IMUL_STAGES, mul_output_mux, io.valid)
 }

@@ -68,7 +68,7 @@ object Constants
   
   val VACKCNT = 32
   val VACKCNT_FX = UFix(VACKCNT)
-  val SZ_VACKCNT = log2up(VACKCNT)
+  val SZ_VACKCNT = log2Up(VACKCNT)
 
   val AIW_CMD_DEPTH = 8
   val AIW_IMM1_DEPTH = 8
@@ -76,11 +76,11 @@ object Constants
   val AIW_CNT_DEPTH = 8
   val AIW_NUMCNT_DEPTH = AIW_CMD_DEPTH
 
-  val SZ_AIW_CMD = log2up(AIW_CMD_DEPTH)
-  val SZ_AIW_IMM1 = log2up(AIW_IMM1_DEPTH)
-  val SZ_AIW_IMM2E = log2up(AIW_IMM2_DEPTH)
-  val SZ_AIW_CNT = log2up(AIW_IMM2_DEPTH)
-  val SZ_AIW_NUMCNT = log2up(AIW_NUMCNT_DEPTH)
+  val SZ_AIW_CMD = log2Up(AIW_CMD_DEPTH)
+  val SZ_AIW_IMM1 = log2Up(AIW_IMM1_DEPTH)
+  val SZ_AIW_IMM2E = log2Up(AIW_IMM2_DEPTH)
+  val SZ_AIW_CNT = log2Up(AIW_IMM2_DEPTH)
+  val SZ_AIW_NUMCNT = log2Up(AIW_NUMCNT_DEPTH)
 
   // pipe stages
   val INT_STAGES   = 2
@@ -115,7 +115,7 @@ object Constants
   val ENTRIES_VSREQ = 31
   val ENTRIES_VLREQ = ENTRIES_VLDQ
 
-  val LG_ENTRIES_VLDQ = log2up(ENTRIES_VLDQ)
+  val LG_ENTRIES_VLDQ = log2Up(ENTRIES_VLDQ)
 
   val SZ_QCNT = SZ_LGBANK1
 
@@ -279,10 +279,10 @@ object Constants
   var DEPTH_PVFB = 2048
   assert(DEPTH_PVFB >= WIDTH_PVFB, println("DEPTH_PVFB MUST BE GREATER THAN OR EQUAL TO DEPTH_PVFB"))
   assert(!coarseGrained || (coarseGrained && NUM_PVFB > 1))
-  def SZ_PVFB_TAG = log2up(NUM_PVFB)
-  def SZ_MASK = log2up(WIDTH_PVFB)
+  def SZ_PVFB_TAG = log2Up(NUM_PVFB)
+  def SZ_MASK = log2Up(WIDTH_PVFB)
   def WIDTH_BMASK = NUM_PVFB * WIDTH_PVFB / SZ_BANK
-  def SZ_BMASK = log2up(WIDTH_BMASK)
+  def SZ_BMASK = log2Up(WIDTH_BMASK)
 }
 
 object Commands

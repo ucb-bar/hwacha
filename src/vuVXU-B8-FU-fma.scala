@@ -85,7 +85,7 @@ class vuVXU_Banked8_FU_fma extends Component
       io.fn(RG_VAU1_FP), result_dp,
       Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)))
 
-    val pipereg = ShiftRegister(FMA_STAGES-1, 70, io.valid, result)
+    val pipereg = ShiftRegister(FMA_STAGES, result, io.valid)
 
     Match(pipereg, io.exc, io.out)
 
@@ -124,11 +124,11 @@ class vuVXU_Banked8_FU_fma extends Component
     io.cp_sfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_sfma.in3 := io.in2
 
-    val dp = ShiftRegister(DFMA_STAGES-2, 1, Bool(true), io.fn(RG_VAU1_FP))
+    val dp = ShiftRegister(DFMA_STAGES-1, io.fn(RG_VAU1_FP))
 
     io.out := Mux(dp, io.cp_dfma.out,
-                  Cat(Bits("hFFFFFFFF",32), ShiftRegister(DFMA_STAGES-SFMA_STAGES-1, 33, Bool(true), io.cp_sfma.out)))
+                  Cat(Bits("hFFFFFFFF",32), ShiftRegister(DFMA_STAGES-SFMA_STAGES, io.cp_sfma.out)))
     io.exc := Mux(dp, io.cp_dfma.exc,
-                  ShiftRegister(DFMA_STAGES-SFMA_STAGES-1, SZ_EXC, Bool(true), io.cp_sfma.exc))
+                  ShiftRegister(DFMA_STAGES-SFMA_STAGES, io.cp_sfma.exc))
   }
 }

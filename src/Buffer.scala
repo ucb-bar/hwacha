@@ -17,7 +17,7 @@ class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
 
 class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component 
 {
-  val ADDR_SIZE = log2up(DEPTH)
+  val ADDR_SIZE = log2Up(DEPTH)
 
   val io = new io_buffer(DATA_SIZE, ADDR_SIZE)
 

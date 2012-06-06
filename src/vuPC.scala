@@ -10,7 +10,7 @@ class MaskBundle extends Bundle
   val resolved = Bits(width=WIDTH_PVFB)
 }
 
-class ioMaskPipe extends ioPipe() ( new MaskBundle() )
+class ioMaskPipe extends ioPipe() ( { new MaskBundle() } )
 
 class ioPCToIssueTVEC extends Bundle
 {

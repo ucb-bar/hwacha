@@ -201,7 +201,7 @@ class io_queue[T <: Data](data: => T) extends Bundle()
 
 class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
 {
-  val addr_sz = log2up(entries)
+  val addr_sz = log2Up(entries)
   val io = new io_queue({data})
   val ctrl = new queueCtrl(entries, addr_sz, flushable)
   ctrl.io.flush <> io.flush
@@ -217,7 +217,7 @@ class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: =
 
 class queuePipePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
 {
-  val addr_sz = log2up(entries)
+  val addr_sz = log2Up(entries)
   val io = new io_queue({data})
   val ctrl = new queueCtrl_pipe(entries, addr_sz, flushable)
   ctrl.io.flush <> io.flush
@@ -361,7 +361,7 @@ class queuePipe1PF[T <: Data](flushable: Boolean = false)(data: => T) extends Co
 //class queueFlowPF[T <: Data](entries: Int)(data: => T) extends Component
 //{
 //  val io = new io_queue({data})
-//  val addr_sz = log2up(entries)
+//  val addr_sz = log2Up(entries)
 //  val ctrl  = new queueCtrlFlow(entries, addr_sz)
 //  val dpath = new queueDpathFlow(data_sz, entries, addr_sz)
 //  ctrl.io.deq_rdy   <> io.deq.ready
@@ -392,7 +392,7 @@ class io_qcnt(w: Int) extends Bundle
 
 class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Component
 {
-  val size = log2down(max_cnt) + 1
+  val size = log2Down(max_cnt) + 1
 
   val io = new io_qcnt(size)
   val count = Reg(resetVal = UFix(reset_cnt, size))
@@ -503,9 +503,9 @@ class queue_spec[T <: Data](entries: Int, flushable: Boolean = false)(data: => T
   // chisel_assert(io.ack && !io.nack)
   // chisel_assert(!io.ack && io.nack)
 
-  val enq_ptr = Reg(resetVal = UFix(0, log2up(entries)))
-  val deq_ptr = Reg(resetVal = UFix(0, log2up(entries)))
-  val deq_ptr_spec = Reg(resetVal = UFix(0, log2up(entries)))
+  val enq_ptr = Reg(resetVal = UFix(0, log2Up(entries)))
+  val deq_ptr = Reg(resetVal = UFix(0, log2Up(entries)))
+  val deq_ptr_spec = Reg(resetVal = UFix(0, log2Up(entries)))
   val full = Reg(resetVal = Bool(false))
   val full_spec = Reg(resetVal = Bool(false))
 
@@ -583,7 +583,7 @@ class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundl
 
 class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int, flushable: Boolean = false) extends Component
 {
-  val ROQ_TAG_SIZE = log2up(ROQ_TAG_ENTRIES)
+  val ROQ_TAG_SIZE = log2Up(ROQ_TAG_ENTRIES)
 
   val io = new io_queue_reorder_qcnt(ROQ_DATA_SIZE, ROQ_TAG_SIZE)
 

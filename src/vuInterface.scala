@@ -4,19 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class ioDecoupled[T <: Data](view: List[String] = null)(data: => T) extends Bundle(view)
-{
-  val ready = Bool(INPUT)
-  val valid = Bool(OUTPUT)
-  val bits = data.asOutput
-}
-
-class ioPipe[T <: Data]()(data: => T) extends Bundle
-{
-  val valid = Bool(OUTPUT)
-  val bits = data.asOutput
-}
-
 class io_imem_req extends ioDecoupled()( { Bits(width = SZ_ADDR) } )
 class io_imem_resp extends ioPipe()( { Bits(width = SZ_INST) } )
 

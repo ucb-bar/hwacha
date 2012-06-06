@@ -38,7 +38,7 @@ class ioPVFBCtrl() extends Bundle
   val deq_rdy = Bool(INPUT)
 
   val wen = Bool(OUTPUT)
-  val waddr = UFix(log2up(DEPTH_PVFB), OUTPUT)
+  val waddr = UFix(log2Up(DEPTH_PVFB), OUTPUT)
   val mask_wdata = Bits(WIDTH_PVFB, OUTPUT)
   val pc_wdata = Bits(SZ_ADDR, OUTPUT)
 
@@ -47,7 +47,7 @@ class ioPVFBCtrl() extends Bundle
   val next_pc = Bits(SZ_ADDR, OUTPUT)
 
   val ren = Bool(OUTPUT)
-  val raddr = UFix(log2up(DEPTH_PVFB), OUTPUT)
+  val raddr = UFix(log2Up(DEPTH_PVFB), OUTPUT)
 
   val empty = Bool(OUTPUT)
 }
@@ -56,7 +56,7 @@ class vuPVFBCtrl extends Component
 {
   val io = new ioPVFBCtrl()
 
-  val SIZE_ADDR = log2up(DEPTH_PVFB)
+  val SIZE_ADDR = log2Up(DEPTH_PVFB)
 
   val enq_ptr_next = UFix(width=SIZE_ADDR)
   val deq_ptr_next = UFix(width=SIZE_ADDR)
