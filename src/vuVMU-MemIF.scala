@@ -7,10 +7,10 @@ import hardfloat._
 
 class io_vmu_memif extends Bundle
 {
-  val vaq = new ioDecoupled()({ new io_vpaq_bundle() }).flip
-  val vsdq = new ioDecoupled()({ Bits(width = 65) }).flip
-  val vldq = new ioDecoupled()({ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) })
-  val vldq_rtag = new ioDecoupled()({ Bits(width = LG_ENTRIES_VLDQ) }).flip
+  val vaq = new FIFOIO()({ new io_vpaq_bundle() }).flip
+  val vsdq = new FIFOIO()({ Bits(width = 65) }).flip
+  val vldq = new FIFOIO()({ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) })
+  val vldq_rtag = new FIFOIO()({ Bits(width = LG_ENTRIES_VLDQ) }).flip
 
   val mem_req = new io_dmem_req()
   val mem_resp = new io_dmem_resp().flip

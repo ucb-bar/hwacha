@@ -12,7 +12,7 @@ class PCBundle extends Bundle
   val not_taken = Bits(width=SZ_ADDR)
 }
 
-class ioPCPipe extends ioPipe()( new PCBundle() )
+class ioPCPipe extends PipeIO()( new PCBundle() )
 
 class ioIssueVTToPVFB extends Bundle
 {
@@ -29,12 +29,12 @@ class ReplayBundle extends Bundle
 
 class ioIssueVTToPC extends Bundle
 {
-  val replay_pre_if = new ioPipe()( new ReplayBundle )
-  val replay_if = new ioPipe()( new ReplayBundle )
-  val replay_jump = new ioPipe()( new ReplayBundle )
-  val replay_branch = new ioPipe()( new ReplayBundle )
-  val replay_stop = new ioPipe()( new ReplayBundle )
-  val replay_stalld = new ioPipe()( new ReplayBundle )
+  val replay_pre_if = new PipeIO()( new ReplayBundle )
+  val replay_if = new PipeIO()( new ReplayBundle )
+  val replay_jump = new PipeIO()( new ReplayBundle )
+  val replay_branch = new PipeIO()( new ReplayBundle )
+  val replay_stop = new PipeIO()( new ReplayBundle )
+  val replay_stalld = new PipeIO()( new ReplayBundle )
 }
 
 class io_vf extends Bundle

@@ -195,8 +195,8 @@ class queueCtrl(entries: Int, addr_sz: Int, flushable: Boolean = false) extends 
 class io_queue[T <: Data](data: => T) extends Bundle()
 {
   val flush = Bool(INPUT)
-  val enq = new ioDecoupled()( data ).flip
-  val deq = new ioDecoupled()( data )
+  val enq = new FIFOIO()( data ).flip
+  val deq = new FIFOIO()( data )
 }
 
 class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
@@ -423,9 +423,9 @@ class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Com
 class io_skidbuf[T <: Data](data: => T) extends Bundle
 {
   val flush = Bool(INPUT)
-  val enq = new ioDecoupled()(data).flip
-  val deq = new ioDecoupled()(data)
-  val pipereg = new ioPipe()(data)
+  val enq = new FIFOIO()(data).flip
+  val deq = new FIFOIO()(data)
+  val pipereg = new PipeIO()(data)
   val nack = Bool(INPUT)
   val empty = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
@@ -477,7 +477,7 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
 
 object SkidBuffer
 {
-  def apply[T <: Data](enq: ioDecoupled[T], late_nack: Boolean = false, flushable: Boolean = false) =
+  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false, flushable: Boolean = false) =
   {
     val sb = (new skidbuf(late_nack, flushable)){ enq.bits.clone }
     sb.io.enq <> enq
@@ -488,8 +488,8 @@ object SkidBuffer
 class io_queue_spec[T <: Data](data: => T) extends Bundle
 {
   val flush = Bool(INPUT)
-  val enq = new ioDecoupled()( data ).flip
-  val deq = new ioDecoupled()( data )
+  val enq = new FIFOIO()( data ).flip
+  val deq = new FIFOIO()( data )
 
   val ack = Bool(INPUT)
   val nack = Bool(INPUT)
@@ -573,9 +573,9 @@ class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) ex
 class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
   val flush = Bool(INPUT)
-  val deq_rtag = new ioDecoupled()( {Bits(width=ROQ_TAG_SIZE)} )
-  val deq_data = new ioDecoupled()( {Bits(width=ROQ_DATA_SIZE)} )
-  val enq = new ioPipe()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
+  val deq_rtag = new FIFOIO()( {Bits(width=ROQ_TAG_SIZE)} )
+  val deq_data = new FIFOIO()( {Bits(width=ROQ_DATA_SIZE)} )
+  val enq = new PipeIO()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
 
   val qcnt = UFix(ROQ_TAG_SIZE, INPUT)
   val watermark = Bool(OUTPUT)

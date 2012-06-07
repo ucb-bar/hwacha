@@ -8,9 +8,9 @@ class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
 {
   val flush = Bool(INPUT)
   
-  val enq = new ioDecoupled()( Bits(width=DATA_SIZE) ).flip
-  val deq = new ioDecoupled()( Bits(width=DATA_SIZE) )
-  val update = new ioPipe()( new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
+  val enq = new FIFOIO()( Bits(width=DATA_SIZE) ).flip
+  val deq = new FIFOIO()( Bits(width=DATA_SIZE) )
+  val update = new PipeIO()( new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
 
   val rtag = Bits(ADDR_SIZE, OUTPUT)
 }

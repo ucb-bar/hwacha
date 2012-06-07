@@ -8,8 +8,8 @@ class io_vmu_load_data extends Bundle
 {
   val vldq_lane = new io_vldq()
 
-  val vldq = (new ioDecoupled()){ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) }.flip
-  val vldq_rtag = (new ioDecoupled()){ Bits(width = LG_ENTRIES_VLDQ) }
+  val vldq = (new FIFOIO()){ new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ) }.flip
+  val vldq_rtag = (new FIFOIO()){ Bits(width = LG_ENTRIES_VLDQ) }
 
   val qcnt = UFix(SZ_QCNT, INPUT)
   val vldq_rtag_do_enq = Bool(OUTPUT)

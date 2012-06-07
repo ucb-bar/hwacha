@@ -14,7 +14,7 @@ class pvfBundle extends Bundle
   val vlen = Bits(width=SZ_VLEN)
 }
 
-class ioPVFPipe extends ioPipe()( new pvfBundle() )
+class ioPVFPipe extends PipeIO()( new pvfBundle() )
 
 class ioPVFB extends Bundle
 {

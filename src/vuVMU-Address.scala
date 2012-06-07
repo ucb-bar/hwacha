@@ -120,7 +120,7 @@ class checkcnt extends Component
 
 object CheckCnt
 {
-  def apply(deq: ioDecoupled[io_vpaq_bundle], qcnt: UFix, watermark: Bool) =
+  def apply(deq: FIFOIO[io_vpaq_bundle], qcnt: UFix, watermark: Bool) =
   {
     val cc = new checkcnt
     cc.io.input <> deq

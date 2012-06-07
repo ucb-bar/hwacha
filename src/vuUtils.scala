@@ -59,8 +59,8 @@ class maskstall[T <: Data](data: => T) extends Component
 {
   val io = new Bundle()
   {
-    val input = (new ioDecoupled()){ data }.flip
-    val output = (new ioDecoupled()){ data }
+    val input = (new FIFOIO()){ data }.flip
+    val output = (new FIFOIO()){ data }
     val stall = Bool(INPUT)
   }
 
@@ -71,7 +71,7 @@ class maskstall[T <: Data](data: => T) extends Component
 
 object MaskStall
 {
-  def apply[T <: Data](deq: ioDecoupled[T], stall: Bool) =
+  def apply[T <: Data](deq: FIFOIO[T], stall: Bool) =
   {
     val ms = new maskstall( deq.bits.clone )
     ms.io.input <> deq

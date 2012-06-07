@@ -47,12 +47,12 @@ class io_lane_to_hazard extends Bundle
 
 class ioLaneToPVFB extends Bundle
 {
-  val mask = new ioPipe()( Bits(width=WIDTH_PVFB) ) 
+  val mask = new PipeIO()( Bits(width=WIDTH_PVFB) ) 
 }
 
 class ioLaneToIssue extends Bundle
 {
-  val mask = new ioPipe()( Bits(width=WIDTH_PVFB * NUM_PVFB) )
+  val mask = new PipeIO()( Bits(width=WIDTH_PVFB * NUM_PVFB) )
   val pvfb_tag = Bits(SZ_PVFB_TAG, OUTPUT)
 }
 

@@ -7,8 +7,8 @@ import scala.math._
 class io_counter_vec(ADDR_SIZE: Int) extends Bundle {
   val flush = Bool(INPUT)
 
-  val enq = new ioDecoupled()( Bits(width=1) ).flip()
-  val deq = new ioDecoupled()( Bits(width=1) )
+  val enq = new FIFOIO()( Bits(width=1) ).flip()
+  val deq = new FIFOIO()( Bits(width=1) )
 
   val update_from_issue = new io_update_num_cnt().flip()
   val update_from_seq = new io_update_num_cnt().flip()

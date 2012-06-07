@@ -60,8 +60,8 @@ class io_vxu_seq_to_expand extends Bundle
 class io_seq_to_aiw extends Bundle
 {
   val last = Bool(OUTPUT)
-  val update_imm1 = new ioPipe()( new io_aiwUpdateReq(SZ_VIMM, 3) )
-  val update_cnt = new ioPipe()( new io_aiwUpdateReq(SZ_VLEN, 3) )
+  val update_imm1 = new PipeIO()( new io_aiwUpdateReq(SZ_VIMM, 3) )
+  val update_cnt = new PipeIO()( new io_aiwUpdateReq(SZ_VLEN, 3) )
   val update_numCnt = new io_update_num_cnt()
 }
 

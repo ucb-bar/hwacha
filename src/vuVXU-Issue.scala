@@ -45,7 +45,7 @@ class io_vxu_issue_reg extends Bundle
   val vd = Bool()
 }
 
-class io_vxu_cnt_valid extends ioPipe()( Bits(width = SZ_VLEN) )
+class io_vxu_cnt_valid extends PipeIO()( Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
@@ -126,8 +126,8 @@ class io_issue_to_irq_handler extends Bundle
 class IoIssueToPVFB extends Bundle
 {
   var ready = Bool(OUTPUT)
-  val fire = new ioPipe()( Bits(width=SZ_ADDR) )
-  val enq = new ioPipe()( Bits(width=SZ_ADDR) )
+  val fire = new PipeIO()( Bits(width=SZ_ADDR) )
+  val enq = new PipeIO()( Bits(width=SZ_ADDR) )
   val stop = Bool(OUTPUT)
   val replay = Bool(OUTPUT)
   val replay_pc = Bits(SZ_ADDR, OUTPUT)

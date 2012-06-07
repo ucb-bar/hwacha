@@ -10,14 +10,14 @@ class MaskBundle extends Bundle
   val resolved = Bits(width=WIDTH_PVFB)
 }
 
-class ioMaskPipe extends ioPipe() ( { new MaskBundle() } )
+class ioMaskPipe extends PipeIO() ( { new MaskBundle() } )
 
 class ioPCToIssueTVEC extends Bundle
 {
   val stop = Bool(OUTPUT)
 }
 
-class ioPCToIssueVT extends ioDecoupled()( new pvfBundle )
+class ioPCToIssueVT extends FIFOIO()( new pvfBundle )
 
 class ioPC extends Bundle
 {
