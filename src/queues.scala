@@ -596,7 +596,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val roq_data_deq = io.deq_data.ready && io.deq_data.valid
   val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
 
-  val data_array = Mem(ROQ_TAG_ENTRIES) { io.enq.bits.data.clone }
+  val data_array = Mem(ROQ_TAG_ENTRIES, seqRead = true) { io.enq.bits.data.clone }
   val data_out = Reg() { io.enq.bits.data.clone }
   when (io.enq.valid) { data_array(io.enq.bits.rtag) := io.enq.bits.data }
   data_out := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
