@@ -70,9 +70,7 @@ class vuPC extends Component
 
   pvfb.io.vtToPVFB <> io.vtToPVFB
 
-  val vlenp1 = Cat(Bits(0, 1), vlen) + UFix(1)
-  val mask_bits = (WIDTH_PVFB-1 to 0 by -1).map(i => (vlen >= UFix(i)))
-  val vlen_mask = Cat(mask_bits.head, mask_bits.tail: _*)
+  val vlen_mask = Cat(hardfloat.MaskOnes(vlen, 0, WIDTH_PVFB-1), Bits(1))
 
   pvfb.io.mask.valid := io.laneToPVFB.mask.valid
   pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits & vlen_mask

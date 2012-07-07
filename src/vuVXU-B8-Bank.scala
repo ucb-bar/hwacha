@@ -148,12 +148,12 @@ class vuVXU_Banked8_Bank extends Component
       MI -> delay_viu_imm
     ))
 
-  val branch_resolution_register = Vec(WIDTH_BMASK){ Reg(resetVal=Bool(false)) }
+  val branch_resolution_register = Reg(resetVal = Bits(0, WIDTH_BMASK))
   when (io.in.wen_mask && io.in.wmask_mask(0))
   { 
-    branch_resolution_register(io.in.waddr_mask) := alu.io.branch_result  
+    branch_resolution_register := branch_resolution_register.bitSet(io.in.waddr_mask, alu.io.branch_result)
   }
-  io.branch_resolution_mask := branch_resolution_register.toBits
+  io.branch_resolution_mask := branch_resolution_register
 
   alu.io.valid := delay_viu_val
   alu.io.wen   := io.in.wen
