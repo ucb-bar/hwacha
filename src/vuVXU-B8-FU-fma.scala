@@ -8,13 +8,13 @@ import Constants._
 class io_cp_fma(width: Int) extends Bundle
 {
   val valid = Bool(OUTPUT)
-  val cmd = Bits(FCMD_WIDTH, OUTPUT)
-  val rm = Bits(3, OUTPUT)
-  val in1 = Bits(width, OUTPUT)
-  val in2 = Bits(width, OUTPUT)
-  val in3 = Bits(width, OUTPUT)
-  val out = Bits(width, INPUT)
-  val exc = Bits(5, INPUT)
+  val cmd = Bits(OUTPUT, FCMD_WIDTH)
+  val rm = Bits(OUTPUT, 3)
+  val in1 = Bits(OUTPUT, width)
+  val in2 = Bits(OUTPUT, width)
+  val in3 = Bits(OUTPUT, width)
+  val out = Bits(INPUT, width)
+  val exc = Bits(INPUT, 5)
 }
 
 class io_cp_dfma extends io_cp_fma(65)
@@ -25,12 +25,12 @@ class vuVXU_Banked8_FU_fma extends Component
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn    = Bits(SZ_VAU1_FN, INPUT)
-    val in0   = Bits(SZ_DATA, INPUT)
-    val in1   = Bits(SZ_DATA, INPUT)
-    val in2   = Bits(SZ_DATA, INPUT)
-    val out   = Bits(SZ_DATA, OUTPUT)
-    val exc   = Bits(SZ_EXC, OUTPUT)
+    val fn    = Bits(INPUT, SZ_VAU1_FN)
+    val in0   = Bits(INPUT, SZ_DATA)
+    val in1   = Bits(INPUT, SZ_DATA)
+    val in2   = Bits(INPUT, SZ_DATA)
+    val out   = Bits(OUTPUT, SZ_DATA)
+    val exc   = Bits(OUTPUT, SZ_EXC)
 
     val cp_dfma = new io_cp_dfma()
     val cp_sfma = new io_cp_sfma()

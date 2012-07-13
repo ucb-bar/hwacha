@@ -33,7 +33,7 @@ class io_cpu_exception extends Bundle
   val exception = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
   val hold = Bool(OUTPUT)
-  val addr = UFix(SZ_ADDR, OUTPUT)
+  val addr = UFix(OUTPUT, SZ_ADDR)
 }
 
 class io_imul_req_bundle extends Bundle
@@ -122,10 +122,10 @@ class io_vxu_to_vmu extends Bundle
 
 class io_vxu_aiw_bundle extends Bundle
 {
-  val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
-  val numCnt_rtag = Bits(SZ_AIW_CMD, OUTPUT)
-  val cnt_rtag = Bits(SZ_AIW_CNT, OUTPUT)
-  val pc_next = Bits(SZ_ADDR, OUTPUT)
+  val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
+  val numCnt_rtag = Bits(OUTPUT, SZ_AIW_CMD)
+  val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
+  val pc_next = Bits(OUTPUT, SZ_ADDR)
   val update_imm1 = Bool(OUTPUT)
 }
 
@@ -144,7 +144,7 @@ class ioDTLB_CPU_resp extends Bundle
 {
   // lookup responses
   val miss = Bool(OUTPUT)
-  val ppn = Bits(PPN_BITS, OUTPUT)
+  val ppn = Bits(OUTPUT, PPN_BITS)
   val xcpt_ld = Bool(OUTPUT)
   val xcpt_st = Bool(OUTPUT)
   val xcpt_pf = Bool(OUTPUT)

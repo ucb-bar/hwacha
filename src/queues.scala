@@ -49,8 +49,8 @@ class IOqueueCtrl(addr_sz: Int) extends Bundle()
   val deq_val = Bool(OUTPUT)
   val deq_rdy = Bool(INPUT)
   val wen     = Bool(OUTPUT)
-  val waddr   = UFix(addr_sz, OUTPUT)
-  val raddr   = UFix(addr_sz, OUTPUT)
+  val waddr   = UFix(OUTPUT, addr_sz)
+  val raddr   = UFix(OUTPUT, addr_sz)
 }
 
 class queueCtrl_pipe(entries: Int, addr_sz: Int, flushable: Boolean = false) extends Component
@@ -240,8 +240,8 @@ class IOqueueCtrlFlow(addr_sz: Int) extends Bundle() /* IOqueueCtrl */
   val deq_val  = Bool(OUTPUT)
   val deq_rdy  = Bool(INPUT)
   val wen      = Bool(OUTPUT)
-  val waddr    = UFix(addr_sz, OUTPUT)
-  val raddr    = UFix(addr_sz, OUTPUT)
+  val waddr    = UFix(OUTPUT, addr_sz)
+  val raddr    = UFix(OUTPUT, addr_sz)
   val flowthru = Bool(OUTPUT)
 }
 
@@ -307,10 +307,10 @@ class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
 //{
 //  val wen         = Bool(INPUT)
 //  val flowthru    = Bool(INPUT)
-//  val deq_bits    = Bits(data_sz, OUTPUT)
-//  val enq_bits    = Bits(data_sz, INPUT)
-//  val waddr       = UFix(addr_sz, INPUT)
-//  val raddr       = UFix(addr_sz, INPUT)
+//  val deq_bits    = Bits(OUTPUT, data_sz)
+//  val enq_bits    = Bits(INPUT, data_sz)
+//  val waddr       = UFix(INPUT, addr_sz)
+//  val raddr       = UFix(INPUT, addr_sz)
 //}
 //
 //class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
@@ -382,9 +382,9 @@ class io_qcnt(w: Int) extends Bundle
   val flush = Bool(INPUT)
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
-  val qcnt = UFix(w, INPUT)
+  val qcnt = UFix(INPUT, w)
   val watermark = Bool(OUTPUT)
-  val qcnt2 = UFix(w, INPUT)
+  val qcnt2 = UFix(INPUT, w)
   val watermark2 = Bool(OUTPUT)
   val full = Bool(OUTPUT)
   val empty = Bool(OUTPUT)
@@ -577,7 +577,7 @@ class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundl
   val deq_data = new FIFOIO()( {Bits(width=ROQ_DATA_SIZE)} )
   val enq = new PipeIO()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
 
-  val qcnt = UFix(ROQ_TAG_SIZE, INPUT)
+  val qcnt = UFix(INPUT, ROQ_TAG_SIZE)
   val watermark = Bool(OUTPUT)
 }
 

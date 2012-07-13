@@ -8,10 +8,10 @@ class vuVXU_Pointer extends Component
 {
   val io = new Bundle
   {
-    val ptr = UFix(SZ_BPTR, INPUT)
-    val incr = UFix(SZ_BPTR1, INPUT)
-    val bcnt = UFix(SZ_BCNT, INPUT)
-    val nptr = UFix(SZ_BPTR, OUTPUT)
+    val ptr = UFix(INPUT, SZ_BPTR)
+    val incr = UFix(INPUT, SZ_BPTR1)
+    val bcnt = UFix(INPUT, SZ_BCNT)
+    val nptr = UFix(OUTPUT, SZ_BPTR)
   }
 
   val add = io.ptr + io.incr

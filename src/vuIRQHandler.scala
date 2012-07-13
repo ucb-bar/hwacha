@@ -28,8 +28,8 @@ class io_irq_handler extends Bundle
   val vmu_to_irq = new io_vmu_to_irq_handler().flip
 
   val irq = Bool(OUTPUT)
-  val irq_cause = UFix(5, OUTPUT)
-  val irq_aux = Bits(64, OUTPUT)
+  val irq_cause = UFix(OUTPUT, 5)
+  val irq_aux = Bits(OUTPUT, 64)
 }
 
 class vuIRQHandler extends Component

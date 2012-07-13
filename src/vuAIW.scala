@@ -7,9 +7,9 @@ import Commands._
 
 class io_aiw_to_issue extends Bundle 
 {
-  val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
-  val numCnt_rtag = Bits(SZ_AIW_NUMCNT, OUTPUT)
-  val cnt_rtag = Bits(SZ_AIW_CNT, OUTPUT)
+  val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
+  val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
+  val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
 }
 
 class io_vu_aiw extends Bundle 

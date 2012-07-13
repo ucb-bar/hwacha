@@ -10,7 +10,7 @@ class io_vmu_to_irq_handler extends Bundle
   val ma_st = Bool(OUTPUT)
   val faulted_ld = Bool(OUTPUT)
   val faulted_st = Bool(OUTPUT)
-  val mem_xcpt_addr = Bits(SZ_ADDR, OUTPUT)
+  val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
 }
 
 class io_vmu_address_tlb extends Bundle
@@ -108,7 +108,7 @@ class checkcnt extends Component
   {
     val input = new io_vpaq().flip
     val output = new io_vpaq()
-    val qcnt = UFix(SZ_QCNT, OUTPUT)
+    val qcnt = UFix(OUTPUT, SZ_QCNT)
     val watermark = Bool(INPUT)
   }
 
@@ -157,7 +157,7 @@ class io_vmu_address extends Bundle
   val vpaq_do_enq = Bool(OUTPUT)
   val vpaq_do_deq = Bool(OUTPUT)
   val vpaq_do_enq_vsdq = Bool(OUTPUT)
-  val vpaq_qcnt = UFix(SZ_QCNT, OUTPUT)
+  val vpaq_qcnt = UFix(OUTPUT, SZ_QCNT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
   val vsreq_watermark = Bool(INPUT)

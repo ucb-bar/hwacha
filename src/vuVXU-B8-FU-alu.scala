@@ -9,10 +9,10 @@ class Shifter extends Component
 {
   val io = new Bundle()
   {
-    val fn    = Bits(SZ_VIU_FN, INPUT)
-    val shamt = UFix(6, INPUT)
-    val in    = Bits(64, INPUT)
-    val out   = Bits(64, OUTPUT)
+    val fn    = Bits(INPUT, SZ_VIU_FN)
+    val shamt = UFix(INPUT, 6)
+    val in    = Bits(INPUT, 64)
+    val out   = Bits(OUTPUT, 64)
   }
 
   val left = MuxLookup(
@@ -56,11 +56,11 @@ class vuVXU_Banked8_FU_alu extends Component
     val valid      = Bool(INPUT)
     val wen        = Bool(INPUT)
     val wen_masked = Bool(OUTPUT)
-    val fn         = Bits(SZ_VIU_FN, INPUT)
-    val utidx      = Bits(SZ_VLEN, INPUT)
-    val in0        = Bits(SZ_DATA, INPUT)
-    val in1        = Bits(SZ_DATA, INPUT)
-    val out        = Bits(SZ_DATA, OUTPUT)
+    val fn         = Bits(INPUT, SZ_VIU_FN)
+    val utidx      = Bits(INPUT, SZ_VLEN)
+    val in0        = Bits(INPUT, SZ_DATA)
+    val in1        = Bits(INPUT, SZ_DATA)
+    val out        = Bits(OUTPUT, SZ_DATA)
     val branch_result = Bool(OUTPUT)
   }
 

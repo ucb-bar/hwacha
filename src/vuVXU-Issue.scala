@@ -130,7 +130,7 @@ class IoIssueToPVFB extends Bundle
   val enq = new PipeIO()( Bits(width=SZ_ADDR) )
   val stop = Bool(OUTPUT)
   val replay = Bool(OUTPUT)
-  val replay_pc = Bits(SZ_ADDR, OUTPUT)
+  val replay_pc = Bits(OUTPUT, SZ_ADDR)
 }
 
 class io_vxu_issue extends Bundle

@@ -68,13 +68,16 @@ class vuPC extends Component
   io.out.pc := delay_pc
   io.out.vlen := delay_vlen
 
-  pvfb.io.vtToPVFB <> io.vtToPVFB
+  if (HAVE_PVFB)
+    pvfb.io.vtToPVFB <> io.vtToPVFB
 
   val vlen_mask = Cat(hardfloat.MaskOnes(vlen, 0, WIDTH_PVFB-1), Bits(1))
 
-  pvfb.io.mask.valid := io.laneToPVFB.mask.valid
-  pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits & vlen_mask
-  pvfb.io.mask.bits.active := reg_mask
+  if (HAVE_PVFB) {
+    pvfb.io.mask.valid := io.laneToPVFB.mask.valid
+    pvfb.io.mask.bits.resolved := io.laneToPVFB.mask.bits & vlen_mask
+    pvfb.io.mask.bits.active := reg_mask
+  }
 
   next_pc := reg_pc
   next_pending := reg_pending
@@ -89,7 +92,7 @@ class vuPC extends Component
     next_pending := Bool(false)
     next_valid := Bool(true)
   }
-  . elsewhen (pvfb.io.pvf.valid)
+  . elsewhen (Bool(HAVE_PVFB) && pvfb.io.pvf.valid)
   {
     next_pc := pvfb.io.pvf.bits.pc
     next_mask := pvfb.io.pvf.bits.mask & vlen_mask
@@ -103,7 +106,7 @@ class vuPC extends Component
   . elsewhen (io.vtToPC.replay_stop.valid)
   {
     next_valid := Bool(false)
-    when (!pvfb.io.empty) { next_pending := Bool(true) }
+    when (Bool(HAVE_PVFB) && !pvfb.io.empty) { next_pending := Bool(true) }
   }
   . elsewhen (io.vtToPC.replay_stalld.valid)
   {
@@ -140,6 +143,6 @@ class vuPC extends Component
   io.pcToVT.bits.id := io.in.id
   io.pcToVT.bits.vlen := vlen
   io.pcToVT.valid := reg_valid
-  io.pcToTVEC.stop := io.vtToPC.replay_stop.valid && pvfb.io.empty
+  io.pcToTVEC.stop := io.vtToPC.replay_stop.valid && (if(HAVE_PVFB)pvfb.io.empty else Bool(true))
   io.pending := reg_pending || reg_stalld
 }

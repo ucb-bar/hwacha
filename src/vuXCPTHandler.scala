@@ -52,7 +52,7 @@ class io_xcpt_handler_to_vmu extends Bundle
 class io_xcpt_handler_to_evac extends Bundle
 {
   val start = Bool(OUTPUT)
-  val addr = UFix(SZ_ADDR, OUTPUT)
+  val addr = UFix(OUTPUT, SZ_ADDR)
 }
 
 class io_xcpt_handler extends Bundle {

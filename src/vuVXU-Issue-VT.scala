@@ -18,7 +18,7 @@ class ioIssueVTToPVFB extends Bundle
 {
   val stop = Bool(OUTPUT)
   val pc = new ioPCPipe()
-  val pvfb_tag = Bits(SZ_PVFB_TAG, OUTPUT)
+  val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
 class ReplayBundle extends Bundle
@@ -42,13 +42,13 @@ class io_vf extends Bundle
   val active = Bool(OUTPUT)
   val fire = Bool(OUTPUT)
   val stop = Bool(INPUT)
-  val pc = Bits(SZ_ADDR, OUTPUT)
-  val nxregs = Bits(SZ_REGCNT, OUTPUT)
-  val nfregs = Bits(SZ_REGCNT, OUTPUT)
-  val imm1_rtag = Bits(SZ_AIW_IMM1, OUTPUT)
-  val numCnt_rtag = Bits(SZ_AIW_NUMCNT, OUTPUT)
-  val stride = Bits(SZ_REGLEN, OUTPUT)
-  val vlen = Bits(SZ_VLEN, OUTPUT)
+  val pc = Bits(OUTPUT, SZ_ADDR)
+  val nxregs = Bits(OUTPUT, SZ_REGCNT)
+  val nfregs = Bits(OUTPUT, SZ_REGCNT)
+  val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
+  val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
+  val stride = Bits(OUTPUT, SZ_REGLEN)
+  val vlen = Bits(OUTPUT, SZ_VLEN)
 }
 
 class io_issue_vt_to_irq_handler extends Bundle
@@ -56,8 +56,8 @@ class io_issue_vt_to_irq_handler extends Bundle
   val ma_inst = Bool(OUTPUT)
   val fault_inst = Bool(OUTPUT)
   val illegal = Bool(OUTPUT)
-  val pc_if = Bits(SZ_ADDR, OUTPUT)
-  val pc_id = Bits(SZ_ADDR, OUTPUT)
+  val pc_if = Bits(OUTPUT, SZ_ADDR)
+  val pc_id = Bits(OUTPUT, SZ_ADDR)
 }
 
 class io_vxu_issue_vt extends Bundle

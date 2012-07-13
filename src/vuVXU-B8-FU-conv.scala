@@ -11,10 +11,10 @@ class vuVXU_Banked8_FU_conv extends Component
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn = Bits(SZ_VAU2_FN, INPUT)
-    val in = Bits(SZ_DATA, INPUT)
-    val exc = Bits(SZ_EXC, OUTPUT)
-    val out = Bits(SZ_DATA, OUTPUT)
+    val fn = Bits(INPUT, SZ_VAU2_FN)
+    val in = Bits(INPUT, SZ_DATA)
+    val exc = Bits(OUTPUT, SZ_EXC)
+    val out = Bits(OUTPUT, SZ_DATA)
   }
 
   def VAU2_FN(ins: Bits*) = ins.toList.map(x => {io.fn(RG_VAU2_FN) === x}).reduceLeft( _ || _ )

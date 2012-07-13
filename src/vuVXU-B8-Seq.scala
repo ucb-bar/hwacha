@@ -71,8 +71,8 @@ class io_vxu_seq extends Bundle
   val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
   val seq_to_expand = new io_vxu_seq_to_expand().asOutput
 
-  val qcntp1 = UFix(SZ_QCNT, OUTPUT)
-  val qcntp2 = UFix(SZ_QCNT, OUTPUT)
+  val qcntp1 = UFix(OUTPUT, SZ_QCNT)
+  val qcntp2 = UFix(OUTPUT, SZ_QCNT)
   val qstall = new io_qstall().asInput
 
   val fire = new io_vxu_issue_fire().asInput

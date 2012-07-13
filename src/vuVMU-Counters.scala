@@ -19,14 +19,14 @@ class io_vmu_counters extends Bundle
   val vsreq_inc = Bool(INPUT)
   val vsreq_dec = Bool(INPUT)
 
-  val qcnt = UFix(SZ_QCNT, INPUT)
+  val qcnt = UFix(INPUT, SZ_QCNT)
   val vvaq_watermark = Bool(OUTPUT)
   val vsdq_watermark = Bool(OUTPUT)
   val vpasdq_watermark = Bool(OUTPUT)
   val vlreq_watermark = Bool(OUTPUT)
   val vsreq_watermark = Bool(OUTPUT)
 
-  val vpaq_qcnt = UFix(SZ_QCNT, INPUT)
+  val vpaq_qcnt = UFix(INPUT, SZ_QCNT)
   val vpaq_watermark = Bool(OUTPUT)
 
   val pending_load = Bool(OUTPUT)

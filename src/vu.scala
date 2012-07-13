@@ -7,7 +7,7 @@ import Constants._
 class io_xcpt extends Bundle 
 {
   val exception = Bool(OUTPUT)
-  val evac_addr = UFix(SZ_ADDR, OUTPUT)
+  val evac_addr = UFix(OUTPUT, SZ_ADDR)
   val evac = Bool(OUTPUT)
   val hold = Bool(OUTPUT)
   val kill = Bool(OUTPUT)
@@ -16,8 +16,8 @@ class io_xcpt extends Bundle
 class io_vu extends Bundle 
 {
   val irq = Bool(OUTPUT)
-  val irq_cause = UFix(5, OUTPUT)
-  val irq_aux = Bits(64, OUTPUT)
+  val irq_cause = UFix(OUTPUT, 5)
+  val irq_aux = Bits(OUTPUT, 64)
 
   val vec_cmdq = new io_vec_cmdq().flip
   val vec_ximm1q = new io_vec_ximm1q().flip
@@ -35,7 +35,7 @@ class io_vu extends Bundle
   val vec_pfcntq = new io_vec_cntq().flip
 
   val cp_imul_req = new io_imul_req().flip
-  val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
+  val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
 

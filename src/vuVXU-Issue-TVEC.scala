@@ -8,13 +8,13 @@ import Commands._
 class io_issue_tvec_to_irq_handler extends Bundle
 {
   val illegal = Bool(OUTPUT)
-  val cmd = Bits(SZ_XCMD, OUTPUT)
+  val cmd = Bits(OUTPUT, SZ_XCMD)
 }
 
 class ioIssueTVECToPC extends Bundle
 {
-  val pc = Bits(SZ_ADDR, OUTPUT)
-  val vlen = Bits(SZ_VLEN, OUTPUT)
+  val pc = Bits(OUTPUT, SZ_ADDR)
+  val vlen = Bits(OUTPUT, SZ_VLEN)
   val fire = Bool(OUTPUT)
 }
 

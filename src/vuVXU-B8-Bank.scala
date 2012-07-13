@@ -8,43 +8,43 @@ class BankToBankIO extends Bundle
 {
   val ren    = Bool(INPUT)
   val rlast  = Bool(INPUT)
-  val rcnt   = Bits(SZ_BVLEN, INPUT)
-  val raddr  = Bits(SZ_BREGLEN, INPUT)
-  val roplen = Bits(SZ_BOPL, INPUT)
-  val rblen  = Bits(SZ_BRPORT, INPUT)
-  val rmask  = Bits(SZ_BANK, INPUT)
+  val rcnt   = Bits(INPUT, SZ_BVLEN)
+  val raddr  = Bits(INPUT, SZ_BREGLEN)
+  val roplen = Bits(INPUT, SZ_BOPL)
+  val rblen  = Bits(INPUT, SZ_BRPORT)
+  val rmask  = Bits(INPUT, SZ_BANK)
 
   val wen        = Bool(INPUT)
   val wlast      = Bool(INPUT)
-  val wcnt       = Bits(SZ_BVLEN, INPUT)
-  val waddr      = Bits(SZ_BREGLEN, INPUT)
-  val wsel       = Bits(SZ_BWPORT, INPUT)
-  val wmask      = Bits(SZ_BANK, INPUT)
+  val wcnt       = Bits(INPUT, SZ_BVLEN)
+  val waddr      = Bits(INPUT, SZ_BREGLEN)
+  val wsel       = Bits(INPUT, SZ_BWPORT)
+  val wmask      = Bits(INPUT, SZ_BANK)
 
   val wen_mask   = Bool(INPUT)
   val wlast_mask = Bool(INPUT)
-  val wcnt_mask  = Bits(SZ_BVLEN, INPUT)
-  val wmask_mask = Bits(SZ_BANK, INPUT)
-  val waddr_mask = Bits(SZ_BMASK, INPUT)
-  val pvfb_tag   = Bits(SZ_PVFB_TAG, INPUT)
+  val wcnt_mask  = Bits(INPUT, SZ_BVLEN)
+  val wmask_mask = Bits(INPUT, SZ_BANK)
+  val waddr_mask = Bits(INPUT, SZ_BMASK)
+  val pvfb_tag   = Bits(INPUT, SZ_PVFB_TAG)
 
   val viu       = Bool(INPUT)
-  val viu_fn    = Bits(SZ_VIU_FN, INPUT)
-  val viu_utidx = Bits(SZ_VLEN, INPUT)
-  val viu_imm   = Bits(SZ_DATA, INPUT)
+  val viu_fn    = Bits(INPUT, SZ_VIU_FN)
+  val viu_utidx = Bits(INPUT, SZ_VLEN)
+  val viu_imm   = Bits(INPUT, SZ_DATA)
 }
 
 class BankRWIO extends Bundle
 {
-  val rblen = Bits(SZ_BRPORT, OUTPUT)
-  val rdata = Bits(SZ_DATA, OUTPUT)
-  val ropl0 = Bits(SZ_DATA, OUTPUT)
-  val ropl1 = Bits(SZ_DATA, OUTPUT)
+  val rblen = Bits(OUTPUT, SZ_BRPORT)
+  val rdata = Bits(OUTPUT, SZ_DATA)
+  val ropl0 = Bits(OUTPUT, SZ_DATA)
+  val ropl1 = Bits(OUTPUT, SZ_DATA)
 
-  val wbl0 = Bits(SZ_DATA, INPUT)
-  val wbl1 = Bits(SZ_DATA, INPUT)
-  val wbl2 = Bits(SZ_DATA, INPUT)
-  val wbl3 = Bits(SZ_DATA, INPUT)
+  val wbl0 = Bits(INPUT, SZ_DATA)
+  val wbl1 = Bits(INPUT, SZ_DATA)
+  val wbl2 = Bits(INPUT, SZ_DATA)
+  val wbl3 = Bits(INPUT, SZ_DATA)
 }
 
 class vuVXU_Banked8_BankIO extends Bundle
@@ -56,7 +56,7 @@ class vuVXU_Banked8_BankIO extends Bundle
   
   val rw  = new BankRWIO()
 
-  val branch_resolution_mask = Bits(WIDTH_BMASK, OUTPUT)
+  val branch_resolution_mask = Bits(OUTPUT, WIDTH_BMASK)
 }
 
 class vuVXU_Banked8_Bank extends Component

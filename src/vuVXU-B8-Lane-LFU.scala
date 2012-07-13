@@ -6,41 +6,41 @@ import Constants._
 class ExpanderToLFUIO extends Bundle
 {
   val vau0 = Bool(OUTPUT)
-  val vau0_fn = Bits(SZ_VAU0_FN, OUTPUT)
+  val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
   val vau1 = Bool(OUTPUT)
-  val vau1_fn = Bits(SZ_VAU1_FN, OUTPUT)
+  val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
   val vau2 = Bool(OUTPUT)
-  val vau2_fn = Bits(SZ_VAU2_FN, OUTPUT)
+  val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
   val mem = new io_vxu_mem_cmd().asOutput
-  val imm = Bits(SZ_DATA, OUTPUT)
-  val imm2 = Bits(SZ_XIMM2, OUTPUT)
+  val imm = Bits(OUTPUT, SZ_DATA)
+  val imm2 = Bits(OUTPUT, SZ_XIMM2)
   val vaq = Bool(OUTPUT)
-  val vaq_mask = Bits(SZ_BANK, OUTPUT)
-  val vaq_pop_cnt = UFix(SZ_LGBANK1, OUTPUT)
+  val vaq_mask = Bits(OUTPUT, SZ_BANK)
+  val vaq_pop_cnt = UFix(OUTPUT, SZ_LGBANK1)
   val vldq = Bool(OUTPUT)
-  val vldq_mask = Bits(SZ_BANK, OUTPUT)
+  val vldq_mask = Bits(OUTPUT, SZ_BANK)
   val vsdq = Bool(OUTPUT)
-  val vsdq_mask = Bits(SZ_BANK, OUTPUT)
+  val vsdq_mask = Bits(OUTPUT, SZ_BANK)
   val utmemop = Bool(OUTPUT)
 }
 
 class LFUIO extends Bundle 
 {
-  val expand_rcnt = UFix(SZ_BVLEN, INPUT)
-  val expand_wcnt = UFix(SZ_BVLEN, INPUT)
+  val expand_rcnt = UFix(INPUT, SZ_BVLEN)
+  val expand_wcnt = UFix(INPUT, SZ_BVLEN)
   
   val expand = new ExpanderToLFUIO().flip
 
   val vau0_val = Bool(OUTPUT)
-  val vau0_fn = Bits(SZ_VAU0_FN, OUTPUT)
+  val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
   val vau1_val = Bool(OUTPUT)
-  val vau1_fn = Bits(SZ_VAU1_FN, OUTPUT)
+  val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
   val vau2_val = Bool(OUTPUT)
-  val vau2_fn = Bits(SZ_VAU2_FN, OUTPUT)
+  val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
   val vaq_val = Bool(OUTPUT)
   val vaq_check = new io_vxu_mem_check().asOutput
   val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(SZ_DATA, OUTPUT)
+  val vaq_imm = Bits(OUTPUT, SZ_DATA)
   val vaq_utmemop = Bool(OUTPUT)
   val vldq_rdy = Bool(OUTPUT)
   val vsdq_val = Bool(OUTPUT)

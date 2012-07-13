@@ -10,19 +10,19 @@ class io_vxu_mem extends Bundle
   val lane_vaq_valid = Bool(INPUT)
   val lane_vaq_check = new io_vxu_mem_check().asInput
   val lane_vaq_mem = new io_vxu_mem_cmd().asInput
-  val lane_vaq_imm = Bits(SZ_DATA, INPUT)
+  val lane_vaq_imm = Bits(INPUT, SZ_DATA)
   val lane_vaq_utmemop = Bool(INPUT)
-  val lane_vaq_rf = Bits(SZ_DATA, INPUT)
+  val lane_vaq_rf = Bits(INPUT, SZ_DATA)
   
   val vmu_vaq_valid = Bool(OUTPUT)
   val vmu_vaq_bits = new io_vvaq_bundle().asOutput
   
   val lane_vsdq_valid = Bool(INPUT)
   val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
-  val lane_vsdq_bits = Bits(SZ_DATA, INPUT) 
+  val lane_vsdq_bits = Bits(INPUT, SZ_DATA) 
   
   val vmu_vsdq_valid = Bool(OUTPUT)
-  val vmu_vsdq_bits = Bits(SZ_DATA, OUTPUT) 
+  val vmu_vsdq_bits = Bits(OUTPUT, SZ_DATA) 
 }
 
 class vuVXU_Banked8_Mem extends Component

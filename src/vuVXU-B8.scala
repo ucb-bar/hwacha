@@ -19,7 +19,7 @@ class io_vxu extends Bundle
   val vxu_cntq = new io_vxu_cntq().flip
 
   val cp_imul_req = new io_imul_req().flip
-  val cp_imul_resp = Bits(SZ_XLEN, OUTPUT)
+  val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
   val cp_dfma = new io_cp_dfma()
   val cp_sfma = new io_cp_sfma()
 
@@ -35,8 +35,8 @@ class io_vxu extends Bundle
   val lane_vaq_dec = Bool(OUTPUT)
   val lane_vsdq_dec = Bool(OUTPUT)
 
-  val qcntp1 = UFix(SZ_QCNT, OUTPUT)
-  val qcntp2 = UFix(SZ_QCNT, OUTPUT)
+  val qcntp1 = UFix(OUTPUT, SZ_QCNT)
+  val qcntp2 = UFix(OUTPUT, SZ_QCNT)
   
   val pending_store = Bool(INPUT)
   val pending_memop = Bool(OUTPUT)

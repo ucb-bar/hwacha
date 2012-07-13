@@ -9,10 +9,10 @@ class CPIO extends Bundle
 {
   val imul_val = Bool(INPUT)
   val imul_rdy = Bool(OUTPUT)
-  val imul_fn  = Bits(SZ_VAU0_FN, INPUT)
-  val imul_in0 = Bits(SZ_XLEN, INPUT)
-  val imul_in1 = Bits(SZ_XLEN, INPUT)
-  val imul_out = Bits(SZ_XLEN, OUTPUT)
+  val imul_fn  = Bits(INPUT, SZ_VAU0_FN)
+  val imul_in0 = Bits(INPUT, SZ_XLEN)
+  val imul_in1 = Bits(INPUT, SZ_XLEN)
+  val imul_out = Bits(OUTPUT, SZ_XLEN)
 }
 
 class ExpanderIO extends Bundle
@@ -26,15 +26,15 @@ class VMUIO extends Bundle
   val vaq_val   = Bool(OUTPUT)
   val vaq_check = new io_vxu_mem_check().asOutput
   val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(SZ_DATA, OUTPUT)
+  val vaq_imm = Bits(OUTPUT, SZ_DATA)
   val vaq_utmemop = Bool(OUTPUT)
-  val vaq_rf = Bits(SZ_DATA, OUTPUT)
+  val vaq_rf = Bits(OUTPUT, SZ_DATA)
 
   val vldq_rdy  = Bool(OUTPUT)
-  val vldq_bits = Bits(SZ_DATA, INPUT)
+  val vldq_bits = Bits(INPUT, SZ_DATA)
   val vsdq_val  = Bool(OUTPUT)
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
-  val vsdq_bits = Bits(SZ_DATA, OUTPUT)
+  val vsdq_bits = Bits(OUTPUT, SZ_DATA)
 }
 
 class io_lane_to_hazard extends Bundle
@@ -53,7 +53,7 @@ class ioLaneToPVFB extends Bundle
 class ioLaneToIssue extends Bundle
 {
   val mask = new PipeIO()( Bits(width=WIDTH_PVFB * NUM_PVFB) )
-  val pvfb_tag = Bits(SZ_PVFB_TAG, OUTPUT)
+  val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
 class io_vxu_lane extends Bundle 

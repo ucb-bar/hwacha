@@ -30,24 +30,24 @@ class ioPVFBCtrl() extends Bundle
 
   val enq_val = Bool(INPUT)
 
-  val resolved_mask = Bits(WIDTH_PVFB, INPUT)
-  val active_mask = Bits(WIDTH_PVFB, INPUT)
-  val taken_pc = Bits(SZ_ADDR, INPUT)
-  val not_taken_pc = Bits(SZ_ADDR, INPUT)
+  val resolved_mask = Bits(INPUT, WIDTH_PVFB)
+  val active_mask = Bits(INPUT, WIDTH_PVFB)
+  val taken_pc = Bits(INPUT, SZ_ADDR)
+  val not_taken_pc = Bits(INPUT, SZ_ADDR)
 
   val deq_rdy = Bool(INPUT)
 
   val wen = Bool(OUTPUT)
-  val waddr = UFix(log2Up(DEPTH_PVFB), OUTPUT)
-  val mask_wdata = Bits(WIDTH_PVFB, OUTPUT)
-  val pc_wdata = Bits(SZ_ADDR, OUTPUT)
+  val waddr = UFix(OUTPUT, log2Up(DEPTH_PVFB))
+  val mask_wdata = Bits(OUTPUT, WIDTH_PVFB)
+  val pc_wdata = Bits(OUTPUT, SZ_ADDR)
 
   val next_valid = Bool(OUTPUT)
-  val next_mask = Bits(WIDTH_PVFB, OUTPUT)
-  val next_pc = Bits(SZ_ADDR, OUTPUT)
+  val next_mask = Bits(OUTPUT, WIDTH_PVFB)
+  val next_pc = Bits(OUTPUT, SZ_ADDR)
 
   val ren = Bool(OUTPUT)
-  val raddr = UFix(log2Up(DEPTH_PVFB), OUTPUT)
+  val raddr = UFix(OUTPUT, log2Up(DEPTH_PVFB))
 
   val empty = Bool(OUTPUT)
 }

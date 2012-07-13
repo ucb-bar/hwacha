@@ -9,10 +9,10 @@ class vuVXU_Banked8_FU_imul extends Component
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn    = Bits(SZ_VAU0_FN, INPUT)
-    val in0   = Bits(SZ_DATA, INPUT)
-    val in1   = Bits(SZ_DATA, INPUT)
-    val out   = Bits(SZ_DATA, OUTPUT)
+    val fn    = Bits(INPUT, SZ_VAU0_FN)
+    val in0   = Bits(INPUT, SZ_DATA)
+    val in1   = Bits(INPUT, SZ_DATA)
+    val out   = Bits(OUTPUT, SZ_DATA)
   }
 
   val sxl64 = io.fn === VAU0_64H  | io.fn === VAU0_64HSU

@@ -6,9 +6,9 @@ import Constants._
 
 class XBarMux8IO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(SZ_BRPORT, INPUT) }
-  val rdata = Vec(8){ Bits(SZ_DATA, INPUT) }
-  val rbl   = Bits(SZ_DATA, OUTPUT)
+  val rblen = Vec(8){ Bits(INPUT, SZ_BRPORT) }
+  val rdata = Vec(8){ Bits(INPUT, SZ_DATA) }
+  val rbl   = Bits(OUTPUT, SZ_DATA)
 }
 
 class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Component
@@ -38,12 +38,12 @@ object vuVXU_Banked8_Lane_Xbar_Mux8
 
 class XbarIO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(SZ_BRPORT, INPUT) }
-  val rdata = Vec(8){ Bits(SZ_DATA, INPUT) }
-  val ropl0 = Vec(8){ Bits(SZ_DATA, INPUT) }
-  val ropl1 = Vec(8){ Bits(SZ_DATA, INPUT) }
+  val rblen = Vec(8){ Bits(INPUT, SZ_BRPORT) }
+  val rdata = Vec(8){ Bits(INPUT, SZ_DATA) }
+  val ropl0 = Vec(8){ Bits(INPUT, SZ_DATA) }
+  val ropl1 = Vec(8){ Bits(INPUT, SZ_DATA) }
 
-  val rbl = Vec(8){ Bits(SZ_DATA, OUTPUT) }
+  val rbl = Vec(8){ Bits(OUTPUT, SZ_DATA) }
 }
 
 class vuVXU_Banked8_Lane_Xbar extends Component

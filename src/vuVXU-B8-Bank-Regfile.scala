@@ -7,25 +7,25 @@ import Constants._
 class RegfileIO extends Bundle
 {
   val ren    = Bool(INPUT)
-  val raddr  = Bits(SZ_BREGLEN, INPUT)
-  val roplen = Bits(SZ_BOPL, INPUT)
+  val raddr  = Bits(INPUT, SZ_BREGLEN)
+  val roplen = Bits(INPUT, SZ_BOPL)
 
   val wen   = Bool(INPUT)
-  val waddr = Bits(SZ_BREGLEN, INPUT)
-  val wsel  = Bits(SZ_BWPORT, INPUT)
+  val waddr = Bits(INPUT, SZ_BREGLEN)
+  val wsel  = Bits(INPUT, SZ_BWPORT)
 
-  val rdata = Bits(SZ_DATA, OUTPUT)
-  val ropl0 = Bits(SZ_DATA, OUTPUT)
-  val ropl1 = Bits(SZ_DATA, OUTPUT)
+  val rdata = Bits(OUTPUT, SZ_DATA)
+  val ropl0 = Bits(OUTPUT, SZ_DATA)
+  val ropl1 = Bits(OUTPUT, SZ_DATA)
 
-  val wbl0 = Bits(SZ_DATA, INPUT)
-  val wbl1 = Bits(SZ_DATA, INPUT)
-  val wbl2 = Bits(SZ_DATA, INPUT)
-  val wbl3 = Bits(SZ_DATA, INPUT)
+  val wbl0 = Bits(INPUT, SZ_DATA)
+  val wbl1 = Bits(INPUT, SZ_DATA)
+  val wbl2 = Bits(INPUT, SZ_DATA)
+  val wbl3 = Bits(INPUT, SZ_DATA)
 
-  val viu_rdata = Bits(SZ_DATA, OUTPUT)
-  val viu_ropl  = Bits(SZ_DATA, OUTPUT)
-  val viu_wdata = Bits(SZ_DATA, INPUT)
+  val viu_rdata = Bits(OUTPUT, SZ_DATA)
+  val viu_ropl  = Bits(OUTPUT, SZ_DATA)
+  val viu_wdata = Bits(INPUT, SZ_DATA)
 }
 
 class vuVXU_Banked8_Bank_Regfile extends Component

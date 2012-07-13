@@ -16,7 +16,7 @@ class io_counter_vec(ADDR_SIZE: Int) extends Bundle {
 
   val markLast = Bool(INPUT)
   val deq_last = Bool(OUTPUT)
-  val rtag = Bits(ADDR_SIZE, OUTPUT)
+  val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
 class CounterVec(DEPTH: Int) extends Component {
