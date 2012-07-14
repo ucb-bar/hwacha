@@ -210,7 +210,7 @@ class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: =
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
 
-  val mem = Vec(entries) { Reg() { data } }
+  val mem = Mem(entries) { data }
   when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
   io.deq.bits := mem(ctrl.io.raddr)
 }
@@ -226,7 +226,7 @@ class queuePipePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => 
   ctrl.io.enq_val <> io.enq.valid
   ctrl.io.deq_rdy <> io.deq.ready
 
-  val mem = Vec(entries) { Reg() { data } }
+  val mem = Mem(entries) { data }
   when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
   io.deq.bits := mem(ctrl.io.raddr)
 }
@@ -547,7 +547,7 @@ class queue_spec[T <: Data](entries: Int, flushable: Boolean = false)(data: => T
           full_spec))
   }
 
-  val mem = Vec(entries) { Reg() { data } }
+  val mem = Mem(entries) { data }
   when (do_enq) { mem(enq_ptr) := io.enq.bits }
   io.deq.bits := mem(deq_ptr_spec)
 
