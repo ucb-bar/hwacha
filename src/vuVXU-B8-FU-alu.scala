@@ -100,7 +100,7 @@ class vuVXU_Banked8_FU_alu extends Component
 
 
   val ltu = (reg_in0.toUFix < reg_in1.toUFix)
-  val lt = (reg_in0(63) === reg_in1(63)) & ltu | reg_in0(63) & ~reg_in1(63)
+  val lt = (reg_in0(63) === reg_in1(63)) && ltu || reg_in0(63) && ~reg_in1(63)
   val eq = reg_in0 === reg_in1
 
   val comp_sp = new recodedFloat32Compare(24,8)

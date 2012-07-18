@@ -188,7 +188,7 @@ class vuVRU extends Component
             div = Mux(stride_lobits <= high && stride_lobits >= lo, UFix(i), div)
           }
 
-          vec_pfed_count_reg := Mux(!io.vec_pfcntq.valid, Fix(0), io.vec_pfcntq.bits.toUFix)
+          vec_pfed_count_reg := Mux(!io.vec_pfcntq.valid, Fix(0), io.vec_pfcntq.bits.toUFix).toUFix
           vec_count_reg := Mux(stride_lobits === UFix(0), Fix(1), vlen_reg)
           vec_per_pf_reg := Mux(stride_lobits === UFix(0), UFix(1), div)
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)
