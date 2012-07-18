@@ -783,7 +783,10 @@ class vuVXU_Banked8_Seq extends Component
   val mask = (array_mask(reg_ptr) & bcnt_mask) | (Fill(SZ_BANK, ~array_active_mask(reg_ptr)) & bcnt_mask)
 
   var pop_count = Bits(0,SZ_LGBANK1)
-  for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
+  if (HAVE_PVFB)
+    for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
+  else
+    pop_count = io.seq_regid_imm.cnt + UFix(1, SZ_LGBANK1)
   val skip = !mask.orR()
   io.seq_regid_imm.pop_count := pop_count
 
@@ -858,7 +861,7 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
   io.seq_regid_imm.pvfb_tag := array_pvfb_tag(reg_ptr)
-  io.seq_regid_imm.mask := mask
+  if(HAVE_PVFB) io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
   io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UFix(1, SZ_QCNT))

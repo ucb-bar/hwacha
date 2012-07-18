@@ -198,7 +198,11 @@ class vuVXU_Banked8_Lane_LFU extends Component
     reg_vaq := Bool(false)
   }
 
-  when (reg_vaq && !reg_utmemop && reg_vgu_mask(0))
+  val reg_vgu_mask0 = Bool(!HAVE_PVFB) | reg_vgu_mask(0)
+  val reg_vlu_mask0 = Bool(!HAVE_PVFB) | reg_vlu_mask(0)
+  val reg_vsu_mask0 = Bool(!HAVE_PVFB) | reg_vsu_mask(0)
+
+  when (reg_vaq && !reg_utmemop && reg_vgu_mask0)
   {
     reg_imm := reg_imm.toUFix + reg_imm2.toUFix
   }
@@ -233,13 +237,13 @@ class vuVXU_Banked8_Lane_LFU extends Component
   io.vau1_fn := reg_vau1_fn
   io.vau2_val := reg_vau2
   io.vau2_fn := reg_vau2_fn
-  io.vaq_val := reg_vaq & reg_vgu_mask(0)
+  io.vaq_val := reg_vaq & reg_vgu_mask0
   io.vaq_check.checkcnt := reg_vaq_checkcnt
   io.vaq_check.cnt := reg_vaq_cnt
   io.vaq_mem <> reg_vaq_mem
   io.vaq_imm := reg_imm
   io.vaq_utmemop := reg_utmemop
-  io.vldq_rdy := (io.expand.vldq & io.expand.vldq_mask(0)) | (reg_vldq & reg_vlu_mask(0))
-  io.vsdq_val := reg_vsdq & reg_vsu_mask(0)
+  io.vldq_rdy := (io.expand.vldq & (Bool(!HAVE_PVFB) | io.expand.vldq_mask(0))) | (reg_vldq & reg_vlu_mask0)
+  io.vsdq_val := reg_vsdq & reg_vsu_mask0
   io.vsdq_mem <> reg_vsdq_mem
 }

@@ -139,10 +139,10 @@ class vuPC extends Component
   }
 
   io.pcToVT.bits.pc := reg_pc
-  io.pcToVT.bits.mask := reg_mask
+  if (HAVE_PVFB) io.pcToVT.bits.mask := reg_mask
   io.pcToVT.bits.id := io.in.id
   io.pcToVT.bits.vlen := vlen
   io.pcToVT.valid := reg_valid
-  io.pcToTVEC.stop := io.vtToPC.replay_stop.valid && (if(HAVE_PVFB)pvfb.io.empty else Bool(true))
+  io.pcToTVEC.stop := io.vtToPC.replay_stop.valid && (Bool(!HAVE_PVFB) | pvfb.io.empty)
   io.pending := reg_pending || reg_stalld
 }
