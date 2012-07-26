@@ -56,7 +56,7 @@ class vuPC extends Component
   val reg_stalld = Reg(next_stalld, resetVal = Bool(false))
 
   val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
-  val vlen = Mux(fire_pass, Bits(WIDTH_PVFB-1), io.in.vlen)
+  val vlen = Mux(fire_pass & Bool(HAVE_PVFB), Bits(WIDTH_PVFB-1), io.in.vlen)
 
   val delay_id = Reg(io.in.id + UFix(1))
   val delay_fire = Reg(io.in.fire && fire_pass)

@@ -278,7 +278,6 @@ object Constants
   var NUM_PVFB = 4
   var WIDTH_PVFB = 64
   var DEPTH_PVFB = 64
-  assert(HAVE_PVFB || NUM_PVFB == 1)
   assert(DEPTH_PVFB >= WIDTH_PVFB, println("DEPTH_PVFB MUST BE GREATER THAN OR EQUAL TO DEPTH_PVFB"))
   assert(!coarseGrained || (coarseGrained && NUM_PVFB > 1))
   def SZ_PVFB_TAG = log2Up(NUM_PVFB)

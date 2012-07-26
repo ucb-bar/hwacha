@@ -27,11 +27,13 @@ class ioPCStage extends Bundle {
 class vuPCStage extends Component {
   val io = new ioPCStage()
 
+  val stageCnt = if(HAVE_PVFB) NUM_PVFB else 1
+
   val rrArbio = 
     if(coarseGrained) 
-      new CoarseRRArbiter(NUM_PVFB)( new pvfBundle ).io 
+      new CoarseRRArbiter(stageCnt)( new pvfBundle ).io 
     else
-      new RRArbiter(NUM_PVFB)( new pvfBundle ).io
+      new RRArbiter(stageCnt)( new pvfBundle ).io
   
   val pvfb_sel = UFix(1) << io.vtToPVFB.pvfb_tag
 
@@ -56,7 +58,7 @@ class vuPCStage extends Component {
 
       pcUnit.io.in <> pcBundle
 
-      val i = NUM_PVFB - 1 - n
+      val i = stageCnt - 1 - n
 
       rrArbio.in(i).bits <> pcUnit.io.pcToVT.bits
       rrArbio.in(i).valid := pcUnit.io.pcToVT.valid && !pcUnit.io.pending
@@ -90,7 +92,7 @@ class vuPCStage extends Component {
     }
   }
 
-  gen(io.pc, NUM_PVFB-1)
+  gen(io.pc, stageCnt-1)
 
   io.pcToTVEC.stop := stop && !pending && !valid
 
