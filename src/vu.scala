@@ -62,10 +62,10 @@ class vu extends Component
 
   val xcpt = new vuXCPTHandler()
 
-  val vcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
-  val vximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
-  val vximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
-  val vxcntq = new queueSimplePF(8, flushable = true)( Bits(width=SZ_VLEN+1) )
+  val vcmdq = new Queue(19, flushable = true)({Bits(width=SZ_VCMD)})
+  val vximm1q = new Queue(19, flushable = true)({Bits(width=SZ_VIMM)})
+  val vximm2q = new Queue(17, flushable = true)({Bits(width=SZ_VSTRIDE)})
+  val vxcntq = new Queue(8, flushable = true)( Bits(width=SZ_VLEN+1) )
 
   vcmdq.io.enq <> MaskStall(io.vec_cmdq, xcpt.io.xcpt_to_vu.busy)
   vximm1q.io.enq <> MaskStall(io.vec_ximm1q, xcpt.io.xcpt_to_vu.busy)
@@ -78,18 +78,18 @@ class vu extends Component
   val evac = new vuEvac()
 
   // counters
-  val vcmdq_count = new qcnt(32, 32, flushable = true)
-  val vximm1q_count = new qcnt(32, 32, flushable = true)
-  val vximm2q_count = new qcnt(32, 32, flushable = true)
+  val vcmdq_count = new qcnt(19, 19, flushable = true)
+  val vximm1q_count = new qcnt(19, 19, flushable = true)
+  val vximm2q_count = new qcnt(17, 17, flushable = true)
   var vru: vuVRU = null
 
   if (HAVE_VRU)
   {
     vru = new vuVRU()
-    val vpfcmdq = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VCMD)})
-    val vpfximm1q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VIMM)})
-    val vpfximm2q = new queueSimplePF(32, flushable = true)({Bits(width=SZ_VSTRIDE)})
-    val vpfcntq = new queueSimplePF(8, flushable = true)({Bits(width=SZ_VLEN)})
+    val vpfcmdq = new Queue(19, flushable = true)({Bits(width=SZ_VCMD)})
+    val vpfximm1q = new Queue(19, flushable = true)({Bits(width=SZ_VIMM)})
+    val vpfximm2q = new Queue(17, flushable = true)({Bits(width=SZ_VSTRIDE)})
+    val vpfcntq = new Queue(8, flushable = true)({Bits(width=SZ_VLEN)})
 
     vpfcmdq.io.enq <> MaskStall(io.vec_pfcmdq, xcpt.io.xcpt_to_vu.busy)
     vpfximm1q.io.enq <> MaskStall(io.vec_pfximm1q, xcpt.io.xcpt_to_vu.busy)
