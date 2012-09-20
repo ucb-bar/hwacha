@@ -55,7 +55,7 @@ class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Component {
   io.chosen := choose
 }
 
-class maskstall[T <: Data](data: => T) extends Component
+class MaskStall[T <: Data](data: => T) extends Component
 {
   val io = new Bundle()
   {
@@ -73,7 +73,7 @@ object MaskStall
 {
   def apply[T <: Data](deq: FIFOIO[T], stall: Bool) =
   {
-    val ms = new maskstall( deq.bits.clone )
+    val ms = new MaskStall( deq.bits.clone )
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output
