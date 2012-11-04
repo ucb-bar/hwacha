@@ -323,7 +323,7 @@ class vuVXU_Issue_TVEC extends Component
 
   io.vf.active := (reg_state === ISSUE_VT)
   io.vf.fire := fire_vf
-  io.vf.pc := io.vxu_immq.bits(31,0)
+  io.vf.pc := io.vxu_immq.bits(31,0).toUFix
   io.vf.nxregs := reg_nxregs
   io.vf.nfregs := reg_nfregs
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag

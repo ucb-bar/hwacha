@@ -140,8 +140,6 @@ class io_vxu_issue extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
-  val vitlb_exception = Bool(INPUT)
-
   val vxu_cmdq = new io_vxu_cmdq().flip
   val vxu_immq = new io_vxu_immq().flip
   val vxu_imm2q = new io_vxu_imm2q().flip
@@ -200,8 +198,6 @@ class vuVXU_Issue extends Component
 
   vt.io.imem_req <> io.imem_req
   vt.io.imem_resp <> io.imem_resp
-
-  vt.io.vitlb_exception := io.vitlb_exception
 
   // tvec
   tvec.io.vxu_cmdq <> io.vxu_cmdq

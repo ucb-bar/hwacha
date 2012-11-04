@@ -4,8 +4,16 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_imem_req extends FIFOIO()( { Bits(width = SZ_ADDR) } )
-class io_imem_resp extends PipeIO()( { Bits(width = SZ_INST) } )
+class io_imem_resp_bundle extends Bundle
+{
+  val pc = UFix(width = VADDR_BITS+1)
+  val data = Bits(width = SZ_INST)
+  val xcpt_ma = Bool()
+  val xcpt_if = Bool()
+}
+
+class io_imem_req extends PipeIO()( { UFix(width = VADDR_BITS+1) } )
+class io_imem_resp extends FIFOIO()( { new io_imem_resp_bundle() } )
 
 class io_vxu_cmdq extends FIFOIO()( { Bits(width = SZ_XCMD) } )
 class io_vxu_immq extends FIFOIO()( { Bits(width = SZ_XIMM) } )

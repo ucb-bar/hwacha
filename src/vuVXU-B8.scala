@@ -26,8 +26,6 @@ class io_vxu extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
-  val vitlb_exception = Bool(INPUT)
-
   val lane_vaq = new io_vvaq()
   val lane_vldq = new io_vldq().flip
   val lane_vsdq = new io_vsdq()
@@ -68,8 +66,6 @@ class vuVXU extends Component
 
   issue.io.imem_req <> io.imem_req
   issue.io.imem_resp <> io.imem_resp
-
-  issue.io.vitlb_exception := io.vitlb_exception
 
   issue.io.vxu_cmdq <> io.vxu_cmdq
   issue.io.vxu_immq <> io.vxu_immq

@@ -42,8 +42,6 @@ class io_vu extends Bundle
   val imem_req = new io_imem_req()
   val imem_resp = new io_imem_resp().flip
 
-  val vitlb_exception = Bool(INPUT)
-
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
@@ -183,8 +181,6 @@ class vu extends Component
 
   vxu.io.imem_req <> io.imem_req
   vxu.io.imem_resp <> io.imem_resp
-
-  vxu.io.vitlb_exception := io.vitlb_exception
 
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
   vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt

@@ -4,16 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_irq_to_vxu extends Bundle
-{
-
-}
-
-class io_irq_to_seq extends Bundle
-{
-
-}
-
 class io_irq_to_issue extends Bundle
 {
   val stall_tvec = Bool(OUTPUT)
@@ -40,8 +30,7 @@ class vuIRQHandler extends Component
   val reg_irq_fault_inst = Reg(resetVal = Bool(false))
   val reg_irq_illegal_vt = Reg(resetVal = Bool(false))
   val reg_irq_illegal_tvec = Reg(resetVal = Bool(false))
-  val reg_irq_pc_if = Reg(){ Bits(width = SZ_ADDR) }
-  val reg_irq_pc_id = Reg(){ Bits(width = SZ_ADDR) }
+  val reg_irq_pc = Reg(){ Bits(width = SZ_ADDR) }
   val reg_irq_cmd_tvec = Reg(){ Bits(width = SZ_XCMD) }
 
   val reg_irq_ma_ld = Reg(resetVal = Bool(false))
@@ -62,8 +51,7 @@ class vuIRQHandler extends Component
     reg_irq_faulted_ld := io.vmu_to_irq.faulted_ld
     reg_irq_faulted_st := io.vmu_to_irq.faulted_st
 
-    when (io.issue_to_irq.vt.ma_inst || io.issue_to_irq.vt.fault_inst) { reg_irq_pc_if := io.issue_to_irq.vt.pc_if }
-    when (io.issue_to_irq.vt.illegal) { reg_irq_pc_id := io.issue_to_irq.vt.pc_id }
+    when (io.issue_to_irq.vt.ma_inst || io.issue_to_irq.vt.fault_inst || io.issue_to_irq.vt.illegal) { reg_irq_pc := io.issue_to_irq.vt.pc }
     when (io.issue_to_irq.tvec.illegal) { reg_irq_cmd_tvec := io.issue_to_irq.tvec.cmd }
 
     when (io.vmu_to_irq.ma_ld || io.vmu_to_irq.ma_st || io.vmu_to_irq.faulted_ld || io.vmu_to_irq.faulted_st) 
@@ -88,11 +76,10 @@ class vuIRQHandler extends Component
         UFix(31)))))))))
 
   io.irq_aux :=
-    Mux(reg_irq_ma_inst || reg_irq_fault_inst, reg_irq_pc_if,
-    Mux(reg_irq_illegal_vt, reg_irq_pc_id,
+    Mux(reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt, reg_irq_pc,
     Mux(reg_irq_illegal_tvec, reg_irq_cmd_tvec,
     Mux(dmem_xcpt, reg_mem_xcpt_addr,
-        Bits(0)))))
+        Bits(0))))
 
   when (io.flush)
   {
