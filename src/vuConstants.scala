@@ -85,7 +85,7 @@ object Constants
   // pipe stages
   val INT_STAGES   = 2
   val IMUL_STAGES  = 4
-  val FMA_STAGES   = 5
+  val FMA_STAGES   = 6
   val FCONV_STAGES = 3
 
   // constants for expander
@@ -269,8 +269,8 @@ object Constants
   val FCMD_NMADD =      Bits("b100111")
   val FCMD_WIDTH = 6
 
-  val DFMA_STAGES = 6
-  val SFMA_STAGES = 4
+  val DFMA_STAGES = 7
+  val SFMA_STAGES = 5
 
   // PVFB Constants
   var coarseGrained = false
