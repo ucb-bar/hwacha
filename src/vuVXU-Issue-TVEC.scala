@@ -304,7 +304,7 @@ class vuVXU_Issue_TVEC extends Component
     next_state := ISSUE_TVEC
   }
 
-  when(io.flush) 
+  when (io.flush) 
   {
     next_state := ISSUE_TVEC
     next_vlen := Bits(0,SZ_VLEN)

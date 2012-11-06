@@ -387,12 +387,12 @@ class vuVXU_Banked8_Hazard extends Component
 
   when (io.fire.viu)
   {
-    when(isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
+    when (isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
     {
       next_wmask_val(vbr_wptr) := Bool(true)
       next_wmask_head(vbr_wptr) := Bool(true)
     }
-    . otherwise 
+    .otherwise 
     {
       next_wport_val(viu_wptr) := Bool(true)
       next_wport_head(viu_wptr) := Bool(true)
@@ -542,7 +542,7 @@ class vuVXU_Banked8_Hazard extends Component
     next_sport_val(next_ptr1) := Bool(true)
     next_sport_val(next_ptr2) := Bool(true)
   }
-  when(io.fire.vld)
+  when (io.fire.vld)
   {
     next_sport_val(next_ptr1) := Bool(true)
     next_sport_val(next_ptr2) := Bool(true)

@@ -42,7 +42,7 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 
   when (do_deq) { read_ptr_next := read_ptr + UFix(1) }
 
-  when(do_enq) 
+  when (do_enq) 
   { 
     write_ptr_next := write_ptr + UFix(1) 
   }
@@ -57,15 +57,15 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
   {
     full_next := Bool(false)
   }
-  . elsewhen (do_enq && !do_deq && (write_ptr_next === read_ptr))
+  .elsewhen (do_enq && !do_deq && (write_ptr_next === read_ptr))
   {
     full_next := Bool(true)
   }
-  . elsewhen (do_deq && full) 
+  .elsewhen (do_deq && full) 
   {
     full_next := Bool(false)
   }
-  . otherwise 
+  .otherwise 
   {
     full_next := full
   }

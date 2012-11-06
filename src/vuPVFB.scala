@@ -88,11 +88,11 @@ class vuPVFBCtrl extends Component
   {
     full_next := Bool(true)
   }
-  . elsewhen (do_deq && full)
+  .elsewhen (do_deq && full)
   {
     full_next := Bool(true)
   } 
-  . otherwise
+  .otherwise
   {
     full_next := full
   }

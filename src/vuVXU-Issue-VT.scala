@@ -108,7 +108,7 @@ class vuVXU_Issue_VT extends Component
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
 
-  when(io.flush) 
+  when (io.flush) 
   {
     imm1_rtag := Bits(0,SZ_AIW_IMM1)
     numCnt_rtag := Bits(0,SZ_AIW_CMD)

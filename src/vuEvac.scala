@@ -202,19 +202,19 @@ class vuEvac extends Component
           when (deq_irimm1b) 
           {
             state_next := STATE_IMM1B
-          } . elsewhen (deq_irimm2b) 
+          } .elsewhen (deq_irimm2b) 
           {
             state_next := STATE_IMM2B
-          } . elsewhen (deq_ircntb) 
+          } .elsewhen (deq_ircntb) 
           {
             state_next := STATE_CNTB
-          } . otherwise
+          } .otherwise
           {
             state_next := STATE_CMDB
           }
         }
 
-      } . elsewhen (!io.aiw_cmdb.valid) 
+      } .elsewhen (!io.aiw_cmdb.valid) 
       {
         state_next := STATE_VCMDQ
         cmd_sel_next := SEL_VCMDQ
@@ -241,10 +241,10 @@ class vuEvac extends Component
           when (deq_irimm2b)
           {
             state_next := STATE_IMM2B
-          } . elsewhen (deq_ircntb) 
+          } .elsewhen (deq_ircntb) 
           {
             state_next := STATE_CNTB
-          } . otherwise 
+          } .otherwise 
           {
             state_next := STATE_CMDB
             io.aiw_cmdb.ready := Bool(true)
@@ -270,7 +270,7 @@ class vuEvac extends Component
           when (deq_ircntb)
           {
             state_next := STATE_CNTB
-          } . otherwise {
+          } .otherwise {
             state_next := STATE_CMDB
             io.aiw_cmdb.ready := Bool(true)
           }
@@ -330,13 +330,13 @@ class vuEvac extends Component
             state_next := STATE_VCMDQ
             cmd_sel_next := SEL_VCMDQ
           }
-          . otherwise // there are more counts to save
+          .otherwise // there are more counts to save
           {
             state_next := STATE_PRE_VCMDQ
           }
         }
       }
-      . otherwise // nothing in the vcntq, so no forward progress was made on the VF
+      .otherwise // nothing in the vcntq, so no forward progress was made on the VF
       {
         state_next := STATE_VCMDQ
         cmd_sel_next := SEL_VCMDQ
@@ -365,19 +365,19 @@ class vuEvac extends Component
           when (deq_vimm1q)
           {
             state_next := STATE_VIMM1Q
-          } . elsewhen (deq_vimm2q)
+          } .elsewhen (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } . elsewhen (deq_vcntq && io.vcntq.valid)
+          } .elsewhen (deq_vcntq && io.vcntq.valid)
           {
             state_next := STATE_VCNTQ
-          } . otherwise 
+          } .otherwise 
           {
             state_next := STATE_VCMDQ
           }
         }
 
-      } . elsewhen (!io.vcmdq.valid) 
+      } .elsewhen (!io.vcmdq.valid) 
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
@@ -411,7 +411,7 @@ class vuEvac extends Component
           when (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } . elsewhen (deq_vcntq && io.vcntq.valid)
+          } .elsewhen (deq_vcntq && io.vcntq.valid)
           {
             state_next := STATE_VCNTQ
           } .otherwise 
@@ -424,7 +424,7 @@ class vuEvac extends Component
       }
 
       // ready signal
-      when(deq_vimm1q && io.vsdq.ready && io.vaq.ready) 
+      when (deq_vimm1q && io.vsdq.ready && io.vaq.ready) 
       {
         io.vimm1q.ready := Bool(true)
       }
@@ -442,7 +442,7 @@ class vuEvac extends Component
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          when(deq_vcntq && io.vcntq.valid)
+          when (deq_vcntq && io.vcntq.valid)
           {
             state_next := STATE_VCNTQ
           } .otherwise 
@@ -476,19 +476,19 @@ class vuEvac extends Component
           when (vf)
           {
             state_next := STATE_VCNTQ
-          } . otherwise {
+          } .otherwise {
             state_next := STATE_VCMDQ
             io.vcmdq.ready := Bool(true)
           }
         }
 
-      } . elsewhen(!io.vcntq.valid) {
+      } .elsewhen (!io.vcntq.valid) {
         state_next := STATE_VCMDQ
         io.vcmdq.ready := Bool(true)
       }
 
       // ready signal
-      when(deq_vcntq && io.vsdq.ready && io.vaq.ready)
+      when (deq_vcntq && io.vsdq.ready && io.vaq.ready)
       {
         io.vcntq.ready := Bool(true)
       }

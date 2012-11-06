@@ -415,7 +415,7 @@ class vuVXU_Banked8_Expand extends Component
       next_waddr_mask(viu_wptr) := io.seq_regid_imm.vm
       next_pvfb_tag(viu_wptr) := io.seq_regid_imm.pvfb_tag
     }
-    . otherwise
+    .otherwise
     {
       next_wen(viu_wptr) := Bool(true)
       next_wlast(viu_wptr) := io.seq_to_expand.last

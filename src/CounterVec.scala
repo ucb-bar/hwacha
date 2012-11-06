@@ -46,7 +46,7 @@ class CounterVec(DEPTH: Int) extends Component {
 
   when (do_deq) { next_read_ptr := read_ptr + UFix(1) }
 
-  when(do_enq) 
+  when (do_enq) 
   { 
     next_write_ptr := write_ptr + UFix(1) 
     next_last_write_ptr := write_ptr
@@ -63,15 +63,15 @@ class CounterVec(DEPTH: Int) extends Component {
   {
     next_full := Bool(false)
   }
-  . elsewhen (do_enq && !do_deq && (next_write_ptr === read_ptr))
+  .elsewhen (do_enq && !do_deq && (next_write_ptr === read_ptr))
   {
     next_full := Bool(true)
   }
-  . elsewhen (do_deq && full) 
+  .elsewhen (do_deq && full) 
   {
     next_full := Bool(false)
   }
-  . otherwise 
+  .otherwise 
   {
     next_full := full
   }

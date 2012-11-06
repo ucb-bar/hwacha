@@ -92,46 +92,46 @@ class vuPC extends Component
     next_pending := Bool(false)
     next_valid := Bool(true)
   }
-  . elsewhen (Bool(HAVE_PVFB) && pvfb.io.pvf.valid)
+  .elsewhen (Bool(HAVE_PVFB) && pvfb.io.pvf.valid)
   {
     next_pc := pvfb.io.pvf.bits.pc
     next_mask := pvfb.io.pvf.bits.mask & vlen_mask
     next_pending := Bool(false)
     next_valid := Bool(true)
   }
-  . elsewhen (io.vtToPC.replay_jump.valid)
+  .elsewhen (io.vtToPC.replay_jump.valid)
   {
     next_pc := io.vtToPC.replay_jump.bits.pc
   }
-  . elsewhen (io.vtToPC.replay_stop.valid)
+  .elsewhen (io.vtToPC.replay_stop.valid)
   {
     next_valid := Bool(false)
     when (Bool(HAVE_PVFB) && !pvfb.io.empty) { next_pending := Bool(true) }
   }
-  . elsewhen (io.vtToPC.replay_stalld.valid)
+  .elsewhen (io.vtToPC.replay_stalld.valid)
   {
     next_stalld := Bool(true)
     next_pc := io.vtToPC.replay_stalld.bits.pc
   }
-  . elsewhen (io.vtToPC.replay_branch.valid)
+  .elsewhen (io.vtToPC.replay_branch.valid)
   {
     next_pending := Bool(true)
     next_valid := Bool(false)
   }
-  . elsewhen (io.vtToPC.replay_if.valid)
+  .elsewhen (io.vtToPC.replay_if.valid)
   {
     next_pc := io.vtToPC.replay_if.bits.pc
   }
-  . elsewhen (io.vtToPC.replay_pre_if.valid)
+  .elsewhen (io.vtToPC.replay_pre_if.valid)
   {
     next_pc := io.vtToPC.replay_pre_if.bits.pc
   }
-  . elsewhen (io.pcToVT.ready && io.pcToVT.valid) 
+  .elsewhen (io.pcToVT.ready && io.pcToVT.valid) 
   {
     next_pc := reg_pc + UFix(4)
   }
 
-  when(io.flush)
+  when (io.flush)
   {
     next_pc := Bits(0,SZ_ADDR)
     next_pending := Bool(false)

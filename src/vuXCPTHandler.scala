@@ -188,13 +188,13 @@ class vuXCPTHandler extends Component
         io.xcpt_to_aiw.flush := Bool(true)
       }
 
-      when(evac)
+      when (evac)
       {
         next_hold_tlb := Bool(false)
 
         next_state := XCPT_EVAC
       }
-      when(kill)
+      when (kill)
       {
         next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)
