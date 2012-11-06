@@ -27,7 +27,7 @@ class vuVMU_StoreData extends Component
   val io = new io_vmu_store_data()
 
   val vsdq_arb = (new Arbiter(2)){ Bits(width = SZ_DATA) }
-  val vsdq = (new queueSimplePF(ENTRIES_VSDQ, flushable = true)){ Bits(width = 65) }
+  val vsdq = new Queue(ENTRIES_VSDQ, flushable = true)(Bits(width = 65))
 
   // vsdq arbiter, port 0: lane vsdq
   vsdq_arb.io.in(VSDQARB_LANE) <> io.vsdq_lane

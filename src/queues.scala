@@ -4,379 +4,6 @@ import Chisel._
 import Node._
 import scala.math._
 
-class IOqueueCtrl1_pipe extends Bundle
-{
-  val flush = Bool(INPUT)
-  val enq_val = Bool(INPUT)
-  val enq_rdy = Bool(OUTPUT)
-  val deq_val = Bool(OUTPUT)
-  val deq_rdy = Bool(INPUT)
-  val wen = Bool(OUTPUT)
-}
-
-class queueCtrl1_pipe(flushable: Boolean = false) extends Component
-{
-  val io = new IOqueueCtrl1_pipe()
-
-  val full = Reg(width = 1, resetVal = Bool(false))
-  val empty = !full
-
-  val enq_rdy_int = (!full || (full && io.deq_rdy))
-  val deq_val_int = !empty
-  val do_enq = enq_rdy_int && io.enq_val
-  val do_deq = io.deq_rdy && deq_val_int
-
-  val do_pipe = full && do_enq && do_deq
-
-  io.wen := do_enq
-  io.enq_rdy := enq_rdy_int
-  io.deq_val := deq_val_int
-
-  when (do_deq && !do_pipe) { full := Bool(false) }
-  when (do_enq) { full := Bool(true) }
-
-  if (flushable)
-  {
-    when (io.flush) { full := Bool(false) }
-  }
-}
-
-class IOqueueCtrl(addr_sz: Int) extends Bundle()
-{
-  val flush = Bool(INPUT)
-  val enq_val = Bool(INPUT)
-  val enq_rdy = Bool(OUTPUT)
-  val deq_val = Bool(OUTPUT)
-  val deq_rdy = Bool(INPUT)
-  val wen     = Bool(OUTPUT)
-  val waddr   = UFix(OUTPUT, addr_sz)
-  val raddr   = UFix(OUTPUT, addr_sz)
-}
-
-class queueCtrl_pipe(entries: Int, addr_sz: Int, flushable: Boolean = false) extends Component
-{
-  val io = new IOqueueCtrl(addr_sz)
-
-  // Enqueue and dequeue pointers
-
-  val enq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val deq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val full    = Reg(width = 1, resetVal = Bool(false))
-
-  io.waddr := enq_ptr
-  io.raddr := deq_ptr
-
-  // We enq/deq only when they are both ready and valid
-  val empty = ~full && (enq_ptr === deq_ptr)
-
-  val enq_rdy_int = ~full || (full && io.deq_rdy)
-  val deq_val_int = ~empty
-
-  val do_enq = enq_rdy_int && io.enq_val
-  val do_deq = io.deq_rdy && deq_val_int
-
-  val do_pipe = full && (do_enq && do_deq)
-  // Determine if we have pipeline or flowthrough behaviour and
-  // set the write enable accordingly.
-
-
-  io.wen := do_enq
-
-  // Ready signals are calculated from full register. If pipeline
-  // behavior is enabled, then the enq_rdy signal is also calculated
-  // combinationally from the deq_rdy signal. If flowthrough behavior
-  // is enabled then the deq_val signal is also calculated combinationally
-  // from the enq_val signal.
-
-
-  io.enq_rdy := enq_rdy_int
-  io.deq_val := deq_val_int
-
-  // Control logic for the enq/deq pointers and full register
-
-  val deq_ptr_inc = deq_ptr + UFix(1, 1)
-  val enq_ptr_inc = enq_ptr + UFix(1, 1)
-
-  val deq_ptr_next =
-    Mux(do_deq, deq_ptr_inc,
-        deq_ptr)
-
-  val enq_ptr_next =
-    Mux(do_enq, enq_ptr_inc,
-        enq_ptr)
-
-  val full_next =
-    Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
-    Mux(do_deq && full && ~do_pipe,                       Bool(false),
-        full))
-
-  enq_ptr := enq_ptr_next
-  deq_ptr := deq_ptr_next
-  full    := full_next
-
-  if (flushable)
-  {
-    when (io.flush)
-    {
-      enq_ptr := UFix(0)
-      deq_ptr := UFix(0)
-      full := Bool(false)
-    }
-  }
-}
-
-class queueCtrl(entries: Int, addr_sz: Int, flushable: Boolean = false) extends Component
-{
-  val io = new IOqueueCtrl(addr_sz)
-
-  // Enqueue and dequeue pointers
-
-  val enq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val deq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val full    = Reg(width = 1, resetVal = Bool(false))
-
-  io.waddr := enq_ptr
-  io.raddr := deq_ptr
-
-  // We enq/deq only when they are both ready and valid
-
-  val do_enq = io.enq_rdy && io.enq_val
-  val do_deq = io.deq_rdy && io.deq_val
-
-  // Determine if we have pipeline or flowthrough behaviour and
-  // set the write enable accordingly.
-
-  val empty = ~full && (enq_ptr === deq_ptr)
-
-  io.wen := do_enq
-
-  // Ready signals are calculated from full register. If pipeline
-  // behavior is enabled, then the enq_rdy signal is also calculated
-  // combinationally from the deq_rdy signal. If flowthrough behavior
-  // is enabled then the deq_val signal is also calculated combinationally
-  // from the enq_val signal.
-
-  io.enq_rdy := ~full
-  io.deq_val := ~empty
-
-  // Control logic for the enq/deq pointers and full register
-
-  val deq_ptr_inc = deq_ptr + UFix(1, 1)
-  val enq_ptr_inc = enq_ptr + UFix(1, 1)
-
-  val deq_ptr_next =
-    Mux(do_deq, deq_ptr_inc,
-        deq_ptr)
-
-  val enq_ptr_next =
-    Mux(do_enq, enq_ptr_inc,
-        enq_ptr)
-
-  val full_next =
-    Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
-    Mux(do_deq && full,                                   Bool(false),
-        full))
-
-  enq_ptr := enq_ptr_next
-  deq_ptr := deq_ptr_next
-  full    := full_next
-
-  if (flushable)
-  {
-    when (io.flush)
-    {
-      enq_ptr := UFix(0)
-      deq_ptr := UFix(0)
-      full := Bool(false)
-    }
-  }
-}
-
-class io_queue[T <: Data](data: => T) extends Bundle()
-{
-  val flush = Bool(INPUT)
-  val enq = new FIFOIO()( data ).flip
-  val deq = new FIFOIO()( data )
-}
-
-class queueSimplePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
-{
-  val addr_sz = log2Up(entries)
-  val io = new io_queue({data})
-  val ctrl = new queueCtrl(entries, addr_sz, flushable)
-  ctrl.io.flush <> io.flush
-  ctrl.io.deq_val <> io.deq.valid
-  ctrl.io.enq_rdy <> io.enq.ready
-  ctrl.io.enq_val <> io.enq.valid
-  ctrl.io.deq_rdy <> io.deq.ready
-
-  val mem = Mem(entries) { data }
-  when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
-  io.deq.bits := mem(ctrl.io.raddr)
-}
-
-class queuePipePF[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
-{
-  val addr_sz = log2Up(entries)
-  val io = new io_queue({data})
-  val ctrl = new queueCtrl_pipe(entries, addr_sz, flushable)
-  ctrl.io.flush <> io.flush
-  ctrl.io.deq_val <> io.deq.valid
-  ctrl.io.enq_rdy <> io.enq.ready
-  ctrl.io.enq_val <> io.enq.valid
-  ctrl.io.deq_rdy <> io.deq.ready
-
-  val mem = Mem(entries) { data }
-  when (ctrl.io.wen) { mem(ctrl.io.waddr) := io.enq.bits }
-  io.deq.bits := mem(ctrl.io.raddr)
-}
-
-// TODO: SHOULD USE INHERITANCE BUT BREAKS INTROSPECTION CODE
-// class IOqueueCtrlFlow extends IOqueueCtrl
-class IOqueueCtrlFlow(addr_sz: Int) extends Bundle() /* IOqueueCtrl */
-{
-  val enq_val  = Bool(INPUT)
-  val enq_rdy  = Bool(OUTPUT)
-  val deq_val  = Bool(OUTPUT)
-  val deq_rdy  = Bool(INPUT)
-  val wen      = Bool(OUTPUT)
-  val waddr    = UFix(OUTPUT, addr_sz)
-  val raddr    = UFix(OUTPUT, addr_sz)
-  val flowthru = Bool(OUTPUT)
-}
-
-class queueCtrlFlow(entries: Int, addr_sz: Int) extends Component
-{
-  val io = new IOqueueCtrlFlow(addr_sz)
-  // Enqueue and dequeue pointers
-
-  val enq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val deq_ptr = Reg(width = addr_sz, resetVal = UFix(0, addr_sz))
-  val full    = Reg(width = 1, resetVal = Bool(false))
-
-  io.waddr := enq_ptr
-  io.raddr := deq_ptr
-
-  // We enq/deq only when they are both ready and valid
-
-  val do_enq = io.enq_rdy && io.enq_val
-  val do_deq = io.deq_rdy && io.deq_val
-
-  // Determine if we have pipeline or flowthrough behaviour and
-  // set the write enable accordingly.
-
-  val empty       = ~full && (enq_ptr === deq_ptr)
-  val do_flowthru = empty && do_enq && do_deq
-  io.flowthru  := do_flowthru
-
-  io.wen    := do_enq && ~do_flowthru
-
-  // Ready signals are calculated from full register. If pipeline
-  // behavior is enabled, then the enq_rdy signal is also calculated
-  // combinationally from the deq_rdy signal. If flowthrough behavior
-  // is enabled then the deq_val signal is also calculated combinationally
-  // from the enq_val signal.
-
-  io.enq_rdy  := ~full
-  io.deq_val  := ~empty || ( empty && io.enq_val )
-
-  // Control logic for the enq/deq pointers and full register
-
-  val deq_ptr_inc = deq_ptr + UFix(1, 1)
-  val enq_ptr_inc = enq_ptr + UFix(1, 1)
-
-  val deq_ptr_next =
-    Mux(do_deq && ~do_flowthru, deq_ptr_inc,
-        deq_ptr)
-
-  val enq_ptr_next =
-    Mux(do_enq && ~do_flowthru, enq_ptr_inc,
-        enq_ptr)
-
-  val full_next =
-    Mux(do_enq && ~do_deq && ( enq_ptr_inc === deq_ptr ), Bool(true),
-    Mux(do_deq && full,                                   Bool(false),
-        full))
-
-  enq_ptr := enq_ptr_next
-  deq_ptr := deq_ptr_next
-  full    := full_next
-}
-
-//class IOqueueDpathFlow(data_sz: Int, addr_sz: Int) extends Bundle()
-//{
-//  val wen         = Bool(INPUT)
-//  val flowthru    = Bool(INPUT)
-//  val deq_bits    = Bits(OUTPUT, data_sz)
-//  val enq_bits    = Bits(INPUT, data_sz)
-//  val waddr       = UFix(INPUT, addr_sz)
-//  val raddr       = UFix(INPUT, addr_sz)
-//}
-//
-//class queueDpathFlow(data_sz: Int, entries: Int, addr_sz: Int) extends Component
-//{
-//  val io = new IOqueueDpathFlow(data_sz, addr_sz)
-//  val ram  = Mem(entries, io.wen, io.waddr, io.enq_bits)
-//  val rout = ram(io.raddr)
-//  io.deq_bits := Mux(io.flowthru, io.enq_bits, rout)
-//}
-
-//--------------------------------------------------------------------------
-// Single-Element Queues
-//--------------------------------------------------------------------------
-
-
-/*
-class queue1PF(data_sz:Int) extends Component
-{
-  val io = new IOqueue1PF(data_sz)
-  val ctrl = new queue1Simple(data_sz)
-  val deq_bits = Reg(width=data_sz)
-  io.deq_bits := deq_bits
-  when(wen)
-  {
-    deq_bits := io.enq_bits
-  }
-}
-*/
-class queuePipe1PF[T <: Data](flushable: Boolean = false)(data: => T) extends Component
-{
-  val wen = Bool()
-  val io = new io_queue({data})
-  val ctrl = new queueCtrl1_pipe(flushable)
-  ctrl.io.flush <> io.flush
-  ctrl.io.enq_val <> io.enq.valid
-  ctrl.io.enq_rdy <> io.enq.ready
-  ctrl.io.deq_val <> io.deq.valid
-  ctrl.io.deq_rdy <> io.deq.ready
-  wen := ctrl.io.wen
-  val deq_bits_reg = Reg(data)
-  io.deq.bits := deq_bits_reg
-  when(wen)
-  {
-    deq_bits_reg := io.enq.bits
-  }
-}
-
-//class queueFlowPF[T <: Data](entries: Int)(data: => T) extends Component
-//{
-//  val io = new io_queue({data})
-//  val addr_sz = log2Up(entries)
-//  val ctrl  = new queueCtrlFlow(entries, addr_sz)
-//  val dpath = new queueDpathFlow(data_sz, entries, addr_sz)
-//  ctrl.io.deq_rdy   <> io.deq.ready
-//  ctrl.io.wen       <> dpath.io.wen
-//  ctrl.io.raddr     <> dpath.io.raddr
-//  ctrl.io.waddr     <> dpath.io.waddr
-//  ctrl.io.flowthru  <> dpath.io.flowthru
-//  ctrl.io.enq_val   <> io.enq.valid
-//  dpath.io.enq_bits <> io.enq.bits
-//
-//  ctrl.io.deq_val   <> io.deq.valid
-//  ctrl.io.enq_rdy   <> io.enq.ready
-//  dpath.io.deq_bits <> io.deq.bits
-//}
-
 class io_qcnt(w: Int) extends Bundle
 {
   val flush = Bool(INPUT)
@@ -399,8 +26,7 @@ class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Com
   val next_count = UFix(width = size)
 
   next_count := count
-  when (io.inc ^ io.dec)
-  {
+  when (io.inc ^ io.dec) {
     when (io.inc) {next_count := count + UFix(1)}
     when (!io.inc) {next_count := count - UFix(1)}
   }
@@ -414,8 +40,7 @@ class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Com
   io.full := (count === UFix(reset_cnt,size))
   io.empty := (count === UFix(0,size))
 
-  if (flushable)
-  {
+  if (flushable) {
     when (io.flush) { count := UFix(reset_cnt) }
   }
 }
@@ -435,7 +60,7 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
 {
   val io = new io_skidbuf(data)
 
-  val pipereg = new queuePipe1PF(flushable)(data)
+  val pipereg = new Queue(1, pipe = true, flushable = flushable)(data)
 
   pipereg.io.flush := io.flush
   pipereg.io.enq <> io.enq
@@ -451,8 +76,7 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
   io.empty := !pipereg.io.deq.valid
   io.kill := Bool(false)
 
-  if (late_nack)
-  {
+  if (late_nack) {
     rejected = !reg_ready || reg_nack
     pipereg.io.deq.ready := !rejected && !io.nack
     io.kill := reg_nack
@@ -462,10 +86,8 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
   io.deq.valid := Mux(sel_pipereg, pipereg.io.deq.valid, io.enq.valid)
   io.deq.bits := Mux(sel_pipereg, pipereg.io.deq.bits, io.enq.bits)
 
-  if (flushable)
-  {
-    when (io.flush)
-    {
+  if (flushable) {
+    when (io.flush) {
       reg_ready := Bool(true)
       reg_nack := Bool(false)
     }
@@ -479,103 +101,24 @@ object SkidBuffer
 {
   def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false, flushable: Boolean = false) =
   {
-    val sb = (new skidbuf(late_nack, flushable)){ enq.bits.clone }
+    val sb = new skidbuf(late_nack, flushable)(enq.bits.clone)
     sb.io.enq <> enq
     sb
   }
 }
 
-class io_queue_spec[T <: Data](data: => T) extends Bundle
-{
-  val flush = Bool(INPUT)
-  val enq = new FIFOIO()( data ).flip
-  val deq = new FIFOIO()( data )
-
-  val ack = Bool(INPUT)
-  val nack = Bool(INPUT)
-}
-
-class queue_spec[T <: Data](entries: Int, flushable: Boolean = false)(data: => T) extends Component
-{
-  val io = new io_queue_spec({ data })
-
-  // cannot ack and nack at the same cycle
-  // chisel_assert(io.ack && !io.nack)
-  // chisel_assert(!io.ack && io.nack)
-
-  val enq_ptr = Reg(resetVal = UFix(0, log2Up(entries)))
-  val deq_ptr = Reg(resetVal = UFix(0, log2Up(entries)))
-  val deq_ptr_spec = Reg(resetVal = UFix(0, log2Up(entries)))
-  val full = Reg(resetVal = Bool(false))
-  val full_spec = Reg(resetVal = Bool(false))
-
-  // enq is not affected by nack
-  // since enqueuing is governed by the non-spec deq ptr
-  io.enq.ready := !full
-
-  // since nack is a very late signal
-  // don't mask deq.valid with !io.nack, the d$ kills the request
-  io.deq.valid := full_spec || (enq_ptr != deq_ptr_spec)
-
-  val do_enq = io.enq.ready && io.enq.valid
-  val do_deq = io.ack
-  val do_deq_spec = io.deq.ready && io.deq.valid
-
-  val enq_ptr_inc = enq_ptr + UFix(1)
-
-  when (do_enq) { enq_ptr := enq_ptr_inc }
-  when (do_deq) { deq_ptr := deq_ptr + UFix(1) }
-  when (do_deq_spec) { deq_ptr_spec := deq_ptr_spec + UFix(1) }
-
-  val full_next =
-    Mux(do_enq && !do_deq && (enq_ptr_inc === deq_ptr), Bool(true),
-    Mux(do_deq && full, Bool(false),
-        full))
-
-  full := full_next
-
-  when (io.nack)
-  {
-    deq_ptr_spec := deq_ptr
-    full_spec := full_next
-  }
-  .otherwise
-  {
-    full_spec :=
-      Mux(do_enq && !do_deq_spec && (enq_ptr_inc === deq_ptr_spec), Bool(true),
-      Mux(do_deq_spec && full_spec, Bool(false),
-          full_spec))
-  }
-
-  val mem = Mem(entries) { data }
-  when (do_enq) { mem(enq_ptr) := io.enq.bits }
-  io.deq.bits := mem(deq_ptr_spec)
-
-  if (flushable)
-  {
-    when (io.flush)
-    {
-      enq_ptr := UFix(0)
-      deq_ptr := UFix(0)
-      deq_ptr_spec := UFix(0)
-      full := Bool(false)
-      full_spec := Bool(false)
-    }
-  }
-}
-
 class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
-  val data = Bits(width=ROQ_DATA_SIZE)
-  val rtag = UFix(width=ROQ_TAG_SIZE)
+  val data = Bits(width = ROQ_DATA_SIZE)
+  val rtag = UFix(width = ROQ_TAG_SIZE)
 }
 
 class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
   val flush = Bool(INPUT)
-  val deq_rtag = new FIFOIO()( {Bits(width=ROQ_TAG_SIZE)} )
-  val deq_data = new FIFOIO()( {Bits(width=ROQ_DATA_SIZE)} )
-  val enq = new PipeIO()( {new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)} ).flip
+  val deq_rtag = new FIFOIO()(Bits(width = ROQ_TAG_SIZE))
+  val deq_data = new FIFOIO()(Bits(width = ROQ_DATA_SIZE))
+  val enq = new PipeIO()(new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)).flip
 
   val qcnt = UFix(INPUT, ROQ_TAG_SIZE)
   val watermark = Bool(OUTPUT)
@@ -610,9 +153,8 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
   deq_data_val_int := vb_array(read_ptr)
 
-  when(roq_rtag_deq) { write_ptr := write_ptr_next }
-  when(roq_data_deq)
-  {
+  when (roq_rtag_deq) { write_ptr := write_ptr_next }
+  when (roq_data_deq) {
     deq_data_val_int := vb_array(read_ptr_next)
     read_ptr := read_ptr_next
   }
@@ -649,18 +191,15 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   // maximum cnt is defined by ROQ_MAX_QCNT
   var sel = shifted_vb_array(0)
   var locnt = UFix(0, ROQ_TAG_SIZE)
-  for (i <- 0 until ROQ_MAX_QCNT)
-  {
+  for (i <- 0 until ROQ_MAX_QCNT) {
     locnt = Mux(sel, UFix(i+1), locnt)
     sel = sel & shifted_vb_array(i+1)
   }
 
   io.watermark := locnt >= io.qcnt
 
-  if (flushable)
-  {
-    when (io.flush)
-    {
+  if (flushable) {
+    when (io.flush) {
       read_ptr := UFix(0)
       write_ptr := UFix(0)
       full := Bool(false)

@@ -41,9 +41,9 @@ class vuAIW extends Component
 {
   val io = new io_vu_aiw()
 
-  val ircmdb = new queueSimplePF(AIW_CMD_DEPTH)({Bits(width=SZ_VCMD)})
+  val ircmdb = new Queue(AIW_CMD_DEPTH, flushable = true)(Bits(width = SZ_VCMD))
   val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH)
-  val irimm2b = new queueSimplePF(AIW_IMM2_DEPTH)({Bits(width=SZ_VSTRIDE)})
+  val irimm2b = new Queue(AIW_IMM2_DEPTH, flushable = true)(Bits(width = SZ_VSTRIDE))
   val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH)
   val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH)
 
