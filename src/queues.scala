@@ -6,7 +6,6 @@ import scala.math._
 
 class io_qcnt(w: Int) extends Bundle
 {
-  val flush = Bool(INPUT)
   val inc = Bool(INPUT)
   val dec = Bool(INPUT)
   val qcnt = UFix(INPUT, w)
@@ -17,7 +16,7 @@ class io_qcnt(w: Int) extends Bundle
   val empty = Bool(OUTPUT)
 }
 
-class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Component
+class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Component(resetSignal)
 {
   val size = log2Down(max_cnt) + 1
 
@@ -39,15 +38,10 @@ class qcnt(reset_cnt: Int, max_cnt: Int, flushable: Boolean = false) extends Com
 
   io.full := (count === UFix(reset_cnt,size))
   io.empty := (count === UFix(0,size))
-
-  if (flushable) {
-    when (io.flush) { count := UFix(reset_cnt) }
-  }
 }
 
 class io_skidbuf[T <: Data](data: => T) extends Bundle
 {
-  val flush = Bool(INPUT)
   val enq = new FIFOIO()(data).flip
   val deq = new FIFOIO()(data)
   val pipereg = new PipeIO()(data)
@@ -56,13 +50,11 @@ class io_skidbuf[T <: Data](data: => T) extends Bundle
   val kill = Bool(OUTPUT)
 }
 
-class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: => T) extends Component
+class skidbuf[T <: Data](late_nack: Boolean, resetSignal: Bool = null)(data: => T) extends Component(resetSignal)
 {
   val io = new io_skidbuf(data)
 
-  var flush = reset
-  if (flushable) flush = flush || io.flush
-  val pipereg = new Queue(1, pipe = true, resetSignal = flush)(data)
+  val pipereg = new Queue(1, pipe = true)(data)
 
   pipereg.io.enq <> io.enq
 
@@ -87,22 +79,15 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
   io.deq.valid := Mux(sel_pipereg, pipereg.io.deq.valid, io.enq.valid)
   io.deq.bits := Mux(sel_pipereg, pipereg.io.deq.bits, io.enq.bits)
 
-  if (flushable) {
-    when (io.flush) {
-      reg_ready := Bool(true)
-      reg_nack := Bool(false)
-    }
-  }
-
   io.pipereg.bits <> pipereg.io.deq.bits
   io.pipereg.valid := pipereg.io.deq.valid
 }
 
 object SkidBuffer
 {
-  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false, flushable: Boolean = false) =
+  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false, resetSignal: Bool = null) =
   {
-    val sb = new skidbuf(late_nack, flushable)(enq.bits.clone)
+    val sb = new skidbuf(late_nack, resetSignal)(enq.bits.clone)
     sb.io.enq <> enq
     sb
   }
@@ -125,7 +110,7 @@ class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundl
   val watermark = Bool(OUTPUT)
 }
 
-class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int, flushable: Boolean = false) extends Component
+class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int, resetSignal: Bool = null) extends Component(resetSignal)
 {
   val ROQ_TAG_SIZE = log2Up(ROQ_TAG_ENTRIES)
 
@@ -198,16 +183,5 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   }
 
   io.watermark := locnt >= io.qcnt
-
-  if (flushable) {
-    when (io.flush) {
-      read_ptr := UFix(0)
-      write_ptr := UFix(0)
-      full := Bool(false)
-      vb_array := Bits(0)
-      deq_data_val_int := Bool(false)
-      shifted_vb_array := Bits(0)
-    }
-  }
 }
 

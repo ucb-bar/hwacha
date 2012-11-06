@@ -4,9 +4,8 @@ import Chisel._
 import Node._
 import scala.math._
 
-class io_counter_vec(ADDR_SIZE: Int) extends Bundle {
-  val flush = Bool(INPUT)
-
+class io_counter_vec(ADDR_SIZE: Int) extends Bundle
+{
   val enq = new FIFOIO()( Bits(width=1) ).flip()
   val deq = new FIFOIO()( Bits(width=1) )
 
@@ -19,8 +18,8 @@ class io_counter_vec(ADDR_SIZE: Int) extends Bundle {
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class CounterVec(DEPTH: Int) extends Component {
-
+class CounterVec(DEPTH: Int, resetSignal: Bool = null) extends Component(resetSignal)
+{
   val ADDR_SIZE = log2Up(DEPTH)
   val io = new io_counter_vec(ADDR_SIZE)
 
@@ -52,18 +51,7 @@ class CounterVec(DEPTH: Int) extends Component {
     next_last_write_ptr := write_ptr
   }
 
-  when (io.flush) 
-  {
-    next_read_ptr := UFix(0, ADDR_SIZE)
-    next_write_ptr := UFix(0, ADDR_SIZE)
-    next_last_write_ptr := UFix(0, ADDR_SIZE)
-  }
-
-  when (io.flush)
-  {
-    next_full := Bool(false)
-  }
-  .elsewhen (do_enq && !do_deq && (next_write_ptr === read_ptr))
+  when (do_enq && !do_deq && (next_write_ptr === read_ptr))
   {
     next_full := Bool(true)
   }
@@ -93,8 +81,7 @@ class CounterVec(DEPTH: Int) extends Component {
 
   for(i <- 0 until DEPTH)
   {
-    val counter = new qcnt(0, DEPTH, true)
-    counter.io.flush := io.flush
+    val counter = new qcnt(0, DEPTH)
     counter.io.inc := inc_vec(i)
     counter.io.dec := dec_vec(i)
     empty_vec(i) := counter.io.empty

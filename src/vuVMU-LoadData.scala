@@ -23,7 +23,8 @@ class vuVMU_LoadData extends Component
   val io = new io_vmu_load_data()
 
   // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = new queue_reorder_qcnt(65,ENTRIES_VLDQ,9, flushable = true)
+  val flush = reset || io.flush
+  val vldq = new queue_reorder_qcnt(65, ENTRIES_VLDQ, 9, resetSignal = flush)
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
@@ -40,7 +41,4 @@ class vuVMU_LoadData extends Component
 
   io.vldq_rtag_do_enq := io.vldq_lane.ready
   io.vldq_rtag_do_deq := io.vldq_rtag.ready && vldq.io.deq_rtag.valid
-
-  // exception handler
-  vldq.io.flush := io.flush
 }

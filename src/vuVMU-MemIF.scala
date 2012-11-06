@@ -34,7 +34,8 @@ class vuVMU_MemIF extends Component
   val ex_store_val = ex_store_cmd && io.vaq.valid && io.vsdq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
-  val sb = (new skidbuf(late_nack = LATE_DMEM_NACK, flushable = true)){ new io_dmem_req_bundle() }
+  val flush = reset || io.flush
+  val sb = new skidbuf(late_nack = LATE_DMEM_NACK, resetSignal = flush)(new io_dmem_req_bundle())
 
   io.vaq.ready :=
     sb.io.enq.ready && ( 
@@ -78,9 +79,6 @@ class vuVMU_MemIF extends Component
 
   io.pending_skidbuf := !sb.io.empty
 
-  // exception hanlder
-  sb.io.flush := io.flush
-  
   // load data conversion
   val reg_mem_resp = Reg(io.mem_resp)
     

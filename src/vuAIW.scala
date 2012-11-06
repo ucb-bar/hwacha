@@ -43,26 +43,23 @@ class vuAIW extends Component
 
   val flush = reset || io.xcpt_to_aiw.flush
   val ircmdb = new Queue(AIW_CMD_DEPTH, resetSignal = flush)(Bits(width = SZ_VCMD))
-  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH)
+  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH, resetSignal = flush)
   val irimm2b = new Queue(AIW_IMM2_DEPTH, resetSignal = flush)(Bits(width = SZ_VSTRIDE))
-  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH)
-  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH)
+  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH, resetSignal = flush)
+  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH, resetSignal = flush)
 
   ircmdb.io.enq <> io.aiw_enq_cmdb
 
-  irimm1b.io.flush <> io.xcpt_to_aiw.flush
   irimm1b.io.enq <> io.aiw_enq_imm1b
   irimm1b.io.update <> io.seq_to_aiw.update_imm1
   irimm1b.io.rtag <> io.aiw_to_issue.imm1_rtag
 
   irimm2b.io.enq <> io.aiw_enq_imm2b
 
-  ircntb.io.flush <> io.xcpt_to_aiw.flush
   ircntb.io.enq <> io.aiw_enq_cntb
   ircntb.io.update <> io.seq_to_aiw.update_cnt
   ircntb.io.rtag <> io.aiw_to_issue.cnt_rtag
 
-  irNumCntB.io.flush <> io.xcpt_to_aiw.flush
   irNumCntB.io.enq <> io.aiw_enq_numCntB
   irNumCntB.io.update_from_issue <> io.issue_to_aiw.update_numCnt
   irNumCntB.io.update_from_seq <> io.seq_to_aiw.update_numCnt

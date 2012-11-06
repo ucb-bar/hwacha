@@ -77,9 +77,9 @@ class vu extends Component
   val evac = new vuEvac()
 
   // counters
-  val vcmdq_count = new qcnt(19, 19, flushable = true)
-  val vximm1q_count = new qcnt(19, 19, flushable = true)
-  val vximm2q_count = new qcnt(17, 17, flushable = true)
+  val vcmdq_count = new qcnt(19, 19, resetSignal = flush)
+  val vximm1q_count = new qcnt(19, 19, resetSignal = flush)
+  val vximm2q_count = new qcnt(17, 17, resetSignal = flush)
   var vru: vuVRU = null
 
   if (HAVE_VRU)
@@ -143,10 +143,6 @@ class vu extends Component
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
-
-  vcmdq_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-  vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-  vximm2q_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
 
   // vxu
   vxu.io.vxu_cmdq.bits := vcmdq.io.deq.bits

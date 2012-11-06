@@ -6,8 +6,6 @@ import Constants._
 
 class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
-  val flush = Bool(INPUT)
-  
   val enq = new FIFOIO()( Bits(width=DATA_SIZE) ).flip
   val deq = new FIFOIO()( Bits(width=DATA_SIZE) )
   val update = new PipeIO()( new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
@@ -15,7 +13,7 @@ class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component 
+class Buffer(DATA_SIZE: Int, DEPTH: Int, resetSignal: Bool = null) extends Component(resetSignal)
 {
   val ADDR_SIZE = log2Up(DEPTH)
 
@@ -47,17 +45,7 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
     write_ptr_next := write_ptr + UFix(1) 
   }
 
-  when (io.flush) 
-  {
-    read_ptr_next := UFix(0, ADDR_SIZE)
-    write_ptr_next := UFix(0, ADDR_SIZE)
-  }
-
-  when (io.flush)
-  {
-    full_next := Bool(false)
-  }
-  .elsewhen (do_enq && !do_deq && (write_ptr_next === read_ptr))
+  when (do_enq && !do_deq && (write_ptr_next === read_ptr))
   {
     full_next := Bool(true)
   }

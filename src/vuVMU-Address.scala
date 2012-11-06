@@ -30,7 +30,8 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
 {
   val io = new io_vmu_address_tlb()
 
-  val vvaq_skid = SkidBuffer(io.vvaq, late_nack = late_tlb_miss, flushable = true)
+  val flush = reset || io.flush
+  val vvaq_skid = SkidBuffer(io.vvaq, late_nack = late_tlb_miss, resetSignal = flush)
 
   // check if address misaligned
   val mem_cmd = vvaq_skid.io.pipereg.bits.cmd
@@ -97,9 +98,6 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
   io.vpaq.bits.typ_float := Reg(vvaq_skid.io.deq.bits.typ_float)
   io.vpaq.bits.idx := Reg(vvaq_skid.io.deq.bits.idx)
   io.vpaq.bits.ppn := io.tlb_resp.ppn
-
-  // exception handler
-  vvaq_skid.io.flush := io.flush
 }
 
 class checkcnt extends Component
