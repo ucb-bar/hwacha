@@ -60,10 +60,11 @@ class vu extends Component
 
   val xcpt = new vuXCPTHandler()
 
-  val vcmdq = new Queue(19, flushable = true)(Bits(width = SZ_VCMD))
-  val vximm1q = new Queue(19, flushable = true)(Bits(width = SZ_VIMM))
-  val vximm2q = new Queue(17, flushable = true)(Bits(width = SZ_VSTRIDE))
-  val vxcntq = new Queue(8, flushable = true)(Bits(width = SZ_VLEN+1))
+  val flush = reset || xcpt.io.xcpt_to_vu.flush_kill
+  val vcmdq = new Queue(19, resetSignal = flush)(Bits(width = SZ_VCMD))
+  val vximm1q = new Queue(19, resetSignal = flush)(Bits(width = SZ_VIMM))
+  val vximm2q = new Queue(17, resetSignal = flush)(Bits(width = SZ_VSTRIDE))
+  val vxcntq = new Queue(8, resetSignal = flush)(Bits(width = SZ_VLEN+1))
 
   vcmdq.io.enq <> MaskStall(io.vec_cmdq, xcpt.io.xcpt_to_vu.busy)
   vximm1q.io.enq <> MaskStall(io.vec_ximm1q, xcpt.io.xcpt_to_vu.busy)
@@ -84,10 +85,10 @@ class vu extends Component
   if (HAVE_VRU)
   {
     vru = new vuVRU()
-    val vpfcmdq = new Queue(19, flushable = true)(Bits(width=SZ_VCMD))
-    val vpfximm1q = new Queue(19, flushable = true)(Bits(width=SZ_VIMM))
-    val vpfximm2q = new Queue(17, flushable = true)(Bits(width=SZ_VSTRIDE))
-    val vpfcntq = new Queue(8, flushable = true)(Bits(width=SZ_VLEN))
+    val vpfcmdq = new Queue(19, resetSignal = flush)(Bits(width=SZ_VCMD))
+    val vpfximm1q = new Queue(19, resetSignal = flush)(Bits(width=SZ_VIMM))
+    val vpfximm2q = new Queue(17, resetSignal = flush)(Bits(width=SZ_VSTRIDE))
+    val vpfcntq = new Queue(8, resetSignal = flush)(Bits(width=SZ_VLEN))
 
     vpfcmdq.io.enq <> MaskStall(io.vec_pfcmdq, xcpt.io.xcpt_to_vu.busy)
     vpfximm1q.io.enq <> MaskStall(io.vec_pfximm1q, xcpt.io.xcpt_to_vu.busy)
@@ -107,11 +108,6 @@ class vu extends Component
 
     vmu.io.vec_pftlb_req <> io.vec_pftlb_req
     vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
-
-    vpfcmdq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-    vpfximm1q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-    vpfximm2q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-    vpfcntq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
   }
   else
   {
@@ -147,11 +143,6 @@ class vu extends Component
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
-
-  vcmdq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-  vximm1q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-  vximm2q.io.flush := xcpt.io.xcpt_to_vu.flush_kill
-  vxcntq.io.flush := xcpt.io.xcpt_to_vu.flush_kill
 
   vcmdq_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill
   vximm1q_count.io.flush := xcpt.io.xcpt_to_vu.flush_kill

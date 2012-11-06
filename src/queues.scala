@@ -60,9 +60,10 @@ class skidbuf[T <: Data](late_nack: Boolean, flushable: Boolean = false)(data: =
 {
   val io = new io_skidbuf(data)
 
-  val pipereg = new Queue(1, pipe = true, flushable = flushable)(data)
+  var flush = reset
+  if (flushable) flush = flush || io.flush
+  val pipereg = new Queue(1, pipe = true, resetSignal = flush)(data)
 
-  pipereg.io.flush := io.flush
   pipereg.io.enq <> io.enq
 
   val reg_ready = Reg(resetVal = Bool(true))
