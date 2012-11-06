@@ -60,8 +60,7 @@ class vuVMU_MemIF extends Component
   sb.io.enq.valid := ex_pf_val || ex_load_val || ex_store_val || ex_amo_val
   sb.io.enq.bits.cmd := io.vaq.bits.cmd
   sb.io.enq.bits.typ := io.vaq.bits.typ
-  sb.io.enq.bits.idx := io.vaq.bits.idx
-  sb.io.enq.bits.ppn := io.vaq.bits.ppn
+  sb.io.enq.bits.addr := io.vaq.bits.addr.toUFix
   sb.io.enq.bits.data := io.vsdq.bits // delayed one cycle in cpu
   sb.io.enq.bits.tag := Cat(io.vldq_rtag.bits, io.vaq.bits.typ_float) // delayed one cycle in cpu
 
@@ -69,8 +68,8 @@ class vuVMU_MemIF extends Component
   io.mem_req.bits.kill := sb.io.kill
   io.mem_req.bits.cmd := sb.io.deq.bits.cmd
   io.mem_req.bits.typ := sb.io.deq.bits.typ
-  io.mem_req.bits.idx := sb.io.deq.bits.idx
-  io.mem_req.bits.ppn := sb.io.deq.bits.ppn
+  io.mem_req.bits.addr := sb.io.deq.bits.addr
+  io.mem_req.bits.phys := Bool(true)
   io.mem_req.bits.data := sb.io.deq.bits.data
   io.mem_req.bits.tag := sb.io.deq.bits.tag
 

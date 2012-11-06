@@ -96,8 +96,7 @@ class vuVMU_AddressTLB(sticky_stall_bit: Boolean, late_tlb_miss: Boolean = false
   io.vpaq.bits.cmd := Reg(vvaq_skid.io.deq.bits.cmd)
   io.vpaq.bits.typ := Reg(vvaq_skid.io.deq.bits.typ)
   io.vpaq.bits.typ_float := Reg(vvaq_skid.io.deq.bits.typ_float)
-  io.vpaq.bits.idx := Reg(vvaq_skid.io.deq.bits.idx)
-  io.vpaq.bits.ppn := io.tlb_resp.ppn
+  io.vpaq.bits.addr := Cat(io.tlb_resp.ppn, Reg(vvaq_skid.io.deq.bits.idx))
 }
 
 class checkcnt extends Component

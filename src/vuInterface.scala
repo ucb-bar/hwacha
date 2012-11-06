@@ -58,8 +58,8 @@ class io_dmem_req_bundle extends Bundle
   val kill = Bool()
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
-  val idx = Bits(width = PGIDX_BITS)
-  val ppn = Bits(width = PPN_BITS)
+  val addr = UFix(width = PADDR_BITS)
+  val phys = Bool()
   val data = Bits(width = 64)
   val tag = Bits(width = 10)
 }
@@ -119,8 +119,7 @@ class io_vpaq_bundle extends Bundle
   val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
   val typ_float = Bits(width = 1)
-  val idx = Bits(width = PGIDX_BITS)
-  val ppn = Bits(width = PPN_BITS)
+  val addr = Bits(width = PADDR_BITS)
 }
 
 class io_vxu_to_vmu extends Bundle
