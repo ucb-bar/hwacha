@@ -35,7 +35,7 @@ class io_vu_evac extends Bundle
   val vcmdq = new io_vxu_cmdq().flip
   val vimm1q = new io_vxu_immq().flip
   val vimm2q = new io_vxu_imm2q().flip
-  val vcntq = new io_vec_cntq().flip
+  val vcntq = new io_vcntq().flip
 
   val vsdq = new io_vsdq()
   val vaq  = new io_vvaq()

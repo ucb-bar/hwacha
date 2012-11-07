@@ -19,20 +19,20 @@ class io_vu extends Bundle
   val irq_cause = UFix(OUTPUT, 5)
   val irq_aux = Bits(OUTPUT, 64)
 
-  val vec_cmdq = new io_vec_cmdq().flip
-  val vec_ximm1q = new io_vec_ximm1q().flip
-  val vec_ximm2q = new io_vec_ximm2q().flip
-  val vec_cntq = new io_vec_cntq().flip
+  val vcmdq = new io_vcmdq().flip
+  val vximm1q = new io_vximm1q().flip
+  val vximm2q = new io_vximm2q().flip
+  val vcntq = new io_vcntq().flip
 
-  val vec_cmdq_user_ready = Bool(OUTPUT)
-  val vec_ximm1q_user_ready = Bool(OUTPUT)
-  val vec_ximm2q_user_ready = Bool(OUTPUT)
-  val vec_fence_ready = Bool(OUTPUT)
+  val vcmdq_user_ready = Bool(OUTPUT)
+  val vximm1q_user_ready = Bool(OUTPUT)
+  val vximm2q_user_ready = Bool(OUTPUT)
+  val vfence_ready = Bool(OUTPUT)
 
-  val vec_pfcmdq = new io_vec_cmdq().flip
-  val vec_pfximm1q = new io_vec_ximm1q().flip
-  val vec_pfximm2q = new io_vec_ximm2q().flip
-  val vec_pfcntq = new io_vec_cntq().flip
+  val vpfcmdq = new io_vcmdq().flip
+  val vpfximm1q = new io_vximm1q().flip
+  val vpfximm2q = new io_vximm2q().flip
+  val vpfcntq = new io_vcntq().flip
 
   val cp_imul_req = new io_imul_req().flip
   val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
@@ -45,8 +45,8 @@ class io_vu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
-  val vec_tlb = new io_tlb
-  val vec_pftlb = new io_tlb
+  val vtlb = new io_tlb
+  val vpftlb = new io_tlb
 
   val xcpt = new io_xcpt().flip()
 }
@@ -68,10 +68,10 @@ class vu extends Component
   val vximm2q = new Queue(17, resetSignal = flush_kill)(Bits(width = SZ_VSTRIDE))
   val vxcntq = new Queue(8, resetSignal = flush_kill)(Bits(width = SZ_VLEN+1))
 
-  vcmdq.io.enq <> MaskStall(io.vec_cmdq, xcpt.io.xcpt_to_vu.busy)
-  vximm1q.io.enq <> MaskStall(io.vec_ximm1q, xcpt.io.xcpt_to_vu.busy)
-  vximm2q.io.enq <> MaskStall(io.vec_ximm2q, xcpt.io.xcpt_to_vu.busy)
-  vxcntq.io.enq <> MaskStall(io.vec_cntq, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq <> MaskStall(io.vcmdq, xcpt.io.xcpt_to_vu.busy)
+  vximm1q.io.enq <> MaskStall(io.vximm1q, xcpt.io.xcpt_to_vu.busy)
+  vximm2q.io.enq <> MaskStall(io.vximm2q, xcpt.io.xcpt_to_vu.busy)
+  vxcntq.io.enq <> MaskStall(io.vcntq, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = new vuVXU()
   val vmu = new vuVMU(resetSignal = flush_vmu)
@@ -93,43 +93,43 @@ class vu extends Component
     val vpfximm2q = new Queue(17, resetSignal = flush_kill)(Bits(width=SZ_VSTRIDE))
     val vpfcntq = new Queue(8, resetSignal = flush_kill)(Bits(width=SZ_VLEN))
 
-    vpfcmdq.io.enq <> MaskStall(io.vec_pfcmdq, xcpt.io.xcpt_to_vu.busy)
-    vpfximm1q.io.enq <> MaskStall(io.vec_pfximm1q, xcpt.io.xcpt_to_vu.busy)
-    vpfximm2q.io.enq <> MaskStall(io.vec_pfximm2q, xcpt.io.xcpt_to_vu.busy)
-    vpfcntq.io.enq <> MaskStall(io.vec_pfcntq, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq <> MaskStall(io.vpfcmdq, xcpt.io.xcpt_to_vu.busy)
+    vpfximm1q.io.enq <> MaskStall(io.vpfximm1q, xcpt.io.xcpt_to_vu.busy)
+    vpfximm2q.io.enq <> MaskStall(io.vpfximm2q, xcpt.io.xcpt_to_vu.busy)
+    vpfcntq.io.enq <> MaskStall(io.vpfcntq, xcpt.io.xcpt_to_vu.busy)
 
-    vru.io.vec_pfcmdq <> vpfcmdq.io.deq
-    vru.io.vec_pfximm1q <> vpfximm1q.io.deq
-    vru.io.vec_pfximm2q <> vpfximm2q.io.deq
-    vru.io.vec_pfcntq <> vpfcntq.io.deq
+    vru.io.vpfcmdq <> vpfcmdq.io.deq
+    vru.io.vpfximm1q <> vpfximm1q.io.deq
+    vru.io.vpfximm2q <> vpfximm2q.io.deq
+    vru.io.vpfcntq <> vpfcntq.io.deq
 
     vmu.io.pf_vvaq <> vru.io.vpfvaq
-    vmu.io.vec_pftlb <> io.vec_pftlb
+    vmu.io.vpftlb <> io.vpftlb
   }
   else
   {
-    io.vec_pfcmdq.ready := Bool(true)
-    io.vec_pfximm1q.ready := Bool(true)
-    io.vec_pfximm2q.ready := Bool(true)
-    io.vec_pfcntq.ready := Bool(true)
+    io.vpfcmdq.ready := Bool(true)
+    io.vpfximm1q.ready := Bool(true)
+    io.vpfximm2q.ready := Bool(true)
+    io.vpfcntq.ready := Bool(true)
   }
 
-  vcmdq_count.io.dec := vcmdq.io.enq.ready && io.vec_cmdq.valid
+  vcmdq_count.io.dec := vcmdq.io.enq.ready && io.vcmdq.valid
   vcmdq_count.io.inc := (vxu.io.vxu_cmdq.ready || evac.io.vcmdq.ready) && vcmdq.io.deq.valid
-  vximm1q_count.io.dec := vximm1q.io.enq.ready && io.vec_ximm1q.valid
+  vximm1q_count.io.dec := vximm1q.io.enq.ready && io.vximm1q.valid
   vximm1q_count.io.inc := (vxu.io.vxu_immq.ready || evac.io.vimm1q.ready) && vximm1q.io.deq.valid
-  vximm2q_count.io.dec := vximm2q.io.enq.ready && io.vec_ximm2q.valid
+  vximm2q_count.io.dec := vximm2q.io.enq.ready && io.vximm2q.valid
   vximm2q_count.io.inc := (vxu.io.vxu_imm2q.ready || evac.io.vimm2q.ready) && vximm2q.io.deq.valid
 
   vcmdq_count.io.qcnt := UFix(11)
   vximm1q_count.io.qcnt := UFix(11)
   vximm2q_count.io.qcnt := UFix(9)
-  io.vec_cmdq_user_ready := vcmdq_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
-  io.vec_ximm1q_user_ready := vximm1q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
-  io.vec_ximm2q_user_ready := vximm2q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vcmdq_user_ready := vcmdq_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vximm1q_user_ready := vximm1q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vximm2q_user_ready := vximm2q_count.io.watermark && !xcpt.io.xcpt_to_vu.busy
 
   // fence
-  io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
+  io.vfence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -188,7 +188,7 @@ class vu extends Component
   vmu.io.dmem_req <> io.dmem_req
   vmu.io.dmem_resp <> io.dmem_resp
 
-  vmu.io.vec_tlb <> io.vec_tlb
+  vmu.io.vtlb <> io.vtlb
 
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu

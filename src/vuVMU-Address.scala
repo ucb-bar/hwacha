@@ -113,8 +113,8 @@ class io_vmu_address extends Bundle
   val vvaq_lane = new io_vvaq().flip
   val vvaq_evac = new io_vvaq().flip
 
-  val vec_tlb = new io_tlb
-  val vec_pftlb = new io_tlb
+  val vtlb = new io_tlb
+  val vpftlb = new io_tlb
 
   val vaq = new io_vpaq()
 
@@ -166,7 +166,7 @@ class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
   // vvaq address translation
   vvaq_tlb.io.vvaq <> vvaq.io.deq
   vvaq_tlb.io.vpaq <> vpaq.io.enq
-  vvaq_tlb.io.tlb <> io.vec_tlb
+  vvaq_tlb.io.tlb <> io.vtlb
   vvaq_tlb.io.stall := io.stall
 
   io.vvaq_do_enq :=
@@ -187,7 +187,7 @@ class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
     // vpfvaq address translation
     vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
     vpfvaq_tlb.io.vpaq <> vpfpaq.io.enq
-    vpfvaq_tlb.io.tlb <> io.vec_pftlb
+    vpfvaq_tlb.io.tlb <> io.vpftlb
     vpfvaq_tlb.io.stall := io.stall
 
     // VPAQ and VPFPAQ arbiter
