@@ -136,24 +136,24 @@ class io_vxu_aiw_bundle extends Bundle
   val update_imm1 = Bool(OUTPUT)
 }
 
-class ioDTLB_CPU_req_bundle extends Bundle
+class TLBReq extends Bundle
 {
-  // lookup requests
-  val kill  = Bool()
-  val cmd  = Bits(width=4) // load/store/amo
-  val asid = Bits(width=ASID_BITS)
-  val vpn  = Bits(width=VPN_BITS+1)
+  val asid = UFix(width = ASID_BITS)
+  val vpn = UFix(width = VPN_BITS+1)
+  val passthrough = Bool()
+  val instruction = Bool()
 }
 
-class ioDTLB_CPU_req extends FIFOIO()( { new ioDTLB_CPU_req_bundle() } )
-
-class ioDTLB_CPU_resp extends Bundle
+class TLBResp extends Bundle
 {
-  // lookup responses
   val miss = Bool(OUTPUT)
-  val ppn = Bits(OUTPUT, PPN_BITS)
+  val ppn = UFix(OUTPUT, PPN_BITS)
   val xcpt_ld = Bool(OUTPUT)
   val xcpt_st = Bool(OUTPUT)
-  val xcpt_pf = Bool(OUTPUT)
 }
 
+class io_tlb extends Bundle
+{
+  val req = new FIFOIO()(new TLBReq)
+  val resp = new TLBResp().flip
+}

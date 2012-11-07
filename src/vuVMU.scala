@@ -32,11 +32,8 @@ class io_vmu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
-  val vec_tlb_req = new ioDTLB_CPU_req()
-  val vec_tlb_resp = new ioDTLB_CPU_resp().flip
-
-  val vec_pftlb_req = new ioDTLB_CPU_req()
-  val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
+  val vec_tlb = new io_tlb
+  val vec_pftlb = new io_tlb
 
   val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
   val evac_to_vmu = new io_evac_to_vmu().flip
@@ -61,10 +58,8 @@ class vuVMU extends Component
   addr.io.vvaq_lane <> io.lane_vvaq
   addr.io.vvaq_evac <> io.evac_vvaq
 
-  io.vec_tlb_req <> addr.io.vec_tlb_req
-  addr.io.vec_tlb_resp <> io.vec_tlb_resp
-  io.vec_pftlb_req <> addr.io.vec_pftlb_req
-  addr.io.vec_pftlb_resp <> io.vec_pftlb_resp
+  io.vec_tlb <> addr.io.vec_tlb
+  io.vec_pftlb <> addr.io.vec_pftlb
 
   memif.io.vaq <> addr.io.vaq
 

@@ -45,11 +45,8 @@ class io_vu extends Bundle
   val dmem_req = new io_dmem_req()
   val dmem_resp = new io_dmem_resp().flip
 
-  val vec_tlb_req = new ioDTLB_CPU_req()
-  val vec_tlb_resp = new ioDTLB_CPU_resp().flip
-
-  val vec_pftlb_req = new ioDTLB_CPU_req()
-  val vec_pftlb_resp = new ioDTLB_CPU_resp().flip
+  val vec_tlb = new io_tlb
+  val vec_pftlb = new io_tlb
 
   val xcpt = new io_xcpt().flip()
 }
@@ -106,8 +103,7 @@ class vu extends Component
     // vmu
     vmu.io.pf_vvaq <> vru.io.vpfvaq
 
-    vmu.io.vec_pftlb_req <> io.vec_pftlb_req
-    vmu.io.vec_pftlb_resp <> io.vec_pftlb_resp
+    vmu.io.vec_pftlb <> io.vec_pftlb
   }
   else
   {
@@ -194,8 +190,7 @@ class vu extends Component
   vmu.io.dmem_req <> io.dmem_req
   vmu.io.dmem_resp <> io.dmem_resp
 
-  vmu.io.vec_tlb_req <> io.vec_tlb_req
-  vmu.io.vec_tlb_resp <> io.vec_tlb_resp
+  vmu.io.vec_tlb <> io.vec_tlb
 
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu

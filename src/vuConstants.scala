@@ -254,8 +254,10 @@ object Constants
 
   def is_mcmd_load(cmd: Bits) = (cmd === mcmd_XRD)
   def is_mcmd_store(cmd: Bits) = (cmd === mcmd_XWR)
-  def is_mcmd_pf(cmd: Bits) = (cmd === mcmd_PFR || cmd === mcmd_PFW)
   def is_mcmd_amo(cmd: Bits) = (mcmd_XA_ADD <= cmd && cmd <= mcmd_XA_MAXU)
+  def is_mcmd_pfr(cmd: Bits) = (cmd === mcmd_PFR)
+  def is_mcmd_pfw(cmd: Bits) = (cmd === mcmd_PFW)
+  def is_mcmd_pf(cmd: Bits) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
   val HAVE_FMA = false
 
