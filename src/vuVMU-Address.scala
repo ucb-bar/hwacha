@@ -19,13 +19,12 @@ class io_vmu_address_tlb extends Bundle
   val vpaq = new io_vpaq()
   val tlb = new io_tlb
   val ack = Bool(OUTPUT)
-  val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_AddressTLB extends Component
+class vuVMU_AddressTLB(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vmu_address_tlb()
 
@@ -66,7 +65,6 @@ class vuVMU_AddressTLB extends Component
   io.vpaq.bits.addr := Cat(io.tlb.resp.ppn, io.vvaq.bits.idx)
 
   when (io.tlb.req.fire() && xcpt_stall) { sticky_stall := Bool(true) }
-  when (io.flush) { sticky_stall := Bool(false) }
 
   io.irq.ma_ld := io.tlb.req.fire() && ma_ld
   io.irq.ma_st := io.tlb.req.fire() && ma_st
@@ -136,22 +134,20 @@ class io_vmu_address extends Bundle
   val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
   val evac_to_vmu = new io_evac_to_vmu().flip
 
-  val flush = Bool(INPUT)
   val stall = Bool(INPUT)
 
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_Address extends Component
+class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vmu_address()
 
   // VVAQ
-  val flush = reset || io.flush
   val vvaq_arb = (new Arbiter(2)){ new io_vvaq_bundle() }
-  val vvaq = new Queue(ENTRIES_VVAQ, resetSignal = flush)(new io_vvaq_bundle())
-  val vvaq_tlb = new vuVMU_AddressTLB
-  val vpaq = new Queue(ENTRIES_VPAQ, resetSignal = flush)(new io_vpaq_bundle())
+  val vvaq = new Queue(ENTRIES_VVAQ)(new io_vvaq_bundle())
+  val vvaq_tlb = new vuVMU_AddressTLB()
+  val vpaq = new Queue(ENTRIES_VPAQ)(new io_vpaq_bundle())
 
   vvaq_tlb.io.irq <> io.irq
 
@@ -169,8 +165,9 @@ class vuVMU_Address extends Component
 
   // vvaq address translation
   vvaq_tlb.io.vvaq <> vvaq.io.deq
-  vpaq.io.enq <> vvaq_tlb.io.vpaq
-  io.vec_tlb <> vvaq_tlb.io.tlb
+  vvaq_tlb.io.vpaq <> vpaq.io.enq
+  vvaq_tlb.io.tlb <> io.vec_tlb
+  vvaq_tlb.io.stall := io.stall
 
   io.vvaq_do_enq :=
     Mux(io.evac_to_vmu.evac_mode, vvaq.io.enq.ready && io.vvaq_evac.valid,
@@ -180,19 +177,17 @@ class vuVMU_Address extends Component
   if (HAVE_VRU)
   {
     // VPFVAQ
-    val vpfvaq = new Queue(ENTRIES_VPFVAQ, resetSignal = flush)(new io_vvaq_bundle())
-    val vpfvaq_tlb = new vuVMU_AddressTLB
-    val vpfpaq = new Queue(ENTRIES_VPFPAQ, resetSignal = flush)(new io_vpaq_bundle())
+    val vpfvaq = new Queue(ENTRIES_VPFVAQ)(new io_vvaq_bundle())
+    val vpfvaq_tlb = new vuVMU_AddressTLB()
+    val vpfpaq = new Queue(ENTRIES_VPFPAQ)(new io_vpaq_bundle())
 
     // vpfvaq hookup
     vpfvaq.io.enq <> io.vvaq_pf
 
     // vpfvaq address translation
     vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
-    vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
-    io.vec_pftlb <> vpfvaq_tlb.io.tlb
-
-    vpfvaq_tlb.io.flush := io.flush
+    vpfvaq_tlb.io.vpaq <> vpfpaq.io.enq
+    vpfvaq_tlb.io.tlb <> io.vec_pftlb
     vpfvaq_tlb.io.stall := io.stall
 
     // VPAQ and VPFPAQ arbiter
@@ -203,7 +198,7 @@ class vuVMU_Address extends Component
 
     vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
     vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
-    io.vaq <> vpaq_arb.io.out
+    vpaq_arb.io.out <> io.vaq
 
     io.vpaq_do_enq := vvaq_tlb.io.ack
     io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(VPAQARB_VPAQ).ready
@@ -224,8 +219,4 @@ class vuVMU_Address extends Component
       (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
 
   }
-
-  // exception handler
-  vvaq_tlb.io.flush := io.flush
-  vvaq_tlb.io.stall := io.stall
 }

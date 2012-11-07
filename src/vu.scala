@@ -57,11 +57,16 @@ class vu extends Component
 
   val xcpt = new vuXCPTHandler()
 
-  val flush = reset || xcpt.io.xcpt_to_vu.flush_kill
-  val vcmdq = new Queue(19, resetSignal = flush)(Bits(width = SZ_VCMD))
-  val vximm1q = new Queue(19, resetSignal = flush)(Bits(width = SZ_VIMM))
-  val vximm2q = new Queue(17, resetSignal = flush)(Bits(width = SZ_VSTRIDE))
-  val vxcntq = new Queue(8, resetSignal = flush)(Bits(width = SZ_VLEN+1))
+  val flush_kill = reset || xcpt.io.xcpt_to_vu.flush_kill
+  val flush_irq = reset || xcpt.io.xcpt_to_vu.flush_irq
+  val flush_aiw = reset || xcpt.io.xcpt_to_vu.flush_aiw
+  val flush_vru = reset || xcpt.io.xcpt_to_vu.flush_vru
+  val flush_vmu = reset || xcpt.io.xcpt_to_vu.flush_vmu
+
+  val vcmdq = new Queue(19, resetSignal = flush_kill)(Bits(width = SZ_VCMD))
+  val vximm1q = new Queue(19, resetSignal = flush_kill)(Bits(width = SZ_VIMM))
+  val vximm2q = new Queue(17, resetSignal = flush_kill)(Bits(width = SZ_VSTRIDE))
+  val vxcntq = new Queue(8, resetSignal = flush_kill)(Bits(width = SZ_VLEN+1))
 
   vcmdq.io.enq <> MaskStall(io.vec_cmdq, xcpt.io.xcpt_to_vu.busy)
   vximm1q.io.enq <> MaskStall(io.vec_ximm1q, xcpt.io.xcpt_to_vu.busy)
@@ -69,40 +74,36 @@ class vu extends Component
   vxcntq.io.enq <> MaskStall(io.vec_cntq, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = new vuVXU()
-  val vmu = new vuVMU()
-  val irq = new vuIRQHandler()
+  val vmu = new vuVMU(resetSignal = flush_vmu)
+  val irq = new vuIRQHandler(resetSignal = flush_irq)
+  val aiw = new vuAIW(resetSignal = flush_aiw)
   val evac = new vuEvac()
 
   // counters
-  val vcmdq_count = new qcnt(19, 19, resetSignal = flush)
-  val vximm1q_count = new qcnt(19, 19, resetSignal = flush)
-  val vximm2q_count = new qcnt(17, 17, resetSignal = flush)
-  var vru: vuVRU = null
+  val vcmdq_count = new qcnt(19, 19, resetSignal = flush_kill)
+  val vximm1q_count = new qcnt(19, 19, resetSignal = flush_kill)
+  val vximm2q_count = new qcnt(17, 17, resetSignal = flush_kill)
 
   if (HAVE_VRU)
   {
-    vru = new vuVRU()
-    val vpfcmdq = new Queue(19, resetSignal = flush)(Bits(width=SZ_VCMD))
-    val vpfximm1q = new Queue(19, resetSignal = flush)(Bits(width=SZ_VIMM))
-    val vpfximm2q = new Queue(17, resetSignal = flush)(Bits(width=SZ_VSTRIDE))
-    val vpfcntq = new Queue(8, resetSignal = flush)(Bits(width=SZ_VLEN))
+    val vru = new vuVRU(resetSignal = flush_vru)
+
+    val vpfcmdq = new Queue(19, resetSignal = flush_kill)(Bits(width=SZ_VCMD))
+    val vpfximm1q = new Queue(19, resetSignal = flush_kill)(Bits(width=SZ_VIMM))
+    val vpfximm2q = new Queue(17, resetSignal = flush_kill)(Bits(width=SZ_VSTRIDE))
+    val vpfcntq = new Queue(8, resetSignal = flush_kill)(Bits(width=SZ_VLEN))
 
     vpfcmdq.io.enq <> MaskStall(io.vec_pfcmdq, xcpt.io.xcpt_to_vu.busy)
     vpfximm1q.io.enq <> MaskStall(io.vec_pfximm1q, xcpt.io.xcpt_to_vu.busy)
     vpfximm2q.io.enq <> MaskStall(io.vec_pfximm2q, xcpt.io.xcpt_to_vu.busy)
     vpfcntq.io.enq <> MaskStall(io.vec_pfcntq, xcpt.io.xcpt_to_vu.busy)
 
-    // vru
     vru.io.vec_pfcmdq <> vpfcmdq.io.deq
     vru.io.vec_pfximm1q <> vpfximm1q.io.deq
     vru.io.vec_pfximm2q <> vpfximm2q.io.deq
     vru.io.vec_pfcntq <> vpfcntq.io.deq
 
-    vru.io.xcpt_to_vru <> xcpt.io.xcpt_to_vru
-
-    // vmu
     vmu.io.pf_vvaq <> vru.io.vpfvaq
-
     vmu.io.vec_pftlb <> io.vec_pftlb
   }
   else
@@ -129,9 +130,6 @@ class vu extends Component
 
   // fence
   io.vec_fence_ready := !vcmdq.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
-
-  // irq
-  irq.io.flush := xcpt.io.xcpt_to_vu.flush_irq
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -198,8 +196,6 @@ class vu extends Component
 
   vmu.io.irq <> irq.io.vmu_to_irq
 
-  val aiw = new vuAIW()
-
   // aiw
   aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
   aiw.io.aiw_enq_imm1b <> vxu.io.aiw_imm1b
@@ -210,8 +206,6 @@ class vu extends Component
   aiw.io.issue_to_aiw <> vxu.io.issue_to_aiw
   aiw.io.aiw_to_issue <> vxu.io.aiw_to_issue
   aiw.io.seq_to_aiw <> vxu.io.seq_to_aiw
-
-  aiw.io.xcpt_to_aiw <> xcpt.io.xcpt_to_aiw
 
   // evac
   evac.io.aiw_cmdb <> aiw.io.aiw_deq_cmdb

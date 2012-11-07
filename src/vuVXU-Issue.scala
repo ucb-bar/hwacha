@@ -179,11 +179,10 @@ class io_vxu_issue extends Bundle
   val issue_to_aiw = new io_issue_to_aiw()
   val aiw_to_issue = new io_aiw_to_issue().flip
 
-  val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
-class vuVXU_Issue extends Component
+class vuVXU_Issue(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vxu_issue()
 
@@ -227,7 +226,6 @@ class vuVXU_Issue extends Component
   tvec.io.aiw_numCntB <> io.aiw_numCntB
   tvec.io.aiw_to_issue <> io.aiw_to_issue
 
-  tvec.io.flush := io.flush
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
   // vt
@@ -251,7 +249,6 @@ class vuVXU_Issue extends Component
   io.issue_to_aiw.markLast := 
     Mux(tvec.io.active, tvec.io.issue_to_aiw.markLast, vt.io.issue_to_aiw.markLast)
 
-  vt.io.flush := io.flush
   vt.io.xcpt_to_issue <> io.xcpt_to_issue
 
   io.vxu_cntq.ready := tvec.io.vxu_cntq.ready || vt.io.vxu_cntq.ready

@@ -60,7 +60,8 @@ class vuVXU extends Component
   val io = new io_vxu()
 
 
-  val issue = new vuVXU_Issue()
+  val flush_issue = reset || io.xcpt_to_vxu.flush
+  val issue = new vuVXU_Issue(resetSignal = flush_issue)
 
   io.irq := issue.io.irq
 
@@ -82,8 +83,8 @@ class vuVXU extends Component
   issue.io.issue_to_aiw <> io.issue_to_aiw
   issue.io.aiw_to_issue <> io.aiw_to_issue
 
-  issue.io.flush <> io.xcpt_to_vxu.flush
   issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
+
 
   val b8fire = new vuVXU_Banked8_Fire()
 
@@ -153,6 +154,7 @@ class vuVXU extends Component
   b8seq.io.flush <> io.xcpt_to_vxu.flush
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
+
   val b8expand = new vuVXU_Banked8_Expand()
 
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand
@@ -163,6 +165,7 @@ class vuVXU extends Component
   b8expand.io.seq_regid_imm <> b8seq.io.seq_regid_imm
 
   b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
+
 
   val b8lane = new vuVXU_Banked8_Lane()
 
@@ -190,8 +193,9 @@ class vuVXU extends Component
   b8lane.io.vmu.vldq_rdy <> io.lane_vldq.ready
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
 
-  // memory interface
+
   val b8mem = new vuVXU_Banked8_Mem()
+
   b8mem.io.lane_vaq_valid := b8lane.io.vmu.vaq_val
   b8mem.io.lane_vaq_check <> b8lane.io.vmu.vaq_check
   b8mem.io.lane_vaq_mem <> b8lane.io.vmu.vaq_mem

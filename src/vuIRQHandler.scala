@@ -12,8 +12,6 @@ class io_irq_to_issue extends Bundle
 
 class io_irq_handler extends Bundle
 {
-  val flush = Bool(INPUT)
-
   val issue_to_irq = new io_issue_to_irq_handler().flip
   val vmu_to_irq = new io_vmu_to_irq_handler().flip
 
@@ -22,7 +20,7 @@ class io_irq_handler extends Bundle
   val irq_aux = Bits(OUTPUT, 64)
 }
 
-class vuIRQHandler extends Component
+class vuIRQHandler(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_irq_handler()
 
@@ -80,16 +78,4 @@ class vuIRQHandler extends Component
     Mux(reg_irq_illegal_tvec, reg_irq_cmd_tvec,
     Mux(dmem_xcpt, reg_mem_xcpt_addr,
         Bits(0))))
-
-  when (io.flush)
-  {
-    reg_irq_ma_inst := Bool(false)
-    reg_irq_fault_inst := Bool(false)
-    reg_irq_illegal_vt := Bool(false)
-    reg_irq_illegal_tvec := Bool(false)
-    reg_irq_ma_ld := Bool(false)
-    reg_irq_ma_st := Bool(false)
-    reg_irq_faulted_ld := Bool(false)
-    reg_irq_faulted_st := Bool(false)
-  }
 }

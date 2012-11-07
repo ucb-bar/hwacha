@@ -16,8 +16,6 @@ class io_vmu_memif extends Bundle
   val mem_resp = new io_dmem_resp().flip
 
   val pending_skidbuf = Bool(OUTPUT)
-
-  val flush = Bool(INPUT)
 }
 
 class vuVMU_MemIF extends Component
@@ -34,8 +32,7 @@ class vuVMU_MemIF extends Component
   val ex_store_val = ex_store_cmd && io.vaq.valid && io.vsdq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
-  val flush = reset || io.flush
-  val sb = new skidbuf(late_nack = LATE_DMEM_NACK, resetSignal = flush)(new io_dmem_req_bundle())
+  val sb = new skidbuf(late_nack = LATE_DMEM_NACK)(new io_dmem_req_bundle())
 
   io.vaq.ready :=
     sb.io.enq.ready && ( 

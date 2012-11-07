@@ -31,21 +31,18 @@ class io_vmu_counters extends Bundle
 
   val pending_load = Bool(OUTPUT)
   val pending_store = Bool(OUTPUT)
-
-  val flush = Bool(INPUT)
 }
 
 class vuVMU_Counters extends Component
 {
   val io = new io_vmu_counters()
 
-  val flush = reset || io.flush
-  val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ, resetSignal = flush)
-  val vpaq_count = new qcnt(0, ENTRIES_VPAQ, resetSignal = flush)
-  val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ, resetSignal = flush)
-  val vpasdq_count = new qcnt(0, ENTRIES_VPASDQ, resetSignal = flush)
-  val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ, resetSignal = flush) // vector stores in flight
-  val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ, resetSignal = flush) // vector loads in flight
+  val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ)
+  val vpaq_count = new qcnt(0, ENTRIES_VPAQ)
+  val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ)
+  val vpasdq_count = new qcnt(0, ENTRIES_VPASDQ)
+  val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ) // vector stores in flight
+  val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ) // vector loads in flight
 
   // vvaq counts available space
   vvaq_count.io.inc := io.vvaq_inc

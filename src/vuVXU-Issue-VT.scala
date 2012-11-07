@@ -84,7 +84,6 @@ class io_vxu_issue_vt extends Bundle
   val issue_to_aiw = new io_issue_to_aiw()
   val aiw_to_issue = new io_aiw_to_issue().flip
 
-  val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
@@ -99,7 +98,6 @@ class vuVXU_Issue_VT extends Component
   val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.ma_inst || io.irq.fault_inst
 
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
-  when (io.flush) { stall_sticky := Bool(false) }
 
   io.imem_req.valid := io.vf.fire
   io.imem_req.bits := io.vf.pc
@@ -108,12 +106,7 @@ class vuVXU_Issue_VT extends Component
   val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
 
-  when (io.flush) 
-  {
-    imm1_rtag := Bits(0,SZ_AIW_IMM1)
-    numCnt_rtag := Bits(0,SZ_AIW_CMD)
-  }
-  .elsewhen (io.vf.fire) 
+  when (io.vf.fire) 
   { 
     imm1_rtag := io.vf.imm1_rtag
     numCnt_rtag := io.vf.numCnt_rtag

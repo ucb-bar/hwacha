@@ -33,20 +33,17 @@ class io_vu_aiw extends Bundle
   val aiw_deq_numCntB_last = Bool(OUTPUT)
 
   val evac_to_aiw = new io_evac_to_aiw().flip
-
-  val xcpt_to_aiw = new io_xcpt_handler_to_aiw().flip()
 }
 
-class vuAIW extends Component 
+class vuAIW(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vu_aiw()
 
-  val flush = reset || io.xcpt_to_aiw.flush
-  val ircmdb = new Queue(AIW_CMD_DEPTH, resetSignal = flush)(Bits(width = SZ_VCMD))
-  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH, resetSignal = flush)
-  val irimm2b = new Queue(AIW_IMM2_DEPTH, resetSignal = flush)(Bits(width = SZ_VSTRIDE))
-  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH, resetSignal = flush)
-  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH, resetSignal = flush)
+  val ircmdb = new Queue(AIW_CMD_DEPTH)(Bits(width = SZ_VCMD))
+  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH)
+  val irimm2b = new Queue(AIW_IMM2_DEPTH)(Bits(width = SZ_VSTRIDE))
+  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH)
+  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH)
 
   ircmdb.io.enq <> io.aiw_enq_cmdb
 

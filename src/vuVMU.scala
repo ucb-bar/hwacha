@@ -42,15 +42,15 @@ class io_vmu extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU extends Component
+class vuVMU(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vmu()
 
   val addr = new vuVMU_Address()
   val ldata = new vuVMU_LoadData()
   val sdata = new vuVMU_StoreData()
-  val memif = new vuVMU_MemIF()
   val counters = new vuVMU_Counters()
+  val memif = new vuVMU_MemIF()
 
 
   // address unit
@@ -124,13 +124,8 @@ class vuVMU extends Component
 
   // exception handler
   addr.io.evac_to_vmu <> io.evac_to_vmu
-  addr.io.flush := io.xcpt_to_vmu.flush
   addr.io.stall := io.xcpt_to_vmu.tlb.stall
-  ldata.io.flush := io.xcpt_to_vmu.flush
   sdata.io.evac_to_vmu <> io.evac_to_vmu
-  sdata.io.flush := io.xcpt_to_vmu.flush
-  counters.io.flush := io.xcpt_to_vmu.flush
-  memif.io.flush := io.xcpt_to_vmu.flush
 
   io.vmu_to_xcpt.no_pending_load_store :=
     !counters.io.pending_load && !counters.io.pending_store &&

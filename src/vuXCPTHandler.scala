@@ -9,11 +9,9 @@ class io_xcpt_handler_to_vu extends Bundle
   val busy = Bool(OUTPUT)
   val flush_kill = Bool(OUTPUT)
   val flush_irq = Bool(OUTPUT)
-}
-
-class io_xcpt_handler_to_aiw extends Bundle
-{
-  val flush = Bool(OUTPUT)
+  val flush_aiw = Bool(OUTPUT)
+  val flush_vru = Bool(OUTPUT)
+  val flush_vmu = Bool(OUTPUT)
 }
 
 class io_xcpt_handler_to_issue extends Bundle 
@@ -31,11 +29,6 @@ class io_xcpt_handler_to_tlb extends Bundle
   val stall = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_vru extends Bundle
-{
-  val flush = Bool(OUTPUT)
-}
-
 class io_xcpt_handler_to_vxu extends Bundle
 {
   val flush = Bool(OUTPUT)
@@ -45,7 +38,6 @@ class io_xcpt_handler_to_vxu extends Bundle
 
 class io_xcpt_handler_to_vmu extends Bundle 
 {
-  val flush = Bool(OUTPUT)
   val tlb = new io_xcpt_handler_to_tlb()
 }
 
@@ -59,10 +51,8 @@ class io_xcpt_handler extends Bundle {
   val xcpt = new io_xcpt().flip()
 
   val xcpt_to_vu = new io_xcpt_handler_to_vu()
-  val xcpt_to_vru = new io_xcpt_handler_to_vru()
   val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
   val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
-  val xcpt_to_aiw = new io_xcpt_handler_to_aiw()
   val xcpt_to_evac = new io_xcpt_handler_to_evac()
 
   val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
@@ -132,10 +122,10 @@ class vuXCPTHandler extends Component
   io.xcpt_to_vu.busy := (state != NORMAL) && (state != HOLD)
   io.xcpt_to_vu.flush_kill := Bool(false)
   io.xcpt_to_vu.flush_irq := Bool(false)
-  io.xcpt_to_aiw.flush := Bool(false)
-  io.xcpt_to_vru.flush := Bool(false)
+  io.xcpt_to_vu.flush_aiw := Bool(false)
+  io.xcpt_to_vu.flush_vru := Bool(false)
+  io.xcpt_to_vu.flush_vmu := Bool(false)
   io.xcpt_to_vxu.flush := Bool(false)
-  io.xcpt_to_vmu.flush := Bool(false)
 
   io.xcpt_to_evac.start := Bool(false)
 
@@ -179,13 +169,14 @@ class vuXCPTHandler extends Component
     is (XCPT_FLUSH)
     {
       io.xcpt_to_vu.flush_irq := Bool(true)
-      io.xcpt_to_vru.flush := Bool(true)
+      io.xcpt_to_vu.flush_vru := Bool(true)
+      io.xcpt_to_vu.flush_vmu := Bool(true)
       io.xcpt_to_vxu.flush := Bool(true)
-      io.xcpt_to_vmu.flush := Bool(true)
+
       when (kill)
       { 
         io.xcpt_to_vu.flush_kill := Bool(true)
-        io.xcpt_to_aiw.flush := Bool(true)
+        io.xcpt_to_vu.flush_aiw := Bool(true)
       }
 
       when (evac)
@@ -194,6 +185,7 @@ class vuXCPTHandler extends Component
 
         next_state := XCPT_EVAC
       }
+
       when (kill)
       {
         next_hold_issue := Bool(false)

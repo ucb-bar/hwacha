@@ -53,7 +53,6 @@ class io_vxu_issue_tvec extends Bundle
   val aiw_to_issue = new io_aiw_to_issue().flip
   val issue_to_aiw = new io_issue_to_aiw()
 
-  val flush = Bool(INPUT)
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
@@ -88,7 +87,6 @@ class vuVXU_Issue_TVEC extends Component
   val stall = io.irq.illegal || stall_sticky || io.xcpt_to_issue.stall
 
   when (io.irq.illegal) { stall_sticky := Bool(true) }
-  when (io.flush) { stall_sticky := Bool(false) }
   
 
   val cs =
@@ -302,17 +300,6 @@ class vuVXU_Issue_TVEC extends Component
   when (io.vf.stop)
   {
     next_state := ISSUE_TVEC
-  }
-
-  when (io.flush) 
-  {
-    next_state := ISSUE_TVEC
-    next_vlen := Bits(0,SZ_VLEN)
-    next_nxregs := Bits(32,SZ_REGCNT)
-    next_nfregs := Bits(32,SZ_REGCNT)
-    next_bactive := Bits("b1111_1111",SZ_BANK)
-    next_bcnt := Bits(8,SZ_LGBANK1)
-    next_stride := Bits(63,SZ_REGLEN)
   }
 
 
