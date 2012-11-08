@@ -152,8 +152,8 @@ class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
   vvaq_tlb.io.irq <> io.irq
 
   // vvaq hookup
-  vvaq_arb.io.in(VVAQARB_LANE) <> io.vvaq_lane
-  vvaq_arb.io.in(VVAQARB_EVAC) <> io.vvaq_evac
+  vvaq_arb.io.in(0) <> io.vvaq_lane
+  vvaq_arb.io.in(1) <> io.vvaq_evac
   // ready signal a little bit conservative, since checking space for both
   // vsreq and vlreq, not looking at the request type
   // however, this is okay since normally you don't hit this limit
@@ -174,49 +174,39 @@ class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
         io.vvaq_lane_dec)
   io.vvaq_do_deq := vvaq_tlb.io.vvaq.ready && vvaq.io.deq.valid
 
+  val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
+  io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
+
+  io.vpaq_do_enq := vvaq_tlb.io.ack
+  io.vpaq_do_enq_vsdq :=
+    vvaq_tlb.io.ack &&
+    (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
+
   if (HAVE_VRU)
   {
-    // VPFVAQ
     val vpfvaq = new Queue(ENTRIES_VPFVAQ)(new io_vvaq_bundle())
     val vpfvaq_tlb = new vuVMU_AddressTLB()
     val vpfpaq = new Queue(ENTRIES_VPFPAQ)(new io_vpaq_bundle())
 
-    // vpfvaq hookup
     vpfvaq.io.enq <> io.vvaq_pf
 
-    // vpfvaq address translation
     vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
     vpfvaq_tlb.io.vpaq <> vpfpaq.io.enq
     vpfvaq_tlb.io.tlb <> io.vpftlb
     vpfvaq_tlb.io.stall := io.stall
 
-    // VPAQ and VPFPAQ arbiter
     val vpaq_arb = (new RRArbiter(2)){ new io_vpaq_bundle() }
 
-    val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
-    io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
+    vpaq_arb.io.in(0) <> MaskReady(vpaq_check_cnt, io.vaq.ready)
+    vpaq_arb.io.in(1) <> MaskReady(MaskStall(vpfpaq.io.deq, io.stall), io.vaq.ready)
+    vpaq_arb.io.out.ready := Bool(true)
 
-    vpaq_arb.io.in(VPAQARB_VPAQ) <> vpaq_check_cnt
-    vpaq_arb.io.in(VPAQARB_VPFPAQ) <> MaskStall(vpfpaq.io.deq, io.stall)
-    vpaq_arb.io.out <> io.vaq
-
-    io.vpaq_do_enq := vvaq_tlb.io.ack
-    io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(VPAQARB_VPAQ).ready
-    io.vpaq_do_enq_vsdq :=
-      vvaq_tlb.io.ack &&
-      (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
+    io.vaq <> vpaq_arb.io.out
+    io.vpaq_do_deq := vpaq_check_cnt.valid && vpaq_arb.io.in(0).ready && io.vaq.ready
   }
   else
   {
-    val vpaq_check_cnt = CheckCnt(vpaq.io.deq, io.vpaq_qcnt, io.vpaq_watermark)
-    io.vpaq_to_xcpt.vpaq_valid := vpaq_check_cnt.valid
-
     io.vaq <> vpaq_check_cnt
-    io.vpaq_do_enq := vvaq_tlb.io.ack
     io.vpaq_do_deq := vpaq_check_cnt.valid && io.vaq.ready
-    io.vpaq_do_enq_vsdq :=
-      vvaq_tlb.io.ack &&
-      (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
-
   }
 }

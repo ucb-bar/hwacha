@@ -59,8 +59,8 @@ class MaskStall[T <: Data](data: => T) extends Component
 {
   val io = new Bundle()
   {
-    val input = (new FIFOIO()){ data }.flip
-    val output = (new FIFOIO()){ data }
+    val input = new FIFOIO()(data).flip
+    val output = new FIFOIO()(data)
     val stall = Bool(INPUT)
   }
 
@@ -73,9 +73,34 @@ object MaskStall
 {
   def apply[T <: Data](deq: FIFOIO[T], stall: Bool) =
   {
-    val ms = new MaskStall( deq.bits.clone )
+    val ms = new MaskStall(deq.bits.clone)
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output
+  }
+}
+
+class MaskReady[T <: Data](data: => T) extends Component
+{
+  val io = new Bundle()
+  {
+    val input = new FIFOIO()(data).flip
+    val output = new FIFOIO()(data)
+    val ready = Bool(INPUT)
+  }
+
+  io.output.valid := io.input.valid
+  io.output.bits := io.input.bits
+  io.input.ready := io.output.ready && io.ready
+}
+
+object MaskReady
+{
+  def apply[T <: Data](deq: FIFOIO[T], ready: Bool) =
+  {
+    val mr = new MaskReady(deq.bits.clone)
+    mr.io.input <> deq
+    mr.io.ready := ready
+    mr.io.output
   }
 }

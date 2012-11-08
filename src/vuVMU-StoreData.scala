@@ -28,14 +28,12 @@ class vuVMU_StoreData extends Component
   val vsdq_arb = (new Arbiter(2)){ Bits(width = SZ_DATA) }
   val vsdq = new Queue(ENTRIES_VSDQ)(Bits(width = 65))
 
-  // vsdq arbiter, port 0: lane vsdq
-  vsdq_arb.io.in(VSDQARB_LANE) <> io.vsdq_lane
-  // vsdq arbiter, port 1: evac
-  vsdq_arb.io.in(VSDQARB_EVAC) <> io.vsdq_evac
-  // vsdq arbiter, output
+  vsdq_arb.io.in(0) <> io.vsdq_lane
+  vsdq_arb.io.in(1) <> io.vsdq_evac
   vsdq_arb.io.out.ready :=
     Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready,
         io.vsdq_watermark && io.vpasdq_watermark)
+
   vsdq.io.enq.valid := vsdq_arb.io.out.valid
   vsdq.io.enq.bits := vsdq_arb.io.out.bits
 

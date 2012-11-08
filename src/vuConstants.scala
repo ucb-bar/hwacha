@@ -93,16 +93,6 @@ object Constants
   val SHIFT_BUF_WRITE = FMA_STAGES + 4
 
   // constants for vmu
-  val VVAQARB_LANE = 0
-  val VVAQARB_EVAC = 1
-
-  val VPAQARB_VPAQ = 0
-  val VPAQARB_VPFPAQ = 1
-
-  val VSDQARB_LANE = 0
-  val VSDQARB_EVAC = 1
-
-  val LATE_TLB_MISS = true
   val LATE_DMEM_NACK = true
 
   val ENTRIES_VVAQ = 16
