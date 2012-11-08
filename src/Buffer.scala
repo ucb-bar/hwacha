@@ -13,7 +13,7 @@ class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class Buffer(DATA_SIZE: Int, DEPTH: Int, resetSignal: Bool = null) extends Component(resetSignal)
+class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 {
   val ADDR_SIZE = log2Up(DEPTH)
 

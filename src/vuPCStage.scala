@@ -12,8 +12,6 @@ class pcUnitBundle extends Bundle {
 }
 
 class ioPCStage extends Bundle {
-  val flush = Bool(INPUT)
-
   val pcToTVEC = new ioPCToIssueTVEC()
   val pcToVT = new ioPCToIssueVT()
 
@@ -54,7 +52,6 @@ class vuPCStage extends Component {
     if(n >= 0) {
 
       val pcUnit = new vuPC()
-      pcUnit.io.flush := io.flush
 
       pcUnit.io.in <> pcBundle
 

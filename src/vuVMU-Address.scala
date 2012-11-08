@@ -24,7 +24,7 @@ class io_vmu_address_tlb extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_AddressTLB(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVMU_AddressTLB extends Component
 {
   val io = new io_vmu_address_tlb()
 
@@ -139,7 +139,7 @@ class io_vmu_address extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_Address(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVMU_Address extends Component
 {
   val io = new io_vmu_address()
 

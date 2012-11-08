@@ -18,7 +18,7 @@ class io_counter_vec(ADDR_SIZE: Int) extends Bundle
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class CounterVec(DEPTH: Int, resetSignal: Bool = null) extends Component(resetSignal)
+class CounterVec(DEPTH: Int) extends Component
 {
   val ADDR_SIZE = log2Up(DEPTH)
   val io = new io_counter_vec(ADDR_SIZE)

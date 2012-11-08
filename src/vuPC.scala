@@ -21,8 +21,6 @@ class ioPCToIssueVT extends FIFOIO()( new pvfBundle )
 
 class ioPC extends Bundle
 {
-  val flush = Bool(INPUT)
-
   val in = new pcUnitBundle().asInput()
   val out = new pcUnitBundle().asOutput()
   
@@ -129,13 +127,6 @@ class vuPC extends Component
   .elsewhen (io.pcToVT.ready && io.pcToVT.valid) 
   {
     next_pc := reg_pc + UFix(4)
-  }
-
-  when (io.flush)
-  {
-    next_pc := Bits(0,SZ_ADDR)
-    next_pending := Bool(false)
-    next_valid := Bool(false)
   }
 
   io.pcToVT.bits.pc := reg_pc

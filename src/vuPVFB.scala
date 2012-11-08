@@ -26,8 +26,6 @@ class ioPVFB extends Bundle
 
 class ioPVFBCtrl() extends Bundle
 {
-  val flush = Bool(INPUT)
-
   val enq_val = Bool(INPUT)
 
   val resolved_mask = Bits(INPUT, WIDTH_PVFB)

@@ -50,7 +50,7 @@ class io_skidbuf[T <: Data](data: => T) extends Bundle
   val kill = Bool(OUTPUT)
 }
 
-class skidbuf[T <: Data](late_nack: Boolean, resetSignal: Bool = null)(data: => T) extends Component(resetSignal)
+class skidbuf[T <: Data](late_nack: Boolean)(data: => T) extends Component
 {
   val io = new io_skidbuf(data)
 
@@ -85,9 +85,9 @@ class skidbuf[T <: Data](late_nack: Boolean, resetSignal: Bool = null)(data: => 
 
 object SkidBuffer
 {
-  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false, resetSignal: Bool = null) =
+  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false) =
   {
-    val sb = new skidbuf(late_nack, resetSignal)(enq.bits.clone)
+    val sb = new skidbuf(late_nack)(enq.bits.clone)
     sb.io.enq <> enq
     sb
   }
@@ -101,7 +101,6 @@ class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) ex
 
 class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
-  val flush = Bool(INPUT)
   val deq_rtag = new FIFOIO()(Bits(width = ROQ_TAG_SIZE))
   val deq_data = new FIFOIO()(Bits(width = ROQ_DATA_SIZE))
   val enq = new PipeIO()(new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)).flip
@@ -110,7 +109,7 @@ class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundl
   val watermark = Bool(OUTPUT)
 }
 
-class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int, resetSignal: Bool = null) extends Component(resetSignal)
+class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int) extends Component
 {
   val ROQ_TAG_SIZE = log2Up(ROQ_TAG_ENTRIES)
 

@@ -85,11 +85,10 @@ class io_vxu_seq extends Bundle
 
   val seq_to_aiw = new io_seq_to_aiw()
 
-  val flush = Bool(INPUT)
   val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
 }
 
-class vuVXU_Banked8_Seq extends Component
+class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vxu_seq()
 
@@ -205,7 +204,7 @@ class vuVXU_Banked8_Seq extends Component
   val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
   val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
 
-  val array_pvfb_tag = Vec(SZ_BANK){ Reg(resetVal = Bits(0, SZ_PVFB_TAG)) }
+  val array_pvfb_tag = Vec(SZ_BANK){ Reg(){Bits(width=SZ_PVFB_TAG)} }
   val array_active_mask = Vec(SZ_BANK){ Reg(resetVal = Bool(false) ) }
   val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
 
@@ -912,30 +911,4 @@ class vuVXU_Banked8_Seq extends Component
   io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + next_vlen_update + UFix(1)
 
   io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
-
-  when (io.flush)
-  {
-    for(i <- 0 until SZ_BANK)
-    {
-      next_val(i) := Bool(false)
-      next_stall(i) := Bool(false)
-      next_last(i) := Bool(false)
-      next_viu(i) := Bool(false)
-      next_vau0(i) := Bool(false)
-      next_vau1(i) := Bool(false)
-      next_vau2(i) := Bool(false)
-      next_vaq(i) := Bool(false)
-      next_vldq(i) := Bool(false)
-      next_vsdq(i) := Bool(false)
-      next_utmemop(i) := Bool(false)
-      next_aiw_update_imm1(i) := Bool(false)
-      next_aiw_update_numCnt(i) := Bool(false)
-
-      next_active_mask(i) := Bool(false)
-    }
-
-    reg_vaq_stall := Bool(false)
-    reg_vldq_stall := Bool(false)
-    reg_vsdq_stall := Bool(false)
-  }
 }

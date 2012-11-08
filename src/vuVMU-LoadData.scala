@@ -16,7 +16,7 @@ class io_vmu_load_data extends Bundle
   val vldq_rtag_do_deq = Bool(OUTPUT)
 }
 
-class vuVMU_LoadData(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVMU_LoadData extends Component
 {
   val io = new io_vmu_load_data()
 

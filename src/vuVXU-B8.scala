@@ -60,8 +60,8 @@ class vuVXU extends Component
   val io = new io_vxu()
 
 
-  val flush_issue = reset || io.xcpt_to_vxu.flush
-  val issue = new vuVXU_Issue(resetSignal = flush_issue)
+  val flush = reset || io.xcpt_to_vxu.flush
+  val issue = new vuVXU_Issue(resetSignal = flush)
 
   io.irq := issue.io.irq
 
@@ -103,7 +103,7 @@ class vuVXU extends Component
   b8fire.io.vt_regid_imm <> issue.io.vt_regid_imm
 
 
-  val b8hazard = new vuVXU_Banked8_Hazard()
+  val b8hazard = new vuVXU_Banked8_Hazard(resetSignal = flush)
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
   b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
@@ -130,13 +130,11 @@ class vuVXU extends Component
   b8hazard.io.fire_fn <> b8fire.io.fire_fn
   b8hazard.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
-  b8hazard.io.flush <> io.xcpt_to_vxu.flush
-
   io.pending_memop := b8hazard.io.hazard_to_issue.tvec.pending_memop
   io.pending_vf := issue.io.pending_vf
 
 
-  val b8seq = new vuVXU_Banked8_Seq()
+  val b8seq = new vuVXU_Banked8_Seq(resetSignal = flush)
 
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard
@@ -151,7 +149,6 @@ class vuVXU extends Component
 
   b8seq.io.seq_to_aiw <> io.seq_to_aiw
 
-  b8seq.io.flush <> io.xcpt_to_vxu.flush
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
 
