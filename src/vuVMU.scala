@@ -114,7 +114,7 @@ class vuVMU(resetSignal: Bool = null) extends Component(resetSignal)
 
   // counters
   counters.io.qcnt := io.qcntp2
-  io.pending_store := counters.io.pending_store || memif.io.pending_skidbuf
+  io.pending_store := counters.io.pending_store || memif.io.pending_replayq
 
 
   // memif interface
@@ -129,5 +129,5 @@ class vuVMU(resetSignal: Bool = null) extends Component(resetSignal)
 
   io.vmu_to_xcpt.no_pending_load_store :=
     !counters.io.pending_load && !counters.io.pending_store &&
-    !memif.io.pending_skidbuf && !addr.io.vpaq_to_xcpt.vpaq_valid
+    !memif.io.pending_replayq && !addr.io.vpaq_to_xcpt.vpaq_valid
 }

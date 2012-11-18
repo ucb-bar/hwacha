@@ -66,9 +66,12 @@ class io_dmem_req_bundle extends Bundle
 class io_dmem_resp_bundle extends Bundle
 {
   val nack = Bool()
-  val data = Bits(width = 64)
-  val tag = Bits(width = 10)
+  val data_subword = Bits(width = 64)
+  val cmd = Bits(width = 4)
   val typ = Bits(width = 3)
+  val addr = UFix(width = PADDR_BITS)
+  val store_data = Bits(width = 64)
+  val tag = Bits(width = 10)
 }
 
 class io_dmem_req extends FIFOIO()({ new io_dmem_req_bundle() })

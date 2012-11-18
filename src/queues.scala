@@ -40,59 +40,6 @@ class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Compo
   io.empty := (count === UFix(0,size))
 }
 
-class io_skidbuf[T <: Data](data: => T) extends Bundle
-{
-  val enq = new FIFOIO()(data).flip
-  val deq = new FIFOIO()(data)
-  val pipereg = new PipeIO()(data)
-  val nack = Bool(INPUT)
-  val empty = Bool(OUTPUT)
-  val kill = Bool(OUTPUT)
-}
-
-class skidbuf[T <: Data](late_nack: Boolean)(data: => T) extends Component
-{
-  val io = new io_skidbuf(data)
-
-  val pipereg = new Queue(1, pipe = true)(data)
-
-  pipereg.io.enq <> io.enq
-
-  val reg_ready = Reg(resetVal = Bool(true))
-  val reg_nack = Reg(resetVal = Bool(false))
-
-  reg_ready := io.deq.ready
-  reg_nack := io.nack
-
-  var rejected = !reg_ready || io.nack
-  pipereg.io.deq.ready := !rejected
-  io.empty := !pipereg.io.deq.valid
-  io.kill := Bool(false)
-
-  if (late_nack) {
-    rejected = !reg_ready || reg_nack
-    pipereg.io.deq.ready := !rejected && !io.nack
-    io.kill := reg_nack
-  }
-
-  val sel_pipereg = rejected && pipereg.io.deq.valid
-  io.deq.valid := Mux(sel_pipereg, pipereg.io.deq.valid, io.enq.valid)
-  io.deq.bits := Mux(sel_pipereg, pipereg.io.deq.bits, io.enq.bits)
-
-  io.pipereg.bits <> pipereg.io.deq.bits
-  io.pipereg.valid := pipereg.io.deq.valid
-}
-
-object SkidBuffer
-{
-  def apply[T <: Data](enq: FIFOIO[T], late_nack: Boolean = false) =
-  {
-    val sb = new skidbuf(late_nack)(enq.bits.clone)
-    sb.io.enq <> enq
-    sb
-  }
-}
-
 class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
 {
   val data = Bits(width = ROQ_DATA_SIZE)
