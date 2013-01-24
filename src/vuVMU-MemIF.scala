@@ -68,10 +68,14 @@ class vuVMU_MemIF extends Component
       ex_amo_cmd && io.vaq.valid && io.vsdq.valid
     )
 
-  val nack = io.mem_resp.bits.nack
-  val req_fire = io.mem_req.fire()
+  val s2_nack = io.mem_resp.bits.nack
+  val s3_nack = Reg(s2_nack)
 
-  io.mem_req.bits.kill := nack
+  val s0_req_fire = io.mem_req.fire()
+  val s1_req_fire = Reg(s0_req_fire)
+  val s2_req_fire = Reg(s1_req_fire)
+
+  io.mem_req.bits.kill := s2_nack
   io.mem_req.bits.phys := Bool(true)
   io.mem_req <> req_arb.io.out
 
@@ -85,6 +89,7 @@ class vuVMU_MemIF extends Component
   // we don't need to check replayq1.io.enq.ready and replayq2.io.enq.ready as
   // there will only be two requests going through at most
 
+  // stash d$ request in stage 2 if nacked (older request)
   replayq1.io.enq.valid := Bool(false)
   replayq1.io.enq.bits.cmd := io.mem_resp.bits.cmd
   replayq1.io.enq.bits.typ := io.mem_resp.bits.typ
@@ -92,17 +97,20 @@ class vuVMU_MemIF extends Component
   replayq1.io.enq.bits.data := io.mem_resp.bits.store_data
   replayq1.io.enq.bits.tag := io.mem_resp.bits.tag
 
-  replayq2.io.enq.valid := Reg(Reg(req_fire) && nack)
+  // stash d$ request in stage 1 if nacked (newer request)
+  replayq2.io.enq.valid := s2_req_fire && s3_nack
   replayq2.io.enq.bits.data := io.mem_resp.bits.store_data
   replayq2.io.enq.bits <> io.mem_resp.bits
   replayq2.io.deq.ready := Bool(false)
 
-  when (nack) {
+  when (s2_nack) {
     replayq1.io.enq.valid := Bool(true)
     replaying_cmb := Bool(true)
   }
 
-  when (Reg(Reg(replaying_cmb && req_fire)) && !nack) {
+  // when replaying request got sunk into the d$
+  when (s2_req_fire && Reg(Reg(replaying_cmb)) && !s2_nack) {
+    // see if there's a stashed request in replayq2
     when (replayq2.io.deq.valid) {
       replayq1.io.enq.valid := Bool(true)
       replayq1.io.enq.bits.cmd := replayq2.io.deq.bits.cmd
@@ -116,11 +124,12 @@ class vuVMU_MemIF extends Component
     }
   }
 
-  // FIXME: need to revisit, don't know how critical replaying_cmb is
-  // need to pretend that the memory request is still busy the next cycle,
-  // since it could get nacked
+  // being a little bit conservative here
+  // doesn't depend on whether d$ request in stage 2 is nacked or not
+  io.pending_replayq := s1_req_fire || s2_req_fire || replaying
 
-  io.pending_replayq := Reg(req_fire) || replaying_cmb
+  // a slightly faster version, however the following relies on replaying_cmb
+  // io.pending_replayq := s1_req_fire || replaying_cmb
 
   // load data conversion
   val reg_mem_resp = Reg(io.mem_resp)
