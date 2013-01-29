@@ -51,7 +51,7 @@ class io_vu extends Bundle
   val xcpt = new io_xcpt().flip()
 }
 
-class vu extends Component
+class vu(resetSignal: Bool = null) extends Component(resetSignal)
 {
   val io = new io_vu()
 
