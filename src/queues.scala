@@ -72,9 +72,9 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
   val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
 
   val data_array = Mem(ROQ_TAG_ENTRIES, seqRead = true) { io.enq.bits.data.clone }
-  val data_out = Reg() { io.enq.bits.data.clone }
+  val raddr = Reg() { Bits() }
   when (io.enq.valid) { data_array(io.enq.bits.rtag) := io.enq.bits.data }
-  data_out := data_array(Mux(roq_data_deq, read_ptr_next, read_ptr))
+  raddr := Mux(roq_data_deq, read_ptr_next, read_ptr)
 
   val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
   val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
@@ -103,7 +103,7 @@ class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT:
 
 
   io.deq_data.valid := deq_data_val_int
-  io.deq_data.bits := data_out
+  io.deq_data.bits := data_array(raddr)
 
   // Logic for watermark
   val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))

@@ -42,10 +42,10 @@ class vuVXU_Banked8_Bank_Regfile extends Component
     ))
 
   val rfile = Mem(256, seqRead = true) { Bits(width = SZ_DATA) }
-  val rfile_rdata = Reg() { Bits() }
+  val raddr = Reg() { Bits() }
   when (io.wen) { rfile(io.waddr) := wdata }
-  when (io.ren) { rfile_rdata := rfile(io.raddr) }
-  val rdata_rf = Mux(Reg(io.ren), rfile_rdata, Bits(0)) 
+  when (io.ren) { raddr := io.raddr }
+  val rdata_rf = Mux(Reg(io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf
 
   val ropl0Reg = Reg(){Bits(width = SZ_DATA)}
