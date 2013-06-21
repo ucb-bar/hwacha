@@ -9,7 +9,7 @@ class io_vmu_memif extends Bundle
 {
   val vaq = new FIFOIO()(new io_vpaq_bundle()).flip
   val vsdq = new FIFOIO()(Bits(width = 65)).flip
-  val vldq = new PipeIO()(new io_queue_reorder_qcnt_enq_bundle(65, LG_ENTRIES_VLDQ))
+  val vldq = new PipeIO()(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
   val vldq_rtag = new FIFOIO()(Bits(width = LG_ENTRIES_VLDQ)).flip
 
   val mem_req = new io_dmem_req()

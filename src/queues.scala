@@ -40,94 +40,97 @@ class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Compo
   io.empty := (count === UFix(0,size))
 }
 
-class io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
+class VLDQEnqBundle(DATA_SIZE: Int, TAG_SIZE: Int) extends Bundle
 {
-  val data = Bits(width = ROQ_DATA_SIZE)
-  val rtag = UFix(width = ROQ_TAG_SIZE)
+  val data = Bits(width = DATA_SIZE)
+  val rtag = UFix(width = TAG_SIZE)
 }
 
-class io_queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_SIZE: Int) extends Bundle
+class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Component
 {
-  val deq_rtag = new FIFOIO()(Bits(width = ROQ_TAG_SIZE))
-  val deq_data = new FIFOIO()(Bits(width = ROQ_DATA_SIZE))
-  val enq = new PipeIO()(new io_queue_reorder_qcnt_enq_bundle(ROQ_DATA_SIZE, ROQ_TAG_SIZE)).flip
+  val TAG_SIZE = log2Up(TAG_ENTRIES)
 
-  val qcnt = UFix(INPUT, ROQ_TAG_SIZE)
-  val watermark = Bool(OUTPUT)
-}
+  val io = new Bundle {
+    val deq_rtag = new FIFOIO()(Bits(width = TAG_SIZE))
+    val deq_data = new FIFOIO()(Bits(width = DATA_SIZE))
+    val enq = new PipeIO()(new VLDQEnqBundle(DATA_SIZE, TAG_SIZE)).flip
 
-class queue_reorder_qcnt(ROQ_DATA_SIZE: Int, ROQ_TAG_ENTRIES: Int, ROQ_MAX_QCNT: Int) extends Component
-{
-  val ROQ_TAG_SIZE = log2Up(ROQ_TAG_ENTRIES)
+    val qcnt = UFix(INPUT, TAG_SIZE)
+    val watermark = Bool(OUTPUT)
+  }
 
-  val io = new io_queue_reorder_qcnt(ROQ_DATA_SIZE, ROQ_TAG_SIZE)
-
-  val read_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
-  val write_ptr = Reg(resetVal = UFix(0, ROQ_TAG_SIZE))
-  val read_ptr_next = read_ptr + UFix(1)
-  val write_ptr_next = write_ptr + UFix(1)
+  val read_ptr = Reg(resetVal = UFix(0, TAG_SIZE))
+  val read_ptr1 = read_ptr + UFix(1)
+  val read_ptr2 = read_ptr + UFix(2)
+  val write_ptr = Reg(resetVal = UFix(0, TAG_SIZE))
+  val write_ptr1 = write_ptr + UFix(1)
   val full = Reg(resetVal = Bool(false))
 
-  val roq_data_deq = io.deq_data.ready && io.deq_data.valid
-  val roq_rtag_deq = io.deq_rtag.ready && io.deq_rtag.valid
+  val bump_rptr = io.deq_data.fire()
+  val bump_wptr = io.deq_rtag.fire()
 
-  val data_array = Mem(ROQ_TAG_ENTRIES, seqRead = true) { io.enq.bits.data.clone }
-  val raddr = Reg() { Bits() }
-  when (io.enq.valid) { data_array(io.enq.bits.rtag) := io.enq.bits.data }
-  raddr := Mux(roq_data_deq, read_ptr_next, read_ptr)
+  when (bump_wptr) { write_ptr := write_ptr1 }
+  when (bump_rptr) { read_ptr := read_ptr1 }
 
-  val vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
-  val vb_update_read = Mux(roq_data_deq, ~(Bits(1) << read_ptr), Fill(ROQ_TAG_ENTRIES, Bits(1)))
-  val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, ROQ_TAG_ENTRIES))
+  val mem_data = Mem(TAG_ENTRIES, seqRead = true) { io.enq.bits.data.clone }
+  when (io.enq.valid) { mem_data(io.enq.bits.rtag) := io.enq.bits.data }
+
+  val vb_array = Reg(resetVal = Bits(0, TAG_ENTRIES))
+  val vb_update_read = Mux(bump_rptr, ~(Bits(1) << read_ptr), Fill(TAG_ENTRIES, Bits(1)))
+  val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, TAG_ENTRIES))
   vb_array := (vb_array & vb_update_read) | vb_update_write
 
-  val deq_data_val_int = Reg(resetVal = Bool(false))
+  val mem_addr = Reg() { Bits() }
+  mem_addr := Mux(bump_rptr, read_ptr2, read_ptr1)
 
-  deq_data_val_int := vb_array(read_ptr)
+  val deq_data_val = Reg(resetVal = Bool(false))
+  val deq_data = Reg(){ Bits() }
+  val match_rtag = Bits()
 
-  when (roq_rtag_deq) { write_ptr := write_ptr_next }
-  when (roq_data_deq) {
-    deq_data_val_int := vb_array(read_ptr_next)
-    read_ptr := read_ptr_next
+  deq_data_val := vb_array(read_ptr)
+  match_rtag := read_ptr
+  when (bump_rptr) {
+    deq_data_val := vb_array(read_ptr1)
+    deq_data := mem_data(mem_addr)
+    match_rtag := read_ptr1
   }
+
+  when (io.enq.valid && io.enq.bits.rtag === match_rtag) {
+    deq_data := io.enq.bits.data
+  }
+
+  io.deq_data.valid := deq_data_val
+  io.deq_data.bits := deq_data
 
   io.deq_rtag.valid := !full
   io.deq_rtag.bits := write_ptr
 
-  val full_next =
-    Mux(roq_rtag_deq && !roq_data_deq && (write_ptr_next === read_ptr), Bool(true),
-    Mux(roq_data_deq && full, Bool(false),
-        full))
-
-  full := full_next
-
-
-  io.deq_data.valid := deq_data_val_int
-  io.deq_data.bits := data_array(raddr)
+  full := Mux(bump_wptr && !bump_rptr && (write_ptr1 === read_ptr), Bool(true),
+          Mux(bump_rptr && full, Bool(false),
+              full))
 
   // Logic for watermark
-  val shifted_vb_array = Reg(resetVal = Bits(0, ROQ_TAG_ENTRIES))
+  val shifted_vb_array = Reg(resetVal = Bits(0, TAG_ENTRIES))
   val shifted_write_ptr =
     Mux(read_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
-        UFix(ROQ_TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)(ROQ_TAG_SIZE-1,0)
+        UFix(TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)(TAG_SIZE-1,0)
 
   val shifted_vb_update_write =
     Mux(io.enq.valid, (Bits(1) << shifted_write_ptr),
-        Bits(0, ROQ_TAG_ENTRIES))
+        Bits(0, TAG_ENTRIES))
 
   shifted_vb_array :=
-    Mux(roq_data_deq, ((shifted_vb_array | shifted_vb_update_write) >> UFix(1)),
+    Mux(bump_rptr, ((shifted_vb_array | shifted_vb_update_write) >> UFix(1)),
         (shifted_vb_array | shifted_vb_update_write))
 
   // a limited version of leading count ones
-  // maximum cnt is defined by ROQ_MAX_QCNT
+  // maximum cnt is defined by MAX_QCNT
   var sel = shifted_vb_array(0)
-  var locnt = UFix(0, ROQ_TAG_SIZE)
-  for (i <- 0 until ROQ_MAX_QCNT) {
+  var locnt = UFix(0, TAG_SIZE)
+  for (i <- 0 until MAX_QCNT) {
     locnt = Mux(sel, UFix(i+1), locnt)
     sel = sel & shifted_vb_array(i+1)
   }
 
   io.watermark := locnt >= io.qcnt
 }
-
