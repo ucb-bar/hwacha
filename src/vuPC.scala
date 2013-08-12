@@ -10,14 +10,14 @@ class MaskBundle extends Bundle
   val resolved = Bits(width=WIDTH_PVFB)
 }
 
-class ioMaskPipe extends PipeIO() ( { new MaskBundle() } )
+class ioMaskPipe extends ValidIO(new MaskBundle)
 
 class ioPCToIssueTVEC extends Bundle
 {
   val stop = Bool(OUTPUT)
 }
 
-class ioPCToIssueVT extends FIFOIO()( new pvfBundle )
+class ioPCToIssueVT extends DecoupledIO( new pvfBundle )
 
 class ioPC extends Bundle
 {
@@ -35,7 +35,7 @@ class ioPC extends Bundle
   val pending = Bool(OUTPUT)
 }
 
-class vuPC extends Component
+class vuPC extends Module
 {
   val io = new ioPC()
 
@@ -47,19 +47,19 @@ class vuPC extends Component
   val next_valid = Bool()
   val next_stalld = Bool()
 
-  val reg_pc = Reg(next_pc, resetVal = Bits(0,SZ_ADDR))
-  val reg_pending = Reg(next_pending, resetVal = Bool(false))
-  val reg_mask = Reg(next_mask, resetVal = Bits(0,WIDTH_PVFB))
-  val reg_valid = Reg(next_valid, resetVal = Bool(false))
-  val reg_stalld = Reg(next_stalld, resetVal = Bool(false))
+  val reg_pc = Reg(update = next_pc, reset = Bits(0,SZ_ADDR))
+  val reg_pending = Reg(update = next_pending, reset = Bool(false))
+  val reg_mask = Reg(update = next_mask, reset = Bits(0,WIDTH_PVFB))
+  val reg_valid = Reg(update = next_valid, reset = Bool(false))
+  val reg_stalld = Reg(update = next_stalld, reset = Bool(false))
 
   val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
   val vlen = Mux(fire_pass & Bool(HAVE_PVFB), Bits(WIDTH_PVFB-1), io.in.vlen)
 
-  val delay_id = Reg(io.in.id + UFix(1))
-  val delay_fire = Reg(io.in.fire && fire_pass)
-  val delay_pc = Reg(io.in.pc)
-  val delay_vlen = Reg(Mux(fire_pass, io.in.vlen - Bits(WIDTH_PVFB), Bits(0)))
+  val delay_id = RegUpdate(io.in.id + UInt(1))
+  val delay_fire = RegUpdate(io.in.fire && fire_pass)
+  val delay_pc = RegUpdate(io.in.pc)
+  val delay_vlen = RegUpdate(Mux(fire_pass, io.in.vlen - Bits(WIDTH_PVFB), Bits(0)))
 
   io.out.id := delay_id
   io.out.fire := delay_fire
@@ -126,7 +126,7 @@ class vuPC extends Component
   }
   .elsewhen (io.pcToVT.ready && io.pcToVT.valid) 
   {
-    next_pc := reg_pc + UFix(4)
+    next_pc := reg_pc + UInt(4)
   }
 
   io.pcToVT.bits.pc := reg_pc

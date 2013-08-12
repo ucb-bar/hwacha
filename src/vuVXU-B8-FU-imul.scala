@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class vuVXU_Banked8_FU_imul extends Component
+class vuVXU_Banked8_FU_imul extends Module
 {
   val io = new Bundle
   {
@@ -31,7 +31,7 @@ class vuVXU_Banked8_FU_imul extends Component
     Fill(32, ~zxr32)&io.in1(63,32) | Fill(32, sxr32&io.in1(31)),
     io.in1(31,0)) //TODO: 65 bits
 
-  val mul_result = lhs.toFix * rhs.toFix //TODO:130 bits
+  val mul_result = lhs.toSInt * rhs.toSInt //TODO:130 bits
 
   val mul_output_mux = MuxLookup(
     io.fn, Bits(0,64), Array(

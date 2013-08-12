@@ -19,7 +19,7 @@ class io_vru extends Bundle
   val vpfcntq = new io_vcntq().flip
 }
 
-class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVRU(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_vru()
 
@@ -87,39 +87,39 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
 
   val stride_decoded::setvl::pf::deq_imm1q::deq_imm2q::Nil = cs
 
-  val state = Reg(resetVal = VRU_Idle)
+  val state = RegReset(VRU_Idle)
 
-  val vlen_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
+  val vlen_reg = RegReset(SInt(0, SZ_VLEN+1))
 
-  val addr_reg = Reg(resetVal = UFix(0, SZ_VIMM))
-  val cmd_reg = Reg(resetVal = Bits(0,SZ_XCMD_CMD))
-  val vec_count_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
-  val vec_pfed_count_reg = Reg(resetVal = Fix(0, SZ_VLEN+1))
-  val stride_reg = Reg(resetVal = UFix(0, SZ_VIMM))
+  val addr_reg = RegReset(UInt(0, SZ_VIMM))
+  val cmd_reg = RegReset(Bits(0,SZ_XCMD_CMD))
+  val vec_count_reg = RegReset(SInt(0, SZ_VLEN+1))
+  val vec_pfed_count_reg = RegReset(SInt(0, SZ_VLEN+1))
+  val stride_reg = RegReset(UInt(0, SZ_VIMM))
   
-  val vec_per_pf_reg = Reg(resetVal = UFix(0, OFFSET_BITS+1))
-  val vec_pf_remainder_reg = Reg(resetVal = UFix(0, OFFSET_BITS))
-  val stride_remaining_reg = Reg(resetVal = UFix(0, OFFSET_BITS))
+  val vec_per_pf_reg = RegReset(UInt(0, OFFSET_BITS+1))
+  val vec_pf_remainder_reg = RegReset(UInt(0, OFFSET_BITS))
+  val stride_remaining_reg = RegReset(UInt(0, OFFSET_BITS))
 
   val unit_stride = (stride_decoded != Bits(0,4))
   
-  val addr = io.vpfximm1q.bits.toUFix
-  val stride = Mux(unit_stride, stride_decoded.toUFix, io.vpfximm2q.bits.toUFix)
+  val addr = io.vpfximm1q.bits.toUInt
+  val stride = Mux(unit_stride, stride_decoded.toUInt, io.vpfximm2q.bits.toUInt)
 
   val mask_vpfximm1q_valid = io.vpfximm1q.valid || !deq_imm1q
   val mask_vpfximm2q_valid = io.vpfximm2q.valid || !deq_imm2q
   val mask_vpfcntq_valid = Bool(true)
 
-  val cmd_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && mask_vpfximm2q_valid && pf
-  val setvl_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && setvl && pf
+  val cmd_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && mask_vpfximm2q_valid && pf.toBool
+  val setvl_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && setvl.toBool && pf.toBool
 
-  val pf_len = UFix(pow(2,OFFSET_BITS).toInt)
+  val pf_len = UInt(pow(2,OFFSET_BITS).toInt)
   val pf_len_int = pow(2,OFFSET_BITS).toInt
 
   // cmd(4)==1 -> vector store
   io.vpfvaq.bits.cmd := Mux(cmd_reg(4), mcmd_PFW, mcmd_PFR)
   io.vpfvaq.bits.typ := Bits(0)
-  io.vpfvaq.bits.typ_float := Bits(0)
+  io.vpfvaq.bits.typ_float := Bool(false)
   io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
   io.vpfvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 
@@ -127,8 +127,8 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
 
   io.vpfvaq.valid := Bool(false)
   io.vpfcmdq.ready := Bool(true) && mask_vpfximm1q_valid && mask_vpfximm2q_valid && mask_vpfcntq_valid && idle
-  io.vpfximm1q.ready := io.vpfcmdq.valid && deq_imm1q && mask_vpfximm2q_valid && mask_vpfcntq_valid && idle
-  io.vpfximm2q.ready := io.vpfcmdq.valid && mask_vpfximm1q_valid && deq_imm2q && mask_vpfcntq_valid && idle
+  io.vpfximm1q.ready := io.vpfcmdq.valid && deq_imm1q.toBool && mask_vpfximm2q_valid && mask_vpfcntq_valid && idle
+  io.vpfximm2q.ready := io.vpfcmdq.valid && mask_vpfximm1q_valid && deq_imm2q.toBool && mask_vpfcntq_valid && idle
   io.vpfcntq.ready := io.vpfcmdq.valid && mask_vpfximm1q_valid && mask_vpfximm2q_valid && Bool(true) && idle
 
   switch (state)
@@ -137,7 +137,7 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
     {
       when (setvl_val)
       {
-        vlen_reg := io.vpfximm1q.bits(RG_XIMM1_VLEN).toUFix
+        vlen_reg := io.vpfximm1q.bits(RG_XIMM1_VLEN).toUInt
       }
       .elsewhen (cmd_val)
       {
@@ -154,35 +154,35 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
           // want a cache line with less than two double words
           val stride_lobits = stride(OFFSET_BITS,0)
           var div = MuxLookup(stride(4,0),
-                        UFix(0,OFFSET_BITS+1), Array(
-            Bits(1)  -> UFix(pf_len_int/1,OFFSET_BITS+1),
-            Bits(2)  -> UFix(pf_len_int/2,OFFSET_BITS+1),
-            Bits(3)  -> UFix(pf_len_int/3,OFFSET_BITS+1),
-            Bits(4)  -> UFix(pf_len_int/4,OFFSET_BITS+1),
-            Bits(5)  -> UFix(pf_len_int/5,OFFSET_BITS+1),
-            Bits(6)  -> UFix(pf_len_int/6,OFFSET_BITS+1),
-            Bits(7)  -> UFix(pf_len_int/7,OFFSET_BITS+1),
-            Bits(8)  -> UFix(pf_len_int/8,OFFSET_BITS+1),
-            Bits(9)  -> UFix(pf_len_int/9,OFFSET_BITS+1),
-            Bits(10) -> UFix(pf_len_int/10,OFFSET_BITS+1),
-            Bits(11) -> UFix(pf_len_int/11,OFFSET_BITS+1),
-            Bits(12) -> UFix(pf_len_int/12,OFFSET_BITS+1),
-            Bits(13) -> UFix(pf_len_int/13,OFFSET_BITS+1),
-            Bits(14) -> UFix(pf_len_int/14,OFFSET_BITS+1),
-            Bits(15) -> UFix(pf_len_int/15,OFFSET_BITS+1),
-            Bits(16) -> UFix(pf_len_int/16,OFFSET_BITS+1)
+                        UInt(0,OFFSET_BITS+1), Array(
+            Bits(1)  -> UInt(pf_len_int/1,OFFSET_BITS+1),
+            Bits(2)  -> UInt(pf_len_int/2,OFFSET_BITS+1),
+            Bits(3)  -> UInt(pf_len_int/3,OFFSET_BITS+1),
+            Bits(4)  -> UInt(pf_len_int/4,OFFSET_BITS+1),
+            Bits(5)  -> UInt(pf_len_int/5,OFFSET_BITS+1),
+            Bits(6)  -> UInt(pf_len_int/6,OFFSET_BITS+1),
+            Bits(7)  -> UInt(pf_len_int/7,OFFSET_BITS+1),
+            Bits(8)  -> UInt(pf_len_int/8,OFFSET_BITS+1),
+            Bits(9)  -> UInt(pf_len_int/9,OFFSET_BITS+1),
+            Bits(10) -> UInt(pf_len_int/10,OFFSET_BITS+1),
+            Bits(11) -> UInt(pf_len_int/11,OFFSET_BITS+1),
+            Bits(12) -> UInt(pf_len_int/12,OFFSET_BITS+1),
+            Bits(13) -> UInt(pf_len_int/13,OFFSET_BITS+1),
+            Bits(14) -> UInt(pf_len_int/14,OFFSET_BITS+1),
+            Bits(15) -> UInt(pf_len_int/15,OFFSET_BITS+1),
+            Bits(16) -> UInt(pf_len_int/16,OFFSET_BITS+1)
           ))
 
           for (i <- (pf_len_int/16)-1 to 1 by -1)
           {
-            val lo = UFix(pf_len_int/(i+1)+1)
-            val high = UFix(pf_len_int/i)
-            div = Mux(stride_lobits <= high && stride_lobits >= lo, UFix(i), div)
+            val lo = UInt(pf_len_int/(i+1)+1)
+            val high = UInt(pf_len_int/i)
+            div = Mux(stride_lobits <= high && stride_lobits >= lo, UInt(i), div)
           }
 
-          vec_pfed_count_reg := Mux(!io.vpfcntq.valid, Fix(0), io.vpfcntq.bits.toUFix).toUFix
-          vec_count_reg := Mux(stride_lobits === UFix(0), Fix(1), vlen_reg)
-          vec_per_pf_reg := Mux(stride_lobits === UFix(0), UFix(1), div)
+          vec_pfed_count_reg := Mux(!io.vpfcntq.valid, SInt(0), io.vpfcntq.bits.toUInt).toUInt
+          vec_count_reg := Mux(stride_lobits === UInt(0), SInt(1), vlen_reg)
+          vec_per_pf_reg := Mux(stride_lobits === UInt(0), UInt(1), div)
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)
           stride_remaining_reg := stride
         }
@@ -197,7 +197,7 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
     {
       // can leave regs intact, next prefetch command
       // will set them as needed
-      when (vec_count_reg <= Fix(0))
+      when (vec_count_reg <= SInt(0))
       {
         state := VRU_Idle
       }
@@ -209,7 +209,7 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
         }
         when (io.vpfvaq.ready)
         {
-          vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, Fix(1), Fix(0))
+          vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, SInt(1), SInt(0))
           stride_remaining_reg := Mux(stride_remaining_reg <= vec_pf_remainder_reg,
                                       stride_reg + stride_remaining_reg - vec_pf_remainder_reg,
                                       stride_remaining_reg - vec_pf_remainder_reg)
@@ -221,7 +221,7 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
     {
       // can leave regs intact, next prefetch command
       // will set them as needed
-      when (vec_count_reg === Fix(0))
+      when (vec_count_reg === SInt(0))
       {
         state := VRU_Idle
       }
@@ -234,7 +234,7 @@ class vuVRU(resetSignal: Bool = null) extends Component(resetSignal)
         when (io.vpfvaq.ready)
         {
           addr_reg := addr_reg + stride_reg
-          vec_count_reg := vec_count_reg - Fix(1)
+          vec_count_reg := vec_count_reg - SInt(1)
         }
       }
     }

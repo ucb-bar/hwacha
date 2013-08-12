@@ -6,12 +6,12 @@ import Constants._
 
 class XBarMux8IO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(INPUT, SZ_BRPORT) }
-  val rdata = Vec(8){ Bits(INPUT, SZ_DATA) }
-  val rbl   = Bits(OUTPUT, SZ_DATA)
+  val rblen = Vec.fill(8){UInt(INPUT, SZ_BRPORT)}
+  val rdata = Vec.fill(8){UInt(INPUT, SZ_DATA)}
+  val rbl   = UInt(OUTPUT, SZ_DATA)
 }
 
-class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Component
+class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Module
 {
   val io = new XBarMux8IO()
   io.rbl := Fill(SZ_DATA, io.rblen(0)(port)) & io.rdata(0) |
@@ -27,9 +27,9 @@ class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Component
 
 object vuVXU_Banked8_Lane_Xbar_Mux8
 {
-  def apply(rblen: Vec[Bits], port: Int, rdata: Vec[Bits]): Bits = 
+  def apply(rblen: Vec[UInt], port: Int, rdata: Vec[UInt]): UInt = 
     {
-      val mux8 = new vuVXU_Banked8_Lane_Xbar_Mux8(port)
+      val mux8 = Module(new vuVXU_Banked8_Lane_Xbar_Mux8(port))
       mux8.io.rblen <> rblen
       mux8.io.rdata <> rdata
       mux8.io.rbl
@@ -38,15 +38,15 @@ object vuVXU_Banked8_Lane_Xbar_Mux8
 
 class XbarIO extends Bundle 
 {
-  val rblen = Vec(8){ Bits(INPUT, SZ_BRPORT) }
-  val rdata = Vec(8){ Bits(INPUT, SZ_DATA) }
-  val ropl0 = Vec(8){ Bits(INPUT, SZ_DATA) }
-  val ropl1 = Vec(8){ Bits(INPUT, SZ_DATA) }
+  val rblen = Vec.fill(8){UInt(INPUT, SZ_BRPORT)}
+  val rdata = Vec.fill(8){UInt(INPUT, SZ_DATA)}
+  val ropl0 = Vec.fill(8){UInt(INPUT, SZ_DATA)}
+  val ropl1 = Vec.fill(8){UInt(INPUT, SZ_DATA)}
 
-  val rbl = Vec(8){ Bits(OUTPUT, SZ_DATA) }
+  val rbl = Vec.fill(8){UInt(OUTPUT, SZ_DATA)}
 }
 
-class vuVXU_Banked8_Lane_Xbar extends Component
+class vuVXU_Banked8_Lane_Xbar extends Module
 {
   val io = new XbarIO()
   io.rbl(0) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 0, io.ropl0)

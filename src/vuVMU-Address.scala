@@ -24,16 +24,16 @@ class io_vmu_address_tlb extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_AddressTLB extends Component
+class vuVMU_AddressTLB extends Module
 {
   val io = new io_vmu_address_tlb()
 
-  val sticky_stall = Reg(resetVal = Bool(false))
+  val sticky_stall = RegReset(Bool(false))
   val stall = io.stall || sticky_stall
 
   io.tlb.req.valid := !stall && io.vvaq.valid && io.vpaq.ready
-  io.tlb.req.bits.asid := UFix(0)
-  io.tlb.req.bits.vpn := io.vvaq.bits.vpn.toUFix
+  io.tlb.req.bits.asid := UInt(0)
+  io.tlb.req.bits.vpn := io.vvaq.bits.vpn.toUInt
   io.tlb.req.bits.passthrough := Bool(false)
   io.tlb.req.bits.instruction := Bool(false)
 
@@ -43,9 +43,9 @@ class vuVMU_AddressTLB extends Component
   val mcmd_pfr = is_mcmd_pfr(io.vvaq.bits.cmd)
   val mcmd_pfw = is_mcmd_pfw(io.vvaq.bits.cmd)
 
-  val ma_half = is_mtype_halfword(io.vvaq.bits.typ) && io.vvaq.bits.idx(0) != UFix(0)
-  val ma_word = is_mtype_word(io.vvaq.bits.typ) && io.vvaq.bits.idx(1,0) != UFix(0)
-  val ma_double = is_mtype_doubleword(io.vvaq.bits.typ) && io.vvaq.bits.idx(2,0) != UFix(0)
+  val ma_half = is_mtype_halfword(io.vvaq.bits.typ) && io.vvaq.bits.idx(0) != UInt(0)
+  val ma_word = is_mtype_word(io.vvaq.bits.typ) && io.vvaq.bits.idx(1,0) != UInt(0)
+  val ma_double = is_mtype_doubleword(io.vvaq.bits.typ) && io.vvaq.bits.idx(2,0) != UInt(0)
   val ma_addr = ma_half || ma_word || ma_double
   val ma_ld = ma_addr && (mcmd_load || mcmd_amo)
   val ma_st = ma_addr && (mcmd_store || mcmd_amo)
@@ -73,17 +73,17 @@ class vuVMU_AddressTLB extends Component
   io.irq.mem_xcpt_addr := Cat(io.vvaq.bits.vpn, io.vvaq.bits.idx)
 }
 
-class checkcnt extends Component
+class checkcnt extends Module
 {
   val io = new Bundle()
   {
     val input = new io_vpaq().flip
     val output = new io_vpaq()
-    val qcnt = UFix(OUTPUT, SZ_QCNT)
+    val qcnt = UInt(OUTPUT, SZ_QCNT)
     val watermark = Bool(INPUT)
   }
 
-  io.qcnt := io.input.bits.cnt.toUFix
+  io.qcnt := io.input.bits.cnt.toUInt
   io.output.valid := io.input.valid && (!io.input.bits.checkcnt || io.watermark)
   io.output.bits := io.input.bits
   io.input.ready := io.output.ready && (!io.input.bits.checkcnt || io.watermark)
@@ -91,9 +91,9 @@ class checkcnt extends Component
 
 object CheckCnt
 {
-  def apply(deq: FIFOIO[io_vpaq_bundle], qcnt: UFix, watermark: Bool) =
+  def apply(deq: DecoupledIO[io_vpaq_bundle], qcnt: UInt, watermark: Bool) =
   {
-    val cc = new checkcnt
+    val cc = Module(new checkcnt)
     cc.io.input <> deq
     qcnt := cc.io.qcnt
     cc.io.watermark := watermark
@@ -125,7 +125,7 @@ class io_vmu_address extends Bundle
   val vpaq_do_enq = Bool(OUTPUT)
   val vpaq_do_deq = Bool(OUTPUT)
   val vpaq_do_enq_vsdq = Bool(OUTPUT)
-  val vpaq_qcnt = UFix(OUTPUT, SZ_QCNT)
+  val vpaq_qcnt = UInt(OUTPUT, SZ_QCNT)
   val vvaq_watermark = Bool(INPUT)
   val vpaq_watermark = Bool(INPUT)
   val vsreq_watermark = Bool(INPUT)
@@ -139,15 +139,15 @@ class io_vmu_address extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_Address extends Component
+class vuVMU_Address extends Module
 {
   val io = new io_vmu_address()
 
   // VVAQ
-  val vvaq_arb = (new Arbiter(2)){ new io_vvaq_bundle() }
-  val vvaq = new Queue(ENTRIES_VVAQ)(new io_vvaq_bundle())
-  val vvaq_tlb = new vuVMU_AddressTLB()
-  val vpaq = new Queue(ENTRIES_VPAQ)(new io_vpaq_bundle())
+  val vvaq_arb = Module(new Arbiter(new io_vvaq_bundle, 2))
+  val vvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VVAQ))
+  val vvaq_tlb = Module(new vuVMU_AddressTLB)
+  val vpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPAQ))
 
   vvaq_tlb.io.irq <> io.irq
 
@@ -184,9 +184,9 @@ class vuVMU_Address extends Component
 
   if (HAVE_VRU)
   {
-    val vpfvaq = new Queue(ENTRIES_VPFVAQ)(new io_vvaq_bundle())
-    val vpfvaq_tlb = new vuVMU_AddressTLB()
-    val vpfpaq = new Queue(ENTRIES_VPFPAQ)(new io_vpaq_bundle())
+    val vpfvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VPFVAQ))
+    val vpfvaq_tlb = Module(new vuVMU_AddressTLB)
+    val vpfpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPFPAQ))
 
     vpfvaq.io.enq <> io.vvaq_pf
 
@@ -195,7 +195,7 @@ class vuVMU_Address extends Component
     vpfvaq_tlb.io.tlb <> io.vpftlb
     vpfvaq_tlb.io.stall := io.stall
 
-    val vpaq_arb = (new RRArbiter(2)){ new io_vpaq_bundle() }
+    val vpaq_arb = Module(new RRArbiter(new io_vpaq_bundle, 2))
 
     vpaq_arb.io.in(0) <> MaskReady(vpaq_check_cnt, io.vaq.ready)
     vpaq_arb.io.in(1) <> MaskReady(MaskStall(vpfpaq.io.deq, io.stall), io.vaq.ready)

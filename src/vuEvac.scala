@@ -45,18 +45,18 @@ class io_vu_evac extends Bundle
   val evac_to_vmu = new io_evac_to_vmu()
 }
 
-class vuEvac extends Component
+class vuEvac extends Module
 {
   val io = new io_vu_evac()
   
   val n = Bool(false)
   val y = Bool(true)
 
-  val SEL_CMDB = Bits(0,1)
-  val SEL_VCMDQ = Bits(1,1)
+  val SEL_CMDB = Bool(false)
+  val SEL_VCMDQ = Bool(true)
 
-  val cmd_sel_next = Bits(width=1)
-  val cmd_sel = Reg(cmd_sel_next, resetVal = SEL_CMDB)
+  val cmd_sel_next = Bool()
+  val cmd_sel = Reg(update = cmd_sel_next, reset = SEL_CMDB)
 
   cmd_sel_next := cmd_sel
 
@@ -136,15 +136,15 @@ class vuEvac extends Component
   val STATE_DONE = Bits(10,4)
 
   val state_next = Bits(width=4)
-  val addr_next = UFix(width=SZ_ADDR)
+  val addr_next = UInt(width=SZ_ADDR)
 
-  val state = Reg(state_next, resetVal = STATE_IDLE)
-  val addr_reg = Reg(addr_next, resetVal = UFix(0, SZ_ADDR))
+  val state = Reg(update = state_next, reset = STATE_IDLE)
+  val addr_reg = Reg(update = addr_next, reset = UInt(0, SZ_ADDR))
 
   state_next := state
   addr_next := addr_reg
 
-  val addr_plus_8 = addr_reg + UFix(8)
+  val addr_plus_8 = addr_reg + UInt(8)
 
   io.aiw_cmdb.ready := Bool(false)
   io.aiw_imm1b.ready := Bool(false)
@@ -160,7 +160,7 @@ class vuEvac extends Component
 
   io.vaq.valid := Bool(false)
   io.vaq.bits.checkcnt := Bool(false)
-  io.vaq.bits.cnt := UFix(0)
+  io.vaq.bits.cnt := UInt(0)
   io.vaq.bits.cmd := mcmd_XWR
   io.vaq.bits.typ := mtyp_D
   io.vaq.bits.typ_float := MTF_N
@@ -296,7 +296,7 @@ class vuEvac extends Component
           io.evac_to_aiw.update_numCnt.valid := Bool(true)
           state_next := STATE_CNTB
         }
-      } .elsewhen (io.aiw_numCntB.valid && io.aiw_numCntB.bits)
+      } .elsewhen (io.aiw_numCntB.valid && io.aiw_numCntB.bits.toBool)
       {
         state_next := STATE_CMDB
         when (!(io.aiw_numCntB.valid && io.aiw_numCntB_last))

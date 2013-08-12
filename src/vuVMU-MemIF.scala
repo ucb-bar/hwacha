@@ -7,10 +7,10 @@ import hardfloat._
 
 class io_vmu_memif extends Bundle
 {
-  val vaq = new FIFOIO()(new io_vpaq_bundle()).flip
-  val vsdq = new FIFOIO()(Bits(width = 65)).flip
-  val vldq = new PipeIO()(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
-  val vldq_rtag = new FIFOIO()(Bits(width = LG_ENTRIES_VLDQ)).flip
+  val vaq = Decoupled(new io_vpaq_bundle()).flip
+  val vsdq = Decoupled(Bits(width = 65)).flip
+  val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
+  val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ)).flip
 
   val mem_req = new io_dmem_req()
   val mem_resp = new io_dmem_resp().flip
@@ -18,7 +18,7 @@ class io_vmu_memif extends Bundle
   val pending_replayq = Bool(OUTPUT)
 }
 
-class vuVMU_MemIF extends Component
+class vuVMU_MemIF extends Module
 {
   val io = new io_vmu_memif()
 
@@ -33,18 +33,18 @@ class vuVMU_MemIF extends Component
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
   val replaying_cmb = Bool()
-  val replaying = Reg(replaying_cmb, resetVal = Bool(false))
+  val replaying = Reg(update = replaying_cmb, reset = Bool(false))
   replaying_cmb := replaying
 
-  val replayq1 = new Queue(1, flow = true)(new io_dmem_req_bundle)
-  val replayq2 = new Queue(1)(new io_dmem_req_bundle)
-  val req_arb = new Arbiter(2)(new io_dmem_req_bundle)
+  val replayq1 = Module(new Queue(new io_dmem_req_bundle, 1, flow = true))
+  val replayq2 = Module(new Queue(new io_dmem_req_bundle, 1))
+  val req_arb = Module(new Arbiter(new io_dmem_req_bundle, 2))
 
   req_arb.io.in(0) <> replayq1.io.deq
   req_arb.io.in(1).valid := !replaying_cmb && (ex_pf_val || ex_load_val || ex_store_val || ex_amo_val)
   req_arb.io.in(1).bits.cmd := io.vaq.bits.cmd
   req_arb.io.in(1).bits.typ := io.vaq.bits.typ
-  req_arb.io.in(1).bits.addr := io.vaq.bits.addr.toUFix
+  req_arb.io.in(1).bits.addr := io.vaq.bits.addr.toUInt
   req_arb.io.in(1).bits.data := io.vsdq.bits // delayed one cycle in cpu
   req_arb.io.in(1).bits.tag := Cat(io.vldq_rtag.bits, io.vaq.bits.typ_float) // delayed one cycle in cpu
 
@@ -69,11 +69,11 @@ class vuVMU_MemIF extends Component
     )
 
   val s2_nack = io.mem_resp.bits.nack
-  val s3_nack = Reg(s2_nack)
+  val s3_nack = RegUpdate(s2_nack)
 
   val s0_req_fire = io.mem_req.fire()
-  val s1_req_fire = Reg(s0_req_fire)
-  val s2_req_fire = Reg(s1_req_fire)
+  val s1_req_fire = RegUpdate(s0_req_fire)
+  val s2_req_fire = RegUpdate(s1_req_fire)
 
   io.mem_req.bits.kill := s2_nack
   io.mem_req.bits.phys := Bool(true)
@@ -109,7 +109,7 @@ class vuVMU_MemIF extends Component
   }
 
   // when replaying request got sunk into the d$
-  when (s2_req_fire && Reg(Reg(replaying_cmb)) && !s2_nack) {
+  when (s2_req_fire && RegUpdate(RegUpdate(replaying_cmb)) && !s2_nack) {
     // see if there's a stashed request in replayq2
     when (replayq2.io.deq.valid) {
       replayq1.io.enq.valid := Bool(true)
@@ -132,7 +132,7 @@ class vuVMU_MemIF extends Component
   // io.pending_replayq := s1_req_fire || replaying_cmb
 
   // load data conversion
-  val reg_mem_resp = Reg(io.mem_resp)
+  val reg_mem_resp = RegUpdate(io.mem_resp)
     
   val ldq_sp_bits = Bits(width=33)
   val ldq_dp_bits = Bits(width=65)
@@ -141,11 +141,11 @@ class vuVMU_MemIF extends Component
   val load_fp_d = load_fp && reg_mem_resp.bits.typ === mtyp_D 
   val load_fp_w = load_fp && reg_mem_resp.bits.typ === mtyp_W
 
-  val recode_sp = new float32ToRecodedFloat32()
+  val recode_sp = Module(new float32ToRecodedFloat32)
   recode_sp.io.in := reg_mem_resp.bits.data_subword(31,0)
   ldq_sp_bits := recode_sp.io.out
   
-  val recode_dp = new float64ToRecodedFloat64()
+  val recode_dp = Module(new float64ToRecodedFloat64)
   recode_dp.io.in := reg_mem_resp.bits.data_subword
   ldq_dp_bits := recode_dp.io.out
 
@@ -155,5 +155,5 @@ class vuVMU_MemIF extends Component
 	    (load_fp_d) -> ldq_dp_bits,
       (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits)
   ))
-  io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUFix >> UFix(1)
+  io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUInt >> UInt(1)
 }

@@ -6,8 +6,8 @@ import scala.math._
 
 class io_counter_vec(ADDR_SIZE: Int) extends Bundle
 {
-  val enq = new FIFOIO()( Bits(width=1) ).flip()
-  val deq = new FIFOIO()( Bits(width=1) )
+  val enq = Decoupled(Bits(width=1)).flip()
+  val deq = Decoupled(Bits(width=1))
 
   val update_from_issue = new io_update_num_cnt().flip()
   val update_from_seq = new io_update_num_cnt().flip()
@@ -18,22 +18,22 @@ class io_counter_vec(ADDR_SIZE: Int) extends Bundle
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class CounterVec(DEPTH: Int) extends Component
+class CounterVec(DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
   val io = new io_counter_vec(ADDR_SIZE)
 
-  val next_write_ptr = UFix(width = ADDR_SIZE)
-  val write_ptr = Reg(next_write_ptr, resetVal = UFix(0, ADDR_SIZE))
+  val next_write_ptr = UInt(width = ADDR_SIZE)
+  val write_ptr = Reg(update = next_write_ptr, reset = UInt(0, ADDR_SIZE))
 
-  val next_last_write_ptr = UFix(width = ADDR_SIZE)
-  val last_write_ptr = Reg(next_last_write_ptr, resetVal = UFix(0, ADDR_SIZE))
+  val next_last_write_ptr = UInt(width = ADDR_SIZE)
+  val last_write_ptr = Reg(update = next_last_write_ptr, reset = UInt(0, ADDR_SIZE))
 
-  val next_read_ptr = UFix(width = ADDR_SIZE)
-  val read_ptr = Reg(next_read_ptr, resetVal = UFix(0, ADDR_SIZE))
+  val next_read_ptr = UInt(width = ADDR_SIZE)
+  val read_ptr = Reg(update = next_read_ptr, reset = UInt(0, ADDR_SIZE))
 
   val next_full = Bool()
-  val full = Reg(next_full, resetVal = Bool(false))
+  val full = Reg(update = next_full, reset = Bool(false))
 
   next_write_ptr := write_ptr
   next_last_write_ptr := last_write_ptr
@@ -43,11 +43,11 @@ class CounterVec(DEPTH: Int) extends Component
   val do_enq = io.enq.valid && io.enq.ready
   val do_deq = io.deq.ready && io.deq.valid
 
-  when (do_deq) { next_read_ptr := read_ptr + UFix(1) }
+  when (do_deq) { next_read_ptr := read_ptr + UInt(1) }
 
   when (do_enq) 
   { 
-    next_write_ptr := write_ptr + UFix(1) 
+    next_write_ptr := write_ptr + UInt(1) 
     next_last_write_ptr := write_ptr
   }
 
@@ -69,19 +69,19 @@ class CounterVec(DEPTH: Int) extends Component
   io.enq.ready := !full
   io.deq.valid := !empty
 
-  val inc_vec = Vec(DEPTH){ Bool() }
-  val dec_vec = Vec(DEPTH){ Bool() }
-  val empty_vec = Vec(DEPTH){ Bool() }
+  val inc_vec = Vec.fill(DEPTH){Bool()}
+  val dec_vec = Vec.fill(DEPTH){Bool()}
+  val empty_vec = Vec.fill(DEPTH){Bool()}
 
-  val next_last = Vec(DEPTH){ Bool() }
-  val array_last = Vec(DEPTH){ Reg(){ Bool() } }
+  val next_last = Vec.fill(DEPTH){Bool()}
+  val array_last = Vec.fill(DEPTH){Reg(Bool())}
 
   array_last := next_last
   next_last := array_last
 
   for(i <- 0 until DEPTH)
   {
-    val counter = new qcnt(0, DEPTH)
+    val counter = Module(new qcnt(0, DEPTH))
     counter.io.inc := inc_vec(i)
     counter.io.dec := dec_vec(i)
     empty_vec(i) := counter.io.empty

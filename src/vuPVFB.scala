@@ -14,7 +14,7 @@ class pvfBundle extends Bundle
   val vlen = Bits(width=SZ_VLEN)
 }
 
-class ioPVFPipe extends PipeIO()( new pvfBundle() )
+class ioPVFPipe extends ValidIO(new pvfBundle)
 
 class ioPVFB extends Bundle
 {
@@ -36,7 +36,7 @@ class ioPVFBCtrl() extends Bundle
   val deq_rdy = Bool(INPUT)
 
   val wen = Bool(OUTPUT)
-  val waddr = UFix(OUTPUT, log2Up(DEPTH_PVFB))
+  val waddr = UInt(OUTPUT, log2Up(DEPTH_PVFB))
   val mask_wdata = Bits(OUTPUT, WIDTH_PVFB)
   val pc_wdata = Bits(OUTPUT, SZ_ADDR)
 
@@ -45,24 +45,24 @@ class ioPVFBCtrl() extends Bundle
   val next_pc = Bits(OUTPUT, SZ_ADDR)
 
   val ren = Bool(OUTPUT)
-  val raddr = UFix(OUTPUT, log2Up(DEPTH_PVFB))
+  val raddr = UInt(OUTPUT, log2Up(DEPTH_PVFB))
 
   val empty = Bool(OUTPUT)
 }
 
-class vuPVFBCtrl extends Component 
+class vuPVFBCtrl extends Module 
 {
   val io = new ioPVFBCtrl()
 
   val SIZE_ADDR = log2Up(DEPTH_PVFB)
 
-  val enq_ptr_next = UFix(width=SIZE_ADDR)
-  val deq_ptr_next = UFix(width=SIZE_ADDR)
+  val enq_ptr_next = UInt(width=SIZE_ADDR)
+  val deq_ptr_next = UInt(width=SIZE_ADDR)
   val full_next = Bool()
 
-  val enq_ptr = Reg(enq_ptr_next, resetVal = UFix(0, SIZE_ADDR))
-  val deq_ptr = Reg(deq_ptr_next, resetVal = UFix(0, SIZE_ADDR))
-  val full = Reg(full_next, resetVal = Bool(false))
+  val enq_ptr = Reg(update = enq_ptr_next, reset = UInt(0, SIZE_ADDR))
+  val deq_ptr = Reg(update = deq_ptr_next, reset = UInt(0, SIZE_ADDR))
+  val full = Reg(update = full_next, reset = Bool(false))
 
   enq_ptr_next := enq_ptr
   deq_ptr_next := deq_ptr
@@ -79,8 +79,8 @@ class vuPVFBCtrl extends Component
   val do_enq = io.enq_val && active_taken && active_not_taken
   val do_deq = io.deq_rdy && !empty
 
-  when (do_deq) { deq_ptr_next := deq_ptr + UFix(1) }
-  when (do_enq) { enq_ptr_next := enq_ptr + UFix(1) }
+  when (do_deq) { deq_ptr_next := deq_ptr + UInt(1) }
+  when (do_enq) { enq_ptr_next := enq_ptr + UInt(1) }
 
   when (do_enq && ! do_deq && (enq_ptr_next === deq_ptr))
   {
@@ -110,14 +110,14 @@ class vuPVFBCtrl extends Component
   io.empty := empty
 }
 
-class vuPVFB extends Component 
+class vuPVFB extends Module 
 {
   val io = new ioPVFB
 
   val pvfb_ctrl = new vuPVFBCtrl()
 
-  val reg_taken_pc = Reg(resetVal = Bits(0, SZ_ADDR))
-  val reg_not_taken_pc = Reg(resetVal = Bits(0, SZ_ADDR))
+  val reg_taken_pc = RegReset(Bits(0, SZ_ADDR))
+  val reg_not_taken_pc = RegReset(Bits(0, SZ_ADDR))
   when (io.vtToPVFB.pc.valid) 
   { 
     reg_taken_pc := io.vtToPVFB.pc.bits.taken
@@ -133,17 +133,17 @@ class vuPVFB extends Component
 
   pvfb_ctrl.io.deq_rdy := io.vtToPVFB.stop
 
-  val maskRam = Mem(DEPTH_PVFB) { pvfb_ctrl.io.mask_wdata.clone }
-  val maskRamOut = Reg() { pvfb_ctrl.io.mask_wdata.clone }
+  val maskRam = Mem(pvfb_ctrl.io.mask_wdata.clone, DEPTH_PVFB)
+  val maskRamOut = Reg(pvfb_ctrl.io.mask_wdata.clone)
   when (pvfb_ctrl.io.wen) { maskRam(pvfb_ctrl.io.waddr) := pvfb_ctrl.io.mask_wdata }
   when (pvfb_ctrl.io.ren) { maskRamOut := maskRam(pvfb_ctrl.io.raddr) }
 
-  val pcRam = Mem(DEPTH_PVFB) { pvfb_ctrl.io.pc_wdata.clone }
-  val pcRamOut = Reg() { pvfb_ctrl.io.pc_wdata.clone }
+  val pcRam = Mem(pvfb_ctrl.io.pc_wdata.clone, DEPTH_PVFB)
+  val pcRamOut = Reg(pvfb_ctrl.io.pc_wdata.clone)
   when (pvfb_ctrl.io.wen) { pcRam(pvfb_ctrl.io.waddr) := pvfb_ctrl.io.pc_wdata }
   when (pvfb_ctrl.io.ren) { pcRamOut := pcRam(pvfb_ctrl.io.raddr) }
 
-  val reg_ren = Reg(pvfb_ctrl.io.ren)
+  val reg_ren = RegUpdate(pvfb_ctrl.io.ren)
 
   io.pvf.valid := pvfb_ctrl.io.next_valid || reg_ren
   io.pvf.bits.mask := Mux(reg_ren, maskRamOut, pvfb_ctrl.io.next_mask)

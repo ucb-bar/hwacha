@@ -21,12 +21,12 @@ class io_vmu_store_data extends Bundle
   val evac_to_vmu = new io_evac_to_vmu().flip
 }
 
-class vuVMU_StoreData extends Component
+class vuVMU_StoreData extends Module
 {
   val io = new io_vmu_store_data()
 
-  val vsdq_arb = (new Arbiter(2)){ Bits(width = SZ_DATA) }
-  val vsdq = new Queue(ENTRIES_VSDQ)(Bits(width = 65))
+  val vsdq_arb = Module(new Arbiter(Bits(width = SZ_DATA), 2))
+  val vsdq = Module(new Queue(Bits(width = 65), ENTRIES_VSDQ))
 
   vsdq_arb.io.in(0) <> io.vsdq_lane
   vsdq_arb.io.in(1) <> io.vsdq_evac

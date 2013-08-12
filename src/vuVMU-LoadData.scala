@@ -8,20 +8,20 @@ class io_vmu_load_data extends Bundle
 {
   val vldq_lane = new io_vldq()
 
-  val vldq = new PipeIO()(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ)).flip
-  val vldq_rtag = new FIFOIO()(Bits(width = LG_ENTRIES_VLDQ))
+  val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ)).flip
+  val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ))
 
-  val qcnt = UFix(INPUT, SZ_QCNT)
+  val qcnt = UInt(INPUT, SZ_QCNT)
   val vldq_rtag_do_enq = Bool(OUTPUT)
   val vldq_rtag_do_deq = Bool(OUTPUT)
 }
 
-class vuVMU_LoadData extends Component
+class vuVMU_LoadData extends Module
 {
   val io = new io_vmu_load_data()
 
   // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = new VLDQ(65, ENTRIES_VLDQ, 9)
+  val vldq = Module(new VLDQ(65, ENTRIES_VLDQ, 9))
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid

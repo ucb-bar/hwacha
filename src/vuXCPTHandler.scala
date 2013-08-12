@@ -44,7 +44,7 @@ class io_xcpt_handler_to_vmu extends Bundle
 class io_xcpt_handler_to_evac extends Bundle
 {
   val start = Bool(OUTPUT)
-  val addr = UFix(OUTPUT, SZ_ADDR)
+  val addr = UInt(OUTPUT, SZ_ADDR)
 }
 
 class io_xcpt_handler extends Bundle {
@@ -60,7 +60,7 @@ class io_xcpt_handler extends Bundle {
   val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
 }
 
-class vuXCPTHandler extends Component 
+class vuXCPTHandler extends Module 
 {
   val io = new io_xcpt_handler()
 
@@ -68,9 +68,9 @@ class vuXCPTHandler extends Component
   val next_hold_seq = Bool()
   val next_hold_tlb = Bool()
 
-  val hold_issue = Reg(next_hold_issue, resetVal = Bool(false))
-  val hold_seq = Reg(next_hold_seq, resetVal = Bool(false))
-  val hold_tlb = Reg(next_hold_tlb, resetVal = Bool(false))
+  val hold_issue = Reg(update = next_hold_issue, reset = Bool(false))
+  val hold_seq = Reg(update = next_hold_seq, reset = Bool(false))
+  val hold_tlb = Reg(update = next_hold_tlb, reset = Bool(false))
 
   next_hold_issue := hold_issue
   next_hold_seq := hold_seq
@@ -89,16 +89,16 @@ class vuXCPTHandler extends Component
   val HOLD = Bits(5, 3)
 
   val next_state = Bits(width = 4)
-  val state = Reg(next_state, resetVal = NORMAL)
+  val state = Reg(update = next_state, reset = NORMAL)
 
-  val next_addr = UFix(width = SZ_ADDR)
-  val addr = Reg(next_addr, resetVal = UFix(0, SZ_ADDR) )
+  val next_addr = UInt(width = SZ_ADDR)
+  val addr = Reg(update = next_addr, reset = UInt(0, SZ_ADDR) )
 
   val next_evac = Bool()
-  val evac = Reg(next_evac, resetVal = Bool(false))
+  val evac = Reg(update = next_evac, reset = Bool(false))
 
   val next_kill = Bool()
-  val kill = Reg(next_kill, resetVal = Bool(false))
+  val kill = Reg(update = next_kill, reset = Bool(false))
 
   next_state := state
   next_addr := addr

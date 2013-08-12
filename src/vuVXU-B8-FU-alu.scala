@@ -5,51 +5,51 @@ import Node._
 import Constants._
 import hardfloat._
 
-class Shifter extends Component
+class Shifter extends Module
 {
   val io = new Bundle()
   {
     val fn    = Bits(INPUT, SZ_VIU_FN)
-    val shamt = UFix(INPUT, 6)
+    val shamt = UInt(INPUT, 6)
     val in    = Bits(INPUT, 64)
     val out   = Bits(OUTPUT, 64)
   }
 
   val left = MuxLookup(
-    io.fn(RG_VIU_FN), Bits(0, 1), Array(
-      viu_SLL -> Bits(1, 1),
-      viu_SRL -> Bits(0, 1),
-      viu_SRA -> Bits(0, 1)
+    io.fn(RG_VIU_FN), Bool(false), Array(
+      viu_SLL -> Bool(true),
+      viu_SRL -> Bool(false),
+      viu_SRA -> Bool(false)
     ))
 
   val arith = MuxLookup(
-    io.fn(RG_VIU_FN), Bits(0, 1), Array(
-      viu_SLL -> Bits(0, 1),
-      viu_SRL -> Bits(0, 1),
-      viu_SRA -> Bits(1, 1)
+    io.fn(RG_VIU_FN), Bool(false), Array(
+      viu_SLL -> Bool(false),
+      viu_SRL -> Bool(false),
+      viu_SRA -> Bool(true)
     ))
 
   val trunc = MuxCase(
-    Bits(0, 1), Array(
-      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1),
-      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
-      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW64) -> Bits(0,1),
-      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW32) -> Bits(1,1)
+    Bool(false), Array(
+      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW32) -> Bool(true),
+      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
+      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
+      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW32) -> Bool(true)
     ))
 
-  val shift_in_hi_32 = Mux(io.fn(RG_VIU_FN) === viu_SRA, Fill(32, io.in(31)), UFix(0,32))
+  val shift_in_hi_32 = Mux(io.fn(RG_VIU_FN) === viu_SRA, Fill(32, io.in(31)), UInt(0,32))
   val shift_in_hi = Mux(io.fn(RG_VIU_DW) === DW64, io.in(63,32), shift_in_hi_32)
   val shift_in_r = Cat(shift_in_hi, io.in(31,0))
   val shift_in = Mux(left, Reverse(shift_in_r), shift_in_r)
 
-  val shift_out = (Cat(arith & shift_in(63), shift_in).toFix >> io.shamt)(63,0)
+  val shift_out = (Cat(arith & shift_in(63), shift_in).toSInt >> io.shamt)(63,0)
 
   io.out := Mux(
     left, Reverse(shift_out),
     shift_out)
 }
 
-class vuVXU_Banked8_FU_alu extends Component
+class vuVXU_Banked8_FU_alu extends Module
 {
   val io = new Bundle()
   {
@@ -68,13 +68,13 @@ class vuVXU_Banked8_FU_alu extends Component
   def viu_FP(fp: Bits) = reg_fn(RG_VIU_FP) === fp
   def viu_DW(dw: Bits) = reg_fn(RG_VIU_DW) === dw
 
-  val reg_fn     = Reg(io.fn)
-  val reg_utidx  = Reg(io.utidx)
-  val reg_in0    = Reg(io.in0)
-  val reg_in1    = Reg(io.in1)
-  val reg_mask   = Reg(){Bits(width = 1)}
-  val reg_result = Reg(){Bits(width = 65)}
-  val reg_branch_result = Reg(){ Bool() }
+  val reg_fn     = RegUpdate(io.fn)
+  val reg_utidx  = RegUpdate(io.utidx)
+  val reg_in0    = RegUpdate(io.in0)
+  val reg_in1    = RegUpdate(io.in1)
+  val reg_mask   = Reg(Bits(width = 1))
+  val reg_result = Reg(Bits(width = 65))
+  val reg_branch_result = Reg(Bool())
 
   val sub = MuxCase(
     Bits(0, 1), Array(
@@ -83,33 +83,33 @@ class vuVXU_Banked8_FU_alu extends Component
     ))
 
   val adder_out =
-    (Cat(reg_in0(63, 0), sub).toUFix +
-     Cat(reg_in1(63, 0) ^ Fill(64, sub), sub).toUFix)(64, 1)
+    (Cat(reg_in0(63, 0), sub).toUInt +
+     Cat(reg_in1(63, 0) ^ Fill(64, sub), sub).toUInt)(64, 1)
 
   // SLL, SRL, SRA
   val dw = reg_fn(RG_VIU_DW)
   val sra = (reg_fn(RG_VIU_FN) === viu_SRA)
-  val shamt = Cat(reg_in1(5) & (dw === DW64), reg_in1(4,0)).toUFix
+  val shamt = Cat(reg_in1(5) & (dw === DW64), reg_in1(4,0)).toUInt
   val shright = sra || (reg_fn(RG_VIU_FN) === viu_SRL)
-  val shin_hi_32 = Mux(sra, Fill(32, reg_in0(31)), UFix(0,32))
+  val shin_hi_32 = Mux(sra, Fill(32, reg_in0(31)), UInt(0,32))
   val shin_hi = Mux(dw === DW64, reg_in0(63,32), shin_hi_32)
   val shin_r = Cat(shin_hi, reg_in0(31,0))
   val shin = Mux(shright, shin_r, Reverse(shin_r))
-  val shout_r = (Cat(sra & shin_r(63), shin).toFix >> shamt)(63,0)
+  val shout_r = (Cat(sra & shin_r(63), shin).toSInt >> shamt)(63,0)
   val shift_out = Mux(reg_fn(RG_VIU_FN) === viu_SLL, Reverse(shout_r), shout_r)
 
 
-  val ltu = (reg_in0.toUFix < reg_in1.toUFix)
+  val ltu = (reg_in0.toUInt < reg_in1.toUInt)
   val lt = (reg_in0(63) === reg_in1(63)) && ltu || reg_in0(63) && ~reg_in1(63)
   val eq = reg_in0 === reg_in1
 
-  val comp_sp = new recodedFloat32Compare(24,8)
+  val comp_sp = Module(new recodedFloat32Compare(24,8))
   comp_sp.io.a := reg_in0(32,0)
   comp_sp.io.b := reg_in1(32,0)
   val less_sp = comp_sp.io.a_lt_b
   val equal_sp = comp_sp.io.a_eq_b
 
-  val comp_dp = new recodedFloat64Compare(53,11)
+  val comp_dp = Module(new recodedFloat64Compare(53,11))
   comp_dp.io.a := reg_in0
   comp_dp.io.b := reg_in1
   val less_dp = comp_dp.io.a_lt_b

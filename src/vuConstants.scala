@@ -67,7 +67,7 @@ object Constants
   val SZ_BWPORT = 3
   
   val VACKCNT = 32
-  val VACKCNT_FX = UFix(VACKCNT)
+  val VACKCNT_FX = UInt(VACKCNT)
   val SZ_VACKCNT = log2Up(VACKCNT)
 
   val AIW_CMD_DEPTH = 8
@@ -120,9 +120,9 @@ object Constants
   val RF = Bits("b11", 2)
 
   val ENUM_I = 4
-  val imm_0 :: imm_I :: imm_B :: imm_L :: Nil = Enum(ENUM_I){UFix()}
+  val imm_0 :: imm_I :: imm_B :: imm_L :: Nil = Enum(ENUM_I){UInt()}
   val SZ_I = imm_0.getWidth
-  val imm_X = UFix(0, SZ_I)
+  val imm_X = UInt(0, SZ_I)
 
   val DW__ = Bits("b0", 1)
   val DW32 = Bits("b0", 1)
@@ -133,7 +133,7 @@ object Constants
   val FPD = Bits("b1", 1)
 
   val ENUM_VIU = 28
-  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FP_BRANCH = Enum(ENUM_VIU){Bits()}
+  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FP_BRANCH = Enum(ENUM_VIU){UInt()}
   val viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: viu_BRANCH = viu_FP_BRANCH
   val viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = viu_BRANCH
   val SZ_VIU_OP = viu_ADD.getWidth
@@ -144,11 +144,11 @@ object Constants
   val SZ_VIU_T0 = 2
   val SZ_VIU_T = SZ_VIU_T1 + SZ_VIU_T0
 
-  def isVIUBranch(viu: Bits) = viu >= viu_BNE && viu <= viu_BGEU
+  def isVIUBranch(viu: UInt) = viu >= viu_BNE && viu <= viu_BGEU
 
   // in the decode table
   val ENUM_VAU0 = 4
-  val vau0_M :: vau0_MH :: vau0_MHSU :: vau0_MHU :: Nil = Enum(ENUM_VAU0) { Bits() }
+  val vau0_M :: vau0_MH :: vau0_MHSU :: vau0_MHU :: Nil = Enum(ENUM_VAU0) { UInt() }
   val SZ_VAU0 = vau0_M.getWidth
   val vau0_X = Bits(0, SZ_VAU0)
 
@@ -163,22 +163,22 @@ object Constants
   val VAU0_64HU  = Cat(DW64,vau0_MHU)
 
   // Can't use enums for VAU1 because decode depends on the top bit
-  val VAU1_X     = UFix(0, 3)
-  val VAU1_ADD   = UFix(0, 3)
-  val VAU1_SUB   = UFix(1, 3)
-  val VAU1_MUL   = UFix(2, 3)
-  val VAU1_MADD  = UFix(4, 3)
-  val VAU1_MSUB  = UFix(5, 3)
-  val VAU1_NMSUB = UFix(6, 3)
-  val VAU1_NMADD = UFix(7, 3)
+  val VAU1_X     = UInt(0, 3)
+  val VAU1_ADD   = UInt(0, 3)
+  val VAU1_SUB   = UInt(1, 3)
+  val VAU1_MUL   = UInt(2, 3)
+  val VAU1_MADD  = UInt(4, 3)
+  val VAU1_MSUB  = UInt(5, 3)
+  val VAU1_NMSUB = UInt(6, 3)
+  val VAU1_NMADD = UInt(7, 3)
 
   // val ENUM_VAU1 = 7
-  // val vau1_ADD :: vau1_SUB :: vau1_MUL :: vau1_MADD :: vau1_MSUB :: vau1_NMSUB :: vau1_NMADD :: Nil = Enum(ENUM_VAU1){ UFix() }
+  // val vau1_ADD :: vau1_SUB :: vau1_MUL :: vau1_MADD :: vau1_MSUB :: vau1_NMSUB :: vau1_NMADD :: Nil = Enum(ENUM_VAU1){ UInt() }
   // val SZ_VAU1 = vau1_ADD.getWidth
   // val vau1_X = Bits(0, SZ_VAU1)
 
   val ENUM_VAU2 = 12
-  val vau2_CLTF :: vau2_CLUTF :: vau2_CWTF :: vau2_CWUTF :: vau2_MXTF :: vau2_CFTL :: vau2_CFTLU :: vau2_CFTW :: vau2_CFTWU :: vau2_MFTX :: vau2_CDTS :: vau2_CSTD :: Nil = Enum(ENUM_VAU2){ Bits() }
+  val vau2_CLTF :: vau2_CLUTF :: vau2_CWTF :: vau2_CWUTF :: vau2_MXTF :: vau2_CFTL :: vau2_CFTLU :: vau2_CFTW :: vau2_CFTWU :: vau2_MFTX :: vau2_CDTS :: vau2_CSTD :: Nil = Enum(ENUM_VAU2){ UInt() }
   val SZ_VAU2 = vau2_CLTF.getWidth
   val vau2_X = Bits(0, SZ_VAU2)
 
@@ -214,22 +214,22 @@ object Constants
   val ASID_BITS = 7
   val OFFSET_BITS = 6 // log2(cache line size in bytes)
 
-  val MTF_X = Bits(0, 1)
-  val MTF_N = Bits(0, 1)
-  val MTF_Y = Bits(1, 1)
+  val MTF_X = Bool(false)
+  val MTF_N = Bool(false)
+  val MTF_Y = Bool(true)
 
   val ENUM_MTYPS = 7
-  val mtyp_B :: mtyp_H :: mtyp_W :: mtyp_D :: mtyp_BU :: mtyp_HU :: mtyp_WU :: Nil = Enum(ENUM_MTYPS) { Bits() }
+  val mtyp_B :: mtyp_H :: mtyp_W :: mtyp_D :: mtyp_BU :: mtyp_HU :: mtyp_WU :: Nil = Enum(ENUM_MTYPS) { UInt() }
   val SZ_MTYPS = mtyp_B.getWidth
   val mtyp_X = Bits(0, SZ_MTYPS)
 
-  def is_mtype_byte(typ: Bits) = (typ === mtyp_B || typ === mtyp_BU)
-  def is_mtype_halfword(typ: Bits) = (typ === mtyp_H || typ === mtyp_HU)
-  def is_mtype_word(typ: Bits) = (typ === mtyp_W || typ === mtyp_WU)
-  def is_mtype_doubleword(typ: Bits) = (typ === mtyp_D)
+  def is_mtype_byte(typ: UInt) = (typ === mtyp_B || typ === mtyp_BU)
+  def is_mtype_halfword(typ: UInt) = (typ === mtyp_H || typ === mtyp_HU)
+  def is_mtype_word(typ: UInt) = (typ === mtyp_W || typ === mtyp_WU)
+  def is_mtype_doubleword(typ: UInt) = (typ === mtyp_D)
 
   val ENUM_MCMDS = 16
-  val mcmd_XRD :: mcmd_XWR :: mcmd_PFR :: mcmd_PFW :: mcmd_FLA :: mcmd_FENCE :: mcmd_INV :: mcmd_CLN ::  mcmd_XA_ADD :: mcmd_XA_SWAP :: mcmd_XA_AND :: mcmd_XA_OR :: mcmd_XA_MIN :: mcmd_XA_MAX :: mcmd_XA_MINU :: mcmd_XA_MAXU :: Nil = Enum(ENUM_MCMDS){ Bits() }
+  val mcmd_XRD :: mcmd_XWR :: mcmd_PFR :: mcmd_PFW :: mcmd_FLA :: mcmd_FENCE :: mcmd_INV :: mcmd_CLN ::  mcmd_XA_ADD :: mcmd_XA_SWAP :: mcmd_XA_AND :: mcmd_XA_OR :: mcmd_XA_MIN :: mcmd_XA_MAX :: mcmd_XA_MINU :: mcmd_XA_MAXU :: Nil = Enum(ENUM_MCMDS){ UInt() }
   // First few:
   // int load - XRD
   // int store - XWR
@@ -242,12 +242,12 @@ object Constants
   val SZ_MCMDS = mcmd_XRD.getWidth
   val mcmd_X = Bits(0, SZ_MCMDS)
 
-  def is_mcmd_load(cmd: Bits) = (cmd === mcmd_XRD)
-  def is_mcmd_store(cmd: Bits) = (cmd === mcmd_XWR)
-  def is_mcmd_amo(cmd: Bits) = (mcmd_XA_ADD <= cmd && cmd <= mcmd_XA_MAXU)
-  def is_mcmd_pfr(cmd: Bits) = (cmd === mcmd_PFR)
-  def is_mcmd_pfw(cmd: Bits) = (cmd === mcmd_PFW)
-  def is_mcmd_pf(cmd: Bits) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
+  def is_mcmd_load(cmd: UInt) = (cmd === mcmd_XRD)
+  def is_mcmd_store(cmd: UInt) = (cmd === mcmd_XWR)
+  def is_mcmd_amo(cmd: UInt) = (mcmd_XA_ADD <= cmd && cmd <= mcmd_XA_MAXU)
+  def is_mcmd_pfr(cmd: UInt) = (cmd === mcmd_PFR)
+  def is_mcmd_pfw(cmd: UInt) = (cmd === mcmd_PFW)
+  def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
   val HAVE_FMA = false
 

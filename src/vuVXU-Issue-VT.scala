@@ -12,7 +12,7 @@ class PCBundle extends Bundle
   val not_taken = Bits(width=SZ_ADDR)
 }
 
-class ioPCPipe extends PipeIO()( new PCBundle() )
+class ioPCPipe extends ValidIO(new PCBundle() )
 
 class ioIssueVTToPVFB extends Bundle
 {
@@ -29,12 +29,12 @@ class ReplayBundle extends Bundle
 
 class ioIssueVTToPC extends Bundle
 {
-  val replay_pre_if = new PipeIO()( new ReplayBundle )
-  val replay_if = new PipeIO()( new ReplayBundle )
-  val replay_jump = new PipeIO()( new ReplayBundle )
-  val replay_branch = new PipeIO()( new ReplayBundle )
-  val replay_stop = new PipeIO()( new ReplayBundle )
-  val replay_stalld = new PipeIO()( new ReplayBundle )
+  val replay_pre_if = Valid(new ReplayBundle)
+  val replay_if = Valid(new ReplayBundle)
+  val replay_jump = Valid(new ReplayBundle)
+  val replay_branch = Valid(new ReplayBundle)
+  val replay_stop = Valid(new ReplayBundle)
+  val replay_stalld = Valid(new ReplayBundle)
 }
 
 class io_vf extends Bundle
@@ -42,7 +42,7 @@ class io_vf extends Bundle
   val active = Bool(OUTPUT)
   val fire = Bool(OUTPUT)
   val stop = Bool(INPUT)
-  val pc = UFix(OUTPUT, SZ_ADDR)
+  val pc = UInt(OUTPUT, SZ_ADDR)
   val nxregs = Bits(OUTPUT, SZ_REGCNT)
   val nfregs = Bits(OUTPUT, SZ_REGCNT)
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
@@ -87,11 +87,11 @@ class io_vxu_issue_vt extends Bundle
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
-class vuVXU_Issue_VT extends Component
+class vuVXU_Issue_VT extends Module
 {
   val io = new io_vxu_issue_vt()
 
-  val stall_sticky = Reg(resetVal = Bool(false))
+  val stall_sticky = RegReset(Bool(false))
   val mask_stall = Bool()
 
   val stall_issue = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
@@ -103,8 +103,8 @@ class vuVXU_Issue_VT extends Component
   io.imem_req.bits := io.vf.pc
   io.imem_resp.ready := io.vf.active && !stall_frontend
 
-  val imm1_rtag = Reg(resetVal = Bits(0,SZ_AIW_IMM1))
-  val numCnt_rtag = Reg(resetVal = Bits(0,SZ_AIW_CMD))
+  val imm1_rtag = RegReset(Bits(0,SZ_AIW_IMM1))
+  val numCnt_rtag = RegReset(Bits(0,SZ_AIW_CMD))
 
   when (io.vf.fire) 
   { 
@@ -115,7 +115,7 @@ class vuVXU_Issue_VT extends Component
   io.decoded.aiw.imm1_rtag := imm1_rtag
   io.decoded.aiw.numCnt_rtag := numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
-  io.decoded.aiw.pc_next := io.imem_resp.bits.pc + UFix(4, SZ_ADDR)
+  io.decoded.aiw.pc_next := io.imem_resp.bits.pc + UInt(4, SZ_ADDR)
   io.decoded.aiw.update_imm1 := Bool(true)
 
   val n = Bits(0,1)
@@ -282,7 +282,7 @@ class vuVXU_Issue_VT extends Component
   val rtype = cs0.slice(0, 4)
   val itype::vd_valid::decode_stop::decode_jump::mem_type_float::mem_type::mem_cmd::Nil = cs0.slice(4, cs0.length)
 
-  def decode_rtype(x: Bits): Bits = x(1)
+  def decode_rtype(x: Bits): Bool = x(1).toBool
   def active_rtype(x: Bits): Bool = x(0).toBool
   val rtype_vs :: rtype_vt :: rtype_vr :: rtype_vd :: Nil = rtype.map(x => decode_rtype(x))
   val vs_active :: vt_active :: vr_active :: vd_active :: Nil = rtype.map(x => active_rtype(x))
@@ -295,7 +295,7 @@ class vuVXU_Issue_VT extends Component
   val unmasked_valid_utld = io.imem_resp.valid && valid(1)
   val unmasked_valid_utst = io.imem_resp.valid && valid(0)
 
-  io.vf.stop := io.vf.active && io.imem_resp.valid && decode_stop
+  io.vf.stop := io.vf.active && io.imem_resp.valid && decode_stop.toBool
 
   val vau1_rm = Bits(width = 3)
   val vau2_rm = Bits(width = 3)
@@ -323,7 +323,7 @@ class vuVXU_Issue_VT extends Component
     ))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
-  val regid_base = (cnt >> UFix(3)) * io.vf.stride
+  val regid_base = (cnt >> UInt(3)) * io.vf.stride
 
   io.vxu_cntq.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.aiw_cntb.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
@@ -379,12 +379,12 @@ class vuVXU_Issue_VT extends Component
   val vr = Cat(rtype_vr,io.imem_resp.bits.data(16,12))
   val vd = Cat(rtype_vd,io.imem_resp.bits.data(31,27))
 
-  val vs_m1 = Cat(Bits(0,1),vs(4,0)) - UFix(1,1)
-  val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UFix(1,1)
-  val vr_m1 = Cat(Bits(0,1),vr(4,0)) - UFix(1,1)
-  val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
+  val vs_m1 = Cat(Bits(0,1),vs(4,0)) - UInt(1,1)
+  val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
+  val vr_m1 = Cat(Bits(0,1),vr(4,0)) - UInt(1,1)
+  val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)
 
-  mask_stall := decode_stop
+  mask_stall := decode_stop.toBool
 
   io.decoded.vlen := io.vf.vlen - cnt
   io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
@@ -399,14 +399,14 @@ class vuVXU_Issue_VT extends Component
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
-  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid || mask_stall
+  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid.toBool || mask_stall
   io.decoded.vs_active := vs_active
   io.decoded.vt_active := vt_active
   io.decoded.vr_active := vr_active
   io.decoded.vd_active := vd_active
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
-  io.decoded.mem.typ_float := mem_type_float
+  io.decoded.mem.typ_float := mem_type_float.toBool
   io.decoded.imm := imm
   io.decoded.cnt_valid := io.vxu_cntq.valid
   io.decoded.cnt := cnt

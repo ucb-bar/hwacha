@@ -19,35 +19,24 @@ object Match
   }
 }
 
-class Mux1H [T <: Data](n: Int)(gen: => T) extends Component
-{
-  val io = new Bundle {
-    val sel = Vec(n) { Bool(dir = INPUT) }
-    val in  = Vec(n) { gen }.asInput
-    val out = gen.asOutput
-  }
+class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Module {
+  val io = new ArbiterIO(data, n)
 
-  io.out := Mux1H(io.sel, io.in)
-}
-
-class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Component {
-  val io = new ioArbiter(n)(data)
-
-  val last_grant = Reg(resetVal = Bits(0, log2Up(n)))
-  val g = ArbiterCtrl((0 until n).map(i => io.in(i).valid && UFix(i) >= last_grant) ++ io.in.map(_.valid))
-  val grant = (0 until n).map(i => g(i) && UFix(i) >= last_grant || g(i+n))
+  val last_grant = RegReset(Bits(0, log2Up(n)))
+  val g = ArbiterCtrl((0 until n).map(i => io.in(i).valid && UInt(i) >= last_grant) ++ io.in.map(_.valid))
+  val grant = (0 until n).map(i => g(i) && UInt(i) >= last_grant || g(i+n))
   (0 until n).map(i => io.in(i).ready := grant(i) && io.out.ready)
 
   var choose = Bits(n-1)
   for (i <- n-2 to 0 by -1)
     choose = Mux(io.in(i).valid, Bits(i), choose)
   for (i <- n-1 to 0 by -1)
-    choose = Mux(io.in(i).valid && UFix(i) >= last_grant, Bits(i), choose)
-  when (Reg(io.out.valid) && !io.out.valid && io.out.ready) {
+    choose = Mux(io.in(i).valid && UInt(i) >= last_grant, Bits(i), choose)
+  when (RegUpdate(io.out.valid) && !io.out.valid && io.out.ready) {
     last_grant := choose
   }
 
-  val dvec = Vec(n) { data }
+  val dvec = Vec.fill(n){data}
   (0 until n).map(i => dvec(i) := io.in(i).bits )
 
   io.out.valid := foldR(io.in.map(_.valid))(_||_)
@@ -55,12 +44,12 @@ class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Component {
   io.chosen := choose
 }
 
-class MaskStall[T <: Data](data: => T) extends Component
+class MaskStall[T <: Data](data: => T) extends Module
 {
   val io = new Bundle()
   {
-    val input = new FIFOIO()(data).flip
-    val output = new FIFOIO()(data)
+    val input = Decoupled(data).flip
+    val output = Decoupled(data)
     val stall = Bool(INPUT)
   }
 
@@ -71,21 +60,21 @@ class MaskStall[T <: Data](data: => T) extends Component
 
 object MaskStall
 {
-  def apply[T <: Data](deq: FIFOIO[T], stall: Bool) =
+  def apply[T <: Data](deq: DecoupledIO[T], stall: Bool) =
   {
-    val ms = new MaskStall(deq.bits.clone)
+    val ms = Module(new MaskStall(deq.bits.clone))
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output
   }
 }
 
-class MaskReady[T <: Data](data: => T) extends Component
+class MaskReady[T <: Data](data: => T) extends Module
 {
   val io = new Bundle()
   {
-    val input = new FIFOIO()(data).flip
-    val output = new FIFOIO()(data)
+    val input = Decoupled(data).flip
+    val output = Decoupled(data)
     val ready = Bool(INPUT)
   }
 
@@ -96,9 +85,9 @@ class MaskReady[T <: Data](data: => T) extends Component
 
 object MaskReady
 {
-  def apply[T <: Data](deq: FIFOIO[T], ready: Bool) =
+  def apply[T <: Data](deq: DecoupledIO[T], ready: Bool) =
   {
-    val mr = new MaskReady(deq.bits.clone)
+    val mr = Module(new MaskReady(deq.bits.clone))
     mr.io.input <> deq
     mr.io.ready := ready
     mr.io.output

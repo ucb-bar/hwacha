@@ -43,7 +43,7 @@ class io_vxu_seq_regid_imm extends Bundle
   val aiw = new io_vxu_aiw_bundle()
   val mask = Bits(width=SZ_BANK)
   val pvfb_tag = Bits(width=SZ_PVFB_TAG)
-  val pop_count = UFix(width=SZ_LGBANK1)
+  val pop_count = UInt(width=SZ_LGBANK1)
 }
 
 class io_vxu_seq_to_hazard extends Bundle
@@ -60,8 +60,8 @@ class io_vxu_seq_to_expand extends Bundle
 class io_seq_to_aiw extends Bundle
 {
   val last = Bool(OUTPUT)
-  val update_imm1 = new PipeIO()( new io_aiwUpdateReq(SZ_VIMM, 3) )
-  val update_cnt = new PipeIO()( new io_aiwUpdateReq(SZ_VLEN, 3) )
+  val update_imm1 = Valid(new io_aiwUpdateReq(SZ_VIMM, 3) )
+  val update_cnt = Valid(new io_aiwUpdateReq(SZ_VLEN, 3) )
   val update_numCnt = new io_update_num_cnt()
 }
 
@@ -71,8 +71,8 @@ class io_vxu_seq extends Bundle
   val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
   val seq_to_expand = new io_vxu_seq_to_expand().asOutput
 
-  val qcntp1 = UFix(OUTPUT, SZ_QCNT)
-  val qcntp2 = UFix(OUTPUT, SZ_QCNT)
+  val qcntp1 = UInt(OUTPUT, SZ_QCNT)
+  val qcntp2 = UInt(OUTPUT, SZ_QCNT)
   val qstall = new io_qstall().asInput
 
   val fire = new io_vxu_issue_fire().asInput
@@ -88,21 +88,21 @@ class io_vxu_seq extends Bundle
   val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
 }
 
-class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_vxu_seq()
 
-  val bcntm1 = io.issue_to_seq.bcnt - UFix(1)
+  val bcntm1 = io.issue_to_seq.bcnt - UInt(1)
 
-  val next_ptr1 = UFix(width=SZ_BPTR)
-  val next_ptr2 = UFix(width=SZ_BPTR)
-  val next_ptr3 = UFix(width=SZ_BPTR)
+  val next_ptr1 = UInt(width=SZ_BPTR)
+  val next_ptr2 = UInt(width=SZ_BPTR)
+  val next_ptr3 = UInt(width=SZ_BPTR)
 
-  val reg_ptr = Reg(next_ptr1, resetVal = UFix(0, SZ_LGBANK))
+  val reg_ptr = Reg(update = next_ptr1, reset = UInt(0, SZ_LGBANK))
 
-  val next_ptr1_add = reg_ptr + UFix(1, SZ_LGBANK1)
-  val next_ptr2_add = reg_ptr + UFix(2, SZ_LGBANK1)
-  val next_ptr3_add = reg_ptr + UFix(3, SZ_LGBANK1)
+  val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
+  val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)
+  val next_ptr3_add = reg_ptr + UInt(3, SZ_LGBANK1)
 
   val next_ptr1_add_bcnt = next_ptr1_add - io.issue_to_seq.bcnt
   val next_ptr2_add_bcnt = next_ptr2_add - io.issue_to_seq.bcnt
@@ -120,93 +120,93 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
     Mux(next_ptr3_add < io.issue_to_seq.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
         next_ptr3_add_bcnt(SZ_LGBANK-1,0))
 
-  val next_val = Vec(SZ_BANK){ Bool() }
-  val next_stall = Vec(SZ_BANK){ Bool() }
-  val next_last = Vec(SZ_BANK){ Bool() }
-  val next_viu = Vec(SZ_BANK){ Bool() }
-  val next_vau0 = Vec(SZ_BANK){ Bool() }
-  val next_vau1 = Vec(SZ_BANK){ Bool() }
-  val next_vau2 = Vec(SZ_BANK){ Bool() }
-  val next_vaq = Vec(SZ_BANK){ Bool() }
-  val next_vldq = Vec(SZ_BANK){ Bool() }
-  val next_vsdq = Vec(SZ_BANK){ Bool() }
-  val next_utmemop = Vec(SZ_BANK){ Bool() }
+  val next_val = Vec.fill(SZ_BANK){Bool()}
+  val next_stall = Vec.fill(SZ_BANK){Bool()}
+  val next_last = Vec.fill(SZ_BANK){Bool()}
+  val next_viu = Vec.fill(SZ_BANK){Bool()}
+  val next_vau0 = Vec.fill(SZ_BANK){Bool()}
+  val next_vau1 = Vec.fill(SZ_BANK){Bool()}
+  val next_vau2 = Vec.fill(SZ_BANK){Bool()}
+  val next_vaq = Vec.fill(SZ_BANK){Bool()}
+  val next_vldq = Vec.fill(SZ_BANK){Bool()}
+  val next_vsdq = Vec.fill(SZ_BANK){Bool()}
+  val next_utmemop = Vec.fill(SZ_BANK){Bool()}
 
-  val next_fn_viu = Vec(8){ Bits(width=SZ_VIU_FN) }
-  val next_fn_vau0 = Vec(8){ Bits(width=SZ_VAU0_FN) }
-  val next_fn_vau1 = Vec(8){ Bits(width=SZ_VAU1_FN) }
-  val next_fn_vau2 = Vec(8){ Bits(width=SZ_VAU2_FN) }
-  val next_vlen = Vec(8){ Bits(width=SZ_VLEN) }
-  val next_utidx = Vec(8){ Bits(width=SZ_VLEN) }
-  val next_stride = Vec(8){ Bits(width=SZ_REGLEN) }
-  val next_vs_zero = Vec(SZ_BANK){ Bool() }
-  val next_vt_zero = Vec(SZ_BANK){ Bool() }
-  val next_vr_zero = Vec(SZ_BANK){ Bool() }
-  val next_vd_zero = Vec(SZ_BANK){ Bool() }
-  val next_vs = Vec(8){ Bits(width=SZ_BREGLEN) }
-  val next_vt = Vec(8){ Bits(width=SZ_BREGLEN) }
-  val next_vr = Vec(8){ Bits(width=SZ_BREGLEN) }
-  val next_vd = Vec(8){ Bits(width=SZ_BREGLEN) }
-  val next_vm = Vec(8){ Bits(width=SZ_BMASK) }
-  val next_mem = Vec(8){ new io_vxu_mem_cmd() }
+  val next_fn_viu = Vec.fill(8){Bits(width=SZ_VIU_FN)}
+  val next_fn_vau0 = Vec.fill(8){Bits(width=SZ_VAU0_FN)}
+  val next_fn_vau1 = Vec.fill(8){Bits(width=SZ_VAU1_FN)}
+  val next_fn_vau2 = Vec.fill(8){Bits(width=SZ_VAU2_FN)}
+  val next_vlen = Vec.fill(8){Bits(width=SZ_VLEN)}
+  val next_utidx = Vec.fill(8){Bits(width=SZ_VLEN)}
+  val next_stride = Vec.fill(8){Bits(width=SZ_REGLEN)}
+  val next_vs_zero = Vec.fill(SZ_BANK){Bool()}
+  val next_vt_zero = Vec.fill(SZ_BANK){Bool()}
+  val next_vr_zero = Vec.fill(SZ_BANK){Bool()}
+  val next_vd_zero = Vec.fill(SZ_BANK){Bool()}
+  val next_vs = Vec.fill(8){Bits(width=SZ_BREGLEN)}
+  val next_vt = Vec.fill(8){Bits(width=SZ_BREGLEN)}
+  val next_vr = Vec.fill(8){Bits(width=SZ_BREGLEN)}
+  val next_vd = Vec.fill(8){Bits(width=SZ_BREGLEN)}
+  val next_vm = Vec.fill(8){Bits(width=SZ_BMASK)}
+  val next_mem = Vec.fill(8){new io_vxu_mem_cmd()}
 
-  val next_imm = Vec(8){ Bits(width=SZ_DATA) }
-  val next_imm2 = Vec(8){ Bits(width=SZ_XIMM2) }
-  val next_aiw_imm1_rtag = Vec(SZ_BANK){ Bits(width=SZ_AIW_IMM1) }
-  val next_aiw_cnt_rtag = Vec(SZ_BANK){ Bits(width=SZ_AIW_CNT) }
-  val next_aiw_numCnt_rtag = Vec(SZ_BANK){ Bits(width=SZ_AIW_NUMCNT) }
-  val next_aiw_cnt = Vec(SZ_BANK){ Bits(width=SZ_VLEN) }
-  val next_aiw_pc_next = Vec(SZ_BANK){ Bits(width=SZ_ADDR) }
-  val next_aiw_update_imm1 = Vec(SZ_BANK){ Bool() }
-  val next_aiw_update_numCnt = Vec(SZ_BANK){ Bool() }
+  val next_imm = Vec.fill(8){Bits(width=SZ_DATA)}
+  val next_imm2 = Vec.fill(8){Bits(width=SZ_XIMM2)}
+  val next_aiw_imm1_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_IMM1)}
+  val next_aiw_cnt_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_CNT)}
+  val next_aiw_numCnt_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_NUMCNT)}
+  val next_aiw_cnt = Vec.fill(SZ_BANK){Bits(width=SZ_VLEN)}
+  val next_aiw_pc_next = Vec.fill(SZ_BANK){Bits(width=SZ_ADDR)}
+  val next_aiw_update_imm1 = Vec.fill(SZ_BANK){Bool()}
+  val next_aiw_update_numCnt = Vec.fill(SZ_BANK){Bool()}
 
-  val next_pvfb_tag = Vec(SZ_BANK){ Bits(width=SZ_PVFB_TAG) }
-  val next_active_mask = Vec(SZ_BANK){ Bool() }
-  val next_mask = Vec(SZ_BANK){ Bits(width=WIDTH_PVFB) }
+  val next_pvfb_tag = Vec.fill(SZ_BANK){Bits(width=SZ_PVFB_TAG)}
+  val next_active_mask = Vec.fill(SZ_BANK){Bool()}
+  val next_mask = Vec.fill(SZ_BANK){Bits(width=WIDTH_PVFB)}
 
-  val array_val = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_stall = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_last = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_viu = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vau0 = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vau1 = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vau2 = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vaq = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vldq = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_vsdq = Reg(resetVal = Bits(0, SZ_BANK))
-  val array_utmemop = Reg(resetVal = Bits(0, SZ_BANK))
+  val array_val = RegReset(Bits(0, SZ_BANK))
+  val array_stall = RegReset(Bits(0, SZ_BANK))
+  val array_last = RegReset(Bits(0, SZ_BANK))
+  val array_viu = RegReset(Bits(0, SZ_BANK))
+  val array_vau0 = RegReset(Bits(0, SZ_BANK))
+  val array_vau1 = RegReset(Bits(0, SZ_BANK))
+  val array_vau2 = RegReset(Bits(0, SZ_BANK))
+  val array_vaq = RegReset(Bits(0, SZ_BANK))
+  val array_vldq = RegReset(Bits(0, SZ_BANK))
+  val array_vsdq = RegReset(Bits(0, SZ_BANK))
+  val array_utmemop = RegReset(Bits(0, SZ_BANK))
 
-  val array_fn_viu = Vec(8){ Reg(){Bits(width=SZ_VIU_FN)} }
-  val array_fn_vau0 = Vec(8){ Reg(){Bits(width=SZ_VAU0_FN)} }
-  val array_fn_vau1 = Vec(8){ Reg(){Bits(width=SZ_VAU1_FN)} }
-  val array_fn_vau2 = Vec(8){ Reg(){Bits(width=SZ_VAU2_FN)} }
-  val array_vlen = Vec(8){ Reg(){Bits(width=SZ_VLEN)} }
-  val array_utidx = Vec(8){ Reg(){Bits(width=SZ_VLEN)} }
-  val array_stride = Vec(8){ Reg(){Bits(width=SZ_REGLEN)} }
-  val array_vs_zero = Vec(SZ_BANK){ Reg(){ Bool() } }
-  val array_vt_zero = Vec(SZ_BANK){ Reg(){ Bool() } }
-  val array_vr_zero = Vec(SZ_BANK){ Reg(){ Bool() } }
-  val array_vd_zero = Vec(SZ_BANK){ Reg(){ Bool() } }
-  val array_vs = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val array_vt = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val array_vr = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val array_vd = Vec(8){ Reg(){Bits(width=SZ_BREGLEN)} }
-  val array_vm = Vec(8){ Reg(){Bits(width=SZ_BMASK)} }
-  val array_mem = Vec(8){ Reg(){ new io_vxu_mem_cmd() } }
+  val array_fn_viu = Vec.fill(8){Reg(Bits(width=SZ_VIU_FN))}
+  val array_fn_vau0 = Vec.fill(8){Reg(Bits(width=SZ_VAU0_FN))}
+  val array_fn_vau1 = Vec.fill(8){Reg(Bits(width=SZ_VAU1_FN))}
+  val array_fn_vau2 = Vec.fill(8){Reg(Bits(width=SZ_VAU2_FN))}
+  val array_vlen = Vec.fill(8){Reg(Bits(width=SZ_VLEN))}
+  val array_utidx = Vec.fill(8){Reg(Bits(width=SZ_VLEN))}
+  val array_stride = Vec.fill(8){Reg(Bits(width=SZ_REGLEN))}
+  val array_vs_zero = Vec.fill(SZ_BANK){Reg(Bool())}
+  val array_vt_zero = Vec.fill(SZ_BANK){Reg(Bool())}
+  val array_vr_zero = Vec.fill(SZ_BANK){Reg(Bool())}
+  val array_vd_zero = Vec.fill(SZ_BANK){Reg(Bool())}
+  val array_vs = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
+  val array_vt = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
+  val array_vr = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
+  val array_vd = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
+  val array_vm = Vec.fill(8){Reg(Bits(width=SZ_BMASK))}
+  val array_mem = Vec.fill(8){Reg(new io_vxu_mem_cmd())}
 
-  val array_imm = Vec(8){ Reg(){Bits(width=SZ_DATA)} }
-  val array_imm2 = Vec(8){ Reg(){Bits(width=SZ_XIMM2)} }
-  val array_aiw_imm1_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_AIW_IMM1) } }
-  val array_aiw_cnt_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_AIW_CNT) } }
-  val array_aiw_numCnt_rtag = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_AIW_NUMCNT) } }
-  val array_aiw_cnt = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_VLEN) } }
-  val array_aiw_pc_next = Vec(SZ_BANK){ Reg(){ Bits(width=SZ_ADDR) } }
-  val array_aiw_update_imm1 = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
-  val array_aiw_update_numCnt = Vec(SZ_BANK){ Reg(resetVal = Bool(false)) }
+  val array_imm = Vec.fill(8){Reg(Bits(width=SZ_DATA))}
+  val array_imm2 = Vec.fill(8){Reg(Bits(width=SZ_XIMM2))}
+  val array_aiw_imm1_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_IMM1))}
+  val array_aiw_cnt_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_CNT))}
+  val array_aiw_numCnt_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_NUMCNT))}
+  val array_aiw_cnt = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_VLEN))}
+  val array_aiw_pc_next = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_ADDR))}
+  val array_aiw_update_imm1 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_aiw_update_numCnt = Vec.fill(SZ_BANK){RegReset(Bool(false))}
 
-  val array_pvfb_tag = Vec(SZ_BANK){ Reg(){Bits(width=SZ_PVFB_TAG)} }
-  val array_active_mask = Vec(SZ_BANK){ Reg(resetVal = Bool(false) ) }
-  val array_mask = Vec(SZ_BANK){ Reg(){ Bits(width=WIDTH_PVFB) } }
+  val array_pvfb_tag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_PVFB_TAG))}
+  val array_active_mask = Vec.fill(SZ_BANK){RegReset(Bool(false) )}
+  val array_mask = Vec.fill(SZ_BANK){Reg(Bits(width=WIDTH_PVFB))}
 
   array_val := next_val.toBits
   array_stall := next_stall.toBits
@@ -620,13 +620,13 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
 
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
   {
-    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UFix(1)
+    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UInt(1)
     next_utidx(reg_ptr) := array_utidx(reg_ptr) + io.issue_to_seq.bcnt
     next_vs(reg_ptr) := array_vs(reg_ptr) + array_stride(reg_ptr)
     next_vt(reg_ptr) := array_vt(reg_ptr) + array_stride(reg_ptr)
     next_vr(reg_ptr) := array_vr(reg_ptr) + array_stride(reg_ptr)
     next_vd(reg_ptr) := array_vd(reg_ptr) + array_stride(reg_ptr)
-    next_vm(reg_ptr) := array_vm(reg_ptr) + UFix(1)
+    next_vm(reg_ptr) := array_vm(reg_ptr) + UInt(1)
     next_mask(reg_ptr) := array_mask(reg_ptr) >> io.issue_to_seq.bcnt
 
     when (array_last(reg_ptr))
@@ -656,20 +656,20 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
 
   }
 
-  val mem_base_plus_stride = array_imm(reg_ptr) + (array_imm2(reg_ptr) << UFix(3))
+  val mem_base_plus_stride = array_imm(reg_ptr) + (array_imm2(reg_ptr) << UInt(3))
 
   when ((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
   {
     next_imm(reg_ptr) := mem_base_plus_stride
   }
 
-  val next_dep_vaq = Vec(SZ_BANK){ Bool() }
-  val next_dep_vldq = Vec(SZ_BANK){ Bool() }
-  val next_dep_vsdq = Vec(SZ_BANK){ Bool() }
+  val next_dep_vaq = Vec.fill(SZ_BANK){Bool()}
+  val next_dep_vldq = Vec.fill(SZ_BANK){Bool()}
+  val next_dep_vsdq = Vec.fill(SZ_BANK){Bool()}
 
-  val array_dep_vaq = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_dep_vldq = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
-  val array_dep_vsdq = Vec(SZ_BANK){ Reg(resetVal=Bool(false)) }
+  val array_dep_vaq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_dep_vldq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_dep_vsdq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
 
   array_dep_vaq := next_dep_vaq
   array_dep_vldq := next_dep_vldq
@@ -767,7 +767,7 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
     next_dep_vsdq(next_ptr2) := Bool(false)
   }
 
-  val mask_sel = Mux(array_last(reg_ptr), array_vlen(reg_ptr) + UFix(1), io.issue_to_seq.bcnt)
+  val mask_sel = Mux(array_last(reg_ptr), array_vlen(reg_ptr) + UInt(1), io.issue_to_seq.bcnt)
   val bcnt_mask = MuxLookup(
     mask_sel, Bits(0,SZ_BANK), Array(
       Bits(1) -> Bits("b0000_0001",8),
@@ -785,7 +785,7 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
   if (HAVE_PVFB)
     for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
   else
-    pop_count = io.seq_regid_imm.cnt + UFix(1, SZ_LGBANK1)
+    pop_count = io.seq_regid_imm.cnt + UInt(1, SZ_LGBANK1)
   val skip = !mask.orR()
   io.seq_regid_imm.pop_count := pop_count
 
@@ -794,9 +794,9 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
   val current_vldq_val = current_val & array_vldq(reg_ptr)
   val current_vsdq_val = current_val & array_vsdq(reg_ptr)
 
-  val reg_vaq_stall = Reg(resetVal = Bool(false))
-  val reg_vldq_stall = Reg(resetVal = Bool(false))
-  val reg_vsdq_stall = Reg(resetVal = Bool(false))
+  val reg_vaq_stall = RegReset(Bool(false))
+  val reg_vldq_stall = RegReset(Bool(false))
+  val reg_vsdq_stall = RegReset(Bool(false))
 
   val masked_vaq_stall = array_dep_vaq(reg_ptr) & reg_vaq_stall
   val masked_vldq_stall = array_dep_vldq(reg_ptr) & reg_vldq_stall
@@ -863,9 +863,9 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
   if(HAVE_PVFB) io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
-  io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UFix(1, SZ_QCNT))
+  io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UInt(1, SZ_QCNT))
   // looking for two cycles ahead
-  io.qcntp2 := Mux(reg_stall, pop_count, pop_count + UFix(2, SZ_QCNT))
+  io.qcntp2 := Mux(reg_stall, pop_count, pop_count + UInt(2, SZ_QCNT))
 
   // aiw
   io.seq_to_aiw.update_imm1.valid := Bool(false)
@@ -902,13 +902,13 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Component(resetSignal)
     io.seq_to_aiw.update_imm1.valid := array_aiw_update_imm1(reg_ptr)
   }
 
-  io.seq_to_aiw.update_imm1.bits.addr := array_aiw_imm1_rtag(reg_ptr).toUFix
+  io.seq_to_aiw.update_imm1.bits.addr := array_aiw_imm1_rtag(reg_ptr).toUInt
   io.seq_to_aiw.update_imm1.bits.data := 
     Mux(io.seq.vldq || io.seq.vsdq, mem_base_plus_stride,
         array_aiw_pc_next(reg_ptr))
 
-  io.seq_to_aiw.update_cnt.bits.addr := array_aiw_cnt_rtag(reg_ptr).toUFix
-  io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + next_vlen_update + UFix(1)
+  io.seq_to_aiw.update_cnt.bits.addr := array_aiw_cnt_rtag(reg_ptr).toUInt
+  io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + next_vlen_update + UInt(1)
 
   io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
 }

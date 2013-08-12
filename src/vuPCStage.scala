@@ -22,27 +22,27 @@ class ioPCStage extends Bundle {
   val laneToIssue = new ioLaneToIssue()flip()
 }
 
-class vuPCStage extends Component {
+class vuPCStage extends Module {
   val io = new ioPCStage()
 
   val stageCnt = if(HAVE_PVFB) NUM_PVFB else 1
 
   val rrArbio = 
     if(coarseGrained) 
-      new CoarseRRArbiter(stageCnt)( new pvfBundle ).io 
+      Module(new CoarseRRArbiter(stageCnt)( new pvfBundle )).io 
     else
-      new RRArbiter(stageCnt)( new pvfBundle ).io
+      Module(new RRArbiter(new pvfBundle, stageCnt)).io
   
-  val pvfb_sel = UFix(1) << io.vtToPVFB.pvfb_tag
+  val pvfb_sel = UInt(1) << io.vtToPVFB.pvfb_tag
 
-  val replay_pre_if_sel = UFix(1) << io.vtToPC.replay_pre_if.bits.tag
-  val replay_if_sel = UFix(1) << io.vtToPC.replay_if.bits.tag
-  val replay_jump_sel = UFix(1) << io.vtToPC.replay_jump.bits.tag
-  val replay_branch_sel = UFix(1) << io.vtToPC.replay_branch.bits.tag
-  val replay_stop_sel = UFix(1) << io.vtToPC.replay_stop.bits.tag
-  val replay_stalld_sel = UFix(1) << io.vtToPC.replay_stalld.bits.tag
+  val replay_pre_if_sel = UInt(1) << io.vtToPC.replay_pre_if.bits.tag
+  val replay_if_sel = UInt(1) << io.vtToPC.replay_if.bits.tag
+  val replay_jump_sel = UInt(1) << io.vtToPC.replay_jump.bits.tag
+  val replay_branch_sel = UInt(1) << io.vtToPC.replay_branch.bits.tag
+  val replay_stop_sel = UInt(1) << io.vtToPC.replay_stop.bits.tag
+  val replay_stalld_sel = UInt(1) << io.vtToPC.replay_stalld.bits.tag
 
-  val lane_sel = UFix(1) << io.laneToIssue.pvfb_tag
+  val lane_sel = UInt(1) << io.laneToIssue.pvfb_tag
 
   var valid = Bool(false)
   var stop = Bool(false)

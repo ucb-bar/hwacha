@@ -33,8 +33,8 @@ class io_vxu extends Bundle
   val lane_vaq_dec = Bool(OUTPUT)
   val lane_vsdq_dec = Bool(OUTPUT)
 
-  val qcntp1 = UFix(OUTPUT, SZ_QCNT)
-  val qcntp2 = UFix(OUTPUT, SZ_QCNT)
+  val qcntp1 = UInt(OUTPUT, SZ_QCNT)
+  val qcntp2 = UInt(OUTPUT, SZ_QCNT)
   
   val pending_store = Bool(INPUT)
   val pending_memop = Bool(OUTPUT)
@@ -55,13 +55,13 @@ class io_vxu extends Bundle
   val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
 }
 
-class vuVXU extends Component
+class vuVXU extends Module
 {
   val io = new io_vxu()
 
 
-  val flush = reset || io.xcpt_to_vxu.flush
-  val issue = new vuVXU_Issue(resetSignal = flush)
+  val flush = this.getReset || io.xcpt_to_vxu.flush
+  val issue = Module(new vuVXU_Issue(resetSignal = flush))
 
   io.irq := issue.io.irq
 
@@ -86,7 +86,7 @@ class vuVXU extends Component
   issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
 
 
-  val b8fire = new vuVXU_Banked8_Fire()
+  val b8fire = Module(new vuVXU_Banked8_Fire)
 
   b8fire.io.tvec_valid <> issue.io.tvec_valid
   b8fire.io.tvec_dhazard <> issue.io.tvec_dhazard
@@ -103,7 +103,7 @@ class vuVXU extends Component
   b8fire.io.vt_regid_imm <> issue.io.vt_regid_imm
 
 
-  val b8hazard = new vuVXU_Banked8_Hazard(resetSignal = flush)
+  val b8hazard = Module(new vuVXU_Banked8_Hazard(resetSignal = flush))
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
   b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
@@ -134,7 +134,7 @@ class vuVXU extends Component
   io.pending_vf := issue.io.pending_vf
 
 
-  val b8seq = new vuVXU_Banked8_Seq(resetSignal = flush)
+  val b8seq = Module(new vuVXU_Banked8_Seq(resetSignal = flush))
 
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard
@@ -152,7 +152,7 @@ class vuVXU extends Component
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
 
-  val b8expand = new vuVXU_Banked8_Expand()
+  val b8expand = Module(new vuVXU_Banked8_Expand)
 
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand
   b8expand.io.expand_to_hazard <> b8hazard.io.expand_to_hazard
@@ -164,7 +164,7 @@ class vuVXU extends Component
   b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
 
-  val b8lane = new vuVXU_Banked8_Lane()
+  val b8lane = Module(new vuVXU_Banked8_Lane)
 
   b8lane.io.laneToIssue <> issue.io.laneToIssue
 
@@ -191,7 +191,7 @@ class vuVXU extends Component
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
 
 
-  val b8mem = new vuVXU_Banked8_Mem()
+  val b8mem = Module(new vuVXU_Banked8_Mem)
 
   b8mem.io.lane_vaq_valid := b8lane.io.vmu.vaq_val
   b8mem.io.lane_vaq_check <> b8lane.io.vmu.vaq_check

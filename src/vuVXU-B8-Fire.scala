@@ -27,7 +27,7 @@ class io_vxu_fire extends Bundle
   val fire_regid_imm = new io_vxu_issue_regid_imm().asOutput
 }
 
-class vuVXU_Banked8_Fire extends Component
+class vuVXU_Banked8_Fire extends Module
 {
   val io = new io_vxu_fire()
 
@@ -76,7 +76,7 @@ class vuVXU_Banked8_Fire extends Component
   io.fire_regid_imm.vr := io.vt_regid_imm.vr
   io.fire_regid_imm.vd := Mux(switch_tvec, io.tvec_regid_imm.vd, io.vt_regid_imm.vd)
   io.fire_regid_imm.vm := io.vt_regid_imm.vm
-  io.fire_regid_imm.mem <> Mux(switch_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
+  io.fire_regid_imm.mem := Mux(switch_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
   io.fire_regid_imm.imm := Mux(switch_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm)
   io.fire_regid_imm.imm2 := io.tvec_regid_imm.imm2
   io.fire_regid_imm.cnt_valid := Mux(switch_tvec, io.tvec_regid_imm.cnt_valid, io.vt_regid_imm.cnt_valid)

@@ -35,15 +35,15 @@ class io_vu_aiw extends Bundle
   val evac_to_aiw = new io_evac_to_aiw().flip
 }
 
-class vuAIW(resetSignal: Bool = null) extends Component(resetSignal)
+class vuAIW(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_vu_aiw()
 
-  val ircmdb = new Queue(AIW_CMD_DEPTH)(Bits(width = SZ_VCMD))
-  val irimm1b = new Buffer(SZ_VIMM, AIW_IMM1_DEPTH)
-  val irimm2b = new Queue(AIW_IMM2_DEPTH)(Bits(width = SZ_VSTRIDE))
-  val ircntb = new Buffer(SZ_VLEN, AIW_CNT_DEPTH)
-  val irNumCntB = new CounterVec(AIW_NUMCNT_DEPTH)
+  val ircmdb = Module(new Queue(Bits(width = SZ_VCMD), AIW_CMD_DEPTH))
+  val irimm1b = Module(new Buffer(SZ_VIMM, AIW_IMM1_DEPTH))
+  val irimm2b = Module(new Queue(Bits(width = SZ_VSTRIDE), AIW_IMM2_DEPTH))
+  val ircntb = Module(new Buffer(SZ_VLEN, AIW_CNT_DEPTH))
+  val irNumCntB = Module(new CounterVec(AIW_NUMCNT_DEPTH))
 
   ircmdb.io.enq <> io.aiw_enq_cmdb
 
@@ -128,13 +128,13 @@ class vuAIW(resetSignal: Bool = null) extends Component(resetSignal)
   // count buffer is dequeued whenever sequencer or evacuator says so
   ircntb.io.deq.ready  := io.seq_to_aiw.last | io.aiw_deq_cntb.ready
 
-  val do_deq = irNumCntB.io.deq.bits && irNumCntB.io.deq.valid && irNumCntB.io.deq_last
+  val do_deq = irNumCntB.io.deq.bits.toBool && irNumCntB.io.deq.valid && irNumCntB.io.deq_last
 
   // other buffers are dequeued based on NumCntB or when evacuator says so
   ircmdb.io.deq.ready :=  do_deq || io.aiw_deq_cmdb.ready
   irimm1b.io.deq.ready := do_deq && decode_deq_irimm1b || io.aiw_deq_imm1b.ready
   irimm2b.io.deq.ready := do_deq && decode_deq_irimm2b || io.aiw_deq_imm2b.ready
-  irNumCntB.io.deq.ready := irNumCntB.io.deq.bits && irNumCntB.io.deq_last || io.aiw_deq_numCntB.ready
+  irNumCntB.io.deq.ready := irNumCntB.io.deq.bits.toBool && irNumCntB.io.deq_last || io.aiw_deq_numCntB.ready
     
   io.aiw_deq_cmdb.bits := ircmdb.io.deq.bits
   io.aiw_deq_imm1b.bits := irimm1b.io.deq.bits

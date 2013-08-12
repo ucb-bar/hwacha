@@ -20,7 +20,7 @@ class io_cp_fma(width: Int) extends Bundle
 class io_cp_dfma extends io_cp_fma(65)
 class io_cp_sfma extends io_cp_fma(33)
 
-class vuVXU_Banked8_FU_fma extends Component
+class vuVXU_Banked8_FU_fma extends Module
 {
   val io = new Bundle
   {

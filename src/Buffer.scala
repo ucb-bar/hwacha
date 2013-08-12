@@ -6,26 +6,26 @@ import Constants._
 
 class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
-  val enq = new FIFOIO()( Bits(width=DATA_SIZE) ).flip
-  val deq = new FIFOIO()( Bits(width=DATA_SIZE) )
-  val update = new PipeIO()( new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE) ).flip
+  val enq = Decoupled(Bits(width=DATA_SIZE)).flip
+  val deq = Decoupled(Bits(width=DATA_SIZE))
+  val update = Valid(new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE)).flip
 
   val rtag = Bits(OUTPUT, ADDR_SIZE)
 }
 
-class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
+class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
 
   val io = new io_buffer(DATA_SIZE, ADDR_SIZE)
 
-  val read_ptr_next = UFix( width=ADDR_SIZE)
-  val write_ptr_next = UFix( width=ADDR_SIZE)
+  val read_ptr_next = UInt( width=ADDR_SIZE)
+  val write_ptr_next = UInt( width=ADDR_SIZE)
   val full_next = Bool()
   
-  val read_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
-  val write_ptr = Reg(resetVal = UFix(0, ADDR_SIZE))
-  val full = Reg(resetVal = Bool(false))
+  val read_ptr = RegReset(UInt(0, ADDR_SIZE))
+  val write_ptr = RegReset(UInt(0, ADDR_SIZE))
+  val full = RegReset(Bool(false))
 
   read_ptr := read_ptr_next
   write_ptr := write_ptr_next
@@ -38,11 +38,11 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
   val do_enq = io.enq.valid && io.enq.ready
   val do_deq = io.deq.ready && io.deq.valid
 
-  when (do_deq) { read_ptr_next := read_ptr + UFix(1) }
+  when (do_deq) { read_ptr_next := read_ptr + UInt(1) }
 
   when (do_enq) 
   { 
-    write_ptr_next := write_ptr + UFix(1) 
+    write_ptr_next := write_ptr + UInt(1) 
   }
 
   when (do_enq && !do_deq && (write_ptr_next === read_ptr))
@@ -60,8 +60,8 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Component
 
   val empty = !full && (read_ptr === write_ptr)
 
-  val data_next = Vec(DEPTH){ Bits(width=DATA_SIZE) }
-  val data_array = Vec(DEPTH){ Reg(){ Bits(width=DATA_SIZE) } }
+  val data_next = Vec.fill(DEPTH){Bits(width=DATA_SIZE)}
+  val data_array = Vec.fill(DEPTH){Reg(Bits(width=DATA_SIZE))}
   
   data_array := data_next
 

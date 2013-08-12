@@ -16,7 +16,7 @@ class ExpanderToLFUIO extends Bundle
   val imm2 = Bits(OUTPUT, SZ_XIMM2)
   val vaq = Bool(OUTPUT)
   val vaq_mask = Bits(OUTPUT, SZ_BANK)
-  val vaq_pop_cnt = UFix(OUTPUT, SZ_LGBANK1)
+  val vaq_pop_cnt = UInt(OUTPUT, SZ_LGBANK1)
   val vldq = Bool(OUTPUT)
   val vldq_mask = Bits(OUTPUT, SZ_BANK)
   val vsdq = Bool(OUTPUT)
@@ -26,8 +26,8 @@ class ExpanderToLFUIO extends Bundle
 
 class LFUIO extends Bundle 
 {
-  val expand_rcnt = UFix(INPUT, SZ_BVLEN)
-  val expand_wcnt = UFix(INPUT, SZ_BVLEN)
+  val expand_rcnt = UInt(INPUT, SZ_BVLEN)
+  val expand_wcnt = UInt(INPUT, SZ_BVLEN)
   
   val expand = new ExpanderToLFUIO().flip
 
@@ -47,29 +47,29 @@ class LFUIO extends Bundle
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
 }
 
-class vuVXU_Banked8_Lane_LFU extends Component 
+class vuVXU_Banked8_Lane_LFU extends Module 
 {
   val io = new LFUIO()
 
-  val next_vau0_cnt = UFix(width = SZ_BVLEN)
-  val next_vau1_cnt = UFix(width = SZ_BVLEN)
-  val next_vau2_cnt = UFix(width = SZ_BVLEN)
-  val next_vgu_cnt = UFix(width = SZ_BVLEN)
-  val next_vlu_cnt = UFix(width = SZ_BVLEN)
-  val next_vsu_cnt = UFix(width = SZ_BVLEN)
+  val next_vau0_cnt = UInt(width = SZ_BVLEN)
+  val next_vau1_cnt = UInt(width = SZ_BVLEN)
+  val next_vau2_cnt = UInt(width = SZ_BVLEN)
+  val next_vgu_cnt = UInt(width = SZ_BVLEN)
+  val next_vlu_cnt = UInt(width = SZ_BVLEN)
+  val next_vsu_cnt = UInt(width = SZ_BVLEN)
   val next_vgu_mask = Bits(width = SZ_BANK)
   val next_vlu_mask = Bits(width = SZ_BANK)
   val next_vsu_mask = Bits(width = SZ_BANK)
 
-  val reg_vau0_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vau1_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vau2_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vgu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vlu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vsu_cnt = Reg(resetVal = UFix(0, SZ_BVLEN))
-  val reg_vgu_mask = Reg(resetVal = Bits(0, SZ_BANK))
-  val reg_vlu_mask = Reg(resetVal = Bits(0, SZ_BANK))
-  val reg_vsu_mask = Reg(resetVal = Bits(0, SZ_BANK))
+  val reg_vau0_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vau1_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vau2_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vgu_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vlu_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vsu_cnt = RegReset(UInt(0, SZ_BVLEN))
+  val reg_vgu_mask = RegReset(Bits(0, SZ_BANK))
+  val reg_vlu_mask = RegReset(Bits(0, SZ_BANK))
+  val reg_vsu_mask = RegReset(Bits(0, SZ_BANK))
 
   reg_vau0_cnt := next_vau0_cnt
   reg_vau1_cnt := next_vau1_cnt
@@ -81,12 +81,12 @@ class vuVXU_Banked8_Lane_LFU extends Component
   reg_vlu_mask := next_vlu_mask
   reg_vsu_mask := next_vsu_mask
 
-  next_vau0_cnt := UFix(0, SZ_BVLEN)
-  next_vau1_cnt := UFix(0, SZ_BVLEN)
-  next_vau2_cnt := UFix(0, SZ_BVLEN)
-  next_vgu_cnt := UFix(0, SZ_BVLEN)
-  next_vlu_cnt := UFix(0, SZ_BVLEN)
-  next_vsu_cnt := UFix(0, SZ_BVLEN)
+  next_vau0_cnt := UInt(0, SZ_BVLEN)
+  next_vau1_cnt := UInt(0, SZ_BVLEN)
+  next_vau2_cnt := UInt(0, SZ_BVLEN)
+  next_vgu_cnt := UInt(0, SZ_BVLEN)
+  next_vlu_cnt := UInt(0, SZ_BVLEN)
+  next_vsu_cnt := UInt(0, SZ_BVLEN)
   next_vgu_mask := Bits(0, SZ_BANK)
   next_vlu_mask := Bits(0, SZ_BANK)
   next_vsu_mask := Bits(0, SZ_BANK)
@@ -104,7 +104,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
   when (io.expand.vldq) 
   { 
     next_vlu_cnt := io.expand_wcnt
-    next_vlu_mask := io.expand.vldq_mask >> UFix(1,1)
+    next_vlu_mask := io.expand.vldq_mask >> UInt(1,1)
   }
 
   when (io.expand.vsdq) 
@@ -113,44 +113,44 @@ class vuVXU_Banked8_Lane_LFU extends Component
     next_vsu_mask := io.expand.vsdq_mask
   }
   
-  when (reg_vau0_cnt.orR) { next_vau0_cnt := reg_vau0_cnt - UFix(1,1)}
-  when (reg_vau1_cnt.orR) { next_vau1_cnt := reg_vau1_cnt - UFix(1,1)}
-  when (reg_vau2_cnt.orR) { next_vau2_cnt := reg_vau2_cnt - UFix(1,1)}
+  when (reg_vau0_cnt.orR) { next_vau0_cnt := reg_vau0_cnt - UInt(1,1)}
+  when (reg_vau1_cnt.orR) { next_vau1_cnt := reg_vau1_cnt - UInt(1,1)}
+  when (reg_vau2_cnt.orR) { next_vau2_cnt := reg_vau2_cnt - UInt(1,1)}
 
   when (reg_vgu_cnt.orR) 
   { 
-    next_vgu_cnt := reg_vgu_cnt - UFix(1,1)
-    next_vgu_mask := reg_vgu_mask >> UFix(1,1)
+    next_vgu_cnt := reg_vgu_cnt - UInt(1,1)
+    next_vgu_mask := reg_vgu_mask >> UInt(1,1)
   }
 
   when (reg_vlu_cnt.orR) 
   {
-    next_vlu_cnt := reg_vlu_cnt - UFix(1,1)
-    next_vlu_mask := reg_vlu_mask >> UFix(1,1)
+    next_vlu_cnt := reg_vlu_cnt - UInt(1,1)
+    next_vlu_mask := reg_vlu_mask >> UInt(1,1)
   }
   
   when (reg_vsu_cnt.orR) 
   { 
-    next_vsu_cnt := reg_vsu_cnt - UFix(1,1)
-    next_vsu_mask := reg_vsu_mask >> UFix(1,1)
+    next_vsu_cnt := reg_vsu_cnt - UInt(1,1)
+    next_vsu_mask := reg_vsu_mask >> UInt(1,1)
   }
 
-  val reg_vau0 = Reg(resetVal = Bool(false))
-  val reg_vau0_fn = Reg(){ Bits(width = SZ_VAU0_FN) }
-  val reg_vau1 = Reg(resetVal = Bool(false))
-  val reg_vau1_fn = Reg(){ Bits(width = SZ_VAU1_FN) }
-  val reg_vau2 = Reg(resetVal = Bool(false))
-  val reg_vau2_fn = Reg(){ Bits(width = SZ_VAU2_FN) }
-  val reg_vaq_checkcnt = Reg(resetVal = Bool(false))
-  val reg_vaq_cnt = Reg(){ UFix(width = 4) }
-  val reg_vaq_mem = Reg(){ new io_vxu_mem_cmd() }
-  val reg_vsdq_mem = Reg(){ new io_vxu_mem_cmd() }
-  val reg_imm = Reg(){ Bits(width = SZ_DATA) }
-  val reg_imm2 = Reg(){ Bits(width = SZ_XIMM2) }
-  val reg_vaq = Reg(resetVal = Bool(false))
-  val reg_vldq = Reg(resetVal = Bool(false))
-  val reg_vsdq = Reg(resetVal = Bool(false))
-  val reg_utmemop = Reg(resetVal = Bool(false))
+  val reg_vau0 = RegReset(Bool(false))
+  val reg_vau0_fn = Reg(Bits(width = SZ_VAU0_FN))
+  val reg_vau1 = RegReset(Bool(false))
+  val reg_vau1_fn = Reg(Bits(width = SZ_VAU1_FN))
+  val reg_vau2 = RegReset(Bool(false))
+  val reg_vau2_fn = Reg(Bits(width = SZ_VAU2_FN))
+  val reg_vaq_checkcnt = RegReset(Bool(false))
+  val reg_vaq_cnt = Reg(UInt(width = 4))
+  val reg_vaq_mem = Reg(new io_vxu_mem_cmd())
+  val reg_vsdq_mem = Reg(new io_vxu_mem_cmd())
+  val reg_imm = Reg(Bits(width = SZ_DATA))
+  val reg_imm2 = Reg(Bits(width = SZ_XIMM2))
+  val reg_vaq = RegReset(Bool(false))
+  val reg_vldq = RegReset(Bool(false))
+  val reg_vsdq = RegReset(Bool(false))
+  val reg_utmemop = RegReset(Bool(false))
 
   when (io.expand.vau0)
   {
@@ -204,7 +204,7 @@ class vuVXU_Banked8_Lane_LFU extends Component
 
   when (reg_vaq && !reg_utmemop && reg_vgu_mask0)
   {
-    reg_imm := reg_imm.toUFix + reg_imm2.toUFix
+    reg_imm := reg_imm.toUInt + reg_imm2.toUInt
   }
 
   when (io.expand.vldq && io.expand_wcnt.orR)

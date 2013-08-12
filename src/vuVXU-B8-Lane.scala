@@ -47,12 +47,12 @@ class io_lane_to_hazard extends Bundle
 
 class ioLaneToPVFB extends Bundle
 {
-  val mask = new PipeIO()( Bits(width=WIDTH_PVFB) ) 
+  val mask = Valid(Bits(width=WIDTH_PVFB) ) 
 }
 
 class ioLaneToIssue extends Bundle
 {
-  val mask = new PipeIO()( Bits(width=WIDTH_PVFB * NUM_PVFB) )
+  val mask = Valid(Bits(width=WIDTH_PVFB * NUM_PVFB) )
   val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
@@ -72,28 +72,28 @@ class io_vxu_lane extends Bundle
   val vmu = new VMUIO()
 }
 
-class vuVXU_Banked8_Lane extends Component
+class vuVXU_Banked8_Lane extends Module
 {
   val io = new io_vxu_lane()
 
   val conn = new ArrayBuffer[BankToBankIO]
   var first = true
 
-  val rblen = new ArrayBuffer[Bits]
-  val rdata = new ArrayBuffer[Bits]
-  val ropl0 = new ArrayBuffer[Bits]
-  val ropl1 = new ArrayBuffer[Bits]
+  val rblen = new ArrayBuffer[UInt]
+  val rdata = new ArrayBuffer[UInt]
+  val ropl0 = new ArrayBuffer[UInt]
+  val ropl1 = new ArrayBuffer[UInt]
 
   val masks = new ArrayBuffer[Bits]
 
   //forward declaring imul, fma, and conv units
-  val imul = new vuVXU_Banked8_FU_imul()
-  val fma  = new vuVXU_Banked8_FU_fma()
-  val conv = new vuVXU_Banked8_FU_conv()
+  val imul = Module(new vuVXU_Banked8_FU_imul)
+  val fma  = Module(new vuVXU_Banked8_FU_fma)
+  val conv = Module(new vuVXU_Banked8_FU_conv)
 
   for (i <- 0 until SZ_BANK) 
   {
-    val bank = new vuVXU_Banked8_Bank()
+    val bank = Module(new vuVXU_Banked8_Bank)
     bank.io.active := io.issue_to_lane.bactive(i)
     
     if (first)
@@ -123,7 +123,7 @@ class vuVXU_Banked8_Lane extends Component
   }
 
   def calcMask(n: Int): Bits = {
-    val strip = masks.map(x => x(n)).reverse.reduceLeft(Cat( _ , _ ))
+    val strip = Cat(masks.map(x => x(n)).reverse) 
     if(n == 0)
       strip
     else
@@ -141,17 +141,17 @@ class vuVXU_Banked8_Lane extends Component
   io.lane_to_hazard.wlast_mask := conn.last.wlast_mask
   io.lane_to_hazard.pvfb_tag := conn.last.pvfb_tag
 
-  val xbar = new vuVXU_Banked8_Lane_Xbar()
+  val xbar = Module(new vuVXU_Banked8_Lane_Xbar)
   xbar.io.rblen <> rblen
   xbar.io.rdata <> rdata
   xbar.io.ropl0 <> ropl0
   xbar.io.ropl1 <> ropl1
   val rbl = xbar.io.rbl
 
-  val lfu = new vuVXU_Banked8_Lane_LFU()
+  val lfu = Module(new vuVXU_Banked8_Lane_LFU)
 
-  lfu.io.expand_rcnt := io.expand_read.rcnt.toUFix
-  lfu.io.expand_wcnt := io.expand_write.wcnt.toUFix
+  lfu.io.expand_rcnt := io.expand_read.rcnt.toUInt
+  lfu.io.expand_wcnt := io.expand_write.wcnt.toUInt
   lfu.io.expand <> io.expand_lfu_fn
 
   val vau0_val  = lfu.io.vau0_val

@@ -24,8 +24,8 @@ class io_vmu extends Bundle
   val lane_vaq_dec = Bool(INPUT)
   val lane_vsdq_dec = Bool(INPUT)
 
-  val qcntp1 = UFix(INPUT, SZ_QCNT)
-  val qcntp2 = UFix(INPUT, SZ_QCNT)
+  val qcntp1 = UInt(INPUT, SZ_QCNT)
+  val qcntp2 = UInt(INPUT, SZ_QCNT)
 
   val pending_store = Bool(OUTPUT)
 
@@ -42,15 +42,15 @@ class io_vmu extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVMU(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_vmu()
 
-  val addr = new vuVMU_Address()
-  val ldata = new vuVMU_LoadData()
-  val sdata = new vuVMU_StoreData()
-  val counters = new vuVMU_Counters()
-  val memif = new vuVMU_MemIF()
+  val addr = Module(new vuVMU_Address)
+  val ldata = Module(new vuVMU_LoadData)
+  val sdata = Module(new vuVMU_StoreData)
+  val counters = Module(new vuVMU_Counters)
+  val memif = Module(new vuVMU_MemIF)
 
 
   // address unit

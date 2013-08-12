@@ -59,42 +59,42 @@ class vuVXU_Banked8_BankIO extends Bundle
   val branch_resolution_mask = Bits(OUTPUT, WIDTH_BMASK)
 }
 
-class vuVXU_Banked8_Bank extends Component
+class vuVXU_Banked8_Bank extends Module
 {
   val io = new vuVXU_Banked8_BankIO()
 
   val rpass = io.in.rcnt.orR
   val wpass = io.in.wcnt.orR
 
-  val reg_ren    = Reg(rpass & io.in.ren)
-  val reg_rlast  = Reg(io.in.rlast)
-  val reg_rcnt   = Reg(Mux(rpass, io.in.rcnt.toUFix - UFix(1), UFix(0)))
-  val reg_raddr  = Reg(io.in.raddr)
-  val reg_roplen = Reg(io.in.roplen)
-  val reg_rblen  = Reg(io.in.rblen) 
-  val reg_rmask  = Reg(io.in.rmask >> UFix(1))
+  val reg_ren    = RegUpdate(rpass & io.in.ren)
+  val reg_rlast  = RegUpdate(io.in.rlast)
+  val reg_rcnt   = RegUpdate(Mux(rpass, io.in.rcnt.toUInt - UInt(1), UInt(0)))
+  val reg_raddr  = RegUpdate(io.in.raddr)
+  val reg_roplen = RegUpdate(io.in.roplen)
+  val reg_rblen  = RegUpdate(io.in.rblen) 
+  val reg_rmask  = RegUpdate(io.in.rmask >> UInt(1))
 
-  val reg_wen        = Reg(wpass & io.in.wen)
-  val reg_wlast      = Reg(io.in.wlast)
-  val reg_wcnt       = Reg(Mux(wpass, io.in.wcnt.toUFix - UFix(1), UFix(0)))
-  val reg_waddr      = Reg(io.in.waddr)
-  val reg_wsel       = Reg(io.in.wsel)
-  val reg_wmask      = Reg(io.in.wmask >> UFix(1))
+  val reg_wen        = RegUpdate(wpass & io.in.wen)
+  val reg_wlast      = RegUpdate(io.in.wlast)
+  val reg_wcnt       = RegUpdate(Mux(wpass, io.in.wcnt.toUInt - UInt(1), UInt(0)))
+  val reg_waddr      = RegUpdate(io.in.waddr)
+  val reg_wsel       = RegUpdate(io.in.wsel)
+  val reg_wmask      = RegUpdate(io.in.wmask >> UInt(1))
 
 
   val wpass_mask = io.in.wcnt_mask.orR
 
-  val reg_wen_mask   = Reg(wpass_mask & io.in.wen_mask)
-  val reg_wlast_mask = Reg(io.in.wlast_mask)
-  val reg_wcnt_mask  = Reg(Mux(wpass_mask, io.in.wcnt_mask.toUFix - UFix(1), UFix(0)))
-  val reg_wmask_mask = Reg(io.in.wmask_mask >> UFix(1))
-  val reg_waddr_mask = Reg(io.in.waddr_mask)
-  val reg_pvfb_tag   = Reg(io.in.pvfb_tag)
+  val reg_wen_mask   = RegUpdate(wpass_mask & io.in.wen_mask)
+  val reg_wlast_mask = RegUpdate(io.in.wlast_mask)
+  val reg_wcnt_mask  = RegUpdate(Mux(wpass_mask, io.in.wcnt_mask.toUInt - UInt(1), UInt(0)))
+  val reg_wmask_mask = RegUpdate(io.in.wmask_mask >> UInt(1))
+  val reg_waddr_mask = RegUpdate(io.in.waddr_mask)
+  val reg_pvfb_tag   = RegUpdate(io.in.pvfb_tag)
 
-  val reg_viu_val   = Reg(rpass & io.in.viu)
-  val reg_viu_fn    = Reg(io.in.viu_fn)
-  val reg_viu_utidx = Reg(io.in.viu_utidx.toUFix + UFix(1))
-  val reg_viu_imm   = Reg(io.in.viu_imm)
+  val reg_viu_val   = RegUpdate(rpass & io.in.viu)
+  val reg_viu_fn    = RegUpdate(io.in.viu_fn)
+  val reg_viu_utidx = RegUpdate(io.in.viu_utidx.toUInt + UInt(1))
+  val reg_viu_imm   = RegUpdate(io.in.viu_imm)
 
   // every signal related to the read port is delayed by one cycle 
   // because of the register file is an sram
@@ -102,19 +102,19 @@ class vuVXU_Banked8_Bank extends Component
   val rmask0 = if(HAVE_PVFB) io.in.rmask(0) else Bool(true)
   val wmask0 = if(HAVE_PVFB) io.in.wmask(0) else Bool(true)
 
-  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, Reg(rmask0))
-  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, Reg(rmask0))
+  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, RegUpdate(rmask0))
+  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, RegUpdate(rmask0))
 
   val delay_viu_fn  = reg_viu_fn
   val delay_viu_imm = reg_viu_imm
   
-  val delay_viu_val   = Reg(io.in.viu & io.active)
-  val delay_viu_utidx = Reg(io.in.viu_utidx) 
+  val delay_viu_val   = RegUpdate(io.in.viu & io.active)
+  val delay_viu_utidx = RegUpdate(io.in.viu_utidx) 
 
   io.rw.rblen := delay_rblen
 
-  val rfile = new vuVXU_Banked8_Bank_Regfile()
-  val alu = new vuVXU_Banked8_FU_alu()
+  val rfile = Module(new vuVXU_Banked8_Bank_Regfile)
+  val alu = Module(new vuVXU_Banked8_FU_alu)
 
   rfile.io.ren    := io.in.ren & io.active & rmask0
   rfile.io.raddr  := io.in.raddr
@@ -138,20 +138,20 @@ class vuVXU_Banked8_Bank extends Component
   rfile.io.viu_wdata := alu.io.out
 
   val viu_in0 = MuxLookup(
-    delay_viu_fn(RG_VIU_T0), UFix(0, SZ_DATA), Array(
-      M0 -> UFix(0, SZ_DATA),
+    delay_viu_fn(RG_VIU_T0), UInt(0, SZ_DATA), Array(
+      M0 -> UInt(0, SZ_DATA),
       ML -> viu_ropl,
       MR -> viu_rdata
     ))
 
   val viu_in1 = MuxLookup(
-    delay_viu_fn(RG_VIU_T1), UFix(0, SZ_DATA), Array(
-      M0 -> UFix(0, SZ_DATA),
+    delay_viu_fn(RG_VIU_T1), UInt(0, SZ_DATA), Array(
+      M0 -> UInt(0, SZ_DATA),
       MR -> viu_rdata,
       MI -> delay_viu_imm
     ))
 
-  val branch_resolution_register = Reg(resetVal = Bits(0, WIDTH_BMASK))
+  val branch_resolution_register = RegReset(Bits(0, WIDTH_BMASK))
   when (io.in.wen_mask && io.in.wmask_mask(0))
   { 
     branch_resolution_register := branch_resolution_register.bitSet(io.in.waddr_mask, alu.io.branch_result)

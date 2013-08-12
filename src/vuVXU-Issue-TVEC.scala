@@ -56,7 +56,7 @@ class io_vxu_issue_tvec extends Bundle
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
-class vuVXU_Issue_TVEC extends Component
+class vuVXU_Issue_TVEC extends Module
 {
   val io = new io_vxu_issue_tvec()
 
@@ -64,7 +64,7 @@ class vuVXU_Issue_TVEC extends Component
   val ISSUE_VT = Bits(1,1)
 
   val next_state = Bits(width = 1)
-  val reg_state = Reg(next_state, resetVal = ISSUE_TVEC)
+  val reg_state = Reg(update = next_state, reset = ISSUE_TVEC)
 
   val tvec_active = (reg_state === ISSUE_TVEC)
   io.active := tvec_active    
@@ -83,7 +83,7 @@ class vuVXU_Issue_TVEC extends Component
   val n = Bool(false)
   val y = Bool(true)
 
-  val stall_sticky = Reg(resetVal = Bool(false))
+  val stall_sticky = RegReset(Bool(false))
   val stall = io.irq.illegal || stall_sticky || io.xcpt_to_issue.stall
 
   when (io.irq.illegal) { stall_sticky := Bool(true) }
@@ -155,11 +155,11 @@ class vuVXU_Issue_TVEC extends Component
   val vd_valid::vd_active::vt_active::decode_vcfg::decode_setvl::decode_vf::deq_vxu_immq::deq_vxu_imm2q::deq_vxu_cntq::cs1 = cs0
   val addr_stride::mem_type_float::mem_type::mem_cmd::Nil = cs1
 
-  val decode_aiw_cmdb_valid = valid.orR || decode_vf
-  val decode_aiw_imm1b_valid = decode_aiw_cmdb_valid && deq_vxu_immq
-  val decode_aiw_imm2b_valid = decode_aiw_cmdb_valid && deq_vxu_imm2q
+  val decode_aiw_cmdb_valid = valid.orR || decode_vf.toBool
+  val decode_aiw_imm1b_valid = decode_aiw_cmdb_valid && deq_vxu_immq.toBool
+  val decode_aiw_imm2b_valid = decode_aiw_cmdb_valid && deq_vxu_imm2q.toBool
   val decode_aiw_cntb_valid = valid.orR
-  val decode_aiw_numCntB_valid = valid.orR || decode_vf
+  val decode_aiw_numCntB_valid = valid.orR || decode_vf.toBool
 
   val tvec_active_fence_clear =
     tvec_active &&
@@ -186,9 +186,9 @@ class vuVXU_Issue_TVEC extends Component
 
   val fire_common = mask_issue_ready && valid_common
 
-  val fire_vcfg = fire_common && decode_vcfg
-  val fire_setvl = fire_common && decode_setvl
-  val fire_vf = fire_common && decode_vf
+  val fire_vcfg = fire_common && decode_vcfg.toBool
+  val fire_setvl = fire_common && decode_setvl.toBool
+  val fire_vf = fire_common && decode_vf.toBool
 
   val queue_common = tvec_active_fence_clear && mask_issue_ready && !stall 
 
@@ -199,17 +199,17 @@ class vuVXU_Issue_TVEC extends Component
 
   io.vxu_immq.ready := 
     queue_common &&
-    io.vxu_cmdq.valid && deq_vxu_immq && mask_vxu_imm2q_valid &&
+    io.vxu_cmdq.valid && deq_vxu_immq.toBool && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.vxu_imm2q.ready := 
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q.toBool &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.vxu_cntq.ready :=
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && deq_vxu_cntq &&
+    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && deq_vxu_cntq.toBool &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_cmdb.valid := 
@@ -220,12 +220,12 @@ class vuVXU_Issue_TVEC extends Component
   io.aiw_imm1b.valid :=
     queue_common &&
     io.vxu_cmdq.valid && decode_aiw_imm1b_valid && mask_vxu_imm2q_valid &&
-    mask_aiw_cmdb_ready && deq_vxu_immq && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
+    mask_aiw_cmdb_ready && deq_vxu_immq.toBool && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_imm2b.valid :=
     queue_common &&
     io.vxu_cmdq.valid && mask_vxu_immq_valid && decode_aiw_imm2b_valid &&
-    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && deq_vxu_imm2q && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && deq_vxu_imm2q.toBool && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_cntb.valid :=
     queue_common &&
@@ -246,7 +246,7 @@ class vuVXU_Issue_TVEC extends Component
   io.aiw_cmdb.bits := io.vxu_cmdq.bits
   io.aiw_imm1b.bits := io.vxu_immq.bits
   io.aiw_imm2b.bits := io.vxu_imm2q.bits
-  io.aiw_numCntB.bits := Mux(decode_vf, Bits(0, 1), Bits(1, 1))
+  io.aiw_numCntB.bits := Mux(decode_vf.toBool, Bits(0, 1), Bits(1, 1))
 
 
 //-------------------------------------------------------------------------\\
@@ -260,15 +260,15 @@ class vuVXU_Issue_TVEC extends Component
   val next_bcnt = Bits(width = SZ_BCNT)
   val next_stride = Bits(width = SZ_REGLEN)
 
-  val reg_vlen = Reg(next_vlen, resetVal = Bits(0,SZ_VLEN))
-  val reg_nxregs = Reg(next_nxregs, resetVal = Bits(32,SZ_REGCNT))
-  val reg_nfregs = Reg(next_nfregs, resetVal = Bits(32,SZ_REGCNT))
-  val reg_bactive = Reg(next_bactive, resetVal = Bits("b1111_1111",SZ_BANK))
-  val reg_bcnt = Reg(next_bcnt, resetVal = Bits(8,SZ_LGBANK1))
-  val reg_stride = Reg(next_stride, resetVal = Bits(63,SZ_REGLEN))
+  val reg_vlen = Reg(update = next_vlen, reset = Bits(0,SZ_VLEN))
+  val reg_nxregs = Reg(update = next_nxregs, reset = Bits(32,SZ_REGCNT))
+  val reg_nfregs = Reg(update = next_nfregs, reset = Bits(32,SZ_REGCNT))
+  val reg_bactive = Reg(update = next_bactive, reset = Bits("b1111_1111",SZ_BANK))
+  val reg_bcnt = Reg(update = next_bcnt, reset = Bits(8,SZ_LGBANK1))
+  val reg_stride = Reg(update = next_stride, reset = Bits(63,SZ_REGLEN))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
-  val regid_base = (cnt >> UFix(3)) * reg_stride
+  val regid_base = (cnt >> UInt(3)) * reg_stride
 
   io.aiw_cntb.bits := cnt
 
@@ -310,7 +310,7 @@ class vuVXU_Issue_TVEC extends Component
 
   io.vf.active := (reg_state === ISSUE_VT)
   io.vf.fire := fire_vf
-  io.vf.pc := io.vxu_immq.bits(31,0).toUFix
+  io.vf.pc := io.vxu_immq.bits(31,0).toUInt
   io.vf.nxregs := reg_nxregs
   io.vf.nfregs := reg_nfregs
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
@@ -369,8 +369,8 @@ class vuVXU_Issue_TVEC extends Component
   io.fn.vau1 := Bits(0,SZ_VAU1_FN)
   io.fn.vau2 := Bits(0,SZ_VAU2_FN)
 
-  val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UFix(1,1)
-  val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UFix(1,1)
+  val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
+  val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)
   val rtype_vd = vd(5)
   val rtype_vt = vt(5)
 
@@ -385,14 +385,14 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := Bool(true)
-  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid
+  io.decoded.vd_zero := vd === Bits(0,6) && vd_valid.toBool
   io.decoded.vs_active := Bool(false)
-  io.decoded.vt_active := vt_active
+  io.decoded.vt_active := vt_active.toBool
   io.decoded.vr_active := Bool(false)
-  io.decoded.vd_active := vd_active
+  io.decoded.vd_active := vd_active.toBool
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
-  io.decoded.mem.typ_float := mem_type_float
+  io.decoded.mem.typ_float := mem_type_float.toBool
   io.decoded.imm := imm
   io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
   io.decoded.cnt_valid := io.vxu_cntq.valid
@@ -405,8 +405,8 @@ class vuVXU_Issue_TVEC extends Component
   io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))
   io.decoded.pvfb_tag := Bits(0, SZ_PVFB_TAG)
 
-  val illegal_vd = vd_active && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
-  val illegal_vt = vt_active && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)
+  val illegal_vd = vd_active.toBool && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
+  val illegal_vt = vt_active.toBool && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)
   
   io.irq.illegal := 
     io.vxu_cmdq.valid && tvec_active && 

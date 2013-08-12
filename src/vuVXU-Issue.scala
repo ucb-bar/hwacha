@@ -45,7 +45,7 @@ class io_vxu_issue_reg extends Bundle
   val vd = Bool()
 }
 
-class io_vxu_cnt_valid extends PipeIO()( Bits(width = SZ_VLEN) )
+class io_vxu_cnt_valid extends ValidIO(Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
@@ -126,8 +126,8 @@ class io_issue_to_irq_handler extends Bundle
 class IoIssueToPVFB extends Bundle
 {
   var ready = Bool(OUTPUT)
-  val fire = new PipeIO()( Bits(width=SZ_ADDR) )
-  val enq = new PipeIO()( Bits(width=SZ_ADDR) )
+  val fire = Valid(Bits(width=SZ_ADDR) )
+  val enq = Valid(Bits(width=SZ_ADDR) )
   val stop = Bool(OUTPUT)
   val replay = Bool(OUTPUT)
   val replay_pc = Bits(OUTPUT, SZ_ADDR)
@@ -182,12 +182,12 @@ class io_vxu_issue extends Bundle
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
-class vuVXU_Issue(resetSignal: Bool = null) extends Component(resetSignal)
+class vuVXU_Issue(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_vxu_issue()
 
-  val tvec = new vuVXU_Issue_TVEC()
-  val vt = new vuVXU_Issue_VT()
+  val tvec = Module(new vuVXU_Issue_TVEC)
+  val vt = Module(new vuVXU_Issue_VT)
 
   tvec.io.vf <> vt.io.vf
   io.pending_vf := tvec.io.vf.active

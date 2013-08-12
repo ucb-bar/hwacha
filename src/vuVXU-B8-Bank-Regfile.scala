@@ -28,7 +28,7 @@ class RegfileIO extends Bundle
   val viu_wdata = Bits(INPUT, SZ_DATA)
 }
 
-class vuVXU_Banked8_Bank_Regfile extends Component
+class vuVXU_Banked8_Bank_Regfile extends Module
 {
   val io = new RegfileIO()
 
@@ -41,15 +41,15 @@ class vuVXU_Banked8_Bank_Regfile extends Component
       Bits(4, SZ_BWPORT) -> io.viu_wdata
     ))
 
-  val rfile = Mem(256, seqRead = true) { Bits(width = SZ_DATA) }
-  val raddr = Reg() { Bits() }
+  val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)
+  val raddr = Reg(Bits())
   when (io.wen) { rfile(io.waddr) := wdata }
   when (io.ren) { raddr := io.raddr }
-  val rdata_rf = Mux(Reg(io.ren), rfile(raddr), Bits(0)) 
+  val rdata_rf = Mux(RegUpdate(io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf
 
-  val ropl0Reg = Reg(){Bits(width = SZ_DATA)}
-  val ropl1Reg = Reg(){Bits(width = SZ_DATA)}
+  val ropl0Reg = Reg(Bits(width = SZ_DATA))
+  val ropl1Reg = Reg(Bits(width = SZ_DATA))
   when (io.roplen(0)) { ropl0Reg := rdata_rf }
   when (io.roplen(1)) { ropl1Reg := rdata_rf }
 

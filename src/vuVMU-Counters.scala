@@ -19,30 +19,30 @@ class io_vmu_counters extends Bundle
   val vsreq_inc = Bool(INPUT)
   val vsreq_dec = Bool(INPUT)
 
-  val qcnt = UFix(INPUT, SZ_QCNT)
+  val qcnt = UInt(INPUT, SZ_QCNT)
   val vvaq_watermark = Bool(OUTPUT)
   val vsdq_watermark = Bool(OUTPUT)
   val vpasdq_watermark = Bool(OUTPUT)
   val vlreq_watermark = Bool(OUTPUT)
   val vsreq_watermark = Bool(OUTPUT)
 
-  val vpaq_qcnt = UFix(INPUT, SZ_QCNT)
+  val vpaq_qcnt = UInt(INPUT, SZ_QCNT)
   val vpaq_watermark = Bool(OUTPUT)
 
   val pending_load = Bool(OUTPUT)
   val pending_store = Bool(OUTPUT)
 }
 
-class vuVMU_Counters extends Component
+class vuVMU_Counters extends Module
 {
   val io = new io_vmu_counters()
 
-  val vvaq_count = new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ)
-  val vpaq_count = new qcnt(0, ENTRIES_VPAQ)
-  val vsdq_count = new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ)
-  val vpasdq_count = new qcnt(0, ENTRIES_VPASDQ)
-  val vsreq_count = new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ) // vector stores in flight
-  val vlreq_count = new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ) // vector loads in flight
+  val vvaq_count = Module(new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ))
+  val vpaq_count = Module(new qcnt(0, ENTRIES_VPAQ))
+  val vsdq_count = Module(new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ))
+  val vpasdq_count = Module(new qcnt(0, ENTRIES_VPASDQ))
+  val vsreq_count = Module(new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ)) // vector stores in flight
+  val vlreq_count = Module(new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ)) // vector loads in flight
 
   // vvaq counts available space
   vvaq_count.io.inc := io.vvaq_inc

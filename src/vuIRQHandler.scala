@@ -16,26 +16,26 @@ class io_irq_handler extends Bundle
   val vmu_to_irq = new io_vmu_to_irq_handler().flip
 
   val irq = Bool(OUTPUT)
-  val irq_cause = UFix(OUTPUT, 5)
+  val irq_cause = UInt(OUTPUT, 5)
   val irq_aux = Bits(OUTPUT, 64)
 }
 
-class vuIRQHandler(resetSignal: Bool = null) extends Component(resetSignal)
+class vuIRQHandler(resetSignal: Bool = null) extends Module(reset = resetSignal)
 {
   val io = new io_irq_handler()
 
-  val reg_irq_ma_inst = Reg(resetVal = Bool(false))
-  val reg_irq_fault_inst = Reg(resetVal = Bool(false))
-  val reg_irq_illegal_vt = Reg(resetVal = Bool(false))
-  val reg_irq_illegal_tvec = Reg(resetVal = Bool(false))
-  val reg_irq_pc = Reg(){ Bits(width = SZ_ADDR) }
-  val reg_irq_cmd_tvec = Reg(){ Bits(width = SZ_XCMD) }
+  val reg_irq_ma_inst = RegReset(Bool(false))
+  val reg_irq_fault_inst = RegReset(Bool(false))
+  val reg_irq_illegal_vt = RegReset(Bool(false))
+  val reg_irq_illegal_tvec = RegReset(Bool(false))
+  val reg_irq_pc = Reg(Bits(width = SZ_ADDR))
+  val reg_irq_cmd_tvec = Reg(Bits(width = SZ_XCMD))
 
-  val reg_irq_ma_ld = Reg(resetVal = Bool(false))
-  val reg_irq_ma_st = Reg(resetVal = Bool(false))
-  val reg_irq_faulted_ld = Reg(resetVal = Bool(false))
-  val reg_irq_faulted_st = Reg(resetVal = Bool(false))
-  val reg_mem_xcpt_addr = Reg(){ Bits(width = SZ_ADDR) }
+  val reg_irq_ma_ld = RegReset(Bool(false))
+  val reg_irq_ma_st = RegReset(Bool(false))
+  val reg_irq_faulted_ld = RegReset(Bool(false))
+  val reg_irq_faulted_st = RegReset(Bool(false))
+  val reg_mem_xcpt_addr = Reg(Bits(width = SZ_ADDR))
 
   when (!io.irq)
   {
@@ -63,15 +63,15 @@ class vuIRQHandler(resetSignal: Bool = null) extends Component(resetSignal)
   io.irq := reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt || reg_irq_illegal_tvec || dmem_xcpt
 
   io.irq_cause :=
-    Mux(reg_irq_ma_inst, UFix(24),
-    Mux(reg_irq_fault_inst, UFix(25),
-    Mux(reg_irq_illegal_vt, UFix(26),
-    Mux(reg_irq_illegal_tvec, UFix(27),
-    Mux(reg_irq_ma_ld, UFix(28),
-    Mux(reg_irq_ma_st, UFix(29),
-    Mux(reg_irq_faulted_ld, UFix(30),
-    Mux(reg_irq_faulted_st, UFix(31),
-        UFix(31)))))))))
+    Mux(reg_irq_ma_inst, UInt(24),
+    Mux(reg_irq_fault_inst, UInt(25),
+    Mux(reg_irq_illegal_vt, UInt(26),
+    Mux(reg_irq_illegal_tvec, UInt(27),
+    Mux(reg_irq_ma_ld, UInt(28),
+    Mux(reg_irq_ma_st, UInt(29),
+    Mux(reg_irq_faulted_ld, UInt(30),
+    Mux(reg_irq_faulted_st, UInt(31),
+        UInt(31)))))))))
 
   io.irq_aux :=
     Mux(reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt, reg_irq_pc,
