@@ -64,7 +64,7 @@ class vuVXU_Issue_TVEC extends Module
   val ISSUE_VT = Bits(1,1)
 
   val next_state = Bits(width = 1)
-  val reg_state = Reg(update = next_state, reset = ISSUE_TVEC)
+  val reg_state = Reg(update = next_state, resetVal = ISSUE_TVEC)
 
   val tvec_active = (reg_state === ISSUE_TVEC)
   io.active := tvec_active    
@@ -260,12 +260,12 @@ class vuVXU_Issue_TVEC extends Module
   val next_bcnt = Bits(width = SZ_BCNT)
   val next_stride = Bits(width = SZ_REGLEN)
 
-  val reg_vlen = Reg(update = next_vlen, reset = Bits(0,SZ_VLEN))
-  val reg_nxregs = Reg(update = next_nxregs, reset = Bits(32,SZ_REGCNT))
-  val reg_nfregs = Reg(update = next_nfregs, reset = Bits(32,SZ_REGCNT))
-  val reg_bactive = Reg(update = next_bactive, reset = Bits("b1111_1111",SZ_BANK))
-  val reg_bcnt = Reg(update = next_bcnt, reset = Bits(8,SZ_LGBANK1))
-  val reg_stride = Reg(update = next_stride, reset = Bits(63,SZ_REGLEN))
+  val reg_vlen = Reg(update = next_vlen, resetVal = Bits(0,SZ_VLEN))
+  val reg_nxregs = Reg(update = next_nxregs, resetVal = Bits(32,SZ_REGCNT))
+  val reg_nfregs = Reg(update = next_nfregs, resetVal = Bits(32,SZ_REGCNT))
+  val reg_bactive = Reg(update = next_bactive, resetVal = Bits("b1111_1111",SZ_BANK))
+  val reg_bcnt = Reg(update = next_bcnt, resetVal = Bits(8,SZ_LGBANK1))
+  val reg_stride = Reg(update = next_stride, resetVal = Bits(63,SZ_REGLEN))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
   val regid_base = (cnt >> UInt(3)) * reg_stride

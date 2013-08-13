@@ -88,7 +88,7 @@ class io_vxu_seq extends Bundle
   val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
 }
 
-class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_vxu_seq()
 
@@ -98,7 +98,7 @@ class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(reset = resetSi
   val next_ptr2 = UInt(width=SZ_BPTR)
   val next_ptr3 = UInt(width=SZ_BPTR)
 
-  val reg_ptr = Reg(update = next_ptr1, reset = UInt(0, SZ_LGBANK))
+  val reg_ptr = Reg(update = next_ptr1, resetVal = UInt(0, SZ_LGBANK))
 
   val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
   val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)

@@ -47,11 +47,11 @@ class vuPC extends Module
   val next_valid = Bool()
   val next_stalld = Bool()
 
-  val reg_pc = Reg(update = next_pc, reset = Bits(0,SZ_ADDR))
-  val reg_pending = Reg(update = next_pending, reset = Bool(false))
-  val reg_mask = Reg(update = next_mask, reset = Bits(0,WIDTH_PVFB))
-  val reg_valid = Reg(update = next_valid, reset = Bool(false))
-  val reg_stalld = Reg(update = next_stalld, reset = Bool(false))
+  val reg_pc = Reg(update = next_pc, resetVal = Bits(0,SZ_ADDR))
+  val reg_pending = Reg(update = next_pending, resetVal = Bool(false))
+  val reg_mask = Reg(update = next_mask, resetVal = Bits(0,WIDTH_PVFB))
+  val reg_valid = Reg(update = next_valid, resetVal = Bool(false))
+  val reg_stalld = Reg(update = next_stalld, resetVal = Bool(false))
 
   val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
   val vlen = Mux(fire_pass & Bool(HAVE_PVFB), Bits(WIDTH_PVFB-1), io.in.vlen)

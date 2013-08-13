@@ -60,9 +60,9 @@ class vuPVFBCtrl extends Module
   val deq_ptr_next = UInt(width=SIZE_ADDR)
   val full_next = Bool()
 
-  val enq_ptr = Reg(update = enq_ptr_next, reset = UInt(0, SIZE_ADDR))
-  val deq_ptr = Reg(update = deq_ptr_next, reset = UInt(0, SIZE_ADDR))
-  val full = Reg(update = full_next, reset = Bool(false))
+  val enq_ptr = Reg(update = enq_ptr_next, resetVal = UInt(0, SIZE_ADDR))
+  val deq_ptr = Reg(update = deq_ptr_next, resetVal = UInt(0, SIZE_ADDR))
+  val full = Reg(update = full_next, resetVal = Bool(false))
 
   enq_ptr_next := enq_ptr
   deq_ptr_next := deq_ptr

@@ -24,16 +24,16 @@ class CounterVec(DEPTH: Int) extends Module
   val io = new io_counter_vec(ADDR_SIZE)
 
   val next_write_ptr = UInt(width = ADDR_SIZE)
-  val write_ptr = Reg(update = next_write_ptr, reset = UInt(0, ADDR_SIZE))
+  val write_ptr = Reg(update = next_write_ptr, resetVal = UInt(0, ADDR_SIZE))
 
   val next_last_write_ptr = UInt(width = ADDR_SIZE)
-  val last_write_ptr = Reg(update = next_last_write_ptr, reset = UInt(0, ADDR_SIZE))
+  val last_write_ptr = Reg(update = next_last_write_ptr, resetVal = UInt(0, ADDR_SIZE))
 
   val next_read_ptr = UInt(width = ADDR_SIZE)
-  val read_ptr = Reg(update = next_read_ptr, reset = UInt(0, ADDR_SIZE))
+  val read_ptr = Reg(update = next_read_ptr, resetVal = UInt(0, ADDR_SIZE))
 
   val next_full = Bool()
-  val full = Reg(update = next_full, reset = Bool(false))
+  val full = Reg(update = next_full, resetVal = Bool(false))
 
   next_write_ptr := write_ptr
   next_last_write_ptr := last_write_ptr

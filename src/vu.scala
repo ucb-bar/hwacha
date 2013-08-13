@@ -51,17 +51,17 @@ class io_vu extends Bundle
   val xcpt = new io_xcpt().flip()
 }
 
-class vu(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_vu()
 
   val xcpt = Module(new vuXCPTHandler())
 
-  val flush_kill = this.getReset || xcpt.io.xcpt_to_vu.flush_kill
-  val flush_irq = this.getReset || xcpt.io.xcpt_to_vu.flush_irq
-  val flush_aiw = this.getReset || xcpt.io.xcpt_to_vu.flush_aiw
-  val flush_vru = this.getReset || xcpt.io.xcpt_to_vu.flush_vru
-  val flush_vmu = this.getReset || xcpt.io.xcpt_to_vu.flush_vmu
+  val flush_kill = this.reset || xcpt.io.xcpt_to_vu.flush_kill
+  val flush_irq = this.reset || xcpt.io.xcpt_to_vu.flush_irq
+  val flush_aiw = this.reset || xcpt.io.xcpt_to_vu.flush_aiw
+  val flush_vru = this.reset || xcpt.io.xcpt_to_vu.flush_vru
+  val flush_vmu = this.reset || xcpt.io.xcpt_to_vu.flush_vmu
 
   val vcmdq = Module(new Queue(Bits(width = SZ_VCMD), 19, resetSignal = flush_kill))
   val vximm1q = Module(new Queue(Bits(width = SZ_VIMM), 19, resetSignal = flush_kill))

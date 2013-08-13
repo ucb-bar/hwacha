@@ -56,7 +56,7 @@ class vuEvac extends Module
   val SEL_VCMDQ = Bool(true)
 
   val cmd_sel_next = Bool()
-  val cmd_sel = Reg(update = cmd_sel_next, reset = SEL_CMDB)
+  val cmd_sel = Reg(update = cmd_sel_next, resetVal = SEL_CMDB)
 
   cmd_sel_next := cmd_sel
 
@@ -138,8 +138,8 @@ class vuEvac extends Module
   val state_next = Bits(width=4)
   val addr_next = UInt(width=SZ_ADDR)
 
-  val state = Reg(update = state_next, reset = STATE_IDLE)
-  val addr_reg = Reg(update = addr_next, reset = UInt(0, SZ_ADDR))
+  val state = Reg(update = state_next, resetVal = STATE_IDLE)
+  val addr_reg = Reg(update = addr_next, resetVal = UInt(0, SZ_ADDR))
 
   state_next := state
   addr_next := addr_reg
