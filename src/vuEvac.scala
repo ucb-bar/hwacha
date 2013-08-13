@@ -49,8 +49,8 @@ class vuEvac extends Module
 {
   val io = new io_vu_evac()
   
-  val n = Bool(false)
-  val y = Bool(true)
+  val n = Bits(0,1)
+  val y = Bits(1,1)
 
   val SEL_CMDB = Bool(false)
   val SEL_VCMDQ = Bool(true)
@@ -121,7 +121,7 @@ class vuEvac extends Module
     CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: is_prefetch :: Nil = cs
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: is_prefetch :: Nil = cs.map(_.toBool)
 
   val STATE_IDLE = Bits(0,4)
   val STATE_CMDB = Bits(1,4)

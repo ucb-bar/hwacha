@@ -65,8 +65,8 @@ class vuAIW(resetSignal: Bool = null) extends Module(reset = resetSignal)
   irNumCntB.io.rtag <> io.aiw_to_issue.numCnt_rtag
 
   val cmd = ircmdb.io.deq.bits(RG_XCMD_CMCODE)
-  val n = Bool(false)
-  val y = Bool(true)
+  val n = Bits(0,1)
+  val y = Bits(1,1)
 
   val cs =
     ListLookup(cmd,
@@ -118,7 +118,7 @@ class vuAIW(resetSignal: Bool = null) extends Module(reset = resetSignal)
     CMD_VFSSTW    -> List(n, y, y, y, y)
   ))
 
-  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs
+  val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs.map(_.toBool)
   val decode_vf = vf
   val decode_deq_ircmdb = deq_ircmdb
   val decode_deq_irimm1b = deq_irimm1b
