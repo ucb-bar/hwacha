@@ -99,7 +99,7 @@ class vuVXU_Banked8_Expand extends Module
   val next_rcnt = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BVLEN)}
   val next_raddr = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BREGLEN)}
   val next_roplen = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BOPL)}
-  val next_rblen = VecBuf(Vec.fill(SZ_BRPORT){Bool()}, SHIFT_BUF_READ)
+  val next_rblen = List.fill(SHIFT_BUF_READ){Vec.fill(SZ_BRPORT){Bool()}}
   val next_rmask = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BANK)}
 
   val reg_ren = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
@@ -107,7 +107,7 @@ class vuVXU_Banked8_Expand extends Module
   val reg_rcnt = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BVLEN))}
   val reg_raddr = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BREGLEN))}
   val reg_roplen = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BOPL))}
-  val reg_rblen = VecBuf(Vec.fill(SZ_BRPORT){Reg(Bool())}, SHIFT_BUF_READ)
+  val reg_rblen = List.fill(SHIFT_BUF_READ){Vec.fill(SZ_BRPORT){Reg(Bool())}}
   val reg_rmask = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BANK))}
 
   for (i <- 0 until SHIFT_BUF_READ){
