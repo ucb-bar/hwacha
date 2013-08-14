@@ -51,22 +51,22 @@ class io_vu extends Bundle
   val xcpt = new io_xcpt().flip()
 }
 
-class vu(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vu(_reset: Bool = null) extends Module(_reset = _reset)
 {
   val io = new io_vu()
 
   val xcpt = Module(new vuXCPTHandler())
 
-  val flush_kill = this.getReset || xcpt.io.xcpt_to_vu.flush_kill
-  val flush_irq = this.getReset || xcpt.io.xcpt_to_vu.flush_irq
-  val flush_aiw = this.getReset || xcpt.io.xcpt_to_vu.flush_aiw
-  val flush_vru = this.getReset || xcpt.io.xcpt_to_vu.flush_vru
-  val flush_vmu = this.getReset || xcpt.io.xcpt_to_vu.flush_vmu
+  val flush_kill = reset || xcpt.io.xcpt_to_vu.flush_kill
+  val flush_irq = reset || xcpt.io.xcpt_to_vu.flush_irq
+  val flush_aiw = reset || xcpt.io.xcpt_to_vu.flush_aiw
+  val flush_vru = reset || xcpt.io.xcpt_to_vu.flush_vru
+  val flush_vmu = reset || xcpt.io.xcpt_to_vu.flush_vmu
 
-  val vcmdq = Module(new Queue(Bits(width = SZ_VCMD), 19, resetSignal = flush_kill))
-  val vximm1q = Module(new Queue(Bits(width = SZ_VIMM), 19, resetSignal = flush_kill))
-  val vximm2q = Module(new Queue(Bits(width = SZ_VSTRIDE), 17, resetSignal = flush_kill))
-  val vxcntq = Module(new Queue(Bits(width = SZ_VLEN+1), 8, resetSignal = flush_kill))
+  val vcmdq = Module(new Queue(Bits(width = SZ_VCMD), 19, _reset = flush_kill))
+  val vximm1q = Module(new Queue(Bits(width = SZ_VIMM), 19, _reset = flush_kill))
+  val vximm2q = Module(new Queue(Bits(width = SZ_VSTRIDE), 17, _reset = flush_kill))
+  val vxcntq = Module(new Queue(Bits(width = SZ_VLEN+1), 8, _reset = flush_kill))
 
   vcmdq.io.enq <> MaskStall(io.vcmdq, xcpt.io.xcpt_to_vu.busy)
   vximm1q.io.enq <> MaskStall(io.vximm1q, xcpt.io.xcpt_to_vu.busy)
@@ -74,24 +74,24 @@ class vu(resetSignal: Bool = null) extends Module(reset = resetSignal)
   vxcntq.io.enq <> MaskStall(io.vcntq, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = Module(new vuVXU)
-  val vmu = Module(new vuVMU(resetSignal = flush_vmu))
-  val irq = Module(new vuIRQHandler(resetSignal = flush_irq))
-  val aiw = Module(new vuAIW(resetSignal = flush_aiw))
+  val vmu = Module(new vuVMU(_reset = flush_vmu))
+  val irq = Module(new vuIRQHandler(_reset = flush_irq))
+  val aiw = Module(new vuAIW(_reset = flush_aiw))
   val evac = Module(new vuEvac)
 
   // counters
-  val vcmdq_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
-  val vximm1q_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
-  val vximm2q_count = Module(new qcnt(17, 17, resetSignal = flush_kill))
+  val vcmdq_count = Module(new qcnt(19, 19, _reset = flush_kill))
+  val vximm1q_count = Module(new qcnt(19, 19, _reset = flush_kill))
+  val vximm2q_count = Module(new qcnt(17, 17, _reset = flush_kill))
 
   if (HAVE_VRU)
   {
-    val vru = Module(new vuVRU(resetSignal = flush_vru))
+    val vru = Module(new vuVRU(_reset = flush_vru))
 
-    val vpfcmdq = Module(new Queue(Bits(width=SZ_VCMD), 19, resetSignal = flush_kill))
-    val vpfximm1q = Module(new Queue(Bits(width=SZ_VIMM), 19, resetSignal = flush_kill))
-    val vpfximm2q = Module(new Queue(Bits(width=SZ_VSTRIDE), 17, resetSignal = flush_kill))
-    val vpfcntq = Module(new Queue(Bits(width=SZ_VLEN), 8, resetSignal = flush_kill))
+    val vpfcmdq = Module(new Queue(Bits(width=SZ_VCMD), 19, _reset = flush_kill))
+    val vpfximm1q = Module(new Queue(Bits(width=SZ_VIMM), 19, _reset = flush_kill))
+    val vpfximm2q = Module(new Queue(Bits(width=SZ_VSTRIDE), 17, _reset = flush_kill))
+    val vpfcntq = Module(new Queue(Bits(width=SZ_VLEN), 8, _reset = flush_kill))
 
     vpfcmdq.io.enq <> MaskStall(io.vpfcmdq, xcpt.io.xcpt_to_vu.busy)
     vpfximm1q.io.enq <> MaskStall(io.vpfximm1q, xcpt.io.xcpt_to_vu.busy)

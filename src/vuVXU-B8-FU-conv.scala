@@ -140,7 +140,7 @@ class vuVXU_Banked8_FU_conv extends Module
     VAU2_FP(FPD), Cat(next_exc_dp, next_result_dp),
     Cat(next_exc_sp, next_result_sp))
 
-  val pipereg = ShiftRegister(FCONV_STAGES, result, io.valid)
+  val pipereg = ShiftRegister(result, FCONV_STAGES, io.valid)
 
   Match(pipereg, io.exc, io.out)
 }

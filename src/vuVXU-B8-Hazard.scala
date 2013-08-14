@@ -43,7 +43,7 @@ class io_vxu_hazard extends Bundle
   val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
 }
 
-class vuVXU_Banked8_Hazard(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vuVXU_Banked8_Hazard(_reset: Bool = null) extends Module(_reset = _reset)
 {
   val io = new io_vxu_hazard()
 

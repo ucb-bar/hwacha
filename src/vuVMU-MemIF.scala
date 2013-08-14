@@ -33,7 +33,7 @@ class vuVMU_MemIF extends Module
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
   val replaying_cmb = Bool()
-  val replaying = Reg(update = replaying_cmb, reset = Bool(false))
+  val replaying = Reg(updateData = replaying_cmb, resetData = Bool(false))
   replaying_cmb := replaying
 
   val replayq1 = Module(new Queue(new io_dmem_req_bundle, 1, flow = true))

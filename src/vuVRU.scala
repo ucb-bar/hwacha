@@ -19,7 +19,7 @@ class io_vru extends Bundle
   val vpfcntq = new io_vcntq().flip
 }
 
-class vuVRU(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vuVRU(_reset: Bool = null) extends Module(_reset = _reset)
 {
   val io = new io_vru()
 

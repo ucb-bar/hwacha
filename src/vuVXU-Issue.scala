@@ -182,7 +182,7 @@ class io_vxu_issue extends Bundle
   val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
 }
 
-class vuVXU_Issue(resetSignal: Bool = null) extends Module(reset = resetSignal)
+class vuVXU_Issue(_reset: Bool = null) extends Module(_reset = _reset)
 {
   val io = new io_vxu_issue()
 
