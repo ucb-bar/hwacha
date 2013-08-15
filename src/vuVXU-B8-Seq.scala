@@ -98,7 +98,7 @@ class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
   val next_ptr2 = UInt(width=SZ_BPTR)
   val next_ptr3 = UInt(width=SZ_BPTR)
 
-  val reg_ptr = Reg(updateData = next_ptr1, resetData = UInt(0, SZ_LGBANK))
+  val reg_ptr = Reg(next = next_ptr1, init = UInt(0, SZ_LGBANK))
 
   val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
   val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)
@@ -164,17 +164,17 @@ class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
   val next_active_mask = Vec.fill(SZ_BANK){Bool()}
   val next_mask = Vec.fill(SZ_BANK){Bits(width=WIDTH_PVFB)}
 
-  val array_val = RegReset(Bits(0, SZ_BANK))
-  val array_stall = RegReset(Bits(0, SZ_BANK))
-  val array_last = RegReset(Bits(0, SZ_BANK))
-  val array_viu = RegReset(Bits(0, SZ_BANK))
-  val array_vau0 = RegReset(Bits(0, SZ_BANK))
-  val array_vau1 = RegReset(Bits(0, SZ_BANK))
-  val array_vau2 = RegReset(Bits(0, SZ_BANK))
-  val array_vaq = RegReset(Bits(0, SZ_BANK))
-  val array_vldq = RegReset(Bits(0, SZ_BANK))
-  val array_vsdq = RegReset(Bits(0, SZ_BANK))
-  val array_utmemop = RegReset(Bits(0, SZ_BANK))
+  val array_val = Reg(init=Bits(0, SZ_BANK))
+  val array_stall = Reg(init=Bits(0, SZ_BANK))
+  val array_last = Reg(init=Bits(0, SZ_BANK))
+  val array_viu = Reg(init=Bits(0, SZ_BANK))
+  val array_vau0 = Reg(init=Bits(0, SZ_BANK))
+  val array_vau1 = Reg(init=Bits(0, SZ_BANK))
+  val array_vau2 = Reg(init=Bits(0, SZ_BANK))
+  val array_vaq = Reg(init=Bits(0, SZ_BANK))
+  val array_vldq = Reg(init=Bits(0, SZ_BANK))
+  val array_vsdq = Reg(init=Bits(0, SZ_BANK))
+  val array_utmemop = Reg(init=Bits(0, SZ_BANK))
 
   val array_fn_viu = Vec.fill(8){Reg(Bits(width=SZ_VIU_FN))}
   val array_fn_vau0 = Vec.fill(8){Reg(Bits(width=SZ_VAU0_FN))}
@@ -201,11 +201,11 @@ class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
   val array_aiw_numCnt_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_NUMCNT))}
   val array_aiw_cnt = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_VLEN))}
   val array_aiw_pc_next = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_ADDR))}
-  val array_aiw_update_imm1 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_aiw_update_numCnt = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_aiw_update_imm1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_aiw_update_numCnt = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
 
   val array_pvfb_tag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_PVFB_TAG))}
-  val array_active_mask = Vec.fill(SZ_BANK){RegReset(Bool(false) )}
+  val array_active_mask = Vec.fill(SZ_BANK){Reg(init=Bool(false) )}
   val array_mask = Vec.fill(SZ_BANK){Reg(Bits(width=WIDTH_PVFB))}
 
   array_val := next_val.toBits
@@ -667,9 +667,9 @@ class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
   val next_dep_vldq = Vec.fill(SZ_BANK){Bool()}
   val next_dep_vsdq = Vec.fill(SZ_BANK){Bool()}
 
-  val array_dep_vaq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_dep_vldq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_dep_vsdq = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_dep_vaq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_dep_vldq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_dep_vsdq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
 
   array_dep_vaq := next_dep_vaq
   array_dep_vldq := next_dep_vldq
@@ -794,9 +794,9 @@ class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
   val current_vldq_val = current_val & array_vldq(reg_ptr)
   val current_vsdq_val = current_val & array_vsdq(reg_ptr)
 
-  val reg_vaq_stall = RegReset(Bool(false))
-  val reg_vldq_stall = RegReset(Bool(false))
-  val reg_vsdq_stall = RegReset(Bool(false))
+  val reg_vaq_stall = Reg(init=Bool(false))
+  val reg_vldq_stall = Reg(init=Bool(false))
+  val reg_vsdq_stall = Reg(init=Bool(false))
 
   val masked_vaq_stall = array_dep_vaq(reg_ptr) & reg_vaq_stall
   val masked_vldq_stall = array_dep_vldq(reg_ptr) & reg_vldq_stall

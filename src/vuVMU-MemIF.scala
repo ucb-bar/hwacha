@@ -33,7 +33,7 @@ class vuVMU_MemIF extends Module
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
   val replaying_cmb = Bool()
-  val replaying = Reg(updateData = replaying_cmb, resetData = Bool(false))
+  val replaying = Reg(next = replaying_cmb, init = Bool(false))
   replaying_cmb := replaying
 
   val replayq1 = Module(new Queue(new io_dmem_req_bundle, 1, flow = true))
@@ -69,11 +69,11 @@ class vuVMU_MemIF extends Module
     )
 
   val s2_nack = io.mem_resp.bits.nack
-  val s3_nack = RegUpdate(s2_nack)
+  val s3_nack = Reg(next=s2_nack)
 
   val s0_req_fire = io.mem_req.fire()
-  val s1_req_fire = RegUpdate(s0_req_fire)
-  val s2_req_fire = RegUpdate(s1_req_fire)
+  val s1_req_fire = Reg(next=s0_req_fire)
+  val s2_req_fire = Reg(next=s1_req_fire)
 
   io.mem_req.bits.kill := s2_nack
   io.mem_req.bits.phys := Bool(true)
@@ -109,7 +109,7 @@ class vuVMU_MemIF extends Module
   }
 
   // when replaying request got sunk into the d$
-  when (s2_req_fire && RegUpdate(RegUpdate(replaying_cmb)) && !s2_nack) {
+  when (s2_req_fire && Reg(next=Reg(next=replaying_cmb)) && !s2_nack) {
     // see if there's a stashed request in replayq2
     when (replayq2.io.deq.valid) {
       replayq1.io.enq.valid := Bool(true)
@@ -132,7 +132,7 @@ class vuVMU_MemIF extends Module
   // io.pending_replayq := s1_req_fire || replaying_cmb
 
   // load data conversion
-  val reg_mem_resp = RegUpdate(io.mem_resp)
+  val reg_mem_resp = Reg(next=io.mem_resp)
     
   val ldq_sp_bits = Bits(width=33)
   val ldq_dp_bits = Bits(width=65)

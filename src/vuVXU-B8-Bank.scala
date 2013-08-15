@@ -66,35 +66,35 @@ class vuVXU_Banked8_Bank extends Module
   val rpass = io.in.rcnt.orR
   val wpass = io.in.wcnt.orR
 
-  val reg_ren    = RegUpdate(rpass & io.in.ren)
-  val reg_rlast  = RegUpdate(io.in.rlast)
-  val reg_rcnt   = RegUpdate(Mux(rpass, io.in.rcnt.toUInt - UInt(1), UInt(0)))
-  val reg_raddr  = RegUpdate(io.in.raddr)
-  val reg_roplen = RegUpdate(io.in.roplen)
-  val reg_rblen  = RegUpdate(io.in.rblen) 
-  val reg_rmask  = RegUpdate(io.in.rmask >> UInt(1))
+  val reg_ren    = Reg(next=rpass & io.in.ren)
+  val reg_rlast  = Reg(next=io.in.rlast)
+  val reg_rcnt   = Reg(next=Mux(rpass, io.in.rcnt.toUInt - UInt(1), UInt(0)))
+  val reg_raddr  = Reg(next=io.in.raddr)
+  val reg_roplen = Reg(next=io.in.roplen)
+  val reg_rblen  = Reg(next=io.in.rblen) 
+  val reg_rmask  = Reg(next=io.in.rmask >> UInt(1))
 
-  val reg_wen        = RegUpdate(wpass & io.in.wen)
-  val reg_wlast      = RegUpdate(io.in.wlast)
-  val reg_wcnt       = RegUpdate(Mux(wpass, io.in.wcnt.toUInt - UInt(1), UInt(0)))
-  val reg_waddr      = RegUpdate(io.in.waddr)
-  val reg_wsel       = RegUpdate(io.in.wsel)
-  val reg_wmask      = RegUpdate(io.in.wmask >> UInt(1))
+  val reg_wen        = Reg(next=wpass & io.in.wen)
+  val reg_wlast      = Reg(next=io.in.wlast)
+  val reg_wcnt       = Reg(next=Mux(wpass, io.in.wcnt.toUInt - UInt(1), UInt(0)))
+  val reg_waddr      = Reg(next=io.in.waddr)
+  val reg_wsel       = Reg(next=io.in.wsel)
+  val reg_wmask      = Reg(next=io.in.wmask >> UInt(1))
 
 
   val wpass_mask = io.in.wcnt_mask.orR
 
-  val reg_wen_mask   = RegUpdate(wpass_mask & io.in.wen_mask)
-  val reg_wlast_mask = RegUpdate(io.in.wlast_mask)
-  val reg_wcnt_mask  = RegUpdate(Mux(wpass_mask, io.in.wcnt_mask.toUInt - UInt(1), UInt(0)))
-  val reg_wmask_mask = RegUpdate(io.in.wmask_mask >> UInt(1))
-  val reg_waddr_mask = RegUpdate(io.in.waddr_mask)
-  val reg_pvfb_tag   = RegUpdate(io.in.pvfb_tag)
+  val reg_wen_mask   = Reg(next=wpass_mask & io.in.wen_mask)
+  val reg_wlast_mask = Reg(next=io.in.wlast_mask)
+  val reg_wcnt_mask  = Reg(next=Mux(wpass_mask, io.in.wcnt_mask.toUInt - UInt(1), UInt(0)))
+  val reg_wmask_mask = Reg(next=io.in.wmask_mask >> UInt(1))
+  val reg_waddr_mask = Reg(next=io.in.waddr_mask)
+  val reg_pvfb_tag   = Reg(next=io.in.pvfb_tag)
 
-  val reg_viu_val   = RegUpdate(rpass & io.in.viu)
-  val reg_viu_fn    = RegUpdate(io.in.viu_fn)
-  val reg_viu_utidx = RegUpdate(io.in.viu_utidx.toUInt + UInt(1))
-  val reg_viu_imm   = RegUpdate(io.in.viu_imm)
+  val reg_viu_val   = Reg(next=rpass & io.in.viu)
+  val reg_viu_fn    = Reg(next=io.in.viu_fn)
+  val reg_viu_utidx = Reg(next=io.in.viu_utidx.toUInt + UInt(1))
+  val reg_viu_imm   = Reg(next=io.in.viu_imm)
 
   // every signal related to the read port is delayed by one cycle 
   // because of the register file is an sram
@@ -102,14 +102,14 @@ class vuVXU_Banked8_Bank extends Module
   val rmask0 = if(HAVE_PVFB) io.in.rmask(0) else Bool(true)
   val wmask0 = if(HAVE_PVFB) io.in.wmask(0) else Bool(true)
 
-  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, RegUpdate(rmask0))
-  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, RegUpdate(rmask0))
+  val delay_roplen = reg_roplen & Fill(SZ_BOPL, io.active) & Fill(SZ_BOPL, Reg(next=rmask0))
+  val delay_rblen  = reg_rblen & Fill(SZ_BRPORT, io.active) & Fill(SZ_BRPORT, Reg(next=rmask0))
 
   val delay_viu_fn  = reg_viu_fn
   val delay_viu_imm = reg_viu_imm
   
-  val delay_viu_val   = RegUpdate(io.in.viu & io.active)
-  val delay_viu_utidx = RegUpdate(io.in.viu_utidx) 
+  val delay_viu_val   = Reg(next=io.in.viu & io.active)
+  val delay_viu_utidx = Reg(next=io.in.viu_utidx) 
 
   io.rw.rblen := delay_rblen
 
@@ -151,7 +151,7 @@ class vuVXU_Banked8_Bank extends Module
       MI -> delay_viu_imm
     ))
 
-  val branch_resolution_register = RegReset(Bits(0, WIDTH_BMASK))
+  val branch_resolution_register = Reg(init=Bits(0, WIDTH_BMASK))
   when (io.in.wen_mask && io.in.wmask_mask(0))
   { 
     branch_resolution_register := branch_resolution_register.bitSet(io.in.waddr_mask, alu.io.branch_result)

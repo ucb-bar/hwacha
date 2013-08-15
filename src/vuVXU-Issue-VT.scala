@@ -91,7 +91,7 @@ class vuVXU_Issue_VT extends Module
 {
   val io = new io_vxu_issue_vt()
 
-  val stall_sticky = RegReset(Bool(false))
+  val stall_sticky = Reg(init=Bool(false))
   val mask_stall = Bool()
 
   val stall_issue = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
@@ -103,8 +103,8 @@ class vuVXU_Issue_VT extends Module
   io.imem_req.bits := io.vf.pc
   io.imem_resp.ready := io.vf.active && !stall_frontend
 
-  val imm1_rtag = RegReset(Bits(0,SZ_AIW_IMM1))
-  val numCnt_rtag = RegReset(Bits(0,SZ_AIW_CMD))
+  val imm1_rtag = Reg(init=Bits(0,SZ_AIW_IMM1))
+  val numCnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
 
   when (io.vf.fire) 
   { 

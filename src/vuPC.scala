@@ -47,19 +47,19 @@ class vuPC extends Module
   val next_valid = Bool()
   val next_stalld = Bool()
 
-  val reg_pc = Reg(updateData = next_pc, resetData = Bits(0,SZ_ADDR))
-  val reg_pending = Reg(updateData = next_pending, resetData = Bool(false))
-  val reg_mask = Reg(updateData = next_mask, resetData = Bits(0,WIDTH_PVFB))
-  val reg_valid = Reg(updateData = next_valid, resetData = Bool(false))
-  val reg_stalld = Reg(updateData = next_stalld, resetData = Bool(false))
+  val reg_pc = Reg(next = next_pc, init = Bits(0,SZ_ADDR))
+  val reg_pending = Reg(next = next_pending, init = Bool(false))
+  val reg_mask = Reg(next = next_mask, init = Bits(0,WIDTH_PVFB))
+  val reg_valid = Reg(next = next_valid, init = Bool(false))
+  val reg_stalld = Reg(next = next_stalld, init = Bool(false))
 
   val fire_pass = io.in.vlen >= Bits(WIDTH_PVFB)
   val vlen = Mux(fire_pass & Bool(HAVE_PVFB), Bits(WIDTH_PVFB-1), io.in.vlen)
 
-  val delay_id = RegUpdate(io.in.id + UInt(1))
-  val delay_fire = RegUpdate(io.in.fire && fire_pass)
-  val delay_pc = RegUpdate(io.in.pc)
-  val delay_vlen = RegUpdate(Mux(fire_pass, io.in.vlen - Bits(WIDTH_PVFB), Bits(0)))
+  val delay_id = Reg(next=io.in.id + UInt(1))
+  val delay_fire = Reg(next=io.in.fire && fire_pass)
+  val delay_pc = Reg(next=io.in.pc)
+  val delay_vlen = Reg(next=Mux(fire_pass, io.in.vlen - Bits(WIDTH_PVFB), Bits(0)))
 
   io.out.id := delay_id
   io.out.fire := delay_fire

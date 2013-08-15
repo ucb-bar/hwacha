@@ -87,19 +87,19 @@ class vuVRU(_reset: Bool = null) extends Module(_reset = _reset)
 
   val stride_decoded::setvl::pf::deq_imm1q::deq_imm2q::Nil = cs
 
-  val state = RegReset(VRU_Idle)
+  val state = Reg(init=VRU_Idle)
 
-  val vlen_reg = RegReset(SInt(0, SZ_VLEN+1))
+  val vlen_reg = Reg(init=SInt(0, SZ_VLEN+1))
 
-  val addr_reg = RegReset(UInt(0, SZ_VIMM))
-  val cmd_reg = RegReset(Bits(0,SZ_XCMD_CMD))
-  val vec_count_reg = RegReset(SInt(0, SZ_VLEN+1))
-  val vec_pfed_count_reg = RegReset(SInt(0, SZ_VLEN+1))
-  val stride_reg = RegReset(UInt(0, SZ_VIMM))
+  val addr_reg = Reg(init=UInt(0, SZ_VIMM))
+  val cmd_reg = Reg(init=Bits(0,SZ_XCMD_CMD))
+  val vec_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
+  val vec_pfed_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
+  val stride_reg = Reg(init=UInt(0, SZ_VIMM))
   
-  val vec_per_pf_reg = RegReset(UInt(0, OFFSET_BITS+1))
-  val vec_pf_remainder_reg = RegReset(UInt(0, OFFSET_BITS))
-  val stride_remaining_reg = RegReset(UInt(0, OFFSET_BITS))
+  val vec_per_pf_reg = Reg(init=UInt(0, OFFSET_BITS+1))
+  val vec_pf_remainder_reg = Reg(init=UInt(0, OFFSET_BITS))
+  val stride_remaining_reg = Reg(init=UInt(0, OFFSET_BITS))
 
   val unit_stride = (stride_decoded != Bits(0,4))
   

@@ -60,9 +60,9 @@ class vuPVFBCtrl extends Module
   val deq_ptr_next = UInt(width=SIZE_ADDR)
   val full_next = Bool()
 
-  val enq_ptr = Reg(updateData = enq_ptr_next, resetData = UInt(0, SIZE_ADDR))
-  val deq_ptr = Reg(updateData = deq_ptr_next, resetData = UInt(0, SIZE_ADDR))
-  val full = Reg(updateData = full_next, resetData = Bool(false))
+  val enq_ptr = Reg(next = enq_ptr_next, init = UInt(0, SIZE_ADDR))
+  val deq_ptr = Reg(next = deq_ptr_next, init = UInt(0, SIZE_ADDR))
+  val full = Reg(next = full_next, init = Bool(false))
 
   enq_ptr_next := enq_ptr
   deq_ptr_next := deq_ptr
@@ -116,8 +116,8 @@ class vuPVFB extends Module
 
   val pvfb_ctrl = new vuPVFBCtrl()
 
-  val reg_taken_pc = RegReset(Bits(0, SZ_ADDR))
-  val reg_not_taken_pc = RegReset(Bits(0, SZ_ADDR))
+  val reg_taken_pc = Reg(init=Bits(0, SZ_ADDR))
+  val reg_not_taken_pc = Reg(init=Bits(0, SZ_ADDR))
   when (io.vtToPVFB.pc.valid) 
   { 
     reg_taken_pc := io.vtToPVFB.pc.bits.taken
@@ -143,7 +143,7 @@ class vuPVFB extends Module
   when (pvfb_ctrl.io.wen) { pcRam(pvfb_ctrl.io.waddr) := pvfb_ctrl.io.pc_wdata }
   when (pvfb_ctrl.io.ren) { pcRamOut := pcRam(pvfb_ctrl.io.raddr) }
 
-  val reg_ren = RegUpdate(pvfb_ctrl.io.ren)
+  val reg_ren = Reg(next=pvfb_ctrl.io.ren)
 
   io.pvf.valid := pvfb_ctrl.io.next_valid || reg_ren
   io.pvf.bits.mask := Mux(reg_ren, maskRamOut, pvfb_ctrl.io.next_mask)

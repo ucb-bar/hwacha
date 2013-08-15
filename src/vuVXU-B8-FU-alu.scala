@@ -68,10 +68,10 @@ class vuVXU_Banked8_FU_alu extends Module
   def viu_FP(fp: Bits) = reg_fn(RG_VIU_FP) === fp
   def viu_DW(dw: Bits) = reg_fn(RG_VIU_DW) === dw
 
-  val reg_fn     = RegUpdate(io.fn)
-  val reg_utidx  = RegUpdate(io.utidx)
-  val reg_in0    = RegUpdate(io.in0)
-  val reg_in1    = RegUpdate(io.in1)
+  val reg_fn     = Reg(next=io.fn)
+  val reg_utidx  = Reg(next=io.utidx)
+  val reg_in0    = Reg(next=io.in0)
+  val reg_in1    = Reg(next=io.in1)
   val reg_mask   = Reg(Bits(width = 1))
   val reg_result = Reg(Bits(width = 65))
   val reg_branch_result = Reg(Bool())

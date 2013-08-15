@@ -68,9 +68,9 @@ class vuXCPTHandler extends Module
   val next_hold_seq = Bool()
   val next_hold_tlb = Bool()
 
-  val hold_issue = Reg(updateData = next_hold_issue, resetData = Bool(false))
-  val hold_seq = Reg(updateData = next_hold_seq, resetData = Bool(false))
-  val hold_tlb = Reg(updateData = next_hold_tlb, resetData = Bool(false))
+  val hold_issue = Reg(next = next_hold_issue, init = Bool(false))
+  val hold_seq = Reg(next = next_hold_seq, init = Bool(false))
+  val hold_tlb = Reg(next = next_hold_tlb, init = Bool(false))
 
   next_hold_issue := hold_issue
   next_hold_seq := hold_seq
@@ -89,16 +89,16 @@ class vuXCPTHandler extends Module
   val HOLD = Bits(5, 3)
 
   val next_state = Bits(width = 4)
-  val state = Reg(updateData = next_state, resetData = NORMAL)
+  val state = Reg(next = next_state, init = NORMAL)
 
   val next_addr = UInt(width = SZ_ADDR)
-  val addr = Reg(updateData = next_addr, resetData = UInt(0, SZ_ADDR) )
+  val addr = Reg(next = next_addr, init = UInt(0, SZ_ADDR) )
 
   val next_evac = Bool()
-  val evac = Reg(updateData = next_evac, resetData = Bool(false))
+  val evac = Reg(next = next_evac, init = Bool(false))
 
   val next_kill = Bool()
-  val kill = Reg(updateData = next_kill, resetData = Bool(false))
+  val kill = Reg(next = next_kill, init = Bool(false))
 
   next_state := state
   next_addr := addr

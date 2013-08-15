@@ -102,7 +102,7 @@ class vuVXU_Banked8_Expand extends Module
   val next_rblen = List.fill(SHIFT_BUF_READ){Vec.fill(SZ_BRPORT){Bool()}}
   val next_rmask = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BANK)}
 
-  val reg_ren = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_ren = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_rlast = Vec.fill(SHIFT_BUF_READ){Reg(Bool())}
   val reg_rcnt = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BVLEN))}
   val reg_raddr = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BREGLEN))}
@@ -328,7 +328,7 @@ class vuVXU_Banked8_Expand extends Module
   val next_waddr_mask = Vec.fill(SHIFT_BUF_WRITE){Bits(width=SZ_BMASK)}
   val next_pvfb_tag = Vec.fill(SHIFT_BUF_WRITE){Bits(width=SZ_PVFB_TAG)}
 
-  val reg_wen = Vec.fill(SHIFT_BUF_WRITE){RegReset(Bool(false))}
+  val reg_wen = Vec.fill(SHIFT_BUF_WRITE){Reg(init=Bool(false))}
   val reg_wlast = Vec.fill(SHIFT_BUF_WRITE){Reg(Bool())}
   val reg_wcnt = Vec.fill(SHIFT_BUF_WRITE){Reg(Bits(width=SZ_BVLEN))}
   val reg_waddr = Vec.fill(SHIFT_BUF_WRITE){Reg(Bits(width=SZ_BREGLEN))}
@@ -488,31 +488,31 @@ class vuVXU_Banked8_Expand extends Module
   val next_vsdq_mask = Vec.fill(SHIFT_BUF_READ){Bits(width=SZ_BANK)}
   val next_utmemop = Vec.fill(SHIFT_BUF_READ){Bool()}
 
-  val reg_viu = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_viu = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_viu_fn = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_VIU_FN))}
   val reg_viu_utidx = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_VLEN))}
   val reg_viu_imm = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_DATA))}
 
-  val reg_vau0 = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vau0 = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vau0_fn = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_VAU0_FN))}
 
-  val reg_vau1 = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vau1 = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vau1_fn = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_VAU1_FN))}
 
-  val reg_vau2 = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vau2 = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vau2_fn = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_VAU2_FN))}
 
   val reg_mem = Vec.fill(SHIFT_BUF_READ){Reg(new io_vxu_mem_cmd())}
   val reg_imm = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_DATA))}
   val reg_imm2 = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_XIMM2))}
-  val reg_vaq = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vaq = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vaq_mask = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BANK))}
   val reg_vaq_pop_cnt = Vec.fill(SHIFT_BUF_READ){Reg(UInt(width=SZ_LGBANK1))}
-  val reg_vldq = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vldq = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vldq_mask = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BANK))}
-  val reg_vsdq = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_vsdq = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
   val reg_vsdq_mask = Vec.fill(SHIFT_BUF_READ){Reg(Bits(width=SZ_BANK))}
-  val reg_utmemop = Vec.fill(SHIFT_BUF_READ){RegReset(Bool(false))}
+  val reg_utmemop = Vec.fill(SHIFT_BUF_READ){Reg(init=Bool(false))}
 
   for (i <- 0 until SHIFT_BUF_READ)
   {

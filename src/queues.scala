@@ -21,7 +21,7 @@ class qcnt(reset_cnt: Int, max_cnt: Int, _reset: Bool = null) extends Module(_re
   val size = log2Down(max_cnt) + 1
 
   val io = new io_qcnt(size)
-  val count = RegReset(UInt(reset_cnt, size))
+  val count = Reg(init=UInt(reset_cnt, size))
   val next_count = UInt(width = size)
 
   next_count := count
@@ -60,12 +60,12 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
     val watermark = Bool(OUTPUT)
   }
 
-  val read_ptr = RegReset(UInt(0, TAG_SIZE))
+  val read_ptr = Reg(init=UInt(0, TAG_SIZE))
   val read_ptr1 = read_ptr + UInt(1)
   val read_ptr2 = read_ptr + UInt(2)
-  val write_ptr = RegReset(UInt(0, TAG_SIZE))
+  val write_ptr = Reg(init=UInt(0, TAG_SIZE))
   val write_ptr1 = write_ptr + UInt(1)
-  val full = RegReset(Bool(false))
+  val full = Reg(init=Bool(false))
 
   val bump_rptr = io.deq_data.fire()
   val bump_wptr = io.deq_rtag.fire()
@@ -76,7 +76,7 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
   val mem_data = Mem(io.enq.bits.data.clone, TAG_ENTRIES, seqRead = true)
   when (io.enq.valid) { mem_data(io.enq.bits.rtag) := io.enq.bits.data }
 
-  val vb_array = RegReset(Bits(0, TAG_ENTRIES))
+  val vb_array = Reg(init=Bits(0, TAG_ENTRIES))
   val vb_update_read = Mux(bump_rptr, ~(Bits(1) << read_ptr), Fill(TAG_ENTRIES, Bits(1)))
   val vb_update_write = Mux(io.enq.valid, (Bits(1) << io.enq.bits.rtag), Bits(0, TAG_ENTRIES))
   vb_array := (vb_array & vb_update_read) | vb_update_write
@@ -84,7 +84,7 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
   val mem_addr = Reg(Bits())
   mem_addr := Mux(bump_rptr, read_ptr2, read_ptr1)
 
-  val deq_data_val = RegReset(Bool(false))
+  val deq_data_val = Reg(init=Bool(false))
   val deq_data = Reg(Bits())
   val match_rtag = Bits()
 
@@ -111,7 +111,7 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
               full))
 
   // Logic for watermark
-  val shifted_vb_array = RegReset(Bits(0, TAG_ENTRIES))
+  val shifted_vb_array = Reg(init=Bits(0, TAG_ENTRIES))
   val shifted_write_ptr =
     Mux(read_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
         UInt(TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)(TAG_SIZE-1,0)

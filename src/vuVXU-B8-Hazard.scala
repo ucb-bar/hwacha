@@ -47,7 +47,7 @@ class vuVXU_Banked8_Hazard(_reset: Bool = null) extends Module(_reset = _reset)
 {
   val io = new io_vxu_hazard()
 
-  val reg_ptr = RegReset(UInt(0,SZ_LGBANK))
+  val reg_ptr = Reg(init=UInt(0,SZ_LGBANK))
 
   val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
   val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)
@@ -80,12 +80,12 @@ class vuVXU_Banked8_Hazard(_reset: Bool = null) extends Module(_reset = _reset)
 
   reg_ptr := next_ptr1
 
-  val array_rport_val = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_rport_vau0 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_rport_vau1 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_rport_vau2 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_rport_vsu = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_rport_vgu = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_rport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_rport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_rport_vau1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_rport_vau2 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_rport_vsu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_rport_vgu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
 
   val next_rport_val = Vec.fill(SZ_BANK){Bool()}
   val next_rport_vau0 = Vec.fill(SZ_BANK){Bool()}
@@ -303,19 +303,19 @@ class vuVXU_Banked8_Hazard(_reset: Bool = null) extends Module(_reset = _reset)
   val vau1_wptr = vt_vau1_wptr
   val vau2_wptr = vt_vau2_wptr
 
-  val array_wmask_val = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wmask_head = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_wmask_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wmask_head = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   
-  val array_wport_val = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wport_head = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wport_vau0 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wport_vau1 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wport_vau2 = Vec.fill(SZ_BANK){RegReset(Bool(false))}
-  val array_wport_vlu = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_wport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wport_head = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wport_vau1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wport_vau2 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val array_wport_vlu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_vd = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_vd_base = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_stride = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_REGLEN))}
-  val array_wport_tvec = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_wport_tvec = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_tag = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_PVFB_TAG))}
 
   val next_wmask_val = Vec.fill(SZ_BANK){Bool()}
@@ -479,7 +479,7 @@ class vuVXU_Banked8_Hazard(_reset: Bool = null) extends Module(_reset = _reset)
     next_wport_vlu(reg_ptr) := Bool(false)
   }
 
-  val array_sport_val = Vec.fill(SZ_BANK){RegReset(Bool(false))}
+  val array_sport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
 
   val next_sport_val = Vec.fill(SZ_BANK){Bool()}
 

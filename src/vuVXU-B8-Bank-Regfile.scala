@@ -45,7 +45,7 @@ class vuVXU_Banked8_Bank_Regfile extends Module
   val raddr = Reg(Bits())
   when (io.wen) { rfile(io.waddr) := wdata }
   when (io.ren) { raddr := io.raddr }
-  val rdata_rf = Mux(RegUpdate(io.ren), rfile(raddr), Bits(0)) 
+  val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf
 
   val ropl0Reg = Reg(Bits(width = SZ_DATA))

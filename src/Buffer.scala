@@ -23,9 +23,9 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
   val write_ptr_next = UInt( width=ADDR_SIZE)
   val full_next = Bool()
   
-  val read_ptr = RegReset(UInt(0, ADDR_SIZE))
-  val write_ptr = RegReset(UInt(0, ADDR_SIZE))
-  val full = RegReset(Bool(false))
+  val read_ptr = Reg(init=UInt(0, ADDR_SIZE))
+  val write_ptr = Reg(init=UInt(0, ADDR_SIZE))
+  val full = Reg(init=Bool(false))
 
   read_ptr := read_ptr_next
   write_ptr := write_ptr_next

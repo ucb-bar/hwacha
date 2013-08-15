@@ -22,7 +22,7 @@ object Match
 class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Module {
   val io = new ArbiterIO(data, n)
 
-  val last_grant = RegReset(Bits(0, log2Up(n)))
+  val last_grant = Reg(init=Bits(0, log2Up(n)))
   val g = ArbiterCtrl((0 until n).map(i => io.in(i).valid && UInt(i) >= last_grant) ++ io.in.map(_.valid))
   val grant = (0 until n).map(i => g(i) && UInt(i) >= last_grant || g(i+n))
   (0 until n).map(i => io.in(i).ready := grant(i) && io.out.ready)
@@ -32,7 +32,7 @@ class CoarseRRArbiter[T <: Data](n: Int)(data: => T) extends Module {
     choose = Mux(io.in(i).valid, Bits(i), choose)
   for (i <- n-1 to 0 by -1)
     choose = Mux(io.in(i).valid && UInt(i) >= last_grant, Bits(i), choose)
-  when (RegUpdate(io.out.valid) && !io.out.valid && io.out.ready) {
+  when (Reg(next=io.out.valid) && !io.out.valid && io.out.ready) {
     last_grant := choose
   }
 

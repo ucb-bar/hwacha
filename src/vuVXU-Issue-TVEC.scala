@@ -64,7 +64,7 @@ class vuVXU_Issue_TVEC extends Module
   val ISSUE_VT = Bits(1,1)
 
   val next_state = Bits(width = 1)
-  val reg_state = Reg(updateData = next_state, resetData = ISSUE_TVEC)
+  val reg_state = Reg(next = next_state, init = ISSUE_TVEC)
 
   val tvec_active = (reg_state === ISSUE_TVEC)
   io.active := tvec_active    
@@ -83,7 +83,7 @@ class vuVXU_Issue_TVEC extends Module
   val n = Bool(false)
   val y = Bool(true)
 
-  val stall_sticky = RegReset(Bool(false))
+  val stall_sticky = Reg(init=Bool(false))
   val stall = io.irq.illegal || stall_sticky || io.xcpt_to_issue.stall
 
   when (io.irq.illegal) { stall_sticky := Bool(true) }
@@ -260,12 +260,12 @@ class vuVXU_Issue_TVEC extends Module
   val next_bcnt = Bits(width = SZ_BCNT)
   val next_stride = Bits(width = SZ_REGLEN)
 
-  val reg_vlen = Reg(updateData = next_vlen, resetData = Bits(0,SZ_VLEN))
-  val reg_nxregs = Reg(updateData = next_nxregs, resetData = Bits(32,SZ_REGCNT))
-  val reg_nfregs = Reg(updateData = next_nfregs, resetData = Bits(32,SZ_REGCNT))
-  val reg_bactive = Reg(updateData = next_bactive, resetData = Bits("b1111_1111",SZ_BANK))
-  val reg_bcnt = Reg(updateData = next_bcnt, resetData = Bits(8,SZ_LGBANK1))
-  val reg_stride = Reg(updateData = next_stride, resetData = Bits(63,SZ_REGLEN))
+  val reg_vlen = Reg(next = next_vlen, init = Bits(0,SZ_VLEN))
+  val reg_nxregs = Reg(next = next_nxregs, init = Bits(32,SZ_REGCNT))
+  val reg_nfregs = Reg(next = next_nfregs, init = Bits(32,SZ_REGCNT))
+  val reg_bactive = Reg(next = next_bactive, init = Bits("b1111_1111",SZ_BANK))
+  val reg_bcnt = Reg(next = next_bcnt, init = Bits(8,SZ_LGBANK1))
+  val reg_stride = Reg(next = next_stride, init = Bits(63,SZ_REGLEN))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
   val regid_base = (cnt >> UInt(3)) * reg_stride

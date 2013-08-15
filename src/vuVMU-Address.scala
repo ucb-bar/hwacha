@@ -28,7 +28,7 @@ class vuVMU_AddressTLB extends Module
 {
   val io = new io_vmu_address_tlb()
 
-  val sticky_stall = RegReset(Bool(false))
+  val sticky_stall = Reg(init=Bool(false))
   val stall = io.stall || sticky_stall
 
   io.tlb.req.valid := !stall && io.vvaq.valid && io.vpaq.ready
