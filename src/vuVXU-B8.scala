@@ -60,8 +60,8 @@ class vuVXU extends Module
   val io = new io_vxu()
 
 
-  val flush = reset || io.xcpt_to_vxu.flush
-  val issue = Module(new vuVXU_Issue(_reset = flush))
+  val flush = this.reset || io.xcpt_to_vxu.flush
+  val issue = Module(new vuVXU_Issue(resetSignal = flush))
 
   io.irq := issue.io.irq
 

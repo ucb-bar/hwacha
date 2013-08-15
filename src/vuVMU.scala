@@ -42,7 +42,7 @@ class io_vmu extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU(_reset: Bool = null) extends Module(_reset = _reset)
+class vuVMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_vmu()
 

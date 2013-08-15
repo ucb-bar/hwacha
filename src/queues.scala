@@ -16,7 +16,7 @@ class io_qcnt(w: Int) extends Bundle
   val empty = Bool(OUTPUT)
 }
 
-class qcnt(reset_cnt: Int, max_cnt: Int, _reset: Bool = null) extends Module(_reset = _reset)
+class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val size = log2Down(max_cnt) + 1
 

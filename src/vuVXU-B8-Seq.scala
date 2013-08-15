@@ -88,7 +88,7 @@ class io_vxu_seq extends Bundle
   val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
 }
 
-class vuVXU_Banked8_Seq(_reset: Bool = null) extends Module(_reset = _reset)
+class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_vxu_seq()
 

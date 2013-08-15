@@ -20,7 +20,7 @@ class io_irq_handler extends Bundle
   val irq_aux = Bits(OUTPUT, 64)
 }
 
-class vuIRQHandler(_reset: Bool = null) extends Module(_reset = _reset)
+class vuIRQHandler(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_irq_handler()
 
