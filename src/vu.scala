@@ -74,19 +74,19 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   vxcntq.io.enq <> MaskStall(io.vcntq, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = Module(new vuVXU)
-  val vmu = Module(new vuVMU(_reset = flush_vmu))
-  val irq = Module(new vuIRQHandler(_reset = flush_irq))
-  val aiw = Module(new vuAIW(_reset = flush_aiw))
+  val vmu = Module(new vuVMU(resetSignal = flush_vmu))
+  val irq = Module(new vuIRQHandler(resetSignal = flush_irq))
+  val aiw = Module(new vuAIW(resetSignal = flush_aiw))
   val evac = Module(new vuEvac)
 
   // counters
-  val vcmdq_count = Module(new qcnt(19, 19, _reset = flush_kill))
-  val vximm1q_count = Module(new qcnt(19, 19, _reset = flush_kill))
-  val vximm2q_count = Module(new qcnt(17, 17, _reset = flush_kill))
+  val vcmdq_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
+  val vximm1q_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
+  val vximm2q_count = Module(new qcnt(17, 17, resetSignal = flush_kill))
 
   if (HAVE_VRU)
   {
-    val vru = Module(new vuVRU(_reset = flush_vru))
+    val vru = Module(new vuVRU(resetSignal = flush_vru))
 
     val vpfcmdq = Module(new Queue(Bits(width=SZ_VCMD), 19, _reset = flush_kill))
     val vpfximm1q = Module(new Queue(Bits(width=SZ_VIMM), 19, _reset = flush_kill))

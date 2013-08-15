@@ -103,7 +103,7 @@ class vuVXU extends Module
   b8fire.io.vt_regid_imm <> issue.io.vt_regid_imm
 
 
-  val b8hazard = Module(new vuVXU_Banked8_Hazard(_reset = flush))
+  val b8hazard = Module(new vuVXU_Banked8_Hazard(resetSignal = flush))
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
   b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
@@ -134,7 +134,7 @@ class vuVXU extends Module
   io.pending_vf := issue.io.pending_vf
 
 
-  val b8seq = Module(new vuVXU_Banked8_Seq(_reset = flush))
+  val b8seq = Module(new vuVXU_Banked8_Seq(resetSignal = flush))
 
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard
