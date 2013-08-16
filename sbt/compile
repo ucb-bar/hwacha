@@ -1,1 +1,0 @@
-sbt "project hwacha" "run --v"
