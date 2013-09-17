@@ -173,7 +173,7 @@ object Constants
   val VAU1_NMADD = UInt(7, 3)
 
   // val ENUM_VAU1 = 7
-  // val vau1_ADD :: vau1_SUB :: vau1_MUL :: vau1_MADD :: vau1_MSUB :: vau1_NMSUB :: vau1_NMADD :: Nil = Enum(ENUM_VAU1){ UInt() }
+  // val vau1_ADD :: vau1_SUB :: vau1_MUL :: vau1_MADD :: vau1_MSUB :: vau1_NMSUB :: vau1_NMADD :: Nil = Enum(UInt(), ENUM_VAU1)
   // val SZ_VAU1 = vau1_ADD.getWidth
   // val vau1_X = Bits(0, SZ_VAU1)
 
