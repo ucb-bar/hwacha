@@ -47,6 +47,11 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   val (inst_val: Bool) :: inst_type :: Nil = cs
   val cmd_valid = inst_val && io.cmd.valid
 
+  val icache_fe = Module(new Frontend()(ICacheConfig(128, 1), rc.tl))
+  val dtlb = Module(new TLB(8))
+  val ptlb = Module(new TLB(2))
+  val vu = Module(new vu())
+
   // Super-simple defaults just to get some tests running
   io.cmd.ready := Bool(true)
   io.busy := Bool(false)
