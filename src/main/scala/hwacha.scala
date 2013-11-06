@@ -4,7 +4,7 @@ import Chisel._
 import rocket._
 import uncore._
 
-case class HwachaConfiguration(nbanks: Int, nreg_per_bank: Int)
+case class HwachaConfiguration(icache: ICacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
 }
@@ -47,9 +47,15 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   val (inst_val: Bool) :: inst_type :: Nil = cs
   val cmd_valid = inst_val && io.cmd.valid
 
-  val icache_fe = Module(new Frontend()(ICacheConfig(128, 1), rc.tl))
-  val dtlb = Module(new TLB(8))
-  val ptlb = Module(new TLB(2))
+  val icache = Module(new Frontend()(hc.icache, rc.tl))
+  val dtlb = Module(new TLB(hc.ndtlb))
+  val ptlb = Module(new TLB(hc.nptlb))
+
+  io.imem <> icache.io.mem
+  io.iptw <> icache.io.cpu.ptw
+  io.dptw <> dtlb.io.ptw
+  io.pptw <> ptlb.io.ptw
+
   val vu = Module(new vu())
 
   // Super-simple defaults just to get some tests running
