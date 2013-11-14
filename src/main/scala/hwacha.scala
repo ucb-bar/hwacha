@@ -42,7 +42,11 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   val default = List(N, CMD_X,       VRT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N)
   val table = Array( 
     VSETCFG ->  List(Y, CMD_VVCFGIVL,VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,N),
-    VSETVL  ->  List(Y, CMD_VSETVL,  VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,Y)
+    VSETVL  ->  List(Y, CMD_VSETVL,  VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,Y),
+    VLD     ->  List(Y, CMD_VLD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VSD     ->  List(Y, CMD_VSD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VF      ->  List(Y, CMD_VF,      VRT_X,  VR_X,  VR_X,   VIMM_ADDR,VIMM_X,    Y,Y,N,N),
+    VMSV    ->  List(Y, CMD_VMSV,    VRT_S,  VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,N,N)
   )
 }
 
@@ -167,6 +171,7 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   vu.io.vpfximm1q.valid := Bool(false)
   vu.io.vpfximm2q.valid := Bool(false)
   vu.io.vpfximm2q.valid := Bool(false)
+  vu.io.vpfcntq.valid := Bool(false)
   vu.io.cp_imul_req.valid := Bool(false)
   vu.io.xcpt.exception := Bool(false)
   vu.io.xcpt.evac := Bool(false)

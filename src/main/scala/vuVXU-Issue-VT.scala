@@ -135,13 +135,6 @@ class vuVXU_Issue_VT extends Module
                 //         || ||| |||           |||| |           |||| |||           || ||| |||     |                        |              |              |              |  |  |  |  |     | | | |     |      |
                 List(Bits("b0_000_000",7),Bits("b000_0",4),Bits("b000_000",6),Bits("b0_000_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    R_,R_,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),Array(
 
-    BNE->       List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BNE,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-    BEQ->       List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BEQ,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-    BLT->       List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BLT,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-    BLTU->      List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BLTU, DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-    BGE->       List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BGE,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-    BGEU->      List(Bits("b1_000_000",7),Bits("b110_0",4),Bits("b000_000",6),Bits("b1_010_000",7),ML,MR,DW64,FP_,viu_BGEU, DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,R_,imm_X,n,n,n,MTF_X,mtyp_X,mcmd_X),
-
     LB->        List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RX,imm_I,y,n,n,MTF_N,mtyp_B,mcmd_XRD),
     LH->        List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RX,imm_I,y,n,n,MTF_N,mtyp_H,mcmd_XRD),
     LW->        List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RX,imm_I,y,n,n,MTF_N,mtyp_W,mcmd_XRD),
@@ -196,11 +189,11 @@ class vuVXU_Issue_VT extends Module
     SLL->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_SLL,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     SLT->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_SLT,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     SLTU->      List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_SLTU, DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    riscvXOR->  List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_XOR,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    XOR->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_XOR,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     SRL->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_SRL,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     SRA->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_SRA,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    riscvOR->   List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_OR,   DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    riscvAND->  List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_AND,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    OR->        List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_OR,   DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    AND->       List(Bits("b1_000_000",7),Bits("b110_1",4),Bits("b000_000",6),Bits("b0_010_000",7),ML,MR,DW64,FP_,viu_AND,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
 
     ADDIW->     List(Bits("b1_000_000",7),Bits("b100_1",4),Bits("b000_000",6),Bits("b0_100_000",7),MR,MI,DW32,FP_,viu_ADD,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RX,imm_I,y,n,n,MTF_X,mtyp_X,mcmd_X),
     SLLIW->     List(Bits("b1_000_000",7),Bits("b100_1",4),Bits("b000_000",6),Bits("b0_100_000",7),MR,MI,DW32,FP_,viu_SLL,  DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RX,imm_I,y,n,n,MTF_X,mtyp_X,mcmd_X),
@@ -261,8 +254,8 @@ class vuVXU_Issue_VT extends Module
     FCVT_S_LU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_CLUTF,RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_S_W->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_CWTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_S_WU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_CWUTF,RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    MXTF_S->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_MXTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    MFTX_S->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_MFTX, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    FMV_X_S->   List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_MXTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    FMV_S_X->   List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPS,vau2_MFTX, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_L_D->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CFTL, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_LU_D-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CFTLU,RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_W_D->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CFTW, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
@@ -271,11 +264,10 @@ class vuVXU_Issue_VT extends Module
     FCVT_D_LU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CLUTF,RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_D_W->  List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CWTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
     FCVT_D_WU-> List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_CWUTF,RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    MXTF_D->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_MXTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
-    MFTX_D->    List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_MFTX, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    FMV_X_D->   List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_MXTF, RX,R_,R_,RF,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
+    FMV_D_X->   List(Bits("b0_001_000",7),Bits("b100_1",4),Bits("b001_000",6),Bits("b0_100_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FPD,vau2_MFTX, RF,R_,R_,RX,imm_X,y,n,n,MTF_X,mtyp_X,mcmd_X),
 
-    STOP->      List(Bits("b0_000_000",7),Bits("b000_0",4),Bits("b000_000",6),Bits("b0_000_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    R_,R_,R_,R_,imm_X,n,y,n,MTF_X,mtyp_X,mcmd_X),
-    J->         List(Bits("b0_000_000",7),Bits("b000_0",4),Bits("b000_000",6),Bits("b0_000_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    R_,R_,R_,R_,imm_X,n,n,y,MTF_X,mtyp_X,mcmd_X)
+    STOP->      List(Bits("b0_000_000",7),Bits("b000_0",4),Bits("b000_000",6),Bits("b0_000_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    R_,R_,R_,R_,imm_X,n,y,n,MTF_X,mtyp_X,mcmd_X)
   ))
 
   val valid::dhazard::shazard::bhazard::viu_t0::viu_t1::viu_dw::viu_fp::viu_fn::vau0_dw::vau0_fn::vau1_fp::vau1_fn::vau2_fp::vau2_fn::cs0 = cs
@@ -300,10 +292,10 @@ class vuVXU_Issue_VT extends Module
   val vau1_rm = Bits(width = 3)
   val vau2_rm = Bits(width = 3)
 
-  vau1_rm := io.imem_resp.bits.data(11,9)
-  vau2_rm := io.imem_resp.bits.data(11,9)
+  vau1_rm := io.imem_resp.bits.data(14,12)
+  vau2_rm := io.imem_resp.bits.data(14,12)
 
-  when (io.imem_resp.bits.data(11,9) === Bits("b111",3))
+  when (io.imem_resp.bits.data(14,12) === Bits("b111",3))
   {
     vau1_rm := Bits(0,3)
     vau2_rm := Bits(0,3)
@@ -317,9 +309,9 @@ class vuVXU_Issue_VT extends Module
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
       imm_0 -> Bits(0,65),
-      imm_I -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(21)),io.imem_resp.bits.data(21,10)),
-      imm_B -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,27),io.imem_resp.bits.data(16,10)),
-      imm_L -> Cat(Bits(0,1),Fill(32,io.imem_resp.bits.data(26)),io.imem_resp.bits.data(26,7),Bits(0,12))
+      imm_I -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,20)),
+      imm_B -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,25),io.imem_resp.bits.data(11,7)),
+      imm_L -> Cat(Bits(0,1),Fill(32,io.imem_resp.bits.data(26)),io.imem_resp.bits.data(31,12),Bits(0,12))
     ))
 
   val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
@@ -374,10 +366,10 @@ class vuVXU_Issue_VT extends Module
   io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_fn)
   io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_fn)
 
-  val vs = Cat(rtype_vs,io.imem_resp.bits.data(26,22))
-  val vt = Cat(rtype_vt,io.imem_resp.bits.data(21,17))
-  val vr = Cat(rtype_vr,io.imem_resp.bits.data(16,12))
-  val vd = Cat(rtype_vd,io.imem_resp.bits.data(31,27))
+  val vs = Cat(rtype_vs,io.imem_resp.bits.data(19,15)) //rs1
+  val vt = Cat(rtype_vt,io.imem_resp.bits.data(24,20)) //rs2
+  val vr = Cat(rtype_vr,io.imem_resp.bits.data(31,27)) //rs3
+  val vd = Cat(rtype_vd,io.imem_resp.bits.data(11, 7)) //rd
 
   val vs_m1 = Cat(Bits(0,1),vs(4,0)) - UInt(1,1)
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
