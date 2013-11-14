@@ -71,9 +71,9 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
 
   val cmd_valid = inst_val && io.cmd.valid
   val resp_ready  = !emit_response || resp_q.io.enq.ready
-  val vcmd_ready  = Bool(true)//!emit_vcmd  || vu.io.vcmdq_user_ready
-  val vimm1_ready = Bool(true)//!emit_vimm1 || vu.io.vximm1q_user_ready
-  val vimm2_ready = Bool(true)// !emit_vimm2 || vu.io.vximm2q_user_ready
+  val vcmd_ready  = !emit_vcmd  || vu.io.vcmdq_user_ready
+  val vimm1_ready = !emit_vimm1 || vu.io.vximm1q_user_ready
+  val vimm2_ready = !emit_vimm2 || vu.io.vximm2q_user_ready
 
   def construct_ready(exclude: Bool): Bool = {
     val all_readies = Array(resp_ready, vcmd_ready, vimm1_ready, vimm2_ready)
@@ -91,6 +91,7 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   icache.io.cpu.req.bits.pc := vu.io.imem_req.bits
   icache.io.cpu.req.bits.mispredict := Bool(false)
   icache.io.cpu.req.bits.taken := Bool(false)
+  icache.io.cpu.invalidate := Bool(false)
   //icache.io.cpu.req.bits.current_pc
 
   vu.io.imem_resp <> icache.io.cpu.resp
@@ -104,7 +105,7 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   vu.io.vpftlb <> ptlb.io
 
   // Busy signal for fencing TODO: CONNECT
-  io.busy := Bool(false)//!vu.io.vfence_ready
+  io.busy := !vu.io.vfence_ready
 
   // TODO: SETUP PREFETCH QUEUES
   // TODO: SETUP INTERRUPT
@@ -159,5 +160,16 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   resp_q.io.enq.valid := cmd_valid && emit_response && construct_ready(resp_ready)
   resp_q.io.enq.bits.data := new_vl
   resp_q.io.enq.bits.rd   := io.cmd.bits.inst.rd
-  
+
+  // TODO: hook this stuff up properly
+  vu.io.vcntq.valid := Bool(false)
+  vu.io.vpfcmdq.valid := Bool(false)
+  vu.io.vpfximm1q.valid := Bool(false)
+  vu.io.vpfximm2q.valid := Bool(false)
+  vu.io.vpfximm2q.valid := Bool(false)
+  vu.io.cp_imul_req.valid := Bool(false)
+  vu.io.xcpt.exception := Bool(false)
+  vu.io.xcpt.evac := Bool(false)
+  vu.io.xcpt.hold := Bool(false)
+  vu.io.xcpt.kill := Bool(false)
 }
