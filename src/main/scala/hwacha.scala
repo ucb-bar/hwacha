@@ -101,6 +101,7 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   vu.io.imem_resp <> icache.io.cpu.resp
 
   // Connect VU to D$
+  io.mem.req.bits.data := RegEnable(vu.io.dmem_req.bits.data, vu.io.dmem_req.valid && isWrite(vu.io.dmem_req.bits.cmd))
   io.mem.req <> vu.io.dmem_req
   vu.io.dmem_resp := io.mem.resp
 
