@@ -41,12 +41,29 @@ object HwachaDecodeTable extends HwachaDecodeConstants
                 //   |  |            |       |      |       |         |          | | | |
   val default = List(N, CMD_X,       VRT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N)
   val table = Array( 
+    // General instructions
     VSETCFG ->  List(Y, CMD_VVCFGIVL,VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,N),
     VSETVL  ->  List(Y, CMD_VSETVL,  VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,Y),
-    VLD     ->  List(Y, CMD_VLD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
-    VSD     ->  List(Y, CMD_VSD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
     VF      ->  List(Y, CMD_VF,      VRT_X,  VR_X,  VR_X,   VIMM_ADDR,VIMM_X,    Y,Y,N,N),
-    VMSV    ->  List(Y, CMD_VMSV,    VRT_S,  VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,N,N)
+    VMVV    ->  List(Y, CMD_VMVV,    VRT_S,  VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,N,N,N),
+    VMSV    ->  List(Y, CMD_VMSV,    VRT_S,  VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    // Memory load/stores (x-registers)
+    VLD     ->  List(Y, CMD_VLD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLW     ->  List(Y, CMD_VLW,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLWU    ->  List(Y, CMD_VLWU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLH     ->  List(Y, CMD_VLH,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLHU    ->  List(Y, CMD_VLHU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLB     ->  List(Y, CMD_VLB,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VLBU    ->  List(Y, CMD_VLBU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VSD     ->  List(Y, CMD_VSD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VSW     ->  List(Y, CMD_VSW,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VSH     ->  List(Y, CMD_VSH,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VSB     ->  List(Y, CMD_VSB,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    // Memory load/stores (fp-registers)
+    VFLD     ->  List(Y, CMD_VFLD,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VFLW     ->  List(Y, CMD_VFLW,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VFSD     ->  List(Y, CMD_VFSD,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
+    VFSW     ->  List(Y, CMD_VFSW,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N)
   )
 }
 
