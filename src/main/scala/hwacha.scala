@@ -65,22 +65,22 @@ object HwachaDecodeTable extends HwachaDecodeConstants
     VFSD     ->  List(Y, CMD_VFSD,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
     VFSW     ->  List(Y, CMD_VFSW,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N),
     // Memory strided load/stores (x-registers)
-    VLSTD   ->  List(Y, CMD_VLSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTW   ->  List(Y, CMD_VLSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTWU  ->  List(Y, CMD_VLSTWU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTH   ->  List(Y, CMD_VLSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTHU  ->  List(Y, CMD_VLSTHU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTB   ->  List(Y, CMD_VLSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VLSTBU  ->  List(Y, CMD_VLSTBU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VSSTD   ->  List(Y, CMD_VSSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VSSTW   ->  List(Y, CMD_VSSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VSSTH   ->  List(Y, CMD_VSSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VSSTB   ->  List(Y, CMD_VSSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
+    VLSTD   ->  List(Y, CMD_VLSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTW   ->  List(Y, CMD_VLSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTWU  ->  List(Y, CMD_VLSTWU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTH   ->  List(Y, CMD_VLSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTHU  ->  List(Y, CMD_VLSTHU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTB   ->  List(Y, CMD_VLSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VLSTBU  ->  List(Y, CMD_VLSTBU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VSSTD   ->  List(Y, CMD_VSSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VSSTW   ->  List(Y, CMD_VSSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VSSTH   ->  List(Y, CMD_VSSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VSSTB   ->  List(Y, CMD_VSSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
     // Memory strided load/stores (fp-registers)
-    VFLSTD   ->  List(Y, CMD_VFLSTD, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VFLSTW   ->  List(Y, CMD_VFLSTW, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VFSSTD   ->  List(Y, CMD_VFSSTD, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N),
-    VFSSTW   ->  List(Y, CMD_VFSSTW, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,N,N)
+    VFLSTD   ->  List(Y, CMD_VFLSTD, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VFLSTW   ->  List(Y, CMD_VFLSTW, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VFSSTD   ->  List(Y, CMD_VFSSTD, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N),
+    VFSSTW   ->  List(Y, CMD_VFSSTW, VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N)
   )
 }
 
