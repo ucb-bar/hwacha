@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 import hardfloat._
+import uncore.constants.MemoryOpConstants._
 
 class io_vxu_mem extends Bundle
 {
@@ -43,8 +44,8 @@ class vuVXU_Banked8_Mem extends Module
   io.vmu_vaq_bits.vpn := addr(VADDR_BITS, PGIDX_BITS)
 
   val store_fp = io.lane_vsdq_mem.typ_float
-  val store_fp_d = store_fp && io.lane_vsdq_mem.typ === mtyp_D
-  val store_fp_w = store_fp && io.lane_vsdq_mem.typ === mtyp_W
+  val store_fp_d = store_fp && io.lane_vsdq_mem.typ === MT_D
+  val store_fp_w = store_fp && io.lane_vsdq_mem.typ === MT_W
 
   val reg_lane_vsdq_valid = Reg(next=io.lane_vsdq_valid)
   val reg_lane_vsdq_bits = Reg(next=io.lane_vsdq_bits)

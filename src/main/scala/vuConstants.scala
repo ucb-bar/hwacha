@@ -2,6 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
+import uncore.constants.MemoryOpConstants._
 
 object Constants
 {
@@ -218,35 +219,16 @@ object Constants
   val MTF_N = Bool(false)
   val MTF_Y = Bool(true)
 
-  val ENUM_MTYPS = 7
-  val mtyp_B :: mtyp_H :: mtyp_W :: mtyp_D :: mtyp_BU :: mtyp_HU :: mtyp_WU :: Nil = Enum( UInt(), ENUM_MTYPS )
-  val SZ_MTYPS = mtyp_B.getWidth
-  val mtyp_X = Bits(0, SZ_MTYPS)
+  def is_mtype_byte(typ: UInt) = (typ === MT_B || typ === MT_BU)
+  def is_mtype_halfword(typ: UInt) = (typ === MT_H || typ === MT_HU)
+  def is_mtype_word(typ: UInt) = (typ === MT_W || typ === MT_WU)
+  def is_mtype_doubleword(typ: UInt) = (typ === MT_D)
 
-  def is_mtype_byte(typ: UInt) = (typ === mtyp_B || typ === mtyp_BU)
-  def is_mtype_halfword(typ: UInt) = (typ === mtyp_H || typ === mtyp_HU)
-  def is_mtype_word(typ: UInt) = (typ === mtyp_W || typ === mtyp_WU)
-  def is_mtype_doubleword(typ: UInt) = (typ === mtyp_D)
-
-  val ENUM_MCMDS = 16
-  val mcmd_XRD :: mcmd_XWR :: mcmd_PFR :: mcmd_PFW :: mcmd_FLA :: mcmd_FENCE :: mcmd_INV :: mcmd_CLN ::  mcmd_XA_ADD :: mcmd_XA_SWAP :: mcmd_XA_AND :: mcmd_XA_OR :: mcmd_XA_MIN :: mcmd_XA_MAX :: mcmd_XA_MINU :: mcmd_XA_MAXU :: Nil = Enum( UInt(), ENUM_MCMDS )
-  // First few:
-  // int load - XRD
-  // int store - XWR
-  // prefetch with intent to read - PFR
-  // prefetch with intent to write - PFW
-  // write back and invlaidate all lines - FLA
-  // memory fence - FENCE
-  // write back and invalidate line - INV
-  // write back line - CLN
-  val SZ_MCMDS = mcmd_XRD.getWidth
-  val mcmd_X = Bits(0, SZ_MCMDS)
-
-  def is_mcmd_load(cmd: UInt) = (cmd === mcmd_XRD)
-  def is_mcmd_store(cmd: UInt) = (cmd === mcmd_XWR)
-  def is_mcmd_amo(cmd: UInt) = (mcmd_XA_ADD <= cmd && cmd <= mcmd_XA_MAXU)
-  def is_mcmd_pfr(cmd: UInt) = (cmd === mcmd_PFR)
-  def is_mcmd_pfw(cmd: UInt) = (cmd === mcmd_PFW)
+  def is_mcmd_load(cmd: UInt) = (cmd === M_XRD)
+  def is_mcmd_store(cmd: UInt) = (cmd === M_XWR)
+  def is_mcmd_amo(cmd: UInt) = isAMO(cmd)
+  def is_mcmd_pfr(cmd: UInt) = (cmd === M_PFR)
+  def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
   def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
   val HAVE_FMA = false

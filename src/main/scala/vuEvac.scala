@@ -5,6 +5,7 @@ import Node._
 import Constants._
 import Instructions._
 import Commands._
+import uncore.constants.MemoryOpConstants._
 
 class io_evac_to_xcpt_handler extends Bundle
 {
@@ -161,8 +162,8 @@ class vuEvac extends Module
   io.vaq.valid := Bool(false)
   io.vaq.bits.checkcnt := Bool(false)
   io.vaq.bits.cnt := UInt(0)
-  io.vaq.bits.cmd := mcmd_XWR
-  io.vaq.bits.typ := mtyp_D
+  io.vaq.bits.cmd := M_XWR
+  io.vaq.bits.typ := MT_D
   io.vaq.bits.typ_float := MTF_N
   io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
   io.vaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)

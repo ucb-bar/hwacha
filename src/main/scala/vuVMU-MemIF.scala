@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 import hardfloat._
+import uncore.constants.MemoryOpConstants._
 
 class io_vmu_memif extends Bundle
 {
@@ -138,8 +139,8 @@ class vuVMU_MemIF extends Module
   val ldq_dp_bits = Bits(width=65)
   
   val load_fp = reg_mem_resp.bits.tag(0)
-  val load_fp_d = load_fp && reg_mem_resp.bits.typ === mtyp_D 
-  val load_fp_w = load_fp && reg_mem_resp.bits.typ === mtyp_W
+  val load_fp_d = load_fp && reg_mem_resp.bits.typ === MT_D 
+  val load_fp_w = load_fp && reg_mem_resp.bits.typ === MT_W
 
   val recode_sp = Module(new float32ToRecodedFloat32)
   recode_sp.io.in := reg_mem_resp.bits.data_subword(31,0)
