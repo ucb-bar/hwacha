@@ -212,4 +212,8 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   vu.io.xcpt.evac := Bool(false)
   vu.io.xcpt.hold := Bool(false)
   vu.io.xcpt.kill := Bool(false)
+
+  // Connect FMA units
+  io.cp_dfma <> vu.io.cp_dfma
+  io.cp_sfma <> vu.io.cp_sfma
 }
