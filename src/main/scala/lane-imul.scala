@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class vuVXU_Banked8_FU_imul extends Module
+class LaneMul extends Module
 {
   val io = new Bundle
   {

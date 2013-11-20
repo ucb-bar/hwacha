@@ -24,7 +24,7 @@ class io_vmu_address_tlb extends Bundle
   val irq = new io_vmu_to_irq_handler()
 }
 
-class vuVMU_AddressTLB extends Module
+class AddressTLB extends Module
 {
   val io = new io_vmu_address_tlb()
 
@@ -106,47 +106,44 @@ class io_vpaq_to_xcpt_handler extends Bundle
   val vpaq_valid = Bool(OUTPUT)
 }
 
-class io_vmu_address extends Bundle
+class VMUAddress extends Module
 {
-  val vvaq_pf = new io_vvaq().flip
+  val io = new Bundle {
+    val vvaq_pf = new io_vvaq().flip
 
-  val vvaq_lane = new io_vvaq().flip
-  val vvaq_evac = new io_vvaq().flip
+    val vvaq_lane = new io_vvaq().flip
+    val vvaq_evac = new io_vvaq().flip
 
-  val vtlb = new io_tlb
-  val vpftlb = new io_tlb
+    val vtlb = new io_tlb
+    val vpftlb = new io_tlb
 
-  val vaq = new io_vpaq()
+    val vaq = new io_vpaq()
 
-  val vvaq_lane_dec = Bool(INPUT)
+    val vvaq_lane_dec = Bool(INPUT)
 
-  val vvaq_do_enq = Bool(OUTPUT)
-  val vvaq_do_deq = Bool(OUTPUT)
-  val vpaq_do_enq = Bool(OUTPUT)
-  val vpaq_do_deq = Bool(OUTPUT)
-  val vpaq_do_enq_vsdq = Bool(OUTPUT)
-  val vpaq_qcnt = UInt(OUTPUT, SZ_QCNT)
-  val vvaq_watermark = Bool(INPUT)
-  val vpaq_watermark = Bool(INPUT)
-  val vsreq_watermark = Bool(INPUT)
-  val vlreq_watermark = Bool(INPUT)
+    val vvaq_do_enq = Bool(OUTPUT)
+    val vvaq_do_deq = Bool(OUTPUT)
+    val vpaq_do_enq = Bool(OUTPUT)
+    val vpaq_do_deq = Bool(OUTPUT)
+    val vpaq_do_enq_vsdq = Bool(OUTPUT)
+    val vpaq_qcnt = UInt(OUTPUT, SZ_QCNT)
+    val vvaq_watermark = Bool(INPUT)
+    val vpaq_watermark = Bool(INPUT)
+    val vsreq_watermark = Bool(INPUT)
+    val vlreq_watermark = Bool(INPUT)
 
-  val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
-  val evac_to_vmu = new io_evac_to_vmu().flip
+    val vpaq_to_xcpt = new io_vpaq_to_xcpt_handler()
+    val evac_to_vmu = new io_evac_to_vmu().flip
 
-  val stall = Bool(INPUT)
+    val stall = Bool(INPUT)
 
-  val irq = new io_vmu_to_irq_handler()
-}
-
-class vuVMU_Address extends Module
-{
-  val io = new io_vmu_address()
+    val irq = new io_vmu_to_irq_handler()
+  }
 
   // VVAQ
   val vvaq_arb = Module(new Arbiter(new io_vvaq_bundle, 2))
   val vvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VVAQ))
-  val vvaq_tlb = Module(new vuVMU_AddressTLB)
+  val vvaq_tlb = Module(new AddressTLB)
   val vpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPAQ))
 
   vvaq_tlb.io.irq <> io.irq
@@ -185,7 +182,7 @@ class vuVMU_Address extends Module
   if (HAVE_VRU)
   {
     val vpfvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VPFVAQ))
-    val vpfvaq_tlb = Module(new vuVMU_AddressTLB)
+    val vpfvaq_tlb = Module(new AddressTLB)
     val vpfpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPFPAQ))
 
     vpfvaq.io.enq <> io.vvaq_pf

@@ -60,37 +60,34 @@ class io_issue_vt_to_irq_handler extends Bundle
   val pc = Bits(OUTPUT, SZ_ADDR)
 }
 
-class io_vxu_issue_vt extends Bundle
+class IssueVT extends Module
 {
-  val irq = new io_issue_vt_to_irq_handler()
+  val io = new Bundle {
+    val irq = new io_issue_vt_to_irq_handler()
 
-  val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip
+    val imem_req = new io_imem_req()
+    val imem_resp = new io_imem_resp().flip
 
-  val vf = new io_vf().flip
+    val vf = new io_vf().flip
 
-  val laneToIssue = new ioLaneToIssue().flip()
+    val laneToIssue = new ioLaneToIssue().flip()
 
-  val valid = new io_vxu_issue_fire().asOutput
-  val ready = Bool(INPUT)
-  val dhazard = new io_vxu_issue_reg().asOutput
-  val shazard = new io_vxu_issue_fu().asOutput
-  val bhazard = new io_vxu_issue_op().asOutput
-  val fn = new io_vxu_issue_fn().asOutput
-  val decoded = new io_vxu_issue_regid_imm().asOutput
+    val valid = new io_vxu_issue_fire().asOutput
+    val ready = Bool(INPUT)
+    val dhazard = new io_vxu_issue_reg().asOutput
+    val shazard = new io_vxu_issue_fu().asOutput
+    val bhazard = new io_vxu_issue_op().asOutput
+    val fn = new io_vxu_issue_fn().asOutput
+    val decoded = new io_vxu_issue_regid_imm().asOutput
 
-  val vxu_cntq = new io_vxu_cntq().flip()
-  val aiw_cntb = new io_vxu_cntq()
+    val vxu_cntq = new io_vxu_cntq().flip()
+    val aiw_cntb = new io_vxu_cntq()
 
-  val issue_to_aiw = new io_issue_to_aiw()
-  val aiw_to_issue = new io_aiw_to_issue().flip
+    val issue_to_aiw = new io_issue_to_aiw()
+    val aiw_to_issue = new io_aiw_to_issue().flip
 
-  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-}
-
-class vuVXU_Issue_VT extends Module
-{
-  val io = new io_vxu_issue_vt()
+    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+  }
 
   val stall_sticky = Reg(init=Bool(false))
   val mask_stall = Bool()

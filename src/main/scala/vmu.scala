@@ -9,48 +9,45 @@ class io_vmu_to_xcpt_handler extends Bundle
   val no_pending_load_store = Bool(OUTPUT)
 }
 
-class io_vmu extends Bundle
+class VMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val pf_vvaq = new io_vvaq().flip
+  val io = new Bundle {
+    val pf_vvaq = new io_vvaq().flip
 
-  val lane_vvaq = new io_vvaq().flip
-  val evac_vvaq = new io_vvaq().flip
+    val lane_vvaq = new io_vvaq().flip
+    val evac_vvaq = new io_vvaq().flip
 
-  val lane_vsdq = new io_vsdq().flip
-  val evac_vsdq = new io_vsdq().flip
+    val lane_vsdq = new io_vsdq().flip
+    val evac_vsdq = new io_vsdq().flip
 
-  val lane_vldq = new io_vldq()
+    val lane_vldq = new io_vldq()
 
-  val lane_vaq_dec = Bool(INPUT)
-  val lane_vsdq_dec = Bool(INPUT)
+    val lane_vaq_dec = Bool(INPUT)
+    val lane_vsdq_dec = Bool(INPUT)
 
-  val qcntp1 = UInt(INPUT, SZ_QCNT)
-  val qcntp2 = UInt(INPUT, SZ_QCNT)
+    val qcntp1 = UInt(INPUT, SZ_QCNT)
+    val qcntp2 = UInt(INPUT, SZ_QCNT)
 
-  val pending_store = Bool(OUTPUT)
+    val pending_store = Bool(OUTPUT)
 
-  val dmem_req = new io_dmem_req()
-  val dmem_resp = new io_dmem_resp().flip
+    val dmem_req = new io_dmem_req()
+    val dmem_resp = new io_dmem_resp().flip
 
-  val vtlb = new io_tlb
-  val vpftlb = new io_tlb
+    val vtlb = new io_tlb
+    val vpftlb = new io_tlb
 
-  val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
-  val evac_to_vmu = new io_evac_to_vmu().flip
-  val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
+    val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
+    val evac_to_vmu = new io_evac_to_vmu().flip
+    val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 
-  val irq = new io_vmu_to_irq_handler()
-}
+    val irq = new io_vmu_to_irq_handler()
+  }
 
-class vuVMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_vmu()
-
-  val addr = Module(new vuVMU_Address)
-  val ldata = Module(new vuVMU_LoadData)
-  val sdata = Module(new vuVMU_StoreData)
-  val counters = Module(new vuVMU_Counters)
-  val memif = Module(new vuVMU_MemIF)
+  val addr = Module(new VMUAddress)
+  val ldata = Module(new VMULoadData)
+  val sdata = Module(new VMUStoreData)
+  val counters = Module(new VMUCounters)
+  val memif = Module(new MemIF)
 
 
   // address unit
@@ -132,26 +129,23 @@ class vuVMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     !memif.io.pending_replayq && !addr.io.vpaq_to_xcpt.vpaq_valid
 }
 
-class io_vmu_store_data extends Bundle
+class VMUStoreData extends Module
 {
-  val vsdq_lane = new io_vsdq().flip
-  val vsdq_evac = new io_vsdq().flip
+  val io = new Bundle {
+    val vsdq_lane = new io_vsdq().flip
+    val vsdq_evac = new io_vsdq().flip
 
-  val vsdq = new io_vsdq()
+    val vsdq = new io_vsdq()
 
-  val vsdq_lane_dec = Bool(INPUT)
+    val vsdq_lane_dec = Bool(INPUT)
 
-  val vsdq_do_enq = Bool(OUTPUT)
-  val vsdq_do_deq = Bool(OUTPUT)
-  val vpasdq_watermark = Bool(INPUT)
-  val vsdq_watermark = Bool(INPUT)
+    val vsdq_do_enq = Bool(OUTPUT)
+    val vsdq_do_deq = Bool(OUTPUT)
+    val vpasdq_watermark = Bool(INPUT)
+    val vsdq_watermark = Bool(INPUT)
 
-  val evac_to_vmu = new io_evac_to_vmu().flip
-}
-
-class vuVMU_StoreData extends Module
-{
-  val io = new io_vmu_store_data()
+    val evac_to_vmu = new io_evac_to_vmu().flip
+  }
 
   val vsdq_arb = Module(new Arbiter(Bits(width = SZ_DATA), 2))
   val vsdq = Module(new Queue(Bits(width = 65), ENTRIES_VSDQ))
@@ -173,21 +167,18 @@ class vuVMU_StoreData extends Module
   io.vsdq_do_deq := io.vsdq.ready && vsdq.io.deq.valid
 }
 
-class io_vmu_load_data extends Bundle
+class VMULoadData extends Module
 {
-  val vldq_lane = new io_vldq()
+  val io = new Bundle {
+    val vldq_lane = new io_vldq()
 
-  val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ)).flip
-  val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ))
+    val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ)).flip
+    val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ))
 
-  val qcnt = UInt(INPUT, SZ_QCNT)
-  val vldq_rtag_do_enq = Bool(OUTPUT)
-  val vldq_rtag_do_deq = Bool(OUTPUT)
-}
-
-class vuVMU_LoadData extends Module
-{
-  val io = new io_vmu_load_data()
+    val qcnt = UInt(INPUT, SZ_QCNT)
+    val vldq_rtag_do_enq = Bool(OUTPUT)
+    val vldq_rtag_do_deq = Bool(OUTPUT)
+  }
 
   // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-1
   val vldq = Module(new VLDQ(65, ENTRIES_VLDQ, 9))
@@ -209,38 +200,35 @@ class vuVMU_LoadData extends Module
   io.vldq_rtag_do_deq := io.vldq_rtag.ready && vldq.io.deq_rtag.valid
 }
 
-class io_vmu_counters extends Bundle
+class VMUCounters extends Module
 {
-  val vvaq_inc = Bool(INPUT)
-  val vvaq_dec = Bool(INPUT)
-  val vpaq_inc = Bool(INPUT)
-  val vpaq_dec = Bool(INPUT)
-  val vsdq_inc = Bool(INPUT)
-  val vsdq_dec = Bool(INPUT)
-  val vpasdq_inc = Bool(INPUT)
-  val vpasdq_dec = Bool(INPUT)
-  val vlreq_inc = Bool(INPUT)
-  val vlreq_dec = Bool(INPUT)
-  val vsreq_inc = Bool(INPUT)
-  val vsreq_dec = Bool(INPUT)
+  val io = new Bundle {
+    val vvaq_inc = Bool(INPUT)
+    val vvaq_dec = Bool(INPUT)
+    val vpaq_inc = Bool(INPUT)
+    val vpaq_dec = Bool(INPUT)
+    val vsdq_inc = Bool(INPUT)
+    val vsdq_dec = Bool(INPUT)
+    val vpasdq_inc = Bool(INPUT)
+    val vpasdq_dec = Bool(INPUT)
+    val vlreq_inc = Bool(INPUT)
+    val vlreq_dec = Bool(INPUT)
+    val vsreq_inc = Bool(INPUT)
+    val vsreq_dec = Bool(INPUT)
 
-  val qcnt = UInt(INPUT, SZ_QCNT)
-  val vvaq_watermark = Bool(OUTPUT)
-  val vsdq_watermark = Bool(OUTPUT)
-  val vpasdq_watermark = Bool(OUTPUT)
-  val vlreq_watermark = Bool(OUTPUT)
-  val vsreq_watermark = Bool(OUTPUT)
+    val qcnt = UInt(INPUT, SZ_QCNT)
+    val vvaq_watermark = Bool(OUTPUT)
+    val vsdq_watermark = Bool(OUTPUT)
+    val vpasdq_watermark = Bool(OUTPUT)
+    val vlreq_watermark = Bool(OUTPUT)
+    val vsreq_watermark = Bool(OUTPUT)
 
-  val vpaq_qcnt = UInt(INPUT, SZ_QCNT)
-  val vpaq_watermark = Bool(OUTPUT)
+    val vpaq_qcnt = UInt(INPUT, SZ_QCNT)
+    val vpaq_watermark = Bool(OUTPUT)
 
-  val pending_load = Bool(OUTPUT)
-  val pending_store = Bool(OUTPUT)
-}
-
-class vuVMU_Counters extends Module
-{
-  val io = new io_vmu_counters()
+    val pending_load = Bool(OUTPUT)
+    val pending_store = Bool(OUTPUT)
+  }
 
   val vvaq_count = Module(new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ))
   val vpaq_count = Module(new qcnt(0, ENTRIES_VPAQ))

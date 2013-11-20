@@ -10,19 +10,16 @@ class io_irq_to_issue extends Bundle
   val stall_vf = Bool(OUTPUT)
 }
 
-class io_irq_handler extends Bundle
+class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val issue_to_irq = new io_issue_to_irq_handler().flip
-  val vmu_to_irq = new io_vmu_to_irq_handler().flip
+  val io = new Bundle {
+    val issue_to_irq = new io_issue_to_irq_handler().flip
+    val vmu_to_irq = new io_vmu_to_irq_handler().flip
 
-  val irq = Bool(OUTPUT)
-  val irq_cause = UInt(OUTPUT, 5)
-  val irq_aux = Bits(OUTPUT, 64)
-}
-
-class vuIRQHandler(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_irq_handler()
+    val irq = Bool(OUTPUT)
+    val irq_cause = UInt(OUTPUT, 5)
+    val irq_aux = Bits(OUTPUT, 64)
+  }
 
   val reg_irq_ma_inst = Reg(init=Bool(false))
   val reg_irq_fault_inst = Reg(init=Bool(false))

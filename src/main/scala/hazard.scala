@@ -14,7 +14,7 @@ class io_vxu_hazard_to_issue extends Bundle
   val tvec = new io_vxu_hazard_to_issue_tvec()
 }
 
-class vuVXU_Pointer extends Module
+class NextPointer extends Module
 {
   val io = new Bundle
   {
@@ -163,38 +163,35 @@ class vuVXU_Pointer extends Module
     ))
 }
 
-class io_vxu_hazard extends Bundle
+class Hazard(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
-  val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
-  val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
-  val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
-  val lane_to_hazard = new io_lane_to_hazard().asInput
+  val io = new Bundle {
+    val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
+    val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
+    val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
+    val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
+    val lane_to_hazard = new io_lane_to_hazard().asInput
 
-  val tvec_valid = new io_vxu_issue_fire().asInput
-  val tvec_ready = Bool(OUTPUT)
-  val tvec_dhazard = new io_vxu_issue_reg().asInput
-  val tvec_shazard = new io_vxu_issue_fu().asInput
-  val tvec_bhazard = new io_vxu_issue_op().asInput
-  val tvec_fn = new io_vxu_issue_fn().asInput
-  val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
+    val tvec_valid = new io_vxu_issue_fire().asInput
+    val tvec_ready = Bool(OUTPUT)
+    val tvec_dhazard = new io_vxu_issue_reg().asInput
+    val tvec_shazard = new io_vxu_issue_fu().asInput
+    val tvec_bhazard = new io_vxu_issue_op().asInput
+    val tvec_fn = new io_vxu_issue_fn().asInput
+    val tvec_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val vt_valid = new io_vxu_issue_fire().asInput
-  val vt_ready = Bool(OUTPUT)
-  val vt_dhazard = new io_vxu_issue_reg().asInput
-  val vt_shazard = new io_vxu_issue_fu().asInput
-  val vt_bhazard = new io_vxu_issue_op().asInput
-  val vt_fn = new io_vxu_issue_fn().asInput
-  val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
+    val vt_valid = new io_vxu_issue_fire().asInput
+    val vt_ready = Bool(OUTPUT)
+    val vt_dhazard = new io_vxu_issue_reg().asInput
+    val vt_shazard = new io_vxu_issue_fu().asInput
+    val vt_bhazard = new io_vxu_issue_op().asInput
+    val vt_fn = new io_vxu_issue_fn().asInput
+    val vt_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val fire = new io_vxu_issue_fire().asInput
-  val fire_fn = new io_vxu_issue_fn().asInput
-  val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
-}
-
-class vuVXU_Banked8_Hazard(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_vxu_hazard()
+    val fire = new io_vxu_issue_fire().asInput
+    val fire_fn = new io_vxu_issue_fn().asInput
+    val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+  }
 
   val reg_ptr = Reg(init=UInt(0,SZ_LGBANK))
 
@@ -348,7 +345,7 @@ class vuVXU_Banked8_Hazard(resetSignal: Bool = null) extends Module(_reset = res
 
   val tvec_viu_incr = UInt(INT_STAGES,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
 
-  val tvec_viuwptr = Module(new vuVXU_Pointer)
+  val tvec_viuwptr = Module(new NextPointer)
 
   tvec_viuwptr.io.ptr := reg_ptr
   tvec_viuwptr.io.incr := tvec_viu_incr
@@ -377,11 +374,11 @@ class vuVXU_Banked8_Hazard(resetSignal: Bool = null) extends Module(_reset = res
   val vt_vau1_incr = UInt(FMA_STAGES,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
   val vt_vau2_incr = UInt(FCONV_STAGES,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
 
-  val vt_vbrwptr = Module(new vuVXU_Pointer)
-  val vt_viuwptr = Module(new vuVXU_Pointer)
-  val vt_vau0wptr = Module(new vuVXU_Pointer)
-  val vt_vau1wptr = Module(new vuVXU_Pointer)
-  val vt_vau2wptr = Module(new vuVXU_Pointer)
+  val vt_vbrwptr = Module(new NextPointer)
+  val vt_viuwptr = Module(new NextPointer)
+  val vt_vau0wptr = Module(new NextPointer)
+  val vt_vau1wptr = Module(new NextPointer)
+  val vt_vau2wptr = Module(new NextPointer)
 
   vt_vbrwptr.io.ptr := reg_ptr
   vt_vbrwptr.io.incr := vt_vbr_incr

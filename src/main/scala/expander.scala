@@ -73,26 +73,23 @@ class io_expand_to_xcpt_handler extends Bundle
   val empty = Bool(OUTPUT)
 }
 
-class io_vxu_expand extends Bundle
+class Expander extends Module 
 {
-  val seq_to_expand = new io_vxu_seq_to_expand().asInput
-  val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput
+  val io = new Bundle {
+    val seq_to_expand = new io_vxu_seq_to_expand().asInput
+    val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput
 
-  val seq = new io_vxu_seq_fu().asInput
-  val seq_fn = new io_vxu_seq_fn().asInput
-  val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
+    val seq = new io_vxu_seq_fu().asInput
+    val seq_fn = new io_vxu_seq_fn().asInput
+    val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
 
-  val expand_read = new io_vxu_expand_read().asOutput
-  val expand_write = new io_vxu_expand_write().asOutput
-  val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
-  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
+    val expand_read = new io_vxu_expand_read().asOutput
+    val expand_write = new io_vxu_expand_write().asOutput
+    val expand_fu_fn = new io_vxu_expand_fu_fn().asOutput
+    val expand_lfu_fn = new io_vxu_expand_lfu_fn().asOutput
 
-  val expand_to_xcpt = new io_expand_to_xcpt_handler()
-}
-
-class vuVXU_Banked8_Expand extends Module 
-{
-  val io = new io_vxu_expand
+    val expand_to_xcpt = new io_expand_to_xcpt_handler()
+  }
 
   val next_ren = Vec.fill(SHIFT_BUF_READ){Bool()}
   val next_rlast = Vec.fill(SHIFT_BUF_READ){Bool()}

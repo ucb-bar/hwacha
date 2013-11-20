@@ -9,59 +9,55 @@ class io_vxu_to_xcpt_handler extends Bundle
   val expand = new io_expand_to_xcpt_handler()
 }
 
-class io_vxu extends Bundle
+class VXU extends Module
 {
-  val irq = new io_issue_to_irq_handler()
+  val io = new Bundle {
+    val irq = new io_issue_to_irq_handler()
 
-  val vxu_cmdq = new io_vxu_cmdq().flip
-  val vxu_immq = new io_vxu_immq().flip
-  val vxu_imm2q = new io_vxu_imm2q().flip
-  val vxu_cntq = new io_vxu_cntq().flip
+    val vxu_cmdq = new io_vxu_cmdq().flip
+    val vxu_immq = new io_vxu_immq().flip
+    val vxu_imm2q = new io_vxu_imm2q().flip
+    val vxu_cntq = new io_vxu_cntq().flip
 
-  val cp_imul_req = new io_imul_req().flip
-  val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
-  val cp_dfma = new io_cp_dfma()
-  val cp_sfma = new io_cp_sfma()
+    val cp_imul_req = new io_imul_req().flip
+    val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
+    val cp_dfma = new io_cp_dfma()
+    val cp_sfma = new io_cp_sfma()
 
-  val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip
+    val imem_req = new io_imem_req()
+    val imem_resp = new io_imem_resp().flip
 
-  val lane_vaq = new io_vvaq()
-  val lane_vldq = new io_vldq().flip
-  val lane_vsdq = new io_vsdq()
+    val lane_vaq = new io_vvaq()
+    val lane_vldq = new io_vldq().flip
+    val lane_vsdq = new io_vsdq()
 
-  val lane_vaq_dec = Bool(OUTPUT)
-  val lane_vsdq_dec = Bool(OUTPUT)
+    val lane_vaq_dec = Bool(OUTPUT)
+    val lane_vsdq_dec = Bool(OUTPUT)
 
-  val qcntp1 = UInt(OUTPUT, SZ_QCNT)
-  val qcntp2 = UInt(OUTPUT, SZ_QCNT)
-  
-  val pending_store = Bool(INPUT)
-  val pending_memop = Bool(OUTPUT)
-  val pending_vf = Bool(OUTPUT)
+    val qcntp1 = UInt(OUTPUT, SZ_QCNT)
+    val qcntp2 = UInt(OUTPUT, SZ_QCNT)
+    
+    val pending_store = Bool(INPUT)
+    val pending_memop = Bool(OUTPUT)
+    val pending_vf = Bool(OUTPUT)
 
-  val aiw_cmdb = new io_vxu_cmdq()
-  val aiw_imm1b = new io_vxu_immq()
-  val aiw_imm2b = new io_vxu_imm2q()
-  val aiw_cntb = new io_vxu_cntq()
-  val aiw_numCntB = new io_vxu_numcntq()
+    val aiw_cmdb = new io_vxu_cmdq()
+    val aiw_imm1b = new io_vxu_immq()
+    val aiw_imm2b = new io_vxu_imm2q()
+    val aiw_cntb = new io_vxu_cntq()
+    val aiw_numCntB = new io_vxu_numcntq()
 
-  val issue_to_aiw = new io_issue_to_aiw()
-  val aiw_to_issue = new io_aiw_to_issue().flip()
+    val issue_to_aiw = new io_issue_to_aiw()
+    val aiw_to_issue = new io_aiw_to_issue().flip()
 
-  val seq_to_aiw = new io_seq_to_aiw()
+    val seq_to_aiw = new io_seq_to_aiw()
 
-  val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
-  val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
-}
-
-class vuVXU extends Module
-{
-  val io = new io_vxu()
-
+    val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
+    val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
+  }
 
   val flush = this.reset || io.xcpt_to_vxu.flush
-  val issue = Module(new vuVXU_Issue(resetSignal = flush))
+  val issue = Module(new Issue(resetSignal = flush))
 
   io.irq := issue.io.irq
 
@@ -86,7 +82,7 @@ class vuVXU extends Module
   issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
 
 
-  val b8fire = Module(new vuVXU_Banked8_Fire)
+  val b8fire = Module(new Fire)
 
   b8fire.io.tvec_valid <> issue.io.tvec_valid
   b8fire.io.tvec_dhazard <> issue.io.tvec_dhazard
@@ -103,7 +99,7 @@ class vuVXU extends Module
   b8fire.io.vt_regid_imm <> issue.io.vt_regid_imm
 
 
-  val b8hazard = Module(new vuVXU_Banked8_Hazard(resetSignal = flush))
+  val b8hazard = Module(new Hazard(resetSignal = flush))
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
   b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
@@ -134,7 +130,7 @@ class vuVXU extends Module
   io.pending_vf := issue.io.pending_vf
 
 
-  val b8seq = Module(new vuVXU_Banked8_Seq(resetSignal = flush))
+  val b8seq = Module(new Sequencer(resetSignal = flush))
 
   b8seq.io.issue_to_seq <> issue.io.issue_to_seq
   b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard
@@ -152,7 +148,7 @@ class vuVXU extends Module
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
 
-  val b8expand = Module(new vuVXU_Banked8_Expand)
+  val b8expand = Module(new Expander)
 
   b8expand.io.seq_to_expand <> b8seq.io.seq_to_expand
   b8expand.io.expand_to_hazard <> b8hazard.io.expand_to_hazard
@@ -164,7 +160,7 @@ class vuVXU extends Module
   b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
 
-  val b8lane = Module(new vuVXU_Banked8_Lane)
+  val b8lane = Module(new Lane)
 
   b8lane.io.laneToIssue <> issue.io.laneToIssue
 
@@ -191,7 +187,7 @@ class vuVXU extends Module
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
 
 
-  val b8mem = Module(new vuVXU_Banked8_Mem)
+  val b8mem = Module(new LaneMem)
 
   b8mem.io.lane_vaq_valid := b8lane.io.vmu.vaq_val
   b8mem.io.lane_vaq_check <> b8lane.io.vmu.vaq_check

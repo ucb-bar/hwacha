@@ -133,61 +133,58 @@ class IoIssueToPVFB extends Bundle
   val replay_pc = Bits(OUTPUT, SZ_ADDR)
 }
 
-class io_vxu_issue extends Bundle
+class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val irq = new io_issue_to_irq_handler()
+  val io = new Bundle {
+    val irq = new io_issue_to_irq_handler()
 
-  val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip
+    val imem_req = new io_imem_req()
+    val imem_resp = new io_imem_resp().flip
 
-  val vxu_cmdq = new io_vxu_cmdq().flip
-  val vxu_immq = new io_vxu_immq().flip
-  val vxu_imm2q = new io_vxu_imm2q().flip
-  val vxu_cntq = new io_vxu_cntq().flip
+    val vxu_cmdq = new io_vxu_cmdq().flip
+    val vxu_immq = new io_vxu_immq().flip
+    val vxu_imm2q = new io_vxu_imm2q().flip
+    val vxu_cntq = new io_vxu_cntq().flip
 
-  val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
-  val issue_to_seq = new io_vxu_issue_to_seq().asOutput
-  val issue_to_lane = new io_vxu_issue_to_lane().asOutput
-  val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
-  val laneToIssue = new ioLaneToIssue().flip()
+    val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
+    val issue_to_seq = new io_vxu_issue_to_seq().asOutput
+    val issue_to_lane = new io_vxu_issue_to_lane().asOutput
+    val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
+    val laneToIssue = new ioLaneToIssue().flip()
 
-  val tvec_valid = new io_vxu_issue_fire().asOutput
-  val tvec_ready = Bool(INPUT)
-  val tvec_dhazard = new io_vxu_issue_reg().asOutput
-  val tvec_shazard = new io_vxu_issue_fu().asOutput
-  val tvec_bhazard = new io_vxu_issue_op().asOutput
-  val tvec_fn = new io_vxu_issue_fn().asOutput
-  val tvec_regid_imm = new io_vxu_issue_regid_imm().asOutput
+    val tvec_valid = new io_vxu_issue_fire().asOutput
+    val tvec_ready = Bool(INPUT)
+    val tvec_dhazard = new io_vxu_issue_reg().asOutput
+    val tvec_shazard = new io_vxu_issue_fu().asOutput
+    val tvec_bhazard = new io_vxu_issue_op().asOutput
+    val tvec_fn = new io_vxu_issue_fn().asOutput
+    val tvec_regid_imm = new io_vxu_issue_regid_imm().asOutput
 
-  val vt_valid = new io_vxu_issue_fire().asOutput
-  val vt_ready = Bool(INPUT)
-  val vt_dhazard = new io_vxu_issue_reg().asOutput
-  val vt_shazard = new io_vxu_issue_fu().asOutput
-  val vt_bhazard = new io_vxu_issue_op().asOutput
-  val vt_fn = new io_vxu_issue_fn().asOutput
-  val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
-  
-  val pending_store = Bool(INPUT)
-  val pending_vf = Bool(OUTPUT)
+    val vt_valid = new io_vxu_issue_fire().asOutput
+    val vt_ready = Bool(INPUT)
+    val vt_dhazard = new io_vxu_issue_reg().asOutput
+    val vt_shazard = new io_vxu_issue_fu().asOutput
+    val vt_bhazard = new io_vxu_issue_op().asOutput
+    val vt_fn = new io_vxu_issue_fn().asOutput
+    val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
+    
+    val pending_store = Bool(INPUT)
+    val pending_vf = Bool(OUTPUT)
 
-  val aiw_cmdb = new io_vxu_cmdq()
-  val aiw_imm1b = new io_vxu_immq()
-  val aiw_imm2b = new io_vxu_imm2q()
-  val aiw_cntb = new io_vxu_cntq()
-  val aiw_numCntB = new io_vxu_numcntq()
+    val aiw_cmdb = new io_vxu_cmdq()
+    val aiw_imm1b = new io_vxu_immq()
+    val aiw_imm2b = new io_vxu_imm2q()
+    val aiw_cntb = new io_vxu_cntq()
+    val aiw_numCntB = new io_vxu_numcntq()
 
-  val issue_to_aiw = new io_issue_to_aiw()
-  val aiw_to_issue = new io_aiw_to_issue().flip
+    val issue_to_aiw = new io_issue_to_aiw()
+    val aiw_to_issue = new io_aiw_to_issue().flip
 
-  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-}
+    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+  }
 
-class vuVXU_Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_vxu_issue()
-
-  val tvec = Module(new vuVXU_Issue_TVEC)
-  val vt = Module(new vuVXU_Issue_VT)
+  val tvec = Module(new IssueTVEC)
+  val vt = Module(new IssueVT)
 
   tvec.io.vf <> vt.io.vf
   io.pending_vf := tvec.io.vf.active

@@ -6,7 +6,7 @@ import hardfloat._
 import Constants._
 import fpu_recoded._
 
-class vuVXU_Banked8_FU_conv extends Module 
+class LaneConv extends Module 
 {
   val io = new Bundle
   {

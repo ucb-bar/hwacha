@@ -7,22 +7,19 @@ import Commands._
 import scala.math._
 import uncore.constants.MemoryOpConstants._
 
-class io_vru extends Bundle
+class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val vpfvaq = new io_vvaq()
-  
-  // command
-  val vpfcmdq = new io_vcmdq().flip
-  // base
-  val vpfximm1q = new io_vximm1q().flip
-  // stride
-  val vpfximm2q = new io_vximm2q().flip
-  val vpfcntq = new io_vcntq().flip
-}
-
-class vuVRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_vru()
+  val io = new Bundle {
+    val vpfvaq = new io_vvaq()
+    
+    // command
+    val vpfcmdq = new io_vcmdq().flip
+    // base
+    val vpfximm1q = new io_vximm1q().flip
+    // stride
+    val vpfximm2q = new io_vximm2q().flip
+    val vpfcntq = new io_vcntq().flip
+  }
 
   val VRU_Idle = Bits(0, 2)
   val VRU_IssueShort = Bits(1, 2)

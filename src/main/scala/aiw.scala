@@ -12,32 +12,29 @@ class io_aiw_to_issue extends Bundle
   val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
 }
 
-class io_vu_aiw extends Bundle 
-{
-  val aiw_enq_cmdb = new io_vxu_cmdq().flip
-  val aiw_enq_imm1b = new io_vxu_immq().flip
-  val aiw_enq_imm2b = new io_vxu_imm2q().flip
-  val aiw_enq_cntb = new io_vxu_cntq().flip
-  val aiw_enq_numCntB = new io_vxu_numcntq().flip
-
-  val issue_to_aiw = new io_issue_to_aiw().flip
-  val aiw_to_issue = new io_aiw_to_issue()
-
-  val seq_to_aiw = new io_seq_to_aiw().flip
-
-  val aiw_deq_cmdb = new io_vxu_cmdq()
-  val aiw_deq_imm1b = new io_vxu_immq()
-  val aiw_deq_imm2b = new io_vxu_imm2q()
-  val aiw_deq_cntb = new io_vxu_cntq()
-  val aiw_deq_numCntB = new io_vxu_numcntq()
-  val aiw_deq_numCntB_last = Bool(OUTPUT)
-
-  val evac_to_aiw = new io_evac_to_aiw().flip
-}
-
 class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val io = new io_vu_aiw()
+  val io = new Bundle {
+    val aiw_enq_cmdb = new io_vxu_cmdq().flip
+    val aiw_enq_imm1b = new io_vxu_immq().flip
+    val aiw_enq_imm2b = new io_vxu_imm2q().flip
+    val aiw_enq_cntb = new io_vxu_cntq().flip
+    val aiw_enq_numCntB = new io_vxu_numcntq().flip
+
+    val issue_to_aiw = new io_issue_to_aiw().flip
+    val aiw_to_issue = new io_aiw_to_issue()
+
+    val seq_to_aiw = new io_seq_to_aiw().flip
+
+    val aiw_deq_cmdb = new io_vxu_cmdq()
+    val aiw_deq_imm1b = new io_vxu_immq()
+    val aiw_deq_imm2b = new io_vxu_imm2q()
+    val aiw_deq_cntb = new io_vxu_cntq()
+    val aiw_deq_numCntB = new io_vxu_numcntq()
+    val aiw_deq_numCntB_last = Bool(OUTPUT)
+
+    val evac_to_aiw = new io_evac_to_aiw().flip
+  }
 
   val ircmdb = Module(new Queue(Bits(width = SZ_VCMD), AIW_CMD_DEPTH))
   val irimm1b = Module(new Buffer(SZ_VIMM, AIW_IMM1_DEPTH))

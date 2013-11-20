@@ -24,32 +24,29 @@ class ExpanderToLFUIO extends Bundle
   val utmemop = Bool(OUTPUT)
 }
 
-class LFUIO extends Bundle 
+class LaneLFU extends Module 
 {
-  val expand_rcnt = UInt(INPUT, SZ_BVLEN)
-  val expand_wcnt = UInt(INPUT, SZ_BVLEN)
-  
-  val expand = new ExpanderToLFUIO().flip
+  val io = new Bundle {
+    val expand_rcnt = UInt(INPUT, SZ_BVLEN)
+    val expand_wcnt = UInt(INPUT, SZ_BVLEN)
+    
+    val expand = new ExpanderToLFUIO().flip
 
-  val vau0_val = Bool(OUTPUT)
-  val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
-  val vau1_val = Bool(OUTPUT)
-  val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
-  val vau2_val = Bool(OUTPUT)
-  val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
-  val vaq_val = Bool(OUTPUT)
-  val vaq_check = new io_vxu_mem_check().asOutput
-  val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(OUTPUT, SZ_DATA)
-  val vaq_utmemop = Bool(OUTPUT)
-  val vldq_rdy = Bool(OUTPUT)
-  val vsdq_val = Bool(OUTPUT)
-  val vsdq_mem = new io_vxu_mem_cmd().asOutput
-}
-
-class vuVXU_Banked8_Lane_LFU extends Module 
-{
-  val io = new LFUIO()
+    val vau0_val = Bool(OUTPUT)
+    val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
+    val vau1_val = Bool(OUTPUT)
+    val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
+    val vau2_val = Bool(OUTPUT)
+    val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
+    val vaq_val = Bool(OUTPUT)
+    val vaq_check = new io_vxu_mem_check().asOutput
+    val vaq_mem = new io_vxu_mem_cmd().asOutput
+    val vaq_imm = Bits(OUTPUT, SZ_DATA)
+    val vaq_utmemop = Bool(OUTPUT)
+    val vldq_rdy = Bool(OUTPUT)
+    val vsdq_val = Bool(OUTPUT)
+    val vsdq_mem = new io_vxu_mem_cmd().asOutput
+  }
 
   val next_vau0_cnt = UInt(width = SZ_BVLEN)
   val next_vau1_cnt = UInt(width = SZ_BVLEN)

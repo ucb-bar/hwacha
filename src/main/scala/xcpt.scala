@@ -47,22 +47,20 @@ class io_xcpt_handler_to_evac extends Bundle
   val addr = UInt(OUTPUT, SZ_ADDR)
 }
 
-class io_xcpt_handler extends Bundle {
-  val xcpt = new io_xcpt().flip()
-
-  val xcpt_to_vu = new io_xcpt_handler_to_vu()
-  val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
-  val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
-  val xcpt_to_evac = new io_xcpt_handler_to_evac()
-
-  val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
-  val vmu_to_xcpt = new io_vmu_to_xcpt_handler().flip()
-  val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
-}
-
-class vuXCPTHandler extends Module 
+class XCPT extends Module 
 {
-  val io = new io_xcpt_handler()
+  val io = new Bundle {
+    val xcpt = new io_xcpt().flip()
+
+    val xcpt_to_vu = new io_xcpt_handler_to_vu()
+    val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
+    val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
+    val xcpt_to_evac = new io_xcpt_handler_to_evac()
+
+    val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
+    val vmu_to_xcpt = new io_vmu_to_xcpt_handler().flip()
+    val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
+  }
 
   val next_hold_issue = Bool()
   val next_hold_seq = Bool()

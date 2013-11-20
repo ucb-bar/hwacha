@@ -34,34 +34,28 @@ class BankToBankIO extends Bundle
   val viu_imm   = Bits(INPUT, SZ_DATA)
 }
 
-class BankRWIO extends Bundle
+class Bank extends Module
 {
-  val rblen = Bits(OUTPUT, SZ_BRPORT)
-  val rdata = Bits(OUTPUT, SZ_DATA)
-  val ropl0 = Bits(OUTPUT, SZ_DATA)
-  val ropl1 = Bits(OUTPUT, SZ_DATA)
+  val io = new Bundle {
+    val active = Bool(INPUT)
+    
+    val in  = new BankToBankIO()
+    val out = new BankToBankIO().flip
+    
+    val rw  = new Bundle {
+      val rblen = Bits(OUTPUT, SZ_BRPORT)
+      val rdata = Bits(OUTPUT, SZ_DATA)
+      val ropl0 = Bits(OUTPUT, SZ_DATA)
+      val ropl1 = Bits(OUTPUT, SZ_DATA)
 
-  val wbl0 = Bits(INPUT, SZ_DATA)
-  val wbl1 = Bits(INPUT, SZ_DATA)
-  val wbl2 = Bits(INPUT, SZ_DATA)
-  val wbl3 = Bits(INPUT, SZ_DATA)
-}
+      val wbl0 = Bits(INPUT, SZ_DATA)
+      val wbl1 = Bits(INPUT, SZ_DATA)
+      val wbl2 = Bits(INPUT, SZ_DATA)
+      val wbl3 = Bits(INPUT, SZ_DATA)
+    }
 
-class vuVXU_Banked8_BankIO extends Bundle
-{
-  val active = Bool(INPUT)
-  
-  val in  = new BankToBankIO()
-  val out = new BankToBankIO().flip
-  
-  val rw  = new BankRWIO()
-
-  val branch_resolution_mask = Bits(OUTPUT, WIDTH_BMASK)
-}
-
-class vuVXU_Banked8_Bank extends Module
-{
-  val io = new vuVXU_Banked8_BankIO()
+    val branch_resolution_mask = Bits(OUTPUT, WIDTH_BMASK)
+  }
 
   val rpass = io.in.rcnt.orR
   val wpass = io.in.wcnt.orR
@@ -113,8 +107,8 @@ class vuVXU_Banked8_Bank extends Module
 
   io.rw.rblen := delay_rblen
 
-  val rfile = Module(new vuVXU_Banked8_Bank_Regfile)
-  val alu = Module(new vuVXU_Banked8_FU_alu)
+  val rfile = Module(new BankRegfile)
+  val alu = Module(new BankALU)
 
   rfile.io.ren    := io.in.ren & io.active & rmask0
   rfile.io.raddr  := io.in.raddr
@@ -193,33 +187,30 @@ class vuVXU_Banked8_Bank extends Module
   io.out.viu_imm   := Mux(io.active, reg_viu_imm, io.in.viu_imm)
 }
 
-class RegfileIO extends Bundle
+class BankRegfile extends Module
 {
-  val ren    = Bool(INPUT)
-  val raddr  = Bits(INPUT, SZ_BREGLEN)
-  val roplen = Bits(INPUT, SZ_BOPL)
+  val io = new Bundle {
+    val ren    = Bool(INPUT)
+    val raddr  = Bits(INPUT, SZ_BREGLEN)
+    val roplen = Bits(INPUT, SZ_BOPL)
 
-  val wen   = Bool(INPUT)
-  val waddr = Bits(INPUT, SZ_BREGLEN)
-  val wsel  = Bits(INPUT, SZ_BWPORT)
+    val wen   = Bool(INPUT)
+    val waddr = Bits(INPUT, SZ_BREGLEN)
+    val wsel  = Bits(INPUT, SZ_BWPORT)
 
-  val rdata = Bits(OUTPUT, SZ_DATA)
-  val ropl0 = Bits(OUTPUT, SZ_DATA)
-  val ropl1 = Bits(OUTPUT, SZ_DATA)
+    val rdata = Bits(OUTPUT, SZ_DATA)
+    val ropl0 = Bits(OUTPUT, SZ_DATA)
+    val ropl1 = Bits(OUTPUT, SZ_DATA)
 
-  val wbl0 = Bits(INPUT, SZ_DATA)
-  val wbl1 = Bits(INPUT, SZ_DATA)
-  val wbl2 = Bits(INPUT, SZ_DATA)
-  val wbl3 = Bits(INPUT, SZ_DATA)
+    val wbl0 = Bits(INPUT, SZ_DATA)
+    val wbl1 = Bits(INPUT, SZ_DATA)
+    val wbl2 = Bits(INPUT, SZ_DATA)
+    val wbl3 = Bits(INPUT, SZ_DATA)
 
-  val viu_rdata = Bits(OUTPUT, SZ_DATA)
-  val viu_ropl  = Bits(OUTPUT, SZ_DATA)
-  val viu_wdata = Bits(INPUT, SZ_DATA)
-}
-
-class vuVXU_Banked8_Bank_Regfile extends Module
-{
-  val io = new RegfileIO()
+    val viu_rdata = Bits(OUTPUT, SZ_DATA)
+    val viu_ropl  = Bits(OUTPUT, SZ_DATA)
+    val viu_wdata = Bits(INPUT, SZ_DATA)
+  }
 
   val wdata = MuxLookup(
     io.wsel, Bits(0, SZ_DATA), Array(

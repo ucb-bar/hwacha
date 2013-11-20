@@ -13,49 +13,46 @@ class io_xcpt extends Bundle
   val kill = Bool(OUTPUT)
 }
 
-class io_vu extends Bundle 
-{
-  val irq = Bool(OUTPUT)
-  val irq_cause = UInt(OUTPUT, 5)
-  val irq_aux = Bits(OUTPUT, 64)
-
-  val vcmdq = new io_vcmdq().flip
-  val vximm1q = new io_vximm1q().flip
-  val vximm2q = new io_vximm2q().flip
-  val vcntq = new io_vcntq().flip
-
-  val vcmdq_user_ready = Bool(OUTPUT)
-  val vximm1q_user_ready = Bool(OUTPUT)
-  val vximm2q_user_ready = Bool(OUTPUT)
-  val vfence_ready = Bool(OUTPUT)
-
-  val vpfcmdq = new io_vcmdq().flip
-  val vpfximm1q = new io_vximm1q().flip
-  val vpfximm2q = new io_vximm2q().flip
-  val vpfcntq = new io_vcntq().flip
-
-  val cp_imul_req = new io_imul_req().flip
-  val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
-  val cp_dfma = new io_cp_dfma()
-  val cp_sfma = new io_cp_sfma()
-
-  val imem_req = new io_imem_req()
-  val imem_resp = new io_imem_resp().flip
-
-  val dmem_req = new io_dmem_req()
-  val dmem_resp = new io_dmem_resp().flip
-
-  val vtlb = new io_tlb
-  val vpftlb = new io_tlb
-
-  val xcpt = new io_xcpt().flip()
-}
-
 class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val io = new io_vu()
+  val io = new Bundle {
+    val irq = Bool(OUTPUT)
+    val irq_cause = UInt(OUTPUT, 5)
+    val irq_aux = Bits(OUTPUT, 64)
 
-  val xcpt = Module(new vuXCPTHandler())
+    val vcmdq = new io_vcmdq().flip
+    val vximm1q = new io_vximm1q().flip
+    val vximm2q = new io_vximm2q().flip
+    val vcntq = new io_vcntq().flip
+
+    val vcmdq_user_ready = Bool(OUTPUT)
+    val vximm1q_user_ready = Bool(OUTPUT)
+    val vximm2q_user_ready = Bool(OUTPUT)
+    val vfence_ready = Bool(OUTPUT)
+
+    val vpfcmdq = new io_vcmdq().flip
+    val vpfximm1q = new io_vximm1q().flip
+    val vpfximm2q = new io_vximm2q().flip
+    val vpfcntq = new io_vcntq().flip
+
+    val cp_imul_req = new io_imul_req().flip
+    val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
+    val cp_dfma = new io_cp_dfma()
+    val cp_sfma = new io_cp_sfma()
+
+    val imem_req = new io_imem_req()
+    val imem_resp = new io_imem_resp().flip
+
+    val dmem_req = new io_dmem_req()
+    val dmem_resp = new io_dmem_resp().flip
+
+    val vtlb = new io_tlb
+    val vpftlb = new io_tlb
+
+    val xcpt = new io_xcpt().flip
+  }
+
+  val xcpt = Module(new XCPT())
 
   val flush_kill = this.reset || xcpt.io.xcpt_to_vu.flush_kill
   val flush_irq = this.reset || xcpt.io.xcpt_to_vu.flush_irq
@@ -73,11 +70,11 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   vximm2q.io.enq <> MaskStall(io.vximm2q, xcpt.io.xcpt_to_vu.busy)
   vxcntq.io.enq <> MaskStall(io.vcntq, xcpt.io.xcpt_to_vu.busy)
 
-  val vxu = Module(new vuVXU)
-  val vmu = Module(new vuVMU(resetSignal = flush_vmu))
-  val irq = Module(new vuIRQHandler(resetSignal = flush_irq))
+  val vxu = Module(new VXU)
+  val vmu = Module(new VMU(resetSignal = flush_vmu))
+  val irq = Module(new IRQ(resetSignal = flush_irq))
   val aiw = Module(new AIW(resetSignal = flush_aiw))
-  val evac = Module(new vuEvac)
+  val evac = Module(new Evac)
 
   // counters
   val vcmdq_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
@@ -86,7 +83,7 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   if (HAVE_VRU)
   {
-    val vru = Module(new vuVRU(resetSignal = flush_vru))
+    val vru = Module(new VRU(resetSignal = flush_vru))
 
     val vpfcmdq = Module(new Queue(Bits(width=SZ_VCMD), 19, _reset = flush_kill))
     val vpfximm1q = Module(new Queue(Bits(width=SZ_VIMM), 19, _reset = flush_kill))

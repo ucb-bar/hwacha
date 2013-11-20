@@ -65,32 +65,29 @@ class io_seq_to_aiw extends Bundle
   val update_numCnt = new io_update_num_cnt()
 }
 
-class io_vxu_seq extends Bundle
+class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val issue_to_seq = new io_vxu_issue_to_seq().asInput
-  val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
-  val seq_to_expand = new io_vxu_seq_to_expand().asOutput
+  val io = new Bundle {
+    val issue_to_seq = new io_vxu_issue_to_seq().asInput
+    val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
+    val seq_to_expand = new io_vxu_seq_to_expand().asOutput
 
-  val qcntp1 = UInt(OUTPUT, SZ_QCNT)
-  val qcntp2 = UInt(OUTPUT, SZ_QCNT)
-  val qstall = new io_qstall().asInput
+    val qcntp1 = UInt(OUTPUT, SZ_QCNT)
+    val qcntp2 = UInt(OUTPUT, SZ_QCNT)
+    val qstall = new io_qstall().asInput
 
-  val fire = new io_vxu_issue_fire().asInput
-  val fire_fn = new io_vxu_issue_fn().asInput
-  val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+    val fire = new io_vxu_issue_fire().asInput
+    val fire_fn = new io_vxu_issue_fn().asInput
+    val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
 
-  val seq = new io_vxu_seq_fu().asOutput
-  val seq_fn = new io_vxu_seq_fn().asOutput
-  val seq_regid_imm = new io_vxu_seq_regid_imm().asOutput
+    val seq = new io_vxu_seq_fu().asOutput
+    val seq_fn = new io_vxu_seq_fn().asOutput
+    val seq_regid_imm = new io_vxu_seq_regid_imm().asOutput
 
-  val seq_to_aiw = new io_seq_to_aiw()
+    val seq_to_aiw = new io_seq_to_aiw()
 
-  val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
-}
-
-class vuVXU_Banked8_Seq(resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val io = new io_vxu_seq()
+    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
+  }
 
   val bcntm1 = io.issue_to_seq.bcnt - UInt(1)
 

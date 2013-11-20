@@ -19,47 +19,44 @@ class ioIssueTVECToPC extends Bundle
   val fire = Bool(OUTPUT)
 }
 
-class io_vxu_issue_tvec extends Bundle
+class IssueTVEC extends Module
 {
-  val irq = new io_issue_tvec_to_irq_handler()
+  val io = new Bundle {
+    val irq = new io_issue_tvec_to_irq_handler()
 
-  val vf = new io_vf()
-  val active = Bool(OUTPUT)
+    val vf = new io_vf()
+    val active = Bool(OUTPUT)
 
-  val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
-  val issue_to_seq = new io_vxu_issue_to_seq().asOutput
-  val issue_to_lane = new io_vxu_issue_to_lane().asOutput
-  val hazard_to_issue = new io_vxu_hazard_to_issue_tvec().asInput
+    val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
+    val issue_to_seq = new io_vxu_issue_to_seq().asOutput
+    val issue_to_lane = new io_vxu_issue_to_lane().asOutput
+    val hazard_to_issue = new io_vxu_hazard_to_issue_tvec().asInput
 
-  val vxu_cmdq = new io_vxu_cmdq().flip()
-  val vxu_immq = new io_vxu_immq().flip()
-  val vxu_imm2q = new io_vxu_imm2q().flip()
-  val vxu_cntq = new io_vxu_cntq().flip()
-  
-  val valid = new io_vxu_issue_fire().asOutput
-  val ready = Bool(INPUT)
-  val dhazard = new io_vxu_issue_reg().asOutput
-  val shazard = new io_vxu_issue_fu().asOutput
-  val bhazard = new io_vxu_issue_op().asOutput
-  val fn = new io_vxu_issue_fn().asOutput
-  val decoded = new io_vxu_issue_regid_imm().asOutput
+    val vxu_cmdq = new io_vxu_cmdq().flip()
+    val vxu_immq = new io_vxu_immq().flip()
+    val vxu_imm2q = new io_vxu_imm2q().flip()
+    val vxu_cntq = new io_vxu_cntq().flip()
+    
+    val valid = new io_vxu_issue_fire().asOutput
+    val ready = Bool(INPUT)
+    val dhazard = new io_vxu_issue_reg().asOutput
+    val shazard = new io_vxu_issue_fu().asOutput
+    val bhazard = new io_vxu_issue_op().asOutput
+    val fn = new io_vxu_issue_fn().asOutput
+    val decoded = new io_vxu_issue_regid_imm().asOutput
 
-  val pending_store = Bool(INPUT)
+    val pending_store = Bool(INPUT)
 
-  val aiw_cmdb = new io_vxu_cmdq()
-  val aiw_imm1b = new io_vxu_immq()
-  val aiw_imm2b = new io_vxu_imm2q()
-  val aiw_cntb = new io_vxu_cntq()
-  val aiw_numCntB = new io_vxu_numcntq()
-  val aiw_to_issue = new io_aiw_to_issue().flip
-  val issue_to_aiw = new io_issue_to_aiw()
+    val aiw_cmdb = new io_vxu_cmdq()
+    val aiw_imm1b = new io_vxu_immq()
+    val aiw_imm2b = new io_vxu_imm2q()
+    val aiw_cntb = new io_vxu_cntq()
+    val aiw_numCntB = new io_vxu_numcntq()
+    val aiw_to_issue = new io_aiw_to_issue().flip
+    val issue_to_aiw = new io_issue_to_aiw()
 
-  val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-}
-
-class vuVXU_Issue_TVEC extends Module
-{
-  val io = new io_vxu_issue_tvec()
+    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+  }
 
   val ISSUE_TVEC = Bits(0,1)
   val ISSUE_VT = Bits(1,1)

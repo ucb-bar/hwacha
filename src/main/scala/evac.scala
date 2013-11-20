@@ -22,33 +22,30 @@ class io_evac_to_aiw extends Bundle
   val update_numCnt = new io_update_num_cnt()
 }
 
-class io_vu_evac extends Bundle
+class Evac extends Module
 {
-  val aiw_cmdb = new io_vxu_cmdq().flip
-  val aiw_imm1b = new io_vxu_immq().flip
-  val aiw_imm2b = new io_vxu_imm2q().flip
-  val aiw_cntb = new io_vxu_cntq().flip
-  val aiw_numCntB = new io_vxu_numcntq().flip
-  val aiw_numCntB_last = Bool(INPUT)
+  val io = new Bundle {
+    val aiw_cmdb = new io_vxu_cmdq().flip
+    val aiw_imm1b = new io_vxu_immq().flip
+    val aiw_imm2b = new io_vxu_imm2q().flip
+    val aiw_cntb = new io_vxu_cntq().flip
+    val aiw_numCntB = new io_vxu_numcntq().flip
+    val aiw_numCntB_last = Bool(INPUT)
 
-  val evac_to_aiw = new io_evac_to_aiw()
+    val evac_to_aiw = new io_evac_to_aiw()
 
-  val vcmdq = new io_vxu_cmdq().flip
-  val vimm1q = new io_vxu_immq().flip
-  val vimm2q = new io_vxu_imm2q().flip
-  val vcntq = new io_vcntq().flip
+    val vcmdq = new io_vxu_cmdq().flip
+    val vimm1q = new io_vxu_immq().flip
+    val vimm2q = new io_vxu_imm2q().flip
+    val vcntq = new io_vcntq().flip
 
-  val vsdq = new io_vsdq()
-  val vaq  = new io_vvaq()
+    val vsdq = new io_vsdq()
+    val vaq  = new io_vvaq()
 
-  val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
-  val evac_to_xcpt = new io_evac_to_xcpt_handler()
-  val evac_to_vmu = new io_evac_to_vmu()
-}
-
-class vuEvac extends Module
-{
-  val io = new io_vu_evac()
+    val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
+    val evac_to_xcpt = new io_evac_to_xcpt_handler()
+    val evac_to_vmu = new io_evac_to_vmu()
+  }
   
   val n = Bits(0,1)
   val y = Bits(1,1)

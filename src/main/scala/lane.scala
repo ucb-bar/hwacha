@@ -56,25 +56,22 @@ class ioLaneToIssue extends Bundle
   val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
-class io_vxu_lane extends Bundle 
+class Lane extends Module
 {
-  val cp = new CPIO()
-  val cp_dfma = new io_cp_dfma()
-  val cp_sfma = new io_cp_sfma()
+  val io = new Bundle {
+    val cp = new CPIO()
+    val cp_dfma = new io_cp_dfma()
+    val cp_sfma = new io_cp_sfma()
 
-  val issue_to_lane = new io_vxu_issue_to_lane().asInput
-  val expand_read = new io_vxu_expand_read().asInput
-  val expand_write = new io_vxu_expand_write().asInput
-  val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
-  val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
-  val lane_to_hazard = new io_lane_to_hazard().asOutput
-  val laneToIssue = new ioLaneToIssue()
-  val vmu = new VMUIO()
-}
-
-class vuVXU_Banked8_Lane extends Module
-{
-  val io = new io_vxu_lane()
+    val issue_to_lane = new io_vxu_issue_to_lane().asInput
+    val expand_read = new io_vxu_expand_read().asInput
+    val expand_write = new io_vxu_expand_write().asInput
+    val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
+    val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
+    val lane_to_hazard = new io_lane_to_hazard().asOutput
+    val laneToIssue = new ioLaneToIssue()
+    val vmu = new VMUIO()
+  }
 
   val conn = new ArrayBuffer[BankToBankIO]
   var first = true
@@ -87,13 +84,13 @@ class vuVXU_Banked8_Lane extends Module
   val masks = new ArrayBuffer[Bits]
 
   //forward declaring imul, fma, and conv units
-  val imul = Module(new vuVXU_Banked8_FU_imul)
-  val fma  = Module(new vuVXU_Banked8_FU_fma)
-  val conv = Module(new vuVXU_Banked8_FU_conv)
+  val imul = Module(new LaneMul)
+  val fma  = Module(new LaneFMA)
+  val conv = Module(new LaneConv)
 
   for (i <- 0 until SZ_BANK) 
   {
-    val bank = Module(new vuVXU_Banked8_Bank)
+    val bank = Module(new Bank)
     bank.io.active := io.issue_to_lane.bactive(i)
     
     if (first)
@@ -141,14 +138,14 @@ class vuVXU_Banked8_Lane extends Module
   io.lane_to_hazard.wlast_mask := conn.last.wlast_mask
   io.lane_to_hazard.pvfb_tag := conn.last.pvfb_tag
 
-  val xbar = Module(new vuVXU_Banked8_Lane_Xbar)
+  val xbar = Module(new LaneXbar)
   xbar.io.rblen <> rblen
   xbar.io.rdata <> rdata
   xbar.io.ropl0 <> ropl0
   xbar.io.ropl1 <> ropl1
   val rbl = xbar.io.rbl
 
-  val lfu = Module(new vuVXU_Banked8_Lane_LFU)
+  val lfu = Module(new LaneLFU)
 
   lfu.io.expand_rcnt := io.expand_read.rcnt.toUInt
   lfu.io.expand_wcnt := io.expand_write.wcnt.toUInt

@@ -6,22 +6,19 @@ import Constants._
 import hardfloat._
 import uncore.constants.MemoryOpConstants._
 
-class io_vmu_memif extends Bundle
+class MemIF extends Module
 {
-  val vaq = Decoupled(new io_vpaq_bundle()).flip
-  val vsdq = Decoupled(Bits(width = 65)).flip
-  val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
-  val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ)).flip
+  val io = new Bundle {
+    val vaq = Decoupled(new io_vpaq_bundle()).flip
+    val vsdq = Decoupled(Bits(width = 65)).flip
+    val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
+    val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ)).flip
 
-  val mem_req = new io_dmem_req()
-  val mem_resp = new io_dmem_resp().flip
+    val mem_req = new io_dmem_req()
+    val mem_resp = new io_dmem_resp().flip
 
-  val pending_replayq = Bool(OUTPUT)
-}
-
-class vuVMU_MemIF extends Module
-{
-  val io = new io_vmu_memif()
+    val pending_replayq = Bool(OUTPUT)
+  }
 
   val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd)
   val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd)

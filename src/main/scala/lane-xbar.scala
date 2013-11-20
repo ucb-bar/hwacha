@@ -11,7 +11,7 @@ class XBarMux8IO extends Bundle
   val rbl   = UInt(OUTPUT, SZ_DATA)
 }
 
-class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Module
+class LaneXbarMux8(port: Int) extends Module
 {
   val io = new XBarMux8IO()
   io.rbl := Fill(SZ_DATA, io.rblen(0)(port)) & io.rdata(0) |
@@ -25,11 +25,11 @@ class vuVXU_Banked8_Lane_Xbar_Mux8(port: Int) extends Module
   
 }
 
-object vuVXU_Banked8_Lane_Xbar_Mux8
+object LaneXbarMux8
 {
   def apply(rblen: Vec[UInt], port: Int, rdata: Vec[UInt]): UInt = 
     {
-      val mux8 = Module(new vuVXU_Banked8_Lane_Xbar_Mux8(port))
+      val mux8 = Module(new LaneXbarMux8(port))
       mux8.io.rblen <> rblen
       mux8.io.rdata <> rdata
       mux8.io.rbl
@@ -46,16 +46,16 @@ class XbarIO extends Bundle
   val rbl = Vec.fill(8){UInt(OUTPUT, SZ_DATA)}
 }
 
-class vuVXU_Banked8_Lane_Xbar extends Module
+class LaneXbar extends Module
 {
   val io = new XbarIO()
-  io.rbl(0) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 0, io.ropl0)
-  io.rbl(1) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 1, io.rdata)
-  io.rbl(2) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 2, io.ropl1)
-  io.rbl(3) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 3, io.ropl0)
-  io.rbl(4) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 4, io.rdata)
-  io.rbl(5) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 5, io.rdata)
-  io.rbl(6) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 6, io.rdata)
-  io.rbl(7) := vuVXU_Banked8_Lane_Xbar_Mux8(io.rblen, 7, io.rdata)
+  io.rbl(0) := LaneXbarMux8(io.rblen, 0, io.ropl0)
+  io.rbl(1) := LaneXbarMux8(io.rblen, 1, io.rdata)
+  io.rbl(2) := LaneXbarMux8(io.rblen, 2, io.ropl1)
+  io.rbl(3) := LaneXbarMux8(io.rblen, 3, io.ropl0)
+  io.rbl(4) := LaneXbarMux8(io.rblen, 4, io.rdata)
+  io.rbl(5) := LaneXbarMux8(io.rblen, 5, io.rdata)
+  io.rbl(6) := LaneXbarMux8(io.rblen, 6, io.rdata)
+  io.rbl(7) := LaneXbarMux8(io.rblen, 7, io.rdata)
 
 }

@@ -6,29 +6,26 @@ import Constants._
 import hardfloat._
 import uncore.constants.MemoryOpConstants._
 
-class io_vxu_mem extends Bundle
+class LaneMem extends Module
 {
-  val lane_vaq_valid = Bool(INPUT)
-  val lane_vaq_check = new io_vxu_mem_check().asInput
-  val lane_vaq_mem = new io_vxu_mem_cmd().asInput
-  val lane_vaq_imm = Bits(INPUT, SZ_DATA)
-  val lane_vaq_utmemop = Bool(INPUT)
-  val lane_vaq_rf = Bits(INPUT, SZ_DATA)
-  
-  val vmu_vaq_valid = Bool(OUTPUT)
-  val vmu_vaq_bits = new io_vvaq_bundle().asOutput
-  
-  val lane_vsdq_valid = Bool(INPUT)
-  val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
-  val lane_vsdq_bits = Bits(INPUT, SZ_DATA) 
-  
-  val vmu_vsdq_valid = Bool(OUTPUT)
-  val vmu_vsdq_bits = Bits(OUTPUT, SZ_DATA) 
-}
-
-class vuVXU_Banked8_Mem extends Module
-{
-  val io = new io_vxu_mem()
+  val io = new Bundle {
+    val lane_vaq_valid = Bool(INPUT)
+    val lane_vaq_check = new io_vxu_mem_check().asInput
+    val lane_vaq_mem = new io_vxu_mem_cmd().asInput
+    val lane_vaq_imm = Bits(INPUT, SZ_DATA)
+    val lane_vaq_utmemop = Bool(INPUT)
+    val lane_vaq_rf = Bits(INPUT, SZ_DATA)
+    
+    val vmu_vaq_valid = Bool(OUTPUT)
+    val vmu_vaq_bits = new io_vvaq_bundle().asOutput
+    
+    val lane_vsdq_valid = Bool(INPUT)
+    val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
+    val lane_vsdq_bits = Bits(INPUT, SZ_DATA) 
+    
+    val vmu_vsdq_valid = Bool(OUTPUT)
+    val vmu_vsdq_bits = Bits(OUTPUT, SZ_DATA) 
+  }
 
   val reg_lane_vaq_valid = Reg(next=io.lane_vaq_valid)
   val reg_lane_vaq_check = Reg(next=io.lane_vaq_check)

@@ -49,7 +49,7 @@ class Shifter extends Module
     shift_out)
 }
 
-class vuVXU_Banked8_FU_alu extends Module
+class BankALU extends Module
 {
   val io = new Bundle()
   {
