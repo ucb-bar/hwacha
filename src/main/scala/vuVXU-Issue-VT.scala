@@ -412,7 +412,7 @@ class vuVXU_Issue_VT extends Module
   val illegal_vd = vd_active && (vd(4,0) >= io.vf.nfregs && rtype_vd || vd(4,0) >= io.vf.nxregs && !rtype_vd)
   val illegal_vt = vt_active && (vt(4,0) >= io.vf.nfregs && rtype_vt || vt(4,0) >= io.vf.nxregs && !rtype_vt)
   val illegal_vs = vs_active && (vs(4,0) >= io.vf.nfregs && rtype_vs || vs(4,0) >= io.vf.nxregs && !rtype_vs)
-  val illegal_vr = vr_active && (vs(4,0) >= io.vf.nfregs && rtype_vr || vr(4,0) >= io.vf.nxregs && !rtype_vr)
+  val illegal_vr = vr_active && (vr(4,0) >= io.vf.nfregs && rtype_vr || vr(4,0) >= io.vf.nxregs && !rtype_vr)
 
   io.irq.ma_inst := io.vf.active && io.imem_resp.valid && io.imem_resp.bits.xcpt_ma
   io.irq.fault_inst := io.vf.active && io.imem_resp.valid && io.imem_resp.bits.xcpt_if
