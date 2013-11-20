@@ -2,9 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
-import hardfloat._
 import Constants._
-import fpu_recoded._
 
 class LaneConv extends Module 
 {
@@ -22,18 +20,18 @@ class LaneConv extends Module
 
   val op_int2float = MuxCase(
     Bits(0,2), Array(
-      VAU2_FN(vau2_CLTF)  -> type_int64,
-      VAU2_FN(vau2_CLUTF) -> type_uint64,
-      VAU2_FN(vau2_CWTF)  -> type_int32,
-      VAU2_FN(vau2_CWUTF) -> type_uint32
+      VAU2_FN(vau2_CLTF)  -> hardfloat.fpu_recoded.type_int64,
+      VAU2_FN(vau2_CLUTF) -> hardfloat.fpu_recoded.type_uint64,
+      VAU2_FN(vau2_CWTF)  -> hardfloat.fpu_recoded.type_int32,
+      VAU2_FN(vau2_CWUTF) -> hardfloat.fpu_recoded.type_uint32
     ))
 
   val op_float2int = MuxCase(
     Bits(0,2), Array(
-      VAU2_FN(vau2_CFTL)  -> type_int64,
-      VAU2_FN(vau2_CFTLU) -> type_uint64,
-      VAU2_FN(vau2_CFTW)  -> type_int32,
-      VAU2_FN(vau2_CFTWU) -> type_uint32
+      VAU2_FN(vau2_CFTL)  -> hardfloat.fpu_recoded.type_int64,
+      VAU2_FN(vau2_CFTLU) -> hardfloat.fpu_recoded.type_uint64,
+      VAU2_FN(vau2_CFTW)  -> hardfloat.fpu_recoded.type_int32,
+      VAU2_FN(vau2_CFTWU) -> hardfloat.fpu_recoded.type_uint32
     ))
 
   val val_int2float_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF)
@@ -47,57 +45,57 @@ class LaneConv extends Module
   val val_encode_dp    = io.valid & VAU2_FP(FPD) & VAU2_FN(vau2_MXTF)
   val val_sp2dp        = io.valid & VAU2_FN(vau2_CSTD)
 
-  val int2float_sp = Module(new anyToRecodedFloat32)
+  val int2float_sp = Module(new hardfloat.anyToRecodedFloat32)
   int2float_sp.io.in := Fill(64,val_int2float_sp) & io.in(63,0)
   int2float_sp.io.roundingMode := Fill(3,val_int2float_sp) & io.fn(RG_VAU2_RM)
   int2float_sp.io.typeOp := Fill(2,val_int2float_sp) & op_int2float
   val result_int2float_sp = int2float_sp.io.out
   val exc_int2float_sp = int2float_sp.io.exceptionFlags
 
-  val float2int_sp = Module(new recodedFloat32ToAny)
+  val float2int_sp = Module(new hardfloat.recodedFloat32ToAny)
   float2int_sp.io.in := Fill(33,val_float2int_sp) & io.in(32,0)
   float2int_sp.io.roundingMode := Fill(3,val_float2int_sp) & io.fn(RG_VAU2_RM)
   float2int_sp.io.typeOp := Fill(2,val_float2int_sp) & op_float2int
   val result_float2int_sp = float2int_sp.io.out
   val exc_float2int_sp = float2int_sp.io.exceptionFlags
 
-  val decode_sp = Module(new recodedFloat32ToFloat32)
+  val decode_sp = Module(new hardfloat.recodedFloat32ToFloat32)
   decode_sp.io.in := Fill(33,val_decode_sp) & io.in(32,0)
   val result_decode_sp = decode_sp.io.out
 
-  val encode_sp = Module(new float32ToRecodedFloat32)
+  val encode_sp = Module(new hardfloat.float32ToRecodedFloat32)
   encode_sp.io.in := Fill(32,val_encode_sp) & io.in(31,0)
   val result_encode_sp = encode_sp.io.out
 
-  val dp2sp = Module(new recodedFloat64ToRecodedFloat32)
+  val dp2sp = Module(new hardfloat.recodedFloat64ToRecodedFloat32)
   dp2sp.io.in := Fill(65,val_dp2sp) & io.in
   dp2sp.io.roundingMode := Fill(3,val_dp2sp) & io.fn(RG_VAU2_RM)
   val result_float2float_sp = dp2sp.io.out
   val exc_float2float_sp = dp2sp.io.exceptionFlags
 
-  val int2float_dp = Module(new anyToRecodedFloat64) 
+  val int2float_dp = Module(new hardfloat.anyToRecodedFloat64) 
   int2float_dp.io.in := Fill(64,val_int2float_dp) & io.in(63,0)
   int2float_dp.io.roundingMode := Fill(3,val_int2float_dp) & io.fn(RG_VAU2_RM)
   int2float_dp.io.typeOp := Fill(2,val_int2float_dp) & op_int2float
   val result_int2float_dp = int2float_dp.io.out
   val exc_int2float_dp = int2float_dp.io.exceptionFlags
 
-  val float2int_dp = Module(new recodedFloat64ToAny)
+  val float2int_dp = Module(new hardfloat.recodedFloat64ToAny)
   float2int_dp.io.in := Fill(65,val_float2int_dp) & io.in
   float2int_dp.io.roundingMode := Fill(3,val_float2int_dp) & io.fn(RG_VAU2_RM)
   float2int_dp.io.typeOp := Fill(2,val_float2int_dp) & op_float2int
   val result_float2int_dp = float2int_dp.io.out
   val exc_float2int_dp = float2int_dp.io.exceptionFlags
 
-  val decode_dp = Module(new recodedFloat64ToFloat64)
+  val decode_dp = Module(new hardfloat.recodedFloat64ToFloat64)
   decode_dp.io.in := Fill(65,val_decode_dp) & io.in
   val result_decode_dp = decode_dp.io.out
 
-  val encode_dp = Module(new float64ToRecodedFloat64)
+  val encode_dp = Module(new hardfloat.float64ToRecodedFloat64)
   encode_dp.io.in := Fill(64,val_encode_dp) & io.in(63,0)
   val result_encode_dp = encode_dp.io.out
 
-  val sp2dp = Module(new rF32_rF64)
+  val sp2dp = Module(new hardfloat.rF32_rF64)
   sp2dp.io.in := Fill(33,val_sp2dp) & io.in(32,0)
   val result_float2float_dp = sp2dp.io.out
   val exc_float2float_dp = sp2dp.io.exception_flags

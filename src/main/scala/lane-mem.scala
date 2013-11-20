@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import hardfloat._
 import uncore.constants.MemoryOpConstants._
 
 class LaneMem extends Module
@@ -47,11 +46,11 @@ class LaneMem extends Module
   val reg_lane_vsdq_valid = Reg(next=io.lane_vsdq_valid)
   val reg_lane_vsdq_bits = Reg(next=io.lane_vsdq_bits)
 
-  val rf32f32  = Module(new recodedFloat32ToFloat32)
+  val rf32f32  = Module(new hardfloat.recodedFloat32ToFloat32)
   rf32f32.io.in := reg_lane_vsdq_bits(32,0)
   val vsdq_deq_sp = rf32f32.io.out
 
-  val rf64f64  = Module(new recodedFloat64ToFloat64)
+  val rf64f64  = Module(new hardfloat.recodedFloat64ToFloat64)
   rf64f64.io.in := reg_lane_vsdq_bits
   val vsdq_deq_dp = rf64f64.io.out
  

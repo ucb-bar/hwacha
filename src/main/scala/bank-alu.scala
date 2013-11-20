@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import hardfloat._
 
 class Shifter extends Module
 {
@@ -103,13 +102,13 @@ class BankALU extends Module
   val lt = (reg_in0(63) === reg_in1(63)) && ltu || reg_in0(63) && ~reg_in1(63)
   val eq = reg_in0 === reg_in1
 
-  val comp_sp = Module(new recodedFloat32Compare(24,8))
+  val comp_sp = Module(new hardfloat.recodedFloat32Compare(24,8))
   comp_sp.io.a := reg_in0(32,0)
   comp_sp.io.b := reg_in1(32,0)
   val less_sp = comp_sp.io.a_lt_b
   val equal_sp = comp_sp.io.a_eq_b
 
-  val comp_dp = Module(new recodedFloat64Compare(53,11))
+  val comp_dp = Module(new hardfloat.recodedFloat64Compare(53,11))
   comp_dp.io.a := reg_in0
   comp_dp.io.b := reg_in1
   val less_dp = comp_dp.io.a_lt_b

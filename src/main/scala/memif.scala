@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import hardfloat._
 import uncore.constants.MemoryOpConstants._
 
 class MemIF extends Module
@@ -139,11 +138,11 @@ class MemIF extends Module
   val load_fp_d = load_fp && reg_mem_resp.bits.typ === MT_D 
   val load_fp_w = load_fp && reg_mem_resp.bits.typ === MT_W
 
-  val recode_sp = Module(new float32ToRecodedFloat32)
+  val recode_sp = Module(new hardfloat.float32ToRecodedFloat32)
   recode_sp.io.in := reg_mem_resp.bits.data_subword(31,0)
   ldq_sp_bits := recode_sp.io.out
   
-  val recode_dp = Module(new float64ToRecodedFloat64)
+  val recode_dp = Module(new hardfloat.float64ToRecodedFloat64)
   recode_dp.io.in := reg_mem_resp.bits.data_subword
   ldq_dp_bits := recode_dp.io.out
 
