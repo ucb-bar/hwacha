@@ -2,7 +2,6 @@ package hwacha
 
 import Chisel._
 import Node._
-import hardfloat._
 import Constants._
 
 class io_cp_fma(width: Int) extends Bundle
@@ -65,21 +64,21 @@ class LaneFMA extends Module
     val val_fma_dp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b1",1))
     val val_fma_sp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b0",1))
 
-    val fma_dp = new mulAddSubRecodedFloat64_1()
-    fma_dp.io.op := Fill(2,val_fma_dp) & fma_op
-    fma_dp.io.a  := Fill(65,val_fma_dp) & fma_multiplicand
-    fma_dp.io.b  := Fill(65,val_fma_dp) & fma_multiplier
-    fma_dp.io.c  := Fill(65,val_fma_dp) & fma_addend
-    fma_dp.io.roundingMode := Fill(3,val_fma_dp) & io.fn(RG_VAU1_RM)
-    val result_dp = Cat(fma_dp.io.exceptionFlags, fma_dp.io.out)
+    val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
+    dfma.io.op := Fill(2,val_fma_dp) & fma_op
+    dfma.io.a := Fill(65,val_fma_dp) & fma_multiplicand
+    dfma.io.b := Fill(65,val_fma_dp) & fma_multiplier
+    dfma.io.c := Fill(65,val_fma_dp) & fma_addend
+    dfma.io.roundingMode := Fill(3,val_fma_dp) & io.fn(RG_VAU1_RM)
+    val result_dp = Cat(dfma.io.exceptionFlags, dfma.io.out)
 
-    val fma_sp = new mulAddSubRecodedFloat32_1()
-    fma_sp.io.op := Fill(2,val_fma_sp) & fma_op
-    fma_sp.io.a  := Fill(33,val_fma_sp) & fma_multiplicand(32,0)
-    fma_sp.io.b  := Fill(33,val_fma_sp) & fma_multiplier(32,0)
-    fma_sp.io.c  := Fill(33,val_fma_sp) & fma_addend(32,0)
-    fma_sp.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
-    val result_sp = Cat(fma_sp.io.exceptionFlags, fma_sp.io.out)
+    val sfma = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
+    sfma.io.op := Fill(2,val_fma_sp) & fma_op
+    sfma.io.a := Fill(33,val_fma_sp) & fma_multiplicand(32,0)
+    sfma.io.b := Fill(33,val_fma_sp) & fma_multiplier(32,0)
+    sfma.io.c := Fill(33,val_fma_sp) & fma_addend(32,0)
+    sfma.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
+    val result_sp = Cat(sfma.io.exceptionFlags, sfma.io.out)
 
     val result = Mux(
       io.fn(RG_VAU1_FP), result_dp,

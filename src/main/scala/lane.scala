@@ -140,46 +140,35 @@ class Lane extends Module
   lfu.io.expand_wcnt := io.expand_write.wcnt.toUInt
   lfu.io.expand <> io.expand_lfu_fn
 
-  val vau0_val  = lfu.io.vau0_val
-  val vau0_fn   = lfu.io.vau0_fn
-  val vau1_val  = lfu.io.vau1_val
-  val vau1_fn   = lfu.io.vau1_fn
-  val vau2_val  = lfu.io.vau2_val
-  val vau2_fn   = lfu.io.vau2_fn
-
-  io.vmu.vaq_val   := lfu.io.vaq_val
+  io.vmu.vaq_val := lfu.io.vaq_val
   io.vmu.vaq_check <> lfu.io.vaq_check
   io.vmu.vaq_mem <> lfu.io.vaq_mem
   io.vmu.vaq_imm := lfu.io.vaq_imm
   io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
 
-  io.vmu.vldq_rdy  := lfu.io.vldq_rdy
-  io.vmu.vsdq_val  := lfu.io.vsdq_val
+  io.vmu.vldq_rdy := lfu.io.vldq_rdy
+  io.vmu.vsdq_val := lfu.io.vsdq_val
   io.vmu.vsdq_mem <> lfu.io.vsdq_mem
 
-  val imul_fn  = vau0_fn
-  val imul_in0 = rbl(0)
-  val imul_in1 = rbl(1)
-
   //integer multiply
-  imul.io.valid := vau0_val
-  imul.io.fn  := imul_fn
-  imul.io.in0 := imul_in0
-  imul.io.in1 := imul_in1
+  imul.io.valid := lfu.io.vau0_val
+  imul.io.fn := lfu.io.vau0_fn
+  imul.io.in0 := rbl(0)
+  imul.io.in1 := rbl(1)
 
   //fma
-  fma.io.valid := vau1_val
-  fma.io.fn    := vau1_fn
-  fma.io.in0   := rbl(2)
-  fma.io.in1   := rbl(3)
-  fma.io.in2   := rbl(4)
+  fma.io.valid := lfu.io.vau1_val
+  fma.io.fn := lfu.io.vau1_fn
+  fma.io.in0 := rbl(2)
+  fma.io.in1 := rbl(3)
+  fma.io.in2 := rbl(4)
 
   io.cp_dfma <> fma.io.cp_dfma
   io.cp_sfma <> fma.io.cp_sfma
 
   //conv
-  conv.io.valid := vau2_val
-  conv.io.fn := vau2_fn
+  conv.io.valid := lfu.io.vau2_val
+  conv.io.fn := lfu.io.vau2_fn
   conv.io.in := rbl(5)
 
   io.vmu.vaq_rf := rbl(6)(SZ_ADDR-1,0)

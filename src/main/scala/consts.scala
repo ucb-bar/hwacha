@@ -231,7 +231,7 @@ object Constants
   def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
   def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
-  val HAVE_FMA = false
+  val HAVE_FMA = true
 
   val FCMD_X =          Bits("b000000")
   val FCMD_ADD =        Bits("b000000")
