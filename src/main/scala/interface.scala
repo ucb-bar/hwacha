@@ -43,15 +43,6 @@ class io_cpu_exception extends Bundle
   val addr = UInt(OUTPUT, SZ_ADDR)
 }
 
-class io_imul_req_bundle extends Bundle
-{
-  val fn = Bits(width = SZ_VAU0_FN)
-  val in0 = Bits(width = SZ_XLEN)
-  val in1 = Bits(width = SZ_XLEN)
-}
-
-class io_imul_req extends DecoupledIO(new io_imul_req_bundle)
-
 class io_dmem_req_bundle extends Bundle
 {
   val kill = Bool()

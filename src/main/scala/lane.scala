@@ -5,16 +5,6 @@ import Node._
 import Constants._
 import scala.collection.mutable.ArrayBuffer
 
-class CPIO extends Bundle
-{
-  val imul_val = Bool(INPUT)
-  val imul_rdy = Bool(OUTPUT)
-  val imul_fn  = Bits(INPUT, SZ_VAU0_FN)
-  val imul_in0 = Bits(INPUT, SZ_XLEN)
-  val imul_in1 = Bits(INPUT, SZ_XLEN)
-  val imul_out = Bits(OUTPUT, SZ_XLEN)
-}
-
 class ExpanderIO extends Bundle
 {
   val bank = new BankToBankIO().flip
@@ -59,7 +49,6 @@ class ioLaneToIssue extends Bundle
 class Lane extends Module
 {
   val io = new Bundle {
-    val cp = new CPIO()
     val cp_dfma = new io_cp_dfma()
     val cp_sfma = new io_cp_sfma()
 
@@ -168,15 +157,12 @@ class Lane extends Module
   io.vmu.vsdq_val  := lfu.io.vsdq_val
   io.vmu.vsdq_mem <> lfu.io.vsdq_mem
 
-  val imul_fn  = Mux(vau0_val, vau0_fn, io.cp.imul_fn)
-  val imul_in0 = Mux(vau0_val, rbl(0), Cat(Bits(0,1), io.cp.imul_in0))
-  val imul_in1 = Mux(vau0_val, rbl(1), Cat(Bits(0,1), io.cp.imul_in1))
-
-  io.cp.imul_rdy := ~vau0_val
-  io.cp.imul_out := imul.io.out(SZ_XLEN-1,0)
+  val imul_fn  = vau0_fn
+  val imul_in0 = rbl(0)
+  val imul_in1 = rbl(1)
 
   //integer multiply
-  imul.io.valid := vau0_val | io.cp.imul_val
+  imul.io.valid := vau0_val
   imul.io.fn  := imul_fn
   imul.io.in0 := imul_in0
   imul.io.in1 := imul_in1

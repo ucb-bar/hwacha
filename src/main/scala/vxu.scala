@@ -19,8 +19,6 @@ class VXU extends Module
     val vxu_imm2q = new io_vxu_imm2q().flip
     val vxu_cntq = new io_vxu_cntq().flip
 
-    val cp_imul_req = new io_imul_req().flip
-    val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
     val cp_dfma = new io_cp_dfma()
     val cp_sfma = new io_cp_sfma()
 
@@ -165,13 +163,6 @@ class VXU extends Module
   b8lane.io.laneToIssue <> issue.io.laneToIssue
 
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
-
-  b8lane.io.cp.imul_val <> io.cp_imul_req.valid
-  b8lane.io.cp.imul_rdy <> io.cp_imul_req.ready
-  b8lane.io.cp.imul_fn <> io.cp_imul_req.bits.fn
-  b8lane.io.cp.imul_in0 <> io.cp_imul_req.bits.in0
-  b8lane.io.cp.imul_in1 <> io.cp_imul_req.bits.in1
-  b8lane.io.cp.imul_out <> io.cp_imul_resp
 
   io.cp_dfma <> b8lane.io.cp_dfma
   io.cp_sfma <> b8lane.io.cp_sfma

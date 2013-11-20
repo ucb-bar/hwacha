@@ -35,8 +35,6 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     val vpfximm2q = new io_vximm2q().flip
     val vpfcntq = new io_vcntq().flip
 
-    val cp_imul_req = new io_imul_req().flip
-    val cp_imul_resp = Bits(OUTPUT, SZ_XLEN)
     val cp_dfma = new io_cp_dfma()
     val cp_sfma = new io_cp_sfma()
 
@@ -152,8 +150,6 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   vxu.io.vxu_cntq.valid := vxcntq.io.deq.valid
   vxcntq.io.deq.ready := vxu.io.vxu_cntq.ready || evac.io.vcntq.ready
 
-  vxu.io.cp_imul_req <> io.cp_imul_req
-  vxu.io.cp_imul_resp <> io.cp_imul_resp
   io.cp_dfma <> vxu.io.cp_dfma
   io.cp_sfma <> vxu.io.cp_sfma
 
