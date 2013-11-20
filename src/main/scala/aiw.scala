@@ -35,7 +35,7 @@ class io_vu_aiw extends Bundle
   val evac_to_aiw = new io_evac_to_aiw().flip
 }
 
-class vuAIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new io_vu_aiw()
 

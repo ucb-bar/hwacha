@@ -76,7 +76,7 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val vxu = Module(new vuVXU)
   val vmu = Module(new vuVMU(resetSignal = flush_vmu))
   val irq = Module(new vuIRQHandler(resetSignal = flush_irq))
-  val aiw = Module(new vuAIW(resetSignal = flush_aiw))
+  val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new vuEvac)
 
   // counters
