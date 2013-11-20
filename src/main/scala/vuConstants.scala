@@ -120,7 +120,7 @@ object Constants
   val RF = Bits("b11", 2)
 
   val ENUM_I = 4
-  val imm_0 :: imm_I :: imm_B :: imm_L :: Nil = Enum( UInt(), ENUM_I )
+  val imm_0 :: imm_I :: imm_S :: imm_U :: Nil = Enum( UInt(), ENUM_I )
   val SZ_I = imm_0.getWidth
   val imm_X = UInt(0, SZ_I)
 
