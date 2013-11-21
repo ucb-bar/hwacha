@@ -6,8 +6,6 @@ import uncore.constants.MemoryOpConstants._
 
 object Constants
 {
-  val HAVE_VRU = true
-
   val SZ_VLENMAX  = 11
 
   val SZ_VCMD = 20
@@ -82,31 +80,6 @@ object Constants
   val SZ_AIW_IMM2E = log2Up(AIW_IMM2_DEPTH)
   val SZ_AIW_CNT = log2Up(AIW_IMM2_DEPTH)
   val SZ_AIW_NUMCNT = log2Up(AIW_NUMCNT_DEPTH)
-
-  // pipe stages
-  val INT_STAGES   = 2
-  val IMUL_STAGES  = 4
-  val FMA_STAGES   = 3
-  val FCONV_STAGES = 3
-
-  // constants for expander
-  val SHIFT_BUF_READ = 3
-  val SHIFT_BUF_WRITE = FMA_STAGES + 4
-
-  // constants for vmu
-  val LATE_DMEM_NACK = true
-
-  val ENTRIES_VVAQ = 16
-  val ENTRIES_VPAQ = 16
-  val ENTRIES_VPFVAQ = 16
-  val ENTRIES_VPFPAQ = 16
-  val ENTRIES_VLDQ = 128
-  val ENTRIES_VSDQ = 16
-  val ENTRIES_VPASDQ = 31
-  val ENTRIES_VSREQ = 31
-  val ENTRIES_VLREQ = ENTRIES_VLDQ
-
-  val LG_ENTRIES_VLDQ = log2Up(ENTRIES_VLDQ)
 
   val SZ_QCNT = SZ_LGBANK1
 
@@ -206,15 +179,6 @@ object Constants
   val RG_VAU2_RM = (6,4)
   val RG_VAU2_FN = (SZ_VAU2-1,0)
 
-  // the following constants are from the rocket pipeline
-  val PADDR_BITS = 40
-  val VADDR_BITS = 43
-  val PGIDX_BITS = 13
-  val PPN_BITS = PADDR_BITS-PGIDX_BITS
-  val VPN_BITS = VADDR_BITS-PGIDX_BITS
-  val ASID_BITS = 7
-  val OFFSET_BITS = 6 // log2(cache line size in bytes)
-
   val MTF_X = Bool(false)
   val MTF_N = Bool(false)
   val MTF_Y = Bool(true)
@@ -230,22 +194,6 @@ object Constants
   def is_mcmd_pfr(cmd: UInt) = (cmd === M_PFR)
   def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
   def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
-
-  val HAVE_FMA = true
-
-  val FCMD_X =          Bits("b000000")
-  val FCMD_ADD =        Bits("b000000")
-  val FCMD_SUB =        Bits("b000001")
-  val FCMD_MUL =        Bits("b000010")
-  val FCMD_MADD =       Bits("b100100")
-  val FCMD_MSUB =       Bits("b100101")
-  val FCMD_NMSUB =      Bits("b100110")
-  val FCMD_NMADD =      Bits("b100111")
-  val FCMD_WIDTH = 6
-
-  // cycles + 1
-  val DFMA_STAGES = 4
-  val SFMA_STAGES = 3
 
   // PVFB Constants
   var coarseGrained = false

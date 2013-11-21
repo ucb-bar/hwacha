@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class LaneMul extends Module
+class LaneMul(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle
   {
@@ -45,5 +45,5 @@ class LaneMul extends Module
       VAU0_32HSU -> Cat(Fill(32, mul_result(63)), mul_result(63,32))
     ))
 
-  io.out := ShiftRegister(mul_output_mux, IMUL_STAGES, io.valid)
+  io.out := ShiftRegister(mul_output_mux, conf.imul_stages, io.valid)
 }

@@ -9,7 +9,7 @@ class io_vxu_to_xcpt_handler extends Bundle
   val expand = new io_expand_to_xcpt_handler()
 }
 
-class VXU extends Module
+class VXU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val irq = new io_issue_to_irq_handler()

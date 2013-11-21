@@ -13,7 +13,7 @@ class io_xcpt extends Bundle
   val kill = Bool(OUTPUT)
 }
 
-class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = Bool(OUTPUT)
@@ -79,7 +79,7 @@ class vu(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val vximm1q_count = Module(new qcnt(19, 19, resetSignal = flush_kill))
   val vximm2q_count = Module(new qcnt(17, 17, resetSignal = flush_kill))
 
-  if (HAVE_VRU)
+  if (conf.vru)
   {
     val vru = Module(new VRU(resetSignal = flush_vru))
 

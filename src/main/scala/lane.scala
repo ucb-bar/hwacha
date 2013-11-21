@@ -46,7 +46,7 @@ class ioLaneToIssue extends Bundle
   val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
-class Lane extends Module
+class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val cp_dfma = new io_cp_dfma()

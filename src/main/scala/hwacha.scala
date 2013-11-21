@@ -7,6 +7,31 @@ import uncore._
 case class HwachaConfiguration(icache: ICacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
+  val vru = true
+  val fma = true
+
+  // rocket pipeline latencies
+  val dfma_stages = 4
+  val sfma_stages = 3
+
+  // pipeline latencies
+  val int_stages = 2
+  val imul_stages = 4
+  val fma_stages = 3
+  val fconv_stages = 3
+
+  val shift_buf_read = 3
+  val shift_buf_write = fma_stages + 4
+
+  val nvvaq = 16
+  val nvpaq = 16
+  val nvpfvaq = 16
+  val nvpfpaq = 16
+  val nvldq = 128
+  val nvsdq = 16
+  val nvpasdq = 31
+  val nvsreq = 31
+  val nvlreq = nvldq
 }
 
 trait HwachaDecodeConstants
@@ -88,10 +113,12 @@ class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) 
   import HwachaDecodeTable._
   import Commands._
   
+  implicit val conf = hc
+
   val icache = Module(new Frontend()(hc.icache, rc.tl))
   val dtlb = Module(new TLB(hc.ndtlb))
   val ptlb = Module(new TLB(hc.nptlb))
-  val vu = Module(new vu())
+  val vu = Module(new vu)
   
   // Decode
   val raw_inst = io.cmd.bits.inst.toBits

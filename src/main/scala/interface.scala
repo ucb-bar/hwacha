@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import uncore.constants.AddressConstants._
 
 class io_imem_resp_bundle extends Bundle
 {

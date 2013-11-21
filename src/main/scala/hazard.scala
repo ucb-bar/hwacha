@@ -163,7 +163,7 @@ class NextPointer extends Module
     ))
 }
 
-class Hazard(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
@@ -343,7 +343,7 @@ class Hazard(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   // tvec wptr calculation
 
-  val tvec_viu_incr = UInt(INT_STAGES,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val tvec_viu_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
 
   val tvec_viuwptr = Module(new NextPointer)
 
@@ -368,11 +368,11 @@ class Hazard(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   // vt wptr calculation
 
-  val vt_vbr_incr = UInt(INT_STAGES,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_viu_incr = UInt(INT_STAGES,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau0_incr = UInt(IMUL_STAGES,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau1_incr = UInt(FMA_STAGES,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau2_incr = UInt(FCONV_STAGES,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_vbr_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_viu_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_vau0_incr = UInt(conf.imul_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_vau1_incr = UInt(conf.fma_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_vau2_incr = UInt(conf.fconv_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
 
   val vt_vbrwptr = Module(new NextPointer)
   val vt_viuwptr = Module(new NextPointer)

@@ -106,7 +106,7 @@ class io_vpaq_to_xcpt_handler extends Bundle
   val vpaq_valid = Bool(OUTPUT)
 }
 
-class VMUAddress extends Module
+class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val vvaq_pf = new io_vvaq().flip
@@ -142,9 +142,9 @@ class VMUAddress extends Module
 
   // VVAQ
   val vvaq_arb = Module(new Arbiter(new io_vvaq_bundle, 2))
-  val vvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VVAQ))
+  val vvaq = Module(new Queue(new io_vvaq_bundle, conf.nvvaq))
   val vvaq_tlb = Module(new AddressTLB)
-  val vpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPAQ))
+  val vpaq = Module(new Queue(new io_vpaq_bundle, conf.nvpaq))
 
   vvaq_tlb.io.irq <> io.irq
 
@@ -179,11 +179,11 @@ class VMUAddress extends Module
     vvaq_tlb.io.ack &&
     (is_mcmd_store(vvaq_tlb.io.vpaq.bits.cmd) || is_mcmd_amo(vvaq_tlb.io.vpaq.bits.cmd))
 
-  if (HAVE_VRU)
+  if (conf.vru)
   {
-    val vpfvaq = Module(new Queue(new io_vvaq_bundle, ENTRIES_VPFVAQ))
+    val vpfvaq = Module(new Queue(new io_vvaq_bundle, conf.nvpfvaq))
     val vpfvaq_tlb = Module(new AddressTLB)
-    val vpfpaq = Module(new Queue(new io_vpaq_bundle, ENTRIES_VPFPAQ))
+    val vpfpaq = Module(new Queue(new io_vpaq_bundle, conf.nvpfpaq))
 
     vpfvaq.io.enq <> io.vvaq_pf
 

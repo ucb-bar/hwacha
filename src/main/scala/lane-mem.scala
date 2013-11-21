@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
 class LaneMem extends Module

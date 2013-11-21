@@ -9,7 +9,7 @@ class io_vmu_to_xcpt_handler extends Bundle
   val no_pending_load_store = Bool(OUTPUT)
 }
 
-class VMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val pf_vvaq = new io_vvaq().flip
@@ -129,7 +129,7 @@ class VMU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     !memif.io.pending_replayq && !addr.io.vpaq_to_xcpt.vpaq_valid
 }
 
-class VMUStoreData extends Module
+class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val vsdq_lane = new io_vsdq().flip
@@ -148,7 +148,7 @@ class VMUStoreData extends Module
   }
 
   val vsdq_arb = Module(new Arbiter(Bits(width = SZ_DATA), 2))
-  val vsdq = Module(new Queue(Bits(width = 65), ENTRIES_VSDQ))
+  val vsdq = Module(new Queue(Bits(width = 65), conf.nvsdq))
 
   vsdq_arb.io.in(0) <> io.vsdq_lane
   vsdq_arb.io.in(1) <> io.vsdq_evac
@@ -167,13 +167,13 @@ class VMUStoreData extends Module
   io.vsdq_do_deq := io.vsdq.ready && vsdq.io.deq.valid
 }
 
-class VMULoadData extends Module
+class VMULoadData(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val vldq_lane = new io_vldq()
 
-    val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ)).flip
-    val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ))
+    val vldq = Valid(new VLDQEnqBundle(65, log2Up(conf.nvldq))).flip
+    val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq)))
 
     val qcnt = UInt(INPUT, SZ_QCNT)
     val vldq_rtag_do_enq = Bool(OUTPUT)
@@ -181,7 +181,7 @@ class VMULoadData extends Module
   }
 
   // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = Module(new VLDQ(65, ENTRIES_VLDQ, 9))
+  val vldq = Module(new VLDQ(65, conf.nvldq, 9))
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
@@ -200,7 +200,7 @@ class VMULoadData extends Module
   io.vldq_rtag_do_deq := io.vldq_rtag.ready && vldq.io.deq_rtag.valid
 }
 
-class VMUCounters extends Module
+class VMUCounters(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val vvaq_inc = Bool(INPUT)
@@ -230,12 +230,12 @@ class VMUCounters extends Module
     val pending_store = Bool(OUTPUT)
   }
 
-  val vvaq_count = Module(new qcnt(ENTRIES_VVAQ, ENTRIES_VVAQ))
-  val vpaq_count = Module(new qcnt(0, ENTRIES_VPAQ))
-  val vsdq_count = Module(new qcnt(ENTRIES_VSDQ,ENTRIES_VSDQ))
-  val vpasdq_count = Module(new qcnt(0, ENTRIES_VPASDQ))
-  val vsreq_count = Module(new qcnt(ENTRIES_VSREQ, ENTRIES_VSREQ)) // vector stores in flight
-  val vlreq_count = Module(new qcnt(ENTRIES_VLREQ, ENTRIES_VLREQ)) // vector loads in flight
+  val vvaq_count = Module(new qcnt(conf.nvvaq, conf.nvvaq))
+  val vpaq_count = Module(new qcnt(0, conf.nvpaq))
+  val vsdq_count = Module(new qcnt(conf.nvsdq, conf.nvsdq))
+  val vpasdq_count = Module(new qcnt(0, conf.nvpasdq))
+  val vsreq_count = Module(new qcnt(conf.nvsreq, conf.nvsreq)) // vector stores in flight
+  val vlreq_count = Module(new qcnt(conf.nvlreq, conf.nvlreq)) // vector loads in flight
 
   // vvaq counts available space
   vvaq_count.io.inc := io.vvaq_inc

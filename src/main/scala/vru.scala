@@ -5,6 +5,8 @@ import Node._
 import Constants._
 import Commands._
 import scala.math._
+import uncore.constants.AddressConstants._
+import uncore.constants.CacheConstants._
 import uncore.constants.MemoryOpConstants._
 
 class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)

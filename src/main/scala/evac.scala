@@ -5,6 +5,7 @@ import Node._
 import Constants._
 import Instructions._
 import Commands._
+import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
 class io_evac_to_xcpt_handler extends Bundle

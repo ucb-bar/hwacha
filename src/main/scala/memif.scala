@@ -5,13 +5,13 @@ import Node._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
-class MemIF extends Module
+class MemIF(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val vaq = Decoupled(new io_vpaq_bundle()).flip
     val vsdq = Decoupled(Bits(width = 65)).flip
-    val vldq = Valid(new VLDQEnqBundle(65, LG_ENTRIES_VLDQ))
-    val vldq_rtag = Decoupled(Bits(width = LG_ENTRIES_VLDQ)).flip
+    val vldq = Valid(new VLDQEnqBundle(65, log2Up(conf.nvldq)))
+    val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq))).flip
 
     val mem_req = new io_dmem_req()
     val mem_resp = new io_dmem_resp().flip

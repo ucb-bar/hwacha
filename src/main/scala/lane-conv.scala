@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class LaneConv extends Module 
+class LaneConv(implicit conf: HwachaConfiguration) extends Module 
 {
   val io = new Bundle
   {
@@ -138,7 +138,7 @@ class LaneConv extends Module
     VAU2_FP(FPD), Cat(next_exc_dp, next_result_dp),
     Cat(next_exc_sp, next_result_sp))
 
-  val pipereg = ShiftRegister(result, FCONV_STAGES, io.valid)
+  val pipereg = ShiftRegister(result, conf.fconv_stages, io.valid)
 
   Match(pipereg, io.exc, io.out)
 }

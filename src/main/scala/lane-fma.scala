@@ -7,7 +7,7 @@ import Constants._
 class io_cp_fma(width: Int) extends Bundle
 {
   val valid = Bool(OUTPUT)
-  val cmd = Bits(OUTPUT, FCMD_WIDTH)
+  val cmd = Bits(OUTPUT, rocket.FPConstants.FCMD_WIDTH)
   val rm = Bits(OUTPUT, 3)
   val in1 = Bits(OUTPUT, width)
   val in2 = Bits(OUTPUT, width)
@@ -19,7 +19,7 @@ class io_cp_fma(width: Int) extends Bundle
 class io_cp_dfma extends io_cp_fma(65)
 class io_cp_sfma extends io_cp_fma(33)
 
-class LaneFMA extends Module
+class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle
   {
@@ -35,7 +35,7 @@ class LaneFMA extends Module
     val cp_sfma = new io_cp_sfma()
   }
 
-  if (HAVE_FMA)
+  if (conf.fma)
   {
     // use in0 & in2 for a two operand flop (add,sub,mul)
     // use in0, in1, & in2 otherwise
@@ -84,7 +84,7 @@ class LaneFMA extends Module
       io.fn(RG_VAU1_FP), result_dp,
       Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)))
 
-    val pipereg = ShiftRegister(result, FMA_STAGES, io.valid)
+    val pipereg = ShiftRegister(result, conf.fma_stages, io.valid)
 
     Match(pipereg, io.exc, io.out)
 
@@ -93,17 +93,17 @@ class LaneFMA extends Module
   }
   else
   {
-    require(DFMA_STAGES >= SFMA_STAGES)
+    require(conf.dfma_stages >= conf.sfma_stages)
 
     val rocket_cmd = MuxLookup(
-      io.fn(RG_VAU1_FN), FCMD_X, Array(
-        VAU1_ADD -> FCMD_ADD,
-        VAU1_SUB -> FCMD_SUB,
-        VAU1_MUL -> FCMD_MUL,
-        VAU1_MADD -> FCMD_MADD,
-        VAU1_MSUB -> FCMD_MSUB,
-        VAU1_NMSUB -> FCMD_NMSUB,
-        VAU1_NMADD -> FCMD_NMADD
+      io.fn(RG_VAU1_FN), rocket.FPConstants.FCMD_ADD, Array(
+        VAU1_ADD -> rocket.FPConstants.FCMD_ADD,
+        VAU1_SUB -> rocket.FPConstants.FCMD_SUB,
+        VAU1_MUL -> rocket.FPConstants.FCMD_MUL,
+        VAU1_MADD -> rocket.FPConstants.FCMD_MADD,
+        VAU1_MSUB -> rocket.FPConstants.FCMD_MSUB,
+        VAU1_NMSUB -> rocket.FPConstants.FCMD_NMSUB,
+        VAU1_NMADD -> rocket.FPConstants.FCMD_NMADD
       ))
 
     val fn = io.fn(RG_VAU1_FN)
@@ -123,11 +123,11 @@ class LaneFMA extends Module
     io.cp_sfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_sfma.in3 := io.in2
 
-    val dp = ShiftRegister(io.fn(RG_VAU1_FP), DFMA_STAGES-1)
+    val dp = ShiftRegister(io.fn(RG_VAU1_FP), conf.dfma_stages-1)
 
     io.out := Mux(dp, io.cp_dfma.out,
-                  Cat(Bits("hFFFFFFFF",32), ShiftRegister(io.cp_sfma.out, DFMA_STAGES-SFMA_STAGES)))
+                  Cat(Bits("hFFFFFFFF",32), ShiftRegister(io.cp_sfma.out, conf.dfma_stages-conf.sfma_stages)))
     io.exc := Mux(dp, io.cp_dfma.exc,
-                  ShiftRegister(io.cp_sfma.exc, DFMA_STAGES-SFMA_STAGES))
+                  ShiftRegister(io.cp_sfma.exc, conf.dfma_stages-conf.sfma_stages))
   }
 }
