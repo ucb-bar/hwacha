@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 import Commands._
+import rocket.Instructions._
 import Instructions._
 import uncore.constants.MemoryOpConstants._
 
