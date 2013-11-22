@@ -19,8 +19,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val vxu_imm2q = new io_vxu_imm2q().flip
     val vxu_cntq = new io_vxu_cntq().flip
 
-    val cp_dfma = new io_cp_dfma()
-    val cp_sfma = new io_cp_sfma()
+    val cp_dfma = new rocket.ioFMA(65).flip
+    val cp_sfma = new rocket.ioFMA(33).flip
 
     val imem_req = new io_imem_req()
     val imem_resp = new io_imem_resp().flip

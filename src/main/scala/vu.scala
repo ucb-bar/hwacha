@@ -35,8 +35,8 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val vpfximm2q = new io_vximm2q().flip
     val vpfcntq = new io_vcntq().flip
 
-    val cp_dfma = new io_cp_dfma()
-    val cp_sfma = new io_cp_sfma()
+    val cp_dfma = new rocket.ioFMA(65).flip
+    val cp_sfma = new rocket.ioFMA(33).flip
 
     val imem_req = new io_imem_req()
     val imem_resp = new io_imem_resp().flip

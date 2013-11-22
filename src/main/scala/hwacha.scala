@@ -1,10 +1,9 @@
 package hwacha
 
 import Chisel._
-import rocket._
 import uncore._
 
-case class HwachaConfiguration(icache: ICacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
+case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
@@ -109,21 +108,21 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   )
 }
 
-class Hwacha(hc: HwachaConfiguration, rc: RocketConfiguration) extends RoCC(rc) {
+class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends rocket.RoCC(rc) {
   import HwachaDecodeTable._
   import Commands._
   
   implicit val conf = hc
 
-  val icache = Module(new Frontend()(hc.icache, rc.tl))
-  val dtlb = Module(new TLB(hc.ndtlb))
-  val ptlb = Module(new TLB(hc.nptlb))
+  val icache = Module(new rocket.Frontend()(hc.icache, rc.tl))
+  val dtlb = Module(new rocket.TLB(hc.ndtlb))
+  val ptlb = Module(new rocket.TLB(hc.nptlb))
   val vu = Module(new vu)
   
   // Decode
   val raw_inst = io.cmd.bits.inst.toBits
   val inst_i_imm = raw_inst(31, 20)
-  val logic = DecodeLogic(raw_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
+  val logic = rocket.DecodeLogic(raw_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
   val cs = logic.map {
     case b if b.inputs.head.getClass == classOf[Bool] => b.toBool
     case u => u 

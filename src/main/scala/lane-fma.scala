@@ -4,21 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_cp_fma(width: Int) extends Bundle
-{
-  val valid = Bool(OUTPUT)
-  val cmd = Bits(OUTPUT, rocket.FPConstants.FCMD_WIDTH)
-  val rm = Bits(OUTPUT, 3)
-  val in1 = Bits(OUTPUT, width)
-  val in2 = Bits(OUTPUT, width)
-  val in3 = Bits(OUTPUT, width)
-  val out = Bits(INPUT, width)
-  val exc = Bits(INPUT, 5)
-}
-
-class io_cp_dfma extends io_cp_fma(65)
-class io_cp_sfma extends io_cp_fma(33)
-
 class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle
@@ -31,8 +16,8 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     val out   = Bits(OUTPUT, SZ_DATA)
     val exc   = Bits(OUTPUT, SZ_EXC)
 
-    val cp_dfma = new io_cp_dfma()
-    val cp_sfma = new io_cp_sfma()
+    val cp_dfma = new rocket.ioFMA(65).flip
+    val cp_sfma = new rocket.ioFMA(33).flip
   }
 
   if (conf.fma)

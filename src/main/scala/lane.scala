@@ -49,8 +49,8 @@ class ioLaneToIssue extends Bundle
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cp_dfma = new io_cp_dfma()
-    val cp_sfma = new io_cp_sfma()
+    val cp_dfma = new rocket.ioFMA(65).flip
+    val cp_sfma = new rocket.ioFMA(33).flip
 
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
     val expand_read = new io_vxu_expand_read().asInput
