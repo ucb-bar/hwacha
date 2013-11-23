@@ -81,7 +81,7 @@ class IssueVT extends Module
     val fn = new io_vxu_issue_fn().asOutput
     val decoded = new io_vxu_issue_regid_imm().asOutput
 
-    val vxu_cntq = new io_vxu_cntq().flip()
+    val vcmdq = new VCMDQIO().flip
     val aiw_cntb = new io_vxu_cntq()
 
     val issue_to_aiw = new io_issue_to_aiw()
@@ -315,10 +315,10 @@ class IssueVT extends Module
       imm_U -> Cat(Bits(0,1),Fill(32,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,12),Bits(0,12))
     ))
 
-  val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
   val regid_base = (cnt >> UInt(3)) * io.vf.stride
 
-  io.vxu_cntq.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
+  io.vcmdq.cnt.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.aiw_cntb.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.aiw_cntb.bits := cnt
 
@@ -380,7 +380,7 @@ class IssueVT extends Module
   mask_stall := decode_stop.toBool
 
   io.decoded.vlen := io.vf.vlen - cnt
-  io.decoded.utidx := Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
   io.decoded.vs_base := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
   io.decoded.vt_base := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
   io.decoded.vr_base := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
@@ -401,7 +401,7 @@ class IssueVT extends Module
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float.toBool
   io.decoded.imm := imm
-  io.decoded.cnt_valid := io.vxu_cntq.valid
+  io.decoded.cnt_valid := io.vcmdq.cnt.valid
   io.decoded.cnt := cnt
   io.decoded.active_mask := Bool(true)
   io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))

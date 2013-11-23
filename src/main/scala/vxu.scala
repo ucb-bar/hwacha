@@ -14,10 +14,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val irq = new io_issue_to_irq_handler()
 
-    val vxu_cmdq = new io_vxu_cmdq().flip
-    val vxu_immq = new io_vxu_immq().flip
-    val vxu_imm2q = new io_vxu_imm2q().flip
-    val vxu_cntq = new io_vxu_cntq().flip
+    val vcmdq = new VCMDQIO().flip
 
     val cp_dfma = new rocket.ioFMA(65).flip
     val cp_sfma = new rocket.ioFMA(33).flip
@@ -62,10 +59,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   issue.io.imem_req <> io.imem_req
   issue.io.imem_resp <> io.imem_resp
 
-  issue.io.vxu_cmdq <> io.vxu_cmdq
-  issue.io.vxu_immq <> io.vxu_immq
-  issue.io.vxu_imm2q <> io.vxu_imm2q
-  issue.io.vxu_cntq <> io.vxu_cntq
+  issue.io.vcmdq <> io.vcmdq
   issue.io.pending_store <> io.pending_store
   
   issue.io.aiw_cmdb <> io.aiw_cmdb

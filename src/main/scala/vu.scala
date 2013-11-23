@@ -13,6 +13,42 @@ class io_xcpt extends Bundle
   val kill = Bool(OUTPUT)
 }
 
+class VCMDQIO extends Bundle
+{
+  val cmd = new DecoupledIO(Bits(width = SZ_XCMD))
+  val imm1 = new DecoupledIO(Bits(width = SZ_XIMM))
+  val imm2 = new DecoupledIO(Bits(width = SZ_XIMM2))
+  val cnt = new DecoupledIO(Bits(width = SZ_VLEN+1))
+}
+
+class AIWVCMDQIO extends VCMDQIO
+{
+  val numcnt = new DecoupledIO(Bits(width = 1))
+}
+
+class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+{
+  val io = new Bundle {
+    val enq = new VCMDQIO().flip
+    val deq = new VCMDQIO()
+  }
+
+  val cmdq = Module(new Queue(Bits(width = SZ_VCMD), conf.vcmdq.ncmd))
+  val imm1q = Module(new Queue(Bits(width = SZ_VIMM), conf.vcmdq.nimm1))
+  val imm2q = Module(new Queue(Bits(width = SZ_VSTRIDE), conf.vcmdq.nimm2))
+  val cntq = Module(new Queue(Bits(width = SZ_VLEN+1), conf.vcmdq.ncnt))
+
+  cmdq.io.enq <> io.enq.cmd
+  imm1q.io.enq <> io.enq.imm1
+  imm2q.io.enq <> io.enq.imm2
+  cntq.io.enq <> io.enq.cnt
+
+  io.deq.cmd <> cmdq.io.deq
+  io.deq.imm1 <> imm1q.io.deq
+  io.deq.imm2 <> imm2q.io.deq
+  io.deq.cnt <> cntq.io.deq
+}
+
 class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
@@ -51,17 +87,12 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   val flush_vru = this.reset || xcpt.io.xcpt_to_vu.flush_vru
   val flush_vmu = this.reset || xcpt.io.xcpt_to_vu.flush_vmu
 
-  val vcmdq = new {
-    val cmd = Module(new Queue(Bits(width = SZ_VCMD), conf.vcmdq.ncmd, _reset = flush_kill))
-    val imm1 = Module(new Queue(Bits(width = SZ_VIMM), conf.vcmdq.nimm1, _reset = flush_kill))
-    val imm2 = Module(new Queue(Bits(width = SZ_VSTRIDE), conf.vcmdq.nimm2, _reset = flush_kill))
-    val cnt = Module(new Queue(Bits(width = SZ_VLEN+1), conf.vcmdq.ncnt, _reset = flush_kill))
-  }
+  val vcmdq = Module(new VCMDQ(resetSignal = flush_kill))
 
-  vcmdq.cmd.io.enq <> MaskStall(io.vcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.imm1.io.enq <> MaskStall(io.vcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.imm2.io.enq <> MaskStall(io.vcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.cnt.io.enq <> MaskStall(io.vcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq.cmd <> MaskStall(io.vcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq.imm1 <> MaskStall(io.vcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq.imm2 <> MaskStall(io.vcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq.cnt <> MaskStall(io.vcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
 
   val vxu = Module(new VXU)
   val vmu = Module(new VMU(resetSignal = flush_vmu))
@@ -79,22 +110,14 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   if (conf.vru)
   {
     val vru = Module(new VRU(resetSignal = flush_vru))
-    val vpfcmdq = new {
-      val cmd = Module(new Queue(Bits(width=SZ_VCMD), conf.vcmdq.ncmd, _reset = flush_kill))
-      val imm1 = Module(new Queue(Bits(width=SZ_VIMM), conf.vcmdq.nimm1, _reset = flush_kill))
-      val imm2 = Module(new Queue(Bits(width=SZ_VSTRIDE), conf.vcmdq.nimm2, _reset = flush_kill))
-      val cnt = Module(new Queue(Bits(width=SZ_VLEN), conf.vcmdq.ncnt, _reset = flush_kill))
-    }
+    val vpfcmdq = Module(new VCMDQ(resetSignal = flush_kill))
 
-    vpfcmdq.cmd.io.enq <> MaskStall(io.vpfcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.imm1.io.enq <> MaskStall(io.vpfcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.imm2.io.enq <> MaskStall(io.vpfcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.cnt.io.enq <> MaskStall(io.vpfcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq.cmd <> MaskStall(io.vpfcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq.imm1 <> MaskStall(io.vpfcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq.imm2 <> MaskStall(io.vpfcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq.cnt <> MaskStall(io.vpfcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
 
-    vru.io.vcmdq.cmd <> vpfcmdq.cmd.io.deq
-    vru.io.vcmdq.imm1 <> vpfcmdq.imm1.io.deq
-    vru.io.vcmdq.imm2 <> vpfcmdq.imm2.io.deq
-    vru.io.vcmdq.cnt <> vpfcmdq.cnt.io.deq
+    vru.io.vcmdq <> vpfcmdq.io.deq
 
     vmu.io.pf_vvaq <> vru.io.vvaq
     vmu.io.vpftlb <> io.vpftlb
@@ -107,12 +130,12 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     io.vpfcmdq.cnt.ready := Bool(true)
   }
 
-  vcmdqcnt.cmd.io.dec := vcmdq.cmd.io.enq.ready && io.vcmdq.cmd.valid
-  vcmdqcnt.cmd.io.inc := (vxu.io.vxu_cmdq.ready || evac.io.vcmdq.cmd.ready) && vcmdq.cmd.io.deq.valid
-  vcmdqcnt.imm1.io.dec := vcmdq.imm1.io.enq.ready && io.vcmdq.imm1.valid
-  vcmdqcnt.imm1.io.inc := (vxu.io.vxu_immq.ready || evac.io.vcmdq.imm1.ready) && vcmdq.imm1.io.deq.valid
-  vcmdqcnt.imm2.io.dec := vcmdq.imm2.io.enq.ready && io.vcmdq.imm2.valid
-  vcmdqcnt.imm2.io.inc := (vxu.io.vxu_imm2q.ready || evac.io.vcmdq.imm2.ready) && vcmdq.imm2.io.deq.valid
+  vcmdqcnt.cmd.io.dec := vcmdq.io.enq.cmd.ready && io.vcmdq.cmd.valid
+  vcmdqcnt.cmd.io.inc := (vxu.io.vcmdq.cmd.ready || evac.io.vcmdq.cmd.ready) && vcmdq.io.deq.cmd.valid
+  vcmdqcnt.imm1.io.dec := vcmdq.io.enq.imm1.ready && io.vcmdq.imm1.valid
+  vcmdqcnt.imm1.io.inc := (vxu.io.vcmdq.imm1.ready || evac.io.vcmdq.imm1.ready) && vcmdq.io.deq.imm1.valid
+  vcmdqcnt.imm2.io.dec := vcmdq.io.enq.imm2.ready && io.vcmdq.imm2.valid
+  vcmdqcnt.imm2.io.inc := (vxu.io.vcmdq.imm2.ready || evac.io.vcmdq.imm2.ready) && vcmdq.io.deq.imm2.valid
 
   vcmdqcnt.cmd.io.qcnt := UInt(11)
   vcmdqcnt.imm1.io.qcnt := UInt(11)
@@ -122,7 +145,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !xcpt.io.xcpt_to_vu.busy
 
   // fence
-  io.vfence_ready := !vcmdq.cmd.io.deq.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
+  io.vfence_ready := !vcmdq.io.deq.cmd.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -132,21 +155,28 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   xcpt.io.xcpt <> io.xcpt
 
   // vxu
-  vxu.io.vxu_cmdq.bits := vcmdq.cmd.io.deq.bits
-  vxu.io.vxu_cmdq.valid := vcmdq.cmd.io.deq.valid
-  vcmdq.cmd.io.deq.ready := vxu.io.vxu_cmdq.ready || evac.io.vcmdq.cmd.ready
+  vcmdq.io.deq.cmd.ready := (vxu.io.vcmdq.cmd.ready || evac.io.vcmdq.cmd.ready)
+  vcmdq.io.deq.imm1.ready := (vxu.io.vcmdq.imm1.ready || evac.io.vcmdq.imm1.ready)
+  vcmdq.io.deq.imm2.ready := (vxu.io.vcmdq.imm2.ready || evac.io.vcmdq.imm2.ready)
+  vcmdq.io.deq.cnt.ready := (vxu.io.vcmdq.cnt.ready || evac.io.vcmdq.cnt.ready)
 
-  vxu.io.vxu_immq.bits := vcmdq.imm1.io.deq.bits
-  vxu.io.vxu_immq.valid := vcmdq.imm1.io.deq.valid
-  vcmdq.imm1.io.deq.ready := vxu.io.vxu_immq.ready || evac.io.vcmdq.imm1.ready
+  vxu.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
+  vxu.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
+  vxu.io.vcmdq.imm1.valid := vcmdq.io.deq.imm1.valid
+  vxu.io.vcmdq.imm1.bits := vcmdq.io.deq.imm1.bits
+  vxu.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
+  vxu.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
+  vxu.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
+  vxu.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
 
-  vxu.io.vxu_imm2q.bits := vcmdq.imm2.io.deq.bits
-  vxu.io.vxu_imm2q.valid := vcmdq.imm2.io.deq.valid
-  vcmdq.imm2.io.deq.ready := vxu.io.vxu_imm2q.ready || evac.io.vcmdq.imm2.ready
-
-  vxu.io.vxu_cntq.bits := vcmdq.cnt.io.deq.bits(10,0)
-  vxu.io.vxu_cntq.valid := vcmdq.cnt.io.deq.valid
-  vcmdq.cnt.io.deq.ready := vxu.io.vxu_cntq.ready || evac.io.vcmdq.cnt.ready
+  evac.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
+  evac.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
+  evac.io.vcmdq.imm1.valid := vcmdq.io.deq.imm1.valid
+  evac.io.vcmdq.imm1.bits := vcmdq.io.deq.imm1.bits
+  evac.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
+  evac.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
+  evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
+  evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
 
   io.cp_dfma <> vxu.io.cp_dfma
   io.cp_sfma <> vxu.io.cp_sfma
@@ -208,17 +238,17 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   evac.io.evac_to_aiw <> aiw.io.evac_to_aiw
 
-  evac.io.vcmdq.cmd.bits := vcmdq.cmd.io.deq.bits
-  evac.io.vcmdq.cmd.valid := vcmdq.cmd.io.deq.valid
+  evac.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
+  evac.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
 
-  evac.io.vcmdq.imm1.bits := vcmdq.imm1.io.deq.bits
-  evac.io.vcmdq.imm1.valid := vcmdq.imm1.io.deq.valid
+  evac.io.vcmdq.imm1.bits := vcmdq.io.deq.imm1.bits
+  evac.io.vcmdq.imm1.valid := vcmdq.io.deq.imm1.valid
 
-  evac.io.vcmdq.imm2.bits := vcmdq.imm2.io.deq.bits
-  evac.io.vcmdq.imm2.valid := vcmdq.imm2.io.deq.valid
+  evac.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
+  evac.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
 
-  evac.io.vcmdq.cnt.bits := vcmdq.cnt.io.deq.bits
-  evac.io.vcmdq.cnt.valid := vcmdq.cnt.io.deq.valid
+  evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
+  evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
 
   evac.io.xcpt_to_evac <> xcpt.io.xcpt_to_evac
   evac.io.evac_to_xcpt <> xcpt.io.evac_to_xcpt

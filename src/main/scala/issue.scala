@@ -141,10 +141,7 @@ class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     val imem_req = new io_imem_req()
     val imem_resp = new io_imem_resp().flip
 
-    val vxu_cmdq = new io_vxu_cmdq().flip
-    val vxu_immq = new io_vxu_immq().flip
-    val vxu_imm2q = new io_vxu_imm2q().flip
-    val vxu_cntq = new io_vxu_cntq().flip
+    val vcmdq = new VCMDQIO().flip
 
     val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
     val issue_to_seq = new io_vxu_issue_to_seq().asOutput
@@ -195,12 +192,14 @@ class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   vt.io.imem_req <> io.imem_req
   vt.io.imem_resp <> io.imem_resp
 
+  io.vcmdq.cnt.ready := tvec.io.vcmdq.cnt.ready || vt.io.vcmdq.cnt.ready
+
   // tvec
-  tvec.io.vxu_cmdq <> io.vxu_cmdq
-  tvec.io.vxu_immq <> io.vxu_immq
-  tvec.io.vxu_imm2q <> io.vxu_imm2q
-  tvec.io.vxu_cntq.valid := io.vxu_cntq.valid
-  tvec.io.vxu_cntq.bits := io.vxu_cntq.bits
+  tvec.io.vcmdq.cmd <> io.vcmdq.cmd
+  tvec.io.vcmdq.imm1 <> io.vcmdq.imm1
+  tvec.io.vcmdq.imm2 <> io.vcmdq.imm2
+  tvec.io.vcmdq.cnt.valid := io.vcmdq.cnt.valid
+  tvec.io.vcmdq.cnt.bits := io.vcmdq.cnt.bits
 
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
@@ -236,8 +235,8 @@ class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   vt.io.fn <> io.vt_fn
   vt.io.decoded <> io.vt_regid_imm
 
-  vt.io.vxu_cntq.valid := io.vxu_cntq.valid
-  vt.io.vxu_cntq.bits := io.vxu_cntq.bits
+  vt.io.vcmdq.cnt.valid := io.vcmdq.cnt.valid
+  vt.io.vcmdq.cnt.bits := io.vcmdq.cnt.bits
 
   vt.io.aiw_cntb.ready := io.aiw_cntb.ready
   vt.io.aiw_to_issue <> io.aiw_to_issue
@@ -247,8 +246,6 @@ class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     Mux(tvec.io.active, tvec.io.issue_to_aiw.markLast, vt.io.issue_to_aiw.markLast)
 
   vt.io.xcpt_to_issue <> io.xcpt_to_issue
-
-  io.vxu_cntq.ready := tvec.io.vxu_cntq.ready || vt.io.vxu_cntq.ready
 
   io.aiw_cntb.valid := Mux(tvec.io.active, tvec.io.aiw_cntb.valid, vt.io.aiw_cntb.valid)
   io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)

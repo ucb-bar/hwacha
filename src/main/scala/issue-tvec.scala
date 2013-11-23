@@ -32,10 +32,7 @@ class IssueTVEC extends Module
     val issue_to_lane = new io_vxu_issue_to_lane().asOutput
     val hazard_to_issue = new io_vxu_hazard_to_issue_tvec().asInput
 
-    val vxu_cmdq = new io_vxu_cmdq().flip()
-    val vxu_immq = new io_vxu_immq().flip()
-    val vxu_imm2q = new io_vxu_imm2q().flip()
-    val vxu_cntq = new io_vxu_cntq().flip()
+    val vcmdq = new VCMDQIO().flip
     
     val valid = new io_vxu_issue_fire().asOutput
     val ready = Bool(INPUT)
@@ -72,11 +69,11 @@ class IssueTVEC extends Module
 // DECODE                                                                  \\
 //-------------------------------------------------------------------------\\
 
-  val cmd = io.vxu_cmdq.bits(RG_XCMD_CMCODE)
-  val vd = io.vxu_cmdq.bits(RG_XCMD_VD)
-  val vt = io.vxu_cmdq.bits(RG_XCMD_VT)
-  val imm = io.vxu_immq.bits
-  val imm2 = io.vxu_imm2q.bits
+  val cmd = io.vcmdq.cmd.bits(RG_XCMD_CMCODE)
+  val vd = io.vcmdq.cmd.bits(RG_XCMD_VD)
+  val vt = io.vcmdq.cmd.bits(RG_XCMD_VT)
+  val imm1 = io.vcmdq.imm1.bits
+  val imm2 = io.vcmdq.imm2.bits
 
   val n = Bool(false)
   val y = Bool(true)
@@ -96,8 +93,8 @@ class IssueTVEC extends Module
                      //                                                                 | | | | decode_vcfg
                      //                                                                 | | | | | decode_setvl
                      //                                                                 | | | | | | decode_vf
-                     //                                                                 | | | | | | | deq_vxu_immq
-                     //         val            dhazard       shazard        bhazard msrc| | | | | | | | deq_vxu_imm2q  
+                     //                                                                 | | | | | | | deq_vcmdq_imm1
+                     //         val            dhazard       shazard        bhazard msrc| | | | | | | | deq_vcmdq_imm2  
                      //         |              |             |              |        |  | | | | | | | | | deq_vxu_cnt  
                      //         |              |             |              |        |  | | | | | | | | | | stride  mem_type_float
                      //         |              |             |              |        |  | | | | | | | | | | |         |   mem_type mem_cmd
@@ -150,12 +147,12 @@ class IssueTVEC extends Module
   ))
 
   val valid::dhazard::shazard::bhazard::vmsrc::decode_fence_v::cs0 = cs
-  val vd_valid::vd_active::vt_active::decode_vcfg::decode_setvl::decode_vf::deq_vxu_immq::deq_vxu_imm2q::deq_vxu_cntq::cs1 = cs0
+  val vd_valid::vd_active::vt_active::decode_vcfg::decode_setvl::decode_vf::deq_vcmdq_imm1::deq_vcmdq_imm2::deq_vcmdq_cnt::cs1 = cs0
   val addr_stride::mem_type_float::mem_type::mem_cmd::Nil = cs1
 
   val decode_aiw_cmdb_valid = valid.orR || decode_vf.toBool
-  val decode_aiw_imm1b_valid = decode_aiw_cmdb_valid && deq_vxu_immq.toBool
-  val decode_aiw_imm2b_valid = decode_aiw_cmdb_valid && deq_vxu_imm2q.toBool
+  val decode_aiw_imm1b_valid = decode_aiw_cmdb_valid && deq_vcmdq_imm1.toBool
+  val decode_aiw_imm2b_valid = decode_aiw_cmdb_valid && deq_vcmdq_imm2.toBool
   val decode_aiw_cntb_valid = valid.orR
   val decode_aiw_numCntB_valid = valid.orR || decode_vf.toBool
 
@@ -168,18 +165,18 @@ class IssueTVEC extends Module
 //-------------------------------------------------------------------------\\
 
   val mask_issue_ready = !valid.orR || io.ready
-  val mask_vxu_immq_valid = !deq_vxu_immq || io.vxu_immq.valid
-  val mask_vxu_imm2q_valid = !deq_vxu_imm2q || io.vxu_imm2q.valid
+  val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
+  val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_aiw_cmdb_ready = !decode_aiw_cmdb_valid || io.aiw_cmdb.ready
-  val mask_aiw_imm1b_ready = !deq_vxu_immq || io.aiw_imm1b.ready
-  val mask_aiw_imm2b_ready = !deq_vxu_imm2q || io.aiw_imm2b.ready
+  val mask_aiw_imm1b_ready = !deq_vcmdq_imm1 || io.aiw_imm1b.ready
+  val mask_aiw_imm2b_ready = !deq_vcmdq_imm2 || io.aiw_imm2b.ready
   val mask_aiw_cntb_ready = !decode_aiw_cntb_valid || io.aiw_cntb.ready
   val mask_aiw_numCntB_ready = !decode_aiw_numCntB_valid || io.aiw_numCntB.ready
 
   val valid_common =
     !stall &&
     tvec_active_fence_clear &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   val fire_common = mask_issue_ready && valid_common
@@ -190,60 +187,60 @@ class IssueTVEC extends Module
 
   val queue_common = tvec_active_fence_clear && mask_issue_ready && !stall 
 
-  io.vxu_cmdq.ready := 
+  io.vcmdq.cmd.ready := 
     queue_common && 
     Bool(true) && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
-  io.vxu_immq.ready := 
+  io.vcmdq.imm1.ready := 
     queue_common &&
-    io.vxu_cmdq.valid && deq_vxu_immq.toBool && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && deq_vcmdq_imm1.toBool && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
-  io.vxu_imm2q.ready := 
+  io.vcmdq.imm2.ready := 
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && deq_vxu_imm2q.toBool &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && deq_vcmdq_imm2.toBool &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
-  io.vxu_cntq.ready :=
+  io.vcmdq.cnt.ready :=
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && deq_vxu_cntq.toBool &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid && deq_vcmdq_cnt.toBool &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_cmdb.valid := 
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     decode_aiw_cmdb_valid && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_imm1b.valid :=
     queue_common &&
-    io.vxu_cmdq.valid && decode_aiw_imm1b_valid && mask_vxu_imm2q_valid &&
-    mask_aiw_cmdb_ready && deq_vxu_immq.toBool && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
+    io.vcmdq.cmd.valid && decode_aiw_imm1b_valid && mask_vxu_imm2q_valid &&
+    mask_aiw_cmdb_ready && deq_vcmdq_imm1.toBool && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_imm2b.valid :=
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && decode_aiw_imm2b_valid &&
-    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && deq_vxu_imm2q.toBool && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && decode_aiw_imm2b_valid &&
+    mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && deq_vcmdq_imm2.toBool && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
 
   io.aiw_cntb.valid :=
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && decode_aiw_cntb_valid && mask_aiw_numCntB_ready
   
   io.aiw_numCntB.valid := 
     queue_common &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && decode_aiw_numCntB_valid
 
   io.issue_to_aiw.markLast := 
     queue_common && valid.orR &&
-    io.vxu_cmdq.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
+    io.vcmdq.cmd.valid && mask_vxu_immq_valid && mask_vxu_imm2q_valid &&
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
     
 
-  io.aiw_cmdb.bits := io.vxu_cmdq.bits
-  io.aiw_imm1b.bits := io.vxu_immq.bits
-  io.aiw_imm2b.bits := io.vxu_imm2q.bits
+  io.aiw_cmdb.bits := io.vcmdq.cmd.bits
+  io.aiw_imm1b.bits := io.vcmdq.imm1.bits
+  io.aiw_imm2b.bits := io.vcmdq.imm2.bits
   io.aiw_numCntB.bits := Mux(decode_vf.toBool, Bits(0, 1), Bits(1, 1))
 
 
@@ -265,7 +262,7 @@ class IssueTVEC extends Module
   val reg_bcnt = Reg(next = next_bcnt, init = Bits(8,SZ_LGBANK1))
   val reg_stride = Reg(next = next_stride, init = Bits(63,SZ_REGLEN))
 
-  val cnt = Mux(io.vxu_cntq.valid, io.vxu_cntq.bits, Bits(0))
+  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
   val regid_base = (cnt >> UInt(3)) * reg_stride
 
   io.aiw_cntb.bits := cnt
@@ -280,16 +277,16 @@ class IssueTVEC extends Module
 
   when (fire_vcfg)
   {
-    next_vlen := io.vxu_immq.bits(RG_XIMM1_VLEN)
-    next_nxregs := io.vxu_immq.bits(RG_XIMM1_NXREGS)
-    next_nfregs := io.vxu_immq.bits(RG_XIMM1_NFREGS)
-    next_bactive := io.vxu_immq.bits(RG_XIMM1_BACTIVE)
-    next_bcnt := io.vxu_immq.bits(RG_XIMM1_BCNT)
+    next_vlen := io.vcmdq.imm1.bits(RG_XIMM1_VLEN)
+    next_nxregs := io.vcmdq.imm1.bits(RG_XIMM1_NXREGS)
+    next_nfregs := io.vcmdq.imm1.bits(RG_XIMM1_NFREGS)
+    next_bactive := io.vcmdq.imm1.bits(RG_XIMM1_BACTIVE)
+    next_bcnt := io.vcmdq.imm1.bits(RG_XIMM1_BCNT)
     next_stride := next_nxregs + next_nfregs - Bits(1,2)
   }
   when (fire_setvl)
   {
-    next_vlen := io.vxu_immq.bits(RG_XIMM1_VLEN)
+    next_vlen := io.vcmdq.imm1.bits(RG_XIMM1_VLEN)
   }
   when (fire_vf)
   {
@@ -308,7 +305,7 @@ class IssueTVEC extends Module
 
   io.vf.active := (reg_state === ISSUE_VT)
   io.vf.fire := fire_vf
-  io.vf.pc := io.vxu_immq.bits(31,0).toUInt
+  io.vf.pc := io.vcmdq.imm1.bits(31,0).toUInt
   io.vf.nxregs := reg_nxregs
   io.vf.nfregs := reg_nfregs
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
@@ -391,9 +388,9 @@ class IssueTVEC extends Module
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float.toBool
-  io.decoded.imm := imm
-  io.decoded.imm2 := Mux(io.vxu_imm2q.ready, imm2, Cat(Bits(0,60), addr_stride))
-  io.decoded.cnt_valid := io.vxu_cntq.valid
+  io.decoded.imm := imm1
+  io.decoded.imm2 := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))
+  io.decoded.cnt_valid := io.vcmdq.cnt.valid
   io.decoded.cnt := cnt
   io.decoded.aiw.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.decoded.aiw.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
@@ -407,7 +404,7 @@ class IssueTVEC extends Module
   val illegal_vt = vt_active.toBool && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)
   
   io.irq.illegal := 
-    io.vxu_cmdq.valid && tvec_active && 
+    io.vcmdq.cmd.valid && tvec_active && 
     (!valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf || illegal_vd || illegal_vt)
-  io.irq.cmd := io.vxu_cmdq.bits
+  io.irq.cmd := io.vcmdq.cmd.bits
 }
