@@ -33,8 +33,8 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
     val dmem_req = new io_dmem_req()
     val dmem_resp = new io_dmem_resp().flip
 
-    val vtlb = new io_tlb
-    val vpftlb = new io_tlb
+    val vtlb = new TLBIO
+    val vpftlb = new TLBIO
 
     val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
     val evac_to_vmu = new io_evac_to_vmu().flip

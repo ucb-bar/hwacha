@@ -17,7 +17,7 @@ class io_vmu_address_tlb extends Bundle
 {
   val vvaq = new io_vvaq().flip
   val vpaq = new io_vpaq()
-  val tlb = new io_tlb
+  val tlb = new TLBIO
   val ack = Bool(OUTPUT)
   val stall = Bool(INPUT)
 
@@ -114,8 +114,8 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
     val vvaq_lane = new io_vvaq().flip
     val vvaq_evac = new io_vvaq().flip
 
-    val vtlb = new io_tlb
-    val vpftlb = new io_tlb
+    val vtlb = new TLBIO
+    val vpftlb = new TLBIO
 
     val vaq = new io_vpaq()
 

@@ -114,24 +114,8 @@ class io_vxu_aiw_bundle extends Bundle
   val update_imm1 = Bool(OUTPUT)
 }
 
-class TLBReq extends Bundle
+class TLBIO extends Bundle
 {
-  val asid = UInt(width = ASID_BITS)
-  val vpn = UInt(width = VPN_BITS+1)
-  val passthrough = Bool()
-  val instruction = Bool()
-}
-
-class TLBResp extends Bundle
-{
-  val miss = Bool(OUTPUT)
-  val ppn = UInt(OUTPUT, PPN_BITS)
-  val xcpt_ld = Bool(OUTPUT)
-  val xcpt_st = Bool(OUTPUT)
-}
-
-class io_tlb extends Bundle
-{
-  val req = Decoupled(new TLBReq)
-  val resp = new TLBResp().flip
+  val req = Decoupled(new rocket.TLBReq)
+  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
 }
