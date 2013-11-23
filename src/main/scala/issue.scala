@@ -133,13 +133,12 @@ class IoIssueToPVFB extends Bundle
   val replay_pc = Bits(OUTPUT, SZ_ADDR)
 }
 
-class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = new io_issue_to_irq_handler()
 
-    val imem_req = new io_imem_req()
-    val imem_resp = new io_imem_resp().flip
+    val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val vcmdq = new VCMDQIO().flip
 
@@ -189,8 +188,7 @@ class Issue(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   io.irq.tvec := tvec.io.irq
   io.irq.vt := vt.io.irq
 
-  vt.io.imem_req <> io.imem_req
-  vt.io.imem_resp <> io.imem_resp
+  vt.io.imem <> io.imem
 
   io.vcmdq.cnt.ready := tvec.io.vcmdq.cnt.ready || vt.io.vcmdq.cnt.ready
 

@@ -158,14 +158,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   io.pptw <> ptlb.io.ptw
 
   // Connect VU to I$
-  icache.io.cpu.req.valid := vu.io.imem_req.valid
-  icache.io.cpu.req.bits.pc := vu.io.imem_req.bits
-  icache.io.cpu.req.bits.mispredict := Bool(false)
-  icache.io.cpu.req.bits.taken := Bool(false)
-  icache.io.cpu.invalidate := Bool(false)
-  //icache.io.cpu.req.bits.current_pc
-
-  vu.io.imem_resp <> icache.io.cpu.resp
+  icache.io.cpu <> vu.io.imem
 
   // Connect VU to D$
   io.mem.req.bits.data := RegEnable(vu.io.dmem_req.bits.data, vu.io.dmem_req.valid && isWrite(vu.io.dmem_req.bits.cmd))
@@ -177,7 +170,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.vpftlb <> ptlb.io
 
   // Busy signal for fencing TODO: CONNECT
-  io.busy := !vu.io.vfence_ready
+  io.busy := vu.io.busy
 
   // TODO: SETUP PREFETCH QUEUES
   // TODO: SETUP INTERRUPT

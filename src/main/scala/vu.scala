@@ -62,13 +62,13 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val vcmdq_user_ready = Bool(OUTPUT)
     val vimm1q_user_ready = Bool(OUTPUT)
     val vimm2q_user_ready = Bool(OUTPUT)
-    val vfence_ready = Bool(OUTPUT)
+
+    val busy = Bool(OUTPUT)
 
     val cp_dfma = new rocket.ioFMA(65).flip
     val cp_sfma = new rocket.ioFMA(33).flip
 
-    val imem_req = new io_imem_req()
-    val imem_resp = new io_imem_resp().flip
+    val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val dmem_req = new io_dmem_req()
     val dmem_resp = new io_dmem_resp().flip
@@ -145,7 +145,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !xcpt.io.xcpt_to_vu.busy
 
   // fence
-  io.vfence_ready := !vcmdq.io.deq.cmd.valid && !vxu.io.pending_vf && !vxu.io.pending_memop && !vmu.io.pending_store
+  io.busy := vcmdq.io.deq.cmd.valid || vxu.io.pending_vf || vxu.io.pending_memop || vmu.io.pending_store
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -181,8 +181,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   io.cp_dfma <> vxu.io.cp_dfma
   io.cp_sfma <> vxu.io.cp_sfma
 
-  vxu.io.imem_req <> io.imem_req
-  vxu.io.imem_resp <> io.imem_resp
+  io.imem <> vxu.io.imem
 
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
   vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt

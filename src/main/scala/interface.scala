@@ -5,17 +5,6 @@ import Node._
 import Constants._
 import uncore.constants.AddressConstants._
 
-class io_imem_resp_bundle extends Bundle
-{
-  val pc = UInt(width = VADDR_BITS+1)
-  val data = Bits(width = SZ_INST)
-  val xcpt_ma = Bool()
-  val xcpt_if = Bool()
-}
-
-class io_imem_req extends ValidIO(UInt(width = VADDR_BITS+1))
-class io_imem_resp extends DecoupledIO(new io_imem_resp_bundle)
-
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))
 class io_vxu_immq extends DecoupledIO(Bits(width = SZ_XIMM))
 class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_XIMM2))

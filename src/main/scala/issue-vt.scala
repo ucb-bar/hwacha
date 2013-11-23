@@ -61,13 +61,12 @@ class io_issue_vt_to_irq_handler extends Bundle
   val pc = Bits(OUTPUT, SZ_ADDR)
 }
 
-class IssueVT extends Module
+class IssueVT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val irq = new io_issue_vt_to_irq_handler()
 
-    val imem_req = new io_imem_req()
-    val imem_resp = new io_imem_resp().flip
+    val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val vf = new io_vf().flip
 
@@ -98,9 +97,12 @@ class IssueVT extends Module
 
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
 
-  io.imem_req.valid := io.vf.fire
-  io.imem_req.bits := io.vf.pc
-  io.imem_resp.ready := io.vf.active && !stall_frontend
+  io.imem.req.valid := io.vf.fire
+  io.imem.req.bits.pc := io.vf.pc
+  io.imem.req.bits.mispredict := Bool(false)
+  io.imem.req.bits.taken := Bool(false)
+  io.imem.invalidate := Bool(false)
+  io.imem.resp.ready := io.vf.active && !stall_frontend
 
   val imm1_rtag = Reg(init=Bits(0,SZ_AIW_IMM1))
   val numCnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
@@ -114,14 +116,14 @@ class IssueVT extends Module
   io.decoded.aiw.imm1_rtag := imm1_rtag
   io.decoded.aiw.numCnt_rtag := numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
-  io.decoded.aiw.pc_next := io.imem_resp.bits.pc + UInt(4, SZ_ADDR)
+  io.decoded.aiw.pc_next := io.imem.resp.bits.pc + UInt(4, SZ_ADDR)
   io.decoded.aiw.update_imm1 := Bool(true)
 
   val n = Bits(0,1)
   val y = Bits(1,1)
 
   val cs =
-  ListLookup(io.imem_resp.bits.data, 
+  ListLookup(io.imem.resp.bits.data, 
                 //         valid                                                    bhazard
                 //         |                                                        |r2wm
                 //         |viu                                  shazard            || r1w1                                                                                                vd_valid
@@ -280,23 +282,23 @@ class IssueVT extends Module
   val rtype_vs :: rtype_vt :: rtype_vr :: rtype_vd :: Nil = rtype.map(x => decode_rtype(x))
   val vs_active :: vt_active :: vr_active :: vd_active :: Nil = rtype.map(x => active_rtype(x))
 
-  val unmasked_valid_viu = io.imem_resp.valid && valid(6)
-  val unmasked_valid_vau0 = io.imem_resp.valid && valid(5)
-  val unmasked_valid_vau1 = io.imem_resp.valid && valid(4)
-  val unmasked_valid_vau2 = io.imem_resp.valid && valid(3)
-  val unmasked_valid_amo = io.imem_resp.valid && valid(2)
-  val unmasked_valid_utld = io.imem_resp.valid && valid(1)
-  val unmasked_valid_utst = io.imem_resp.valid && valid(0)
+  val unmasked_valid_viu = io.imem.resp.valid && valid(6)
+  val unmasked_valid_vau0 = io.imem.resp.valid && valid(5)
+  val unmasked_valid_vau1 = io.imem.resp.valid && valid(4)
+  val unmasked_valid_vau2 = io.imem.resp.valid && valid(3)
+  val unmasked_valid_amo = io.imem.resp.valid && valid(2)
+  val unmasked_valid_utld = io.imem.resp.valid && valid(1)
+  val unmasked_valid_utst = io.imem.resp.valid && valid(0)
 
-  io.vf.stop := io.vf.active && io.imem_resp.valid && decode_stop.toBool
+  io.vf.stop := io.vf.active && io.imem.resp.valid && decode_stop.toBool
 
   val vau1_rm = Bits(width = 3)
   val vau2_rm = Bits(width = 3)
 
-  vau1_rm := io.imem_resp.bits.data(14,12)
-  vau2_rm := io.imem_resp.bits.data(14,12)
+  vau1_rm := io.imem.resp.bits.data(14,12)
+  vau2_rm := io.imem.resp.bits.data(14,12)
 
-  when (io.imem_resp.bits.data(14,12) === Bits("b111",3))
+  when (io.imem.resp.bits.data(14,12) === Bits("b111",3))
   {
     vau1_rm := Bits(0,3)
     vau2_rm := Bits(0,3)
@@ -310,9 +312,9 @@ class IssueVT extends Module
   val imm = MuxLookup(
     itype, Bits(0,SZ_DATA), Array(
       imm_0 -> Bits(0,65),
-      imm_I -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,20)),
-      imm_S -> Cat(Bits(0,1),Fill(52,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,25),io.imem_resp.bits.data(11,7)),
-      imm_U -> Cat(Bits(0,1),Fill(32,io.imem_resp.bits.data(31)),io.imem_resp.bits.data(31,12),Bits(0,12))
+      imm_I -> Cat(Bits(0,1),Fill(52,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,20)),
+      imm_S -> Cat(Bits(0,1),Fill(52,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,25),io.imem.resp.bits.data(11,7)),
+      imm_U -> Cat(Bits(0,1),Fill(32,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,12),Bits(0,12))
     ))
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
@@ -367,10 +369,10 @@ class IssueVT extends Module
   io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_fn)
   io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_fn)
 
-  val vs = Cat(rtype_vs,io.imem_resp.bits.data(19,15)) //rs1
-  val vt = Cat(rtype_vt,io.imem_resp.bits.data(24,20)) //rs2
-  val vr = Cat(rtype_vr,io.imem_resp.bits.data(31,27)) //rs3
-  val vd = Cat(rtype_vd,io.imem_resp.bits.data(11, 7)) //rd
+  val vs = Cat(rtype_vs,io.imem.resp.bits.data(19,15)) //rs1
+  val vt = Cat(rtype_vt,io.imem.resp.bits.data(24,20)) //rs2
+  val vr = Cat(rtype_vr,io.imem.resp.bits.data(31,27)) //rs3
+  val vd = Cat(rtype_vd,io.imem.resp.bits.data(11, 7)) //rd
 
   val vs_m1 = Cat(Bits(0,1),vs(4,0)) - UInt(1,1)
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
@@ -412,8 +414,8 @@ class IssueVT extends Module
   val illegal_vs = vs_active && (vs(4,0) >= io.vf.nfregs && rtype_vs || vs(4,0) >= io.vf.nxregs && !rtype_vs)
   val illegal_vr = vr_active && (vr(4,0) >= io.vf.nfregs && rtype_vr || vr(4,0) >= io.vf.nxregs && !rtype_vr)
 
-  io.irq.ma_inst := io.vf.active && io.imem_resp.valid && io.imem_resp.bits.xcpt_ma
-  io.irq.fault_inst := io.vf.active && io.imem_resp.valid && io.imem_resp.bits.xcpt_if
-  io.irq.illegal := io.vf.active && io.imem_resp.valid && (!unmasked_valid && !mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
-  io.irq.pc := io.imem_resp.bits.pc
+  io.irq.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
+  io.irq.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if
+  io.irq.illegal := io.vf.active && io.imem.resp.valid && (!unmasked_valid && !mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
+  io.irq.pc := io.imem.resp.bits.pc
 }

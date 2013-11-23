@@ -19,8 +19,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val cp_dfma = new rocket.ioFMA(65).flip
     val cp_sfma = new rocket.ioFMA(33).flip
 
-    val imem_req = new io_imem_req()
-    val imem_resp = new io_imem_resp().flip
+    val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val lane_vaq = new io_vvaq()
     val lane_vldq = new io_vldq().flip
@@ -56,8 +55,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   io.irq := issue.io.irq
 
-  issue.io.imem_req <> io.imem_req
-  issue.io.imem_resp <> io.imem_resp
+  issue.io.imem <> io.imem
 
   issue.io.vcmdq <> io.vcmdq
   issue.io.pending_store <> io.pending_store
