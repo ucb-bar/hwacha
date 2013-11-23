@@ -12,15 +12,8 @@ import uncore.constants.MemoryOpConstants._
 class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val vpfvaq = new io_vvaq()
-    
-    // command
-    val vpfcmdq = new io_vcmdq().flip
-    // base
-    val vpfximm1q = new io_vximm1q().flip
-    // stride
-    val vpfximm2q = new io_vximm2q().flip
-    val vpfcntq = new io_vcntq().flip
+    val vvaq = new io_vvaq()
+    val vcmdq = new VCMDQIO().flip
   }
 
   val VRU_Idle = Bits(0, 2)
@@ -30,7 +23,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val n = Bool(false)
   val y = Bool(true)
 
-  val cmd = io.vpfcmdq.bits(RG_XCMD_CMCODE)
+  val cmd = io.vcmdq.cmd.bits(RG_XCMD_CMCODE)
 
   val cs = ListLookup(cmd,
   //                               deq_imm2q
@@ -103,33 +96,33 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   val unit_stride = (stride_decoded != Bits(0,4))
   
-  val addr = io.vpfximm1q.bits.toUInt
-  val stride = Mux(unit_stride, stride_decoded.toUInt, io.vpfximm2q.bits.toUInt)
+  val addr = io.vcmdq.imm1.bits.toUInt
+  val stride = Mux(unit_stride, stride_decoded.toUInt, io.vcmdq.imm2.bits.toUInt)
 
-  val mask_vpfximm1q_valid = io.vpfximm1q.valid || !deq_imm1q
-  val mask_vpfximm2q_valid = io.vpfximm2q.valid || !deq_imm2q
+  val mask_vpfimm1q_valid = io.vcmdq.imm1.valid || !deq_imm1q
+  val mask_vpfimm2q_valid = io.vcmdq.imm2.valid || !deq_imm2q
   val mask_vpfcntq_valid = Bool(true)
 
-  val cmd_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && mask_vpfximm2q_valid && pf.toBool
-  val setvl_val = io.vpfcmdq.valid && mask_vpfximm1q_valid && setvl.toBool && pf.toBool
+  val cmd_val = io.vcmdq.cmd.valid && mask_vpfimm1q_valid && mask_vpfimm2q_valid && pf.toBool
+  val setvl_val = io.vcmdq.cmd.valid && mask_vpfimm1q_valid && setvl.toBool && pf.toBool
 
   val pf_len = UInt(pow(2,OFFSET_BITS).toInt)
   val pf_len_int = pow(2,OFFSET_BITS).toInt
 
   // cmd(4)==1 -> vector store
-  io.vpfvaq.bits.cmd := Mux(cmd_reg(4), M_PFW, M_PFR)
-  io.vpfvaq.bits.typ := Bits(0)
-  io.vpfvaq.bits.typ_float := Bool(false)
-  io.vpfvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
-  io.vpfvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
+  io.vvaq.bits.cmd := Mux(cmd_reg(4), M_PFW, M_PFR)
+  io.vvaq.bits.typ := Bits(0)
+  io.vvaq.bits.typ_float := Bool(false)
+  io.vvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
+  io.vvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 
   val idle = (state === VRU_Idle)
 
-  io.vpfvaq.valid := Bool(false)
-  io.vpfcmdq.ready := Bool(true) && mask_vpfximm1q_valid && mask_vpfximm2q_valid && mask_vpfcntq_valid && idle
-  io.vpfximm1q.ready := io.vpfcmdq.valid && deq_imm1q.toBool && mask_vpfximm2q_valid && mask_vpfcntq_valid && idle
-  io.vpfximm2q.ready := io.vpfcmdq.valid && mask_vpfximm1q_valid && deq_imm2q.toBool && mask_vpfcntq_valid && idle
-  io.vpfcntq.ready := io.vpfcmdq.valid && mask_vpfximm1q_valid && mask_vpfximm2q_valid && Bool(true) && idle
+  io.vvaq.valid := Bool(false)
+  io.vcmdq.cmd.ready := Bool(true) && mask_vpfimm1q_valid && mask_vpfimm2q_valid && mask_vpfcntq_valid && idle
+  io.vcmdq.imm1.ready := io.vcmdq.cmd.valid && deq_imm1q.toBool && mask_vpfimm2q_valid && mask_vpfcntq_valid && idle
+  io.vcmdq.imm2.ready := io.vcmdq.cmd.valid && mask_vpfimm1q_valid && deq_imm2q.toBool && mask_vpfcntq_valid && idle
+  io.vcmdq.cnt.ready := io.vcmdq.cmd.valid && mask_vpfimm1q_valid && mask_vpfimm2q_valid && Bool(true) && idle
 
   switch (state)
   {
@@ -137,7 +130,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     {
       when (setvl_val)
       {
-        vlen_reg := io.vpfximm1q.bits(RG_XIMM1_VLEN).toUInt
+        vlen_reg := io.vcmdq.imm1.bits(RG_XIMM1_VLEN).toUInt
       }
       .elsewhen (cmd_val)
       {
@@ -180,7 +173,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
             div = Mux(stride_lobits <= high && stride_lobits >= lo, UInt(i), div)
           }
 
-          vec_pfed_count_reg := Mux(!io.vpfcntq.valid, SInt(0), io.vpfcntq.bits.toUInt).toUInt
+          vec_pfed_count_reg := Mux(!io.vcmdq.cnt.valid, SInt(0), io.vcmdq.cnt.bits.toUInt).toUInt
           vec_count_reg := Mux(stride_lobits === UInt(0), SInt(1), vlen_reg)
           vec_per_pf_reg := Mux(stride_lobits === UInt(0), UInt(1), div)
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)
@@ -205,9 +198,9 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
       {
         when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
         {
-          io.vpfvaq.valid := Bool(true)
+          io.vvaq.valid := Bool(true)
         }
-        when (io.vpfvaq.ready)
+        when (io.vvaq.ready)
         {
           vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, SInt(1), SInt(0))
           stride_remaining_reg := Mux(stride_remaining_reg <= vec_pf_remainder_reg,
@@ -229,9 +222,9 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
       {
         when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
         {
-          io.vpfvaq.valid := Bool(true)
+          io.vvaq.valid := Bool(true)
         }
-        when (io.vpfvaq.ready)
+        when (io.vvaq.ready)
         {
           addr_reg := addr_reg + stride_reg
           vec_count_reg := vec_count_reg - SInt(1)

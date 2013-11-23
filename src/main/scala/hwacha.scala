@@ -22,6 +22,13 @@ case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_pe
   val shift_buf_read = 3
   val shift_buf_write = fma_stages + 4
 
+  val vcmdq = new {
+    val ncmd = 19
+    val nimm1 = 19
+    val nimm2 = 17
+    val ncnt = 8
+  }
+
   val nvvaq = 16
   val nvpaq = 16
   val nvpfvaq = 16
@@ -136,8 +143,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val cmd_valid = inst_val && io.cmd.valid
   val resp_ready  = !emit_response || resp_q.io.enq.ready
   val vcmd_ready  = !emit_vcmd  || vu.io.vcmdq_user_ready
-  val vimm1_ready = !emit_vimm1 || vu.io.vximm1q_user_ready
-  val vimm2_ready = !emit_vimm2 || vu.io.vximm2q_user_ready
+  val vimm1_ready = !emit_vimm1 || vu.io.vimm1q_user_ready
+  val vimm2_ready = !emit_vimm2 || vu.io.vimm2q_user_ready
 
   def construct_ready(exclude: Bool): Bool = {
     val all_readies = Array(resp_ready, vcmd_ready, vimm1_ready, vimm2_ready)
@@ -195,26 +202,26 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // Hookup ready port of cmd queue
   io.cmd.ready := construct_ready(null)
 
-  // Hookup vcmdq
+  // Hookup vcmdq.cmd
   val vr1 = Mux(sel_vr1===VR_RS1, raw_inst(19,15), raw_inst(11,7))
   val vr2 = Mux(sel_vr2===VR_RS1, raw_inst(19,15), raw_inst(11,7))
   val construct_vcmd = Cat(sel_vcmd, sel_vrtype, vr1, sel_vrtype, vr2)
 
-  vu.io.vcmdq.valid := cmd_valid && emit_vcmd && construct_ready(vcmd_ready) 
-  vu.io.vcmdq.bits := construct_vcmd
+  vu.io.vcmdq.cmd.valid := cmd_valid && emit_vcmd && construct_ready(vcmd_ready) 
+  vu.io.vcmdq.cmd.bits := construct_vcmd
   
-  // Hookup vximm1q
-  vu.io.vximm1q.valid := cmd_valid && emit_vimm1 && construct_ready(vimm1_ready) 
-  vu.io.vximm1q.bits := MuxLookup(sel_vimm1, vimm_vlen, Array(
+  // Hookup vcmdq.imm1
+  vu.io.vcmdq.imm1.valid := cmd_valid && emit_vimm1 && construct_ready(vimm1_ready) 
+  vu.io.vcmdq.imm1.bits := MuxLookup(sel_vimm1, vimm_vlen, Array(
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
     VIMM_ADDR -> vimm_addr
   ))
 
-  // Hookup vximm2q
-  vu.io.vximm2q.valid := cmd_valid && emit_vimm2 && construct_ready(vimm2_ready) 
-  vu.io.vximm2q.bits := MuxLookup(sel_vimm2, vimm_vlen, Array(
+  // Hookup vcmdq.imm2
+  vu.io.vcmdq.imm2.valid := cmd_valid && emit_vimm2 && construct_ready(vimm2_ready) 
+  vu.io.vcmdq.imm2.bits := MuxLookup(sel_vimm2, vimm_vlen, Array(
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
@@ -227,12 +234,11 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   resp_q.io.enq.bits.rd   := io.cmd.bits.inst.rd
 
   // TODO: hook this stuff up properly
-  vu.io.vcntq.valid := Bool(false)
-  vu.io.vpfcmdq.valid := Bool(false)
-  vu.io.vpfximm1q.valid := Bool(false)
-  vu.io.vpfximm2q.valid := Bool(false)
-  vu.io.vpfximm2q.valid := Bool(false)
-  vu.io.vpfcntq.valid := Bool(false)
+  vu.io.vcmdq.cnt.valid := Bool(false)
+  vu.io.vpfcmdq.cmd.valid := Bool(false)
+  vu.io.vpfcmdq.imm1.valid := Bool(false)
+  vu.io.vpfcmdq.imm2.valid := Bool(false)
+  vu.io.vpfcmdq.cnt.valid := Bool(false)
   vu.io.xcpt.exception := Bool(false)
   vu.io.xcpt.evac := Bool(false)
   vu.io.xcpt.hold := Bool(false)

@@ -35,10 +35,7 @@ class Evac extends Module
 
     val evac_to_aiw = new io_evac_to_aiw()
 
-    val vcmdq = new io_vxu_cmdq().flip
-    val vimm1q = new io_vxu_immq().flip
-    val vimm2q = new io_vxu_imm2q().flip
-    val vcntq = new io_vcntq().flip
+    val vcmdq = new VCMDQIO().flip
 
     val vsdq = new io_vsdq()
     val vaq  = new io_vvaq()
@@ -59,7 +56,7 @@ class Evac extends Module
 
   cmd_sel_next := cmd_sel
 
-  val cmd = Mux(cmd_sel, io.vcmdq.bits(RG_XCMD_CMCODE), io.aiw_cmdb.bits(RG_XCMD_CMCODE))
+  val cmd = Mux(cmd_sel, io.vcmdq.cmd.bits(RG_XCMD_CMCODE), io.aiw_cmdb.bits(RG_XCMD_CMCODE))
 
   val cs =
     ListLookup(cmd,
@@ -152,10 +149,10 @@ class Evac extends Module
   io.aiw_numCntB.ready := Bool(false)
   io.evac_to_aiw.update_numCnt.valid := Bool(false)
 
-  io.vcmdq.ready := Bool(false)
-  io.vimm1q.ready := Bool(false)
-  io.vimm2q.ready := Bool(false)
-  io.vcntq.ready := Bool(false)
+  io.vcmdq.cmd.ready := Bool(false)
+  io.vcmdq.imm1.ready := Bool(false)
+  io.vcmdq.imm2.ready := Bool(false)
+  io.vcmdq.cnt.ready := Bool(false)
 
   io.vaq.valid := Bool(false)
   io.vaq.bits.checkcnt := Bool(false)
@@ -314,17 +311,17 @@ class Evac extends Module
     is (STATE_PRE_VCMDQ) // in this state we are saving a vf that is partially in CNTB and partially in VCNTQ
     {
       // valid signal
-      when (io.vcntq.valid)
+      when (io.vcmdq.cnt.valid)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcntq.bits(10,0)
+        io.vsdq.bits := io.vcmdq.cnt.bits(10,0)
 
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
 
-          when (io.vcntq.bits(11)) // the last count of a VF
+          when (io.vcmdq.cnt.bits(11)) // the last count of a VF
           {
             state_next := STATE_VCMDQ
             cmd_sel_next := SEL_VCMDQ
@@ -344,19 +341,19 @@ class Evac extends Module
       // ready signal
       when (io.vsdq.ready && io.vaq.ready)
       {
-        io.vcntq.ready := Bool(true)
+        io.vcmdq.cnt.ready := Bool(true)
       }
     }
 
     is (STATE_VCMDQ)
     {
       // valid signal
-      when (io.vcmdq.valid && deq_vcmdq)
+      when (io.vcmdq.cmd.valid && deq_vcmdq)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Cat(Bits(0,27), is_prefetch, deq_vimm1q, deq_vimm2q, deq_vcntq, Bits(1,1),
-                            Bits(0, 32 - SZ_VCMD), io.vcmdq.bits)
+                            Bits(0, 32 - SZ_VCMD), io.vcmdq.cmd.bits)
 
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -367,7 +364,7 @@ class Evac extends Module
           } .elsewhen (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } .elsewhen (deq_vcntq && io.vcntq.valid)
+          } .elsewhen (deq_vcntq && io.vcmdq.cnt.valid)
           {
             state_next := STATE_VCNTQ
           } .otherwise 
@@ -376,7 +373,7 @@ class Evac extends Module
           }
         }
 
-      } .elsewhen (!io.vcmdq.valid) 
+      } .elsewhen (!io.vcmdq.cmd.valid) 
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
@@ -391,18 +388,18 @@ class Evac extends Module
       // ready signal
       when (deq_vcmdq && io.vsdq.ready && io.vaq.ready) 
       {
-        io.vcmdq.ready := !deq_vimm1q && !deq_vimm2q && (!deq_vcntq || !io.vcntq.valid)
+        io.vcmdq.cmd.ready := !deq_vimm1q && !deq_vimm2q && (!deq_vcntq || !io.vcmdq.cnt.valid)
       }
     }
 
     is (STATE_VIMM1Q)
     {
       // valid signal
-      when (io.vimm1q.valid && deq_vimm1q)
+      when (io.vcmdq.imm1.valid && deq_vimm1q)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vimm1q.bits
+        io.vsdq.bits := io.vcmdq.imm1.bits
 
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -410,13 +407,13 @@ class Evac extends Module
           when (deq_vimm2q)
           {
             state_next := STATE_VIMM2Q
-          } .elsewhen (deq_vcntq && io.vcntq.valid)
+          } .elsewhen (deq_vcntq && io.vcmdq.cnt.valid)
           {
             state_next := STATE_VCNTQ
           } .otherwise 
           {
             state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
+            io.vcmdq.cmd.ready := Bool(true)
           }
         }
 
@@ -425,29 +422,29 @@ class Evac extends Module
       // ready signal
       when (deq_vimm1q && io.vsdq.ready && io.vaq.ready) 
       {
-        io.vimm1q.ready := Bool(true)
+        io.vcmdq.imm1.ready := Bool(true)
       }
     }
 
     is (STATE_VIMM2Q)
     {
       // valid signal
-      when (io.vimm2q.valid && deq_vimm2q)
+      when (io.vcmdq.imm2.valid && deq_vimm2q)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vimm2q.bits
+        io.vsdq.bits := io.vcmdq.imm2.bits
 
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
-          when (deq_vcntq && io.vcntq.valid)
+          when (deq_vcntq && io.vcmdq.cnt.valid)
           {
             state_next := STATE_VCNTQ
           } .otherwise 
           {
             state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
+            io.vcmdq.cmd.ready := Bool(true)
           }
         }
 
@@ -456,18 +453,18 @@ class Evac extends Module
       // ready signal
       when (deq_vimm2q && io.vsdq.ready && io.vaq.ready)
       {
-        io.vimm2q.ready := Bool(true)
+        io.vcmdq.imm2.ready := Bool(true)
       }
     }
 
     is (STATE_VCNTQ)
     {
       // valid signal
-      when (io.vcntq.valid && deq_vcntq)
+      when (io.vcmdq.cnt.valid && deq_vcntq)
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcntq.bits(10,0)
+        io.vsdq.bits := io.vcmdq.cnt.bits(10,0)
 
         when (io.vsdq.ready && io.vaq.ready)
         {
@@ -477,19 +474,19 @@ class Evac extends Module
             state_next := STATE_VCNTQ
           } .otherwise {
             state_next := STATE_VCMDQ
-            io.vcmdq.ready := Bool(true)
+            io.vcmdq.cmd.ready := Bool(true)
           }
         }
 
-      } .elsewhen (!io.vcntq.valid) {
+      } .elsewhen (!io.vcmdq.cnt.valid) {
         state_next := STATE_VCMDQ
-        io.vcmdq.ready := Bool(true)
+        io.vcmdq.cmd.ready := Bool(true)
       }
 
       // ready signal
       when (deq_vcntq && io.vsdq.ready && io.vaq.ready)
       {
-        io.vcntq.ready := Bool(true)
+        io.vcmdq.cnt.ready := Bool(true)
       }
     }
 

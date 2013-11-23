@@ -16,17 +16,24 @@ class io_imem_resp_bundle extends Bundle
 class io_imem_req extends ValidIO(UInt(width = VADDR_BITS+1))
 class io_imem_resp extends DecoupledIO(new io_imem_resp_bundle)
 
+class VCMDQIO extends Bundle
+{
+  val cmd = new DecoupledIO(Bits(width = SZ_XCMD))
+  val imm1 = new DecoupledIO(Bits(width = SZ_XIMM))
+  val imm2 = new DecoupledIO(Bits(width = SZ_XIMM2))
+  val cnt = new DecoupledIO(Bits(width = SZ_VLEN+1))
+}
+
+class AIWVCMDQIO extends VCMDQIO
+{
+  val numcnt = new DecoupledIO(Bits(width = 1))
+}
+
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))
 class io_vxu_immq extends DecoupledIO(Bits(width = SZ_XIMM))
 class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_XIMM2))
 class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
 class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
-class io_vxu_ackq extends DecoupledIO(Bits(width = SZ_XRESP))
-
-class io_vcmdq extends DecoupledIO(Bits(width = SZ_VCMD))
-class io_vximm1q extends DecoupledIO(Bits(width = SZ_VIMM))
-class io_vximm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
-class io_vcntq extends DecoupledIO(Bits(width=SZ_VLEN+1))
 
 class io_vvaq extends DecoupledIO(new io_vvaq_bundle)
 class io_vpaq extends DecoupledIO(new io_vpaq_bundle)
