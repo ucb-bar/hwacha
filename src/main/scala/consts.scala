@@ -114,6 +114,7 @@ trait DecodeConstants
   val DW64 = Bits("b1", 1)
 
   val FP_ = Bits("b0", 1)
+  val FPH = Bits("b10", 2)
   val FPS = Bits("b0", 1)
   val FPD = Bits("b1", 1)
 
@@ -186,9 +187,9 @@ trait VAU1Constants
   // val SZ_VAU1 = vau1_ADD.getWidth
   // val vau1_X = Bits(0, SZ_VAU1)
 
-  val SZ_VAU1_FN = 7
+  val SZ_VAU1_FN = 8
 
-  val RG_VAU1_FP = 6
+  val RG_VAU1_FP = (7,6)
   val RG_VAU1_RM = (5,3)
   val RG_VAU1_FN = (2,0)
 

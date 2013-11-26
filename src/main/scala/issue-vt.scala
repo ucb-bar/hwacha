@@ -165,8 +165,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     AMOMINU_D-> List(Bits("b0_000_100",7),Bits("b110_1",4),Bits("b000_111",6),Bits("b0_000_100",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_0,y,n,n,MTF_N,MT_D,M_XA_MINU),
     AMOMAXU_D-> List(Bits("b0_000_100",7),Bits("b110_1",4),Bits("b000_111",6),Bits("b0_000_100",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_0,y,n,n,MTF_N,MT_D,M_XA_MAXU),
     AMOSWAP_D-> List(Bits("b0_000_100",7),Bits("b110_1",4),Bits("b000_111",6),Bits("b0_000_100",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_0,y,n,n,MTF_N,MT_D,M_XA_SWAP),
+    FLH->       List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RF,imm_I,y,n,n,MTF_Y,MT_H,M_XRD),
     FLW->       List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RF,imm_I,y,n,n,MTF_Y,MT_W,M_XRD),
     FLD->       List(Bits("b0_000_010",7),Bits("b100_1",4),Bits("b000_110",6),Bits("b0_000_010",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,R_,R_,RF,imm_I,y,n,n,MTF_Y,MT_D,M_XRD),
+    FSH->       List(Bits("b0_000_001",7),Bits("b110_0",4),Bits("b000_101",6),Bits("b0_000_001",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RF,R_,R_,imm_S,n,n,n,MTF_Y,MT_H,M_XWR),
     FSW->       List(Bits("b0_000_001",7),Bits("b110_0",4),Bits("b000_101",6),Bits("b0_000_001",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RF,R_,R_,imm_S,n,n,n,MTF_Y,MT_W,M_XWR),
     FSD->       List(Bits("b0_000_001",7),Bits("b110_0",4),Bits("b000_101",6),Bits("b0_000_001",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FP_,VAU1_X,    FP_,vau2_X,    RX,RF,R_,R_,imm_S,n,n,n,MTF_Y,MT_D,M_XWR),
 
@@ -232,6 +234,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     MULHSU->    List(Bits("b0_100_000",7),Bits("b110_1",4),Bits("b100_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW64,vau0_MHSU,FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,MT_X,M_X),
     MULW->      List(Bits("b0_100_000",7),Bits("b110_1",4),Bits("b100_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW32,vau0_M,   FP_,VAU1_X,    FP_,vau2_X,    RX,RX,R_,RX,imm_X,y,n,n,MTF_X,MT_X,M_X),
 
+    FADD_H->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPH,VAU1_ADD,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),
+    FSUB_H->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPH,VAU1_SUB,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),
+    FMUL_H->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPH,VAU1_MUL,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),
     FADD_S->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPS,VAU1_ADD,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),
     FSUB_S->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPS,VAU1_SUB,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),
     FMUL_S->    List(Bits("b0_010_000",7),Bits("b110_1",4),Bits("b010_000",6),Bits("b0_010_000",7),M0,M0,DW__,FP_,viu_X,    DW__,vau0_X,   FPS,VAU1_MUL,  FP_,vau2_X,    RF,RF,R_,RF,imm_X,y,n,n,MTF_X,MT_X,M_X),

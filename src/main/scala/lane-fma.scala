@@ -34,11 +34,13 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 
     val one_dp = Bits("h8000000000000000", 65)
     val one_sp = Bits("h80000000", 65)
+    val one_hp = Bits("h8000",65)
     val fma_multiplicand = io.in0
     val fma_multiplier = MuxCase(
       io.in1, Array(
-        ((io.fn(RG_VAU1_FP) === Bits("b1",1)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_dp,
-        ((io.fn(RG_VAU1_FP) === Bits("b0",1)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_sp,
+        ((io.fn(RG_VAU1_FP) === Bits("b01",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_dp,
+        ((io.fn(RG_VAU1_FP) === Bits("b00",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_sp,
+        ((io.fn(RG_VAU1_FP) === Bits("b10",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_hp,
         ((io.fn(RG_VAU1_FN) === VAU1_MUL)) -> io.in2
       ))
 
@@ -46,8 +48,9 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
       io.fn(RG_VAU1_FN) === VAU1_MUL, Bits(0,65),
       io.in2)
 
-    val val_fma_dp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b1",1))
-    val val_fma_sp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b0",1))
+    val val_fma_dp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b01",2))
+    val val_fma_sp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b00",2))
+    val val_fma_hp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b10",2))
 
     val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
     dfma.io.op := Fill(2,val_fma_dp) & fma_op
@@ -65,9 +68,23 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     sfma.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
     val result_sp = Cat(sfma.io.exceptionFlags, sfma.io.out)
 
-    val result = Mux(
-      io.fn(RG_VAU1_FP), result_dp,
-      Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)))
+
+    val recoded_hp_a = hardfloat.floatNToRecodedFloatN(fma_multiplicand, 10, 6)
+    val recoded_hp_b = hardfloat.floatNToRecodedFloatN(fma_multiplier, 10, 6)
+    val recoded_hp_c = hardfloat.floatNToRecodedFloatN(fma_addend, 10, 6)
+    val hfma = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
+    hfma.io.op := Fill(2, val_fma_hp) & fma_op
+    hfma.io.a := Fill(17, val_fma_hp) & recoded_hp_a
+    hfma.io.b := Fill(17, val_fma_hp) & recoded_hp_b
+    hfma.io.c := Fill(17, val_fma_hp) & recoded_hp_c
+    hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
+    val result_hp = Cat(hfma.io.exceptionFlags, hfma.io.out)
+
+    val result = MuxCase(
+      Bits("h1FFFFFFFFFFFFFFFF",65), Array(
+      (val_fma_dp) -> result_dp,
+      (val_fma_sp) -> Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)),
+      (val_fma_hp) -> Cat(result_hp(21,17), Bits("hFFFFFFFFFFFF",48), result_hp(16,0))))
 
     val pipereg = ShiftRegister(result, conf.fma_stages, io.valid)
 
@@ -94,21 +111,22 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     val fn = io.fn(RG_VAU1_FN)
     val two_operands = fn === VAU1_ADD || fn === VAU1_SUB || fn === VAU1_MUL
 
-    io.cp_dfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits(1)
+    io.cp_dfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits("b01",2)
     io.cp_dfma.cmd := rocket_cmd
     io.cp_dfma.rm := io.fn(RG_VAU1_RM)
     io.cp_dfma.in1 := io.in0
     io.cp_dfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_dfma.in3 := io.in2
 
-    io.cp_sfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits(0)
+    io.cp_sfma.valid := io.valid && io.fn(RG_VAU1_FP) === Bits("b00",2)
     io.cp_sfma.cmd := rocket_cmd
     io.cp_sfma.rm := io.fn(RG_VAU1_RM)
     io.cp_sfma.in1 := io.in0
     io.cp_sfma.in2 := Mux(two_operands, io.in2, io.in1)
     io.cp_sfma.in3 := io.in2
 
-    val dp = ShiftRegister(io.fn(RG_VAU1_FP), conf.dfma_stages-1)
+    val dpp = io.fn(RG_VAU1_FP)
+    val dp  = ShiftRegister(dpp(0), conf.dfma_stages-1)
 
     io.out := Mux(dp, io.cp_dfma.out,
                   Cat(Bits("hFFFFFFFF",32), ShiftRegister(io.cp_sfma.out, conf.dfma_stages-conf.sfma_stages)))
