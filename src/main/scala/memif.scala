@@ -133,10 +133,12 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     
   val ldq_sp_bits = Bits(width=33)
   val ldq_dp_bits = Bits(width=65)
+  val ldq_hp_bits = Bits(width=16) // no recoding
   
   val load_fp = reg_mem_resp.bits.tag(0)
   val load_fp_d = load_fp && reg_mem_resp.bits.typ === MT_D 
   val load_fp_w = load_fp && reg_mem_resp.bits.typ === MT_W
+  val load_fp_h = load_fp && reg_mem_resp.bits.typ === MT_H
 
   val recode_sp = Module(new hardfloat.float32ToRecodedFloat32)
   recode_sp.io.in := reg_mem_resp.bits.data_subword(31,0)
@@ -146,11 +148,15 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   recode_dp.io.in := reg_mem_resp.bits.data_subword
   ldq_dp_bits := recode_dp.io.out
 
+  ldq_hp_bits := reg_mem_resp.bits.data_subword(15,0)
+
   io.vldq.valid := reg_mem_resp.valid
   io.vldq.bits.data := MuxCase(
-    Cat(Bits(0,1),reg_mem_resp.bits.data_subword(63,0)), Array(
-	    (load_fp_d) -> ldq_dp_bits,
-      (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits)
+    Cat(Bits(0,1),reg_mem_resp.bits.data_subword(63,0)), 
+    Array(
+      (load_fp_d) -> ldq_dp_bits,
+      (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits),
+      (load_fp_h) -> Cat(Bits("h1FFFFFFFFFFFF",49), ldq_hp_bits)
   ))
   io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUInt >> UInt(1)
 }

@@ -32,9 +32,9 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
         (io.fn(RG_VAU1_FN) === VAU1_NMADD) -> Bits("b11",2)
       ))
 
-    val one_dp = Bits("h8000000000000000", 65)
-    val one_sp = Bits("h80000000", 65)
-    val one_hp = Bits("h8000",65)
+    val one_dp = Bits("h8000000000000000", 65) // recoded
+    val one_sp = Bits("h80000000", 65) // recoded
+    val one_hp = Bits("h3c00",65) // not recoded
     val fma_multiplicand = io.in0
     val fma_multiplier = MuxCase(
       io.in1, Array(
@@ -78,13 +78,13 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     hfma.io.b := Fill(17, val_fma_hp) & recoded_hp_b
     hfma.io.c := Fill(17, val_fma_hp) & recoded_hp_c
     hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
-    val result_hp = Cat(hfma.io.exceptionFlags, hfma.io.out)
+    val result_hp_unrecoded = hardfloat.recodedFloatNToFloatN(hfma.io.out, 10, 6)
 
     val result = MuxCase(
-      Bits("h1FFFFFFFFFFFFFFFF",65), Array(
+      Bits("h1FFFFFFFFFFFFFFFFF",70), Array(
       (val_fma_dp) -> result_dp,
       (val_fma_sp) -> Cat(result_sp(37,33), Bits("hFFFFFFFF",32), result_sp(32,0)),
-      (val_fma_hp) -> Cat(result_hp(21,17), Bits("hFFFFFFFFFFFF",48), result_hp(16,0))))
+      (val_fma_hp) -> Cat(hfma.io.exceptionFlags, Bits("h1FFFFFFFFFFFF",49), result_hp_unrecoded)))
 
     val pipereg = ShiftRegister(result, conf.fma_stages, io.valid)
 

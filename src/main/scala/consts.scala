@@ -113,6 +113,7 @@ trait DecodeConstants
   val DW32 = Bits("b0", 1)
   val DW64 = Bits("b1", 1)
 
+  val FPX = Bits("b00", 2)
   val FP_ = Bits("b0", 1)
   val FPH = Bits("b10", 2)
   val FPS = Bits("b0", 1)
