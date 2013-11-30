@@ -54,11 +54,12 @@ trait HwachaDecodeConstants
   val VR_RS1 = Bits(0, 1)
   val VR_RD  = Bits(1, 1)
 
-  val VIMM_X    = Bits("b??",2)
-  val VIMM_VLEN = Bits(0,2)
-  val VIMM_RS1  = Bits(1,2)
-  val VIMM_RS2  = Bits(2,2)
-  val VIMM_ADDR = Bits(3,2)
+  val VIMM_X    = Bits("b???",3)
+  val VIMM_VLEN = Bits(0,3)
+  val VIMM_RS1  = Bits(1,3)
+  val VIMM_RS2  = Bits(2,3)
+  val VIMM_ADDR = Bits(3,3)
+  val VIMM_PREC = Bits(4,3)
 }
 
 object HwachaDecodeTable extends HwachaDecodeConstants
@@ -72,6 +73,8 @@ object HwachaDecodeTable extends HwachaDecodeConstants
                 //   |  |            |       |      |       |         |          | | | |
   val default = List(N, CMD_X,       VRT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N)
   val table = Array( 
+    // Configurable precision instructions
+    VSETPREC->  List(Y, CMD_VSETPREC,VRT_X,  VR_X,  VR_X,   VIMM_PREC,VIMM_X,    Y,Y,N,N),
     // General instructions
     VSETCFG ->  List(Y, CMD_VVCFGIVL,VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,N),
     VSETVL  ->  List(Y, CMD_VSETVL,  VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,Y),
@@ -188,6 +191,9 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val vimm_vlen = Cat(UInt(0,29), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
   when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { cfg_maxvl := new_maxvl }
 
+  val prec = (inst_i_imm(11,5)).toUInt // subtract 1 because add queue adds 1
+  val vimm_prec = Cat(UInt(0,59), prec(6,0))
+
   // Calculate the vf address
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
   val vimm_addr = io.cmd.bits.rs1 + vf_immediate
@@ -209,7 +215,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
-    VIMM_ADDR -> vimm_addr
+    VIMM_ADDR -> vimm_addr,
+    VIMM_PREC -> vimm_prec
   ))
 
   // Hookup vcmdq.imm2
@@ -218,7 +225,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
-    VIMM_ADDR -> vimm_addr
+    VIMM_ADDR -> vimm_addr,
+    VIMM_PREC -> UInt(0, 64)
   ))
   
   // Hookup resp queue

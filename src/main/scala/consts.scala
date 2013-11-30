@@ -15,7 +15,8 @@ object Constants extends
   VAU1Constants with
   VAU2Constants with
   VMUConstants with
-  PVFBConstants
+  PVFBConstants with
+  PrecConstants
 
 trait MachineConstants
 {
@@ -23,6 +24,7 @@ trait MachineConstants
   val SZ_VLEN = 11
   val SZ_REGLEN = 6
   val SZ_REGCNT = 6
+  val SZ_PREC = 2
 
   val SZ_ADDR = 64
   val SZ_INST = 32
@@ -47,6 +49,7 @@ trait VectorCommandQueueConstants
   val RG_XCMD_VD = (11,6)
   val RG_XCMD_VT = (5,0)
   val RG_XIMM1_VLEN = (10,0)
+  val RG_XIMM1_PREC = (6,0)
   val RG_XIMM1_NXREGS = (16,11)
   val RG_XIMM1_NFREGS = (22,17)
   val RG_XIMM1_BACTIVE = (30,23)
@@ -60,6 +63,13 @@ trait VectorCommandQueueConstants
 
   val SZ_VRESP = 32
   val SZ_XRESP = 1
+}
+
+trait PrecConstants extends VectorCommandQueueConstants
+{
+  val PREC_DOUBLE = Bits("b00", 2)
+  val PREC_HALF = Bits("b10", 2)
+  val PREC_SINGLE = Bits("b01", 2)
 }
 
 trait LaneConstants
@@ -250,8 +260,9 @@ trait Commands
   val CMD_X = Bits(0,8)
 
   val CMD_VVCFGIVL = Bits("b00_0000_00",8)
-  val CMD_VSETVL = Bits("b00_0000_10",8)
-  val CMD_VF = Bits("b00_0000_11",8)
+  val CMD_VSETPREC = Bits("b00_0000_01",8)
+  val CMD_VSETVL =   Bits("b00_0000_10",8)
+  val CMD_VF =       Bits("b00_0000_11",8)
 
   val CMD_FENCE_L_V = Bits("b00_001_100",8)
   val CMD_FENCE_G_V = Bits("b00_001_101",8)
