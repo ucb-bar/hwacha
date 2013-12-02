@@ -8,6 +8,7 @@ case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_pe
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
   val fma = true
+  val confprec = true
 
   // rocket pipeline latencies
   val dfma_stages = 4
@@ -192,7 +193,12 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { cfg_maxvl := new_maxvl }
 
   val prec = (inst_i_imm(11,5)).toUInt // subtract 1 because add queue adds 1
-  val vimm_prec = Cat(UInt(0,59), prec(6,0))
+  val vimm_prec = UInt(width = 64)
+  if (conf.confprec) {
+    vimm_prec := Cat(UInt(0,59), prec(6,0))
+  } else {
+    vimm_prec := UInt(0, 64)
+  }
 
   // Calculate the vf address
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt

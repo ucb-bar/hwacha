@@ -28,7 +28,7 @@ trait MachineConstants
 
   val SZ_ADDR = 64
   val SZ_INST = 32
-  val SZ_DATA = 65
+  val SZ_DATA = 66
   val SZ_EXC = 5
   val SZ_XLEN = 64
   val SZ_FLEN = 65
