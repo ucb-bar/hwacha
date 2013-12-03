@@ -60,6 +60,8 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val lane_to_hazard = new io_lane_to_hazard().asOutput
     val laneToIssue = new ioLaneToIssue()
     val vmu = new VMUIO()
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val conn = new ArrayBuffer[BankToBankIO]
@@ -81,6 +83,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   {
     val bank = Module(new Bank)
     bank.io.active := io.issue_to_lane.bactive(i)
+    bank.io.prec := io.prec
     
     if (first)
     { 

@@ -6,6 +6,7 @@ import uncore.constants.MemoryOpConstants._
 
 object Constants extends
   MachineConstants with
+  PrecConstants with
   VectorCommandQueueConstants with
   LaneConstants with
   AIWConstants with
@@ -15,8 +16,7 @@ object Constants extends
   VAU1Constants with
   VAU2Constants with
   VMUConstants with
-  PVFBConstants with
-  PrecConstants
+  PVFBConstants
 
 trait MachineConstants
 {
@@ -24,7 +24,6 @@ trait MachineConstants
   val SZ_VLEN = 11
   val SZ_REGLEN = 6
   val SZ_REGCNT = 6
-  val SZ_PREC = 2
 
   val SZ_ADDR = 64
   val SZ_INST = 32
@@ -65,11 +64,28 @@ trait VectorCommandQueueConstants
   val SZ_XRESP = 1
 }
 
-trait PrecConstants extends VectorCommandQueueConstants
+object PrecConstants
+trait PrecConstants
 {
-  val PREC_DOUBLE = Bits("b00", 2)
-  val PREC_HALF = Bits("b10", 2)
-  val PREC_SINGLE = Bits("b01", 2)
+  val SZ_PREC = 2
+  val SZ_BUF_PREC = 3
+
+  val PREC_DOUBLE = Bits("b00", SZ_PREC)
+  val PREC_SINGLE = Bits("b01", SZ_PREC)
+  val PREC_HALF = Bits("b10", SZ_PREC)
+
+  /* buffered writing positions, little endian */
+  val PREC_BUF_NULL = UInt(0, SZ_BUF_PREC)
+
+  val PREC_HALF_0 = UInt(1, SZ_BUF_PREC)
+  val PREC_HALF_1 = UInt(2, SZ_BUF_PREC)
+  val PREC_HALF_2 = UInt(3, SZ_BUF_PREC)
+  val PREC_HALF_3 = UInt(4, SZ_BUF_PREC)
+
+  val PREC_SINGLE_0 = UInt(5, SZ_BUF_PREC)
+  val PREC_SINGLE_1 = UInt(6, SZ_BUF_PREC)
+
+  val PREC_DOUBLE_0 = UInt(7, SZ_BUF_PREC)
 }
 
 trait LaneConstants

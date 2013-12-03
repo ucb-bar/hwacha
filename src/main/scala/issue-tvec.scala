@@ -53,6 +53,8 @@ class IssueTVEC extends Module
     val issue_to_aiw = new io_issue_to_aiw()
 
     val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+
+    val prec = Bits(OUTPUT, SZ_PREC)
   }
 
   val ISSUE_TVEC = Bits(0,1)
@@ -334,6 +336,8 @@ class IssueTVEC extends Module
   io.issue_to_seq.stride := reg_stride
   io.issue_to_seq.bcnt := reg_bcnt
   io.issue_to_lane.bactive := reg_bactive
+
+  io.prec := reg_precision
 
 
 //-------------------------------------------------------------------------\\

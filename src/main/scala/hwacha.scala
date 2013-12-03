@@ -192,12 +192,12 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val vimm_vlen = Cat(UInt(0,29), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
   when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { cfg_maxvl := new_maxvl }
 
-  val prec = (inst_i_imm(11,5)).toUInt // subtract 1 because add queue adds 1
+  val prec = (inst_i_imm(11,5)).toUInt
   val vimm_prec = UInt(width = 64)
   if (conf.confprec) {
     vimm_prec := Cat(UInt(0,59), prec(6,0))
   } else {
-    vimm_prec := UInt(0, 64)
+    vimm_prec := UInt(64, 64)
   }
 
   // Calculate the vf address

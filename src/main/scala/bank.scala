@@ -55,6 +55,8 @@ class Bank extends Module
     }
 
     val branch_resolution_mask = Bits(OUTPUT, WIDTH_BMASK)
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val rpass = io.in.rcnt.orR
@@ -152,6 +154,8 @@ class Bank extends Module
   }
   io.branch_resolution_mask := branch_resolution_register
 
+  rfile.io.prec := io.prec
+
   alu.io.valid := delay_viu_val
   alu.io.wen   := io.in.wen
   alu.io.fn    := delay_viu_fn
@@ -187,6 +191,42 @@ class Bank extends Module
   io.out.viu_imm   := Mux(io.active, reg_viu_imm, io.in.viu_imm)
 }
 
+class BankBufferedWrite extends Module
+{
+  val io = new Bundle {
+    val prec = Bits(INPUT, SZ_PREC)
+    val active = Bool(INPUT)
+
+    val position = Bits(INPUT, SZ_BUF_PREC)
+    val in = Bits(INPUT, SZ_DATA)
+
+    val out = Bits(OUTPUT, SZ_DATA)
+  }
+
+  val h = Vec.fill(4){ Reg(Bits(width = 16), init = UInt(0, 16)) }
+  val s = Vec.fill(2){ Reg(Bits(width = 33), init = UInt(0, 33)) }
+  val d = Vec.fill(1){ Reg(Bits(width = 65), init = UInt(0, 65)) }
+
+  switch (io.position) {
+    is (PREC_BUF_NULL) { }
+    is (PREC_HALF_0) { h(0) := io.in(15,0) }
+    is (PREC_HALF_1) { h(1) := io.in(15,0) }
+    is (PREC_HALF_2) { h(2) := io.in(15,0) }
+    is (PREC_HALF_3) { h(3) := io.in(15,0) }
+    is (PREC_SINGLE_0) { s(0) := io.in(32,0) }
+    is (PREC_SINGLE_1) { s(1) := io.in(32,0) }
+    is (PREC_DOUBLE_0) { d(0) := io.in(64,0) }
+  }
+
+  val buffered = MuxLookup(io.prec, UInt(0, 66), Array (
+    PREC_DOUBLE -> Cat(Bits(0), d(0)),
+    PREC_SINGLE -> Cat(s(1), s(0)),
+    PREC_HALF   -> Cat(Bits(0), h(3), h(2), Bits(0), h(1), h(0))
+  ))
+
+  io.out := Mux(io.active, buffered, io.in)
+}
+
 class BankRegfile extends Module
 {
   val io = new Bundle {
@@ -210,6 +250,8 @@ class BankRegfile extends Module
     val viu_rdata = Bits(OUTPUT, SZ_DATA)
     val viu_ropl  = Bits(OUTPUT, SZ_DATA)
     val viu_wdata = Bits(INPUT, SZ_DATA)
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val wdata = MuxLookup(
@@ -221,9 +263,16 @@ class BankRegfile extends Module
       Bits(4, SZ_BWPORT) -> io.viu_wdata
     ))
 
+  val buffer = Module(new BankBufferedWrite)
+  buffer.io.prec := io.prec
+  buffer.io.active := Bool(false)
+  buffer.io.position := PREC_BUF_NULL
+  buffer.io.in := wdata
+  val buffered_wdata = buffer.io.out
+
   val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)
   val raddr = Reg(Bits())
-  when (io.wen) { rfile(io.waddr) := wdata }
+  when (io.wen) { rfile(io.waddr) := buffered_wdata }
   when (io.ren) { raddr := io.raddr }
   val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf

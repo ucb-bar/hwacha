@@ -177,6 +177,8 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val aiw_to_issue = new io_aiw_to_issue().flip
 
     val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
+
+    val prec = Bits(OUTPUT, SZ_PREC)
   }
 
   val tvec = Module(new IssueTVEC)
@@ -221,6 +223,8 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   tvec.io.aiw_to_issue <> io.aiw_to_issue
 
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
+
+  tvec.io.prec := io.prec
 
   // vt
   vt.io.laneToIssue <> io.laneToIssue

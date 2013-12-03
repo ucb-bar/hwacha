@@ -169,6 +169,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   b8lane.io.vmu.vldq_rdy <> io.lane_vldq.ready
   b8lane.io.vmu.vldq_bits <> io.lane_vldq.bits
 
+  b8lane.io.prec := issue.io.prec
+
 
   val b8mem = Module(new LaneMem)
 
