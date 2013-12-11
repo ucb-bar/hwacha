@@ -73,19 +73,6 @@ trait PrecConstants
   val PREC_DOUBLE = Bits("b00", SZ_PREC)
   val PREC_SINGLE = Bits("b01", SZ_PREC)
   val PREC_HALF = Bits("b10", SZ_PREC)
-
-  /* buffered writing positions, little endian */
-  val PREC_BUF_NULL = UInt(0, SZ_BUF_PREC)
-
-  val PREC_HALF_0 = UInt(1, SZ_BUF_PREC)
-  val PREC_HALF_1 = UInt(2, SZ_BUF_PREC)
-  val PREC_HALF_2 = UInt(3, SZ_BUF_PREC)
-  val PREC_HALF_3 = UInt(4, SZ_BUF_PREC)
-
-  val PREC_SINGLE_0 = UInt(5, SZ_BUF_PREC)
-  val PREC_SINGLE_1 = UInt(6, SZ_BUF_PREC)
-
-  val PREC_DOUBLE_0 = UInt(7, SZ_BUF_PREC)
 }
 
 trait LaneConstants

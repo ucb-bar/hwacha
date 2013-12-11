@@ -224,7 +224,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
 
-  tvec.io.prec := io.prec
+  io.prec := tvec.io.prec
 
   // vt
   vt.io.laneToIssue <> io.laneToIssue
