@@ -181,7 +181,21 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
 
   val nxpr = (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
   val nfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
-  val new_maxvl = Mux(nxpr+nfpr < UInt(2), UInt(hc.nreg_per_bank), UInt(hc.nreg_per_bank) / (nxpr-UInt(1) + nfpr)) << UInt(3)
+
+  //val new_maxvl = Mux(nxpr+nfpr < UInt(2), UInt(hc.nreg_per_bank), UInt(hc.nreg_per_bank) / (nxpr-UInt(1) + nfpr)) << UInt(3)
+  // ROM implementation of above function
+  /*val def_nut_per_bank = UInt(hc.nreg_per_bank/(64-1))
+  val rom_nut_per_bank = Vec.tabulate(64){n => UInt(
+    if(n<2) (hc.nreg_per_bank) else (hc.nreg_per_bank/(n-1))
+  )}
+  val new_maxvl = Mux((nxpr+nfpr)>=UInt(64), def_nut_per_bank, rom_nut_per_bank((nxpr+nfpr)(5,0))) << UInt(3)
+  */
+  // Alternative ROM implementation that actually works
+  val rom_nut_per_bank = (0 to 64).toArray.map(n => (UInt(n),
+    UInt(if(n<2) (hc.nreg_per_bank) else (hc.nreg_per_bank/(n-1)), width=log2Up(hc.nreg_per_bank+1))
+  ))
+  val new_maxvl = Lookup(nxpr+nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
+
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
   val new_vl_m1 = Mux(sel_vcmd===CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
