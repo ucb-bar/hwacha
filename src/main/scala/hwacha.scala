@@ -177,7 +177,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   io.interrupt := Bool(false)
 
   // Logic to handle vector length calculation
-  val cfg_maxvl = Reg(init=UInt(0, log2Up(hc.nreg_total)+1))
+  val cfg_maxvl = Reg(init=UInt(32, log2Up(hc.nreg_total)+1))
 
   val nxpr = (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
   val nfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
