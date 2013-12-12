@@ -10,14 +10,18 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val vaq = Decoupled(new io_vpaq_bundle()).flip
     val vsdq = Decoupled(Bits(width = 65)).flip
-    val vldq = Valid(new VLDQEnqBundle(65, log2Up(conf.nvldq)))
+    val vldq = Valid(new VLDQEnqBundle(66, 4, log2Up(conf.nvldq)))
     val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq))).flip
 
     val mem_req = new io_dmem_req()
     val mem_resp = new io_dmem_resp().flip
 
     val pending_replayq = Bool(OUTPUT)
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
+
+  val memtag = Module(new MemTag())
 
   val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd)
   val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd)
@@ -25,9 +29,16 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   val ex_amo_cmd = is_mcmd_amo(io.vaq.bits.cmd)
 
   val ex_pf_val = ex_pf_cmd && io.vaq.valid
-  val ex_load_val = ex_load_cmd && io.vaq.valid && io.vldq_rtag.valid
+  val ex_load_val = ex_load_cmd && memtag.io.out.valid
   val ex_store_val = ex_store_cmd && io.vaq.valid && io.vsdq.valid
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
+
+  memtag.io.prec := io.prec
+  memtag.io.typ.valid := io.vaq.valid
+  memtag.io.typ.bits.size := io.vaq.bits.typ
+  memtag.io.typ.bits.float := io.vaq.bits.typ_float
+  memtag.io.tag.valid := io.vldq_rtag.valid
+  memtag.io.tag.bits := io.vldq_rtag.bits
 
   val replaying_cmb = Bool()
   val replaying = Reg(next = replaying_cmb, init = Bool(false))
@@ -37,18 +48,20 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   val replayq2 = Module(new Queue(new io_dmem_req_bundle, 1))
   val req_arb = Module(new Arbiter(new io_dmem_req_bundle, 2))
 
+  memtag.io.out.ready := !replaying_cmb && req_arb.io.in(1).ready
+
   req_arb.io.in(0) <> replayq1.io.deq
   req_arb.io.in(1).valid := !replaying_cmb && (ex_pf_val || ex_load_val || ex_store_val || ex_amo_val)
   req_arb.io.in(1).bits.cmd := io.vaq.bits.cmd
   req_arb.io.in(1).bits.typ := io.vaq.bits.typ
   req_arb.io.in(1).bits.addr := io.vaq.bits.addr.toUInt
   req_arb.io.in(1).bits.data := io.vsdq.bits // delayed one cycle in cpu
-  req_arb.io.in(1).bits.tag := Cat(io.vldq_rtag.bits, io.vaq.bits.typ_float) // delayed one cycle in cpu
+  req_arb.io.in(1).bits.tag := Cat(memtag.io.out.bits.major, memtag.io.out.bits.minor, io.vaq.bits.typ_float) // delayed one cycle in cpu
 
   io.vaq.ready :=
     !replaying_cmb && req_arb.io.in(1).ready && (
       ex_pf_cmd ||
-      ex_load_cmd && io.vldq_rtag.valid ||
+      ex_load_cmd && memtag.io.typ.ready ||
       ex_store_cmd && io.vsdq.valid ||
       ex_amo_cmd && io.vsdq.valid && io.vldq_rtag.valid
     )
@@ -61,7 +74,7 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
 
   io.vldq_rtag.ready :=
     !replaying_cmb && req_arb.io.in(1).ready && (
-      ex_load_cmd && io.vaq.valid ||
+      ex_load_cmd && memtag.io.tag.ready ||
       ex_amo_cmd && io.vaq.valid && io.vsdq.valid
     )
 
@@ -150,6 +163,15 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
 
   ldq_hp_bits := reg_mem_resp.bits.data_subword(15,0)
 
+  val load_shift = reg_mem_resp.bits.tag(2,1)
+  val load_data_shift = MuxLookup(
+    load_shift, UInt(0),
+    Array(
+      Bits("b01") -> UInt(16),
+      Bits("b10") -> UInt(33),
+      Bits("b11") -> UInt(49)
+  ))
+
   io.vldq.valid := reg_mem_resp.valid
   io.vldq.bits.data := MuxCase(
     Cat(Bits(0,1),reg_mem_resp.bits.data_subword(63,0)), 
@@ -157,6 +179,12 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
       (load_fp_d) -> ldq_dp_bits,
       (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits),
       (load_fp_h) -> Cat(Bits("h1FFFFFFFFFFFF",49), ldq_hp_bits)
-  ))
-  io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUInt >> UInt(1)
+  )) << load_data_shift
+  io.vldq.bits.mask := MuxCase(
+    Bits("b1111"),
+    Array(
+      (load_fp && (io.prec === PREC_SINGLE)) -> Bits("b0011"),
+      (load_fp && (io.prec === PREC_HALF))   -> Bits("b0001")
+  )) << load_shift
+  io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUInt >> UInt(3)
 }

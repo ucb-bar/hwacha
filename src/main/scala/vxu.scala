@@ -48,12 +48,16 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
     val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
+
+    val prec = Bits(OUTPUT, SZ_PREC)
   }
 
   val flush = this.reset || io.xcpt_to_vxu.flush
   val issue = Module(new Issue(resetSignal = flush))
 
   io.irq := issue.io.irq
+
+  io.prec := issue.io.prec
 
   issue.io.imem <> io.imem
 

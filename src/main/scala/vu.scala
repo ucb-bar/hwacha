@@ -216,6 +216,8 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   vmu.io.irq <> irq.io.vmu_to_irq
 
+  vmu.io.prec := vxu.io.prec
+
   // aiw
   aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
   aiw.io.aiw_enq_imm1b <> vxu.io.aiw_imm1b

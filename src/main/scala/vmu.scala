@@ -41,6 +41,8 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
     val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 
     val irq = new io_vmu_to_irq_handler()
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val addr = Module(new VMUAddress)
@@ -118,6 +120,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   io.dmem_req <> memif.io.mem_req
   memif.io.mem_resp <> io.dmem_resp
 
+  memif.io.prec := io.prec
 
   // exception handler
   addr.io.evac_to_vmu <> io.evac_to_vmu
@@ -172,7 +175,7 @@ class VMULoadData(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val vldq_lane = new io_vldq()
 
-    val vldq = Valid(new VLDQEnqBundle(65, log2Up(conf.nvldq))).flip
+    val vldq = Valid(new VLDQEnqBundle(66, 4, log2Up(conf.nvldq))).flip
     val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq)))
 
     val qcnt = UInt(INPUT, SZ_QCNT)
@@ -180,8 +183,8 @@ class VMULoadData(implicit conf: HwachaConfiguration) extends Module
     val vldq_rtag_do_deq = Bool(OUTPUT)
   }
 
-  // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-1
-  val vldq = Module(new VLDQ(65, conf.nvldq, 9))
+  // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-3
+  val vldq = Module(new VLDQ(66, 4, conf.nvldq, 9))
 
   vldq.io.deq_data.ready := io.vldq_lane.ready
   io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
