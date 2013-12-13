@@ -256,6 +256,7 @@ class IssueTVEC extends Module
   val next_vlen = Bits(width = SZ_VLEN)
   val next_nxregs = Bits(width = SZ_REGCNT)
   val next_nfregs = Bits(width = SZ_REGCNT)
+  val next_eff_nfregs = Bits(width = SZ_REGCNT)
   val next_bactive = Bits(width = SZ_BANK)
   val next_bcnt = Bits(width = SZ_BCNT)
   val next_stride = Bits(width = SZ_REGLEN)
@@ -264,6 +265,7 @@ class IssueTVEC extends Module
   val reg_vlen = Reg(next = next_vlen, init = Bits(0,SZ_VLEN))
   val reg_nxregs = Reg(next = next_nxregs, init = Bits(32,SZ_REGCNT))
   val reg_nfregs = Reg(next = next_nfregs, init = Bits(32,SZ_REGCNT))
+  val reg_eff_nfregs = Reg(next = next_eff_nfregs, init = Bits(32,SZ_REGCNT))
   val reg_bactive = Reg(next = next_bactive, init = Bits("b1111_1111",SZ_BANK))
   val reg_bcnt = Reg(next = next_bcnt, init = Bits(8,SZ_LGBANK1))
   val reg_stride = Reg(next = next_stride, init = Bits(63,SZ_REGLEN))
@@ -278,10 +280,18 @@ class IssueTVEC extends Module
   next_vlen := reg_vlen
   next_nxregs := reg_nxregs
   next_nfregs := reg_nfregs
+  next_eff_nfregs := reg_eff_nfregs
   next_bactive := reg_bactive
   next_bcnt := reg_bcnt
   next_stride := reg_stride
   next_precision := reg_precision
+
+  next_eff_nfregs := MuxLookup(
+    next_precision, next_nfregs, Array(
+    PREC_DOUBLE -> (next_nfregs),
+    PREC_SINGLE -> ((next_nfregs + UInt(1)) >> UInt(1)),
+    PREC_HALF -> ((next_nfregs + UInt(3)) >> UInt(2))
+  ))
 
   when (fire_vcfg)
   {
@@ -290,7 +300,7 @@ class IssueTVEC extends Module
     next_nfregs := io.vcmdq.imm1.bits(RG_XIMM1_NFREGS)
     next_bactive := io.vcmdq.imm1.bits(RG_XIMM1_BACTIVE)
     next_bcnt := io.vcmdq.imm1.bits(RG_XIMM1_BCNT)
-    next_stride := next_nxregs + next_nfregs - Bits(1,2)
+    next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
   }
   when (fire_prec)
   {
@@ -299,7 +309,9 @@ class IssueTVEC extends Module
       UInt(16) -> PREC_HALF,
       UInt(32) -> PREC_SINGLE,
       UInt(64) -> PREC_DOUBLE))
+    next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
     printf("Vector unit configured to %d bits\n", io.vcmdq.imm1.bits(RG_XIMM1_PREC))
+    printf("New stride (%d) from old stride (%d)\n", next_stride, reg_stride)
   }
   when (fire_setvl)
   {
