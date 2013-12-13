@@ -109,8 +109,9 @@ class VLDQ(DATA_SIZE: Int, SUBWORDS: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) exten
     deq_data := mem_data(mem_addr)
   }
 
+  // Bypass front VLDQ entry into deq_data
   when (io.enq.valid && io.enq.bits.rtag === match_rtag) {
-    deq_data := io.enq.bits.data
+    deq_data := (deq_data & ~mem_mask) | (io.enq.bits.data & mem_mask)
   }
 
   io.deq_data.valid := deq_data_val
