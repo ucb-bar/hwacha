@@ -43,22 +43,32 @@ class LaneMem extends Module
   val store_fp = io.lane_vsdq_mem.typ_float
   val store_fp_d = store_fp && io.lane_vsdq_mem.typ === MT_D
   val store_fp_w = store_fp && io.lane_vsdq_mem.typ === MT_W
+  val store_fp_h = store_fp && io.lane_vsdq_mem.typ === MT_H
 
   val reg_lane_vsdq_valid = Reg(next=io.lane_vsdq_valid)
   val reg_lane_vsdq_bits = Reg(next=io.lane_vsdq_bits)
 
-  val rf32f32  = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32.io.in := reg_lane_vsdq_bits(32,0)
-  val vsdq_deq_sp = rf32f32.io.out
+  val rf32f32_lo  = Module(new hardfloat.recodedFloat32ToFloat32)
+  rf32f32_lo.io.in := reg_lane_vsdq_bits(32,0)
+  val vsdq_deq_sp_lo = rf32f32_lo.io.out
+
+  val rf32f32_hi  = Module(new hardfloat.recodedFloat32ToFloat32)
+  rf32f32_hi.io.in := reg_lane_vsdq_bits(65,33)
+  val vsdq_deq_sp_hi = rf32f32_hi.io.out
+
+  val vsdq_deq_sp = Cat(vsdq_deq_sp_hi, vsdq_deq_sp_lo)
 
   val rf64f64  = Module(new hardfloat.recodedFloat64ToFloat64)
   rf64f64.io.in := reg_lane_vsdq_bits
   val vsdq_deq_dp = rf64f64.io.out
+
+  val vsdq_deq_hp = Cat(reg_lane_vsdq_bits(64,33),reg_lane_vsdq_bits(31,0))
  
   io.vmu_vsdq_valid := reg_lane_vsdq_valid
   io.vmu_vsdq_bits := MuxCase(
       reg_lane_vsdq_bits(63,0), Array(	
-	      (store_fp_d) -> vsdq_deq_dp,
-        (store_fp_w) -> Fill(2, vsdq_deq_sp)
+        (store_fp_d) -> vsdq_deq_dp,
+        (store_fp_w) -> vsdq_deq_sp,
+        (store_fp_h) -> vsdq_deq_hp
       ))
 }

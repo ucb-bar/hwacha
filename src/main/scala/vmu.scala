@@ -50,6 +50,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   val sdata = Module(new VMUStoreData)
   val counters = Module(new VMUCounters)
   val memif = Module(new MemIF)
+  val unpack = Module(new UnpackStore)
 
 
   // address unit
@@ -60,7 +61,8 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   io.vtlb <> addr.io.vtlb
   io.vpftlb <> addr.io.vpftlb
 
-  memif.io.vaq <> addr.io.vaq
+  memif.io.vaq <> unpack.io.out.vaq
+  unpack.io.in.vaq <> addr.io.vaq
 
   addr.io.irq <> io.irq
 
@@ -96,7 +98,8 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   sdata.io.vsdq_lane <> io.lane_vsdq
   sdata.io.vsdq_evac <> io.evac_vsdq
 
-  memif.io.vsdq <> sdata.io.vsdq
+  memif.io.vsdq <> unpack.io.out.vsdq
+  unpack.io.in.vsdq <> sdata.io.vsdq
 
   sdata.io.vsdq_lane_dec := io.lane_vsdq_dec
   // vsdq counts available space
@@ -121,6 +124,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   memif.io.mem_resp <> io.dmem_resp
 
   memif.io.prec := io.prec
+  unpack.io.prec := io.prec
 
   // exception handler
   addr.io.evac_to_vmu <> io.evac_to_vmu
@@ -130,6 +134,58 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   io.vmu_to_xcpt.no_pending_load_store :=
     !counters.io.pending_load && !counters.io.pending_store &&
     !memif.io.pending_replayq && !addr.io.vpaq_to_xcpt.vpaq_valid
+}
+
+class UnpackStore(implicit conf: HwachaConfiguration) extends Module
+{
+  val io = new Bundle {
+    val prec = Bits(INPUT, SZ_PREC)
+
+    val in = new Bundle {
+      val vaq = Decoupled(new io_vpaq_bundle()).flip
+      val vsdq = Decoupled(Bits(width = 65)).flip
+    }
+
+    val out = new Bundle {
+      val vaq = Decoupled(new io_vpaq_bundle())
+      val vsdq = Decoupled(Bits(width = 65))
+    }
+  }
+
+  val store = is_mcmd_store(io.in.vaq.bits.cmd) && io.in.vaq.bits.typ_float
+
+  val minor = Reg(init = UInt(0, 2))
+
+  val minor_next = MuxLookup(
+    io.prec, Bits(0, 2),
+    Array(
+      (PREC_SINGLE) -> Cat(~minor(1), Bits(0, 1)),
+      (PREC_HALF)   -> (minor + UInt(1))
+    ))
+
+  val unpack_finishing = (minor_next === UInt(0))
+
+  io.in.vaq.ready := io.out.vaq.ready
+  io.in.vsdq.ready := io.out.vsdq.ready && Mux(store, unpack_finishing, Bool(true))
+  io.out.vaq.valid := io.in.vaq.valid
+  io.out.vsdq.valid := io.in.vsdq.valid
+
+  // d'oh
+  io.out.vaq.bits := io.in.vaq.bits
+  io.out.vsdq.bits := io.in.vsdq.bits
+
+  val shift = minor << UInt(4)
+
+  when (store && io.in.vaq.valid && io.in.vsdq.valid && io.out.vaq.ready && io.out.vsdq.ready) {
+    minor := minor_next
+  }
+
+  when (store) {
+    io.out.vsdq.bits := MuxLookup(io.prec, io.in.vsdq.bits, Array(
+      PREC_SINGLE -> ((io.in.vsdq.bits >> shift) & Bits("hFFFFFFFF", 32)),
+      PREC_HALF   -> ((io.in.vsdq.bits >> shift) & Bits("hFFFF", 16))
+    ))
+  }
 }
 
 class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
@@ -150,7 +206,7 @@ class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
     val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
-  val vsdq_arb = Module(new Arbiter(Bits(width = SZ_DATA), 2))
+  val vsdq_arb = Module(new Arbiter(Bits(width = 65), 2))
   val vsdq = Module(new Queue(Bits(width = 65), conf.nvsdq))
 
   vsdq_arb.io.in(0) <> io.vsdq_lane
