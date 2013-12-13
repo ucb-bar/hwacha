@@ -198,7 +198,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     {
       next_ren(0) := Bool(true)
       next_rlast(0) := io.seq_to_expand.last
-      next_rcnt(0) := io.seq_regid_imm.cnt
+      next_rcnt(0) := io.seq_regid_imm.tcnt // turbo
       next_raddr(0) := io.seq_regid_imm.vs
       next_roplen(0) := Bits("b10", 2)
       for(i <- 0 until SZ_BRPORT)
@@ -207,7 +207,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         
       next_ren(1) := Bool(true)
       next_rlast(1) := io.seq_to_expand.last
-      next_rcnt(1) := io.seq_regid_imm.cnt
+      next_rcnt(1) := io.seq_regid_imm.tcnt
       next_raddr(1) := io.seq_regid_imm.vt
       next_roplen(1) := Bits("b01", 2)
       for(i <- 0 until SZ_BRPORT)
@@ -216,7 +216,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       
       next_ren(2) := Bool(true)
       next_rlast(2) := io.seq_to_expand.last
-      next_rcnt(2) := io.seq_regid_imm.cnt
+      next_rcnt(2) := io.seq_regid_imm.tcnt
       next_raddr(2) := io.seq_regid_imm.vr
       next_roplen(2) := Bits("b00", 2)
       for(i <- 0 until SZ_BRPORT)
@@ -235,7 +235,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     {
       next_ren(0) := Bool(true)
       next_rlast(0) := io.seq_to_expand.last
-      next_rcnt(0) := io.seq_regid_imm.cnt
+      next_rcnt(0) := io.seq_regid_imm.tcnt
       next_raddr(0) := io.seq_regid_imm.vs
       next_roplen(0) := Bits("b10", 2)
       for(i <- 0 until SZ_BRPORT)
@@ -244,7 +244,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       
       next_ren(1) := Bool(true)
       next_rlast(1) := io.seq_to_expand.last
-      next_rcnt(1) := io.seq_regid_imm.cnt
+      next_rcnt(1) := io.seq_regid_imm.tcnt
       next_raddr(1) := io.seq_regid_imm.vt
       next_roplen(1) := Bits("b00", 2)
       for(i <- 0 until SZ_BRPORT){
@@ -298,7 +298,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   {
     next_ren(0) := Bool(true)
     next_rlast(0) := io.seq_to_expand.last
-    next_rcnt(0) := io.seq_regid_imm.cnt
+    next_rcnt(0) := io.seq_regid_imm.tcnt
     next_raddr(0) := io.seq_regid_imm.vt
     next_roplen(0) := Bits("b00", 2)
     for(i <- 0 until SZ_BRPORT)
@@ -435,7 +435,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   {
     next_wen(vau1_wptr) := Bool(true)
     next_wlast(vau1_wptr) := io.seq_to_expand.last
-    next_wcnt(vau1_wptr) := io.seq_regid_imm.cnt
+    next_wcnt(vau1_wptr) := io.seq_regid_imm.tcnt
     next_waddr(vau1_wptr) := io.seq_regid_imm.vd
     next_wsel(vau1_wptr) := Bits("d1", 3)
     next_wmask(vau1_wptr) := io.seq_regid_imm.mask
@@ -453,7 +453,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   {
     next_wen(0) := Bool(true)
     next_wlast(0) := io.seq_to_expand.last
-    next_wcnt(0) := io.seq_regid_imm.cnt
+    next_wcnt(0) := io.seq_regid_imm.tcnt
     next_waddr(0) := io.seq_regid_imm.vd
     next_wsel(0) := Bits("d3", 3)
     next_wmask(0) := io.seq_regid_imm.mask

@@ -27,6 +27,7 @@ class io_vxu_seq_regid_imm extends Bundle
 {
   val vlen = Bits(width = SZ_VLEN)
   val cnt = Bits(width = SZ_BVLEN)
+  val tcnt = Bits(width = SZ_BVLEN + 2) // turbo
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
@@ -87,6 +88,8 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     val seq_to_aiw = new io_seq_to_aiw()
 
     val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
+
+    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val bcntm1 = io.issue_to_seq.bcnt - UInt(1)
@@ -251,6 +254,12 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   val last = io.fire_regid_imm.vlen < io.issue_to_seq.bcnt
 
+  val turbo_last = MuxLookup(io.prec, io.fire_regid_imm.vlen < io.issue_to_seq.bcnt, Array(
+    PREC_DOUBLE -> (io.fire_regid_imm.vlen < io.issue_to_seq.bcnt),
+    PREC_SINGLE -> ((io.fire_regid_imm.vlen >> UInt(1)) < io.issue_to_seq.bcnt),
+    PREC_HALF -> ((io.fire_regid_imm.vlen >> UInt(2)) < io.issue_to_seq.bcnt)
+  ))
+
   next_val := array_val
   next_stall := array_stall
   next_last := array_last
@@ -355,7 +364,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   when (io.fire.vau1)
   {
     next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
+    next_last(next_ptr1) := turbo_last // car battery?
     next_vau1(next_ptr1) := Bool(true)
     next_fn_vau1(next_ptr1) := io.fire_fn.vau1
     next_vlen(next_ptr1) := io.fire_regid_imm.vlen
@@ -477,7 +486,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := last
+    next_last(next_ptr2) := turbo_last
     next_vldq(next_ptr2) := Bool(true)
     next_utmemop(next_ptr2) := Bool(true)
     next_vlen(next_ptr2) := io.fire_regid_imm.vlen
@@ -515,7 +524,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := last
+    next_last(next_ptr2) := turbo_last
     next_vsdq(next_ptr2) := Bool(true)
     next_utmemop(next_ptr2) := Bool(true)
     next_vlen(next_ptr2) := io.fire_regid_imm.vlen
@@ -613,11 +622,34 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
-  val next_vlen_update = Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0), bcntm1(SZ_LGBANK-1,0))
+  val next_vlen_update = UInt(width = SZ_LGBANK + 2)
+
+  next_vlen_update := Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0), bcntm1(SZ_LGBANK-1,0))
+
+  // increase throughput when certain operations (FMA, VLDQ, VSDQ) are used by
+  // allowing up to 32 elements to proceed in half precision
+  // allowing up to 16 elements to proceed in single precision
+  val turbo_capable = io.seq.vau1 || io.seq.vldq || io.seq.vsdq
+
+  when (turbo_capable)
+  {
+    when (io.prec === PREC_SINGLE)
+    {
+      next_vlen_update := Mux(((array_vlen(reg_ptr) + UInt (1)) >> UInt(1)) < bcntm1,  // divide by 2
+        array_vlen(reg_ptr)(SZ_LGBANK-1,0),
+        (bcntm1(SZ_LGBANK-1,0) << UInt(1)) + UInt(1)) // multiply by 2, add 1
+    }
+    .elsewhen (io.prec === PREC_HALF)
+    {
+      next_vlen_update := Mux(((array_vlen(reg_ptr) + UInt(3)) >> UInt(2)) < bcntm1,  // divide by 4
+        array_vlen(reg_ptr)(SZ_LGBANK-1,0),
+        (bcntm1(SZ_LGBANK-1,0) << UInt(2)) + UInt(3)) // multiply by 4, add 3
+    }
+  }
 
   when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
   {
-    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UInt(1)
+    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UInt(1) // WHY?!
     next_utidx(reg_ptr) := array_utidx(reg_ptr) + io.issue_to_seq.bcnt
     next_vs(reg_ptr) := array_vs(reg_ptr) + array_stride(reg_ptr)
     next_vt(reg_ptr) := array_vt(reg_ptr) + array_stride(reg_ptr)
@@ -646,6 +678,16 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     .otherwise
     {
       when (next_vlen(reg_ptr) < io.issue_to_seq.bcnt)
+      {
+        next_last(reg_ptr) :=  Bool(true)
+      }
+      .elsewhen (turbo_capable && io.prec === PREC_SINGLE &&
+                ((next_vlen(reg_ptr) + UInt(1)) >> UInt(1)) < io.issue_to_seq.bcnt)
+      {
+        next_last(reg_ptr) :=  Bool(true)
+      }
+      .elsewhen (turbo_capable && io.prec === PREC_HALF &&
+                ((next_vlen(reg_ptr) + UInt(3)) >> UInt(2)) < io.issue_to_seq.bcnt)
       {
         next_last(reg_ptr) :=  Bool(true)
       }
@@ -782,7 +824,10 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   if (HAVE_PVFB)
     for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
   else
-    pop_count = io.seq_regid_imm.cnt + UInt(1, SZ_LGBANK1)
+  {
+    // if v[sl]dq, use tcnt?
+    pop_count = io.seq_regid_imm.tcnt + UInt(1, SZ_LGBANK1)
+  }
   val skip = !mask.orR()
   io.seq_regid_imm.pop_count := pop_count
 
@@ -842,6 +887,21 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   io.seq_regid_imm.cnt := 
     Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0),
         bcntm1(SZ_LGBANK-1,0))
+
+  io.seq_regid_imm.tcnt := io.seq_regid_imm.cnt
+
+  // set turbo count
+  when (io.prec === PREC_SINGLE) {
+    io.seq_regid_imm.tcnt :=
+      Mux(((array_vlen(reg_ptr) + UInt (1)) >> UInt(1)) < bcntm1,  // divide by 2
+      array_vlen(reg_ptr)(SZ_LGBANK-1,0),
+      (bcntm1(SZ_LGBANK-1,0) + UInt(1)) >> UInt(1)) - UInt(1) // add 1, divide by 2, sub 1
+  } .elsewhen (io.prec === PREC_HALF) {
+    io.seq_regid_imm.tcnt :=
+      Mux(((array_vlen(reg_ptr) + UInt (3)) >> UInt(2)) < bcntm1,  // divide by 4
+      array_vlen(reg_ptr)(SZ_LGBANK-1,0),
+      (bcntm1(SZ_LGBANK-1,0) + UInt(3)) >> UInt(2)) - UInt(1) // add 3, divide by 4, sub 1
+  }
 
   io.seq_regid_imm.utidx := array_utidx(reg_ptr)
   io.seq_regid_imm.vs_zero := array_vs_zero(reg_ptr)

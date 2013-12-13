@@ -141,6 +141,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
+  b8seq.io.prec := issue.io.prec
+
 
   val b8expand = Module(new Expander)
 
