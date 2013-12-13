@@ -34,7 +34,7 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   val ex_amo_val = ex_amo_cmd && io.vaq.valid && io.vsdq.valid && io.vldq_rtag.valid
 
   memtag.io.prec := io.prec
-  memtag.io.typ.valid := io.vaq.valid
+  memtag.io.typ.valid := io.vaq.valid && (ex_load_cmd || ex_amo_cmd)
   memtag.io.typ.bits.size := io.vaq.bits.typ
   memtag.io.typ.bits.float := io.vaq.bits.typ_float
   memtag.io.tag.valid := io.vldq_rtag.valid
@@ -172,7 +172,7 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
       Bits("b11") -> UInt(49)
   ))
 
-  io.vldq.valid := reg_mem_resp.valid
+  io.vldq.valid := reg_mem_resp.valid && reg_mem_resp.bits.has_data
   io.vldq.bits.data := MuxCase(
     Cat(Bits(0,1),reg_mem_resp.bits.data_subword(63,0)), 
     Array(

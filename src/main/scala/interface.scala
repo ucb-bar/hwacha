@@ -47,6 +47,7 @@ class io_dmem_resp_bundle extends Bundle
   val addr = UInt(width = PADDR_BITS)
   val store_data = Bits(width = 64)
   val tag = Bits(width = 10)
+  val has_data = Bool()
 }
 
 class io_dmem_req extends DecoupledIO(new io_dmem_req_bundle)

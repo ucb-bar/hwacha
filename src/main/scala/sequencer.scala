@@ -27,7 +27,7 @@ class io_vxu_seq_regid_imm extends Bundle
 {
   val vlen = Bits(width = SZ_VLEN)
   val cnt = Bits(width = SZ_BVLEN)
-  val tcnt = Bits(width = SZ_BVLEN + 2) // turbo
+  val tcnt = Bits(width = SZ_BVLEN) // turbo
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
@@ -635,15 +635,13 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   {
     when (io.prec === PREC_SINGLE)
     {
-      next_vlen_update := Mux(((array_vlen(reg_ptr) + UInt (1)) >> UInt(1)) < bcntm1,  // divide by 2
-        array_vlen(reg_ptr)(SZ_LGBANK-1,0),
-        (bcntm1(SZ_LGBANK-1,0) << UInt(1)) + UInt(1)) // multiply by 2, add 1
+      val bcntx2p1 = (bcntm1(SZ_LGBANK-1,0) << UInt(1)) + UInt(1)
+      next_vlen_update := Mux(array_vlen(reg_ptr) < bcntx2p1, array_vlen(reg_ptr), bcntx2p1)
     }
     .elsewhen (io.prec === PREC_HALF)
     {
-      next_vlen_update := Mux(((array_vlen(reg_ptr) + UInt(3)) >> UInt(2)) < bcntm1,  // divide by 4
-        array_vlen(reg_ptr)(SZ_LGBANK-1,0),
-        (bcntm1(SZ_LGBANK-1,0) << UInt(2)) + UInt(3)) // multiply by 4, add 3
+      val bcntx4p3 = (bcntm1(SZ_LGBANK-1,0) << UInt(2)) + UInt(3)
+      next_vlen_update := Mux(array_vlen(reg_ptr) < bcntx4p3, array_vlen(reg_ptr), bcntx4p3)
     }
   }
 
@@ -820,21 +818,20 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     ))
   val mask = (array_mask(reg_ptr) & bcnt_mask) | (Fill(SZ_BANK, ~array_active_mask(reg_ptr)) & bcnt_mask)
 
-  var pop_count = Bits(0,SZ_LGBANK1)
-  if (HAVE_PVFB)
-    for(i <- 0 until SZ_BANK) pop_count = pop_count + mask(i)
-  else
-  {
-    // if v[sl]dq, use tcnt?
-    pop_count = io.seq_regid_imm.tcnt + UInt(1, SZ_LGBANK1)
-  }
-  val skip = !mask.orR()
-  io.seq_regid_imm.pop_count := pop_count
-
   val current_val = array_val(reg_ptr)
   val current_vaq_val = current_val & array_vaq(reg_ptr)
   val current_vldq_val = current_val & array_vldq(reg_ptr)
   val current_vsdq_val = current_val & array_vsdq(reg_ptr)
+
+  val pop_count = if (HAVE_PVFB) 
+    PopCount(mask)(SZ_LGBANK1-1,0)
+  else
+    // if v[sl]dq, use tcnt
+    Mux(current_vldq_val || current_vsdq_val,
+      io.seq_regid_imm.tcnt + UInt(1, SZ_LGBANK1),
+      io.seq_regid_imm.cnt + UInt(1, SZ_LGBANK1))
+
+  io.seq_regid_imm.pop_count := pop_count
 
   val reg_vaq_stall = Reg(init=Bool(false))
   val reg_vldq_stall = Reg(init=Bool(false))
@@ -890,17 +887,17 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   io.seq_regid_imm.tcnt := io.seq_regid_imm.cnt
 
+  def div2ceil(x: UInt) = (x + UInt(1)) >> UInt(1)
+  def div4ceil(x: UInt) = (x + UInt(3)) >> UInt(2)
+
   // set turbo count
+  // d[24]cm1 = divided by {2,4}, ceiling, minus 1
   when (io.prec === PREC_SINGLE) {
-    io.seq_regid_imm.tcnt :=
-      Mux(((array_vlen(reg_ptr) + UInt (1)) >> UInt(1)) < bcntm1,  // divide by 2
-      array_vlen(reg_ptr)(SZ_LGBANK-1,0),
-      (bcntm1(SZ_LGBANK-1,0) + UInt(1)) >> UInt(1)) - UInt(1) // add 1, divide by 2, sub 1
+    val vlen_d2cm1 = div2ceil(array_vlen(reg_ptr)) - UInt(1)
+    io.seq_regid_imm.tcnt := Mux(vlen_d2cm1 < bcntm1, vlen_d2cm1, bcntm1)
   } .elsewhen (io.prec === PREC_HALF) {
-    io.seq_regid_imm.tcnt :=
-      Mux(((array_vlen(reg_ptr) + UInt (3)) >> UInt(2)) < bcntm1,  // divide by 4
-      array_vlen(reg_ptr)(SZ_LGBANK-1,0),
-      (bcntm1(SZ_LGBANK-1,0) + UInt(3)) >> UInt(2)) - UInt(1) // add 3, divide by 4, sub 1
+    val vlen_d4cm1 = div4ceil(array_vlen(reg_ptr)) - UInt(1)
+    io.seq_regid_imm.tcnt := Mux(vlen_d4cm1 < bcntm1, vlen_d4cm1, bcntm1)
   }
 
   io.seq_regid_imm.utidx := array_utidx(reg_ptr)

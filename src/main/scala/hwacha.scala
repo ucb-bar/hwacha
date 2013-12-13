@@ -204,7 +204,10 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val new_vl_m1 = Mux(sel_vcmd===CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
   val vimm_vlen = Cat(UInt(0,29), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
-  when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { cfg_maxvl := new_maxvl }
+  when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { 
+    printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
+    cfg_maxvl := new_maxvl 
+  }
 
   val prec = (inst_i_imm(11,5)).toUInt
   val vimm_prec = UInt(width = 64)

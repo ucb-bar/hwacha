@@ -300,7 +300,8 @@ class IssueTVEC extends Module
     next_nfregs := io.vcmdq.imm1.bits(RG_XIMM1_NFREGS)
     next_bactive := io.vcmdq.imm1.bits(RG_XIMM1_BACTIVE)
     next_bcnt := io.vcmdq.imm1.bits(RG_XIMM1_BCNT)
-    next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
+    // next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
+    next_stride := next_nxregs + next_nfregs - Bits(1,2)
   }
   when (fire_prec)
   {
@@ -309,7 +310,7 @@ class IssueTVEC extends Module
       UInt(16) -> PREC_HALF,
       UInt(32) -> PREC_SINGLE,
       UInt(64) -> PREC_DOUBLE))
-    next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
+    // next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
     printf("Vector unit configured to %d bits\n", io.vcmdq.imm1.bits(RG_XIMM1_PREC))
     printf("New stride (%d) from old stride (%d)\n", next_stride, reg_stride)
   }
