@@ -180,7 +180,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val array_fn_vau0 = Vec.fill(8){Reg(Bits(width=SZ_VAU0_FN))}
   val array_fn_vau1 = Vec.fill(8){Reg(Bits(width=SZ_VAU1_FN))}
   val array_fn_vau2 = Vec.fill(8){Reg(Bits(width=SZ_VAU2_FN))}
-  val array_vlen = Vec.fill(8){Reg(Bits(width=SZ_VLEN))}
+  val array_vlen = Vec.fill(8){Reg(Bits(width=SZ_VLEN), init = UInt(0, SZ_VLEN))}
   val array_utidx = Vec.fill(8){Reg(Bits(width=SZ_VLEN))}
   val array_stride = Vec.fill(8){Reg(Bits(width=SZ_REGLEN))}
   val array_vs_zero = Vec.fill(SZ_BANK){Reg(Bool())}
@@ -680,12 +680,12 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
         next_last(reg_ptr) :=  Bool(true)
       }
       .elsewhen (turbo_capable && io.prec === PREC_SINGLE &&
-                ((next_vlen(reg_ptr) + UInt(1)) >> UInt(1)) < io.issue_to_seq.bcnt)
+                ((next_vlen(reg_ptr) >> UInt(1)) < io.issue_to_seq.bcnt)) // do NOT ceil
       {
         next_last(reg_ptr) :=  Bool(true)
       }
       .elsewhen (turbo_capable && io.prec === PREC_HALF &&
-                ((next_vlen(reg_ptr) + UInt(3)) >> UInt(2)) < io.issue_to_seq.bcnt)
+                ((next_vlen(reg_ptr) >> UInt(2)) < io.issue_to_seq.bcnt))
       {
         next_last(reg_ptr) :=  Bool(true)
       }
