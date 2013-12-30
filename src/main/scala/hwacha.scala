@@ -61,11 +61,6 @@ trait HwachaDecodeConstants
   val VIMM_RS2  = Bits(2,3)
   val VIMM_ADDR = Bits(3,3)
   val VIMM_PREC = Bits(4,3)
-
-  val SZ_PREC = 2
-  val PREC_DOUBLE = Bits("b00", SZ_PREC)
-  val PREC_SINGLE = Bits("b01", SZ_PREC)
-  val PREC_HALF   = Bits("b10", SZ_PREC)
 }
 
 object HwachaDecodeTable extends HwachaDecodeConstants
@@ -185,37 +180,11 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // TODO: SETUP INTERRUPT
   io.interrupt := Bool(false)
 
-  val reg_prec = Reg(init = PREC_DOUBLE)
-  val next_prec = Bits(width = SZ_PREC)
-
-  val prec = (inst_i_imm(11,5)).toUInt
-  val vimm_prec = UInt(width = 64)
-  if (conf.confprec) {
-    vimm_prec := Cat(UInt(0,59), prec(6,0))
-    next_prec := MuxLookup(vimm_prec, PREC_DOUBLE, Array(
-      UInt(64) -> PREC_DOUBLE,
-      UInt(32) -> PREC_SINGLE,
-      UInt(16) -> PREC_HALF
-    ))
-  } else {
-    vimm_prec := UInt(64, 64)
-    next_prec := PREC_DOUBLE
-  }
-
   // Logic to handle vector length calculation
   val cfg_maxvl = Reg(init=UInt(32, log2Up(hc.nreg_total)+1))
 
   val nxpr = (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
   val nfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
-
-  val reg_nxpr = Reg(init = UInt(0, 6))
-  val reg_nfpr = Reg(init = UInt(0, 6))
-
-  val eff_nfpr = MuxLookup(reg_prec, nfpr, Array(
-    PREC_DOUBLE -> (nfpr),
-    PREC_SINGLE -> ((nfpr + UInt(1)) >> UInt(1)),
-    PREC_HALF   -> ((nfpr + UInt(3)) >> UInt(2))
-  ))
 
   //val new_maxvl = Mux(nxpr+nfpr < UInt(2), UInt(hc.nreg_per_bank), UInt(hc.nreg_per_bank) / (nxpr-UInt(1) + nfpr)) << UInt(3)
   // ROM implementation of above function
@@ -229,7 +198,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val rom_nut_per_bank = (0 to 64).toArray.map(n => (UInt(n),
     UInt(if(n<2) (hc.nreg_per_bank) else (hc.nreg_per_bank/(n-1)), width=log2Up(hc.nreg_per_bank+1))
   ))
-  val new_maxvl = Lookup(nxpr + eff_nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
+  val new_maxvl = Lookup(nxpr+nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
 
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
   val new_vl_m1 = Mux(sel_vcmd===CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
@@ -238,24 +207,15 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   when(cmd_valid && sel_vcmd === CMD_VVCFGIVL && construct_ready(null)) { 
     printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
     cfg_maxvl := new_maxvl 
-    reg_nxpr := nxpr
-    reg_nfpr := nfpr
   }
 
-  // set precision and maxvl
-  when (cmd_valid && sel_vcmd === CMD_VSETPREC && construct_ready(null)) {
-    val new_eff_nfpr = MuxLookup(next_prec, reg_nfpr, Array(
-      PREC_DOUBLE -> (reg_nfpr),
-      PREC_SINGLE -> ((reg_nfpr + UInt(1)) >> UInt(1)),
-      PREC_HALF   -> ((reg_nfpr + UInt(3)) >> UInt(2))
-    ))
-
-    reg_prec := next_prec
-    val new_new_maxvl = Lookup(reg_nxpr + new_eff_nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
-    printf("setting maxvl to %d (was %d)\n", new_new_maxvl, cfg_maxvl)
-    cfg_maxvl := new_new_maxvl
+  val prec = (inst_i_imm(11,5)).toUInt
+  val vimm_prec = UInt(width = 64)
+  if (conf.confprec) {
+    vimm_prec := Cat(UInt(0,59), prec(6,0))
+  } else {
+    vimm_prec := UInt(64, 64)
   }
-
 
   // Calculate the vf address
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
