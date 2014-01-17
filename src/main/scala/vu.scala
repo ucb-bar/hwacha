@@ -189,16 +189,15 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   irq.io.issue_to_irq <> vxu.io.irq
 
   // vmu
-  vmu.io.lane_vvaq <> vxu.io.lane_vaq
+  vmu.io.lane_vvaq <> vxu.io.vaq
   vmu.io.evac_vvaq <> evac.io.vaq
 
-  vmu.io.lane_vsdq <> vxu.io.lane_vsdq
+  vmu.io.lane_vsdq <> vxu.io.vsdq
   vmu.io.evac_vsdq <> evac.io.vsdq
 
-  vxu.io.lane_vldq <> vmu.io.lane_vldq
+  vxu.io.vldq <> vmu.io.lane_vldq
 
-  vmu.io.lane_vaq_dec := vxu.io.lane_vaq_dec
-  vmu.io.lane_vsdq_dec := vxu.io.lane_vsdq_dec
+  vmu.io.vxu_to_vmu <> vxu.io.vxu_to_vmu
 
   vmu.io.qcntp1 := vxu.io.qcntp1
   vmu.io.qcntp2 := vxu.io.qcntp2

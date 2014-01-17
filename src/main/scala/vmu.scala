@@ -22,8 +22,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
     val lane_vldq = new io_vldq()
 
-    val lane_vaq_dec = Bool(INPUT)
-    val lane_vsdq_dec = Bool(INPUT)
+    val vxu_to_vmu = new io_vxu_to_vmu().flip
 
     val qcntp1 = UInt(INPUT, SZ_QCNT)
     val qcntp2 = UInt(INPUT, SZ_QCNT)
@@ -66,7 +65,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
   addr.io.irq <> io.irq
 
-  addr.io.vvaq_lane_dec := io.lane_vaq_dec
+  addr.io.vvaq_lane_dec := io.vxu_to_vmu.vaq_valid
   // vvaq counts available space
   counters.io.vvaq_dec := addr.io.vvaq_do_enq
   counters.io.vvaq_inc := addr.io.vvaq_do_deq
@@ -90,8 +89,12 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
   ldata.io.qcnt := io.qcntp1
   // vlreq counts available space
-  counters.io.vlreq_inc := ldata.io.vldq_rtag_do_deq
-  counters.io.vlreq_dec := ldata.io.vldq_rtag_do_enq
+  counters.io.vlreq_inc := io.lane_vldq.ready
+  counters.io.vlreq_dec :=
+    io.vxu_to_vmu.vaq_valid && (
+      is_mcmd_load(io.vxu_to_vmu.vaq_cmd) ||
+      is_mcmd_amo(io.vxu_to_vmu.vaq_cmd)
+    )
 
 
   // store data unit
@@ -101,13 +104,13 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   memif.io.vsdq <> unpack.io.out.vsdq
   unpack.io.in.vsdq <> sdata.io.vsdq
 
-  sdata.io.vsdq_lane_dec := io.lane_vsdq_dec
+  sdata.io.vsdq_lane_dec := io.vxu_to_vmu.vsdq_valid
   // vsdq counts available space
   counters.io.vsdq_inc := sdata.io.vsdq_do_deq
   counters.io.vsdq_dec := sdata.io.vsdq_do_enq
   // vsreq counts available space
-  counters.io.vsreq_inc := sdata.io.vsdq_do_deq
-  counters.io.vsreq_dec := sdata.io.vsdq_do_enq
+  counters.io.vsreq_inc := memif.io.store_ack
+  counters.io.vsreq_dec := io.vxu_to_vmu.vaq_valid && is_mcmd_store(io.vxu_to_vmu.vaq_cmd)
   // vpasdq counts occupied space
   counters.io.vpasdq_dec := sdata.io.vsdq_do_enq
   sdata.io.vpasdq_watermark := counters.io.vpasdq_watermark
@@ -116,7 +119,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
   // counters
   counters.io.qcnt := io.qcntp2
-  io.pending_store := counters.io.pending_store || memif.io.pending_replayq
+  io.pending_store := counters.io.pending_store
 
 
   // memif interface
@@ -133,7 +136,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
   io.vmu_to_xcpt.no_pending_load_store :=
     !counters.io.pending_load && !counters.io.pending_store &&
-    !memif.io.pending_replayq && !addr.io.vpaq_to_xcpt.vpaq_valid
+    !addr.io.vpaq_to_xcpt.vpaq_valid
 }
 
 class UnpackStore(implicit conf: HwachaConfiguration) extends Module
@@ -235,8 +238,6 @@ class VMULoadData(implicit conf: HwachaConfiguration) extends Module
     val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq)))
 
     val qcnt = UInt(INPUT, SZ_QCNT)
-    val vldq_rtag_do_enq = Bool(OUTPUT)
-    val vldq_rtag_do_deq = Bool(OUTPUT)
   }
 
   // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-3
@@ -254,9 +255,6 @@ class VMULoadData(implicit conf: HwachaConfiguration) extends Module
   // vldq occupies an entry, when it accepts an entry from the memory system
   // vldq frees an entry, when the lane consumes it
   vldq.io.qcnt := io.qcnt
-
-  io.vldq_rtag_do_enq := io.vldq_lane.ready
-  io.vldq_rtag_do_deq := io.vldq_rtag.ready && vldq.io.deq_rtag.valid
 }
 
 class VMUCounters(implicit conf: HwachaConfiguration) extends Module

@@ -37,7 +37,7 @@ case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_pe
   val nvldq = 128
   val nvsdq = 16
   val nvpasdq = 31
-  val nvsreq = 31
+  val nvsreq = 128
   val nvlreq = nvldq
 }
 
@@ -169,7 +169,6 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   icache.io.cpu <> vu.io.imem
 
   // Connect VU to D$
-  io.mem.req.bits.data := RegEnable(vu.io.dmem_req.bits.data, vu.io.dmem_req.valid && isWrite(vu.io.dmem_req.bits.cmd))
   io.mem.req <> vu.io.dmem_req
   vu.io.dmem_resp := io.mem.resp
 

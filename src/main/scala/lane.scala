@@ -22,6 +22,7 @@ class VMUIO extends Bundle
 
   val vldq_rdy  = Bool(OUTPUT)
   val vldq_bits = Bits(INPUT, SZ_DATA)
+
   val vsdq_val  = Bool(OUTPUT)
   val vsdq_mem = new io_vxu_mem_cmd().asOutput
   val vsdq_bits = Bits(OUTPUT, SZ_DATA)

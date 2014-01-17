@@ -101,11 +101,6 @@ class io_vpaq_bundle extends Bundle
   val addr = Bits(width = PADDR_BITS)
 }
 
-class io_vxu_to_vmu extends Bundle
-{
-  val qcnt = UInt(width = SZ_QCNT)
-}
-
 class io_vxu_aiw_bundle extends Bundle
 {
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
