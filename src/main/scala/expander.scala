@@ -585,6 +585,10 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   next_vsdq_mask(conf.shift_buf_read-1) := Bits(0,SZ_BANK)
   next_utmemop(conf.shift_buf_read-1) := Bool(false)
 
+  val viu_rest = io.seq_fn.viu(SZ_VIU_DW + SZ_VIU_FP + SZ_VIU_OP - 1, 0)
+  val viu_t1 = io.seq_fn.viu(RG_VIU_T1)
+  val viu_t0 = io.seq_fn.viu(RG_VIU_T0)
+
   when (io.seq.viu)
   {
     when (io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR))
@@ -592,12 +596,12 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       next_viu(1) := Bool(true)
       when (io.seq_regid_imm.vs_zero)
       {
-        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(M0, M0, io.seq_fn.viu(6,0)) }
-        .otherwise { next_viu_fn(1) := Cat(M0, io.seq_fn.viu(8,0)) }
+        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(M0, M0, viu_rest) }
+        .otherwise { next_viu_fn(1) := Cat(M0, viu_t1, viu_rest) }
       }
       .otherwise
       {
-        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(io.seq_fn.viu(10,9), M0, io.seq_fn.viu(6,0)) }
+        when (io.seq_regid_imm.vt_zero) { next_viu_fn(1) := Cat(viu_t0, M0, viu_rest) }
         .otherwise { next_viu_fn(1) := io.seq_fn.viu }
       }
     }
@@ -608,7 +612,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       next_viu_utidx(0) := io.seq_regid_imm.utidx
       next_viu_imm(0) := io.seq_regid_imm.imm
 
-      when (io.seq_regid_imm.vs_zero) { next_viu_fn(0) := Cat(M0, io.seq_fn.viu(8,0)) }
+      when (io.seq_regid_imm.vs_zero) { next_viu_fn(0) := Cat(M0, viu_t1, viu_rest) }
     }
   }
   when (io.seq.vau0)

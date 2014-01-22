@@ -201,7 +201,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     io.cp_sfma.in3 := io.in2
 
     val dpp = io.fn(RG_VAU1_FP)
-    val dp  = ShiftRegister(dpp(0), conf.dfma_stages-1)
+    val dp  = ShiftRegister(dpp === FPD, conf.dfma_stages-1)
 
     io.out := Mux(dp, io.cp_dfma.out,
                   Cat(Bits("hFFFFFFFF",32), ShiftRegister(io.cp_sfma.out, conf.dfma_stages-conf.sfma_stages)))

@@ -126,11 +126,10 @@ trait DecodeConstants
   val DW32 = Bits("b0", 1)
   val DW64 = Bits("b1", 1)
 
-  val FPX = Bits("b00", 2)
-  val FP_ = Bits("b0", 1)
+  val FP_ = Bits("b00", 2)
+  val FPS = Bits("b00", 2)
+  val FPD = Bits("b01", 2)
   val FPH = Bits("b10", 2)
-  val FPS = Bits("b0", 1)
-  val FPD = Bits("b1", 1)
 
   val MTF_X = Bool(false)
   val MTF_N = Bool(false)
@@ -145,7 +144,7 @@ trait VIUConstants
   val viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = viu_BRANCH
   val SZ_VIU_OP = viu_ADD.getWidth
   val viu_X = Bits(0, SZ_VIU_OP)
-  val SZ_VIU_FP = 1
+  val SZ_VIU_FP = 2
   val SZ_VIU_DW = 1
   val SZ_VIU_T1 = 2
   val SZ_VIU_T0 = 2
@@ -153,8 +152,8 @@ trait VIUConstants
 
   def isVIUBranch(viu: UInt) = viu >= viu_BNE && viu <= viu_BGEU
 
-  val SZ_VBR_FN = 11
-  val SZ_VIU_FN = 11
+  val SZ_VBR_FN = 12
+  val SZ_VIU_FN = 12
 
   val RG_VIU_T = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T-1           , SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW)
   val RG_VIU_T0 = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1+SZ_VIU_T0-1, SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1)
@@ -217,9 +216,9 @@ trait VAU2Constants
   val SZ_VAU2 = vau2_CLTF.getWidth
   val vau2_X = Bits(0, SZ_VAU2)
 
-  val SZ_VAU2_FN = 8
+  val SZ_VAU2_FN = 9
 
-  val RG_VAU2_FP = 7
+  val RG_VAU2_FP = (8,7)
   val RG_VAU2_RM = (6,4)
   val RG_VAU2_FN = (SZ_VAU2-1,0)
 }
