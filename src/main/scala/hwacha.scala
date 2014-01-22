@@ -47,9 +47,10 @@ trait HwachaDecodeConstants
   val N = Bool(false)
   val X = Bits("b?", 1)
 
-  val VRT_X = Bits("b?", 1)
-  val VRT_S = Bits(0, 1)
-  val VRT_F = Bits(1, 1)
+  val VCT_X = Bits("b?", 1)
+  val VCT_S = Bits(0, 2)
+  val VCT_F = Bits(1, 2)
+  val VCT_A = Bits(2, 2)
 
   val VR_X   = Bits("b?", 1)
   val VR_RS1 = Bits(0, 1)
@@ -61,61 +62,79 @@ trait HwachaDecodeConstants
   val VIMM_RS2  = Bits(2,3)
   val VIMM_ADDR = Bits(3,3)
   val VIMM_PREC = Bits(4,3)
+
+  val RESP_X     = Bits("b??",2)
+  val RESP_NVL   = Bits(0,2)
+  val RESP_CAUSE = Bits(1,2)
+  val RESP_AUX   = Bits(2,2)
 }
 
 object HwachaDecodeTable extends HwachaDecodeConstants
 {
   import HwachaInstructions._
   import Commands._
-                //                                                               vcmd?       checkvl?
-                //                                                               | vimm1?    |
-                //   val                                                         | | vimm2?  |
-                //   |  vcmd         regtype reg1   reg2    imm1      imm2       | | | resp? |
-                //   |  |            |       |      |       |         |          | | | |     |
-  val default = List(N, CMD_X,       VRT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,    N)
+                // * means special case decode code below                          checkvl?
+                //                                                                 | vcmd?
+                //                                                                 | | vimm1?
+                //     val                                                         | | | vimm2?  resp?
+                //     |  vcmd         vctype  reg1   reg2    imm1      imm2       | | | | vcnt? | resp_type
+                //     |  |            |       |      |       |         |          | | | | |     | |
+  val default =   List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    )
   val table = Array( 
     // Configurable precision instructions
-    VSETPREC->  List(Y, CMD_VSETPREC,VRT_X,  VR_X,  VR_X,   VIMM_PREC,VIMM_X,    Y,Y,N,N,    N),
+    VSETPREC   -> List(Y, CMD_VSETPREC,VCT_X,  VR_X,  VR_X,   VIMM_PREC,VIMM_X,    N,Y,Y,N,N,    N,RESP_X    ),
     // General instructions
-    VSETCFG ->  List(Y, CMD_VVCFGIVL,VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,N,    N),
-    VSETVL  ->  List(Y, CMD_VSETVL,  VRT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    Y,Y,N,Y,    N),
-    VF      ->  List(Y, CMD_VF,      VRT_X,  VR_X,  VR_X,   VIMM_ADDR,VIMM_X,    Y,Y,N,N,    Y),
-    VMVV    ->  List(Y, CMD_VMVV,    VRT_S,  VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,N,N,N,    Y),
-    VMSV    ->  List(Y, CMD_VMSV,    VRT_S,  VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
+    VSETCFG    -> List(Y, CMD_VVCFGIVL,VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    N,RESP_X    ), //* set maxvl register
+    VSETVL     -> List(Y, CMD_VSETVL,  VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    Y,RESP_NVL  ), //* set vl register
+    VF         -> List(Y, CMD_VF,      VCT_X,  VR_X,  VR_X,   VIMM_ADDR,VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VMVV       -> List(Y, CMD_VMVV,    VCT_S,  VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,Y,N,N,N,    N,RESP_X    ),
+    VMSV       -> List(Y, CMD_VMSV,    VCT_S,  VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
     // Memory load/stores (x-registers)
-    VLD     ->  List(Y, CMD_VLD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLW     ->  List(Y, CMD_VLW,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLWU    ->  List(Y, CMD_VLWU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLH     ->  List(Y, CMD_VLH,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLHU    ->  List(Y, CMD_VLHU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLB     ->  List(Y, CMD_VLB,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VLBU    ->  List(Y, CMD_VLBU,    VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VSD     ->  List(Y, CMD_VSD,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VSW     ->  List(Y, CMD_VSW,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VSH     ->  List(Y, CMD_VSH,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VSB     ->  List(Y, CMD_VSB,     VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
+    VLD        -> List(Y, CMD_VLD,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLW        -> List(Y, CMD_VLW,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLWU       -> List(Y, CMD_VLWU,    VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLH        -> List(Y, CMD_VLH,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLHU       -> List(Y, CMD_VLHU,    VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLB        -> List(Y, CMD_VLB,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VLBU       -> List(Y, CMD_VLBU,    VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VSD        -> List(Y, CMD_VSD,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VSW        -> List(Y, CMD_VSW,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VSH        -> List(Y, CMD_VSH,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VSB        -> List(Y, CMD_VSB,     VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
     // Memory load/stores (fp-registers)
-    VFLD     ->  List(Y, CMD_VFLD,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VFLW     ->  List(Y, CMD_VFLW,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VFSD     ->  List(Y, CMD_VFSD,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
-    VFSW     ->  List(Y, CMD_VFSW,   VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,N,N,    Y),
+    VFLD       -> List(Y, CMD_VFLD,    VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VFLW       -> List(Y, CMD_VFLW,    VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VFSD       -> List(Y, CMD_VFSD,    VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
+    VFSW       -> List(Y, CMD_VFSW,    VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X    ),
     // Memory strided load/stores (x-registers)
-    VLSTD   ->  List(Y, CMD_VLSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTW   ->  List(Y, CMD_VLSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTWU  ->  List(Y, CMD_VLSTWU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTH   ->  List(Y, CMD_VLSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTHU  ->  List(Y, CMD_VLSTHU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTB   ->  List(Y, CMD_VLSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VLSTBU  ->  List(Y, CMD_VLSTBU,  VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VSSTD   ->  List(Y, CMD_VSSTD,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VSSTW   ->  List(Y, CMD_VSSTW,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VSSTH   ->  List(Y, CMD_VSSTH,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VSSTB   ->  List(Y, CMD_VSSTB,   VRT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
+    VLSTD      -> List(Y, CMD_VLSTD,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTW      -> List(Y, CMD_VLSTW,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTWU     -> List(Y, CMD_VLSTWU,  VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTH      -> List(Y, CMD_VLSTH,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTHU     -> List(Y, CMD_VLSTHU,  VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTB      -> List(Y, CMD_VLSTB,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VLSTBU     -> List(Y, CMD_VLSTBU,  VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VSSTD      -> List(Y, CMD_VSSTD,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VSSTW      -> List(Y, CMD_VSSTW,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VSSTH      -> List(Y, CMD_VSSTH,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VSSTB      -> List(Y, CMD_VSSTB,   VCT_S,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
     // Memory strided load/stores (fp-registers)
-    VFLSTD  ->  List(Y, CMD_VFLSTD,  VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VFLSTW  ->  List(Y, CMD_VFLSTW,  VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VFSSTD  ->  List(Y, CMD_VFSSTD,  VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y),
-    VFSSTW  ->  List(Y, CMD_VFSSTW,  VRT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,N,    Y)
+    VFLSTD     -> List(Y, CMD_VFLSTD,  VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VFLSTW     -> List(Y, CMD_VFLSTW,  VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VFSSTD     -> List(Y, CMD_VFSSTD,  VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    VFSSTW     -> List(Y, CMD_VFSSTW,  VCT_F,  VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,RESP_X    ),
+    // Exception and save/restore instructions
+    VXCPTCAUSE -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE),
+    VXCPTAUX   -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    Y,RESP_AUX  ),
+    VXCPTSAVE  -> List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    ),
+    VXCPTRESTORE->List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    ),
+    VXCPTKILL  -> List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    ),
+    VXCPTEVAC  -> List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    ),
+    VXCPTHOLD  -> List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X    ),
+    VENQCMD    -> List(Y, CMD_X,       VCT_A,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,Y,N,N,N,    N,RESP_X    ),
+    VENQIMM1   -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_RS1, VIMM_X,    N,N,Y,N,N,    N,RESP_X    ),
+    VENQIMM2   -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_RS1,  N,N,N,Y,N,    N,RESP_X    ),
+    VENQCNT    -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,Y,    N,RESP_X    )
   )
 }
 
@@ -146,16 +165,17 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val resp_q = Module( new Queue(io.resp.bits, 2) )
   resp_q.io.deq <> io.resp
 
-  val (inst_val: Bool) :: sel_vcmd :: sel_vrtype :: sel_vr1 :: sel_vr2 :: sel_vimm1 :: sel_vimm2 :: (emit_vcmd: Bool) :: (emit_vimm1: Bool) :: (emit_vimm2: Bool) :: (emit_response: Bool) :: (check_vl: Bool) :: Nil = cs
+  val (inst_val: Bool) :: sel_vcmd :: sel_vctype :: sel_vr1 :: sel_vr2 :: sel_vimm1 :: sel_vimm2 :: (check_vl: Bool) :: (emit_vcmd: Bool) :: (emit_vimm1: Bool) :: (emit_vimm2: Bool) :: (emit_cnt: Bool) :: (emit_response: Bool) :: sel_resp :: Nil = cs
 
   val cmd_valid = inst_val && io.cmd.valid && (!check_vl || cfg_vl != UInt(0))
   val resp_ready  = !emit_response || resp_q.io.enq.ready
   val vcmd_ready  = !emit_vcmd  || vu.io.vcmdq_user_ready
   val vimm1_ready = !emit_vimm1 || vu.io.vimm1q_user_ready
   val vimm2_ready = !emit_vimm2 || vu.io.vimm2q_user_ready
+  val vcnt_ready  = !emit_cnt || vu.io.vcmdq.cnt.ready
 
   def construct_ready(exclude: Bool): Bool = {
-    val all_readies = Array(resp_ready, vcmd_ready, vimm1_ready, vimm2_ready)
+    val all_readies = Array(resp_ready, vcmd_ready, vimm1_ready, vimm2_ready, vcnt_ready)
     all_readies.filter(_ != exclude).reduce(_&&_)
   }
 
@@ -236,10 +256,11 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // Hookup vcmdq.cmd
   val vr1 = Mux(sel_vr1===VR_RS1, raw_inst(19,15), raw_inst(11,7))
   val vr2 = Mux(sel_vr2===VR_RS1, raw_inst(19,15), raw_inst(11,7))
+  val sel_vrtype = Mux(sel_vctype===VCT_F, UInt(1,1), UInt(0,1))
   val construct_vcmd = Cat(sel_vcmd, sel_vrtype, vr1, sel_vrtype, vr2)
 
   vu.io.vcmdq.cmd.valid := cmd_valid && emit_vcmd && construct_ready(vcmd_ready) 
-  vu.io.vcmdq.cmd.bits := construct_vcmd
+  vu.io.vcmdq.cmd.bits := Mux(sel_vctype===VCT_A, io.cmd.bits.rs1, construct_vcmd)
   
   // Hookup vcmdq.imm1
   vu.io.vcmdq.imm1.valid := cmd_valid && emit_vimm1 && construct_ready(vimm1_ready) 
@@ -260,14 +281,21 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     VIMM_ADDR -> vimm_addr,
     VIMM_PREC -> UInt(0, 64)
   ))
+
+  // Hookup vcmdq.cnt
+  vu.io.vcmdq.cnt.valid := cmd_valid && emit_cnt && construct_ready(vcnt_ready)
+  vu.io.vcmdq.cnt.bits := io.cmd.bits.rs1
   
   // Hookup resp queue
   resp_q.io.enq.valid := cmd_valid && emit_response && construct_ready(resp_ready)
-  resp_q.io.enq.bits.data := new_vl
+  resp_q.io.enq.bits.data := MuxLookup(sel_resp, new_vl, Array(
+    RESP_NVL   -> new_vl,
+    RESP_CAUSE -> vu.io.irq_cause,
+    RESP_AUX   -> vu.io.irq_aux
+  ))
   resp_q.io.enq.bits.rd   := io.cmd.bits.inst.rd
 
   // TODO: hook this stuff up properly
-  vu.io.vcmdq.cnt.valid := Bool(false)
   vu.io.vpfcmdq.cmd.valid := Bool(false)
   vu.io.vpfcmdq.imm1.valid := Bool(false)
   vu.io.vpfcmdq.imm2.valid := Bool(false)
