@@ -53,6 +53,7 @@ trait VectorCommandQueueConstants
   val RG_XIMM1_NFREGS = (22,17)
   val RG_XIMM1_BACTIVE = (30,23)
   val RG_XIMM1_BCNT = (34,31)
+  val RG_XIMM1_XF_SPLIT = (45,35)
 
   val SZ_VIMM = 64
   val SZ_XIMM = 64

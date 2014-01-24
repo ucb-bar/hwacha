@@ -259,7 +259,9 @@ class IssueTVEC extends Module
   val next_eff_nfregs = Bits(width = SZ_REGCNT)
   val next_bactive = Bits(width = SZ_BANK)
   val next_bcnt = Bits(width = SZ_BCNT)
-  val next_stride = Bits(width = SZ_REGLEN)
+  val next_xstride = Bits(width = SZ_REGLEN)
+  val next_fstride = Bits(width = SZ_REGLEN)
+  val next_xf_split = Bits(width = SZ_BANK)
   val next_precision = Bits(width = SZ_PREC)
 
   val reg_vlen = Reg(next = next_vlen, init = Bits(0,SZ_VLEN))
@@ -268,11 +270,14 @@ class IssueTVEC extends Module
   val reg_eff_nfregs = Reg(next = next_eff_nfregs, init = Bits(32,SZ_REGCNT))
   val reg_bactive = Reg(next = next_bactive, init = Bits("b1111_1111",SZ_BANK))
   val reg_bcnt = Reg(next = next_bcnt, init = Bits(8,SZ_LGBANK1))
-  val reg_stride = Reg(next = next_stride, init = Bits(63,SZ_REGLEN))
+  val reg_xstride = Reg(next = next_xstride, init = Bits(63,SZ_REGLEN))
+  val reg_fstride = Reg(next = next_fstride, init = Bits(63,SZ_REGLEN))
+  val reg_xf_split = Reg(next = next_xf_split, init = Bits(0,SZ_BANK))
   val reg_precision = Reg(next = next_precision, init = PREC_DOUBLE)
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
-  val regid_base = (cnt >> UInt(3)) * reg_stride
+  val regid_xbase = (cnt >> UInt(3)) * reg_xstride
+  val regid_fbase = ((cnt >> UInt(3)) * reg_fstride) + reg_xf_split
 
   io.aiw_cntb.bits := cnt
 
@@ -283,7 +288,9 @@ class IssueTVEC extends Module
   next_eff_nfregs := reg_eff_nfregs
   next_bactive := reg_bactive
   next_bcnt := reg_bcnt
-  next_stride := reg_stride
+  next_xstride := reg_xstride
+  next_fstride := reg_fstride
+  next_xf_split := reg_xf_split
   next_precision := reg_precision
 
   next_eff_nfregs := MuxLookup(
@@ -300,8 +307,10 @@ class IssueTVEC extends Module
     next_nfregs := io.vcmdq.imm1.bits(RG_XIMM1_NFREGS)
     next_bactive := io.vcmdq.imm1.bits(RG_XIMM1_BACTIVE)
     next_bcnt := io.vcmdq.imm1.bits(RG_XIMM1_BCNT)
-    // next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
-    next_stride := next_nxregs + next_nfregs - Bits(1,2)
+    next_xstride := next_nxregs - Bits(1,2)
+    next_fstride := next_eff_nfregs
+    // location of X/F register split in bank: number of xregs times the number of uts per bank
+    next_xf_split := io.vcmdq.imm1.bits(RG_XIMM1_XF_SPLIT) // don't add back 1
   }
   when (fire_prec)
   {
@@ -312,7 +321,8 @@ class IssueTVEC extends Module
       UInt(64) -> PREC_DOUBLE))
     // next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
     printf("Vector unit configured to %d bits\n", io.vcmdq.imm1.bits(RG_XIMM1_PREC))
-    printf("New stride (%d) from old stride (%d)\n", next_stride, reg_stride)
+    printf("New xstride (%d) from old xstride (%d)\n", next_xstride, reg_xstride)
+    printf("New fstride (%d) from old fstride (%d)\n", next_fstride, reg_fstride)
   }
   when (fire_setvl)
   {
@@ -340,13 +350,19 @@ class IssueTVEC extends Module
   io.vf.nfregs := reg_nfregs
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
-  io.vf.stride := reg_stride
+  io.vf.xstride := reg_xstride
+  io.vf.fstride := reg_fstride
+  io.vf.xf_split := reg_xf_split
   io.vf.vlen := reg_vlen
 
+  val rtype_vd = vd(5)
+
   io.issue_to_hazard.bcnt := reg_bcnt
-  io.issue_to_hazard.stride := reg_stride
+  io.issue_to_hazard.stride := Mux(rtype_vd, reg_fstride, reg_xstride)
   io.issue_to_seq.vlen := reg_vlen - cnt
-  io.issue_to_seq.stride := reg_stride
+  io.issue_to_seq.xf_split := reg_xf_split
+  io.issue_to_seq.xstride := reg_xstride
+  io.issue_to_seq.fstride := reg_fstride
   io.issue_to_seq.bcnt := reg_bcnt
   io.issue_to_lane.bactive := reg_bactive
 
@@ -398,16 +414,20 @@ class IssueTVEC extends Module
 
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)
-  val rtype_vd = vd(5)
+  // val rtype_vd = vd(5)
   val rtype_vt = vt(5)
 
   io.decoded.vlen := reg_vlen - cnt
   io.decoded.utidx := Bits(0)
-  io.decoded.vd_base := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1)
+  // nxregs includes the zero register, which makes things "work out"
+  // io.decoded.vd_base := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
+  io.decoded.vd_base := Mux(rtype_vd, regid_fbase + vd(4,0), regid_xbase + vd_m1)
   io.decoded.vs := Bits(0,SZ_BREGLEN)
-  io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
+  // io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
+  io.decoded.vt := Mux(rtype_vt, regid_fbase + vt(4,0), regid_xbase + vt_m1)
   io.decoded.vr := Bits(0,SZ_BREGLEN)
-  io.decoded.vd := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
+  // io.decoded.vd := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
+  io.decoded.vd := Mux(rtype_vd, regid_fbase + vd(4,0), regid_xbase + vd_m1)
   io.decoded.vm := Bits(0, SZ_BMASK)  
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)
@@ -417,6 +437,7 @@ class IssueTVEC extends Module
   io.decoded.vt_active := vt_active.toBool
   io.decoded.vr_active := Bool(false)
   io.decoded.vd_active := vd_active.toBool
+  io.decoded.rtype := Cat(Bool(false), rtype_vt, Bool(false), rtype_vd) // vs vt vr vd
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float.toBool

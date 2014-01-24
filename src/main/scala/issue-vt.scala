@@ -49,7 +49,9 @@ class io_vf extends Bundle
   val nfregs = Bits(OUTPUT, SZ_REGCNT)
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
   val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
-  val stride = Bits(OUTPUT, SZ_REGLEN)
+  val xf_split = Bits(OUTPUT, SZ_BANK)
+  val xstride = Bits(OUTPUT, SZ_REGLEN)
+  val fstride = Bits(OUTPUT, SZ_REGLEN)
   val vlen = Bits(OUTPUT, SZ_VLEN)
 }
 
@@ -323,7 +325,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     ))
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
-  val regid_base = (cnt >> UInt(3)) * io.vf.stride
+  val regid_xbase = (cnt >> UInt(3)) * io.vf.xstride
+  val regid_fbase = ((cnt >> UInt(3)) * io.vf.fstride) + io.vf.xf_split
 
   io.vcmdq.cnt.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.aiw_cntb.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
@@ -374,10 +377,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_fn)
   io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_fn)
 
-  val vs = Cat(rtype_vs,io.imem.resp.bits.data(19,15)) //rs1
-  val vt = Cat(rtype_vt,io.imem.resp.bits.data(24,20)) //rs2
-  val vr = Cat(rtype_vr,io.imem.resp.bits.data(31,27)) //rs3
-  val vd = Cat(rtype_vd,io.imem.resp.bits.data(11, 7)) //rd
+  val vs = Cat(rtype_vs, io.imem.resp.bits.data(19,15)) // rs1
+  val vt = Cat(rtype_vt, io.imem.resp.bits.data(24,20)) // rs2
+  val vr = Cat(rtype_vr, io.imem.resp.bits.data(31,27)) // rs3
+  val vd = Cat(rtype_vd, io.imem.resp.bits.data(11, 7)) // rd
 
   val vs_m1 = Cat(Bits(0,1),vs(4,0)) - UInt(1,1)
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
@@ -388,14 +391,23 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   io.decoded.vlen := io.vf.vlen - cnt
   io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
-  io.decoded.vs_base := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
-  io.decoded.vt_base := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
-  io.decoded.vr_base := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
-  io.decoded.vd_base := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1)
-  io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
-  io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
-  io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base
-  io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1) + regid_base
+  // nxregs counts the zero register so it "just works out"
+  // io.decoded.vs_base := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
+  // io.decoded.vt_base := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
+  // io.decoded.vr_base := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
+  // io.decoded.vd_base := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1)
+  io.decoded.vs_base := Mux(rtype_vs, vs(4,0) + io.vf.xf_split, vs_m1)
+  io.decoded.vt_base := Mux(rtype_vt, vt(4,0) + io.vf.xf_split, vt_m1)
+  io.decoded.vr_base := Mux(rtype_vr, vr(4,0) + io.vf.xf_split, vr_m1)
+  io.decoded.vd_base := Mux(rtype_vd, vd(4,0) + io.vf.xf_split, vd_m1)
+  // io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
+  // io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
+  // io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base
+  // io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1) + regid_base
+  io.decoded.vs := Mux(rtype_vs, vs(4,0) + regid_fbase, vs_m1 + regid_xbase)
+  io.decoded.vt := Mux(rtype_vt, vt(4,0) + regid_fbase, vt_m1 + regid_xbase)
+  io.decoded.vr := Mux(rtype_vr, vr(4,0) + regid_fbase, vr_m1 + regid_xbase)
+  io.decoded.vd := Mux(rtype_vd, vd(4,0) + regid_fbase, vd_m1 + regid_xbase)
   io.decoded.vs_zero := vs === Bits(0,6)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := vr === Bits(0,6)
@@ -404,6 +416,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.decoded.vt_active := vt_active
   io.decoded.vr_active := vr_active
   io.decoded.vd_active := vd_active
+  io.decoded.rtype := Cat(rtype_vs, rtype_vt, rtype_vr, rtype_vd)
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float.toBool

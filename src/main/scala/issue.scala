@@ -65,6 +65,7 @@ class io_vxu_issue_regid_imm extends Bundle
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
   val vm = Bits(width = SZ_BMASK)
+  val rtype = Bits(width = 4)
   val vs_active = Bool()
   val vt_active = Bool()
   val vr_active = Bool()
@@ -96,13 +97,15 @@ class io_vxu_issue_op extends Bundle
 class io_vxu_issue_to_hazard extends Bundle
 {
   val bcnt = Bits(width = SZ_BCNT)
-  val stride = Bits(width = SZ_REGLEN)
+  val stride = Bits(width = SZ_REGLEN) // just for vd, stride known whether X or F
 }
 
 class io_vxu_issue_to_seq extends Bundle
 {
   val vlen = Bits(width = SZ_VLEN)
-  val stride = Bits(width = SZ_REGLEN)
+  val xf_split = Bits(width = SZ_BANK)
+  val xstride = Bits(width = SZ_REGLEN)
+  val fstride = Bits(width = SZ_REGLEN)
   val bcnt = Bits(width = SZ_BCNT)
 }
 
