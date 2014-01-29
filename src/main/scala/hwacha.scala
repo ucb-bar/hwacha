@@ -232,58 +232,46 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val reg_nxpr = Reg(init = UInt(0, 6))
   val reg_nfpr = Reg(init = UInt(0, 6))
 
-  val eff_nfpr = MuxLookup(reg_prec, nfpr, Array(
-    PREC_DOUBLE -> (nfpr),
-    PREC_SINGLE -> ((nfpr + UInt(1)) >> UInt(1)),
-    PREC_HALF   -> ((nfpr + UInt(3)) >> UInt(2))
+  val packing = MuxLookup(reg_prec, UInt(0), Array(
+    PREC_DOUBLE -> UInt(0),
+    PREC_SINGLE -> UInt(1),
+    PREC_HALF   -> UInt(2)
   ))
 
-  //val new_maxvl = Mux(nxpr+nfpr < UInt(2), UInt(hc.nreg_per_bank), UInt(hc.nreg_per_bank) / (nxpr-UInt(1) + nfpr)) << UInt(3)
-  // ROM implementation of above function
-  /*val def_nut_per_bank = UInt(hc.nreg_per_bank/(64-1))
-  val rom_nut_per_bank = Vec.tabulate(64){n => UInt(
-    if(n<2) (hc.nreg_per_bank) else (hc.nreg_per_bank/(n-1))
-  )}
-  val new_maxvl = Mux((nxpr+nfpr)>=UInt(64), def_nut_per_bank, rom_nut_per_bank((nxpr+nfpr)(5,0))) << UInt(3)
-  */
-  // Alternative ROM implementation that actually works
-  val rom_nut_per_bank = (0 to 64).toArray.map(n => (UInt(n),
-    UInt(if(n<2) (hc.nreg_per_bank) else (hc.nreg_per_bank/(n-1)), width=log2Up(hc.nreg_per_bank+1))
+  // vector length lookup
+  val regs_used = (Mux(nxpr === UInt(0), UInt(0), nxpr - UInt(1)) << packing) + nfpr
+  val vlen_width = log2Up(hc.nreg_per_bank + 1)
+  val rom_allocation_units = (0 to 164).toArray.map(n => (UInt(n),
+    UInt(if (n < 2) (hc.nreg_per_bank) else (hc.nreg_per_bank / n), width = vlen_width)
   ))
-  val new_maxvl = Lookup(nxpr + eff_nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
+
+  val ut_per_bank = Lookup(regs_used, rom_allocation_units.last._2, rom_allocation_units) << packing
+  val new_maxvl = ut_per_bank << UInt(3) // microthreads
   val xf_split = (new_maxvl >> UInt(3)) * (nxpr - UInt(1))
 
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
-  val new_vl_m1 = Mux(sel_vcmd===CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
+  val new_vl_m1 = Mux(sel_vcmd === CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
   val vimm_vlen = Cat(UInt(0,19), xf_split, UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
-  when(cmd_valid && construct_ready(null)) { 
-    switch(sel_vcmd) {
-      is(CMD_VVCFGIVL) {
+  when (cmd_valid && construct_ready(null)) {
+    switch (sel_vcmd) {
+      is (CMD_VVCFGIVL) {
         printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
         cfg_maxvl := new_maxvl
         cfg_vl := UInt(0)
         reg_nxpr := nxpr
         reg_nfpr := nfpr
       }
-      is(CMD_VSETVL) {
+      is (CMD_VSETVL) {
         cfg_vl := new_vl
       }
     }
   }
 
-  // set precision and maxvl
+  // set precision
   when (cmd_valid && sel_vcmd === CMD_VSETPREC && construct_ready(null)) {
-    val new_eff_nfpr = MuxLookup(next_prec, reg_nfpr, Array(
-      PREC_DOUBLE -> (reg_nfpr),
-      PREC_SINGLE -> ((reg_nfpr + UInt(1)) >> UInt(1)),
-      PREC_HALF   -> ((reg_nfpr + UInt(3)) >> UInt(2))
-    ))
-
     reg_prec := next_prec
-    val new_new_maxvl = Lookup(reg_nxpr + new_eff_nfpr, rom_nut_per_bank.last._2, rom_nut_per_bank) << UInt(3)
-    printf("setting maxvl to %d (was %d)\n", new_new_maxvl, cfg_maxvl)
-    cfg_maxvl := new_new_maxvl
+    printf("setting prec to %d\n", next_prec)
   }
 
 
