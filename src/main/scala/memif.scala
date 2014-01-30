@@ -95,27 +95,36 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   ldq_hp_bits := reg_mem_resp.bits.data_subword(15,0)
 
   val load_shift = reg_mem_resp.bits.tag(2,1)
-  val load_data_shift = MuxLookup(
-    load_shift, UInt(0),
-    Array(
-      Bits("b01") -> UInt(16),
-      Bits("b10") -> UInt(33),
-      Bits("b11") -> UInt(49)
-  ))
 
   io.vldq.valid := reg_mem_resp.valid && reg_mem_resp.bits.has_data
-  io.vldq.bits.data := MuxCase(
+
+  val load_data = MuxCase(
     Cat(Bits(0,1),reg_mem_resp.bits.data_subword(63,0)), 
     Array(
       (load_fp_d) -> ldq_dp_bits,
       (load_fp_w) -> Cat(Bits("hFFFFFFFF",32), ldq_sp_bits),
       (load_fp_h) -> Cat(Bits("h1FFFFFFFFFFFF",49), ldq_hp_bits)
-  )) << load_data_shift
-  io.vldq.bits.mask := MuxCase(
+    ))
+  io.vldq.bits.data := MuxLookup(
+    load_shift, Cat(Bits(1,1), Mux(load_fp_w, load_data(32), load_data(64)), load_data(63,0)),
+    Array(
+      Bits("b01") -> Cat(load_data(49,0), Bits("hFFFF",16)),
+      Bits("b10") -> Cat(load_data(32), load_data(32,0), Bits("hFFFFFFFF",32)),
+      Bits("b11") -> Cat(load_data(17,0), Bits("hFFFFFFFFFFFF",48))
+    ))
+
+  var load_mask = MuxCase(
     Bits("b1111"),
     Array(
       (load_fp && (io.prec === PREC_SINGLE)) -> Bits("b0011"),
       (load_fp && (io.prec === PREC_HALF))   -> Bits("b0001")
-  )) << load_shift
+    ))
+  io.vldq.bits.mask := MuxLookup(
+    load_shift, load_mask,
+    Array(
+      Bits("b01") -> Cat(load_mask(2,0), Bits(0,1)),
+      Bits("b10") -> Cat(load_mask(1,0), Bits(0,2)),
+      Bits("b11") -> Cat(load_mask(0),   Bits(0,3))
+    ))
   io.vldq.bits.rtag := reg_mem_resp.bits.tag.toUInt >> UInt(3)
 }

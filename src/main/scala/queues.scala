@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import scala.math._
+import Compaction._
 
 class io_qcnt(w: Int) extends Bundle
 {
@@ -74,12 +75,7 @@ class VLDQ(DATA_SIZE: Int, SUBWORDS: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) exten
   when (bump_wptr) { write_ptr := write_ptr1 }
   when (bump_rptr) { read_ptr := read_ptr1 }
 
-  // TODO: parameterize write mask expansion
-  val mem_mask = Cat(
-    Fill(17, io.enq.bits.mask(3)),
-    Fill(16, io.enq.bits.mask(2)),
-    Fill(17, io.enq.bits.mask(1)),
-    Fill(16, io.enq.bits.mask(0)))
+  val mem_mask = expand_mask(io.enq.bits.mask)
   val mem_data = Mem(io.enq.bits.data.clone, TAG_ENTRIES, seqRead = true)
   when (io.enq.valid) {
     mem_data.write(io.enq.bits.rtag, io.enq.bits.data, mem_mask)

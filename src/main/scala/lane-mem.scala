@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Compaction._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
@@ -49,21 +50,25 @@ class LaneMem extends Module
   val reg_lane_vsdq_bits = Reg(next=io.lane_vsdq_bits)
 
   val rf32f32_lo  = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_lo.io.in := reg_lane_vsdq_bits(32,0)
+  rf32f32_lo.io.in := unpack_float_s(reg_lane_vsdq_bits, 0)
   val vsdq_deq_sp_lo = rf32f32_lo.io.out
 
   val rf32f32_hi  = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_hi.io.in := reg_lane_vsdq_bits(65,33)
+  rf32f32_hi.io.in := unpack_float_s(reg_lane_vsdq_bits, 1)
   val vsdq_deq_sp_hi = rf32f32_hi.io.out
 
   val vsdq_deq_sp = Cat(vsdq_deq_sp_hi, vsdq_deq_sp_lo)
 
   val rf64f64  = Module(new hardfloat.recodedFloat64ToFloat64)
-  rf64f64.io.in := reg_lane_vsdq_bits
+  rf64f64.io.in := unpack_float_d(reg_lane_vsdq_bits, 0)
   val vsdq_deq_dp = rf64f64.io.out
 
-  val vsdq_deq_hp = Cat(reg_lane_vsdq_bits(64,33),reg_lane_vsdq_bits(31,0))
- 
+  val vsdq_deq_hp = Cat(
+    unpack_float_h(reg_lane_vsdq_bits, 3),
+    unpack_float_h(reg_lane_vsdq_bits, 2),
+    unpack_float_h(reg_lane_vsdq_bits, 1),
+    unpack_float_h(reg_lane_vsdq_bits, 0))
+
   io.vmu_vsdq_valid := reg_lane_vsdq_valid
   io.vmu_vsdq_bits := MuxCase(
       reg_lane_vsdq_bits(63,0), Array(	
