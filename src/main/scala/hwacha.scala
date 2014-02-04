@@ -206,11 +206,12 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.vtlb <> dtlb.io
   vu.io.vpftlb <> ptlb.io
 
-  // Busy signal for fencing TODO: CONNECT
+  // Busy signal for fencing
   io.busy := vu.io.busy || cmd_valid
 
   // TODO: SETUP PREFETCH QUEUES
-  // TODO: SETUP INTERRUPT
+
+  // Setup interrupt 
   io.interrupt := vu.io.irq
 
   val reg_prec = Reg(init = PREC_DOUBLE)
@@ -339,7 +340,6 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.vpfcmdq.imm1.valid := Bool(false)
   vu.io.vpfcmdq.imm2.valid := Bool(false)
   vu.io.vpfcmdq.cnt.valid := Bool(false)
-  vu.io.xcpt.exception := Bool(false)
 
   // Connect FMA units
   io.cp_dfma <> vu.io.cp_dfma
