@@ -48,12 +48,12 @@ trait VectorCommandQueueConstants
   val RG_XCMD_VD = (11,6)
   val RG_XCMD_VT = (5,0)
   val RG_XIMM1_VLEN = (10,0)
-  val RG_XIMM1_PREC = (6,0)
   val RG_XIMM1_NXREGS = (16,11)
   val RG_XIMM1_NFREGS = (22,17)
   val RG_XIMM1_BACTIVE = (30,23)
   val RG_XIMM1_BCNT = (34,31)
   val RG_XIMM1_XF_SPLIT = (45,35)
+  val RG_XIMM1_PREC = (47,46)
 
   val SZ_VIMM = 64
   val SZ_XIMM = 64

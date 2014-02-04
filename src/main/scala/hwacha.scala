@@ -61,7 +61,6 @@ trait HwachaDecodeConstants
   val VIMM_RS1  = Bits(1,3)
   val VIMM_RS2  = Bits(2,3)
   val VIMM_ADDR = Bits(3,3)
-  val VIMM_PREC = Bits(4,3)
 
   val RESP_X     = Bits("b???",3)
   val RESP_NVL   = Bits(0,3)
@@ -88,8 +87,6 @@ object HwachaDecodeTable extends HwachaDecodeConstants
                 //     |  |            |       |      |       |         |          | | | | |     | |           | | |
   val default =   List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X,     N,N,N)
   val table = Array( 
-    // Configurable precision instructions
-    VSETPREC   -> List(Y, CMD_VSETPREC,VCT_X,  VR_X,  VR_X,   VIMM_PREC,VIMM_X,    N,Y,Y,N,N,    N,RESP_X,     N,N,N),
     // General instructions
     VSETCFG    -> List(Y, CMD_VVCFGIVL,VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    N,RESP_X,     N,N,N), //* set maxvl register
     VSETVL     -> List(Y, CMD_VSETVL,  VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    Y,RESP_NVL,   N,N,N), //* set vl register
@@ -218,17 +215,14 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val reg_prec = Reg(init = PREC_DOUBLE)
   val next_prec = Bits(width = SZ_PREC)
 
-  val prec = (inst_i_imm(11,5)).toUInt
-  val vimm_prec = UInt(width = 64)
+  val prec = (io.cmd.bits.rs1(13,12)).zext.toUInt
   if (conf.confprec) {
-    vimm_prec := Cat(UInt(0,59), prec(6,0))
-    next_prec := MuxLookup(vimm_prec, PREC_DOUBLE, Array(
-      UInt(64) -> PREC_DOUBLE,
-      UInt(32) -> PREC_SINGLE,
-      UInt(16) -> PREC_HALF
+    next_prec := MuxLookup(prec, PREC_DOUBLE, Array(
+      UInt(0,2) -> PREC_DOUBLE,
+      UInt(1,2) -> PREC_SINGLE,
+      UInt(2,2) -> PREC_HALF
     ))
   } else {
-    vimm_prec := UInt(64, 64)
     next_prec := PREC_DOUBLE
   }
 
@@ -236,7 +230,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val nxpr = (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
   val nfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
 
-  val packing = MuxLookup(reg_prec, UInt(0), Array(
+  val packing = MuxLookup(next_prec, UInt(0), Array(
     PREC_DOUBLE -> UInt(0),
     PREC_SINGLE -> UInt(1),
     PREC_HALF   -> UInt(2)
@@ -256,27 +250,22 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
   val new_vl_m1 = Mux(sel_vcmd === CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
-  val vimm_vlen = Cat(UInt(0,19), xf_split, UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
+  val vimm_vlen = Cat(UInt(0,17), next_prec, xf_split, UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
   when (cmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VVCFGIVL) {
         printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
+        printf("setting prec to %d (0 = DP, 1 = SP, 2 = HP)\n", next_prec)
         cfg_maxvl := new_maxvl
         cfg_vl := UInt(0)
         cfg_regs := Cat(nfpr(5,0),nxpr(5,0))
+        reg_prec := next_prec
       }
       is (CMD_VSETVL) {
         cfg_vl := new_vl
       }
     }
   }
-
-  // set precision
-  when (cmd_valid && sel_vcmd === CMD_VSETPREC && construct_ready(null)) {
-    reg_prec := next_prec
-    printf("setting prec to %d\n", next_prec)
-  }
-
 
   // Calculate the vf address
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
@@ -300,8 +289,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
-    VIMM_ADDR -> vimm_addr,
-    VIMM_PREC -> vimm_prec
+    VIMM_ADDR -> vimm_addr
   ))
 
   // Hookup vcmdq.imm2
@@ -310,8 +298,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
-    VIMM_ADDR -> vimm_addr,
-    VIMM_PREC -> UInt(0, 64)
+    VIMM_ADDR -> vimm_addr
   ))
 
   // Hookup vcmdq.cnt
