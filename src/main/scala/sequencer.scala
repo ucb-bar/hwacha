@@ -377,7 +377,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   when (io.fire.vau1)
   {
     next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := turbo_last // car battery?
+    next_last(next_ptr1) := turbo_last
     next_vau1(next_ptr1) := Bool(true)
     next_fn_vau1(next_ptr1) := io.fire_fn.vau1
     next_vlen(next_ptr1) := io.fire_regid_imm.vlen

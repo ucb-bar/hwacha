@@ -319,7 +319,6 @@ class IssueTVEC extends Module
       UInt(16) -> PREC_HALF,
       UInt(32) -> PREC_SINGLE,
       UInt(64) -> PREC_DOUBLE))
-    // next_stride := next_nxregs + next_eff_nfregs - Bits(1,2)
     printf("Vector unit configured to %d bits\n", io.vcmdq.imm1.bits(RG_XIMM1_PREC))
     printf("New xstride (%d) from old xstride (%d)\n", next_xstride, reg_xstride)
     printf("New fstride (%d) from old fstride (%d)\n", next_fstride, reg_fstride)
@@ -356,6 +355,7 @@ class IssueTVEC extends Module
   io.vf.vlen := reg_vlen
 
   val rtype_vd = vd(5)
+  val rtype_vt = vt(5)
 
   io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_hazard.stride := Mux(rtype_vd, reg_fstride, reg_xstride)
@@ -414,19 +414,14 @@ class IssueTVEC extends Module
 
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)
-  // val rtype_vd = vd(5)
-  val rtype_vt = vt(5)
 
   io.decoded.vlen := reg_vlen - cnt
   io.decoded.utidx := Bits(0)
   // nxregs includes the zero register, which makes things "work out"
-  // io.decoded.vd_base := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
   io.decoded.vd_base := Mux(rtype_vd, regid_fbase + vd(4,0), regid_xbase + vd_m1)
   io.decoded.vs := Bits(0,SZ_BREGLEN)
-  // io.decoded.vt := Mux(rtype_vt, vt_m1 + reg_nxregs, vt_m1) + regid_base
   io.decoded.vt := Mux(rtype_vt, regid_fbase + vt(4,0), regid_xbase + vt_m1)
   io.decoded.vr := Bits(0,SZ_BREGLEN)
-  // io.decoded.vd := Mux(rtype_vd, vd_m1 + reg_nxregs, vd_m1) + regid_base
   io.decoded.vd := Mux(rtype_vd, regid_fbase + vd(4,0), regid_xbase + vd_m1)
   io.decoded.vm := Bits(0, SZ_BMASK)  
   io.decoded.vs_zero := Bool(true)
