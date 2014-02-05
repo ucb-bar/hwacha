@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Compaction._
 
 class Shifter extends Module
 {
@@ -98,15 +99,21 @@ class BankALU extends Module
   val ltu = (s1_in0.toUInt < s1_in1.toUInt)
   val lt = (s1_in0(63) === s1_in1(63)) && ltu || s1_in0(63) && ~s1_in1(63)
 
+  val unpacked_s_s1_in0 = unpack_float_s(s1_in0, 0)
+  val unpacked_s_s1_in1 = unpack_float_s(s1_in1, 0)
+
+  val unpacked_d_s1_in0 = unpack_float_d(s1_in0, 0)
+  val unpacked_d_s1_in1 = unpack_float_d(s1_in1, 0)
+
   val comp_sp = Module(new hardfloat.recodedFloat32Compare(24,8))
-  comp_sp.io.a := s1_in0(32,0)
-  comp_sp.io.b := s1_in1(32,0)
+  comp_sp.io.a := unpacked_s_s1_in0
+  comp_sp.io.b := unpacked_s_s1_in1
   val less_sp = comp_sp.io.a_lt_b
   val equal_sp = comp_sp.io.a_eq_b
 
   val comp_dp = Module(new hardfloat.recodedFloat64Compare(53,11))
-  comp_dp.io.a := s1_in0
-  comp_dp.io.b := s1_in1
+  comp_dp.io.a := unpacked_d_s1_in0
+  comp_dp.io.b := unpacked_d_s1_in1
   val less_dp = comp_dp.io.a_lt_b
   val equal_dp = comp_dp.io.a_eq_b
 
@@ -118,22 +125,22 @@ class BankALU extends Module
     viu_FN(viu_FLT)  & (viu_FP(FPS) & less_sp | viu_FP(FPD) & less_dp)
 
   val sj_sp =
-    viu_FN(viu_FSJ) & s1_in1(32)   |
-    viu_FN(viu_FSJN) & ~s1_in1(32) |
-    viu_FN(viu_FSJX) & (s1_in1(32) ^ s1_in0(32))
+    viu_FN(viu_FSJ) & unpacked_s_s1_in1(32)   |
+    viu_FN(viu_FSJN) & ~unpacked_s_s1_in1(32) |
+    viu_FN(viu_FSJX) & (unpacked_s_s1_in1(32) ^ unpacked_s_s1_in0(32))
 
   val sj_dp = 
-    viu_FN(viu_FSJ) & s1_in1(64)   |
-    viu_FN(viu_FSJN) & ~s1_in1(64) |
-    viu_FN(viu_FSJX) & (s1_in1(64) ^ s1_in0(64))
+    viu_FN(viu_FSJ) & unpacked_d_s1_in1(64)   |
+    viu_FN(viu_FSJN) & ~unpacked_d_s1_in1(64) |
+    viu_FN(viu_FSJX) & (unpacked_d_s1_in1(64) ^ unpacked_d_s1_in0(64))
 
   val is_in0_nan =
-    viu_FP(FPS) & (s1_in0(31,29) === Bits("b111", 3)) |
-    viu_FP(FPD) & (s1_in0(63,61) === Bits("b111", 3))
+    viu_FP(FPS) & (unpacked_s_s1_in0(31,29) === Bits("b111", 3)) |
+    viu_FP(FPD) & (unpacked_d_s1_in0(63,61) === Bits("b111", 3))
 
   val is_in1_nan = 
-    viu_FP(FPS) & (s1_in1(31,29) === Bits("b111", 3)) |
-    viu_FP(FPD) & (s1_in1(63,61) === Bits("b111", 3))
+    viu_FP(FPS) & (unpacked_s_s1_in1(31,29) === Bits("b111", 3)) |
+    viu_FP(FPD) & (unpacked_d_s1_in1(63,61) === Bits("b111", 3))
 
   val want_min = MuxCase(Bool(false), Array(
     viu_FN(viu_FMIN) -> Bool(true),
@@ -163,8 +170,8 @@ class BankALU extends Module
       viu_FN(viu_AND) -> (s1_in0 & s1_in1),
       viu_FN(viu_OR) -> (s1_in0 | s1_in1),
       viu_FN(viu_XOR) -> (s1_in0 ^ s1_in1),
-      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPS)) -> Cat(Bits("hFFFFFFFF", 32), sj_sp, s1_in0(31,0)),
-      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPD)) -> Cat(sj_dp, s1_in0(63,0)),
+      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPS)) -> pack_float_s(Cat(sj_sp, unpacked_s_s1_in0(31,0)), 0),
+      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPD)) -> pack_float_d(Cat(sj_dp, unpacked_d_s1_in0(63,0)), 0),
       viu_FN(viu_FMIN,viu_FMAX) -> fminmax
     ))
 

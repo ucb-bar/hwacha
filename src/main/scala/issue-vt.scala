@@ -392,18 +392,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.decoded.vlen := io.vf.vlen - cnt
   io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
   // nxregs counts the zero register so it "just works out"
-  // io.decoded.vs_base := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1)
-  // io.decoded.vt_base := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1)
-  // io.decoded.vr_base := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1)
-  // io.decoded.vd_base := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1)
   io.decoded.vs_base := Mux(rtype_vs, vs(4,0) + io.vf.xf_split, vs_m1)
   io.decoded.vt_base := Mux(rtype_vt, vt(4,0) + io.vf.xf_split, vt_m1)
   io.decoded.vr_base := Mux(rtype_vr, vr(4,0) + io.vf.xf_split, vr_m1)
   io.decoded.vd_base := Mux(rtype_vd, vd(4,0) + io.vf.xf_split, vd_m1)
-  // io.decoded.vs := Mux(rtype_vs, vs_m1 + io.vf.nxregs, vs_m1) + regid_base
-  // io.decoded.vt := Mux(rtype_vt, vt_m1 + io.vf.nxregs, vt_m1) + regid_base
-  // io.decoded.vr := Mux(rtype_vr, vr_m1 + io.vf.nxregs, vr_m1) + regid_base
-  // io.decoded.vd := Mux(rtype_vd, vd_m1 + io.vf.nxregs, vd_m1) + regid_base
   io.decoded.vs := Mux(rtype_vs, vs(4,0) + regid_fbase, vs_m1 + regid_xbase)
   io.decoded.vt := Mux(rtype_vt, vt(4,0) + regid_fbase, vt_m1 + regid_xbase)
   io.decoded.vr := Mux(rtype_vr, vr(4,0) + regid_fbase, vr_m1 + regid_xbase)

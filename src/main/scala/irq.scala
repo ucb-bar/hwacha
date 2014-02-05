@@ -60,15 +60,15 @@ class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   io.irq := reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt || reg_irq_illegal_tvec || dmem_xcpt
 
   io.irq_cause :=
-    Mux(reg_irq_ma_inst, UInt(24),
-    Mux(reg_irq_fault_inst, UInt(25),
-    Mux(reg_irq_illegal_vt, UInt(26),
-    Mux(reg_irq_illegal_tvec, UInt(27),
-    Mux(reg_irq_ma_ld, UInt(28),
-    Mux(reg_irq_ma_st, UInt(29),
-    Mux(reg_irq_faulted_ld, UInt(30),
-    Mux(reg_irq_faulted_st, UInt(31),
-        UInt(31)))))))))
+    Mux(reg_irq_ma_inst, UInt(4),
+    Mux(reg_irq_fault_inst, UInt(5),
+    Mux(reg_irq_illegal_vt, UInt(6),
+    Mux(reg_irq_illegal_tvec, UInt(1),
+    Mux(reg_irq_ma_ld, UInt(8),
+    Mux(reg_irq_ma_st, UInt(9),
+    Mux(reg_irq_faulted_ld, UInt(10),
+    Mux(reg_irq_faulted_st, UInt(11),
+        UInt(1)))))))))
 
   io.irq_aux :=
     Mux(reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt, reg_irq_pc,

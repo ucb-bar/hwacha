@@ -33,9 +33,9 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
         (io.fn(RG_VAU1_FN) === VAU1_NMADD) -> Bits("b11",2)
       ))
 
-    val one_dp = Bits("h8000000000000000", 66) // recoded
-    val one_sp = Bits("h1000000080000000", 66) // recoded, confprec'd
-    val one_hp = Bits("h780078003c003c00", 66) // not recoded, confprec'd
+    val one_dp = repack_float_d(Bits("h8000000000000000", 65)) // recoded, swizzled
+    val one_sp = repack_float_s(Bits("h080000000", 33), Bits("h080000000", 33)) // recoded, confprec'd, swizzled
+    val one_hp = repack_float_h(Bits("h3c00", 16), Bits("h3c00", 16), Bits("h3c00", 16), Bits("h3c00", 16)) // not recoded, confprec'd, swizzled
     val fma_multiplicand = io.in0
     val fma_multiplier = MuxCase(
       io.in1, Array(
