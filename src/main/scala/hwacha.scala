@@ -332,7 +332,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.xcpt.evac_addr := io.cmd.bits.rs1
   vu.io.xcpt.hold := cmd_valid && decl_hold && construct_ready(null)
   vu.io.xcpt.kill := cmd_valid && decl_kill && construct_ready(null)
-  vu.io.xcpt.exception := io.exception
+  //vu.io.xcpt.exception := io.exception
+  vu.io.xcpt.exception := Bool(false)
 
   // TODO: hook this stuff up properly
   vu.io.vpfcmdq.cmd.valid := Bool(false)

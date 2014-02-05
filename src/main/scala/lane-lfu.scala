@@ -3,34 +3,50 @@ package hwacha
 import Chisel._
 import Constants._
 
-class ExpanderToLFUIO extends Bundle
+class LfuncUopVAU0 extends CntBundle
 {
-  val vau0 = Bool(OUTPUT)
-  val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
-  val vau1 = Bool(OUTPUT)
-  val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
-  val vau2 = Bool(OUTPUT)
-  val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
-  val mem = new io_vxu_mem_cmd().asOutput
-  val imm = Bits(OUTPUT, SZ_DATA)
-  val imm2 = Bits(OUTPUT, SZ_XIMM2)
-  val vaq = Bool(OUTPUT)
-  val vaq_mask = Bits(OUTPUT, SZ_BANK)
-  val vaq_pop_cnt = UInt(OUTPUT, SZ_LGBANK1)
-  val vldq = Bool(OUTPUT)
-  val vldq_mask = Bits(OUTPUT, SZ_BANK)
-  val vsdq = Bool(OUTPUT)
-  val vsdq_mask = Bits(OUTPUT, SZ_BANK)
-  val utmemop = Bool(OUTPUT)
+  val fn = Bits(width = SZ_VAU0_FN)
+}
+
+class LfuncUopVAU1 extends CntBundle
+{
+  val fn = Bits(width = SZ_VAU1_FN)
+}
+
+class LfuncUopVAU2 extends CntBundle
+{
+  val fn = Bits(width = SZ_VAU2_FN)
+}
+
+class LfuncUopVGU extends CntBundle
+{
+  val mem = new io_vxu_mem_cmd()
+  val imm = Bits(width = SZ_DATA)
+  val imm2 = Bits(width = SZ_XIMM2)
+  val utmemop = Bool()
+}
+
+class LfuncUopVLU extends CntBundle
+
+class LfuncUopVSU extends CntBundle
+{
+  val mem = new io_vxu_mem_cmd()
+}
+
+class LfuncUopIO extends Bundle
+{
+  val vau0 = Valid(new LfuncUopVAU0)
+  val vau1 = Valid(new LfuncUopVAU1)
+  val vau2 = Valid(new LfuncUopVAU2)
+  val vgu = Valid(new LfuncUopVGU)
+  val vlu = Valid(new LfuncUopVLU)
+  val vsu = Valid(new LfuncUopVSU)
 }
 
 class LaneLFU extends Module 
 {
   val io = new Bundle {
-    val expand_rcnt = UInt(INPUT, SZ_BVLEN)
-    val expand_wcnt = UInt(INPUT, SZ_BVLEN)
-    
-    val expand = new ExpanderToLFUIO().flip
+    val uop = new LfuncUopIO().flip
 
     val vau0_val = Bool(OUTPUT)
     val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
@@ -48,179 +64,104 @@ class LaneLFU extends Module
     val vsdq_mem = new io_vxu_mem_cmd().asOutput
   }
 
-  val next_vau0_cnt = UInt(width = SZ_BVLEN)
-  val next_vau1_cnt = UInt(width = SZ_BVLEN)
-  val next_vau2_cnt = UInt(width = SZ_BVLEN)
-  val next_vgu_cnt = UInt(width = SZ_BVLEN)
-  val next_vlu_cnt = UInt(width = SZ_BVLEN)
-  val next_vsu_cnt = UInt(width = SZ_BVLEN)
-  val next_vgu_mask = Bits(width = SZ_BANK)
-  val next_vlu_mask = Bits(width = SZ_BANK)
-  val next_vsu_mask = Bits(width = SZ_BANK)
-
-  val reg_vau0_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vau1_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vau2_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vgu_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vlu_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vsu_cnt = Reg(init=UInt(0, SZ_BVLEN))
-  val reg_vgu_mask = Reg(init=Bits(0, SZ_BANK))
-  val reg_vlu_mask = Reg(init=Bits(0, SZ_BANK))
-  val reg_vsu_mask = Reg(init=Bits(0, SZ_BANK))
-
-  reg_vau0_cnt := next_vau0_cnt
-  reg_vau1_cnt := next_vau1_cnt
-  reg_vau2_cnt := next_vau2_cnt
-  reg_vgu_cnt := next_vgu_cnt
-  reg_vlu_cnt := next_vlu_cnt
-  reg_vsu_cnt := next_vsu_cnt
-  reg_vgu_mask := next_vgu_mask
-  reg_vlu_mask := next_vlu_mask
-  reg_vsu_mask := next_vsu_mask
-
-  next_vau0_cnt := UInt(0, SZ_BVLEN)
-  next_vau1_cnt := UInt(0, SZ_BVLEN)
-  next_vau2_cnt := UInt(0, SZ_BVLEN)
-  next_vgu_cnt := UInt(0, SZ_BVLEN)
-  next_vlu_cnt := UInt(0, SZ_BVLEN)
-  next_vsu_cnt := UInt(0, SZ_BVLEN)
-  next_vgu_mask := Bits(0, SZ_BANK)
-  next_vlu_mask := Bits(0, SZ_BANK)
-  next_vsu_mask := Bits(0, SZ_BANK)
-
-  when (io.expand.vau0) { next_vau0_cnt := io.expand_rcnt}
-  when (io.expand.vau1) { next_vau1_cnt := io.expand_rcnt}
-  when (io.expand.vau2) { next_vau2_cnt := io.expand_rcnt}
-  
-  when (io.expand.vaq) 
-  { 
-    next_vgu_cnt := io.expand_rcnt
-    next_vgu_mask := io.expand.vaq_mask
+  val vau0_uop = Reg(Valid(new LfuncUopVAU0).asDirectionless)
+  when (vau0_uop.bits.cnt.orR) {
+    vau0_uop.bits.cnt := vau0_uop.bits.cnt - UInt(1)
+  }
+  when (vau0_uop.bits.cnt === UInt(1)) {
+    vau0_uop.valid := Bool(false)
+  }
+  when (io.uop.vau0.valid) {
+    vau0_uop.valid := Bool(true)
+    vau0_uop.bits.cnt := io.uop.vau0.bits.cnt
+    vau0_uop.bits.fn := io.uop.vau0.bits.fn
   }
 
-  when (io.expand.vldq) 
-  { 
-    next_vlu_cnt := io.expand_wcnt
-    next_vlu_mask := io.expand.vldq_mask >> UInt(1,1)
+  val vau1_uop = Reg(Valid(new LfuncUopVAU1).asDirectionless)
+  when (vau1_uop.bits.cnt.orR) {
+    vau1_uop.bits.cnt := vau1_uop.bits.cnt - UInt(1)
+  }
+  when (vau1_uop.bits.cnt === UInt(1)) {
+    vau1_uop.valid := Bool(false)
+  }
+  when (io.uop.vau1.valid) {
+    vau1_uop.valid := Bool(true)
+    vau1_uop.bits.cnt := io.uop.vau1.bits.cnt
+    vau1_uop.bits.fn := io.uop.vau1.bits.fn
   }
 
-  when (io.expand.vsdq) 
-  { 
-    next_vsu_cnt := io.expand_rcnt
-    next_vsu_mask := io.expand.vsdq_mask
+  val vau2_uop = Reg(Valid(new LfuncUopVAU2).asDirectionless)
+  when (vau2_uop.bits.cnt.orR) {
+    vau2_uop.bits.cnt := vau2_uop.bits.cnt - UInt(1)
   }
-  
-  when (reg_vau0_cnt.orR) { next_vau0_cnt := reg_vau0_cnt - UInt(1,1)}
-  when (reg_vau1_cnt.orR) { next_vau1_cnt := reg_vau1_cnt - UInt(1,1)}
-  when (reg_vau2_cnt.orR) { next_vau2_cnt := reg_vau2_cnt - UInt(1,1)}
-
-  when (reg_vgu_cnt.orR) 
-  { 
-    next_vgu_cnt := reg_vgu_cnt - UInt(1,1)
-    next_vgu_mask := reg_vgu_mask >> UInt(1,1)
+  when (vau2_uop.bits.cnt === UInt(1)) {
+    vau2_uop.valid := Bool(false)
+  }
+  when (io.uop.vau2.valid) {
+    vau2_uop.valid := Bool(true)
+    vau2_uop.bits.cnt := io.uop.vau2.bits.cnt
+    vau2_uop.bits.fn := io.uop.vau2.bits.fn
   }
 
-  when (reg_vlu_cnt.orR) 
-  {
-    next_vlu_cnt := reg_vlu_cnt - UInt(1,1)
-    next_vlu_mask := reg_vlu_mask >> UInt(1,1)
+  val vgu_checkcnt = Reg(init=Bool(false))
+  val vgu_cnt = Reg(UInt(width = SZ_BCNT))
+  val vgu_uop = Reg(Valid(new LfuncUopVGU).asDirectionless)
+  when (vgu_uop.bits.cnt.orR) {
+    vgu_uop.bits.cnt := vgu_uop.bits.cnt - UInt(1)
   }
-  
-  when (reg_vsu_cnt.orR) 
-  { 
-    next_vsu_cnt := reg_vsu_cnt - UInt(1,1)
-    next_vsu_mask := reg_vsu_mask >> UInt(1,1)
+  when (vgu_uop.bits.cnt === UInt(1)) {
+    vgu_uop.valid := Bool(false)
   }
-
-  val reg_vau0 = Reg(init=Bool(false))
-  val reg_vau0_fn = Reg(Bits(width = SZ_VAU0_FN))
-  val reg_vau1 = Reg(init=Bool(false))
-  val reg_vau1_fn = Reg(Bits(width = SZ_VAU1_FN))
-  val reg_vau2 = Reg(init=Bool(false))
-  val reg_vau2_fn = Reg(Bits(width = SZ_VAU2_FN))
-  val reg_vaq_checkcnt = Reg(init=Bool(false))
-  val reg_vaq_cnt = Reg(UInt(width = 4))
-  val reg_vaq_mem = Reg(new io_vxu_mem_cmd())
-  val reg_vsdq_mem = Reg(new io_vxu_mem_cmd())
-  val reg_imm = Reg(Bits(width = SZ_DATA))
-  val reg_imm2 = Reg(Bits(width = SZ_XIMM2))
-  val reg_vaq = Reg(init=Bool(false))
-  val reg_vldq = Reg(init=Bool(false))
-  val reg_vsdq = Reg(init=Bool(false))
-  val reg_utmemop = Reg(init=Bool(false))
-
-  when (io.expand.vau0)
-  {
-    reg_vau0 := Bool(true)
-    reg_vau0_fn := io.expand.vau0_fn
+  when (vgu_uop.valid && !vgu_uop.bits.utmemop) {
+    vgu_uop.bits.imm := vgu_uop.bits.imm + vgu_uop.bits.imm2
   }
-  .elsewhen (!reg_vau0_cnt.orR)
-  {
-    reg_vau0 := Bool(false)
+  vgu_checkcnt := Bool(false)
+  when (io.uop.vgu.valid) {
+    vgu_uop.valid := Bool(true)
+    vgu_uop.bits.cnt := io.uop.vgu.bits.cnt
+    vgu_uop.bits.mem := io.uop.vgu.bits.mem
+    vgu_uop.bits.imm := io.uop.vgu.bits.imm
+    vgu_uop.bits.imm2 := io.uop.vgu.bits.imm2
+    vgu_uop.bits.utmemop := io.uop.vgu.bits.utmemop
+    vgu_checkcnt := Bool(true)
+    vgu_cnt := io.uop.vgu.bits.cnt
   }
 
-  when (io.expand.vau1)
-  {
-    reg_vau1 := Bool(true)
-    reg_vau1_fn := io.expand.vau1_fn
+  val vlu_uop = Reg(Valid(new LfuncUopVLU).asDirectionless)
+  when (vlu_uop.bits.cnt.orR) {
+    vlu_uop.bits.cnt := vlu_uop.bits.cnt - UInt(1)
   }
-  .elsewhen (!reg_vau1_cnt.orR)
-  {
-    reg_vau1 := Bool(false)
+  //FIXME
+  when (vlu_uop.bits.cnt <= UInt(2)) {
+    vlu_uop.valid := Bool(false)
   }
-  
-  when (io.expand.vau2)
-  {
-    reg_vau2 := Bool(true)
-    reg_vau2_fn := io.expand.vau2_fn
+  when (io.uop.vlu.valid & io.uop.vlu.bits.cnt.orR) {
+    vlu_uop.valid := Bool(true)
   }
-  .elsewhen (!reg_vau2_cnt.orR)
-  {
-    reg_vau2 := Bool(false)
+  when (io.uop.vlu.valid) {
+    vlu_uop.bits.cnt := io.uop.vlu.bits.cnt
   }
 
-  reg_vaq_checkcnt := Bool(false)
-  when (io.expand.vaq)
-  {
-    reg_vaq := Bool(true)
-    reg_vaq_checkcnt := Bool(true)
-    reg_vaq_cnt := io.expand.vaq_pop_cnt
-    reg_vaq_mem := io.expand.mem
-    reg_imm := io.expand.imm
-    reg_imm2 := io.expand.imm2
-    reg_utmemop := io.expand.utmemop
+  val vsu_uop = Reg(Valid(new LfuncUopVSU).asDirectionless)
+  when (vsu_uop.bits.cnt.orR) {
+    vsu_uop.bits.cnt := vsu_uop.bits.cnt - UInt(1)
   }
-  .elsewhen (!reg_vgu_cnt.orR)
-  {
-    reg_vaq := Bool(false)
+  when (vsu_uop.bits.cnt === UInt(1)) {
+    vsu_uop.valid := Bool(false)
+  }
+  when (io.uop.vsu.valid) {
+    vsu_uop.valid := Bool(true)
+    vsu_uop.bits.cnt := io.uop.vsu.bits.cnt
+    vsu_uop.bits.mem := io.uop.vsu.bits.mem
   }
 
-  val reg_vgu_mask0 = Bool(!HAVE_PVFB) | reg_vgu_mask(0)
-  val reg_vlu_mask0 = Bool(!HAVE_PVFB) | reg_vlu_mask(0)
-  val reg_vsu_mask0 = Bool(!HAVE_PVFB) | reg_vsu_mask(0)
-
-  when (reg_vaq && !reg_utmemop && reg_vgu_mask0)
-  {
-    reg_imm := reg_imm.toUInt + reg_imm2.toUInt
-  }
-
-  when (io.expand.vldq && io.expand_wcnt.orR)
-  {
-    reg_vldq := io.expand.vldq
-  }
-  .elsewhen (!next_vlu_cnt.orR)
-  {
-    reg_vldq := Bool(false)
-  }
-
-  when (io.expand.vsdq)
-  {
-    reg_vsdq := io.expand.vsdq
-    reg_vsdq_mem := io.expand.mem
-  }
-  .elsewhen (!reg_vsu_cnt.orR)
-  {
-    reg_vsdq := Bool(false)
+  when (this.reset) {
+    vau0_uop.valid := Bool(false)
+    vau1_uop.valid := Bool(false)
+    vau2_uop.valid := Bool(false)
+    vgu_uop.valid := Bool(false)
+    vlu_uop.valid := Bool(false)
+    vsu_uop.valid := Bool(false)
   }
 
   // every signal related to the read port is delayed by one cycle 
@@ -228,19 +169,19 @@ class LaneLFU extends Module
   // for this reason vldq_rdy needs to be bypassed
   // and count down using the next_vlu_cnt signal
 
-  io.vau0_val := reg_vau0
-  io.vau0_fn := reg_vau0_fn
-  io.vau1_val := reg_vau1
-  io.vau1_fn := reg_vau1_fn
-  io.vau2_val := reg_vau2
-  io.vau2_fn := reg_vau2_fn
-  io.vaq_val := reg_vaq & reg_vgu_mask0
-  io.vaq_check.checkcnt := reg_vaq_checkcnt
-  io.vaq_check.cnt := reg_vaq_cnt
-  io.vaq_mem <> reg_vaq_mem
-  io.vaq_imm := reg_imm
-  io.vaq_utmemop := reg_utmemop
-  io.vldq_rdy := (io.expand.vldq & (Bool(!HAVE_PVFB) | io.expand.vldq_mask(0))) | (reg_vldq & reg_vlu_mask0)
-  io.vsdq_val := reg_vsdq & reg_vsu_mask0
-  io.vsdq_mem <> reg_vsdq_mem
+  io.vau0_val := vau0_uop.valid
+  io.vau0_fn := vau0_uop.bits.fn
+  io.vau1_val := vau1_uop.valid
+  io.vau1_fn := vau1_uop.bits.fn
+  io.vau2_val := vau2_uop.valid
+  io.vau2_fn := vau2_uop.bits.fn
+  io.vaq_val := vgu_uop.valid
+  io.vaq_check.checkcnt := vgu_checkcnt
+  io.vaq_check.cnt := vgu_cnt
+  io.vaq_mem <> vgu_uop.bits.mem
+  io.vaq_imm := vgu_uop.bits.imm
+  io.vaq_utmemop := vgu_uop.bits.utmemop
+  io.vldq_rdy := io.uop.vlu.valid | vlu_uop.valid
+  io.vsdq_val := vsu_uop.valid
+  io.vsdq_mem <> vsu_uop.bits.mem
 }

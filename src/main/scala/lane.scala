@@ -5,10 +5,17 @@ import Node._
 import Constants._
 import scala.collection.mutable.ArrayBuffer
 
-class ExpanderIO extends Bundle
+class LaneUopIO extends Bundle
 {
-  val bank = new BankToBankIO().flip
-  val lfu = new ExpanderToLFUIO()
+  val read = Valid(new BankUopRead)
+  val write = Valid(new BankUopWrite)
+  val viu = Valid(new BankUopVIU)
+  val vau0 = Valid(new LfuncUopVAU0)
+  val vau1 = Valid(new LfuncUopVAU1)
+  val vau2 = Valid(new LfuncUopVAU2)
+  val vgu = Valid(new LfuncUopVGU)
+  val vlu = Valid(new LfuncUopVLU)
+  val vsu = Valid(new LfuncUopVSU)
 }
 
 class VMUIO extends Bundle 
@@ -54,10 +61,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val cp_sfma = new rocket.ioFMA(33).flip
 
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
-    val expand_read = new io_vxu_expand_read().asInput
-    val expand_write = new io_vxu_expand_write().asInput
-    val expand_fu_fn = new io_vxu_expand_fu_fn().asInput
-    val expand_lfu_fn = new io_vxu_expand_lfu_fn().asInput
+    val uop = new LaneUopIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
     val laneToIssue = new ioLaneToIssue()
     val vmu = new VMUIO()
@@ -65,15 +69,11 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val prec = Bits(INPUT, SZ_PREC)
   }
 
-  val conn = new ArrayBuffer[BankToBankIO]
-  var first = true
-
+  val conn = new ArrayBuffer[BankUopIO]
   val rblen = new ArrayBuffer[UInt]
   val rdata = new ArrayBuffer[UInt]
   val ropl0 = new ArrayBuffer[UInt]
   val ropl1 = new ArrayBuffer[UInt]
-
-  val masks = new ArrayBuffer[Bits]
 
   //forward declaring imul, fma, and conv units
   val imul = Module(new LaneMul)
@@ -85,51 +85,23 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val bank = Module(new Bank)
     bank.io.active := io.issue_to_lane.bactive(i)
     bank.io.prec := io.prec
+    bank.io.uop.in <> (if (i == 0) io.uop else conn.last)
     
-    if (first)
-    { 
-      bank.io.in <> io.expand_read 
-      bank.io.in <> io.expand_write
-      bank.io.in <> io.expand_fu_fn
-      first = false 
-    } 
-    else 
-    {
-      bank.io.in <> conn.last
-    }
-    
-    conn  += bank.io.out
+    conn += bank.io.uop.out
     rblen += bank.io.rw.rblen
     rdata += bank.io.rw.rdata
     ropl0 += bank.io.rw.ropl0
     ropl1 += bank.io.rw.ropl1
-    masks += bank.io.branch_resolution_mask
 
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma.io.out
     bank.io.rw.wbl2 := conv.io.out
     bank.io.rw.wbl3 := io.vmu.vldq_bits
-
   }
 
-  def calcMask(n: Int): Bits = {
-    val strip = Cat(masks.map(x => x(n)).reverse) 
-    if(n == 0)
-      strip
-    else
-      Cat(strip, calcMask(n-1))
-  }
-
-  val mask = calcMask(WIDTH_BMASK-1)
-
-  io.laneToIssue.mask.bits := mask
-  io.laneToIssue.mask.valid := conn.last.wlast_mask
-  io.laneToIssue.pvfb_tag := conn.last.pvfb_tag
-
-  io.lane_to_hazard.rlast := conn.last.rlast
-  io.lane_to_hazard.wlast := conn.last.wlast
-  io.lane_to_hazard.wlast_mask := conn.last.wlast_mask
-  io.lane_to_hazard.pvfb_tag := conn.last.pvfb_tag
+  io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
+  io.lane_to_hazard.wlast := conn.last.write.valid && conn.last.write.bits.last
+  io.lane_to_hazard.wlast_mask := Bool(false)
 
   val xbar = Module(new LaneXbar)
   xbar.io.rblen <> rblen
@@ -140,9 +112,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   val lfu = Module(new LaneLFU)
 
-  lfu.io.expand_rcnt := io.expand_read.rcnt.toUInt
-  lfu.io.expand_wcnt := io.expand_write.wcnt.toUInt
-  lfu.io.expand <> io.expand_lfu_fn
+  lfu.io.uop <> io.uop
 
   io.vmu.vaq_val := lfu.io.vaq_val
   io.vmu.vaq_check <> lfu.io.vaq_check

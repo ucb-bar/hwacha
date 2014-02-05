@@ -175,10 +175,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   io.cp_dfma <> b8lane.io.cp_dfma
   io.cp_sfma <> b8lane.io.cp_sfma
 
-  b8lane.io.expand_read <> b8expand.io.expand_read
-  b8lane.io.expand_write <> b8expand.io.expand_write
-  b8lane.io.expand_fu_fn <> b8expand.io.expand_fu_fn
-  b8lane.io.expand_lfu_fn <> b8expand.io.expand_lfu_fn
+  b8lane.io.uop <> b8expand.io.laneuop
 
   b8lane.io.lane_to_hazard <> b8hazard.io.lane_to_hazard
 
