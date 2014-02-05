@@ -7,7 +7,6 @@ case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_pe
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
-  val fma = true
   val confprec = true
 
   // rocket pipeline latencies
@@ -329,8 +328,4 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.vpfcmdq.imm1.valid := Bool(false)
   vu.io.vpfcmdq.imm2.valid := Bool(false)
   vu.io.vpfcmdq.cnt.valid := Bool(false)
-
-  // Connect FMA units
-  io.cp_dfma <> vu.io.cp_dfma
-  io.cp_sfma <> vu.io.cp_sfma
 }

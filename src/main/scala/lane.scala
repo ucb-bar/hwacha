@@ -31,9 +31,6 @@ class io_lane_to_hazard extends Bundle
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cp_dfma = new rocket.ioFMA(65).flip
-    val cp_sfma = new rocket.ioFMA(33).flip
-
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
     val uop = new LaneUopIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
@@ -108,9 +105,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   fma.io.in0 := rbl(2)
   fma.io.in1 := rbl(3)
   fma.io.in2 := rbl(4)
-
-  io.cp_dfma <> fma.io.cp_dfma
-  io.cp_sfma <> fma.io.cp_sfma
 
   //conv
   conv.io.valid := lfu.io.vau2_val

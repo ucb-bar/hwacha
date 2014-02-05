@@ -65,9 +65,6 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
     val busy = Bool(OUTPUT)
 
-    val cp_dfma = new rocket.ioFMA(65).flip
-    val cp_sfma = new rocket.ioFMA(33).flip
-
     val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val dmem_req = new io_dmem_req()
@@ -177,9 +174,6 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   evac.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
   evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
   evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
-
-  io.cp_dfma <> vxu.io.cp_dfma
-  io.cp_sfma <> vxu.io.cp_sfma
 
   io.imem <> vxu.io.imem
 

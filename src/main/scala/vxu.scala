@@ -23,9 +23,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val vcmdq = new VCMDQIO().flip
 
-    val cp_dfma = new rocket.ioFMA(65).flip
-    val cp_sfma = new rocket.ioFMA(33).flip
-
     val imem = new rocket.CPUFrontendIO()(conf.icache)
 
     val vaq = new io_vvaq()
@@ -169,9 +166,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val b8lane = Module(new Lane)
 
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
-
-  io.cp_dfma <> b8lane.io.cp_dfma
-  io.cp_sfma <> b8lane.io.cp_sfma
 
   b8lane.io.uop <> b8expand.io.laneuop
 
