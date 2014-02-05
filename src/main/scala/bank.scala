@@ -4,40 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class CntBundle extends Bundle
-{
-  val cnt = Bits(width = SZ_BCNT)
-}
-
-class BankUopRead extends CntBundle
-{
-  val last = Bool()
-  val addr = Bits(width = SZ_BREGLEN)
-  val oplen = Bits(width = SZ_BOPL)
-  val rblen = Vec.fill(SZ_BRPORT){Bool()}
-}
-
-class BankUopWrite extends CntBundle
-{
-  val last = Bool()
-  val addr = Bits(width = SZ_BREGLEN)
-  val sel = Bits(width = SZ_BWPORT)
-}
-
-class BankUopVIU extends CntBundle
-{
-  val fn = Bits(width = SZ_VIU_FN)
-  val utidx = Bits(width = SZ_VLEN)
-  val imm = Bits(width = SZ_DATA)
-}
-
-class BankUopIO extends Bundle
-{
-  val read = Valid(new BankUopRead)
-  val write = Valid(new BankUopWrite)
-  val viu = Valid(new BankUopVIU)
-}
-
 class Bank extends Module
 {
   val io = new Bundle {
@@ -76,7 +42,6 @@ class Bank extends Module
   }
   when (this.reset) {
     read_uop.valid := Bool(false)
-    read_uop.bits.last := Bool(false)
   }
 
   val write_uop = Reg(Valid(new BankUopWrite).asDirectionless)
@@ -89,7 +54,6 @@ class Bank extends Module
   }
   when (this.reset) {
     write_uop.valid := Bool(false)
-    write_uop.bits.last := Bool(false)
   }
 
   val viu_uop = Reg(Valid(new BankUopVIU).asDirectionless)

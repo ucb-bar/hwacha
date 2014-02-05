@@ -5,19 +5,6 @@ import Node._
 import Constants._
 import scala.collection.mutable.ArrayBuffer
 
-class LaneUopIO extends Bundle
-{
-  val read = Valid(new BankUopRead)
-  val write = Valid(new BankUopWrite)
-  val viu = Valid(new BankUopVIU)
-  val vau0 = Valid(new LfuncUopVAU0)
-  val vau1 = Valid(new LfuncUopVAU1)
-  val vau2 = Valid(new LfuncUopVAU2)
-  val vgu = Valid(new LfuncUopVGU)
-  val vlu = Valid(new LfuncUopVLU)
-  val vsu = Valid(new LfuncUopVSU)
-}
-
 class VMUIO extends Bundle 
 {
   val vaq_val   = Bool(OUTPUT)

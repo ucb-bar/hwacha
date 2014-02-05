@@ -63,15 +63,6 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vluexp = new BuildExpander(new LfuncUopVLU, conf.shift_buf_read)
   val vsuexp = new BuildExpander(new LfuncUopVSU, conf.shift_buf_read)
 
-  when (this.reset) {
-    for (i <- 0 until conf.shift_buf_read) {
-      rexp.bits(i).last := Bool(false)
-    }
-    for (i <- 0 until conf.shift_buf_write) {
-      wexp.bits(i).last := Bool(false)
-    }
-  }
-
   when (io.seq.viu) 
   {
     val rports2 = io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR)
