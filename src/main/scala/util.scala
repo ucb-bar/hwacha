@@ -307,8 +307,8 @@ object Compaction extends Compaction
     case _ => Bits(0)
   }
   def unpack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(65) ## n(63,32))
-    case 1 => (n(64) ## n(31,0))
+    case 0 => (n(64) ## n(31,0))
+    case 1 => (n(65) ## n(63,32))
     case _ => Bits(0)
   }
   def unpack_float_h(n: Bits, i: Int): Bits = i match {
