@@ -388,7 +388,6 @@ class IssueTVEC extends Module
   io.shazard.vlu := shazard(1)
   io.shazard.vsu := shazard(0)
 
-  io.bhazard.r2wm := Bool(false)
   io.bhazard.r1w1 := bhazard(0)
   io.bhazard.r2w1 := Bool(false)
   io.bhazard.r3w1 := Bool(false)
@@ -415,7 +414,6 @@ class IssueTVEC extends Module
   io.decoded.vt := Mux(rtype_vt, regid_fbase + vt(4,0), regid_xbase + vt_m1)
   io.decoded.vr := Bits(0,SZ_BREGLEN)
   io.decoded.vd := Mux(rtype_vd, regid_fbase + vd(4,0), regid_xbase + vd_m1)
-  io.decoded.vm := Bits(0, SZ_BMASK)  
   io.decoded.vs_zero := Bool(true)
   io.decoded.vt_zero := vt === Bits(0,6)
   io.decoded.vr_zero := Bool(true)
@@ -436,9 +434,6 @@ class IssueTVEC extends Module
   io.decoded.aiw.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
-  io.decoded.active_mask := Bool(false)
-  io.decoded.mask := Fill(WIDTH_PVFB, Bits(1,1))
-  io.decoded.pvfb_tag := Bits(0, SZ_PVFB_TAG)
 
   val illegal_vd = vd_active.toBool && (vd(4,0) >= reg_nfregs && rtype_vd || vd(4,0) >= reg_nxregs && !rtype_vd)
   val illegal_vt = vt_active.toBool && (vt(4,0) >= reg_nfregs && rtype_vt || vt(4,0) >= reg_nxregs && !rtype_vt)

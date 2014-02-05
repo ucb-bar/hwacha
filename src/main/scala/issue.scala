@@ -64,7 +64,6 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt = Bits(width = SZ_BREGLEN)
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
-  val vm = Bits(width = SZ_BMASK)
   val rtype = Bits(width = 4)
   val vs_active = Bool()
   val vt_active = Bool()
@@ -76,14 +75,10 @@ class io_vxu_issue_regid_imm extends Bundle
   val cnt_valid = Bool()
   val cnt = Bits(width = SZ_VLEN)
   val aiw = new io_vxu_aiw_bundle()
-  val active_mask  = Bool()
-  val mask = Bits(width=WIDTH_PVFB)
-  val pvfb_tag = Bits(width=SZ_PVFB_TAG)
 }
 
 class io_vxu_issue_op extends Bundle
 {
-  val r2wm = Bool()
   val r1w1 = Bool()
   val r2w1 = Bool()
   val r3w1 = Bool()
@@ -126,16 +121,6 @@ class io_issue_to_irq_handler extends Bundle
   val vt = new io_issue_vt_to_irq_handler()
 }
 
-class IoIssueToPVFB extends Bundle
-{
-  var ready = Bool(OUTPUT)
-  val fire = Valid(Bits(width=SZ_ADDR) )
-  val enq = Valid(Bits(width=SZ_ADDR) )
-  val stop = Bool(OUTPUT)
-  val replay = Bool(OUTPUT)
-  val replay_pc = Bits(OUTPUT, SZ_ADDR)
-}
-
 class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
@@ -149,7 +134,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val issue_to_seq = new io_vxu_issue_to_seq().asOutput
     val issue_to_lane = new io_vxu_issue_to_lane().asOutput
     val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
-    val laneToIssue = new ioLaneToIssue().flip()
 
     val tvec_valid = new io_vxu_issue_fire().asOutput
     val tvec_ready = Bool(INPUT)
@@ -230,8 +214,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.prec := tvec.io.prec
 
   // vt
-  vt.io.laneToIssue <> io.laneToIssue
-
   vt.io.valid <> io.vt_valid
   vt.io.ready <> io.vt_ready
   vt.io.dhazard <> io.vt_dhazard

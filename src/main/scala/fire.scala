@@ -73,7 +73,6 @@ class Fire extends Module
   io.fire_regid_imm.vr := io.vt_regid_imm.vr
   io.fire_regid_imm.vd := Mux(switch_tvec, io.tvec_regid_imm.vd, io.vt_regid_imm.vd)
   io.fire_regid_imm.rtype := Mux(switch_tvec, io.tvec_regid_imm.rtype, io.vt_regid_imm.rtype)
-  io.fire_regid_imm.vm := io.vt_regid_imm.vm
   io.fire_regid_imm.mem := Mux(switch_tvec, io.tvec_regid_imm.mem, io.vt_regid_imm.mem)
   io.fire_regid_imm.imm := Mux(switch_tvec, io.tvec_regid_imm.imm, io.vt_regid_imm.imm)
   io.fire_regid_imm.imm2 := io.tvec_regid_imm.imm2
@@ -84,7 +83,4 @@ class Fire extends Module
   io.fire_regid_imm.aiw.cnt_rtag := Mux(switch_tvec, io.tvec_regid_imm.aiw.cnt_rtag, io.vt_regid_imm.aiw.cnt_rtag)
   io.fire_regid_imm.aiw.pc_next := io.vt_regid_imm.aiw.pc_next
   io.fire_regid_imm.aiw.update_imm1 := io.tvec_regid_imm.aiw.update_imm1
-  io.fire_regid_imm.pvfb_tag := Mux(switch_tvec, io.tvec_regid_imm.pvfb_tag, io.vt_regid_imm.pvfb_tag)
-  io.fire_regid_imm.active_mask := Mux(switch_tvec, io.tvec_regid_imm.active_mask, io.vt_regid_imm.active_mask)
-  io.fire_regid_imm.mask := Mux(switch_tvec, io.tvec_regid_imm.mask, io.vt_regid_imm.mask)
 }

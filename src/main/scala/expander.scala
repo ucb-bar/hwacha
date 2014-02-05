@@ -8,7 +8,6 @@ class io_vxu_expand_to_hazard extends Bundle
 {
   val ren = Bool()
   val wen = Bool()
-  val wen_mask = Bool()
 }
 
 class io_expand_to_xcpt_handler extends Bundle
@@ -302,7 +301,6 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   io.expand_to_hazard.ren := rexp.valid(0)
   io.expand_to_hazard.wen := wexp.valid(0)
-  io.expand_to_hazard.wen_mask := wexp.valid(0)
 
   io.laneuop.read <> rexp.ondeck
   io.laneuop.write <> wexp.ondeck

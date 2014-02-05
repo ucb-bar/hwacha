@@ -37,14 +37,11 @@ class io_vxu_seq_regid_imm extends Bundle
   val vr = Bits(width = SZ_BREGLEN)
   val vd = Bits(width = SZ_BREGLEN)
   val rtype = Bits(width = 4)
-  val vm = Bits(width = SZ_BMASK)
   val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
   val utmemop = Bool()
   val aiw = new io_vxu_aiw_bundle()
-  val mask = Bits(width=SZ_BANK)
-  val pvfb_tag = Bits(width=SZ_PVFB_TAG)
   val pop_count = UInt(width=SZ_LGBANK1)
 }
 
@@ -151,7 +148,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val next_vr = Vec.fill(8){Bits(width=SZ_BREGLEN)}
   val next_vd = Vec.fill(8){Bits(width=SZ_BREGLEN)}
   val next_rtype = Vec.fill(8){Bits(width=4)}
-  val next_vm = Vec.fill(8){Bits(width=SZ_BMASK)}
   val next_mem = Vec.fill(8){new io_vxu_mem_cmd()}
 
   val next_imm = Vec.fill(8){Bits(width=SZ_DATA)}
@@ -163,10 +159,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val next_aiw_pc_next = Vec.fill(SZ_BANK){Bits(width=SZ_ADDR)}
   val next_aiw_update_imm1 = Vec.fill(SZ_BANK){Bool()}
   val next_aiw_update_numCnt = Vec.fill(SZ_BANK){Bool()}
-
-  val next_pvfb_tag = Vec.fill(SZ_BANK){Bits(width=SZ_PVFB_TAG)}
-  val next_active_mask = Vec.fill(SZ_BANK){Bool()}
-  val next_mask = Vec.fill(SZ_BANK){Bits(width=WIDTH_PVFB)}
 
   val array_val = Reg(init=Bits(0, SZ_BANK))
   val array_stall = Reg(init=Bits(0, SZ_BANK))
@@ -196,7 +188,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val array_vt = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
   val array_vr = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
   val array_vd = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
-  val array_vm = Vec.fill(8){Reg(Bits(width=SZ_BMASK))}
   val array_rtype = Vec.fill(8){Reg(Bits(width=4), init = Bits(0, 4))}
   val array_mem = Vec.fill(8){Reg(new io_vxu_mem_cmd())}
 
@@ -209,10 +200,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val array_aiw_pc_next = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_ADDR))}
   val array_aiw_update_imm1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_aiw_update_numCnt = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-
-  val array_pvfb_tag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_PVFB_TAG))}
-  val array_active_mask = Vec.fill(SZ_BANK){Reg(init=Bool(false) )}
-  val array_mask = Vec.fill(SZ_BANK){Reg(Bits(width=WIDTH_PVFB))}
 
   array_val := next_val.toBits
   array_stall := next_stall.toBits
@@ -242,7 +229,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   array_vt := next_vt
   array_vr := next_vr
   array_vd := next_vd
-  array_vm := next_vm
   array_rtype := next_rtype
   array_mem := next_mem
 
@@ -255,10 +241,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   array_aiw_pc_next := next_aiw_pc_next
   array_aiw_update_imm1 := next_aiw_update_imm1
   array_aiw_update_numCnt := next_aiw_update_numCnt
-
-  array_pvfb_tag := next_pvfb_tag
-  array_active_mask := next_active_mask
-  array_mask := next_mask
 
   val last = io.fire_regid_imm.vlen < io.issue_to_seq.bcnt
 
@@ -297,7 +279,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   next_vr := array_vr
   next_vd := array_vd
   next_rtype := array_rtype
-  next_vm := array_vm
   next_mem := array_mem
 
   next_imm := array_imm
@@ -309,10 +290,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   next_aiw_pc_next := array_aiw_pc_next
   next_aiw_update_imm1 := array_aiw_update_imm1
   next_aiw_update_numCnt := array_aiw_update_numCnt
-
-  next_pvfb_tag := array_pvfb_tag
-  next_active_mask := array_active_mask
-  next_mask := array_mask
 
   when (io.fire.viu)
   {
@@ -330,7 +307,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_vt(next_ptr1) := io.fire_regid_imm.vt
     next_vd(next_ptr1) := io.fire_regid_imm.vd
     next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-    next_vm(next_ptr1) := io.fire_regid_imm.vm
     next_imm(next_ptr1) := io.fire_regid_imm.imm
 
     next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
@@ -340,10 +316,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
   when (io.fire.vau0)
@@ -369,10 +341,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
   when (io.fire.vau1)
@@ -400,10 +368,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
   when (io.fire.vau2)
@@ -427,10 +391,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr1) := Bool(true)
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
   }
 
   when (io.fire.amo)
@@ -449,10 +409,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     // should always write 0, amo's don't take immediates
     next_imm(next_ptr1) := Bits(0)
 
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
-
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
     next_vsdq(next_ptr2) := Bool(true)
@@ -464,10 +420,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_vt(next_ptr2) := io.fire_regid_imm.vt
     next_rtype(next_ptr2) := io.fire_regid_imm.rtype
     next_mem(next_ptr2) := io.fire_regid_imm.mem
-
-    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr2) := io.fire_regid_imm.mask
 
     next_val(next_ptr3) := Bool(true)
     next_last(next_ptr3) := last
@@ -486,10 +438,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr3) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr3) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr3) := Bool(true)
-
-    next_pvfb_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr3) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr3) := io.fire_regid_imm.mask
   }
 
   when (io.fire.utld)
@@ -506,10 +454,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_rtype(next_ptr1) := io.fire_regid_imm.rtype
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := turbo_last
@@ -528,10 +472,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
-
-    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
   when (io.fire.utst)
@@ -548,10 +488,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_rtype(next_ptr1) := io.fire_regid_imm.rtype
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := io.fire_regid_imm.imm
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := turbo_last
@@ -572,10 +508,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
-
-    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
   when (io.fire.vld)
@@ -589,10 +521,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_mem(next_ptr1) := io.fire_regid_imm.mem
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -612,10 +540,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
-
-    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
   when (io.fire.vst)
@@ -629,10 +553,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_mem(next_ptr1) := io.fire_regid_imm.mem 
     next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr1) := io.fire_regid_imm.imm2
-
-    next_pvfb_tag(next_ptr1) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr1) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr1) := io.fire_regid_imm.mask
 
     next_val(next_ptr2) := Bool(true)
     next_last(next_ptr2) := last
@@ -654,10 +574,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
     next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
     next_aiw_update_numCnt(next_ptr2) := Bool(true)
-
-    next_pvfb_tag(next_ptr2) := io.fire_regid_imm.pvfb_tag
-    next_active_mask(next_ptr2) := io.fire_regid_imm.active_mask
-    next_mask(next_ptr2) := io.fire_regid_imm.mask
   }
 
   val next_vlen_update = UInt(width = SZ_LGBANK + 2)
@@ -692,8 +608,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_vt(reg_ptr) := array_vt(reg_ptr) + Mux(array_rtype(reg_ptr)(2), array_fstride(reg_ptr), array_xstride(reg_ptr))
     next_vr(reg_ptr) := array_vr(reg_ptr) + Mux(array_rtype(reg_ptr)(1), array_fstride(reg_ptr), array_xstride(reg_ptr))
     next_vd(reg_ptr) := array_vd(reg_ptr) + Mux(array_rtype(reg_ptr)(0), array_fstride(reg_ptr), array_xstride(reg_ptr))
-    next_vm(reg_ptr) := array_vm(reg_ptr) + UInt(1)
-    next_mask(reg_ptr) := array_mask(reg_ptr) >> io.issue_to_seq.bcnt
 
     when (array_last(reg_ptr))
     {
@@ -709,8 +623,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
       next_utmemop(reg_ptr) := Bool(false)
       next_aiw_update_imm1(reg_ptr) := Bool(false)
       next_aiw_update_numCnt(reg_ptr) := Bool(false)
-
-      next_active_mask(reg_ptr) := Bool(false)
     }
     .otherwise
     {
@@ -843,20 +755,6 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_dep_vsdq(next_ptr2) := Bool(false)
   }
 
-  val mask_sel = Mux(array_last(reg_ptr), array_vlen(reg_ptr) + UInt(1), io.issue_to_seq.bcnt)
-  val bcnt_mask = MuxLookup(
-    mask_sel, Bits(0,SZ_BANK), Array(
-      Bits(1) -> Bits("b0000_0001",8),
-      Bits(2) -> Bits("b0000_0011",8),
-      Bits(3) -> Bits("b0000_0111",8),
-      Bits(4) -> Bits("b0000_1111",8),
-      Bits(5) -> Bits("b0001_1111",8),
-      Bits(6) -> Bits("b0011_1111",8),
-      Bits(7) -> Bits("b0111_1111",8),
-      Bits(8) -> Bits("b1111_1111",8)
-    ))
-  val mask = (array_mask(reg_ptr) & bcnt_mask) | (Fill(SZ_BANK, ~array_active_mask(reg_ptr)) & bcnt_mask)
-
   val current_val = array_val(reg_ptr)
   val current_vaq_val = current_val & array_vaq(reg_ptr)
   val current_vldq_val = current_val & array_vldq(reg_ptr)
@@ -942,13 +840,10 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   io.seq_regid_imm.vr := array_vr(reg_ptr)
   io.seq_regid_imm.vd := array_vd(reg_ptr)
   io.seq_regid_imm.rtype := array_rtype(reg_ptr)
-  io.seq_regid_imm.vm := array_vm(reg_ptr)
   io.seq_regid_imm.mem := array_mem(reg_ptr)
   io.seq_regid_imm.imm := array_imm(reg_ptr)
   io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
   io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
-  io.seq_regid_imm.pvfb_tag := array_pvfb_tag(reg_ptr)
-  if(HAVE_PVFB) io.seq_regid_imm.mask := mask
 
   // looking for one cycle ahead
   io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UInt(1, SZ_QCNT))

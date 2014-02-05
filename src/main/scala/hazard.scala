@@ -449,9 +449,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val vau1_wptr = vt_vau1_wptr
   val vau2_wptr = vt_vau2_wptr
 
-  val array_wmask_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val array_wmask_head = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  
   val array_wport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_head = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
@@ -462,10 +459,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val array_wport_vd_base = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_stride = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_REGLEN))}
   val array_wport_tvec = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val array_wport_tag = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_PVFB_TAG))}
-
-  val next_wmask_val = Vec.fill(SZ_BANK){Bool()}
-  val next_wmask_head = Vec.fill(SZ_BANK){Bool()}
 
   val next_wport_val = Vec.fill(SZ_BANK){Bool()}
   val next_wport_head = Vec.fill(SZ_BANK){Bool()}
@@ -477,13 +470,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val next_wport_vd_base = Vec.fill(SZ_BANK){Bits(width = SZ_BREGLEN)}
   val next_wport_stride = Vec.fill(SZ_BANK){Bits(width = SZ_REGLEN)}
   val next_wport_tvec = Vec.fill(SZ_BANK){Bool()}
-  val next_wport_tag = Vec.fill(SZ_BANK){Bits(width = SZ_PVFB_TAG)}
 
   for (i <- 0 until SZ_BANK)
   {
-    array_wmask_val(i) := next_wmask_val(i)
-    array_wmask_head(i) := next_wmask_head(i)
-
     array_wport_val(i) := next_wport_val(i)
     array_wport_head(i) := next_wport_head(i)
     array_wport_vau0(i) := next_wport_vau0(i)
@@ -494,14 +483,10 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     array_wport_vd_base(i) := next_wport_vd_base(i)
     array_wport_stride(i) := next_wport_stride(i)
     array_wport_tvec(i) := next_wport_tvec(i)
-    array_wport_tag(i) := next_wport_tag(i)
   }
 
   for (i <- 0 until SZ_BANK)
   {
-    next_wmask_val(i) := array_wmask_val(i)
-    next_wmask_head(i) := array_wmask_head(i)
-    
     next_wport_val(i) := array_wport_val(i)
     next_wport_head(i) := array_wport_head(i)
     next_wport_vau0(i) := array_wport_vau0(i)
@@ -512,26 +497,16 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(i) := array_wport_vd_base(i)
     next_wport_stride(i) := array_wport_stride(i)
     next_wport_tvec(i) := array_wport_tvec(i)
-    next_wport_tag(i) := array_wport_tag(i)
   }
 
   when (io.fire.viu)
   {
-    when (isVIUBranch(io.fire_fn.viu(RG_VIU_FN)))
-    {
-      next_wmask_val(vbr_wptr) := Bool(true)
-      next_wmask_head(vbr_wptr) := Bool(true)
-    }
-    .otherwise 
-    {
-      next_wport_val(viu_wptr) := Bool(true)
-      next_wport_head(viu_wptr) := Bool(true)
-      next_wport_vd(viu_wptr) := io.fire_regid_imm.vd
-      next_wport_vd_base(viu_wptr) := io.fire_regid_imm.vd_base
-      next_wport_stride(viu_wptr) := io.issue_to_hazard.stride
-      next_wport_tvec(viu_wptr) := io.fire_regid_imm.tvec
-      next_wport_tag(viu_wptr) := io.fire_regid_imm.pvfb_tag
-    }
+    next_wport_val(viu_wptr) := Bool(true)
+    next_wport_head(viu_wptr) := Bool(true)
+    next_wport_vd(viu_wptr) := io.fire_regid_imm.vd
+    next_wport_vd_base(viu_wptr) := io.fire_regid_imm.vd_base
+    next_wport_stride(viu_wptr) := io.issue_to_hazard.stride
+    next_wport_tvec(viu_wptr) := io.fire_regid_imm.tvec
   }
   when (io.fire.vau0)
   {
@@ -542,7 +517,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(vau0_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau0_wptr) := io.issue_to_hazard.stride
     next_wport_tvec(vau0_wptr) := io.fire_regid_imm.tvec
-    next_wport_tag(vau0_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vau1)
   {
@@ -553,7 +527,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(vau1_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau1_wptr) := io.issue_to_hazard.stride
     next_wport_tvec(vau1_wptr) := io.fire_regid_imm.tvec
-    next_wport_tag(vau1_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vau2)
   {
@@ -564,7 +537,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(vau2_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau2_wptr) := io.issue_to_hazard.stride
     next_wport_tvec(vau2_wptr) := io.fire_regid_imm.tvec
-    next_wport_tag(vau2_wptr) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.amo)
   {
@@ -575,7 +547,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(next_ptr4) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr4) := io.issue_to_hazard.stride
     next_wport_tvec(next_ptr4) := io.fire_regid_imm.tvec
-    next_wport_tag(next_ptr4) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.utld)
   {
@@ -586,7 +557,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
     next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
-    next_wport_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
   }
   when (io.fire.vld)
   {
@@ -597,23 +567,12 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
     next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
-    next_wport_tag(next_ptr3) := io.fire_regid_imm.pvfb_tag
   }
 
   when (io.expand_to_hazard.wen)
   {
     next_wport_head(reg_ptr) := Bool(false)
     next_wport_vd(reg_ptr) := array_wport_vd(reg_ptr) + array_wport_stride(reg_ptr)
-  }
-
-  when (io.expand_to_hazard.wen_mask)
-  {
-    next_wmask_head(reg_ptr) := Bool(false)
-  }
-
-  when (io.lane_to_hazard.wlast_mask)
-  {
-    next_wmask_val(reg_ptr) := Bool(false)
   }
 
   when (io.lane_to_hazard.wlast)
@@ -746,65 +705,53 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
   io.tvec_ready := io.tvec_regid_imm.vd_zero || !io.seq_to_hazard.stall && !tvec_dhazard.orR && !tvec_shazard.orR && !tvec_seqhazard.orR && !tvec_bhazard.orR
 
-  val mask_dhazard =
-    Cat(
-      array_wport_tvec(7) | io.vt_regid_imm.pvfb_tag === array_wport_tag(7),
-      array_wport_tvec(6) | io.vt_regid_imm.pvfb_tag === array_wport_tag(6),
-      array_wport_tvec(5) | io.vt_regid_imm.pvfb_tag === array_wport_tag(5),
-      array_wport_tvec(4) | io.vt_regid_imm.pvfb_tag === array_wport_tag(4),
-      array_wport_tvec(3) | io.vt_regid_imm.pvfb_tag === array_wport_tag(3),
-      array_wport_tvec(2) | io.vt_regid_imm.pvfb_tag === array_wport_tag(2),
-      array_wport_tvec(1) | io.vt_regid_imm.pvfb_tag === array_wport_tag(1),
-      array_wport_tvec(0) | io.vt_regid_imm.pvfb_tag === array_wport_tag(0)
-    )
-
   // hazard check logic for vt
   val vt_comp_vs =
     Cat(
-      io.vt_regid_imm.vs_base === array_wport_vd_base(7) & io.vt_regid_imm.vs >= array_wport_vd(7) & mask_dhazard(7),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(6) & io.vt_regid_imm.vs >= array_wport_vd(6) & mask_dhazard(6),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(5) & io.vt_regid_imm.vs >= array_wport_vd(5) & mask_dhazard(5),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(4) & io.vt_regid_imm.vs >= array_wport_vd(4) & mask_dhazard(4),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(3) & io.vt_regid_imm.vs >= array_wport_vd(3) & mask_dhazard(3),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(2) & io.vt_regid_imm.vs >= array_wport_vd(2) & mask_dhazard(2),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(1) & io.vt_regid_imm.vs >= array_wport_vd(1) & mask_dhazard(1),
-      io.vt_regid_imm.vs_base === array_wport_vd_base(0) & io.vt_regid_imm.vs >= array_wport_vd(0) & mask_dhazard(0)
+      io.vt_regid_imm.vs_base === array_wport_vd_base(7) & io.vt_regid_imm.vs >= array_wport_vd(7),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(6) & io.vt_regid_imm.vs >= array_wport_vd(6),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(5) & io.vt_regid_imm.vs >= array_wport_vd(5),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(4) & io.vt_regid_imm.vs >= array_wport_vd(4),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(3) & io.vt_regid_imm.vs >= array_wport_vd(3),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(2) & io.vt_regid_imm.vs >= array_wport_vd(2),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(1) & io.vt_regid_imm.vs >= array_wport_vd(1),
+      io.vt_regid_imm.vs_base === array_wport_vd_base(0) & io.vt_regid_imm.vs >= array_wport_vd(0)
     )
 
   val vt_comp_vt = 
     Cat(
-      io.vt_regid_imm.vt_base === array_wport_vd_base(7) & io.vt_regid_imm.vt >= array_wport_vd(7) & mask_dhazard(7),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(6) & io.vt_regid_imm.vt >= array_wport_vd(6) & mask_dhazard(6),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(5) & io.vt_regid_imm.vt >= array_wport_vd(5) & mask_dhazard(5),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(4) & io.vt_regid_imm.vt >= array_wport_vd(4) & mask_dhazard(4),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(3) & io.vt_regid_imm.vt >= array_wport_vd(3) & mask_dhazard(3),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(2) & io.vt_regid_imm.vt >= array_wport_vd(2) & mask_dhazard(2),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(1) & io.vt_regid_imm.vt >= array_wport_vd(1) & mask_dhazard(1),
-      io.vt_regid_imm.vt_base === array_wport_vd_base(0) & io.vt_regid_imm.vt >= array_wport_vd(0) & mask_dhazard(0)
+      io.vt_regid_imm.vt_base === array_wport_vd_base(7) & io.vt_regid_imm.vt >= array_wport_vd(7),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(6) & io.vt_regid_imm.vt >= array_wport_vd(6),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(5) & io.vt_regid_imm.vt >= array_wport_vd(5),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(4) & io.vt_regid_imm.vt >= array_wport_vd(4),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(3) & io.vt_regid_imm.vt >= array_wport_vd(3),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(2) & io.vt_regid_imm.vt >= array_wport_vd(2),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(1) & io.vt_regid_imm.vt >= array_wport_vd(1),
+      io.vt_regid_imm.vt_base === array_wport_vd_base(0) & io.vt_regid_imm.vt >= array_wport_vd(0)
     )
 
   val vt_comp_vr =
     Cat(
-      io.vt_regid_imm.vr_base === array_wport_vd_base(7) & io.vt_regid_imm.vr >= array_wport_vd(7) & mask_dhazard(7),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(6) & io.vt_regid_imm.vr >= array_wport_vd(6) & mask_dhazard(6),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(5) & io.vt_regid_imm.vr >= array_wport_vd(5) & mask_dhazard(5),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(4) & io.vt_regid_imm.vr >= array_wport_vd(4) & mask_dhazard(4),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(3) & io.vt_regid_imm.vr >= array_wport_vd(3) & mask_dhazard(3),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(2) & io.vt_regid_imm.vr >= array_wport_vd(2) & mask_dhazard(2),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(1) & io.vt_regid_imm.vr >= array_wport_vd(1) & mask_dhazard(1),
-      io.vt_regid_imm.vr_base === array_wport_vd_base(0) & io.vt_regid_imm.vr >= array_wport_vd(0) & mask_dhazard(0)
+      io.vt_regid_imm.vr_base === array_wport_vd_base(7) & io.vt_regid_imm.vr >= array_wport_vd(7),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(6) & io.vt_regid_imm.vr >= array_wport_vd(6),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(5) & io.vt_regid_imm.vr >= array_wport_vd(5),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(4) & io.vt_regid_imm.vr >= array_wport_vd(4),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(3) & io.vt_regid_imm.vr >= array_wport_vd(3),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(2) & io.vt_regid_imm.vr >= array_wport_vd(2),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(1) & io.vt_regid_imm.vr >= array_wport_vd(1),
+      io.vt_regid_imm.vr_base === array_wport_vd_base(0) & io.vt_regid_imm.vr >= array_wport_vd(0)
     )
 
   val vt_comp_vd =
     Cat(
-      io.vt_regid_imm.vd_base === array_wport_vd_base(7) & io.vt_regid_imm.vd >= array_wport_vd(7) & mask_dhazard(7),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(6) & io.vt_regid_imm.vd >= array_wport_vd(6) & mask_dhazard(6),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(5) & io.vt_regid_imm.vd >= array_wport_vd(5) & mask_dhazard(5),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(4) & io.vt_regid_imm.vd >= array_wport_vd(4) & mask_dhazard(4),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(3) & io.vt_regid_imm.vd >= array_wport_vd(3) & mask_dhazard(3),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(2) & io.vt_regid_imm.vd >= array_wport_vd(2) & mask_dhazard(2),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(1) & io.vt_regid_imm.vd >= array_wport_vd(1) & mask_dhazard(1),
-      io.vt_regid_imm.vd_base === array_wport_vd_base(0) & io.vt_regid_imm.vd >= array_wport_vd(0) & mask_dhazard(0)
+      io.vt_regid_imm.vd_base === array_wport_vd_base(7) & io.vt_regid_imm.vd >= array_wport_vd(7),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(6) & io.vt_regid_imm.vd >= array_wport_vd(6),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(5) & io.vt_regid_imm.vd >= array_wport_vd(5),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(4) & io.vt_regid_imm.vd >= array_wport_vd(4),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(3) & io.vt_regid_imm.vd >= array_wport_vd(3),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(2) & io.vt_regid_imm.vd >= array_wport_vd(2),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(1) & io.vt_regid_imm.vd >= array_wport_vd(1),
+      io.vt_regid_imm.vd_base === array_wport_vd_base(0) & io.vt_regid_imm.vd >= array_wport_vd(0)
     )
 
   val vt_dhazard_vs = (array_wport_val.toBits & vt_comp_vs).orR
@@ -812,7 +759,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val vt_dhazard_vr = (array_wport_val.toBits & vt_comp_vr).orR
   val vt_dhazard_vd = (array_wport_val.toBits & vt_comp_vd).orR
 
-  val vt_bhazard_r2wm = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wmask_val(vbr_wptr)
   val vt_bhazard_r1w1 = array_rport_val(next_ptr2) | array_wport_val(vt_wptr)
   val vt_bhazard_r2w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wport_val(vt_wptr)
   val vt_bhazard_r3w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_rport_val(next_ptr4) | array_wport_val(vt_wptr)
@@ -851,7 +797,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
   val vt_bhazard =
     Cat(
-      vt_bhazard_r2wm & io.vt_bhazard.r2wm,
       vt_bhazard_r1w1 & io.vt_bhazard.r1w1,
       vt_bhazard_r2w1 & io.vt_bhazard.r2w1,
       vt_bhazard_r3w1 & io.vt_bhazard.r3w1,

@@ -26,19 +26,6 @@ class io_lane_to_hazard extends Bundle
 {
   val rlast = Bool()
   val wlast = Bool()
-  val wlast_mask = Bool()
-  val pvfb_tag = Bits(width=SZ_PVFB_TAG)
-}
-
-class ioLaneToPVFB extends Bundle
-{
-  val mask = Valid(Bits(width=WIDTH_PVFB) ) 
-}
-
-class ioLaneToIssue extends Bundle
-{
-  val mask = Valid(Bits(width=WIDTH_PVFB * NUM_PVFB) )
-  val pvfb_tag = Bits(OUTPUT, SZ_PVFB_TAG)
 }
 
 class Lane(implicit conf: HwachaConfiguration) extends Module
@@ -50,7 +37,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
     val uop = new LaneUopIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
-    val laneToIssue = new ioLaneToIssue()
     val vmu = new VMUIO()
 
     val prec = Bits(INPUT, SZ_PREC)
@@ -88,7 +74,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
   io.lane_to_hazard.wlast := conn.last.write.valid && conn.last.write.bits.last
-  io.lane_to_hazard.wlast_mask := Bool(false)
 
   val xbar = Module(new LaneXbar)
   xbar.io.rblen <> rblen

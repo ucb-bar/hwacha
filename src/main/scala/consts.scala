@@ -15,8 +15,7 @@ object Constants extends
   VAU0Constants with
   VAU1Constants with
   VAU2Constants with
-  VMUConstants with
-  PVFBConstants
+  VMUConstants
 
 trait MachineConstants
 {
@@ -239,21 +238,6 @@ trait VMUConstants extends LaneConstants
   def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
   val SZ_QCNT = SZ_LGBANK1
-}
-
-trait PVFBConstants extends LaneConstants
-{
-  var coarseGrained = false
-  var HAVE_PVFB = false
-  var NUM_PVFB = 4
-  var WIDTH_PVFB = 64
-  var DEPTH_PVFB = 64
-  assert(DEPTH_PVFB >= WIDTH_PVFB, println("DEPTH_PVFB MUST BE GREATER THAN OR EQUAL TO DEPTH_PVFB"))
-  assert(!coarseGrained || (coarseGrained && NUM_PVFB > 1))
-  def SZ_PVFB_TAG = log2Up(NUM_PVFB)
-  def SZ_MASK = log2Up(WIDTH_PVFB)
-  def WIDTH_BMASK = NUM_PVFB * WIDTH_PVFB / SZ_BANK
-  def SZ_BMASK = log2Up(WIDTH_BMASK)
 }
 
 object Commands extends Commands

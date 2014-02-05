@@ -168,8 +168,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   val b8lane = Module(new Lane)
 
-  b8lane.io.laneToIssue <> issue.io.laneToIssue
-
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
 
   io.cp_dfma <> b8lane.io.cp_dfma
