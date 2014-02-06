@@ -71,6 +71,8 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
   io.lane_to_hazard.wlast := conn.last.write.valid && conn.last.write.bits.last
 
+  // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
+  // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
   val rbl = List(ropl0, rdata, ropl1, ropl0, rdata, rdata, rdata, rdata).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
