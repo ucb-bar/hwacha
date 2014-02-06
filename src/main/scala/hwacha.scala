@@ -316,12 +316,15 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   resp_q.io.enq.bits.rd   := io.cmd.bits.inst.rd
 
   // Hookup some signal ports
+  val reg_hold = Reg(init=Bool(false))
+  when (cmd_valid && decl_hold && construct_ready(null)) { reg_hold := Bool(true) }
+  when (reg_hold && !io.s) { reg_hold := Bool(false) }
+
   vu.io.xcpt.evac := cmd_valid && decl_evac && construct_ready(null)
   vu.io.xcpt.evac_addr := io.cmd.bits.rs1
-  vu.io.xcpt.hold := cmd_valid && decl_hold && construct_ready(null)
+  vu.io.xcpt.hold := reg_hold
   vu.io.xcpt.kill := cmd_valid && decl_kill && construct_ready(null)
-  //vu.io.xcpt.exception := io.exception
-  vu.io.xcpt.exception := Bool(false)
+  vu.io.xcpt.exception := io.exception
 
   // TODO: hook this stuff up properly
   vu.io.vpfcmdq.cmd.valid := Bool(false)

@@ -110,7 +110,9 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   counters.io.vsdq_dec := sdata.io.vsdq_do_enq
   // vsreq counts available space
   counters.io.vsreq_inc := memif.io.store_ack
-  counters.io.vsreq_dec := io.vxu_to_vmu.vaq_valid && is_mcmd_store(io.vxu_to_vmu.vaq_cmd)
+  counters.io.vsreq_dec :=
+    Mux(io.evac_to_vmu.evac_mode, io.evac_vvaq.fire(),
+        io.vxu_to_vmu.vaq_valid && is_mcmd_store(io.vxu_to_vmu.vaq_cmd))
   // vpasdq counts occupied space
   counters.io.vpasdq_dec := sdata.io.vsdq_do_enq
   sdata.io.vpasdq_watermark := counters.io.vpasdq_watermark
