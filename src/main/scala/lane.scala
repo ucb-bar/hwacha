@@ -40,12 +40,11 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   }
 
   val conn = new ArrayBuffer[BankUopIO]
-  val rblen = new ArrayBuffer[UInt]
-  val rdata = new ArrayBuffer[UInt]
-  val ropl0 = new ArrayBuffer[UInt]
-  val ropl1 = new ArrayBuffer[UInt]
+  val rblen = new ArrayBuffer[Bits]
+  val rdata = new ArrayBuffer[Bits]
+  val ropl0 = new ArrayBuffer[Bits]
+  val ropl1 = new ArrayBuffer[Bits]
 
-  //forward declaring imul, fma, and conv units
   val imul = Module(new LaneMul)
   val fma  = Module(new LaneFMA)
   val conv = Module(new LaneConv)
@@ -72,45 +71,35 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
   io.lane_to_hazard.wlast := conn.last.write.valid && conn.last.write.bits.last
 
-  val xbar = Module(new LaneXbar)
-  xbar.io.rblen <> rblen
-  xbar.io.rdata <> rdata
-  xbar.io.ropl0 <> ropl0
-  xbar.io.ropl1 <> ropl1
-  val rbl = xbar.io.rbl
+  val rbl = List(ropl0, rdata, ropl1, ropl0, rdata, rdata, rdata, rdata).zipWithIndex.map(
+    rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
   val lfu = Module(new LaneLFU)
-
   lfu.io.uop <> io.uop
 
-  io.vmu.vaq_val := lfu.io.vaq_val
-  io.vmu.vaq_check <> lfu.io.vaq_check
-  io.vmu.vaq_mem <> lfu.io.vaq_mem
-  io.vmu.vaq_imm := lfu.io.vaq_imm
-  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
-
-  io.vmu.vldq_rdy := lfu.io.vldq_rdy
-  io.vmu.vsdq_val := lfu.io.vsdq_val
-  io.vmu.vsdq_mem <> lfu.io.vsdq_mem
-
-  //integer multiply
   imul.io.valid := lfu.io.vau0_val
   imul.io.fn := lfu.io.vau0_fn
   imul.io.in0 := rbl(0)
   imul.io.in1 := rbl(1)
 
-  //fma
   fma.io.valid := lfu.io.vau1_val
   fma.io.fn := lfu.io.vau1_fn
   fma.io.in0 := rbl(2)
   fma.io.in1 := rbl(3)
   fma.io.in2 := rbl(4)
 
-  //conv
   conv.io.valid := lfu.io.vau2_val
   conv.io.fn := lfu.io.vau2_fn
   conv.io.in := rbl(5)
 
+  io.vmu.vaq_val := lfu.io.vaq_val
+  io.vmu.vaq_check <> lfu.io.vaq_check
+  io.vmu.vaq_mem <> lfu.io.vaq_mem
+  io.vmu.vaq_imm := lfu.io.vaq_imm
+  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
   io.vmu.vaq_rf := rbl(6)(SZ_ADDR-1,0)
+  io.vmu.vldq_rdy := lfu.io.vldq_rdy
+  io.vmu.vsdq_val := lfu.io.vsdq_val
+  io.vmu.vsdq_mem <> lfu.io.vsdq_mem
   io.vmu.vsdq_bits := rbl(7)
 }
