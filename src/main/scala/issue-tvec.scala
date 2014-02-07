@@ -71,9 +71,10 @@ class IssueTVEC extends Module
 // DECODE                                                                  \\
 //-------------------------------------------------------------------------\\
 
-  val cmd = io.vcmdq.cmd.bits(RG_XCMD_CMCODE)
-  val vd = io.vcmdq.cmd.bits(RG_XCMD_VD)
-  val vt = io.vcmdq.cmd.bits(RG_XCMD_VT)
+  val hwacha_cmd = new HwachaCommand().fromBits(io.vcmdq.cmd.bits)
+  val cmd = hwacha_cmd.cmcode
+  val vd = hwacha_cmd.vd
+  val vt = hwacha_cmd.vt
   val imm1 = io.vcmdq.imm1.bits
   val imm2 = io.vcmdq.imm2.bits
 

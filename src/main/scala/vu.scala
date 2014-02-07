@@ -15,15 +15,15 @@ class io_xcpt extends Bundle
 
 class VCMDQIO extends Bundle
 {
-  val cmd = new DecoupledIO(Bits(width = SZ_XCMD))
-  val imm1 = new DecoupledIO(Bits(width = SZ_XIMM))
-  val imm2 = new DecoupledIO(Bits(width = SZ_XIMM2))
-  val cnt = new DecoupledIO(Bits(width = SZ_VLEN+1))
+  val cmd = Decoupled(Bits(width = SZ_XCMD))
+  val imm1 = Decoupled(Bits(width = SZ_XIMM))
+  val imm2 = Decoupled(Bits(width = SZ_XIMM2))
+  val cnt = Decoupled(Bits(width = SZ_VLEN+1))
 }
 
 class AIWVCMDQIO extends VCMDQIO
 {
-  val numcnt = new DecoupledIO(Bits(width = 1))
+  val numcnt = Decoupled(Bits(width = 1))
 }
 
 class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
@@ -33,20 +33,10 @@ class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val deq = new VCMDQIO()
   }
 
-  val cmdq = Module(new Queue(Bits(width = SZ_VCMD), conf.vcmdq.ncmd))
-  val imm1q = Module(new Queue(Bits(width = SZ_VIMM), conf.vcmdq.nimm1))
-  val imm2q = Module(new Queue(Bits(width = SZ_VSTRIDE), conf.vcmdq.nimm2))
-  val cntq = Module(new Queue(Bits(width = SZ_VLEN+1), conf.vcmdq.ncnt))
-
-  cmdq.io.enq <> io.enq.cmd
-  imm1q.io.enq <> io.enq.imm1
-  imm2q.io.enq <> io.enq.imm2
-  cntq.io.enq <> io.enq.cnt
-
-  io.deq.cmd <> cmdq.io.deq
-  io.deq.imm1 <> imm1q.io.deq
-  io.deq.imm2 <> imm2q.io.deq
-  io.deq.cnt <> cntq.io.deq
+  io.deq.cmd <> Queue(io.enq.cmd, conf.vcmdq.ncmd)
+  io.deq.imm1 <> Queue(io.enq.imm1, conf.vcmdq.nimm1)
+  io.deq.imm2 <> Queue(io.enq.imm2, conf.vcmdq.nimm2)
+  io.deq.cnt <> Queue(io.enq.cnt, conf.vcmdq.ncnt)
 }
 
 class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)

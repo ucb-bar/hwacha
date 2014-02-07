@@ -43,9 +43,6 @@ trait VectorCommandQueueConstants
   val SZ_XCMD_CMD = 8
   val SZ_XCMD_VD = 6
   val SZ_XCMD_VS = 6
-  val RG_XCMD_CMCODE = (19,12)
-  val RG_XCMD_VD = (11,6)
-  val RG_XCMD_VT = (5,0)
   val RG_XIMM1_VLEN = (10,0)
   val RG_XIMM1_NXREGS = (16,11)
   val RG_XIMM1_NFREGS = (22,17)
@@ -62,6 +59,24 @@ trait VectorCommandQueueConstants
 
   val SZ_VRESP = 32
   val SZ_XRESP = 1
+}
+
+class HwachaCommand extends Bundle
+{
+  val cmcode = Bits(width = 8)
+  val vd = UInt(width = 6)
+  val vt = UInt(width = 6)
+}
+
+class HwachaImm1 extends Bundle with MachineConstants
+{
+  val vlen = UInt(width = SZ_VLEN)
+  val nxregs = UInt(width = 6)
+  val nfregs = UInt(width = 6)
+  val bactive = Bits(width = 8)
+  val bcnt = UInt(width = 4)
+  val xf_split = UInt(width = 11) 
+  val prec = Bits(width = 2)
 }
 
 object PrecConstants

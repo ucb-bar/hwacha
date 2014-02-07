@@ -56,7 +56,9 @@ class Evac extends Module
 
   cmd_sel_next := cmd_sel
 
-  val cmd = Mux(cmd_sel, io.vcmdq.cmd.bits(RG_XCMD_CMCODE), io.aiw_cmdb.bits(RG_XCMD_CMCODE))
+  val cmd = Mux(cmd_sel,
+    new HwachaCommand().fromBits(io.vcmdq.cmd.bits).cmcode,
+    new HwachaCommand().fromBits(io.aiw_cmdb.bits).cmcode)
 
   val cs =
     ListLookup(cmd,

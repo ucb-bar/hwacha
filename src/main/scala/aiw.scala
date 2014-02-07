@@ -61,7 +61,7 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   irNumCntB.io.markLast <> io.issue_to_aiw.markLast
   irNumCntB.io.rtag <> io.aiw_to_issue.numCnt_rtag
 
-  val cmd = ircmdb.io.deq.bits(RG_XCMD_CMCODE)
+  val cmd = new HwachaCommand().fromBits(ircmdb.io.deq.bits).cmcode
   val n = Bits(0,1)
   val y = Bits(1,1)
 
