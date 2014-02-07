@@ -58,7 +58,6 @@ class Fire extends Module
   io.fire_fn.vau1 := io.vt_fn.vau1
   io.fire_fn.vau2 := io.vt_fn.vau2
 
-  io.fire_regid_imm.tvec := switch_tvec
   io.fire_regid_imm.vlen := Mux(switch_tvec, io.tvec_regid_imm.vlen, io.vt_regid_imm.vlen)
   io.fire_regid_imm.utidx := Mux(switch_tvec, io.tvec_regid_imm.utidx, io.vt_regid_imm.utidx)
   io.fire_regid_imm.vs_zero := io.vt_regid_imm.vs_zero

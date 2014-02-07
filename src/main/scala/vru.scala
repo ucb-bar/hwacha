@@ -32,7 +32,6 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   //                  stride     setvl | | |
   //                       |         | | | |
                       List(Bits(0,4),n,n,n,n), Array(
-    CMD_VSETPREC   -> List(Bits(0,4),n,n,y,n),
     CMD_VVCFGIVL   -> List(Bits(0,4),y,y,y,n),
     CMD_VSETVL     -> List(Bits(0,4),y,y,y,n),
 
@@ -72,8 +71,6 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
     // instructions not relevant for prefetch (just dequeue them)
     CMD_VF         -> List(Bits(1,4),n,n,y,n),
-    CMD_FENCE_L_V  -> List(Bits(1,4),n,n,n,n),
-    CMD_FENCE_G_V  -> List(Bits(1,4),n,n,n,n),
     CMD_VMVV       -> List(Bits(1,4),n,n,n,n),
     CMD_VMSV       -> List(Bits(1,4),n,n,y,n),
     CMD_VFMVV      -> List(Bits(1,4),n,n,n,n)

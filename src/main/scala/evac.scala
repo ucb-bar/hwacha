@@ -75,9 +75,6 @@ class Evac extends Module
                      //   |  |  |  |  |  |  |  |  |  |
                      List(n, n, n, n, n, n, n, n, n, n), Array(
 
-    CMD_FENCE_L_V -> List(n, y, n, n, n, y, n, n, n, n), 
-    CMD_FENCE_G_V -> List(n, y, n, n, n, y, n, n, n, n), 
-
     CMD_VF->         List(y, y, y, n, y, y, y, n, y, n),
 
     CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y, n),

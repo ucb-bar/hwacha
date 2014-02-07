@@ -175,8 +175,6 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vmu.io.qcntp1 := vxu.io.qcntp1
   vmu.io.qcntp2 := vxu.io.qcntp2
 
-  vxu.io.pending_store := vmu.io.pending_store
-
   vmu.io.dmem <> io.dmem
 
   vmu.io.vtlb <> io.vtlb

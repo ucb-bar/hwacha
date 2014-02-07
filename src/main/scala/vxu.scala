@@ -31,14 +31,9 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val vxu_to_vmu = new io_vxu_to_vmu()
 
-    val early_vaq_valid = Bool(OUTPUT)
-    val early_vaq_cmd = Bits(OUTPUT, 4)
-    val early_vsdq_valid = Bool(OUTPUT)
-
     val qcntp1 = UInt(OUTPUT, SZ_QCNT)
     val qcntp2 = UInt(OUTPUT, SZ_QCNT)
     
-    val pending_store = Bool(INPUT)
     val pending_memop = Bool(OUTPUT)
     val pending_vf = Bool(OUTPUT)
 
@@ -69,7 +64,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   issue.io.imem <> io.imem
 
   issue.io.vcmdq <> io.vcmdq
-  issue.io.pending_store <> io.pending_store
   
   issue.io.aiw_cmdb <> io.aiw_cmdb
   issue.io.aiw_imm1b <> io.aiw_imm1b
@@ -103,7 +97,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val b8hazard = Module(new Hazard(resetSignal = flush))
 
   b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
-  b8hazard.io.hazard_to_issue <> issue.io.hazard_to_issue
  
   b8hazard.io.tvec_valid <> issue.io.tvec_valid
   b8hazard.io.tvec_ready <> issue.io.tvec_ready
@@ -127,7 +120,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   b8hazard.io.fire_fn <> b8fire.io.fire_fn
   b8hazard.io.fire_regid_imm <> b8fire.io.fire_regid_imm
 
-  io.pending_memop := b8hazard.io.hazard_to_issue.tvec.pending_memop
+  io.pending_memop := b8hazard.io.pending_memop
   io.pending_vf := issue.io.pending_vf
 
 

@@ -4,16 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_hazard_to_issue_tvec extends Bundle
-{
-  val pending_memop = Bool()
-}
-
-class io_vxu_hazard_to_issue extends Bundle
-{
-  val tvec = new io_vxu_hazard_to_issue_tvec()
-}
-
 class NextPointer extends Module
 {
   val io = new Bundle
@@ -166,7 +156,6 @@ class NextPointer extends Module
 class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val hazard_to_issue = new io_vxu_hazard_to_issue().asOutput
     val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
     val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
     val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
@@ -191,6 +180,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     val fire = new io_vxu_issue_fire().asInput
     val fire_fn = new io_vxu_issue_fn().asInput
     val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
+    
+    val pending_memop = Bool(OUTPUT)
   }
 
   val reg_ptr = Reg(init=UInt(0,SZ_LGBANK))
@@ -458,7 +449,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val array_wport_vd = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_vd_base = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_stride = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_REGLEN))}
-  val array_wport_tvec = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
 
   val next_wport_val = Vec.fill(SZ_BANK){Bool()}
   val next_wport_head = Vec.fill(SZ_BANK){Bool()}
@@ -469,7 +459,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val next_wport_vd = Vec.fill(SZ_BANK){Bits(width = SZ_BREGLEN)}
   val next_wport_vd_base = Vec.fill(SZ_BANK){Bits(width = SZ_BREGLEN)}
   val next_wport_stride = Vec.fill(SZ_BANK){Bits(width = SZ_REGLEN)}
-  val next_wport_tvec = Vec.fill(SZ_BANK){Bool()}
 
   for (i <- 0 until SZ_BANK)
   {
@@ -482,7 +471,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     array_wport_vd(i) := next_wport_vd(i)
     array_wport_vd_base(i) := next_wport_vd_base(i)
     array_wport_stride(i) := next_wport_stride(i)
-    array_wport_tvec(i) := next_wport_tvec(i)
   }
 
   for (i <- 0 until SZ_BANK)
@@ -496,7 +484,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(i) := array_wport_vd(i)
     next_wport_vd_base(i) := array_wport_vd_base(i)
     next_wport_stride(i) := array_wport_stride(i)
-    next_wport_tvec(i) := array_wport_tvec(i)
   }
 
   when (io.fire.viu)
@@ -506,7 +493,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(viu_wptr) := io.fire_regid_imm.vd
     next_wport_vd_base(viu_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(viu_wptr) := io.issue_to_hazard.stride
-    next_wport_tvec(viu_wptr) := io.fire_regid_imm.tvec
   }
   when (io.fire.vau0)
   {
@@ -516,7 +502,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(vau0_wptr) := io.fire_regid_imm.vd
     next_wport_vd_base(vau0_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau0_wptr) := io.issue_to_hazard.stride
-    next_wport_tvec(vau0_wptr) := io.fire_regid_imm.tvec
   }
   when (io.fire.vau1)
   {
@@ -526,7 +511,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(vau1_wptr) := io.fire_regid_imm.vd
     next_wport_vd_base(vau1_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau1_wptr) := io.issue_to_hazard.stride
-    next_wport_tvec(vau1_wptr) := io.fire_regid_imm.tvec
   }
   when (io.fire.vau2)
   {
@@ -536,7 +520,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(vau2_wptr) := io.fire_regid_imm.vd
     next_wport_vd_base(vau2_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau2_wptr) := io.issue_to_hazard.stride
-    next_wport_tvec(vau2_wptr) := io.fire_regid_imm.tvec
   }
   when (io.fire.amo)
   {
@@ -546,7 +529,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(next_ptr4) := io.fire_regid_imm.vd
     next_wport_vd_base(next_ptr4) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr4) := io.issue_to_hazard.stride
-    next_wport_tvec(next_ptr4) := io.fire_regid_imm.tvec
   }
   when (io.fire.utld)
   {
@@ -556,7 +538,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(next_ptr3) := io.fire_regid_imm.vd
     next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
-    next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
   }
   when (io.fire.vld)
   {
@@ -566,7 +547,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vd(next_ptr3) := io.fire_regid_imm.vd
     next_wport_vd_base(next_ptr3) := io.fire_regid_imm.vd_base
     next_wport_stride(next_ptr3) := io.issue_to_hazard.stride
-    next_wport_tvec(next_ptr3) := io.fire_regid_imm.tvec
   }
 
   when (io.expand_to_hazard.wen)
@@ -642,7 +622,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val seqhazard_3slot = array_sport_val(next_ptr1) | array_sport_val(next_ptr2) | array_sport_val(next_ptr3)
 
   // checking any pending memory ops for fences
-  io.hazard_to_issue.tvec.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
+  io.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
 
   // hazard check logic for tvec
   val tvec_comp_vt =

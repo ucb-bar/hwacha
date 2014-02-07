@@ -49,7 +49,6 @@ class io_vxu_cnt_valid extends ValidIO(Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
-  val tvec = Bool()
   val vlen = Bits(width = SZ_VLEN)
   val utidx = Bits(width = SZ_VLEN)
   val vs_zero = Bool()
@@ -133,7 +132,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
     val issue_to_seq = new io_vxu_issue_to_seq().asOutput
     val issue_to_lane = new io_vxu_issue_to_lane().asOutput
-    val hazard_to_issue = new io_vxu_hazard_to_issue().asInput
 
     val tvec_valid = new io_vxu_issue_fire().asOutput
     val tvec_ready = Bool(INPUT)
@@ -151,7 +149,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val vt_fn = new io_vxu_issue_fn().asOutput
     val vt_regid_imm = new io_vxu_issue_regid_imm().asOutput
     
-    val pending_store = Bool(INPUT)
     val pending_vf = Bool(OUTPUT)
 
     val aiw_cmdb = new io_vxu_cmdq()
@@ -191,7 +188,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   tvec.io.issue_to_hazard <> io.issue_to_hazard
   tvec.io.issue_to_seq <> io.issue_to_seq
   tvec.io.issue_to_lane <> io.issue_to_lane
-  tvec.io.hazard_to_issue <> io.hazard_to_issue.tvec
 
   tvec.io.valid <> io.tvec_valid
   tvec.io.ready <> io.tvec_ready
@@ -200,7 +196,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   tvec.io.bhazard <> io.tvec_bhazard
   tvec.io.fn <> io.tvec_fn
   tvec.io.decoded <> io.tvec_regid_imm
-  tvec.io.pending_store <> io.pending_store
 
   tvec.io.aiw_cmdb <> io.aiw_cmdb
   tvec.io.aiw_imm1b <> io.aiw_imm1b
