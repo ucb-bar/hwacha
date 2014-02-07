@@ -29,8 +29,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
     val pending_store = Bool(OUTPUT)
 
-    val dmem_req = new io_dmem_req()
-    val dmem_resp = new io_dmem_resp().flip
+    val dmem = new rocket.HellaCacheIO()(conf.dcache)
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -125,8 +124,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
 
   // memif interface
-  io.dmem_req <> memif.io.mem_req
-  memif.io.mem_resp <> io.dmem_resp
+  io.dmem <> memif.io.dmem
 
   memif.io.prec := io.prec
   unpack.io.prec := io.prec

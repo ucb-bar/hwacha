@@ -23,7 +23,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val vcmdq = new VCMDQIO().flip
 
-    val imem = new rocket.CPUFrontendIO()(conf.icache)
+    val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
     val vaq = new io_vvaq()
     val vldq = new io_vldq().flip

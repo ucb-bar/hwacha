@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import uncore._
 
-case class HwachaConfiguration(icache: rocket.ICacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
+case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
@@ -150,7 +150,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   
   implicit val conf = hc
 
-  val icache = Module(new rocket.Frontend()(hc.icache, rc.tl))
+  val icache = Module(new rocket.Frontend()(hc.vicache, rc.tl))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))
   val ptlb = Module(new rocket.TLB(hc.nptlb))
   val vu = Module(new vu)
@@ -196,8 +196,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   icache.io.cpu <> vu.io.imem
 
   // Connect VU to D$
-  io.mem.req <> vu.io.dmem_req
-  vu.io.dmem_resp := io.mem.resp
+  io.mem <> vu.io.dmem
 
   // Connect VU to DTLB and PTLB
   vu.io.vtlb <> dtlb.io
@@ -249,7 +248,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
   val new_vl_m1 = Mux(sel_vcmd === CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
-  val vimm_vlen = Cat(UInt(0,17), next_prec, xf_split, UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
+  val vimm_vlen = Cat(UInt(0,19), next_prec, xf_split(7,0), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
   when (cmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VVCFGIVL) {

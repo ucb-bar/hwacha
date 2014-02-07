@@ -37,7 +37,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val irq = new io_issue_vt_to_irq_handler()
 
-    val imem = new rocket.CPUFrontendIO()(conf.icache)
+    val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
     val vf = new io_vf().flip
 

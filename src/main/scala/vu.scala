@@ -55,10 +55,8 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
     val busy = Bool(OUTPUT)
 
-    val imem = new rocket.CPUFrontendIO()(conf.icache)
-
-    val dmem_req = new io_dmem_req()
-    val dmem_resp = new io_dmem_resp().flip
+    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val dmem = new rocket.HellaCacheIO()(conf.dcache)
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -179,8 +177,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   vxu.io.pending_store := vmu.io.pending_store
 
-  vmu.io.dmem_req <> io.dmem_req
-  vmu.io.dmem_resp <> io.dmem_resp
+  vmu.io.dmem <> io.dmem
 
   vmu.io.vtlb <> io.vtlb
 

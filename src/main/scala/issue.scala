@@ -126,7 +126,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   val io = new Bundle {
     val irq = new io_issue_to_irq_handler()
 
-    val imem = new rocket.CPUFrontendIO()(conf.icache)
+    val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
     val vcmdq = new VCMDQIO().flip
 
