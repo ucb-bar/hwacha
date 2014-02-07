@@ -86,7 +86,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val vlen_reg = Reg(init=SInt(0, SZ_VLEN+1))
 
   val addr_reg = Reg(init=UInt(0, SZ_VIMM))
-  val cmd_reg = Reg(init=Bits(0,SZ_XCMD_CMD))
+  val cmd_reg = Reg(init=Bits(0))
   val vec_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
   val vec_pfed_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
   val stride_reg = Reg(init=UInt(0, SZ_VIMM))
@@ -131,7 +131,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     {
       when (setvl_val)
       {
-        vlen_reg := io.vcmdq.imm1.bits(RG_XIMM1_VLEN).toUInt
+        vlen_reg := new HwachaImm1().fromBits(io.vcmdq.imm1.bits).vlen
       }
       .elsewhen (cmd_val)
       {

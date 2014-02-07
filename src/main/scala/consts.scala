@@ -35,21 +35,7 @@ trait MachineConstants
 trait VectorCommandQueueConstants
 {
   val SZ_VCMD = 20
-  val SZ_VCMD_CMD = 8
-  val SZ_VCMD_VD = 6
-  val SZ_VCMD_VS = 6
-  
   val SZ_XCMD = 20
-  val SZ_XCMD_CMD = 8
-  val SZ_XCMD_VD = 6
-  val SZ_XCMD_VS = 6
-  val RG_XIMM1_VLEN = (10,0)
-  val RG_XIMM1_NXREGS = (16,11)
-  val RG_XIMM1_NFREGS = (22,17)
-  val RG_XIMM1_BACTIVE = (30,23)
-  val RG_XIMM1_BCNT = (34,31)
-  val RG_XIMM1_XF_SPLIT = (45,35)
-  val RG_XIMM1_PREC = (47,46)
 
   val SZ_VIMM = 64
   val SZ_XIMM = 64
@@ -68,13 +54,15 @@ class HwachaCommand extends Bundle
   val vt = UInt(width = 6)
 }
 
-class HwachaImm1 extends Bundle with MachineConstants
+class HwachaImm1 extends Bundle with
+  MachineConstants with
+  LaneConstants
 {
   val vlen = UInt(width = SZ_VLEN)
-  val nxregs = UInt(width = 6)
-  val nfregs = UInt(width = 6)
-  val bactive = Bits(width = 8)
-  val bcnt = UInt(width = 4)
+  val nxregs = UInt(width = SZ_REGCNT)
+  val nfregs = UInt(width = SZ_REGCNT)
+  val bactive = Bits(width = SZ_BANK)
+  val bcnt = UInt(width = SZ_BCNT)
   val xf_split = UInt(width = 11) 
   val prec = Bits(width = 2)
 }

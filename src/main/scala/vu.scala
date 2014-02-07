@@ -66,7 +66,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val xcpt = new io_xcpt().flip
   }
 
-  val xcpt = Module(new XCPT())
+  val xcpt = Module(new XCPT)
 
   val flush_kill = this.reset || xcpt.io.xcpt_to_vu.flush_kill
   val flush_irq = this.reset || xcpt.io.xcpt_to_vu.flush_irq

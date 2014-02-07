@@ -74,7 +74,7 @@ class IssueTVEC extends Module
   val cmd = io.vcmdq.cmd.bits.cmcode
   val vd = io.vcmdq.cmd.bits.vd
   val vt = io.vcmdq.cmd.bits.vt
-  val imm1 = io.vcmdq.imm1.bits
+  val imm1 = new HwachaImm1().fromBits(io.vcmdq.imm1.bits)
   val imm2 = io.vcmdq.imm2.bits
 
   val n = Bool(false)
@@ -299,25 +299,25 @@ class IssueTVEC extends Module
 
   when (fire_vcfg)
   {
-    next_vlen := io.vcmdq.imm1.bits(RG_XIMM1_VLEN)
-    next_nxregs := io.vcmdq.imm1.bits(RG_XIMM1_NXREGS)
-    next_nfregs := io.vcmdq.imm1.bits(RG_XIMM1_NFREGS)
-    next_bactive := io.vcmdq.imm1.bits(RG_XIMM1_BACTIVE)
-    next_bcnt := io.vcmdq.imm1.bits(RG_XIMM1_BCNT)
-    next_xstride := next_nxregs - Bits(1,2)
+    next_vlen := imm1.vlen
+    next_nxregs := imm1.nxregs
+    next_nfregs := imm1.nfregs
+    next_bactive := imm1.bactive
+    next_bcnt := imm1.bcnt
+    next_xstride := next_nxregs - UInt(1)
     next_fstride := next_eff_nfregs
     // location of X/F register split in bank: number of xregs times the number of uts per bank
-    next_xf_split := io.vcmdq.imm1.bits(RG_XIMM1_XF_SPLIT) // don't add back 1
+    next_xf_split := imm1.xf_split // don't add back 1
 
     next_precision := MuxLookup(
-      io.vcmdq.imm1.bits(RG_XIMM1_PREC), PREC_DOUBLE, Array(
+      imm1.prec, PREC_DOUBLE, Array(
       UInt(2,2) -> PREC_HALF,
       UInt(1,2) -> PREC_SINGLE,
       UInt(0,2) -> PREC_DOUBLE))
   }
   when (fire_setvl)
   {
-    next_vlen := io.vcmdq.imm1.bits(RG_XIMM1_VLEN)
+    next_vlen := imm1.vlen
   }
   when (fire_vf)
   {
@@ -426,7 +426,7 @@ class IssueTVEC extends Module
   io.decoded.mem.cmd := mem_cmd
   io.decoded.mem.typ := mem_type
   io.decoded.mem.typ_float := mem_type_float.toBool
-  io.decoded.imm := imm1
+  io.decoded.imm := io.vcmdq.imm1.bits
   io.decoded.imm2 := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))
   io.decoded.cnt_valid := io.vcmdq.cnt.valid
   io.decoded.cnt := cnt
