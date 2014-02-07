@@ -71,10 +71,9 @@ class IssueTVEC extends Module
 // DECODE                                                                  \\
 //-------------------------------------------------------------------------\\
 
-  val hwacha_cmd = new HwachaCommand().fromBits(io.vcmdq.cmd.bits)
-  val cmd = hwacha_cmd.cmcode
-  val vd = hwacha_cmd.vd
-  val vt = hwacha_cmd.vt
+  val cmd = io.vcmdq.cmd.bits.cmcode
+  val vd = io.vcmdq.cmd.bits.vd
+  val vt = io.vcmdq.cmd.bits.vt
   val imm1 = io.vcmdq.imm1.bits
   val imm2 = io.vcmdq.imm2.bits
 
@@ -241,7 +240,7 @@ class IssueTVEC extends Module
     mask_aiw_cmdb_ready && mask_aiw_imm1b_ready && mask_aiw_imm2b_ready && mask_aiw_cntb_ready && mask_aiw_numCntB_ready
     
 
-  io.aiw_cmdb.bits := io.vcmdq.cmd.bits
+  io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
   io.aiw_imm1b.bits := io.vcmdq.imm1.bits
   io.aiw_imm2b.bits := io.vcmdq.imm2.bits
   io.aiw_numCntB.bits := Mux(decode_vf.toBool, Bits(0, 1), Bits(1, 1))
@@ -442,5 +441,5 @@ class IssueTVEC extends Module
   io.irq.illegal := 
     io.vcmdq.cmd.valid && tvec_active && 
     (!valid.orR && !decode_fence_v && !decode_vcfg && !decode_setvl && !decode_vf || illegal_vd || illegal_vt)
-  io.irq.cmd := io.vcmdq.cmd.bits
+  io.irq.cmd := io.vcmdq.cmd.bits.toBits
 }

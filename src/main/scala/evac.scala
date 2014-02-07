@@ -57,7 +57,7 @@ class Evac extends Module
   cmd_sel_next := cmd_sel
 
   val cmd = Mux(cmd_sel,
-    new HwachaCommand().fromBits(io.vcmdq.cmd.bits).cmcode,
+    io.vcmdq.cmd.bits.cmcode,
     new HwachaCommand().fromBits(io.aiw_cmdb.bits).cmcode)
 
   val cs =
@@ -355,7 +355,7 @@ class Evac extends Module
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
         io.vsdq.bits := Cat(Bits(0,27), is_prefetch, deq_vimm1q, deq_vimm2q, deq_vcntq, Bits(1,1),
-                            Bits(0, 32 - SZ_VCMD), io.vcmdq.cmd.bits)
+                            Bits(0, 32 - SZ_VCMD), io.vcmdq.cmd.bits.toBits)
 
         when (io.vsdq.ready && io.vaq.ready)
         {

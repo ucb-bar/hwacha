@@ -15,7 +15,7 @@ class io_xcpt extends Bundle
 
 class VCMDQIO extends Bundle
 {
-  val cmd = Decoupled(Bits(width = SZ_XCMD))
+  val cmd = Decoupled(new HwachaCommand)
   val imm1 = Decoupled(Bits(width = SZ_XIMM))
   val imm2 = Decoupled(Bits(width = SZ_XIMM2))
   val cnt = Decoupled(Bits(width = SZ_VLEN+1))
@@ -156,15 +156,6 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vxu.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
   vxu.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
 
-  evac.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
-  evac.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
-  evac.io.vcmdq.imm1.valid := vcmdq.io.deq.imm1.valid
-  evac.io.vcmdq.imm1.bits := vcmdq.io.deq.imm1.bits
-  evac.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
-  evac.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
-  evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
-  evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
-
   io.imem <> vxu.io.imem
 
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
@@ -224,13 +215,10 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   evac.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
   evac.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
-
   evac.io.vcmdq.imm1.bits := vcmdq.io.deq.imm1.bits
   evac.io.vcmdq.imm1.valid := vcmdq.io.deq.imm1.valid
-
   evac.io.vcmdq.imm2.bits := vcmdq.io.deq.imm2.bits
   evac.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
-
   evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
   evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
 

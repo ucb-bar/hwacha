@@ -23,7 +23,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val n = Bool(false)
   val y = Bool(true)
 
-  val cmd = new HwachaCommand().fromBits(io.vcmdq.cmd.bits).cmcode
+  val cmd = io.vcmdq.cmd.bits.cmcode
 
   val cs = ListLookup(cmd,
   //                               deq_imm2q
