@@ -5,6 +5,26 @@ import Node._
 import Constants._
 import uncore.constants.AddressConstants._
 
+class HwachaCommand extends Bundle
+{
+  val cmcode = Bits(width = 8)
+  val vd = UInt(width = 6)
+  val vt = UInt(width = 6)
+}
+
+class HwachaImm1 extends Bundle with
+  MachineConstants with
+  LaneConstants
+{
+  val prec = Bits(width = 2)
+  val xf_split = UInt(width = SZ_BREGLEN) 
+  val bcnt = UInt(width = SZ_BCNT)
+  val bactive = Bits(width = SZ_BANK)
+  val nfregs = UInt(width = SZ_REGCNT)
+  val nxregs = UInt(width = SZ_REGCNT)
+  val vlen = UInt(width = SZ_VLEN)
+}
+
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))
 class io_vxu_immq extends DecoupledIO(Bits(width = SZ_XIMM))
 class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_XIMM2))
@@ -26,32 +46,6 @@ class io_cpu_exception extends Bundle
   val hold = Bool(OUTPUT)
   val addr = UInt(OUTPUT, SZ_ADDR)
 }
-
-class io_dmem_req_bundle extends Bundle
-{
-  val kill = Bool()
-  val cmd = Bits(width = 4)
-  val typ = Bits(width = 3)
-  val addr = UInt(width = PADDR_BITS)
-  val phys = Bool()
-  val data = Bits(width = 64)
-  val tag = Bits(width = 10)
-}
-
-class io_dmem_resp_bundle extends Bundle
-{
-  val nack = Bool()
-  val data_subword = Bits(width = 64)
-  val cmd = Bits(width = 4)
-  val typ = Bits(width = 3)
-  val addr = UInt(width = PADDR_BITS)
-  val store_data = Bits(width = 64)
-  val tag = Bits(width = 10)
-  val has_data = Bool()
-}
-
-class io_dmem_req extends DecoupledIO(new io_dmem_req_bundle)
-class io_dmem_resp extends ValidIO(new io_dmem_resp_bundle)
 
 class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {

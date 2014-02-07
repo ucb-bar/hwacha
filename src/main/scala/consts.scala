@@ -47,26 +47,6 @@ trait VectorCommandQueueConstants
   val SZ_XRESP = 1
 }
 
-class HwachaCommand extends Bundle
-{
-  val cmcode = Bits(width = 8)
-  val vd = UInt(width = 6)
-  val vt = UInt(width = 6)
-}
-
-class HwachaImm1 extends Bundle with
-  MachineConstants with
-  LaneConstants
-{
-  val vlen = UInt(width = SZ_VLEN)
-  val nxregs = UInt(width = SZ_REGCNT)
-  val nfregs = UInt(width = SZ_REGCNT)
-  val bactive = Bits(width = SZ_BANK)
-  val bcnt = UInt(width = SZ_BCNT)
-  val xf_split = UInt(width = 11) 
-  val prec = Bits(width = 2)
-}
-
 object PrecConstants
 trait PrecConstants
 {
