@@ -12,9 +12,7 @@ class HwachaCommand extends Bundle
   val vt = UInt(width = 6)
 }
 
-class HwachaImm1 extends Bundle with
-  MachineConstants with
-  LaneConstants
+class HwachaImm1 extends Bundle with MachineConstants with LaneConstants
 {
   val prec = Bits(width = 2)
   val xf_split = UInt(width = SZ_BREGLEN) 
@@ -23,6 +21,101 @@ class HwachaImm1 extends Bundle with
   val nfregs = UInt(width = SZ_REGCNT)
   val nxregs = UInt(width = SZ_REGCNT)
   val vlen = UInt(width = SZ_VLEN)
+}
+
+class VIUFn extends Bundle with VIUConstants with DecodeConstants
+{
+  val t0 = Bits(width = SZ_VIU_T0)
+  val t1 = Bits(width = SZ_VIU_T0)
+  val dw = Bits(width = SZ_DW)
+  val fp = Bits(width = SZ_FP)
+  val op = Bits(width = SZ_VIU_OP)
+}
+
+class VAU0Fn extends Bundle with VAU0Constants with DecodeConstants
+{
+  val dw = Bits(width = SZ_DW)
+  val op = Bits(width = SZ_VAU0_OP)
+}
+
+class VAU1Fn extends Bundle with VAU1Constants with DecodeConstants
+{
+  val fp = Bits(width = SZ_FP)
+  val rm = Bits(width = rocket.FPConstants.RM_SZ)
+  val op = Bits(width = SZ_VAU1_OP)
+}
+
+class VAU2Fn extends Bundle with VAU2Constants with DecodeConstants
+{
+  val fp = Bits(width = SZ_FP)
+  val rm = Bits(width = rocket.FPConstants.RM_SZ)
+  val op = Bits(width = SZ_VAU2_OP)
+}
+
+class VMUFn extends Bundle with VMUConstants with DecodeConstants
+  with uncore.constants.MemoryOpConstants
+{
+  val float = Bool()
+  val typ = Bits(width = MT_SZ)
+  val cmd = Bits(width = M_SZ)
+  val op = Bits(width = SZ_VMU_OP)
+}
+
+class LaneOpBundle extends Bundle
+{
+  val cnt = Bits(width = SZ_BCNT)
+}
+
+class ReadBankOp extends LaneOpBundle
+{
+  val last = Bool()
+  val addr = Bits(width = SZ_BREGLEN)
+  val oplen = Bits(width = SZ_BOPL)
+  val rblen = Vec.fill(SZ_BRPORT){Bool()}
+}
+
+class WriteBankOp extends LaneOpBundle
+{
+  val last = Bool()
+  val addr = Bits(width = SZ_BREGLEN)
+  val sel = Bits(width = SZ_BWPORT)
+}
+
+class VIUBankOp extends LaneOpBundle
+{
+  val fn = Bits(width = SZ_VIU_FN)
+  val utidx = Bits(width = SZ_VLEN)
+  val imm = Bits(width = SZ_DATA)
+}
+
+class VAU0LaneFUOp extends LaneOpBundle
+{
+  val fn = Bits(width = SZ_VAU0_FN)
+}
+
+class VAU1LaneFUOp extends LaneOpBundle
+{
+  val fn = Bits(width = SZ_VAU1_FN)
+}
+
+class VAU2LaneFUOp extends LaneOpBundle
+{
+  val fn = Bits(width = SZ_VAU2_FN)
+}
+
+class VGULaneFUOp extends LaneOpBundle
+{
+  val mem = new io_vxu_mem_cmd()
+  val imm = Bits(width = SZ_DATA)
+  val imm2 = Bits(width = SZ_XIMM2)
+  val utmemop = Bool()
+}
+
+class VLULaneFUOp extends LaneOpBundle
+
+class VSULaneFUOp extends LaneOpBundle
+{
+  val mem = new io_vxu_mem_cmd()
 }
 
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))

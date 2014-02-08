@@ -25,7 +25,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     val seq_fn = new io_vxu_seq_fn().asInput
     val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
 
-    val laneuop = new LaneUopIO
+    val laneuop = new LaneOpIO
 
     val expand_to_xcpt = new io_expand_to_xcpt_handler()
   }
@@ -50,17 +50,17 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     def ondeck = Pipe(valid(0), bits(0), 0)
   }
 
-  def rblen(b: Bits) = new BankUopRead().rblen.fromBits(b)
+  def rblen(b: Bits) = new ReadBankOp().rblen.fromBits(b)
 
-  val rexp = new BuildExpander(new BankUopRead, conf.shift_buf_read)
-  val wexp = new BuildExpander(new BankUopWrite, conf.shift_buf_write)
-  val viuexp = new BuildExpander(new BankUopVIU, conf.shift_buf_read)
-  val vau0exp = new BuildExpander(new LfuncUopVAU0, conf.shift_buf_read)
-  val vau1exp = new BuildExpander(new LfuncUopVAU1, conf.shift_buf_read)
-  val vau2exp = new BuildExpander(new LfuncUopVAU2, conf.shift_buf_read)
-  val vguexp = new BuildExpander(new LfuncUopVGU, conf.shift_buf_read)
-  val vluexp = new BuildExpander(new LfuncUopVLU, conf.shift_buf_read)
-  val vsuexp = new BuildExpander(new LfuncUopVSU, conf.shift_buf_read)
+  val rexp = new BuildExpander(new ReadBankOp, conf.shift_buf_read)
+  val wexp = new BuildExpander(new WriteBankOp, conf.shift_buf_write)
+  val viuexp = new BuildExpander(new VIUBankOp, conf.shift_buf_read)
+  val vau0exp = new BuildExpander(new VAU0LaneFUOp, conf.shift_buf_read)
+  val vau1exp = new BuildExpander(new VAU1LaneFUOp, conf.shift_buf_read)
+  val vau2exp = new BuildExpander(new VAU2LaneFUOp, conf.shift_buf_read)
+  val vguexp = new BuildExpander(new VGULaneFUOp, conf.shift_buf_read)
+  val vluexp = new BuildExpander(new VLULaneFUOp, conf.shift_buf_read)
+  val vsuexp = new BuildExpander(new VSULaneFUOp, conf.shift_buf_read)
 
   when (io.seq.viu) 
   {

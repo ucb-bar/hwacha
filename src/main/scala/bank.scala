@@ -4,14 +4,21 @@ import Chisel._
 import Node._
 import Constants._
 
+class BankOpIO extends Bundle
+{
+  val read = Valid(new ReadBankOp)
+  val write = Valid(new WriteBankOp)
+  val viu = Valid(new VIUBankOp)
+}
+
 class Bank extends Module
 {
   val io = new Bundle {
     val active = Bool(INPUT)
     
     val uop = new Bundle {
-      val in = new BankUopIO().flip
-      val out = new BankUopIO
+      val in = new BankOpIO().flip
+      val out = new BankOpIO
     }
     
     val rw = new Bundle {
@@ -29,9 +36,9 @@ class Bank extends Module
     val prec = Bits(INPUT, SZ_PREC)
   }
 
-  def uop_valid(uop: ValidIO[CntBundle]) = uop.valid && uop.bits.cnt.orR && io.active
+  def uop_valid(uop: ValidIO[LaneOpBundle]) = uop.valid && uop.bits.cnt.orR && io.active
 
-  val read_uop = Reg(Valid(new BankUopRead).asDirectionless)
+  val read_uop = Reg(Valid(new ReadBankOp).asDirectionless)
   read_uop.valid := io.uop.in.read.valid
   when (io.uop.in.read.valid) {
     read_uop.bits.last := io.uop.in.read.bits.last
@@ -44,7 +51,7 @@ class Bank extends Module
     read_uop.valid := Bool(false)
   }
 
-  val write_uop = Reg(Valid(new BankUopWrite).asDirectionless)
+  val write_uop = Reg(Valid(new WriteBankOp).asDirectionless)
   write_uop.valid := io.uop.in.write.valid
   when (io.uop.in.write.valid) {
     write_uop.bits.last := io.uop.in.write.bits.last
@@ -56,7 +63,7 @@ class Bank extends Module
     write_uop.valid := Bool(false)
   }
 
-  val viu_uop = Reg(Valid(new BankUopVIU).asDirectionless)
+  val viu_uop = Reg(Valid(new VIUBankOp).asDirectionless)
   viu_uop.valid := io.uop.in.viu.valid
   when (io.uop.in.viu.valid) {
     viu_uop.bits.cnt := Mux(uop_valid(io.uop.in.viu), io.uop.in.viu.bits.cnt - UInt(1), UInt(0))

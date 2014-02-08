@@ -28,18 +28,31 @@ class io_lane_to_hazard extends Bundle
   val wlast = Bool()
 }
 
+class LaneOpIO extends Bundle
+{
+  val read = Valid(new ReadBankOp)
+  val write = Valid(new WriteBankOp)
+  val viu = Valid(new VIUBankOp)
+  val vau0 = Valid(new VAU0LaneFUOp)
+  val vau1 = Valid(new VAU1LaneFUOp)
+  val vau2 = Valid(new VAU2LaneFUOp)
+  val vgu = Valid(new VGULaneFUOp)
+  val vlu = Valid(new VLULaneFUOp)
+  val vsu = Valid(new VSULaneFUOp)
+}
+
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
-    val uop = new LaneUopIO().flip
+    val uop = new LaneOpIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
     val vmu = new VMUIO()
 
     val prec = Bits(INPUT, SZ_PREC)
   }
 
-  val conn = new ArrayBuffer[BankUopIO]
+  val conn = new ArrayBuffer[BankOpIO]
   val rblen = new ArrayBuffer[Bits]
   val rdata = new ArrayBuffer[Bits]
   val ropl0 = new ArrayBuffer[Bits]

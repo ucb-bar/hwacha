@@ -117,6 +117,10 @@ trait DecodeConstants
   val MTF_X = Bool(false)
   val MTF_N = Bool(false)
   val MTF_Y = Bool(true)
+
+  val SZ_DW = 1
+  val SZ_FP = 2
+  val SZ_MTF = 1
 }
 
 trait VIUConstants
@@ -164,6 +168,7 @@ trait VAU0Constants extends DecodeConstants
   val VAU0_64HU = Cat(DW64,vau0_MHU)
 
   val SZ_VAU0_FN = 3
+  val SZ_VAU0_OP = SZ_VAU0
 }
 
 trait VAU1Constants
@@ -190,6 +195,7 @@ trait VAU1Constants
   val RG_VAU1_FN = (2,0)
 
   val FN_VAU1_FMA = (x: Bits) => x(2)
+  val SZ_VAU1_OP = 3
 }
 
 trait VAU2Constants
@@ -204,6 +210,7 @@ trait VAU2Constants
   val RG_VAU2_FP = (8,7)
   val RG_VAU2_RM = (6,4)
   val RG_VAU2_FN = (SZ_VAU2-1,0)
+  val SZ_VAU2_OP = SZ_VAU2
 }
 
 trait VMUConstants extends LaneConstants
@@ -221,6 +228,8 @@ trait VMUConstants extends LaneConstants
   def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
 
   val SZ_QCNT = SZ_LGBANK1
+
+  val SZ_VMU_OP = 3
 }
 
 object Commands extends Commands

@@ -3,10 +3,20 @@ package hwacha
 import Chisel._
 import Constants._
 
+class LaneFUOpIO extends Bundle
+{
+  val vau0 = Valid(new VAU0LaneFUOp)
+  val vau1 = Valid(new VAU1LaneFUOp)
+  val vau2 = Valid(new VAU2LaneFUOp)
+  val vgu = Valid(new VGULaneFUOp)
+  val vlu = Valid(new VLULaneFUOp)
+  val vsu = Valid(new VSULaneFUOp)
+}
+
 class LaneLFU extends Module 
 {
   val io = new Bundle {
-    val uop = new LfuncUopIO().flip
+    val uop = new LaneFUOpIO().flip
 
     val vau0_val = Bool(OUTPUT)
     val vau0_fn = Bits(OUTPUT, SZ_VAU0_FN)
@@ -24,7 +34,7 @@ class LaneLFU extends Module
     val vsdq_mem = new io_vxu_mem_cmd().asOutput
   }
 
-  val vau0_uop = Reg(Valid(new LfuncUopVAU0).asDirectionless)
+  val vau0_uop = Reg(Valid(new VAU0LaneFUOp).asDirectionless)
   when (vau0_uop.bits.cnt.orR) {
     vau0_uop.bits.cnt := vau0_uop.bits.cnt - UInt(1)
   }
@@ -37,7 +47,7 @@ class LaneLFU extends Module
     vau0_uop.bits.fn := io.uop.vau0.bits.fn
   }
 
-  val vau1_uop = Reg(Valid(new LfuncUopVAU1).asDirectionless)
+  val vau1_uop = Reg(Valid(new VAU1LaneFUOp).asDirectionless)
   when (vau1_uop.bits.cnt.orR) {
     vau1_uop.bits.cnt := vau1_uop.bits.cnt - UInt(1)
   }
@@ -50,7 +60,7 @@ class LaneLFU extends Module
     vau1_uop.bits.fn := io.uop.vau1.bits.fn
   }
 
-  val vau2_uop = Reg(Valid(new LfuncUopVAU2).asDirectionless)
+  val vau2_uop = Reg(Valid(new VAU2LaneFUOp).asDirectionless)
   when (vau2_uop.bits.cnt.orR) {
     vau2_uop.bits.cnt := vau2_uop.bits.cnt - UInt(1)
   }
@@ -65,7 +75,7 @@ class LaneLFU extends Module
 
   val vgu_checkcnt = Reg(init=Bool(false))
   val vgu_cnt = Reg(UInt(width = SZ_BCNT))
-  val vgu_uop = Reg(Valid(new LfuncUopVGU).asDirectionless)
+  val vgu_uop = Reg(Valid(new VGULaneFUOp).asDirectionless)
   when (vgu_uop.bits.cnt.orR) {
     vgu_uop.bits.cnt := vgu_uop.bits.cnt - UInt(1)
   }
@@ -87,7 +97,7 @@ class LaneLFU extends Module
     vgu_cnt := io.uop.vgu.bits.cnt
   }
 
-  val vlu_uop = Reg(Valid(new LfuncUopVLU).asDirectionless)
+  val vlu_uop = Reg(Valid(new VLULaneFUOp).asDirectionless)
   when (vlu_uop.bits.cnt.orR) {
     vlu_uop.bits.cnt := vlu_uop.bits.cnt - UInt(1)
   }
@@ -102,7 +112,7 @@ class LaneLFU extends Module
     vlu_uop.bits.cnt := io.uop.vlu.bits.cnt
   }
 
-  val vsu_uop = Reg(Valid(new LfuncUopVSU).asDirectionless)
+  val vsu_uop = Reg(Valid(new VSULaneFUOp).asDirectionless)
   when (vsu_uop.bits.cnt.orR) {
     vsu_uop.bits.cnt := vsu_uop.bits.cnt - UInt(1)
   }
