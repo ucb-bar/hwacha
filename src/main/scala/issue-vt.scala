@@ -297,7 +297,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.aiw_cntb.bits := cnt
 
   io.issue_to_aiw.markLast := io.vf.stop
-  io.issue_to_aiw.update_numCnt.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
+  io.issue_to_aiw.update_numCnt.valid := io.vf.active && io.ready && io.aiw_cntb.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
 
   val valid_common = io.vf.active && io.aiw_cntb.ready && !stall_issue
