@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 import uncore.constants.AddressConstants._
+import uncore.constants.MemoryOpConstants._
 
 class HwachaCommand extends Bundle
 {
@@ -12,7 +13,7 @@ class HwachaCommand extends Bundle
   val vt = UInt(width = 6)
 }
 
-class HwachaImm1 extends Bundle with MachineConstants with LaneConstants
+class HwachaImm1 extends Bundle
 {
   val prec = Bits(width = 2)
   val xf_split = UInt(width = SZ_BREGLEN) 
@@ -23,7 +24,7 @@ class HwachaImm1 extends Bundle with MachineConstants with LaneConstants
   val vlen = UInt(width = SZ_VLEN)
 }
 
-class VIUFn extends Bundle with VIUConstants with DecodeConstants
+class VIUFn extends Bundle
 {
   val t0 = Bits(width = SZ_VIU_T0)
   val t1 = Bits(width = SZ_VIU_T0)
@@ -32,28 +33,27 @@ class VIUFn extends Bundle with VIUConstants with DecodeConstants
   val op = Bits(width = SZ_VIU_OP)
 }
 
-class VAU0Fn extends Bundle with VAU0Constants with DecodeConstants
+class VAU0Fn extends Bundle
 {
   val dw = Bits(width = SZ_DW)
   val op = Bits(width = SZ_VAU0_OP)
 }
 
-class VAU1Fn extends Bundle with VAU1Constants with DecodeConstants
+class VAU1Fn extends Bundle
 {
   val fp = Bits(width = SZ_FP)
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU1_OP)
 }
 
-class VAU2Fn extends Bundle with VAU2Constants with DecodeConstants
+class VAU2Fn extends Bundle
 {
   val fp = Bits(width = SZ_FP)
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU2_OP)
 }
 
-class VMUFn extends Bundle with VMUConstants with DecodeConstants
-  with uncore.constants.MemoryOpConstants
+class VMUFn extends Bundle
 {
   val float = Bool()
   val typ = Bits(width = MT_SZ)

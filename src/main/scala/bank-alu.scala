@@ -17,27 +17,27 @@ class Shifter extends Module
 
   val left = MuxLookup(
     io.fn(RG_VIU_FN), Bool(false), Array(
-      viu_SLL -> Bool(true),
-      viu_SRL -> Bool(false),
-      viu_SRA -> Bool(false)
+      I_SLL -> Bool(true),
+      I_SRL -> Bool(false),
+      I_SRA -> Bool(false)
     ))
 
   val arith = MuxLookup(
     io.fn(RG_VIU_FN), Bool(false), Array(
-      viu_SLL -> Bool(false),
-      viu_SRL -> Bool(false),
-      viu_SRA -> Bool(true)
+      I_SLL -> Bool(false),
+      I_SRL -> Bool(false),
+      I_SRA -> Bool(true)
     ))
 
   val trunc = MuxCase(
     Bool(false), Array(
-      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW32) -> Bool(true),
-      (io.fn(RG_VIU_FN) === viu_SRL && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
-      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
-      (io.fn(RG_VIU_FN) === viu_SRA && io.fn(RG_VIU_DW) === DW32) -> Bool(true)
+      (io.fn(RG_VIU_FN) === I_SRL && io.fn(RG_VIU_DW) === DW32) -> Bool(true),
+      (io.fn(RG_VIU_FN) === I_SRL && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
+      (io.fn(RG_VIU_FN) === I_SRA && io.fn(RG_VIU_DW) === DW64) -> Bool(false),
+      (io.fn(RG_VIU_FN) === I_SRA && io.fn(RG_VIU_DW) === DW32) -> Bool(true)
     ))
 
-  val shift_in_hi_32 = Mux(io.fn(RG_VIU_FN) === viu_SRA, Fill(32, io.in(31)), UInt(0,32))
+  val shift_in_hi_32 = Mux(io.fn(RG_VIU_FN) === I_SRA, Fill(32, io.in(31)), UInt(0,32))
   val shift_in_hi = Mux(io.fn(RG_VIU_DW) === DW64, io.in(63,32), shift_in_hi_32)
   val shift_in_r = Cat(shift_in_hi, io.in(31,0))
   val shift_in = Mux(left, Reverse(shift_in_r), shift_in_r)
@@ -63,9 +63,9 @@ class BankALU extends Module
     val out = Bits(OUTPUT, SZ_DATA)
   }
 
-  def viu_FN(fn: Bits*) = fn.toList.map(x => {s1_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
-  def viu_FP(fp: Bits) = s1_fn(RG_VIU_FP) === fp
-  def viu_DW(dw: Bits) = s1_fn(RG_VIU_DW) === dw
+  def VIU_FN(fn: Bits*) = fn.toList.map(x => {s1_fn(RG_VIU_FN) === x}).reduceLeft(_ || _)
+  def VIU_FP(fp: Bits) = s1_fn(RG_VIU_FP) === fp
+  def VIU_DW(dw: Bits) = s1_fn(RG_VIU_DW) === dw
 
   val s1_valid = Reg(next=io.valid)
   val s1_fn = RegEnable(io.fn, io.valid)
@@ -75,8 +75,8 @@ class BankALU extends Module
 
   val sub = MuxCase(
     Bits(0, 1), Array(
-      viu_FN(viu_ADD) -> Bits(0, 1),
-      viu_FN(viu_SUB) -> Bits(1, 1)
+      VIU_FN(I_ADD) -> Bits(0, 1),
+      VIU_FN(I_SUB) -> Bits(1, 1)
     ))
 
   val adder_out =
@@ -85,15 +85,15 @@ class BankALU extends Module
 
   // SLL, SRL, SRA
   val dw = s1_fn(RG_VIU_DW)
-  val sra = (s1_fn(RG_VIU_FN) === viu_SRA)
+  val sra = (s1_fn(RG_VIU_FN) === I_SRA)
   val shamt = Cat(s1_in1(5) & (dw === DW64), s1_in1(4,0)).toUInt
-  val shright = sra || (s1_fn(RG_VIU_FN) === viu_SRL)
+  val shright = sra || (s1_fn(RG_VIU_FN) === I_SRL)
   val shin_hi_32 = Mux(sra, Fill(32, s1_in0(31)), UInt(0,32))
   val shin_hi = Mux(dw === DW64, s1_in0(63,32), shin_hi_32)
   val shin_r = Cat(shin_hi, s1_in0(31,0))
   val shin = Mux(shright, shin_r, Reverse(shin_r))
   val shout_r = (Cat(sra & shin_r(63), shin).toSInt >> shamt)(63,0)
-  val shift_out = Mux(s1_fn(RG_VIU_FN) === viu_SLL, Reverse(shout_r), shout_r)
+  val shift_out = Mux(s1_fn(RG_VIU_FN) === I_SLL, Reverse(shout_r), shout_r)
 
 
   val ltu = (s1_in0.toUInt < s1_in1.toUInt)
@@ -118,37 +118,37 @@ class BankALU extends Module
   val equal_dp = comp_dp.io.a_eq_b
 
   val comp = 
-    viu_FN(viu_SLT)  & lt  |
-    viu_FN(viu_SLTU) & ltu |
-    viu_FN(viu_FEQ)  & (viu_FP(FPS) & equal_sp | viu_FP(FPD) & equal_dp) |
-    viu_FN(viu_FLE)  & (viu_FP(FPS) & (equal_sp | less_sp) | viu_FP(FPD) & (equal_dp | less_dp)) |
-    viu_FN(viu_FLT)  & (viu_FP(FPS) & less_sp | viu_FP(FPD) & less_dp)
+    VIU_FN(I_SLT)  & lt  |
+    VIU_FN(I_SLTU) & ltu |
+    VIU_FN(I_FEQ)  & (VIU_FP(FPS) & equal_sp | VIU_FP(FPD) & equal_dp) |
+    VIU_FN(I_FLE)  & (VIU_FP(FPS) & (equal_sp | less_sp) | VIU_FP(FPD) & (equal_dp | less_dp)) |
+    VIU_FN(I_FLT)  & (VIU_FP(FPS) & less_sp | VIU_FP(FPD) & less_dp)
 
   val sj_sp =
-    viu_FN(viu_FSJ) & unpacked_s_s1_in1(32)   |
-    viu_FN(viu_FSJN) & ~unpacked_s_s1_in1(32) |
-    viu_FN(viu_FSJX) & (unpacked_s_s1_in1(32) ^ unpacked_s_s1_in0(32))
+    VIU_FN(I_FSJ) & unpacked_s_s1_in1(32)   |
+    VIU_FN(I_FSJN) & ~unpacked_s_s1_in1(32) |
+    VIU_FN(I_FSJX) & (unpacked_s_s1_in1(32) ^ unpacked_s_s1_in0(32))
 
   val sj_dp = 
-    viu_FN(viu_FSJ) & unpacked_d_s1_in1(64)   |
-    viu_FN(viu_FSJN) & ~unpacked_d_s1_in1(64) |
-    viu_FN(viu_FSJX) & (unpacked_d_s1_in1(64) ^ unpacked_d_s1_in0(64))
+    VIU_FN(I_FSJ) & unpacked_d_s1_in1(64)   |
+    VIU_FN(I_FSJN) & ~unpacked_d_s1_in1(64) |
+    VIU_FN(I_FSJX) & (unpacked_d_s1_in1(64) ^ unpacked_d_s1_in0(64))
 
   val is_in0_nan =
-    viu_FP(FPS) & (unpacked_s_s1_in0(31,29) === Bits("b111", 3)) |
-    viu_FP(FPD) & (unpacked_d_s1_in0(63,61) === Bits("b111", 3))
+    VIU_FP(FPS) & (unpacked_s_s1_in0(31,29) === Bits("b111", 3)) |
+    VIU_FP(FPD) & (unpacked_d_s1_in0(63,61) === Bits("b111", 3))
 
   val is_in1_nan = 
-    viu_FP(FPS) & (unpacked_s_s1_in1(31,29) === Bits("b111", 3)) |
-    viu_FP(FPD) & (unpacked_d_s1_in1(63,61) === Bits("b111", 3))
+    VIU_FP(FPS) & (unpacked_s_s1_in1(31,29) === Bits("b111", 3)) |
+    VIU_FP(FPD) & (unpacked_d_s1_in1(63,61) === Bits("b111", 3))
 
   val want_min = MuxCase(Bool(false), Array(
-    viu_FN(viu_FMIN) -> Bool(true),
-    viu_FN(viu_FMAX) -> Bool(false)))
+    VIU_FN(I_FMIN) -> Bool(true),
+    VIU_FN(I_FMAX) -> Bool(false)))
 
   val less_fp = 
-    viu_FP(FPS) & less_sp | 
-    viu_FP(FPD) & less_dp
+    VIU_FP(FPS) & less_sp | 
+    VIU_FP(FPD) & less_dp
 
   val fminmax = Mux(
     is_in1_nan || ~is_in0_nan && (want_min === less_fp), s1_in0,
@@ -156,32 +156,32 @@ class BankALU extends Module
 
   val next_mask = MuxCase(
     Bool(true), Array(
-      viu_FN(viu_MOVZ) -> ~s1_in0(0),
-      viu_FN(viu_MOVN) ->  s1_in0(0)
+      VIU_FN(I_MOVZ) -> ~s1_in0(0),
+      VIU_FN(I_MOVN) ->  s1_in0(0)
     ))
 
   val next_result64 = MuxCase(
     Bits(0, SZ_DATA), Array(
-      viu_FN(viu_IDX) -> Cat(Fill(SZ_DATA-SZ_VLEN, Bits("b0", 1)), s1_utidx),
-      viu_FN(viu_MOV,viu_MOVZ,viu_MOVN) -> s1_in1,
-      viu_FN(viu_ADD,viu_SUB) -> Cat(Bits(0, 1), adder_out),
-      viu_FN(viu_SLL,viu_SRL,viu_SRA) -> Cat(Bits(0, 1), shift_out),
-      viu_FN(viu_SLT,viu_SLTU,viu_FEQ,viu_FLE,viu_FLT) -> Cat(Bits(0, 64), comp),
-      viu_FN(viu_AND) -> (s1_in0 & s1_in1),
-      viu_FN(viu_OR) -> (s1_in0 | s1_in1),
-      viu_FN(viu_XOR) -> (s1_in0 ^ s1_in1),
-      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPS)) -> pack_float_s(Cat(sj_sp, unpacked_s_s1_in0(31,0)), 0),
-      (viu_FN(viu_FSJ,viu_FSJN,viu_FSJX) && viu_FP(FPD)) -> pack_float_d(Cat(sj_dp, unpacked_d_s1_in0(63,0)), 0),
-      viu_FN(viu_FMIN,viu_FMAX) -> fminmax
+      VIU_FN(I_IDX) -> Cat(Fill(SZ_DATA-SZ_VLEN, Bits("b0", 1)), s1_utidx),
+      VIU_FN(I_MOV,I_MOVZ,I_MOVN) -> s1_in1,
+      VIU_FN(I_ADD,I_SUB) -> Cat(Bits(0, 1), adder_out),
+      VIU_FN(I_SLL,I_SRL,I_SRA) -> Cat(Bits(0, 1), shift_out),
+      VIU_FN(I_SLT,I_SLTU,I_FEQ,I_FLE,I_FLT) -> Cat(Bits(0, 64), comp),
+      VIU_FN(I_AND) -> (s1_in0 & s1_in1),
+      VIU_FN(I_OR) -> (s1_in0 | s1_in1),
+      VIU_FN(I_XOR) -> (s1_in0 ^ s1_in1),
+      (VIU_FN(I_FSJ,I_FSJN,I_FSJX) && VIU_FP(FPS)) -> pack_float_s(Cat(sj_sp, unpacked_s_s1_in0(31,0)), 0),
+      (VIU_FN(I_FSJ,I_FSJN,I_FSJX) && VIU_FP(FPD)) -> pack_float_d(Cat(sj_dp, unpacked_d_s1_in0(63,0)), 0),
+      VIU_FN(I_FMIN,I_FMAX) -> fminmax
     ))
 
   val next_result = MuxCase(
     Bits(0, SZ_DATA), Array(
-      viu_DW(DW64) -> next_result64,
-      viu_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
+      VIU_DW(DW64) -> next_result64,
+      VIU_DW(DW32) -> Cat(Bits(0, 1), Fill(32,next_result64(31)), next_result64(31,0))
     ))
 
-  val s2_mask_en = Reg(next = s1_valid && (viu_FN(viu_MOVZ) || viu_FN(viu_MOVN)))
+  val s2_mask_en = Reg(next = s1_valid && (VIU_FN(I_MOVZ) || VIU_FN(I_MOVN)))
   val s2_mask = Reg(Bool())
   val s2_result = Reg(Bits(width = 65))
 

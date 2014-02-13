@@ -158,7 +158,7 @@ class Evac extends Module
   io.vaq.bits.cnt := UInt(0)
   io.vaq.bits.cmd := M_XWR
   io.vaq.bits.typ := MT_D
-  io.vaq.bits.typ_float := MTF_N
+  io.vaq.bits.typ_float := Bool(false)
   io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
   io.vaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 

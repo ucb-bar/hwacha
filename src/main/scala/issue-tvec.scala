@@ -387,7 +387,7 @@ class IssueTVEC extends Module
   io.bhazard.vst := bhazard(2)
 
   io.fn.vbr := Bits(0, SZ_VBR_FN)
-  io.fn.viu := Cat(M0,vmsrc,DW64,FP_,viu_MOV)
+  io.fn.viu := Cat(M0,vmsrc,DW64,FP_,I_MOV)
   io.fn.vau0 := Bits(0,SZ_VAU0_FN)
   io.fn.vau1 := Bits(0,SZ_VAU1_FN)
   io.fn.vau2 := Bits(0,SZ_VAU2_FN)

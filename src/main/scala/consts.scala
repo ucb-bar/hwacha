@@ -91,6 +91,9 @@ trait AIWConstants
 
 trait DecodeConstants
 {
+  val T = Bool(true)
+  val F = Bool(false)
+
   val M0 = Bits("b00", 2)
   val MR = Bits("b01", 2)
   val ML = Bits("b10", 2)
@@ -100,10 +103,12 @@ trait DecodeConstants
   val RX = Bits("b01", 2)
   val RF = Bits("b11", 2)
 
-  val ENUM_I = 4
-  val imm_0 :: imm_I :: imm_S :: imm_U :: Nil = Enum( UInt(), ENUM_I )
-  val SZ_I = imm_0.getWidth
-  val imm_X = UInt(0, SZ_I)
+  val SZ_I = 2
+  val IMM_X = UInt.DC(SZ_I)
+  val IMM_0 = UInt(0, SZ_I)
+  val IMM_I = UInt(1, SZ_I)
+  val IMM_S = UInt(2, SZ_I)
+  val IMM_U = UInt(3, SZ_I)
 
   val DW__ = Bits("b0", 1)
   val DW32 = Bits("b0", 1)
@@ -125,19 +130,37 @@ trait DecodeConstants
 
 trait VIUConstants
 {
-  val ENUM_VIU = 28
-  val viu_ADD :: viu_SLL :: viu_SLT :: viu_SLTU :: viu_XOR :: viu_SRL :: viu_SRA :: viu_OR :: viu_AND :: viu_SUB :: viu_IDX :: viu_MOV :: viu_FP_BRANCH = Enum( UInt(), ENUM_VIU)
-  val viu_FSJ :: viu_FSJN :: viu_FSJX :: viu_FEQ :: viu_FLT :: viu_FLE :: viu_FMIN  :: viu_FMAX :: viu_MOVZ :: viu_MOVN :: viu_BRANCH = viu_FP_BRANCH
-  val viu_BNE :: viu_BEQ :: viu_BLT :: viu_BLTU :: viu_BGE :: viu_BGEU :: Nil = viu_BRANCH
-  val SZ_VIU_OP = viu_ADD.getWidth
-  val viu_X = Bits(0, SZ_VIU_OP)
+  val SZ_VIU_OP = 5
+
+  val I_X    = UInt.DC(SZ_VIU_OP)
+  val I_ADD  = UInt(0, SZ_VIU_OP)
+  val I_SLL  = UInt(1, SZ_VIU_OP)
+  val I_SLT  = UInt(2, SZ_VIU_OP)
+  val I_SLTU = UInt(3, SZ_VIU_OP)
+  val I_XOR  = UInt(4, SZ_VIU_OP)
+  val I_SRL  = UInt(5, SZ_VIU_OP)
+  val I_SRA  = UInt(6, SZ_VIU_OP)
+  val I_OR   = UInt(7, SZ_VIU_OP)
+  val I_AND  = UInt(8, SZ_VIU_OP)
+  val I_SUB  = UInt(9, SZ_VIU_OP)
+  val I_IDX  = UInt(10, SZ_VIU_OP)
+  val I_MOV  = UInt(11, SZ_VIU_OP)
+  val I_FSJ  = UInt(12, SZ_VIU_OP)
+  val I_FSJN = UInt(13, SZ_VIU_OP)
+  val I_FSJX = UInt(14, SZ_VIU_OP)
+  val I_FEQ  = UInt(15, SZ_VIU_OP)
+  val I_FLT  = UInt(16, SZ_VIU_OP)
+  val I_FLE  = UInt(17, SZ_VIU_OP)
+  val I_FMIN = UInt(18, SZ_VIU_OP)
+  val I_FMAX = UInt(19, SZ_VIU_OP)
+  val I_MOVZ = UInt(20, SZ_VIU_OP)
+  val I_MOVN = UInt(21, SZ_VIU_OP)
+
   val SZ_VIU_FP = 2
   val SZ_VIU_DW = 1
   val SZ_VIU_T1 = 2
   val SZ_VIU_T0 = 2
   val SZ_VIU_T = SZ_VIU_T1 + SZ_VIU_T0
-
-  def isVIUBranch(viu: UInt) = viu >= viu_BNE && viu <= viu_BGEU
 
   val SZ_VBR_FN = 12
   val SZ_VIU_FN = 12
@@ -152,41 +175,39 @@ trait VIUConstants
 
 trait VAU0Constants extends DecodeConstants
 {
-  val ENUM_VAU0 = 4
-  val vau0_M :: vau0_MH :: vau0_MHSU :: vau0_MHU :: Nil = Enum( UInt(), ENUM_VAU0 )
-  val SZ_VAU0 = vau0_M.getWidth
-  val vau0_X = Bits(0, SZ_VAU0)
+  val SZ_VAU0_OP = 2
+
+  val A0_X    = UInt.DC(SZ_VAU0_OP)
+  val A0_M    = UInt(0, SZ_VAU0_OP)
+  val A0_MH   = UInt(1, SZ_VAU0_OP)
+  val A0_MHSU = UInt(2, SZ_VAU0_OP)
+  val A0_MHU  = UInt(3, SZ_VAU0_OP)
 
   // acutal ops
-  val VAU0_32 = Cat(DW32,vau0_M)
-  val VAU0_32H = Cat(DW32,vau0_MH)
-  val VAU0_32HSU = Cat(DW32,vau0_MHSU)
-  val VAU0_32HU = Cat(DW32,vau0_MHU)
-  val VAU0_64 = Cat(DW64,vau0_M)
-  val VAU0_64H = Cat(DW64,vau0_MH)
-  val VAU0_64HSU = Cat(DW64,vau0_MHSU)
-  val VAU0_64HU = Cat(DW64,vau0_MHU)
+  val VAU0_32 = Cat(DW32,A0_M)
+  val VAU0_32H = Cat(DW32,A0_MH)
+  val VAU0_32HSU = Cat(DW32,A0_MHSU)
+  val VAU0_32HU = Cat(DW32,A0_MHU)
+  val VAU0_64 = Cat(DW64,A0_M)
+  val VAU0_64H = Cat(DW64,A0_MH)
+  val VAU0_64HSU = Cat(DW64,A0_MHSU)
+  val VAU0_64HU = Cat(DW64,A0_MHU)
 
   val SZ_VAU0_FN = 3
-  val SZ_VAU0_OP = SZ_VAU0
 }
 
 trait VAU1Constants
 {
-  // Can't use enums for VAU1 because decode depends on the top bit
-  val VAU1_X = UInt(0, 3)
-  val VAU1_ADD = UInt(0, 3)
-  val VAU1_SUB = UInt(1, 3)
-  val VAU1_MUL = UInt(2, 3)
-  val VAU1_MADD = UInt(4, 3)
-  val VAU1_MSUB = UInt(5, 3)
-  val VAU1_NMSUB = UInt(6, 3)
-  val VAU1_NMADD = UInt(7, 3)
+  val SZ_VAU1_OP = 3
 
-  // val ENUM_VAU1 = 7
-  // val vau1_ADD :: vau1_SUB :: vau1_MUL :: vau1_MADD :: vau1_MSUB :: vau1_NMSUB :: vau1_NMADD :: Nil = Enum(UInt(), ENUM_VAU1)
-  // val SZ_VAU1 = vau1_ADD.getWidth
-  // val vau1_X = Bits(0, SZ_VAU1)
+  val A1_X     = UInt.DC(SZ_VAU1_OP)
+  val A1_ADD   = UInt(0, SZ_VAU1_OP)
+  val A1_SUB   = UInt(1, SZ_VAU1_OP)
+  val A1_MUL   = UInt(2, SZ_VAU1_OP)
+  val A1_MADD  = UInt(4, SZ_VAU1_OP)
+  val A1_MSUB  = UInt(5, SZ_VAU1_OP)
+  val A1_NMSUB = UInt(6, SZ_VAU1_OP)
+  val A1_NMADD = UInt(7, SZ_VAU1_OP)
 
   val SZ_VAU1_FN = 8
 
@@ -195,22 +216,31 @@ trait VAU1Constants
   val RG_VAU1_FN = (2,0)
 
   val FN_VAU1_FMA = (x: Bits) => x(2)
-  val SZ_VAU1_OP = 3
 }
 
 trait VAU2Constants
 {
-  val ENUM_VAU2 = 12
-  val vau2_CLTF :: vau2_CLUTF :: vau2_CWTF :: vau2_CWUTF :: vau2_MXTF :: vau2_CFTL :: vau2_CFTLU :: vau2_CFTW :: vau2_CFTWU :: vau2_MFTX :: vau2_CDTS :: vau2_CSTD :: Nil = Enum( UInt(), ENUM_VAU2 )
-  val SZ_VAU2 = vau2_CLTF.getWidth
-  val vau2_X = Bits(0, SZ_VAU2)
+  val SZ_VAU2_OP = 4
+
+  val A2_X     = UInt.DC(SZ_VAU2_OP)
+  val A2_CLTF  = UInt(0, SZ_VAU2_OP)
+  val A2_CLUTF = UInt(1, SZ_VAU2_OP)
+  val A2_CWTF  = UInt(2, SZ_VAU2_OP)
+  val A2_CWUTF = UInt(3, SZ_VAU2_OP)
+  val A2_MXTF  = UInt(4, SZ_VAU2_OP)
+  val A2_CFTL  = UInt(5, SZ_VAU2_OP)
+  val A2_CFTLU = UInt(6, SZ_VAU2_OP)
+  val A2_CFTW  = UInt(7, SZ_VAU2_OP)
+  val A2_CFTWU = UInt(8, SZ_VAU2_OP)
+  val A2_MFTX  = UInt(9, SZ_VAU2_OP)
+  val A2_CDTS  = UInt(10, SZ_VAU2_OP)
+  val A2_CSTD  = UInt(11, SZ_VAU2_OP)
 
   val SZ_VAU2_FN = 9
 
   val RG_VAU2_FP = (8,7)
   val RG_VAU2_RM = (6,4)
-  val RG_VAU2_FN = (SZ_VAU2-1,0)
-  val SZ_VAU2_OP = SZ_VAU2
+  val RG_VAU2_FN = (3,0)
 }
 
 trait VMUConstants extends LaneConstants
@@ -230,6 +260,11 @@ trait VMUConstants extends LaneConstants
   val SZ_QCNT = SZ_LGBANK1
 
   val SZ_VMU_OP = 3
+
+  val VM_X   = UInt.DC(SZ_VMU_OP)
+  val VM_AMO = UInt(0, SZ_VMU_OP)
+  val VM_LD  = UInt(1, SZ_VMU_OP)
+  val VM_ST  = UInt(2, SZ_VMU_OP)
 }
 
 object Commands extends Commands

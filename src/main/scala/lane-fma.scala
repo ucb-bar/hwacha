@@ -23,9 +23,9 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 
   val fma_op = MuxCase(
     Bits("b00",2), Array(
-      (io.fn(RG_VAU1_FN) === VAU1_SUB || io.fn(RG_VAU1_FN) === VAU1_MSUB) -> Bits("b01",2),
-      (io.fn(RG_VAU1_FN) === VAU1_NMSUB) -> Bits("b10",2),
-      (io.fn(RG_VAU1_FN) === VAU1_NMADD) -> Bits("b11",2)
+      (io.fn(RG_VAU1_FN) === A1_SUB || io.fn(RG_VAU1_FN) === A1_MSUB) -> Bits("b01",2),
+      (io.fn(RG_VAU1_FN) === A1_NMSUB) -> Bits("b10",2),
+      (io.fn(RG_VAU1_FN) === A1_NMADD) -> Bits("b11",2)
     ))
 
   val one_dp = repack_float_d(Bits("h8000000000000000", 65)) // recoded, swizzled
@@ -34,14 +34,14 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val fma_multiplicand = io.in0
   val fma_multiplier = MuxCase(
     io.in1, Array(
-      ((io.fn(RG_VAU1_FP) === Bits("b01",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_dp,
-      ((io.fn(RG_VAU1_FP) === Bits("b00",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_sp,
-      ((io.fn(RG_VAU1_FP) === Bits("b10",2)) && (io.fn(RG_VAU1_FN) === VAU1_ADD || io.fn(RG_VAU1_FN) === VAU1_SUB)) -> one_hp,
-      ((io.fn(RG_VAU1_FN) === VAU1_MUL)) -> io.in2
+      ((io.fn(RG_VAU1_FP) === Bits("b01",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_dp,
+      ((io.fn(RG_VAU1_FP) === Bits("b00",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_sp,
+      ((io.fn(RG_VAU1_FP) === Bits("b10",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_hp,
+      ((io.fn(RG_VAU1_FN) === A1_MUL)) -> io.in2
     ))
 
   val fma_addend = Mux(
-    io.fn(RG_VAU1_FN) === VAU1_MUL, Bits(0,65),
+    io.fn(RG_VAU1_FN) === A1_MUL, Bits(0,65),
     io.in2)
 
   val val_fma_dp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b01",2))

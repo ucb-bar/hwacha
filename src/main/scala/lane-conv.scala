@@ -21,30 +21,30 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
 
   val op_int2float = MuxCase(
     Bits(0,2), Array(
-      VAU2_FN(vau2_CLTF)  -> hardfloat.fpu_recoded.type_int64,
-      VAU2_FN(vau2_CLUTF) -> hardfloat.fpu_recoded.type_uint64,
-      VAU2_FN(vau2_CWTF)  -> hardfloat.fpu_recoded.type_int32,
-      VAU2_FN(vau2_CWUTF) -> hardfloat.fpu_recoded.type_uint32
+      VAU2_FN(A2_CLTF)  -> hardfloat.fpu_recoded.type_int64,
+      VAU2_FN(A2_CLUTF) -> hardfloat.fpu_recoded.type_uint64,
+      VAU2_FN(A2_CWTF)  -> hardfloat.fpu_recoded.type_int32,
+      VAU2_FN(A2_CWUTF) -> hardfloat.fpu_recoded.type_uint32
     ))
 
   val op_float2int = MuxCase(
     Bits(0,2), Array(
-      VAU2_FN(vau2_CFTL)  -> hardfloat.fpu_recoded.type_int64,
-      VAU2_FN(vau2_CFTLU) -> hardfloat.fpu_recoded.type_uint64,
-      VAU2_FN(vau2_CFTW)  -> hardfloat.fpu_recoded.type_int32,
-      VAU2_FN(vau2_CFTWU) -> hardfloat.fpu_recoded.type_uint32
+      VAU2_FN(A2_CFTL)  -> hardfloat.fpu_recoded.type_int64,
+      VAU2_FN(A2_CFTLU) -> hardfloat.fpu_recoded.type_uint64,
+      VAU2_FN(A2_CFTW)  -> hardfloat.fpu_recoded.type_int32,
+      VAU2_FN(A2_CFTWU) -> hardfloat.fpu_recoded.type_uint32
     ))
 
-  val val_int2float_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF)
-  val val_float2int_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(vau2_CFTL,vau2_CFTLU,vau2_CFTW,vau2_CFTWU)
-  val val_decode_sp    = io.valid & VAU2_FP(FPS) & VAU2_FN(vau2_MFTX)
-  val val_encode_sp    = io.valid & VAU2_FP(FPS) & VAU2_FN(vau2_MXTF)
-  val val_dp2sp        = io.valid & VAU2_FN(vau2_CDTS)
-  val val_int2float_dp = io.valid & VAU2_FP(FPD) & VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF)
-  val val_float2int_dp = io.valid & VAU2_FP(FPD) & VAU2_FN(vau2_CFTL,vau2_CFTLU,vau2_CFTW,vau2_CFTWU)
-  val val_decode_dp    = io.valid & VAU2_FP(FPD) & VAU2_FN(vau2_MFTX)
-  val val_encode_dp    = io.valid & VAU2_FP(FPD) & VAU2_FN(vau2_MXTF)
-  val val_sp2dp        = io.valid & VAU2_FN(vau2_CSTD)
+  val val_int2float_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF)
+  val val_float2int_sp = io.valid & VAU2_FP(FPS) & VAU2_FN(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU)
+  val val_decode_sp    = io.valid & VAU2_FP(FPS) & VAU2_FN(A2_MFTX)
+  val val_encode_sp    = io.valid & VAU2_FP(FPS) & VAU2_FN(A2_MXTF)
+  val val_dp2sp        = io.valid & VAU2_FN(A2_CDTS)
+  val val_int2float_dp = io.valid & VAU2_FP(FPD) & VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF)
+  val val_float2int_dp = io.valid & VAU2_FP(FPD) & VAU2_FN(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU)
+  val val_decode_dp    = io.valid & VAU2_FP(FPD) & VAU2_FN(A2_MFTX)
+  val val_encode_dp    = io.valid & VAU2_FP(FPD) & VAU2_FN(A2_MXTF)
+  val val_sp2dp        = io.valid & VAU2_FN(A2_CSTD)
 
   val int2float_sp = Module(new hardfloat.anyToRecodedFloat32)
   int2float_sp.io.in := Fill(64,val_int2float_sp) & io.in(63,0)
@@ -103,36 +103,36 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
 
   val next_result_sp = MuxCase(
     Bits(0, SZ_DATA), Array(
-      VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF) -> result_int2float_sp,
-      VAU2_FN(vau2_MXTF) -> result_encode_sp,
-      VAU2_FN(vau2_CFTL,vau2_CFTLU) -> Cat(Bits(0,1),result_float2int_sp(63,0)),
-      VAU2_FN(vau2_CFTW,vau2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_sp(31)),result_float2int_sp(31,0)),
-      VAU2_FN(vau2_MFTX) -> Cat(Bits(0,1),Fill(32,result_decode_sp(31)),result_decode_sp(31,0)),
-      VAU2_FN(vau2_CDTS) -> result_float2float_sp
+      VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> result_int2float_sp,
+      VAU2_FN(A2_MXTF) -> result_encode_sp,
+      VAU2_FN(A2_CFTL,A2_CFTLU) -> Cat(Bits(0,1),result_float2int_sp(63,0)),
+      VAU2_FN(A2_CFTW,A2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_sp(31)),result_float2int_sp(31,0)),
+      VAU2_FN(A2_MFTX) -> Cat(Bits(0,1),Fill(32,result_decode_sp(31)),result_decode_sp(31,0)),
+      VAU2_FN(A2_CDTS) -> result_float2float_sp
     ))
 
   val next_result_dp = MuxCase(
     Bits(0, SZ_DATA), Array(
-      VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF) -> result_int2float_dp,
-      VAU2_FN(vau2_MXTF) -> result_encode_dp,
-      VAU2_FN(vau2_CFTL,vau2_CFTLU) -> Cat(Bits(0,1),result_float2int_dp(63,0)),
-      VAU2_FN(vau2_CFTW,vau2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_dp(31)),result_float2int_dp(31,0)),
-      VAU2_FN(vau2_MFTX) -> Cat(Bits(0,1),result_decode_dp(63,0)),
-      VAU2_FN(vau2_CSTD) -> result_float2float_dp
+      VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> result_int2float_dp,
+      VAU2_FN(A2_MXTF) -> result_encode_dp,
+      VAU2_FN(A2_CFTL,A2_CFTLU) -> Cat(Bits(0,1),result_float2int_dp(63,0)),
+      VAU2_FN(A2_CFTW,A2_CFTWU) -> Cat(Bits(0,1),Fill(32,result_float2int_dp(31)),result_float2int_dp(31,0)),
+      VAU2_FN(A2_MFTX) -> Cat(Bits(0,1),result_decode_dp(63,0)),
+      VAU2_FN(A2_CSTD) -> result_float2float_dp
     ))
 
   val next_exc_sp = MuxCase(
     Bits(0, SZ_EXC), Array(
-      VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF) -> exc_int2float_sp,
-      VAU2_FN(vau2_CFTL,vau2_CFTLU,vau2_CFTW,vau2_CFTWU) -> exc_float2int_sp,
-      VAU2_FN(vau2_CDTS) -> exc_float2float_sp
+      VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> exc_int2float_sp,
+      VAU2_FN(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU) -> exc_float2int_sp,
+      VAU2_FN(A2_CDTS) -> exc_float2float_sp
     ))
 
   val next_exc_dp = MuxCase(
     Bits(0, SZ_EXC), Array(
-      VAU2_FN(vau2_CLTF,vau2_CLUTF,vau2_CWTF,vau2_CWUTF) -> exc_int2float_dp,
-      VAU2_FN(vau2_CFTL,vau2_CFTLU,vau2_CFTW,vau2_CFTWU) -> exc_float2int_dp,
-      VAU2_FN(vau2_CSTD) -> exc_float2float_dp
+      VAU2_FN(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> exc_int2float_dp,
+      VAU2_FN(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU) -> exc_float2int_dp,
+      VAU2_FN(A2_CSTD) -> exc_float2float_dp
     ))
 
   val result = Mux(
