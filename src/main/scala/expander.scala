@@ -25,7 +25,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     val seq_fn = new io_vxu_seq_fn().asInput
     val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
 
-    val laneuop = new LaneOpIO
+    val laneop = new LaneOpIO
 
     val expand_to_xcpt = new io_expand_to_xcpt_handler()
   }
@@ -303,15 +303,15 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   io.expand_to_hazard.ren := rexp.valid(0)
   io.expand_to_hazard.wen := wexp.valid(0)
 
-  io.laneuop.read <> rexp.ondeck
-  io.laneuop.write <> wexp.ondeck
-  io.laneuop.viu <> viuexp.ondeck
-  io.laneuop.vau0 <> vau0exp.ondeck
-  io.laneuop.vau1 <> vau1exp.ondeck
-  io.laneuop.vau2 <> vau2exp.ondeck
-  io.laneuop.vgu <> vguexp.ondeck
-  io.laneuop.vlu <> vluexp.ondeck
-  io.laneuop.vsu <> vsuexp.ondeck
+  io.laneop.read <> rexp.ondeck
+  io.laneop.write <> wexp.ondeck
+  io.laneop.viu <> viuexp.ondeck
+  io.laneop.vau0 <> vau0exp.ondeck
+  io.laneop.vau1 <> vau1exp.ondeck
+  io.laneop.vau2 <> vau2exp.ondeck
+  io.laneop.vgu <> vguexp.ondeck
+  io.laneop.vlu <> vluexp.ondeck
+  io.laneop.vsu <> vsuexp.ondeck
 
   io.expand_to_xcpt.empty :=
     !(List(rexp, wexp, viuexp, vau0exp, vau1exp, vau2exp, vguexp, vluexp, vsuexp).map(e => e.valid.toBits().orR()).reduce(_||_))

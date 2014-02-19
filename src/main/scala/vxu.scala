@@ -147,7 +147,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   val b8lane = Module(new Lane)
   b8lane.io.issue_to_lane <> issue.io.issue_to_lane
-  b8lane.io.uop <> b8expand.io.laneuop
+  b8lane.io.op <> b8expand.io.laneop
   b8lane.io.lane_to_hazard <> b8hazard.io.lane_to_hazard
   b8lane.io.vmu <> io.vmu
   b8lane.io.prec := issue.io.prec

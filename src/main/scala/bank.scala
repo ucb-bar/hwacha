@@ -16,7 +16,7 @@ class Bank extends Module
   val io = new Bundle {
     val active = Bool(INPUT)
     
-    val uop = new Bundle {
+    val op = new Bundle {
       val in = new BankOpIO().flip
       val out = new BankOpIO
     }
@@ -36,62 +36,62 @@ class Bank extends Module
     val prec = Bits(INPUT, SZ_PREC)
   }
 
-  def uop_valid(uop: ValidIO[LaneOpBundle]) = uop.valid && uop.bits.cnt.orR && io.active
+  def op_valid(op: ValidIO[LaneOpBundle]) = op.valid && op.bits.cnt.orR && io.active
 
-  val read_uop = Reg(Valid(new ReadBankOp).asDirectionless)
-  read_uop.valid := io.uop.in.read.valid
-  when (io.uop.in.read.valid) {
-    read_uop.bits.last := io.uop.in.read.bits.last
-    read_uop.bits.oplen := io.uop.in.read.bits.oplen
-    read_uop.bits.rblen := io.uop.in.read.bits.rblen
-    read_uop.bits.cnt := Mux(uop_valid(io.uop.in.read), io.uop.in.read.bits.cnt - UInt(1), UInt(0))
-    read_uop.bits.addr := io.uop.in.read.bits.addr
+  val read_op = Reg(Valid(new ReadBankOp).asDirectionless)
+  read_op.valid := io.op.in.read.valid
+  when (io.op.in.read.valid) {
+    read_op.bits.last := io.op.in.read.bits.last
+    read_op.bits.oplen := io.op.in.read.bits.oplen
+    read_op.bits.rblen := io.op.in.read.bits.rblen
+    read_op.bits.cnt := Mux(op_valid(io.op.in.read), io.op.in.read.bits.cnt - UInt(1), UInt(0))
+    read_op.bits.addr := io.op.in.read.bits.addr
   }
   when (this.reset) {
-    read_uop.valid := Bool(false)
+    read_op.valid := Bool(false)
   }
 
-  val write_uop = Reg(Valid(new WriteBankOp).asDirectionless)
-  write_uop.valid := io.uop.in.write.valid
-  when (io.uop.in.write.valid) {
-    write_uop.bits.last := io.uop.in.write.bits.last
-    write_uop.bits.cnt := Mux(uop_valid(io.uop.in.write), io.uop.in.write.bits.cnt - UInt(1), UInt(0))
-    write_uop.bits.addr := io.uop.in.write.bits.addr
-    write_uop.bits.sel := io.uop.in.write.bits.sel
+  val write_op = Reg(Valid(new WriteBankOp).asDirectionless)
+  write_op.valid := io.op.in.write.valid
+  when (io.op.in.write.valid) {
+    write_op.bits.last := io.op.in.write.bits.last
+    write_op.bits.cnt := Mux(op_valid(io.op.in.write), io.op.in.write.bits.cnt - UInt(1), UInt(0))
+    write_op.bits.addr := io.op.in.write.bits.addr
+    write_op.bits.sel := io.op.in.write.bits.sel
   }
   when (this.reset) {
-    write_uop.valid := Bool(false)
+    write_op.valid := Bool(false)
   }
 
-  val viu_uop = Reg(Valid(new VIUBankOp).asDirectionless)
-  viu_uop.valid := io.uop.in.viu.valid
-  when (io.uop.in.viu.valid) {
-    viu_uop.bits.cnt := Mux(uop_valid(io.uop.in.viu), io.uop.in.viu.bits.cnt - UInt(1), UInt(0))
-    viu_uop.bits.fn := io.uop.in.viu.bits.fn
-    viu_uop.bits.utidx := io.uop.in.viu.bits.utidx + UInt(1)
-    viu_uop.bits.imm := io.uop.in.viu.bits.imm
+  val viu_op = Reg(Valid(new VIUBankOp).asDirectionless)
+  viu_op.valid := io.op.in.viu.valid
+  when (io.op.in.viu.valid) {
+    viu_op.bits.cnt := Mux(op_valid(io.op.in.viu), io.op.in.viu.bits.cnt - UInt(1), UInt(0))
+    viu_op.bits.fn := io.op.in.viu.bits.fn
+    viu_op.bits.utidx := io.op.in.viu.bits.utidx + UInt(1)
+    viu_op.bits.imm := io.op.in.viu.bits.imm
   }
   when (this.reset) {
-    viu_uop.valid := Bool(false)
+    viu_op.valid := Bool(false)
   }
 
   // every signal related to the read port is delayed by one cycle 
   // because of the register file is an sram
 
-  val s1_read_uop_valid = Reg(next=uop_valid(io.uop.in.read))
+  val s1_read_op_valid = Reg(next=op_valid(io.op.in.read))
 
-  io.rw.rblen := read_uop.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_uop_valid)
+  io.rw.rblen := read_op.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_op_valid)
 
   val rfile = Module(new BankRegfile)
   val alu = Module(new BankALU)
 
-  rfile.io.ren := uop_valid(io.uop.in.read)
-  rfile.io.raddr := io.uop.in.read.bits.addr
-  rfile.io.roplen := read_uop.bits.oplen & Fill(SZ_BOPL, s1_read_uop_valid)
+  rfile.io.ren := op_valid(io.op.in.read)
+  rfile.io.raddr := io.op.in.read.bits.addr
+  rfile.io.roplen := read_op.bits.oplen & Fill(SZ_BOPL, s1_read_op_valid)
   
   rfile.io.wen := alu.io.wen_masked
-  rfile.io.waddr := io.uop.in.write.bits.addr
-  rfile.io.wsel := io.uop.in.write.bits.sel
+  rfile.io.waddr := io.op.in.write.bits.addr
+  rfile.io.wsel := io.op.in.write.bits.sel
 
   io.rw.rdata := rfile.io.rdata
   io.rw.ropl0 := rfile.io.ropl0
@@ -107,31 +107,31 @@ class Bank extends Module
   rfile.io.viu_wdata := alu.io.out
 
   val viu_in0 = MuxLookup(
-    io.uop.in.viu.bits.fn(RG_VIU_T0), UInt(0, SZ_DATA), Array(
+    io.op.in.viu.bits.fn(RG_VIU_T0), UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
       ML -> viu_ropl,
       MR -> viu_rdata
     ))
 
   val viu_in1 = MuxLookup(
-    io.uop.in.viu.bits.fn(RG_VIU_T1), UInt(0, SZ_DATA), Array(
+    io.op.in.viu.bits.fn(RG_VIU_T1), UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
       MR -> viu_rdata,
-      MI -> io.uop.in.viu.bits.imm
+      MI -> io.op.in.viu.bits.imm
     ))
 
   rfile.io.prec := io.prec
 
-  alu.io.valid := uop_valid(io.uop.in.viu)
-  alu.io.wen := uop_valid(io.uop.in.write)
-  alu.io.fn := io.uop.in.viu.bits.fn
-  alu.io.utidx := io.uop.in.viu.bits.utidx
+  alu.io.valid := op_valid(io.op.in.viu)
+  alu.io.wen := op_valid(io.op.in.write)
+  alu.io.fn := io.op.in.viu.bits.fn
+  alu.io.utidx := io.op.in.viu.bits.utidx
   alu.io.in0 := viu_in0
   alu.io.in1 := viu_in1
 
-  io.uop.out.read := Mux(io.active, read_uop, io.uop.in.read)
-  io.uop.out.write := Mux(io.active, write_uop, io.uop.in.write)
-  io.uop.out.viu := Mux(io.active, viu_uop, io.uop.in.viu)
+  io.op.out.read := Mux(io.active, read_op, io.op.in.read)
+  io.op.out.write := Mux(io.active, write_op, io.op.in.write)
+  io.op.out.viu := Mux(io.active, viu_op, io.op.in.viu)
 }
 
 class BankRegfile extends Module

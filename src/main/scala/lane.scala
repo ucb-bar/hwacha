@@ -52,7 +52,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
-    val uop = new LaneOpIO().flip
+    val op = new LaneOpIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
     val vmu = new VMUIO
 
@@ -76,9 +76,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
     bank.io.active := io.issue_to_lane.bactive(i)
     bank.io.prec := io.prec
-    bank.io.uop.in <> (if (i == 0) io.uop else conn.last)
+    bank.io.op.in <> (if (i == 0) io.op else conn.last)
     
-    conn += bank.io.uop.out
+    conn += bank.io.op.out
     rblen += bank.io.rw.rblen
     rdata += bank.io.rw.rdata
     ropl0 += bank.io.rw.ropl0
@@ -98,7 +98,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val rbl = List(ropl0, rdata, ropl1, ropl0, rdata, rdata, rdata, rdata).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
-  lfu.io.uop <> io.uop
+  lfu.io.op <> io.op
 
   imul.io.valid := lfu.io.vau0_val
   imul.io.fn := lfu.io.vau0_fn
