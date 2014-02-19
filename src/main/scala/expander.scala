@@ -94,30 +94,30 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     wexp.bits(viu_wptr).addr := io.seq_regid_imm.vd
     wexp.bits(viu_wptr).sel := Bits(4)
 
-    val viu_rest = io.seq_fn.viu(SZ_VIU_DW + SZ_VIU_FP + SZ_VIU_OP - 1, 0)
-    val viu_t1 = io.seq_fn.viu(RG_VIU_T1)
-    val viu_t0 = io.seq_fn.viu(RG_VIU_T0)
-
     when (rports2) {
       viuexp.valid(2) := Bool(true)
       viuexp.bits(2).cnt := io.seq_regid_imm.cnt
-      when (io.seq_regid_imm.vs_zero) {
-        when (io.seq_regid_imm.vt_zero) { viuexp.bits(2).fn := Cat(M0, M0, viu_rest) }
-        .otherwise { viuexp.bits(2).fn := Cat(M0, viu_t1, viu_rest) }
-      }
-      .otherwise {
-        when (io.seq_regid_imm.vt_zero) { viuexp.bits(2).fn := Cat(viu_t0, M0, viu_rest) }
-        .otherwise { viuexp.bits(2).fn := io.seq_fn.viu }
-      }
+      viuexp.bits(2).fn.t0 := io.seq_fn.viu(RG_VIU_T0)
+      viuexp.bits(2).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
+      viuexp.bits(2).fn.dw := io.seq_fn.viu(RG_VIU_DW)
+      viuexp.bits(2).fn.fp := io.seq_fn.viu(RG_VIU_FP)
+      viuexp.bits(2).fn.op := io.seq_fn.viu(RG_VIU_FN)
+
+      when (io.seq_regid_imm.vs_zero) { viuexp.bits(2).fn.t0 := M0 }
+      when (io.seq_regid_imm.vt_zero) { viuexp.bits(2).fn.t1 := M0 }
     }
     .otherwise {
       viuexp.valid(1) := Bool(true)
       viuexp.bits(1).cnt := io.seq_regid_imm.cnt
-      viuexp.bits(1).fn := io.seq_fn.viu
+      viuexp.bits(1).fn.t0 := io.seq_fn.viu(RG_VIU_T0)
+      viuexp.bits(1).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
+      viuexp.bits(1).fn.dw := io.seq_fn.viu(RG_VIU_DW)
+      viuexp.bits(1).fn.fp := io.seq_fn.viu(RG_VIU_FP)
+      viuexp.bits(1).fn.op := io.seq_fn.viu(RG_VIU_FN)
       viuexp.bits(1).utidx := io.seq_regid_imm.utidx
       viuexp.bits(1).imm := io.seq_regid_imm.imm
 
-      when (io.seq_regid_imm.vs_zero) { viuexp.bits(1).fn := Cat(M0, viu_t1, viu_rest) }
+      when (io.seq_regid_imm.vs_zero) { viuexp.bits(1).fn.t0 := M0 }
     }
   }
 
@@ -150,7 +150,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     vau0exp.valid(1) := Bool(true)
     vau0exp.bits(1).cnt := io.seq_regid_imm.cnt
-    vau0exp.bits(1).fn := io.seq_fn.vau0
+    vau0exp.bits(1).fn := new VAU0Fn().fromBits(io.seq_fn.vau0)
   }
 
   when (io.seq.vau1)
@@ -213,12 +213,12 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     when (rports3) {
       vau1exp.valid(2) := Bool(true)
       vau1exp.bits(2).cnt := io.seq_regid_imm.cnt
-      vau1exp.bits(2).fn := io.seq_fn.vau1
+      vau1exp.bits(2).fn := new VAU1Fn().fromBits(io.seq_fn.vau1)
     }
     .otherwise {
       vau1exp.valid(1) := Bool(true)
       vau1exp.bits(1).cnt := io.seq_regid_imm.cnt
-      vau1exp.bits(1).fn := io.seq_fn.vau1
+      vau1exp.bits(1).fn := new VAU1Fn().fromBits(io.seq_fn.vau1)
     }
   }
 
@@ -243,7 +243,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     vau2exp.valid(0) := Bool(true)
     vau2exp.bits(0).cnt := io.seq_regid_imm.cnt
-    vau2exp.bits(0).fn := io.seq_fn.vau2
+    vau2exp.bits(0).fn := new VAU2Fn().fromBits(io.seq_fn.vau2)
   }
 
   when (io.seq.vaq)

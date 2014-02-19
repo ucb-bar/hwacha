@@ -83,24 +83,24 @@ class WriteBankOp extends LaneOpBundle
 
 class VIUOp extends LaneOpBundle
 {
-  val fn = Bits(width = SZ_VIU_FN)
+  val fn = new VIUFn
   val utidx = Bits(width = SZ_VLEN)
   val imm = Bits(width = SZ_DATA)
 }
 
 class VAU0Op extends LaneOpBundle
 {
-  val fn = Bits(width = SZ_VAU0_FN)
+  val fn = new VAU0Fn
 }
 
 class VAU1Op extends LaneOpBundle
 {
-  val fn = Bits(width = SZ_VAU1_FN)
+  val fn = new VAU1Fn
 }
 
 class VAU2Op extends LaneOpBundle
 {
-  val fn = Bits(width = SZ_VAU2_FN)
+  val fn = new VAU2Fn
 }
 
 class VGUOp extends LaneOpBundle

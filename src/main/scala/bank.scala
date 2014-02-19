@@ -107,14 +107,14 @@ class Bank extends Module
   rfile.io.viu_wdata := alu.io.out
 
   val viu_in0 = MuxLookup(
-    io.op.in.viu.bits.fn(RG_VIU_T0), UInt(0, SZ_DATA), Array(
+    io.op.in.viu.bits.fn.t0, UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
       ML -> viu_ropl,
       MR -> viu_rdata
     ))
 
   val viu_in1 = MuxLookup(
-    io.op.in.viu.bits.fn(RG_VIU_T1), UInt(0, SZ_DATA), Array(
+    io.op.in.viu.bits.fn.t1, UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
       MR -> viu_rdata,
       MI -> io.op.in.viu.bits.imm
@@ -124,7 +124,7 @@ class Bank extends Module
 
   alu.io.valid := op_valid(io.op.in.viu)
   alu.io.wen := op_valid(io.op.in.write)
-  alu.io.fn := io.op.in.viu.bits.fn
+  alu.io.fn := io.op.in.viu.bits.fn.toBits
   alu.io.utidx := io.op.in.viu.bits.utidx
   alu.io.in0 := viu_in0
   alu.io.in1 := viu_in1
