@@ -268,8 +268,8 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     vguexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
     vguexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
     vguexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
-    vguexp.bits(0).imm := io.seq_regid_imm.imm
-    vguexp.bits(0).imm2 := io.seq_regid_imm.imm2
+    vguexp.bits(0).base := io.seq_regid_imm.imm
+    vguexp.bits(0).stride := io.seq_regid_imm.imm2
     vguexp.bits(0).utmemop := io.seq_regid_imm.utmemop
   }
 

@@ -58,15 +58,15 @@ class LaneLFU extends Module
     vgu_op.valid := Bool(false)
   }
   when (vgu_op.valid && !vgu_op.bits.utmemop) {
-    vgu_op.bits.imm := vgu_op.bits.imm + vgu_op.bits.imm2
+    vgu_op.bits.base := vgu_op.bits.base + vgu_op.bits.stride
   }
   vgu_op.bits.check.checkcnt := Bool(false)
   when (io.op.vgu.valid) {
     vgu_op.valid := Bool(true)
     vgu_op.bits.cnt := io.op.vgu.bits.cnt
     vgu_op.bits.fn := io.op.vgu.bits.fn
-    vgu_op.bits.imm := io.op.vgu.bits.imm
-    vgu_op.bits.imm2 := io.op.vgu.bits.imm2
+    vgu_op.bits.base := io.op.vgu.bits.base
+    vgu_op.bits.stride := io.op.vgu.bits.stride
     vgu_op.bits.utmemop := io.op.vgu.bits.utmemop
     vgu_op.bits.check.checkcnt := Bool(true)
     vgu_op.bits.check.cnt := io.op.vgu.bits.cnt

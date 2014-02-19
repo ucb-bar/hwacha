@@ -106,8 +106,8 @@ class VAU2Op extends LaneOpBundle
 class VGUOp extends LaneOpBundle
 {
   val fn = new VMUFn
-  val imm = Bits(width = SZ_DATA)
-  val imm2 = Bits(width = SZ_XIMM2)
+  val base = Bits(width = SZ_DATA)
+  val stride = Bits(width = SZ_XIMM2)
   val utmemop = Bool()
   val check = new io_vxu_mem_check
 }
