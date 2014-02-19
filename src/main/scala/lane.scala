@@ -100,22 +100,22 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   lfu.io.op <> io.op
 
-  imul.io.valid := lfu.io.vau0_val
-  imul.io.fn := lfu.io.vau0_fn
+  imul.io.valid := lfu.io.vau0.valid
+  imul.io.fn := lfu.io.vau0.bits.fn
   imul.io.in0 := rbl(0)
   imul.io.in1 := rbl(1)
 
-  fma.io.valid := lfu.io.vau1_val
-  fma.io.fn := lfu.io.vau1_fn
+  fma.io.valid := lfu.io.vau1.valid
+  fma.io.fn := lfu.io.vau1.bits.fn
   fma.io.in0 := rbl(2)
   fma.io.in1 := rbl(3)
   fma.io.in2 := rbl(4)
 
-  conv.io.valid := lfu.io.vau2_val
-  conv.io.fn := lfu.io.vau2_fn
+  conv.io.valid := lfu.io.vau2.valid
+  conv.io.fn := lfu.io.vau2.bits.fn
   conv.io.in := rbl(5)
 
-  mem.io.op <> lfu.io.memop
+  mem.io.op <> lfu.io.mem
   mem.io.data.paddr := rbl(6)(SZ_ADDR-1,0)
   mem.io.data.sdata := rbl(7)
 
