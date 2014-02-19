@@ -54,13 +54,13 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   val rexp = new BuildExpander(new ReadBankOp, conf.shift_buf_read)
   val wexp = new BuildExpander(new WriteBankOp, conf.shift_buf_write)
-  val viuexp = new BuildExpander(new VIUBankOp, conf.shift_buf_read)
-  val vau0exp = new BuildExpander(new VAU0LaneFUOp, conf.shift_buf_read)
-  val vau1exp = new BuildExpander(new VAU1LaneFUOp, conf.shift_buf_read)
-  val vau2exp = new BuildExpander(new VAU2LaneFUOp, conf.shift_buf_read)
-  val vguexp = new BuildExpander(new VGULaneFUOp, conf.shift_buf_read)
-  val vluexp = new BuildExpander(new VLULaneFUOp, conf.shift_buf_read)
-  val vsuexp = new BuildExpander(new VSULaneFUOp, conf.shift_buf_read)
+  val viuexp = new BuildExpander(new VIUOp, conf.shift_buf_read)
+  val vau0exp = new BuildExpander(new VAU0Op, conf.shift_buf_read)
+  val vau1exp = new BuildExpander(new VAU1Op, conf.shift_buf_read)
+  val vau2exp = new BuildExpander(new VAU2Op, conf.shift_buf_read)
+  val vguexp = new BuildExpander(new VGUOp, conf.shift_buf_read)
+  val vluexp = new BuildExpander(new VLUOp, conf.shift_buf_read)
+  val vsuexp = new BuildExpander(new VSUOp, conf.shift_buf_read)
 
   when (io.seq.viu) 
   {

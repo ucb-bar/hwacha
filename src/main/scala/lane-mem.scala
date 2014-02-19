@@ -16,7 +16,7 @@ class LaneMem extends Module
   }
 
   // VGU
-  val s1_vgu_op = Reg(Valid(new VGULaneFUOp).asDirectionless)
+  val s1_vgu_op = Reg(Valid(new VGUOp).asDirectionless)
   s1_vgu_op.valid := io.op.vgu.valid
   when (io.op.vgu.valid) {
     s1_vgu_op.bits := io.op.vgu.bits
@@ -35,7 +35,7 @@ class LaneMem extends Module
   io.vmu.evaq.bits.cmd := io.op.vgu.bits.mem.cmd
 
   // VSU
-  val s1_vsu_op = Reg(Valid(new VSULaneFUOp).asDirectionless)
+  val s1_vsu_op = Reg(Valid(new VSUOp).asDirectionless)
   s1_vsu_op.valid := io.op.vsu.valid
   when (io.op.vsu.valid) {
     s1_vsu_op.bits := io.op.vsu.bits
@@ -79,7 +79,7 @@ class LaneMem extends Module
   io.vmu.evsdq.valid := io.op.vsu.valid
 
   // VLU
-  val s1_vlu_op = Reg(Valid(new VLULaneFUOp).asDirectionless)
+  val s1_vlu_op = Reg(Valid(new VLUOp).asDirectionless)
   s1_vlu_op.valid := io.op.vlu.valid
   when (io.op.vlu.valid) {
     s1_vlu_op.bits := io.op.vlu.bits

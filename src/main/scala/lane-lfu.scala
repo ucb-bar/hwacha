@@ -18,7 +18,7 @@ class LaneLFU extends Module
     val memop = new LaneMemOpIO
   }
 
-  val vau0_op = Reg(Valid(new VAU0LaneFUOp).asDirectionless)
+  val vau0_op = Reg(Valid(new VAU0Op).asDirectionless)
   when (vau0_op.bits.cnt.orR) {
     vau0_op.bits.cnt := vau0_op.bits.cnt - UInt(1)
   }
@@ -31,7 +31,7 @@ class LaneLFU extends Module
     vau0_op.bits.fn := io.op.vau0.bits.fn
   }
 
-  val vau1_op = Reg(Valid(new VAU1LaneFUOp).asDirectionless)
+  val vau1_op = Reg(Valid(new VAU1Op).asDirectionless)
   when (vau1_op.bits.cnt.orR) {
     vau1_op.bits.cnt := vau1_op.bits.cnt - UInt(1)
   }
@@ -44,7 +44,7 @@ class LaneLFU extends Module
     vau1_op.bits.fn := io.op.vau1.bits.fn
   }
 
-  val vau2_op = Reg(Valid(new VAU2LaneFUOp).asDirectionless)
+  val vau2_op = Reg(Valid(new VAU2Op).asDirectionless)
   when (vau2_op.bits.cnt.orR) {
     vau2_op.bits.cnt := vau2_op.bits.cnt - UInt(1)
   }
@@ -57,7 +57,7 @@ class LaneLFU extends Module
     vau2_op.bits.fn := io.op.vau2.bits.fn
   }
 
-  val vgu_op = Reg(Valid(new VGULaneFUOp).asDirectionless)
+  val vgu_op = Reg(Valid(new VGUOp).asDirectionless)
   when (vgu_op.bits.cnt.orR) {
     vgu_op.bits.cnt := vgu_op.bits.cnt - UInt(1)
   }
@@ -79,7 +79,7 @@ class LaneLFU extends Module
     vgu_op.bits.check.cnt := io.op.vgu.bits.cnt
   }
 
-  val vlu_op = Reg(Valid(new VLULaneFUOp).asDirectionless)
+  val vlu_op = Reg(Valid(new VLUOp).asDirectionless)
   when (vlu_op.bits.cnt.orR) {
     vlu_op.bits.cnt := vlu_op.bits.cnt - UInt(1)
   }
@@ -95,7 +95,7 @@ class LaneLFU extends Module
     vlu_op.bits.mem := io.op.vlu.bits.mem
   }
 
-  val vsu_op = Reg(Valid(new VSULaneFUOp).asDirectionless)
+  val vsu_op = Reg(Valid(new VSUOp).asDirectionless)
   when (vsu_op.bits.cnt.orR) {
     vsu_op.bits.cnt := vsu_op.bits.cnt - UInt(1)
   }

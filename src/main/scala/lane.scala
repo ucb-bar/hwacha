@@ -15,30 +15,30 @@ class LaneOpIO extends Bundle
 {
   val read = Valid(new ReadBankOp)
   val write = Valid(new WriteBankOp)
-  val viu = Valid(new VIUBankOp)
-  val vau0 = Valid(new VAU0LaneFUOp)
-  val vau1 = Valid(new VAU1LaneFUOp)
-  val vau2 = Valid(new VAU2LaneFUOp)
-  val vgu = Valid(new VGULaneFUOp)
-  val vlu = Valid(new VLULaneFUOp)
-  val vsu = Valid(new VSULaneFUOp)
+  val viu = Valid(new VIUOp)
+  val vau0 = Valid(new VAU0Op)
+  val vau1 = Valid(new VAU1Op)
+  val vau2 = Valid(new VAU2Op)
+  val vgu = Valid(new VGUOp)
+  val vlu = Valid(new VLUOp)
+  val vsu = Valid(new VSUOp)
 }
 
 class LaneFUOpIO extends Bundle
 {
-  val vau0 = Valid(new VAU0LaneFUOp)
-  val vau1 = Valid(new VAU1LaneFUOp)
-  val vau2 = Valid(new VAU2LaneFUOp)
-  val vgu = Valid(new VGULaneFUOp)
-  val vlu = Valid(new VLULaneFUOp)
-  val vsu = Valid(new VSULaneFUOp)
+  val vau0 = Valid(new VAU0Op)
+  val vau1 = Valid(new VAU1Op)
+  val vau2 = Valid(new VAU2Op)
+  val vgu = Valid(new VGUOp)
+  val vlu = Valid(new VLUOp)
+  val vsu = Valid(new VSUOp)
 }
 
 class LaneMemOpIO extends Bundle
 {
-  val vgu = Valid(new VGULaneFUOp)
-  val vlu = Valid(new VLULaneFUOp)
-  val vsu = Valid(new VSULaneFUOp)
+  val vgu = Valid(new VGUOp)
+  val vlu = Valid(new VLUOp)
+  val vsu = Valid(new VSUOp)
 }
 
 class LaneMemDataIO extends Bundle

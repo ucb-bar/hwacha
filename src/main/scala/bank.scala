@@ -8,7 +8,7 @@ class BankOpIO extends Bundle
 {
   val read = Valid(new ReadBankOp)
   val write = Valid(new WriteBankOp)
-  val viu = Valid(new VIUBankOp)
+  val viu = Valid(new VIUOp)
 }
 
 class Bank extends Module
@@ -63,7 +63,7 @@ class Bank extends Module
     write_op.valid := Bool(false)
   }
 
-  val viu_op = Reg(Valid(new VIUBankOp).asDirectionless)
+  val viu_op = Reg(Valid(new VIUOp).asDirectionless)
   viu_op.valid := io.op.in.viu.valid
   when (io.op.in.viu.valid) {
     viu_op.bits.cnt := Mux(op_valid(io.op.in.viu), io.op.in.viu.bits.cnt - UInt(1), UInt(0))

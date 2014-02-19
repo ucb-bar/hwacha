@@ -81,29 +81,29 @@ class WriteBankOp extends LaneOpBundle
   val sel = Bits(width = SZ_BWPORT)
 }
 
-class VIUBankOp extends LaneOpBundle
+class VIUOp extends LaneOpBundle
 {
   val fn = Bits(width = SZ_VIU_FN)
   val utidx = Bits(width = SZ_VLEN)
   val imm = Bits(width = SZ_DATA)
 }
 
-class VAU0LaneFUOp extends LaneOpBundle
+class VAU0Op extends LaneOpBundle
 {
   val fn = Bits(width = SZ_VAU0_FN)
 }
 
-class VAU1LaneFUOp extends LaneOpBundle
+class VAU1Op extends LaneOpBundle
 {
   val fn = Bits(width = SZ_VAU1_FN)
 }
 
-class VAU2LaneFUOp extends LaneOpBundle
+class VAU2Op extends LaneOpBundle
 {
   val fn = Bits(width = SZ_VAU2_FN)
 }
 
-class VGULaneFUOp extends LaneOpBundle
+class VGUOp extends LaneOpBundle
 {
   val mem = new io_vxu_mem_cmd
   val imm = Bits(width = SZ_DATA)
@@ -112,12 +112,12 @@ class VGULaneFUOp extends LaneOpBundle
   val check = new io_vxu_mem_check
 }
 
-class VLULaneFUOp extends LaneOpBundle
+class VLUOp extends LaneOpBundle
 {
   val mem = new io_vxu_mem_cmd()
 }
 
-class VSULaneFUOp extends LaneOpBundle
+class VSUOp extends LaneOpBundle
 {
   val mem = new io_vxu_mem_cmd()
 }
