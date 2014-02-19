@@ -46,21 +46,11 @@ class LaneMem extends Module
   rf64f64.io.in := unpack_float_d(s1_sdata, 0)
   val s1_sdata_f_dp = rf64f64.io.out
 
-  val rf32f32_lo = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_lo.io.in := unpack_float_s(s1_sdata, 0)
-  val s1_sdata_f_sp_lo = rf32f32_lo.io.out
+  val rf32f32 = Module(new hardfloat.recodedFloat32ToFloat32)
+  rf32f32.io.in := unpack_float_s(s1_sdata, 0)
+  val s1_sdata_f_sp = rf32f32.io.out
 
-  val rf32f32_hi = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_hi.io.in := unpack_float_s(s1_sdata, 1)
-  val s1_sdata_f_sp_hi = rf32f32_hi.io.out
-
-  val s1_sdata_f_sp = Cat(s1_sdata_f_sp_hi, s1_sdata_f_sp_lo)
-
-  val s1_sdata_f_hp = Cat(
-    unpack_float_h(s1_sdata, 3),
-    unpack_float_h(s1_sdata, 2),
-    unpack_float_h(s1_sdata, 1),
-    unpack_float_h(s1_sdata, 0))
+  val s1_sdata_f_hp = unpack_float_h(s1_sdata, 0)
 
   val s1_store_fp = s1_vsu_op.bits.mem.typ_float
   val s1_store_fp_d = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_D
