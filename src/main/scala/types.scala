@@ -105,13 +105,17 @@ class VAU2LaneFUOp extends LaneOpBundle
 
 class VGULaneFUOp extends LaneOpBundle
 {
-  val mem = new io_vxu_mem_cmd()
+  val mem = new io_vxu_mem_cmd
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_XIMM2)
   val utmemop = Bool()
+  val check = new io_vxu_mem_check
 }
 
 class VLULaneFUOp extends LaneOpBundle
+{
+  val mem = new io_vxu_mem_cmd()
+}
 
 class VSULaneFUOp extends LaneOpBundle
 {

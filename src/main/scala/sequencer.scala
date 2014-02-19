@@ -430,6 +430,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_fstride(next_ptr3) := io.issue_to_seq.fstride
     next_vd(next_ptr3) := io.fire_regid_imm.vd
     next_rtype(next_ptr3) := io.fire_regid_imm.rtype
+    next_mem(next_ptr3) := io.fire_regid_imm.mem
 
     next_aiw_imm1_rtag(next_ptr3) := io.fire_regid_imm.aiw.imm1_rtag
     next_aiw_cnt_rtag(next_ptr3) := io.fire_regid_imm.aiw.cnt_rtag
@@ -464,6 +465,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_fstride(next_ptr2) := io.issue_to_seq.fstride
     next_vd(next_ptr2) := io.fire_regid_imm.vd
     next_rtype(next_ptr2) := io.fire_regid_imm.rtype
+    next_mem(next_ptr2) := io.fire_regid_imm.mem
 
     next_aiw_imm1_rtag(next_ptr2) := io.fire_regid_imm.aiw.imm1_rtag
     next_aiw_cnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.cnt_rtag
@@ -530,6 +532,7 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     next_fstride(next_ptr2) := io.issue_to_seq.fstride
     next_vd(next_ptr2) := io.fire_regid_imm.vd
     next_rtype(next_ptr2) := io.fire_regid_imm.rtype
+    next_mem(next_ptr2) := io.fire_regid_imm.mem
     next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
     next_imm2(next_ptr2) := io.fire_regid_imm.imm2
 

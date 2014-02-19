@@ -3,16 +3,6 @@ package hwacha
 import Chisel._
 import Constants._
 
-class LaneFUOpIO extends Bundle
-{
-  val vau0 = Valid(new VAU0LaneFUOp)
-  val vau1 = Valid(new VAU1LaneFUOp)
-  val vau2 = Valid(new VAU2LaneFUOp)
-  val vgu = Valid(new VGULaneFUOp)
-  val vlu = Valid(new VLULaneFUOp)
-  val vsu = Valid(new VSULaneFUOp)
-}
-
 class LaneLFU extends Module 
 {
   val io = new Bundle {
@@ -24,14 +14,8 @@ class LaneLFU extends Module
     val vau1_fn = Bits(OUTPUT, SZ_VAU1_FN)
     val vau2_val = Bool(OUTPUT)
     val vau2_fn = Bits(OUTPUT, SZ_VAU2_FN)
-    val vaq_val = Bool(OUTPUT)
-    val vaq_check = new io_vxu_mem_check().asOutput
-    val vaq_mem = new io_vxu_mem_cmd().asOutput
-    val vaq_imm = Bits(OUTPUT, SZ_DATA)
-    val vaq_utmemop = Bool(OUTPUT)
-    val vldq_rdy = Bool(OUTPUT)
-    val vsdq_val = Bool(OUTPUT)
-    val vsdq_mem = new io_vxu_mem_cmd().asOutput
+
+    val memop = new LaneMemOpIO
   }
 
   val vau0_uop = Reg(Valid(new VAU0LaneFUOp).asDirectionless)
@@ -73,8 +57,6 @@ class LaneLFU extends Module
     vau2_uop.bits.fn := io.uop.vau2.bits.fn
   }
 
-  val vgu_checkcnt = Reg(init=Bool(false))
-  val vgu_cnt = Reg(UInt(width = SZ_BCNT))
   val vgu_uop = Reg(Valid(new VGULaneFUOp).asDirectionless)
   when (vgu_uop.bits.cnt.orR) {
     vgu_uop.bits.cnt := vgu_uop.bits.cnt - UInt(1)
@@ -85,7 +67,7 @@ class LaneLFU extends Module
   when (vgu_uop.valid && !vgu_uop.bits.utmemop) {
     vgu_uop.bits.imm := vgu_uop.bits.imm + vgu_uop.bits.imm2
   }
-  vgu_checkcnt := Bool(false)
+  vgu_uop.bits.check.checkcnt := Bool(false)
   when (io.uop.vgu.valid) {
     vgu_uop.valid := Bool(true)
     vgu_uop.bits.cnt := io.uop.vgu.bits.cnt
@@ -93,8 +75,8 @@ class LaneLFU extends Module
     vgu_uop.bits.imm := io.uop.vgu.bits.imm
     vgu_uop.bits.imm2 := io.uop.vgu.bits.imm2
     vgu_uop.bits.utmemop := io.uop.vgu.bits.utmemop
-    vgu_checkcnt := Bool(true)
-    vgu_cnt := io.uop.vgu.bits.cnt
+    vgu_uop.bits.check.checkcnt := Bool(true)
+    vgu_uop.bits.check.cnt := io.uop.vgu.bits.cnt
   }
 
   val vlu_uop = Reg(Valid(new VLULaneFUOp).asDirectionless)
@@ -110,6 +92,7 @@ class LaneLFU extends Module
   }
   when (io.uop.vlu.valid) {
     vlu_uop.bits.cnt := io.uop.vlu.bits.cnt
+    vlu_uop.bits.mem := io.uop.vlu.bits.mem
   }
 
   val vsu_uop = Reg(Valid(new VSULaneFUOp).asDirectionless)
@@ -145,13 +128,9 @@ class LaneLFU extends Module
   io.vau1_fn := vau1_uop.bits.fn
   io.vau2_val := vau2_uop.valid
   io.vau2_fn := vau2_uop.bits.fn
-  io.vaq_val := vgu_uop.valid
-  io.vaq_check.checkcnt := vgu_checkcnt
-  io.vaq_check.cnt := vgu_cnt
-  io.vaq_mem <> vgu_uop.bits.mem
-  io.vaq_imm := vgu_uop.bits.imm
-  io.vaq_utmemop := vgu_uop.bits.utmemop
-  io.vldq_rdy := io.uop.vlu.valid | vlu_uop.valid
-  io.vsdq_val := vsu_uop.valid
-  io.vsdq_mem <> vsu_uop.bits.mem
+
+  io.memop.vgu <> vgu_uop
+  io.memop.vlu.valid := io.uop.vlu.valid | vlu_uop.valid
+  io.memop.vlu.bits.mem := Mux(io.uop.vlu.valid, io.uop.vlu.bits.mem, vlu_uop.bits.mem)
+  io.memop.vsu <> vsu_uop
 }

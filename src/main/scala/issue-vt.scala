@@ -141,17 +141,17 @@ object VTDecodeTable
     FMV_D_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MXTF, F,MT_X,M_X,      VM_X,  F),
     FMV_X_D->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MFTX, F,MT_X,M_X,      VM_X,  F),
 
-    LB->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XRD,    VM_LD, F),
-    LH->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_LD, F),
-    LW->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_LD, F),
-    LD->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_LD, F),
-    LBU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_BU,M_XRD,   VM_LD, F),
-    LHU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_HU,M_XRD,   VM_LD, F),
-    LWU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_WU,M_XRD,   VM_LD, F),
-    SB->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XWR,    VM_ST, F),
-    SH->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_ST, F),
-    SW->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_ST, F),
-    SD->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_ST, F),
+    LB->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XRD,    VM_ULD,F),
+    LH->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_ULD,F),
+    LW->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_ULD,F),
+    LD->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_ULD,F),
+    LBU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_BU,M_XRD,   VM_ULD,F),
+    LHU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_HU,M_XRD,   VM_ULD,F),
+    LWU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_WU,M_XRD,   VM_ULD,F),
+    SB->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XWR,    VM_UST,F),
+    SH->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_UST,F),
+    SW->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_UST,F),
+    SD->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_UST,F),
     AMOADD_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_ADD, VM_AMO,F),
     AMOXOR_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_XOR, VM_AMO,F),
     AMOOR_W->   List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_OR,  VM_AMO,F),
@@ -170,12 +170,12 @@ object VTDecodeTable
     AMOMINU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MINU,VM_AMO,F),
     AMOMAXU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MAXU,VM_AMO,F),
     AMOSWAP_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_SWAP,VM_AMO,F),
-    FLH->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_LD, F),
-    FLW->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_LD, F),
-    FLD->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_LD, F),
-    FSH->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_ST, F),
-    FSW->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_ST, F),
-    FSD->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_ST, F),
+    FLH->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_ULD,F),
+    FLW->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_ULD,F),
+    FLD->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_ULD,F),
+    FSH->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_UST,F),
+    FSW->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_UST,F),
+    FSD->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_UST,F),
 
     STOP->      List(R_,R_,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  T)
   )
@@ -258,8 +258,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val unmasked_valid_vau1 = io.imem.resp.valid && vau1_val
   val unmasked_valid_vau2 = io.imem.resp.valid && vau2_val
   val unmasked_valid_amo = io.imem.resp.valid && vmu_val && (vmu_op === VM_AMO)
-  val unmasked_valid_utld = io.imem.resp.valid && vmu_val && (vmu_op === VM_LD)
-  val unmasked_valid_utst = io.imem.resp.valid && vmu_val && (vmu_op === VM_ST)
+  val unmasked_valid_utld = io.imem.resp.valid && vmu_val && (vmu_op === VM_ULD)
+  val unmasked_valid_utst = io.imem.resp.valid && vmu_val && (vmu_op === VM_UST)
 
   io.vf.stop := io.vf.active && io.imem.resp.valid && decode_stop
 
@@ -322,8 +322,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.shazard.vau1 := vau1_val
   io.shazard.vau2 := vau2_val
   io.shazard.vgu := vmu_val
-  io.shazard.vlu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_LD)
-  io.shazard.vsu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_ST)
+  io.shazard.vlu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_ULD)
+  io.shazard.vsu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_UST)
 
   val rports = PopCount(List(vs_val, vt_val, vr_val))
 
@@ -332,8 +332,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.bhazard.r2w1 := !vmu_val && vd_val && rports === UInt(2)
   io.bhazard.r3w1 := !vmu_val && vd_val && rports === UInt(3)
   io.bhazard.amo := vmu_val && (vmu_op === VM_AMO)
-  io.bhazard.utld := vmu_val && (vmu_op === VM_LD)
-  io.bhazard.utst := vmu_val && (vmu_op === VM_ST)
+  io.bhazard.utld := vmu_val && (vmu_op === VM_ULD)
+  io.bhazard.utst := vmu_val && (vmu_op === VM_UST)
   io.bhazard.vld := Bool(false)
   io.bhazard.vst := Bool(false)
 

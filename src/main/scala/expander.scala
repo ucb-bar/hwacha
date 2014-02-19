@@ -273,14 +273,15 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   when (io.seq.vldq)
   {
-    wexp.valid(0) := Bool(true)
-    wexp.bits(0).last := io.seq_to_expand.last
-    wexp.bits(0).cnt := io.seq_regid_imm.tcnt
-    wexp.bits(0).addr := io.seq_regid_imm.vd
-    wexp.bits(0).sel := Bits(3)
+    wexp.valid(1) := Bool(true)
+    wexp.bits(1).last := io.seq_to_expand.last
+    wexp.bits(1).cnt := io.seq_regid_imm.tcnt
+    wexp.bits(1).addr := io.seq_regid_imm.vd
+    wexp.bits(1).sel := Bits(3)
 
     vluexp.valid(0) := Bool(true)
     vluexp.bits(0).cnt := io.seq_regid_imm.cnt
+    vluexp.bits(0).mem := io.seq_regid_imm.mem
   }
 
   when (io.seq.vsdq)

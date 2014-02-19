@@ -262,9 +262,11 @@ trait VMUConstants extends LaneConstants
   val SZ_VMU_OP = 3
 
   val VM_X   = UInt.DC(SZ_VMU_OP)
-  val VM_AMO = UInt(0, SZ_VMU_OP)
-  val VM_LD  = UInt(1, SZ_VMU_OP)
-  val VM_ST  = UInt(2, SZ_VMU_OP)
+  val VM_VLD = UInt(0, SZ_VMU_OP)
+  val VM_VST = UInt(1, SZ_VMU_OP)
+  val VM_ULD = UInt(2, SZ_VMU_OP)
+  val VM_UST = UInt(3, SZ_VMU_OP)
+  val VM_AMO = UInt(4, SZ_VMU_OP)
 }
 
 object Commands extends Commands

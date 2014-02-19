@@ -5,23 +5,6 @@ import Node._
 import Constants._
 import scala.collection.mutable.ArrayBuffer
 
-class VMUIO extends Bundle 
-{
-  val vaq_val   = Bool(OUTPUT)
-  val vaq_check = new io_vxu_mem_check().asOutput
-  val vaq_mem = new io_vxu_mem_cmd().asOutput
-  val vaq_imm = Bits(OUTPUT, SZ_DATA)
-  val vaq_utmemop = Bool(OUTPUT)
-  val vaq_rf = Bits(OUTPUT, SZ_DATA)
-
-  val vldq_rdy  = Bool(OUTPUT)
-  val vldq_bits = Bits(INPUT, SZ_DATA)
-
-  val vsdq_val  = Bool(OUTPUT)
-  val vsdq_mem = new io_vxu_mem_cmd().asOutput
-  val vsdq_bits = Bits(OUTPUT, SZ_DATA)
-}
-
 class io_lane_to_hazard extends Bundle
 {
   val rlast = Bool()
@@ -41,13 +24,37 @@ class LaneOpIO extends Bundle
   val vsu = Valid(new VSULaneFUOp)
 }
 
+class LaneFUOpIO extends Bundle
+{
+  val vau0 = Valid(new VAU0LaneFUOp)
+  val vau1 = Valid(new VAU1LaneFUOp)
+  val vau2 = Valid(new VAU2LaneFUOp)
+  val vgu = Valid(new VGULaneFUOp)
+  val vlu = Valid(new VLULaneFUOp)
+  val vsu = Valid(new VSULaneFUOp)
+}
+
+class LaneMemOpIO extends Bundle
+{
+  val vgu = Valid(new VGULaneFUOp)
+  val vlu = Valid(new VLULaneFUOp)
+  val vsu = Valid(new VSULaneFUOp)
+}
+
+class LaneMemDataIO extends Bundle
+{
+  val paddr = Bits(OUTPUT, SZ_DATA)
+  val ldata = Bits(INPUT, SZ_DATA)
+  val sdata = Bits(OUTPUT, SZ_DATA)
+}
+
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val issue_to_lane = new io_vxu_issue_to_lane().asInput
     val uop = new LaneOpIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
-    val vmu = new VMUIO()
+    val vmu = new VMUIO
 
     val prec = Bits(INPUT, SZ_PREC)
   }
@@ -58,13 +65,15 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val ropl0 = new ArrayBuffer[Bits]
   val ropl1 = new ArrayBuffer[Bits]
 
+  val lfu = Module(new LaneLFU)
   val imul = Module(new LaneMul)
-  val fma  = Module(new LaneFMA)
+  val fma = Module(new LaneFMA)
   val conv = Module(new LaneConv)
+  val mem = Module(new LaneMem)
 
-  for (i <- 0 until SZ_BANK) 
-  {
+  for (i <- 0 until SZ_BANK) {
     val bank = Module(new Bank)
+
     bank.io.active := io.issue_to_lane.bactive(i)
     bank.io.prec := io.prec
     bank.io.uop.in <> (if (i == 0) io.uop else conn.last)
@@ -78,7 +87,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma.io.out
     bank.io.rw.wbl2 := conv.io.out
-    bank.io.rw.wbl3 := io.vmu.vldq_bits
+    bank.io.rw.wbl3 := mem.io.data.ldata
   }
 
   io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
@@ -89,7 +98,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val rbl = List(ropl0, rdata, ropl1, ropl0, rdata, rdata, rdata, rdata).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
-  val lfu = Module(new LaneLFU)
   lfu.io.uop <> io.uop
 
   imul.io.valid := lfu.io.vau0_val
@@ -107,14 +115,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   conv.io.fn := lfu.io.vau2_fn
   conv.io.in := rbl(5)
 
-  io.vmu.vaq_val := lfu.io.vaq_val
-  io.vmu.vaq_check <> lfu.io.vaq_check
-  io.vmu.vaq_mem <> lfu.io.vaq_mem
-  io.vmu.vaq_imm := lfu.io.vaq_imm
-  io.vmu.vaq_utmemop := lfu.io.vaq_utmemop
-  io.vmu.vaq_rf := rbl(6)(SZ_ADDR-1,0)
-  io.vmu.vldq_rdy := lfu.io.vldq_rdy
-  io.vmu.vsdq_val := lfu.io.vsdq_val
-  io.vmu.vsdq_mem <> lfu.io.vsdq_mem
-  io.vmu.vsdq_bits := rbl(7)
+  mem.io.op <> lfu.io.memop
+  mem.io.data.paddr := rbl(6)(SZ_ADDR-1,0)
+  mem.io.data.sdata := rbl(7)
+
+  io.vmu <> mem.io.vmu
 }

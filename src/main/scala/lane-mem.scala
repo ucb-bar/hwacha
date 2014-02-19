@@ -10,70 +10,100 @@ import uncore.constants.MemoryOpConstants._
 class LaneMem extends Module
 {
   val io = new Bundle {
-    val lane_vaq_valid = Bool(INPUT)
-    val lane_vaq_check = new io_vxu_mem_check().asInput
-    val lane_vaq_mem = new io_vxu_mem_cmd().asInput
-    val lane_vaq_imm = Bits(INPUT, SZ_DATA)
-    val lane_vaq_utmemop = Bool(INPUT)
-    val lane_vaq_rf = Bits(INPUT, SZ_DATA)
-    
-    val vmu_vaq_valid = Bool(OUTPUT)
-    val vmu_vaq_bits = new io_vvaq_bundle().asOutput
-    
-    val lane_vsdq_valid = Bool(INPUT)
-    val lane_vsdq_mem = new io_vxu_mem_cmd().asInput 
-    val lane_vsdq_bits = Bits(INPUT, SZ_DATA) 
-    
-    val vmu_vsdq_valid = Bool(OUTPUT)
-    val vmu_vsdq_bits = Bits(OUTPUT, SZ_DATA) 
+    val op = new LaneMemOpIO().flip
+    val data = new LaneMemDataIO().flip
+    val vmu = new VMUIO
   }
 
-  val reg_lane_vaq_valid = Reg(next=io.lane_vaq_valid)
-  val reg_lane_vaq_check = Reg(next=io.lane_vaq_check)
-  val reg_lane_vaq_mem = Reg(next=io.lane_vaq_mem)
-  val reg_lane_vaq_imm = Reg(next=io.lane_vaq_imm)
-  val reg_lane_vaq_rf = Reg(next=Mux(io.lane_vaq_utmemop, io.lane_vaq_rf, Bits(0,SZ_DATA)))
+  // VGU
+  val s1_vgu_op = Reg(Valid(new VGULaneFUOp).asDirectionless)
+  s1_vgu_op.valid := io.op.vgu.valid
+  when (io.op.vgu.valid) {
+    s1_vgu_op.bits := io.op.vgu.bits
+  }
+  val s1_paddr = RegEnable(Mux(io.op.vgu.bits.utmemop, io.data.paddr, Bits(0)), io.op.vgu.valid)
+  val s1_addr = s1_vgu_op.bits.imm + s1_paddr
 
-  val addr = reg_lane_vaq_imm + reg_lane_vaq_rf
-  io.vmu_vaq_valid := reg_lane_vaq_valid
-  io.vmu_vaq_bits <> reg_lane_vaq_check
-  io.vmu_vaq_bits <> reg_lane_vaq_mem
-  io.vmu_vaq_bits.idx := addr(PGIDX_BITS-1, 0)
-  io.vmu_vaq_bits.vpn := addr(VADDR_BITS, PGIDX_BITS)
+  io.vmu.vaq.valid := s1_vgu_op.valid
+  io.vmu.vaq.bits <> s1_vgu_op.bits.check
+  io.vmu.vaq.bits <> s1_vgu_op.bits.mem
+  io.vmu.vaq.bits.idx := s1_addr(PGIDX_BITS-1, 0)
+  io.vmu.vaq.bits.vpn := s1_addr(VADDR_BITS, PGIDX_BITS)
 
-  val store_fp = io.lane_vsdq_mem.typ_float
-  val store_fp_d = store_fp && io.lane_vsdq_mem.typ === MT_D
-  val store_fp_w = store_fp && io.lane_vsdq_mem.typ === MT_W
-  val store_fp_h = store_fp && io.lane_vsdq_mem.typ === MT_H
+  // FIXME
+  io.vmu.evaq.valid := io.op.vgu.valid
+  io.vmu.evaq.bits.cmd := io.op.vgu.bits.mem.cmd
 
-  val reg_lane_vsdq_valid = Reg(next=io.lane_vsdq_valid)
-  val reg_lane_vsdq_bits = Reg(next=io.lane_vsdq_bits)
+  // VSU
+  val s1_vsu_op = Reg(Valid(new VSULaneFUOp).asDirectionless)
+  s1_vsu_op.valid := io.op.vsu.valid
+  when (io.op.vsu.valid) {
+    s1_vsu_op.bits := io.op.vsu.bits
+  }
+  val s1_sdata = RegEnable(io.data.sdata, io.op.vsu.valid) 
 
-  val rf32f32_lo  = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_lo.io.in := unpack_float_s(reg_lane_vsdq_bits, 0)
-  val vsdq_deq_sp_lo = rf32f32_lo.io.out
+  val rf64f64 = Module(new hardfloat.recodedFloat64ToFloat64)
+  rf64f64.io.in := unpack_float_d(s1_sdata, 0)
+  val s1_sdata_f_dp = rf64f64.io.out
 
-  val rf32f32_hi  = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32_hi.io.in := unpack_float_s(reg_lane_vsdq_bits, 1)
-  val vsdq_deq_sp_hi = rf32f32_hi.io.out
+  val rf32f32_lo = Module(new hardfloat.recodedFloat32ToFloat32)
+  rf32f32_lo.io.in := unpack_float_s(s1_sdata, 0)
+  val s1_sdata_f_sp_lo = rf32f32_lo.io.out
 
-  val vsdq_deq_sp = Cat(vsdq_deq_sp_hi, vsdq_deq_sp_lo)
+  val rf32f32_hi = Module(new hardfloat.recodedFloat32ToFloat32)
+  rf32f32_hi.io.in := unpack_float_s(s1_sdata, 1)
+  val s1_sdata_f_sp_hi = rf32f32_hi.io.out
 
-  val rf64f64  = Module(new hardfloat.recodedFloat64ToFloat64)
-  rf64f64.io.in := unpack_float_d(reg_lane_vsdq_bits, 0)
-  val vsdq_deq_dp = rf64f64.io.out
+  val s1_sdata_f_sp = Cat(s1_sdata_f_sp_hi, s1_sdata_f_sp_lo)
 
-  val vsdq_deq_hp = Cat(
-    unpack_float_h(reg_lane_vsdq_bits, 3),
-    unpack_float_h(reg_lane_vsdq_bits, 2),
-    unpack_float_h(reg_lane_vsdq_bits, 1),
-    unpack_float_h(reg_lane_vsdq_bits, 0))
+  val s1_sdata_f_hp = Cat(
+    unpack_float_h(s1_sdata, 3),
+    unpack_float_h(s1_sdata, 2),
+    unpack_float_h(s1_sdata, 1),
+    unpack_float_h(s1_sdata, 0))
 
-  io.vmu_vsdq_valid := reg_lane_vsdq_valid
-  io.vmu_vsdq_bits := MuxCase(
-      reg_lane_vsdq_bits(63,0), Array(	
-        (store_fp_d) -> vsdq_deq_dp,
-        (store_fp_w) -> vsdq_deq_sp,
-        (store_fp_h) -> vsdq_deq_hp
-      ))
+  val s1_store_fp = s1_vsu_op.bits.mem.typ_float
+  val s1_store_fp_d = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_D
+  val s1_store_fp_w = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_W
+  val s1_store_fp_h = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_H
+
+  io.vmu.vsdq.valid := s1_vsu_op.valid
+  io.vmu.vsdq.bits := MuxCase(
+    s1_sdata(63,0), Array(	
+      (s1_store_fp_d) -> s1_sdata_f_dp,
+      (s1_store_fp_w) -> s1_sdata_f_sp,
+      (s1_store_fp_h) -> s1_sdata_f_hp
+    ))
+
+  // FIXME
+  io.vmu.evsdq.valid := io.op.vsu.valid
+
+  // VLU
+  val s1_vlu_op = Reg(Valid(new VLULaneFUOp).asDirectionless)
+  s1_vlu_op.valid := io.op.vlu.valid
+  when (io.op.vlu.valid) {
+    s1_vlu_op.bits := io.op.vlu.bits
+  }
+  val s1_ldata = RegEnable(io.vmu.vldq.bits, io.op.vlu.valid) 
+
+  val f64rf64 = Module(new hardfloat.float64ToRecodedFloat64)
+  f64rf64.io.in := s1_ldata
+  val s1_ldata_rf_dp = f64rf64.io.out
+
+  val f32rf32 = Module(new hardfloat.float32ToRecodedFloat32)
+  f32rf32.io.in := s1_ldata
+  val s1_ldata_rf_sp = f32rf32.io.out
+
+  val s1_load_fp = s1_vlu_op.bits.mem.typ_float
+  val s1_load_fp_d = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_D
+  val s1_load_fp_w = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_W
+  val s1_load_fp_h = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_H
+
+  io.vmu.vldq.ready := io.op.vlu.valid
+  io.data.ldata := MuxCase(
+    s1_ldata, Array(
+      (s1_load_fp_d) -> pack_float_d(s1_ldata_rf_dp, 0),
+      (s1_load_fp_w) -> pack_float_s(s1_ldata_rf_sp, 0),
+      (s1_load_fp_h) -> pack_float_h(s1_ldata, 0)
+    ))
 }
