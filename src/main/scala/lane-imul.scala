@@ -9,18 +9,19 @@ class LaneMul(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn    = Bits(INPUT, SZ_VAU0_FN)
-    val in0   = Bits(INPUT, SZ_DATA)
-    val in1   = Bits(INPUT, SZ_DATA)
-    val out   = Bits(OUTPUT, SZ_DATA)
+    val fn = new VAU0Fn().asInput
+    val in0 = Bits(INPUT, SZ_DATA)
+    val in1 = Bits(INPUT, SZ_DATA)
+    val out = Bits(OUTPUT, SZ_DATA)
   }
 
-  val sxl64 = io.fn === VAU0_64H  | io.fn === VAU0_64HSU
-  val sxr64 = io.fn === VAU0_64H
-  val zxl32 = io.fn === VAU0_32HU
-  val zxr32 = io.fn === VAU0_32HU | io.fn === VAU0_32HSU
-  val sxl32 = io.fn === VAU0_32H | io.fn === VAU0_32HSU
-  val sxr32 = io.fn === VAU0_32H
+  def FN(dw: Bits, op: Bits) = io.fn.dw === dw && io.fn.op === op
+  val sxl64 = FN(DW64, A0_MH) | FN(DW64, A0_MHSU)
+  val sxr64 = FN(DW64, A0_MH)
+  val zxl32 = FN(DW32, A0_MHU)
+  val zxr32 = FN(DW32, A0_MHU) | FN(DW32, A0_MHSU)
+  val sxl32 = FN(DW32, A0_MH) | FN(DW32, A0_MHSU)
+  val sxr32 = FN(DW32, A0_MH)
 
   val lhs = Cat(
     io.in0(63) & sxl64,
@@ -33,16 +34,16 @@ class LaneMul(implicit conf: HwachaConfiguration) extends Module
 
   val mul_result = lhs.toSInt * rhs.toSInt //TODO:130 bits
 
-  val mul_output_mux = MuxLookup(
-    io.fn, Bits(0,64), Array(
-      VAU0_64    -> mul_result(63,0),
-      VAU0_64H   -> mul_result(127,64),
-      VAU0_64HU  -> mul_result(127,64),
-      VAU0_64HSU -> mul_result(127,64),
-      VAU0_32    -> Cat(Fill(32, mul_result(31)), mul_result(31,0)),
-      VAU0_32H   -> Cat(Fill(32, mul_result(63)), mul_result(63,32)),
-      VAU0_32HU  -> Cat(Fill(32, mul_result(63)), mul_result(63,32)),
-      VAU0_32HSU -> Cat(Fill(32, mul_result(63)), mul_result(63,32))
+  val mul_output_mux = MuxCase(
+    Bits(0, 64), Array(
+      FN(DW64, A0_M)    -> mul_result(63,0),
+      FN(DW64, A0_MH)   -> mul_result(127,64),
+      FN(DW64, A0_MHU)  -> mul_result(127,64),
+      FN(DW64, A0_MHSU) -> mul_result(127,64),
+      FN(DW32, A0_M)    -> Cat(Fill(32, mul_result(31)), mul_result(31,0)),
+      FN(DW32, A0_MH)   -> Cat(Fill(32, mul_result(63)), mul_result(63,32)),
+      FN(DW32, A0_MHU)  -> Cat(Fill(32, mul_result(63)), mul_result(63,32)),
+      FN(DW32, A0_MHSU) -> Cat(Fill(32, mul_result(63)), mul_result(63,32))
     ))
 
   io.out := ShiftRegister(mul_output_mux, conf.imul_stages, io.valid)

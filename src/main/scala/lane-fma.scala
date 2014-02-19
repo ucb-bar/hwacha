@@ -10,22 +10,25 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle
   {
     val valid = Bool(INPUT)
-    val fn    = Bits(INPUT, SZ_VAU1_FN)
-    val in0   = Bits(INPUT, SZ_DATA)
-    val in1   = Bits(INPUT, SZ_DATA)
-    val in2   = Bits(INPUT, SZ_DATA)
-    val out   = Bits(OUTPUT, SZ_DATA)
-    val exc   = Bits(OUTPUT, SZ_EXC)
+    val fn = new VAU1Fn().asInput
+    val in0 = Bits(INPUT, SZ_DATA)
+    val in1 = Bits(INPUT, SZ_DATA)
+    val in2 = Bits(INPUT, SZ_DATA)
+    val out = Bits(OUTPUT, SZ_DATA)
+    val exc = Bits(OUTPUT, SZ_EXC)
   }
+
+  def OP(ops: Bits*) = ops.toList.map(x => {io.fn.op === x}).reduceLeft(_ || _)
+  def FP(fp: Bits) = io.fn.fp === fp
 
   // use in0 & in2 for a two operand flop (add,sub,mul)
   // use in0, in1, & in2 otherwise
 
   val fma_op = MuxCase(
     Bits("b00",2), Array(
-      (io.fn(RG_VAU1_FN) === A1_SUB || io.fn(RG_VAU1_FN) === A1_MSUB) -> Bits("b01",2),
-      (io.fn(RG_VAU1_FN) === A1_NMSUB) -> Bits("b10",2),
-      (io.fn(RG_VAU1_FN) === A1_NMADD) -> Bits("b11",2)
+      OP(A1_SUB, A1_MSUB) -> Bits("b01",2),
+      OP(A1_NMSUB) -> Bits("b10",2),
+      OP(A1_NMADD) -> Bits("b11",2)
     ))
 
   val one_dp = repack_float_d(Bits("h8000000000000000", 65)) // recoded, swizzled
@@ -34,26 +37,24 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val fma_multiplicand = io.in0
   val fma_multiplier = MuxCase(
     io.in1, Array(
-      ((io.fn(RG_VAU1_FP) === Bits("b01",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_dp,
-      ((io.fn(RG_VAU1_FP) === Bits("b00",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_sp,
-      ((io.fn(RG_VAU1_FP) === Bits("b10",2)) && (io.fn(RG_VAU1_FN) === A1_ADD || io.fn(RG_VAU1_FN) === A1_SUB)) -> one_hp,
-      ((io.fn(RG_VAU1_FN) === A1_MUL)) -> io.in2
+      (FP(FPD) && OP(A1_ADD, A1_SUB)) -> one_dp,
+      (FP(FPS) && OP(A1_ADD, A1_SUB)) -> one_sp,
+      (FP(FPH) && OP(A1_ADD, A1_SUB)) -> one_hp,
+      OP(A1_MUL) -> io.in2
     ))
 
-  val fma_addend = Mux(
-    io.fn(RG_VAU1_FN) === A1_MUL, Bits(0,65),
-    io.in2)
+  val fma_addend = Mux(OP(A1_MUL), Bits(0, 65), io.in2)
 
-  val val_fma_dp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b01",2))
-  val val_fma_sp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b00",2))
-  val val_fma_hp = io.valid & (io.fn(RG_VAU1_FP) === Bits("b10",2))
+  val val_fma_dp = io.valid & FP(FPD)
+  val val_fma_sp = io.valid & FP(FPS)
+  val val_fma_hp = io.valid & FP(FPH)
 
   val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
   dfma.io.op := Fill(2,val_fma_dp) & fma_op
   dfma.io.a := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplicand, 0)
   dfma.io.b := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplier, 0)
   dfma.io.c := Fill(65,val_fma_dp) & unpack_float_d(fma_addend, 0)
-  dfma.io.roundingMode := Fill(3,val_fma_dp) & io.fn(RG_VAU1_RM)
+  dfma.io.roundingMode := Fill(3,val_fma_dp) & io.fn.rm
   val result_dp0 = dfma.io.out
 
   val sfma = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
@@ -61,7 +62,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   sfma.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, 0)
   sfma.io.b := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplier, 0)
   sfma.io.c := Fill(33,val_fma_sp) & unpack_float_s(fma_addend, 0)
-  sfma.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
+  sfma.io.roundingMode := Fill(3,val_fma_sp) & io.fn.rm
   val result_sp0 = sfma.io.out
 
   // instantiate second sfma unit (confprec)
@@ -73,7 +74,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     sfma1.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, 1)
     sfma1.io.b := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplier, 1)
     sfma1.io.c := Fill(33,val_fma_sp) & unpack_float_s(fma_addend, 1)
-    sfma1.io.roundingMode := Fill(3,val_fma_sp) & io.fn(RG_VAU1_RM)
+    sfma1.io.roundingMode := Fill(3,val_fma_sp) & io.fn.rm
     result_sp1 := sfma1.io.out
 
     or_exc_sp := sfma.io.exceptionFlags | sfma1.io.exceptionFlags
@@ -90,7 +91,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   hfma.io.a := Fill(17, val_fma_hp) & recoded_hp_a
   hfma.io.b := Fill(17, val_fma_hp) & recoded_hp_b
   hfma.io.c := Fill(17, val_fma_hp) & recoded_hp_c
-  hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
+  hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
   val result_hp0 = hardfloat.recodedFloatNToFloatN(hfma.io.out, 10, 6)
 
   // packing format: 65 64       49 48       33 32 31       16 15       00
@@ -108,7 +109,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     hfma1.io.a := Fill(17, val_fma_hp) & recoded_hp_a1
     hfma1.io.b := Fill(17, val_fma_hp) & recoded_hp_b1
     hfma1.io.c := Fill(17, val_fma_hp) & recoded_hp_c1
-    hfma1.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
+    hfma1.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
     result_hp1 := hardfloat.recodedFloatNToFloatN(hfma1.io.out, 10, 6)
 
     val recoded_hp_a2 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 2)toUInt, 10, 6)
@@ -119,7 +120,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     hfma2.io.a := Fill(17, val_fma_hp) & recoded_hp_a2
     hfma2.io.b := Fill(17, val_fma_hp) & recoded_hp_b2
     hfma2.io.c := Fill(17, val_fma_hp) & recoded_hp_c2
-    hfma2.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
+    hfma2.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
     result_hp2 := hardfloat.recodedFloatNToFloatN(hfma2.io.out, 10, 6)
 
     val recoded_hp_a3 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 3).toUInt, 10, 6)
@@ -130,7 +131,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     hfma3.io.a := Fill(17, val_fma_hp) & recoded_hp_a3
     hfma3.io.b := Fill(17, val_fma_hp) & recoded_hp_b3
     hfma3.io.c := Fill(17, val_fma_hp) & recoded_hp_c3
-    hfma3.io.roundingMode := Fill(3, val_fma_hp) & io.fn(RG_VAU1_RM)
+    hfma3.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
     result_hp3 := hardfloat.recodedFloatNToFloatN(hfma3.io.out, 10, 6)
 
     or_exc_hp := hfma.io.exceptionFlags | hfma1.io.exceptionFlags | hfma2.io.exceptionFlags | hfma3.io.exceptionFlags

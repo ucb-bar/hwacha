@@ -170,7 +170,7 @@ trait VIUConstants
   val RG_VIU_T1 = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1-1          , SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW)
   val RG_VIU_DW = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW-1                    , SZ_VIU_OP+SZ_VIU_FP) 
   val RG_VIU_FP = (SZ_VIU_OP+SZ_VIU_FP-1                              , SZ_VIU_OP)
-  val RG_VIU_FN = (SZ_VIU_OP-1,0)
+  val RG_VIU_OP = (SZ_VIU_OP-1,0)
 }
 
 trait VAU0Constants extends DecodeConstants

@@ -124,7 +124,7 @@ class Bank extends Module
 
   alu.io.valid := op_valid(io.op.in.viu)
   alu.io.wen := op_valid(io.op.in.write)
-  alu.io.fn := io.op.in.viu.bits.fn.toBits
+  alu.io.fn := io.op.in.viu.bits.fn
   alu.io.utidx := io.op.in.viu.bits.utidx
   alu.io.in0 := viu_in0
   alu.io.in1 := viu_in1

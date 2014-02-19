@@ -101,7 +101,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       viuexp.bits(2).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
       viuexp.bits(2).fn.dw := io.seq_fn.viu(RG_VIU_DW)
       viuexp.bits(2).fn.fp := io.seq_fn.viu(RG_VIU_FP)
-      viuexp.bits(2).fn.op := io.seq_fn.viu(RG_VIU_FN)
+      viuexp.bits(2).fn.op := io.seq_fn.viu(RG_VIU_OP)
 
       when (io.seq_regid_imm.vs_zero) { viuexp.bits(2).fn.t0 := M0 }
       when (io.seq_regid_imm.vt_zero) { viuexp.bits(2).fn.t1 := M0 }
@@ -113,7 +113,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       viuexp.bits(1).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
       viuexp.bits(1).fn.dw := io.seq_fn.viu(RG_VIU_DW)
       viuexp.bits(1).fn.fp := io.seq_fn.viu(RG_VIU_FP)
-      viuexp.bits(1).fn.op := io.seq_fn.viu(RG_VIU_FN)
+      viuexp.bits(1).fn.op := io.seq_fn.viu(RG_VIU_OP)
       viuexp.bits(1).utidx := io.seq_regid_imm.utidx
       viuexp.bits(1).imm := io.seq_regid_imm.imm
 
