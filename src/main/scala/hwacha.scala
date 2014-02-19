@@ -7,7 +7,7 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
-  val confprec = true
+  val confprec = false
 
   // rocket pipeline latencies
   val dfma_stages = 4
