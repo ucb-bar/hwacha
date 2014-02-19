@@ -265,7 +265,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     vguexp.valid(0) := Bool(true)
     vguexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vguexp.bits(0).mem := io.seq_regid_imm.mem
+    vguexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
+    vguexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
+    vguexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
     vguexp.bits(0).imm := io.seq_regid_imm.imm
     vguexp.bits(0).imm2 := io.seq_regid_imm.imm2
     vguexp.bits(0).utmemop := io.seq_regid_imm.utmemop
@@ -281,7 +283,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     vluexp.valid(0) := Bool(true)
     vluexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vluexp.bits(0).mem := io.seq_regid_imm.mem
+    vluexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
+    vluexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
+    vluexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
   }
 
   when (io.seq.vsdq)
@@ -297,7 +301,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     vsuexp.valid(0) := Bool(true)
     vsuexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vsuexp.bits(0).mem := io.seq_regid_imm.mem
+    vsuexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
+    vsuexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
+    vsuexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
   }
 
   io.expand_to_hazard.ren := rexp.valid(0)

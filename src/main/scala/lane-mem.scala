@@ -26,13 +26,15 @@ class LaneMem extends Module
 
   io.vmu.vaq.valid := s1_vgu_op.valid
   io.vmu.vaq.bits <> s1_vgu_op.bits.check
-  io.vmu.vaq.bits <> s1_vgu_op.bits.mem
+  io.vmu.vaq.bits.cmd <> s1_vgu_op.bits.fn.cmd
+  io.vmu.vaq.bits.typ <> s1_vgu_op.bits.fn.typ
+  io.vmu.vaq.bits.typ_float <> s1_vgu_op.bits.fn.float
   io.vmu.vaq.bits.idx := s1_addr(PGIDX_BITS-1, 0)
   io.vmu.vaq.bits.vpn := s1_addr(VADDR_BITS, PGIDX_BITS)
 
   // FIXME
   io.vmu.evaq.valid := io.op.vgu.valid
-  io.vmu.evaq.bits.cmd := io.op.vgu.bits.mem.cmd
+  io.vmu.evaq.bits.cmd := io.op.vgu.bits.fn.cmd
 
   // VSU
   val s1_vsu_op = Reg(Valid(new VSUOp).asDirectionless)
@@ -52,10 +54,10 @@ class LaneMem extends Module
 
   val s1_sdata_f_hp = unpack_float_h(s1_sdata, 0)
 
-  val s1_store_fp = s1_vsu_op.bits.mem.typ_float
-  val s1_store_fp_d = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_D
-  val s1_store_fp_w = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_W
-  val s1_store_fp_h = s1_store_fp && s1_vsu_op.bits.mem.typ === MT_H
+  val s1_store_fp = s1_vsu_op.bits.fn.float
+  val s1_store_fp_d = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_D
+  val s1_store_fp_w = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_W
+  val s1_store_fp_h = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_H
 
   io.vmu.vsdq.valid := s1_vsu_op.valid
   io.vmu.vsdq.bits := MuxCase(
@@ -84,10 +86,10 @@ class LaneMem extends Module
   f32rf32.io.in := s1_ldata
   val s1_ldata_rf_sp = f32rf32.io.out
 
-  val s1_load_fp = s1_vlu_op.bits.mem.typ_float
-  val s1_load_fp_d = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_D
-  val s1_load_fp_w = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_W
-  val s1_load_fp_h = s1_load_fp && s1_vlu_op.bits.mem.typ === MT_H
+  val s1_load_fp = s1_vlu_op.bits.fn.float
+  val s1_load_fp_d = s1_load_fp && s1_vlu_op.bits.fn.typ === MT_D
+  val s1_load_fp_w = s1_load_fp && s1_vlu_op.bits.fn.typ === MT_W
+  val s1_load_fp_h = s1_load_fp && s1_vlu_op.bits.fn.typ === MT_H
 
   io.vmu.vldq.ready := io.op.vlu.valid
   io.data.ldata := MuxCase(

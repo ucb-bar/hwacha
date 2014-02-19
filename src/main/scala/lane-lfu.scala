@@ -64,7 +64,7 @@ class LaneLFU extends Module
   when (io.op.vgu.valid) {
     vgu_op.valid := Bool(true)
     vgu_op.bits.cnt := io.op.vgu.bits.cnt
-    vgu_op.bits.mem := io.op.vgu.bits.mem
+    vgu_op.bits.fn := io.op.vgu.bits.fn
     vgu_op.bits.imm := io.op.vgu.bits.imm
     vgu_op.bits.imm2 := io.op.vgu.bits.imm2
     vgu_op.bits.utmemop := io.op.vgu.bits.utmemop
@@ -85,7 +85,7 @@ class LaneLFU extends Module
   when (io.op.vlu.valid && io.op.vlu.bits.cnt > UInt(1)) {
     vlu_op.valid := Bool(true)
     vlu_op.bits.cnt := io.op.vlu.bits.cnt - UInt(1)
-    vlu_op.bits.mem := io.op.vlu.bits.mem
+    vlu_op.bits.fn := io.op.vlu.bits.fn
   }
 
   val vsu_op = Reg(Valid(new VSUOp).asDirectionless)
@@ -114,6 +114,6 @@ class LaneLFU extends Module
   io.vau2 <> vau2_op
   io.mem.vgu <> vgu_op
   io.mem.vlu.valid := io.op.vlu.valid | vlu_op.valid
-  io.mem.vlu.bits.mem := Mux(io.op.vlu.valid, io.op.vlu.bits.mem, vlu_op.bits.mem)
+  io.mem.vlu.bits.fn := Mux(io.op.vlu.valid, io.op.vlu.bits.fn, vlu_op.bits.fn)
   io.mem.vsu <> vsu_op
 }
