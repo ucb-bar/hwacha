@@ -392,16 +392,9 @@ class IssueTVEC extends Module
   io.bhazard.vld := bhazard(1)
   io.bhazard.vst := bhazard(2)
 
-  io.fn.viu.t0 := M0
-  io.fn.viu.t1 := vmsrc
-  io.fn.viu.dw := DW64
-  io.fn.viu.fp := FPD
-  io.fn.viu.op := I_MOV
-
-  io.fn.vmu.float := mem_type_float.toBool
-  io.fn.vmu.typ := mem_type
-  io.fn.vmu.cmd := mem_cmd
-  io.fn.vmu.op := Mux(io.valid.vld, VM_VLD, VM_VST)
+  val vmu_op = Mux(io.valid.vld, VM_VLD, VM_VST)
+  io.fn.viu := new VIUFn().fromBits(Cat(M0, vmsrc, DW64, FPD, I_MOV))
+  io.fn.vmu := new VMUFn().fromBits(Cat(mem_type_float.toBool, mem_type, mem_cmd, vmu_op))
 
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)

@@ -332,27 +332,12 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.bhazard.vld := Bool(false)
   io.bhazard.vst := Bool(false)
 
-  io.fn.viu.t0 := viu_t0
-  io.fn.viu.t1 := viu_t1
-  io.fn.viu.dw := viu_dw
-  io.fn.viu.fp := viu_fp
-  io.fn.viu.op := viu_op
-
-  io.fn.vau0.dw := vau0_dw
-  io.fn.vau0.op := vau0_op
-
-  io.fn.vau1.fp := vau1_fp
-  io.fn.vau1.rm := vau1_rm
-  io.fn.vau1.op := vau1_op
-
-  io.fn.vau2.fp := vau2_fp
-  io.fn.vau2.rm := vau2_rm
-  io.fn.vau2.op := vau2_op
-
-  io.fn.vmu.float := vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
-  io.fn.vmu.typ := vmu_type
-  io.fn.vmu.cmd := vmu_cmd
-  io.fn.vmu.op := vmu_op
+  val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
+  io.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, viu_dw, viu_fp, viu_op))
+  io.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
+  io.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, vau1_rm, vau1_op))
+  io.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, vau2_rm, vau2_op))
+  io.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
 
   val vs = io.imem.resp.bits.data(19,15) // rs1
   val vt = io.imem.resp.bits.data(24,20) // rs2
