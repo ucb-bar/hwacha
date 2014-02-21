@@ -12,6 +12,13 @@ class io_aiw_to_issue extends Bundle
   val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
 }
 
+class AIWOpIO extends Bundle
+{
+  val imm1 = Valid(new AIWImm1Op)
+  val cnt = Valid(new AIWCntOp)
+  val numcnt = Valid(new AIWNumCntOp)
+}
+
 class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
@@ -24,7 +31,7 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     val issue_to_aiw = new io_issue_to_aiw().flip
     val aiw_to_issue = new io_aiw_to_issue()
 
-    val seq_to_aiw = new io_seq_to_aiw().flip
+    val op = new AIWOpIO().flip
 
     val aiw_deq_cmdb = new io_vxu_cmdq()
     val aiw_deq_imm1b = new io_vxu_immq()
@@ -45,18 +52,24 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   ircmdb.io.enq <> io.aiw_enq_cmdb
 
   irimm1b.io.enq <> io.aiw_enq_imm1b
-  irimm1b.io.update <> io.seq_to_aiw.update_imm1
+  irimm1b.io.update.valid := io.op.imm1.valid
+  irimm1b.io.update.bits.addr := io.op.imm1.bits.rtag
+  irimm1b.io.update.bits.data :=
+    Mux(io.op.imm1.bits.ldst, io.op.imm1.bits.base, io.op.imm1.bits.pc_next)
   irimm1b.io.rtag <> io.aiw_to_issue.imm1_rtag
 
   irimm2b.io.enq <> io.aiw_enq_imm2b
 
   ircntb.io.enq <> io.aiw_enq_cntb
-  ircntb.io.update <> io.seq_to_aiw.update_cnt
+  ircntb.io.update.valid := io.op.cnt.valid
+  ircntb.io.update.bits.addr := io.op.cnt.bits.rtag
+  ircntb.io.update.bits.data := io.op.cnt.bits.utidx
   ircntb.io.rtag <> io.aiw_to_issue.cnt_rtag
 
   irNumCntB.io.enq <> io.aiw_enq_numCntB
   irNumCntB.io.update_from_issue <> io.issue_to_aiw.update_numCnt
-  irNumCntB.io.update_from_seq <> io.seq_to_aiw.update_numCnt
+  irNumCntB.io.update_from_seq.valid := io.op.numcnt.valid
+  irNumCntB.io.update_from_seq.bits := io.op.numcnt.bits.rtag
   irNumCntB.io.update_from_evac <> io.evac_to_aiw.update_numCnt
   irNumCntB.io.markLast <> io.issue_to_aiw.markLast
   irNumCntB.io.rtag <> io.aiw_to_issue.numCnt_rtag
@@ -123,7 +136,7 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val decode_deq_ircntb = deq_ircntb
 
   // count buffer is dequeued whenever sequencer or evacuator says so
-  ircntb.io.deq.ready  := io.seq_to_aiw.last | io.aiw_deq_cntb.ready
+  ircntb.io.deq.ready := io.op.numcnt.valid && io.op.numcnt.bits.last | io.aiw_deq_cntb.ready
 
   val do_deq = irNumCntB.io.deq.bits.toBool && irNumCntB.io.deq.valid && irNumCntB.io.deq_last
 

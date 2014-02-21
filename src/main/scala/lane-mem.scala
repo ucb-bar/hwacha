@@ -21,7 +21,7 @@ class LaneMem extends Module
   when (io.op.vgu.valid) {
     s1_vgu_op.bits := io.op.vgu.bits
   }
-  val s1_paddr = RegEnable(Mux(io.op.vgu.bits.utmemop, io.data.paddr, Bits(0)), io.op.vgu.valid)
+  val s1_paddr = RegEnable(Mux(io.op.vgu.bits.fn.utmemop(), io.data.paddr, Bits(0)), io.op.vgu.valid)
   val s1_addr = s1_vgu_op.bits.base + s1_paddr
 
   io.vmu.vaq.valid := s1_vgu_op.valid

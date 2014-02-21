@@ -32,11 +32,9 @@ class Bank extends Module
       val wbl2 = Bits(INPUT, SZ_DATA)
       val wbl3 = Bits(INPUT, SZ_DATA)
     }
-
-    val prec = Bits(INPUT, SZ_PREC)
   }
 
-  def op_valid(op: ValidIO[LaneOpBundle]) = op.valid && op.bits.cnt.orR && io.active
+  def op_valid(op: ValidIO[LaneOp]) = op.valid && op.bits.cnt.orR && io.active
 
   val read_op = Reg(Valid(new ReadBankOp).asDirectionless)
   read_op.valid := io.op.in.read.valid
@@ -120,8 +118,6 @@ class Bank extends Module
       MI -> io.op.in.viu.bits.imm
     ))
 
-  rfile.io.prec := io.prec
-
   alu.io.valid := op_valid(io.op.in.viu)
   alu.io.wen := op_valid(io.op.in.write)
   alu.io.fn := io.op.in.viu.bits.fn
@@ -157,8 +153,6 @@ class BankRegfile extends Module
     val viu_rdata = Bits(OUTPUT, SZ_DATA)
     val viu_ropl = Bits(OUTPUT, SZ_DATA)
     val viu_wdata = Bits(INPUT, SZ_DATA)
-
-    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val wdata = MuxLookup(

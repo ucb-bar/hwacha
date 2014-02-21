@@ -22,6 +22,8 @@ class VMUIO extends Bundle
 class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
+
     val pf_vvaq = new io_vvaq().flip
     val vxu = new VMUIO().flip
     val evac_vvaq = new io_vvaq().flip
@@ -42,8 +44,6 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
     val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
 
     val irq = new io_vmu_to_irq_handler()
-
-    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val addr = Module(new VMUAddress)
@@ -129,8 +129,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   // memif interface
   io.dmem <> memif.io.dmem
 
-  memif.io.prec := io.prec
-  unpack.io.prec := io.prec
+  unpack.io.cfg <> io.cfg
 
   // exception handler
   addr.io.evac_to_vmu <> io.evac_to_vmu
@@ -145,7 +144,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 class UnpackStore(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val prec = Bits(INPUT, SZ_PREC)
+    val cfg = new HwachaConfigIO().flip
 
     val in = new Bundle {
       val vaq = Decoupled(new io_vpaq_bundle()).flip
@@ -163,7 +162,7 @@ class UnpackStore(implicit conf: HwachaConfiguration) extends Module
   val minor = Reg(init = UInt(0, 2))
 
   val minor_next = MuxLookup(
-    io.prec, Bits(0, 2),
+    io.cfg.prec, Bits(0, 2),
     Array(
       (PREC_SINGLE) -> Cat(~minor(1), Bits(0, 1)),
       (PREC_HALF)   -> (minor + UInt(1))
@@ -187,7 +186,7 @@ class UnpackStore(implicit conf: HwachaConfiguration) extends Module
   }
 
   when (store) {
-    io.out.vsdq.bits := MuxLookup(io.prec, io.in.vsdq.bits, Array(
+    io.out.vsdq.bits := MuxLookup(io.cfg.prec, io.in.vsdq.bits, Array(
       PREC_SINGLE -> ((io.in.vsdq.bits >> shift) & Bits("hFFFFFFFF", 32)),
       PREC_HALF   -> ((io.in.vsdq.bits >> shift) & Bits("hFFFF", 16))
     ))

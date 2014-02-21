@@ -31,6 +31,9 @@ class VIUFn extends Bundle
   val dw = Bits(width = SZ_DW)
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
+
+  def rtype(dummy: Int = 0) = t0 === ML && t1 === MR
+  def itype(dummy: Int = 0) = t0 === M0 && t1 === MR
 }
 
 class VAU0Fn extends Bundle
@@ -44,6 +47,8 @@ class VAU1Fn extends Bundle
   val fp = Bits(width = SZ_FP)
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU1_OP)
+
+  def fma(dummy: Int = 0) = IS_A1_OP_FMA(op)
 }
 
 class VAU2Fn extends Bundle
@@ -59,14 +64,16 @@ class VMUFn extends Bundle
   val typ = Bits(width = MT_SZ)
   val cmd = Bits(width = M_SZ)
   val op = Bits(width = SZ_VMU_OP)
+
+  def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
 }
 
-class LaneOpBundle extends Bundle
+class LaneOp extends Bundle
 {
   val cnt = Bits(width = SZ_BCNT)
 }
 
-class ReadBankOp extends LaneOpBundle
+class ReadBankOp extends LaneOp
 {
   val last = Bool()
   val addr = Bits(width = SZ_BREGLEN)
@@ -74,52 +81,163 @@ class ReadBankOp extends LaneOpBundle
   val rblen = Vec.fill(SZ_BRPORT){Bool()}
 }
 
-class WriteBankOp extends LaneOpBundle
+class WriteBankOp extends LaneOp
 {
   val last = Bool()
   val addr = Bits(width = SZ_BREGLEN)
   val sel = Bits(width = SZ_BWPORT)
 }
 
-class VIUOp extends LaneOpBundle
+class VIUOp extends LaneOp
 {
   val fn = new VIUFn
   val utidx = Bits(width = SZ_VLEN)
   val imm = Bits(width = SZ_DATA)
 }
 
-class VAU0Op extends LaneOpBundle
+class VAU0Op extends LaneOp
 {
   val fn = new VAU0Fn
 }
 
-class VAU1Op extends LaneOpBundle
+class VAU1Op extends LaneOp
 {
   val fn = new VAU1Fn
 }
 
-class VAU2Op extends LaneOpBundle
+class VAU2Op extends LaneOp
 {
   val fn = new VAU2Fn
 }
 
-class VGUOp extends LaneOpBundle
+class VGUOp extends LaneOp
 {
   val fn = new VMUFn
   val base = Bits(width = SZ_DATA)
   val stride = Bits(width = SZ_XIMM2)
-  val utmemop = Bool()
   val check = new io_vxu_mem_check
 }
 
-class VLUOp extends LaneOpBundle
+class VLUOp extends LaneOp
 {
   val fn = new VMUFn
 }
 
-class VSUOp extends LaneOpBundle
+class VSUOp extends LaneOp
 {
   val fn = new VMUFn
+}
+
+class RegInfo extends Bundle
+{
+  val zero = Bool()
+  val float = Bool()
+  val id = Bits(width = SZ_BREGLEN)
+}
+
+class DecodedRegister extends Bundle
+{
+  val vs = new RegInfo
+  val vt = new RegInfo
+  val vr = new RegInfo
+  val vd = new RegInfo
+}
+
+class DecodedImmediate extends Bundle
+{
+  val imm = Bits(width = SZ_DATA)
+  val stride = Bits(width = SZ_XIMM2)
+}
+
+class DecodedInstruction extends Bundle
+{
+  val utidx = UInt(width = SZ_VLEN)
+  val fn = new Bundle {
+    val viu = new VIUFn
+    val vau0 = new VAU0Fn
+    val vau1 = new VAU1Fn
+    val vau2 = new VAU2Fn
+    val vmu = new VMUFn
+  }
+  val reg = new DecodedRegister
+  val imm = new DecodedImmediate
+}
+
+class SequencerEntry extends DecodedInstruction
+{
+  val active = new Bundle {
+    val viu = Bool()
+    val vau0 = Bool()
+    val vau1 = Bool()
+    val vau2 = Bool()
+    val vgu = Bool()
+    val vlu = Bool()
+    val vsu = Bool()
+  }
+}
+
+class SequencerOp extends SequencerEntry
+{
+  val cnt = Bits(width = SZ_BCNT)
+  val last = Bool()
+}
+
+class AIWImm1Entry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_IMM1)
+  val pc_next = Bits(width = SZ_ADDR)
+}
+
+class AIWImm1Op extends AIWImm1Entry
+{
+  val base = Bits(width = SZ_VIMM)
+  val ldst = Bool()
+}
+
+class AIWCntEntry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_CNT)
+  val utidx = UInt(width = SZ_VLEN)
+}
+
+class AIWCntOp extends AIWCntEntry
+
+class AIWNumCntEntry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_NUMCNT)
+}
+
+class AIWNumCntOp extends AIWNumCntEntry
+{
+  val last = Bool()
+}
+
+class AIWEntry extends Bundle
+{
+  val active = new Bundle {
+    val imm1 = Bool()
+    val cnt = Bool()
+  }
+  val imm1 = new AIWImm1Entry
+  val cnt = new AIWCntEntry
+  val numcnt = new AIWNumCntEntry
+}
+
+class IssueOp extends DecodedInstruction
+{
+  val vlen = UInt(width = SZ_VLEN)
+  val active = new Bundle {
+    val viu = Bool()
+    val vau0 = Bool()
+    val vau1 = Bool()
+    val vau2 = Bool()
+    val amo = Bool()
+    val utld = Bool()
+    val utst = Bool()
+    val vld = Bool()
+    val vst = Bool()
+  }
+  val aiw = new AIWEntry
 }
 
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))

@@ -156,6 +156,8 @@ class NextPointer extends Module
 class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
+
     val issue_to_hazard = new io_vxu_issue_to_hazard().asInput
     val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
     val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
@@ -192,35 +194,35 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val next_ptr4_add = reg_ptr + UInt(4, SZ_LGBANK1)
   val next_ptr5_add = reg_ptr + UInt(5, SZ_LGBANK1)
 
-  val next_ptr1_add_bcnt = next_ptr1_add - io.issue_to_hazard.bcnt
-  val next_ptr2_add_bcnt = next_ptr2_add - io.issue_to_hazard.bcnt
-  val next_ptr3_add_bcnt = next_ptr3_add - io.issue_to_hazard.bcnt
-  val next_ptr4_add_bcnt = next_ptr4_add - io.issue_to_hazard.bcnt
-  val next_ptr5_add_bcnt = next_ptr5_add - io.issue_to_hazard.bcnt
+  val next_ptr1_add_bcnt = next_ptr1_add - io.cfg.bcnt
+  val next_ptr2_add_bcnt = next_ptr2_add - io.cfg.bcnt
+  val next_ptr3_add_bcnt = next_ptr3_add - io.cfg.bcnt
+  val next_ptr4_add_bcnt = next_ptr4_add - io.cfg.bcnt
+  val next_ptr5_add_bcnt = next_ptr5_add - io.cfg.bcnt
 
-  val next_ptr4_add_bcnt2 = next_ptr4_add_bcnt - io.issue_to_hazard.bcnt
-  val next_ptr5_add_bcnt2 = next_ptr5_add_bcnt - io.issue_to_hazard.bcnt
+  val next_ptr4_add_bcnt2 = next_ptr4_add_bcnt - io.cfg.bcnt
+  val next_ptr5_add_bcnt2 = next_ptr5_add_bcnt - io.cfg.bcnt
 
   val next_ptr1 = Mux(
-    next_ptr1_add < io.issue_to_hazard.bcnt, next_ptr1_add(SZ_LGBANK-1,0),
+    next_ptr1_add < io.cfg.bcnt, next_ptr1_add(SZ_LGBANK-1,0),
     next_ptr1_add_bcnt(SZ_LGBANK-1,0))
 
   val next_ptr2 = Mux(
-    next_ptr2_add < io.issue_to_hazard.bcnt, next_ptr2_add(SZ_LGBANK-1,0),
+    next_ptr2_add < io.cfg.bcnt, next_ptr2_add(SZ_LGBANK-1,0),
     next_ptr2_add_bcnt(SZ_LGBANK-1,0))
 
   val next_ptr3 = Mux(
-    next_ptr3_add < io.issue_to_hazard.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
+    next_ptr3_add < io.cfg.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
     next_ptr3_add_bcnt(SZ_LGBANK-1,0))
 
   val next_ptr4 = Mux(
-    next_ptr4_add < io.issue_to_hazard.bcnt, next_ptr4_add(SZ_LGBANK-1,0), Mux(
-    next_ptr4_add_bcnt < io.issue_to_hazard.bcnt, next_ptr4_add_bcnt(SZ_LGBANK-1,0),
+    next_ptr4_add < io.cfg.bcnt, next_ptr4_add(SZ_LGBANK-1,0), Mux(
+    next_ptr4_add_bcnt < io.cfg.bcnt, next_ptr4_add_bcnt(SZ_LGBANK-1,0),
     next_ptr4_add_bcnt2(SZ_LGBANK-1,0)))
 
   val next_ptr5 = Mux(
-    next_ptr5_add < io.issue_to_hazard.bcnt, next_ptr5_add(SZ_LGBANK-1,0), Mux(
-    next_ptr5_add_bcnt < io.issue_to_hazard.bcnt, next_ptr5_add_bcnt(SZ_LGBANK-1,0),
+    next_ptr5_add < io.cfg.bcnt, next_ptr5_add(SZ_LGBANK-1,0), Mux(
+    next_ptr5_add_bcnt < io.cfg.bcnt, next_ptr5_add_bcnt(SZ_LGBANK-1,0),
     next_ptr5_add_bcnt2(SZ_LGBANK-1,0)))
 
   reg_ptr := next_ptr1
@@ -263,7 +265,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   {
     next_rport_val(next_ptr2) := Bool(true)
 
-    when (io.fire_fn.viu(RG_VIU_T) === Cat(ML,MR))
+    when (io.fire_fn.viu.rtype())
     {
       next_rport_val(next_ptr3) := Bool(true)
     }
@@ -284,7 +286,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_rport_val(next_ptr3) := Bool(true)
     next_rport_vau1(next_ptr3) := Bool(true)
 
-    when (FN_VAU1_FMA(io.fire_fn.vau1))
+    when (io.fire_fn.vau1.fma())
     {
       next_rport_val(next_ptr4) := Bool(true)
       next_rport_vau1(next_ptr4) := Bool(true)
@@ -348,86 +350,79 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
   tvec_viuwptr.io.ptr := reg_ptr
   tvec_viuwptr.io.incr := tvec_viu_incr
-  tvec_viuwptr.io.bcnt <> io.issue_to_hazard.bcnt
+  tvec_viuwptr.io.bcnt <> io.cfg.bcnt
 
   val tvec_viu_wptr1 = tvec_viuwptr.io.nptr
 
   val tvec_viu_wptr1_add = tvec_viu_wptr1 + UInt(1, SZ_LGBANK1)
-  val tvec_viu_wptr1_add_sub = tvec_viu_wptr1_add - io.issue_to_hazard.bcnt
+  val tvec_viu_wptr1_add_sub = tvec_viu_wptr1_add - io.cfg.bcnt
 
   val tvec_viu_wptr2 = Mux(
-    tvec_viu_wptr1_add < io.issue_to_hazard.bcnt, tvec_viu_wptr1_add(SZ_LGBANK-1,0),
+    tvec_viu_wptr1_add < io.cfg.bcnt, tvec_viu_wptr1_add(SZ_LGBANK-1,0),
     tvec_viu_wptr1_add_sub(SZ_LGBANK-1,0))
 
   val tvec_viu_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      (io.tvec_valid.viu && io.tvec_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> tvec_viu_wptr2,
+      (io.tvec_valid.viu && io.tvec_fn.viu.rtype()) -> tvec_viu_wptr2,
       io.tvec_valid.viu -> tvec_viu_wptr1
     ))
 
   // vt wptr calculation
 
-  val vt_vbr_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
   val vt_viu_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
   val vt_vau0_incr = UInt(conf.imul_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
   val vt_vau1_incr = UInt(conf.fma_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
   val vt_vau2_incr = UInt(conf.fconv_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
 
-  val vt_vbrwptr = Module(new NextPointer)
   val vt_viuwptr = Module(new NextPointer)
   val vt_vau0wptr = Module(new NextPointer)
   val vt_vau1wptr = Module(new NextPointer)
   val vt_vau2wptr = Module(new NextPointer)
 
-  vt_vbrwptr.io.ptr := reg_ptr
-  vt_vbrwptr.io.incr := vt_vbr_incr
-  vt_vbrwptr.io.bcnt <> io.issue_to_hazard.bcnt
-
   vt_viuwptr.io.ptr := reg_ptr
   vt_viuwptr.io.incr := vt_viu_incr
-  vt_viuwptr.io.bcnt <> io.issue_to_hazard.bcnt
+  vt_viuwptr.io.bcnt <> io.cfg.bcnt
 
   vt_vau0wptr.io.ptr := reg_ptr
   vt_vau0wptr.io.incr := vt_vau0_incr
-  vt_vau0wptr.io.bcnt <> io.issue_to_hazard.bcnt
+  vt_vau0wptr.io.bcnt <> io.cfg.bcnt
 
   vt_vau1wptr.io.ptr := reg_ptr
   vt_vau1wptr.io.incr := vt_vau1_incr
-  vt_vau1wptr.io.bcnt <> io.issue_to_hazard.bcnt
+  vt_vau1wptr.io.bcnt <> io.cfg.bcnt
 
   vt_vau2wptr.io.ptr := reg_ptr
   vt_vau2wptr.io.incr := vt_vau2_incr
-  vt_vau2wptr.io.bcnt <> io.issue_to_hazard.bcnt
+  vt_vau2wptr.io.bcnt <> io.cfg.bcnt
 
-  val vt_vbr_wptr = vt_vbrwptr.io.nptr
   val vt_viu_wptr1 = vt_viuwptr.io.nptr
   val vt_vau0_wptr = vt_vau0wptr.io.nptr
   val vt_vau1_wptr2 = vt_vau1wptr.io.nptr
   val vt_vau2_wptr = vt_vau2wptr.io.nptr
 
   val vt_viu_wptr1_add = vt_viu_wptr1 + UInt(1, SZ_LGBANK1)
-  val vt_viu_wptr1_add_sub = vt_viu_wptr1_add - io.issue_to_hazard.bcnt
+  val vt_viu_wptr1_add_sub = vt_viu_wptr1_add - io.cfg.bcnt
 
   val vt_vau1_wptr2_add = vt_vau1_wptr2 + UInt(1, SZ_LGBANK1)
-  val vt_vau1_wptr2_add_sub = vt_vau1_wptr2_add - io.issue_to_hazard.bcnt
+  val vt_vau1_wptr2_add_sub = vt_vau1_wptr2_add - io.cfg.bcnt
 
   val vt_viu_wptr2 = Mux(
-    vt_viu_wptr1_add < io.issue_to_hazard.bcnt, vt_viu_wptr1_add(SZ_LGBANK-1,0),
+    vt_viu_wptr1_add < io.cfg.bcnt, vt_viu_wptr1_add(SZ_LGBANK-1,0),
     vt_viu_wptr1_add_sub(SZ_LGBANK-1,0))
 
   val vt_vau1_wptr3 = Mux(
-    vt_vau1_wptr2_add < io.issue_to_hazard.bcnt, vt_vau1_wptr2_add(SZ_LGBANK-1,0),
+    vt_vau1_wptr2_add < io.cfg.bcnt, vt_vau1_wptr2_add(SZ_LGBANK-1,0),
     vt_vau1_wptr2_add_sub(SZ_LGBANK-1,0))
 
   val vt_viu_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.viu && io.vt_fn.viu(RG_VIU_T) === Cat(ML,MR)) -> vt_viu_wptr2,
+      (io.vt_valid.viu && io.vt_fn.viu.rtype()) -> vt_viu_wptr2,
       io.vt_valid.viu -> vt_viu_wptr1
     ))
 
   val vt_vau1_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.vau1 && FN_VAU1_FMA(io.vt_fn.vau1)) -> vt_vau1_wptr3,
+      (io.vt_valid.vau1 && io.vt_fn.vau1.fma()) -> vt_vau1_wptr3,
       io.vt_valid.vau1 -> vt_vau1_wptr2
     ))
 
@@ -442,7 +437,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   // for the fire port
   // we can look at the issue port because we're firing at the same cycle
 
-  val vbr_wptr = vt_vbr_wptr
   val viu_wptr = Mux(io.tvec_valid.viu, tvec_viu_wptr, vt_viu_wptr)
   val vau0_wptr = vt_vau0_wptr
   val vau1_wptr = vt_vau1_wptr

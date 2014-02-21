@@ -2,6 +2,7 @@ package hwacha
 
 import Chisel._
 import uncore._
+import Constants._
 
 case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
@@ -246,9 +247,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val xf_split = (new_maxvl >> UInt(3)) * (nxpr - UInt(1))
 
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
-  val new_vl_m1 = Mux(sel_vcmd === CMD_VVCFGIVL, UInt(0), new_vl - UInt(1)) // translate into form for vcmdq
 
-  val vimm_vlen = Cat(UInt(0,19), next_prec, xf_split(7,0), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl_m1(10,0))
+  val vimm_vlen = Cat(UInt(0,18), next_prec, xf_split(7,0), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
   when (cmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VVCFGIVL) {

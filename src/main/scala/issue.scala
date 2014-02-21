@@ -30,11 +30,11 @@ class io_vxu_issue_fu extends Bundle
 
 class io_vxu_issue_fn extends Bundle
 {
-  val vbr = Bits(width = SZ_VBR_FN)
-  val viu = Bits(width = SZ_VIU_FN)
-  val vau0 = Bits(width = SZ_VAU0_FN)
-  val vau1 = Bits(width = SZ_VAU1_FN)
-  val vau2 = Bits(width = SZ_VAU2_FN)
+  val viu = new VIUFn
+  val vau0 = new VAU0Fn
+  val vau1 = new VAU1Fn
+  val vau2 = new VAU2Fn
+  val vmu = new VMUFn
 }
 
 class io_vxu_issue_reg extends Bundle
@@ -49,8 +49,8 @@ class io_vxu_cnt_valid extends ValidIO(Bits(width = SZ_VLEN) )
 
 class io_vxu_issue_regid_imm extends Bundle
 {
-  val vlen = Bits(width = SZ_VLEN)
-  val utidx = Bits(width = SZ_VLEN)
+  val vlen = UInt(width = SZ_VLEN)
+  val utidx = UInt(width = SZ_VLEN)
   val vs_zero = Bool()
   val vt_zero = Bool()
   val vr_zero = Bool()
@@ -68,7 +68,6 @@ class io_vxu_issue_regid_imm extends Bundle
   val vt_active = Bool()
   val vr_active = Bool()
   val vd_active = Bool()
-  val mem = new io_vxu_mem_cmd()
   val imm = Bits(width = SZ_DATA)
   val imm2 = Bits(width = SZ_DATA)
   val cnt_valid = Bool()
@@ -120,17 +119,18 @@ class io_issue_to_irq_handler extends Bundle
   val vt = new io_issue_vt_to_irq_handler()
 }
 
+class IssueOpIO extends ValidIO(new IssueOp)
+
 class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO
+
     val irq = new io_issue_to_irq_handler()
-
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
-
     val vcmdq = new VCMDQIO().flip
 
     val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
-    val issue_to_seq = new io_vxu_issue_to_seq().asOutput
     val issue_to_lane = new io_vxu_issue_to_lane().asOutput
 
     val tvec_valid = new io_vxu_issue_fire().asOutput
@@ -161,14 +161,14 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val aiw_to_issue = new io_aiw_to_issue().flip
 
     val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-
-    val prec = Bits(OUTPUT, SZ_PREC)
   }
 
   val tvec = Module(new IssueTVEC)
   val vt = Module(new IssueVT)
 
-  tvec.io.vf <> vt.io.vf
+  io.cfg <> tvec.io.cfg
+  vt.io.cfg <> tvec.io.cfg
+  vt.io.vf <> tvec.io.vf
   io.pending_vf := tvec.io.vf.active
 
   io.irq.tvec := tvec.io.irq
@@ -186,7 +186,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   tvec.io.vcmdq.cnt.bits := io.vcmdq.cnt.bits
 
   tvec.io.issue_to_hazard <> io.issue_to_hazard
-  tvec.io.issue_to_seq <> io.issue_to_seq
   tvec.io.issue_to_lane <> io.issue_to_lane
 
   tvec.io.valid <> io.tvec_valid
@@ -205,8 +204,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   tvec.io.aiw_to_issue <> io.aiw_to_issue
 
   tvec.io.xcpt_to_issue <> io.xcpt_to_issue
-
-  io.prec := tvec.io.prec
 
   // vt
   vt.io.valid <> io.vt_valid

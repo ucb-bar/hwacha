@@ -51,12 +51,10 @@ class LaneMemDataIO extends Bundle
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val issue_to_lane = new io_vxu_issue_to_lane().asInput
+    val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
     val lane_to_hazard = new io_lane_to_hazard().asOutput
     val vmu = new VMUIO
-
-    val prec = Bits(INPUT, SZ_PREC)
   }
 
   val conn = new ArrayBuffer[BankOpIO]
@@ -74,8 +72,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   for (i <- 0 until SZ_BANK) {
     val bank = Module(new Bank)
 
-    bank.io.active := io.issue_to_lane.bactive(i)
-    bank.io.prec := io.prec
+    bank.io.active := io.cfg.bactive(i)
     bank.io.op.in <> (if (i == 0) io.op else conn.last)
     
     conn += bank.io.op.out

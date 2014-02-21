@@ -4,897 +4,491 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_seq_fu extends Bundle
-{
-  val viu = Bool()
-  val vau0 = Bool()
-  val vau1 = Bool()
-  val vau2 = Bool()
-  val vaq = Bool()
-  val vldq = Bool()
-  val vsdq = Bool()
-}
-
-class io_vxu_seq_fn extends Bundle
-{
-  val viu = Bits(width = SZ_VIU_FN)
-  val vau0 = Bits(width = SZ_VAU0_FN)
-  val vau1 = Bits(width = SZ_VAU1_FN)
-  val vau2 = Bits(width = SZ_VAU2_FN)
-}
-
-class io_vxu_seq_regid_imm extends Bundle
-{
-  val vlen = Bits(width = SZ_VLEN)
-  val cnt = Bits(width = SZ_BCNT)
-  val tcnt = Bits(width = SZ_BCNT) // turbo
-  val utidx = Bits(width = SZ_VLEN)
-  val vs_zero = Bool()
-  val vt_zero = Bool()
-  val vr_zero = Bool()
-  val vs = Bits(width = SZ_BREGLEN)
-  val vt = Bits(width = SZ_BREGLEN)
-  val vr = Bits(width = SZ_BREGLEN)
-  val vd = Bits(width = SZ_BREGLEN)
-  val rtype = Bits(width = 4)
-  val mem = new io_vxu_mem_cmd()
-  val imm = Bits(width = SZ_DATA)
-  val imm2 = Bits(width = SZ_XIMM2)
-  val utmemop = Bool()
-  val aiw = new io_vxu_aiw_bundle()
-  val pop_count = UInt(width=SZ_LGBANK1)
-}
-
 class io_vxu_seq_to_hazard extends Bundle
 {
   val stall = Bool()
   val last = Bool()
 }
 
-class io_vxu_seq_to_expand extends Bundle
-{
-  val last = Bool()
-}
-
-class io_seq_to_aiw extends Bundle
-{
-  val last = Bool(OUTPUT)
-  val update_imm1 = Valid(new io_aiwUpdateReq(SZ_VIMM, 3) )
-  val update_cnt = Valid(new io_aiwUpdateReq(SZ_VLEN, 3) )
-  val update_numCnt = new io_update_num_cnt()
-}
+class SequencerOpIO extends ValidIO(new SequencerOp)
 
 class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val issue_to_seq = new io_vxu_issue_to_seq().asInput
+    val cfg = new HwachaConfigIO().flip
     val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
-    val seq_to_expand = new io_vxu_seq_to_expand().asOutput
+    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
 
     val qcntp1 = UInt(OUTPUT, SZ_QCNT)
     val qcntp2 = UInt(OUTPUT, SZ_QCNT)
     val qstall = new io_qstall().asInput
 
-    val fire = new io_vxu_issue_fire().asInput
-    val fire_fn = new io_vxu_issue_fn().asInput
-    val fire_regid_imm = new io_vxu_issue_regid_imm().asInput
-
-    val seq = new io_vxu_seq_fu().asOutput
-    val seq_fn = new io_vxu_seq_fn().asOutput
-    val seq_regid_imm = new io_vxu_seq_regid_imm().asOutput
-
-    val seq_to_aiw = new io_seq_to_aiw()
-
-    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
-
-    val prec = Bits(INPUT, SZ_PREC)
+    val issueop = new IssueOpIO().flip
+    val seqop = new SequencerOpIO
+    val aiwop = new AIWOpIO
   }
 
-  val bcntm1 = io.issue_to_seq.bcnt - UInt(1)
-  val bcnt = io.issue_to_seq.bcnt
+  class BuildSequencer[T<:Data](n: Int)
+  {
+    val valid = Vec.fill(n){Reg(init=Bool(false))}
+    val stall = Vec.fill(n){Reg(init=Bool(false))}
+    val vlen = Vec.fill(n){Reg(UInt(width=SZ_VLEN))}
+    val last = Vec.fill(n){Reg(Bool())}
+    val e = Vec.fill(n){Reg(new SequencerEntry)}
+    val aiw = Vec.fill(n){Reg(new AIWEntry)}
 
-  val next_ptr1 = UInt(width=SZ_BPTR)
-  val next_ptr2 = UInt(width=SZ_BPTR)
-  val next_ptr3 = UInt(width=SZ_BPTR)
+    def defreset = {
+      when (reset) {
+        for (i <- 0 until n) {
+          e(i).active := e(i).active.clone().fromBits(Bits(0))
+          aiw(i).active := aiw(i).active.clone().fromBits(Bits(0))
+        }
+      }
+    }
 
-  val reg_ptr = Reg(next = next_ptr1, init = UInt(0, SZ_LGBANK))
+    def min(a: UInt, b: UInt) = Mux(a < b, a, b)
+    def div2ceil(x: UInt) = (x + UInt(1)) >> UInt(1)
+    def div4ceil(x: UInt) = (x + UInt(3)) >> UInt(2)
 
-  val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
-  val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)
-  val next_ptr3_add = reg_ptr + UInt(3, SZ_LGBANK1)
+    // increase throughput when certain operations (FMA, VLDQ, VSDQ) are used by
+    // allowing up to 32 elements to proceed in half precision
+    // allowing up to 16 elements to proceed in single precision
+    def turbo_capable(slot: UInt) =
+      e(slot).active.vau1 ||
+      e(slot).active.vlu ||
+      e(slot).active.vsu
 
-  val next_ptr1_add_bcnt = next_ptr1_add - io.issue_to_seq.bcnt
-  val next_ptr2_add_bcnt = next_ptr2_add - io.issue_to_seq.bcnt
-  val next_ptr3_add_bcnt = next_ptr3_add - io.issue_to_seq.bcnt
+    def nstrip(slot: UInt) = {
+      val ret = UInt(width = SZ_BCNT)
+      ret := min(vlen(slot), io.cfg.bcnt)
 
-  next_ptr1 :=
-    Mux(next_ptr1_add < io.issue_to_seq.bcnt, next_ptr1_add(SZ_LGBANK-1,0),
-        next_ptr1_add_bcnt(SZ_LGBANK-1,0))
+      when (turbo_capable(slot)) {
+        when (io.cfg.prec === PREC_SINGLE) {
+          ret := min(div2ceil(vlen(slot)), io.cfg.bcnt)
+        }
+        when (io.cfg.prec === PREC_HALF) {
+          ret := min(div4ceil(vlen(slot)), io.cfg.bcnt)
+        }
+      }
 
-  next_ptr2 :=
-    Mux(next_ptr2_add < io.issue_to_seq.bcnt, next_ptr2_add(SZ_LGBANK-1,0),
-        next_ptr2_add_bcnt(SZ_LGBANK-1,0))
+      ret
+    }
 
-  next_ptr3 :=
-    Mux(next_ptr3_add < io.issue_to_seq.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
-        next_ptr3_add_bcnt(SZ_LGBANK-1,0))
+    def nelements(slot: UInt) = {
+      val ret = UInt(width = SZ_BCNT+2)
+      ret := min(vlen(slot), io.cfg.bcnt)
 
-  val next_val = Vec.fill(SZ_BANK){Bool()}
-  val next_stall = Vec.fill(SZ_BANK){Bool()}
-  val next_last = Vec.fill(SZ_BANK){Bool()}
-  val next_viu = Vec.fill(SZ_BANK){Bool()}
-  val next_vau0 = Vec.fill(SZ_BANK){Bool()}
-  val next_vau1 = Vec.fill(SZ_BANK){Bool()}
-  val next_vau2 = Vec.fill(SZ_BANK){Bool()}
-  val next_vaq = Vec.fill(SZ_BANK){Bool()}
-  val next_vldq = Vec.fill(SZ_BANK){Bool()}
-  val next_vsdq = Vec.fill(SZ_BANK){Bool()}
-  val next_utmemop = Vec.fill(SZ_BANK){Bool()}
+      when (turbo_capable(slot)) {
+        when (io.cfg.prec === PREC_SINGLE) {
+          ret := min(vlen(slot), io.cfg.bcnt << UInt(1))
+        }
+        when (io.cfg.prec === PREC_HALF) {
+          ret := min(vlen(slot), io.cfg.bcnt << UInt(2))
+        }
+      }
 
-  val next_fn_viu = Vec.fill(8){Bits(width=SZ_VIU_FN)}
-  val next_fn_vau0 = Vec.fill(8){Bits(width=SZ_VAU0_FN)}
-  val next_fn_vau1 = Vec.fill(8){Bits(width=SZ_VAU1_FN)}
-  val next_fn_vau2 = Vec.fill(8){Bits(width=SZ_VAU2_FN)}
-  val next_vlen = Vec.fill(8){Bits(width=SZ_VLEN)}
-  val next_utidx = Vec.fill(8){Bits(width=SZ_VLEN)}
-  val next_xstride = Vec.fill(8){Bits(width=SZ_REGLEN)}
-  val next_fstride = Vec.fill(8){Bits(width=SZ_REGLEN)}
-  val next_vs_zero = Vec.fill(SZ_BANK){Bool()}
-  val next_vt_zero = Vec.fill(SZ_BANK){Bool()}
-  val next_vr_zero = Vec.fill(SZ_BANK){Bool()}
-  val next_vd_zero = Vec.fill(SZ_BANK){Bool()}
-  val next_vs = Vec.fill(8){Bits(width=SZ_BREGLEN)}
-  val next_vt = Vec.fill(8){Bits(width=SZ_BREGLEN)}
-  val next_vr = Vec.fill(8){Bits(width=SZ_BREGLEN)}
-  val next_vd = Vec.fill(8){Bits(width=SZ_BREGLEN)}
-  val next_rtype = Vec.fill(8){Bits(width=4)}
-  val next_mem = Vec.fill(8){new io_vxu_mem_cmd()}
+      ret
+    }
 
-  val next_imm = Vec.fill(8){Bits(width=SZ_DATA)}
-  val next_imm2 = Vec.fill(8){Bits(width=SZ_XIMM2)}
-  val next_aiw_imm1_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_IMM1)}
-  val next_aiw_cnt_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_CNT)}
-  val next_aiw_numCnt_rtag = Vec.fill(SZ_BANK){Bits(width=SZ_AIW_NUMCNT)}
-  val next_aiw_cnt = Vec.fill(SZ_BANK){Bits(width=SZ_VLEN)}
-  val next_aiw_pc_next = Vec.fill(SZ_BANK){Bits(width=SZ_ADDR)}
-  val next_aiw_update_imm1 = Vec.fill(SZ_BANK){Bool()}
-  val next_aiw_update_numCnt = Vec.fill(SZ_BANK){Bool()}
+    def stride(float: Bool) =
+      Mux(float, io.cfg.fstride, io.cfg.xstride)
 
-  val array_val = Reg(init=Bits(0, SZ_BANK))
-  val array_stall = Reg(init=Bits(0, SZ_BANK))
-  val array_last = Reg(init=Bits(0, SZ_BANK))
-  val array_viu = Reg(init=Bits(0, SZ_BANK))
-  val array_vau0 = Reg(init=Bits(0, SZ_BANK))
-  val array_vau1 = Reg(init=Bits(0, SZ_BANK))
-  val array_vau2 = Reg(init=Bits(0, SZ_BANK))
-  val array_vaq = Reg(init=Bits(0, SZ_BANK))
-  val array_vldq = Reg(init=Bits(0, SZ_BANK))
-  val array_vsdq = Reg(init=Bits(0, SZ_BANK))
-  val array_utmemop = Reg(init=Bits(0, SZ_BANK))
+    def islast(slot: UInt) = {
+      val ret = Bool()
+      ret := vlen(slot) <= io.cfg.bcnt
 
-  val array_fn_viu = Vec.fill(8){Reg(Bits(width=SZ_VIU_FN))}
-  val array_fn_vau0 = Vec.fill(8){Reg(Bits(width=SZ_VAU0_FN))}
-  val array_fn_vau1 = Vec.fill(8){Reg(Bits(width=SZ_VAU1_FN))}
-  val array_fn_vau2 = Vec.fill(8){Reg(Bits(width=SZ_VAU2_FN))}
-  val array_vlen = Vec.fill(8){Reg(Bits(width=SZ_VLEN), init = UInt(0, SZ_VLEN))}
-  val array_utidx = Vec.fill(8){Reg(Bits(width=SZ_VLEN))}
-  val array_xstride = Vec.fill(8){Reg(Bits(width=SZ_REGLEN))}
-  val array_fstride = Vec.fill(8){Reg(Bits(width=SZ_REGLEN))}
-  val array_vs_zero = Vec.fill(SZ_BANK){Reg(Bool())}
-  val array_vt_zero = Vec.fill(SZ_BANK){Reg(Bool())}
-  val array_vr_zero = Vec.fill(SZ_BANK){Reg(Bool())}
-  val array_vd_zero = Vec.fill(SZ_BANK){Reg(Bool())}
-  val array_vs = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
-  val array_vt = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
-  val array_vr = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
-  val array_vd = Vec.fill(8){Reg(Bits(width=SZ_BREGLEN))}
-  val array_rtype = Vec.fill(8){Reg(Bits(width=4), init = Bits(0, 4))}
-  val array_mem = Vec.fill(8){Reg(new io_vxu_mem_cmd())}
+      when (turbo_capable(slot)) {
+        when (io.cfg.prec === PREC_SINGLE) {
+          ret := (vlen(slot) >> UInt(1)) <= io.cfg.bcnt
+        }
+        when (io.cfg.prec === PREC_HALF) {
+          ret := (vlen(slot) >> UInt(2)) <= io.cfg.bcnt
+        }
+      }
 
-  val array_imm = Vec.fill(8){Reg(Bits(width=SZ_DATA))}
-  val array_imm2 = Vec.fill(8){Reg(Bits(width=SZ_XIMM2))}
-  val array_aiw_imm1_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_IMM1))}
-  val array_aiw_cnt_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_CNT))}
-  val array_aiw_numCnt_rtag = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_AIW_NUMCNT))}
-  val array_aiw_cnt = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_VLEN))}
-  val array_aiw_pc_next = Vec.fill(SZ_BANK){Reg(Bits(width=SZ_ADDR))}
-  val array_aiw_update_imm1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val array_aiw_update_numCnt = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+      ret
+    }
 
-  array_val := next_val.toBits
-  array_stall := next_stall.toBits
-  array_last := next_last.toBits
-  array_viu := next_viu.toBits
-  array_vau0 := next_vau0.toBits
-  array_vau1 := next_vau1.toBits
-  array_vau2 := next_vau2.toBits
-  array_vaq := next_vaq.toBits
-  array_vldq := next_vldq.toBits
-  array_vsdq := next_vsdq.toBits
-  array_utmemop := next_utmemop.toBits
+    def next_addr_base(slot: UInt) =
+      e(slot).imm.imm + (e(slot).imm.stride << UInt(3))
 
-  array_fn_viu := next_fn_viu
-  array_fn_vau0 := next_fn_vau0
-  array_fn_vau1 := next_fn_vau1
-  array_fn_vau2 := next_fn_vau2
-  array_vlen := next_vlen
-  array_utidx := next_utidx
-  array_xstride := next_xstride
-  array_fstride := next_fstride
-  array_vs_zero := next_vs_zero
-  array_vt_zero := next_vt_zero
-  array_vr_zero := next_vr_zero
-  array_vd_zero := next_vd_zero
-  array_vs := next_vs
-  array_vt := next_vt
-  array_vr := next_vr
-  array_vd := next_vd
-  array_rtype := next_rtype
-  array_mem := next_mem
+    def vgu_val(slot: UInt) = valid(slot) && e(slot).active.vgu
+    def vlu_val(slot: UInt) = valid(slot) && e(slot).active.vlu
+    def vsu_val(slot: UInt) = valid(slot) && e(slot).active.vsu
 
-  array_imm := next_imm
-  array_imm2 := next_imm2
-  array_aiw_imm1_rtag := next_aiw_imm1_rtag
-  array_aiw_cnt_rtag := next_aiw_cnt_rtag
-  array_aiw_numCnt_rtag := next_aiw_numCnt_rtag
-  array_aiw_cnt := next_aiw_cnt
-  array_aiw_pc_next := next_aiw_pc_next
-  array_aiw_update_imm1 := next_aiw_update_imm1
-  array_aiw_update_numCnt := next_aiw_update_numCnt
+    def alu_active(slot: UInt) =
+      e(slot).active.viu ||
+      e(slot).active.vau0 || e(slot).active.vau1 || e(slot).active.vau2
 
-  val last = io.fire_regid_imm.vlen < io.issue_to_seq.bcnt
+    def ldst_active(slot: UInt) =
+      e(slot).active.vlu || e(slot).active.vsu
 
-  val turbo_last = MuxLookup(io.prec, io.fire_regid_imm.vlen < io.issue_to_seq.bcnt, Array(
-    PREC_DOUBLE -> (io.fire_regid_imm.vlen < io.issue_to_seq.bcnt),
-    PREC_SINGLE -> ((io.fire_regid_imm.vlen >> UInt(1)) < io.issue_to_seq.bcnt),
-    PREC_HALF -> ((io.fire_regid_imm.vlen >> UInt(2)) < io.issue_to_seq.bcnt)
+    def vldst_active(slot: UInt) =
+      ldst_active(slot) && !e(slot).fn.vmu.utmemop()
+
+    def utldst_active(slot: UInt) =
+      ldst_active(slot) && e(slot).fn.vmu.utmemop()
+
+    def mem_active(slot: UInt) =
+      e(slot).active.vgu || ldst_active(slot)
+
+    def active(slot: UInt) =
+      alu_active(slot) || mem_active(slot)
+  }
+
+  class BuildOrderTable(nslots: Int)
+  {
+    val nvfu = 3
+    val vgu = 0
+    val vlu = 1
+    val vsu = 2
+
+    val tbl = Vec.fill(nslots){Vec.fill(nvfu){Reg(init=Bool(false))}}
+
+    // if there are no vfu depndencies issuing
+    // then depend on every vfu
+    def mark(cond: Bool, slot: UInt) = {
+      when (cond) {
+        for (i <- 0 until nvfu)
+          tbl(slot)(i) := Bool(true)
+      }
+    }
+
+    // if there are vfu dependencies issuing
+    def mark(cond: Bool, deps: (UInt, Int)*) = {
+      when (cond) {
+        val dep = Array.fill(nvfu){true}
+        for ((slot, vfu) <- deps) {
+          // then first clear all dependence
+          for (i <- 0 until nslots)
+            tbl(i)(vfu) := Bool(false)
+          // then don't depend on that particular vfu
+          dep(vfu) = false
+          for (i <- 0 until nvfu)
+            tbl(slot)(i) := Bool(dep(i))
+        }
+      } // end when
+    }
+
+    def check(slot: UInt, vfu: Int) = tbl(slot)(vfu)
+  }
+
+  val bcnt = io.cfg.bcnt
+
+  val ptr1 = UInt(width = SZ_BPTR)
+  val ptr2 = UInt(width = SZ_BPTR)
+  val ptr3 = UInt(width = SZ_BPTR)
+
+  val ptr = Reg(next = ptr1, init = UInt(0))
+
+  val ptr1_add = ptr + UInt(1, SZ_LGBANK1)
+  val ptr2_add = ptr + UInt(2, SZ_LGBANK1)
+  val ptr3_add = ptr + UInt(3, SZ_LGBANK1)
+
+  val ptr1_add_bcnt = ptr1_add - bcnt
+  val ptr2_add_bcnt = ptr2_add - bcnt
+  val ptr3_add_bcnt = ptr3_add - bcnt
+
+  ptr1 := Mux(ptr1_add < bcnt, ptr1_add(SZ_LGBANK-1,0),
+              ptr1_add_bcnt(SZ_LGBANK-1,0))
+
+  ptr2 := Mux(ptr2_add < bcnt, ptr2_add(SZ_LGBANK-1,0),
+              ptr2_add_bcnt(SZ_LGBANK-1,0))
+
+  ptr3 := Mux(ptr3_add < bcnt, ptr3_add(SZ_LGBANK-1,0),
+              ptr3_add_bcnt(SZ_LGBANK-1,0))
+
+  val seq = new BuildSequencer(SZ_BANK)
+
+  val vlen = io.issueop.bits.vlen
+  val last = vlen <= bcnt
+
+  val turbo_last = MuxLookup(io.cfg.prec, vlen < bcnt, Array(
+    PREC_DOUBLE -> (vlen <= bcnt),
+    PREC_SINGLE -> ((vlen >> UInt(1)) <= bcnt),
+    PREC_HALF -> ((vlen >> UInt(2)) <= bcnt)
   ))
 
-  next_val := array_val
-  next_stall := array_stall
-  next_last := array_last
-  next_viu := array_viu
-  next_vau0 := array_vau0
-  next_vau1 := array_vau1
-  next_vau2 := array_vau2
-  next_vaq := array_vaq
-  next_vldq := array_vldq
-  next_vsdq := array_vsdq
-  next_utmemop := array_utmemop
+  when (io.issueop.valid) {
 
-  next_fn_viu := array_fn_viu
-  next_fn_vau0 := array_fn_vau0
-  next_fn_vau1 := array_fn_vau1
-  next_fn_vau2 := array_fn_vau2
-  next_vlen := array_vlen
-  next_utidx := array_utidx
-  next_xstride := array_xstride
-  next_fstride := array_fstride
-  next_vs_zero := array_vs_zero
-  next_vt_zero := array_vt_zero
-  next_vr_zero := array_vr_zero
-  next_vd_zero := array_vd_zero
-  next_vs := array_vs
-  next_vt := array_vt
-  next_vr := array_vr
-  next_vd := array_vd
-  next_rtype := array_rtype
-  next_mem := array_mem
-
-  next_imm := array_imm
-  next_imm2 := array_imm2
-  next_aiw_imm1_rtag := array_aiw_imm1_rtag
-  next_aiw_cnt_rtag := array_aiw_cnt_rtag
-  next_aiw_numCnt_rtag := array_aiw_numCnt_rtag  
-  next_aiw_cnt := array_aiw_cnt
-  next_aiw_pc_next := array_aiw_pc_next
-  next_aiw_update_imm1 := array_aiw_update_imm1
-  next_aiw_update_numCnt := array_aiw_update_numCnt
-
-  when (io.fire.viu)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_viu(next_ptr1) := Bool(true)
-    next_fn_viu(next_ptr1) := io.fire_fn.viu
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_utidx(next_ptr1) := io.fire_regid_imm.utidx
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_vt(next_ptr1) := io.fire_regid_imm.vt
-    next_vd(next_ptr1) := io.fire_regid_imm.vd
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-    next_imm(next_ptr1) := io.fire_regid_imm.imm
-
-    next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr1) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr1) := Bool(true)
-  }
-
-  when (io.fire.vau0)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vau0(next_ptr1) := Bool(true)
-    next_fn_vau0(next_ptr1) := io.fire_fn.vau0
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_vt(next_ptr1) := io.fire_regid_imm.vt
-    next_vd(next_ptr1) := io.fire_regid_imm.vd
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-
-    next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr1) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr1) := Bool(true)
-  }
-
-  when (io.fire.vau1)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := turbo_last
-    next_vau1(next_ptr1) := Bool(true)
-    next_fn_vau1(next_ptr1) := io.fire_fn.vau1
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vt_zero(next_ptr1) := io.fire_regid_imm.vt_zero
-    next_vr_zero(next_ptr1) := io.fire_regid_imm.vr_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_vt(next_ptr1) := io.fire_regid_imm.vt
-    next_vr(next_ptr1) := io.fire_regid_imm.vr
-    next_vd(next_ptr1) := io.fire_regid_imm.vd
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-
-    next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr1) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr1) := Bool(true)
-  }
-
-  when (io.fire.vau2)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vau2(next_ptr1) := Bool(true)
-    next_fn_vau2(next_ptr1) := io.fire_fn.vau2
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_vd(next_ptr1) := io.fire_regid_imm.vd
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-
-    next_aiw_imm1_rtag(next_ptr1) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr1) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr1) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr1) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr1) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr1) := Bool(true)
-  }
-
-  when (io.fire.amo)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vaq(next_ptr1) := Bool(true)
-    next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-    next_mem(next_ptr1) := io.fire_regid_imm.mem
-    // should always write 0, amo's don't take immediates
-    next_imm(next_ptr1) := Bits(0)
-
-    next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := last
-    next_vsdq(next_ptr2) := Bool(true)
-    next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr2) := io.issue_to_seq.xstride
-    next_fstride(next_ptr2) := io.issue_to_seq.fstride
-    next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := io.fire_regid_imm.vt
-    next_rtype(next_ptr2) := io.fire_regid_imm.rtype
-    next_mem(next_ptr2) := io.fire_regid_imm.mem
-
-    next_val(next_ptr3) := Bool(true)
-    next_last(next_ptr3) := last
-    next_vldq(next_ptr3) := Bool(true)
-    next_utmemop(next_ptr3) := Bool(true)
-    next_vlen(next_ptr3) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr3) := io.issue_to_seq.xstride
-    next_fstride(next_ptr3) := io.issue_to_seq.fstride
-    next_vd(next_ptr3) := io.fire_regid_imm.vd
-    next_rtype(next_ptr3) := io.fire_regid_imm.rtype
-    next_mem(next_ptr3) := io.fire_regid_imm.mem
-
-    next_aiw_imm1_rtag(next_ptr3) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr3) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr3) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr3) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr3) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr3) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr3) := Bool(true)
-  }
-
-  when (io.fire.utld)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vaq(next_ptr1) := Bool(true)
-    next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-    next_mem(next_ptr1) := io.fire_regid_imm.mem
-    next_imm(next_ptr1) := io.fire_regid_imm.imm
-
-    next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := turbo_last
-    next_vldq(next_ptr2) := Bool(true)
-    next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr2) := io.issue_to_seq.xstride
-    next_fstride(next_ptr2) := io.issue_to_seq.fstride
-    next_vd(next_ptr2) := io.fire_regid_imm.vd
-    next_rtype(next_ptr2) := io.fire_regid_imm.rtype
-    next_mem(next_ptr2) := io.fire_regid_imm.mem
-
-    next_aiw_imm1_rtag(next_ptr2) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr2) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr2) := Bool(true)
-  }
-
-  when (io.fire.utst)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vaq(next_ptr1) := Bool(true)
-    next_utmemop(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_vs_zero(next_ptr1) := io.fire_regid_imm.vs_zero
-    next_vs(next_ptr1) := io.fire_regid_imm.vs
-    next_rtype(next_ptr1) := io.fire_regid_imm.rtype
-    next_mem(next_ptr1) := io.fire_regid_imm.mem
-    next_imm(next_ptr1) := io.fire_regid_imm.imm
-
-    next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := turbo_last
-    next_vsdq(next_ptr2) := Bool(true)
-    next_utmemop(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr2) := io.issue_to_seq.xstride
-    next_fstride(next_ptr2) := io.issue_to_seq.fstride
-    next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := io.fire_regid_imm.vt
-    next_rtype(next_ptr2) := io.fire_regid_imm.rtype
-    next_mem(next_ptr2) := io.fire_regid_imm.mem  
-
-    next_aiw_imm1_rtag(next_ptr2) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr2) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr2) := Bool(true)
-  }
-
-  when (io.fire.vld)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vaq(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_mem(next_ptr1) := io.fire_regid_imm.mem
-    next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
-    next_imm2(next_ptr1) := io.fire_regid_imm.imm2
-
-    next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := last
-    next_vldq(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr2) := io.issue_to_seq.xstride
-    next_fstride(next_ptr2) := io.issue_to_seq.fstride
-    next_vd(next_ptr2) := io.fire_regid_imm.vd
-    next_rtype(next_ptr2) := io.fire_regid_imm.rtype
-    next_mem(next_ptr2) := io.fire_regid_imm.mem
-    next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
-    next_imm2(next_ptr2) := io.fire_regid_imm.imm2
-
-    next_aiw_imm1_rtag(next_ptr2) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr2) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr2) := Bool(true)
-  }
-
-  when (io.fire.vst)
-  {
-    next_val(next_ptr1) := Bool(true)
-    next_last(next_ptr1) := last
-    next_vaq(next_ptr1) := Bool(true)
-    next_vlen(next_ptr1) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr1) := io.issue_to_seq.xstride
-    next_fstride(next_ptr1) := io.issue_to_seq.fstride
-    next_mem(next_ptr1) := io.fire_regid_imm.mem 
-    next_imm(next_ptr1) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
-    next_imm2(next_ptr1) := io.fire_regid_imm.imm2
-
-    next_val(next_ptr2) := Bool(true)
-    next_last(next_ptr2) := last
-    next_vsdq(next_ptr2) := Bool(true)
-    next_vlen(next_ptr2) := io.fire_regid_imm.vlen
-    next_xstride(next_ptr2) := io.issue_to_seq.xstride
-    next_fstride(next_ptr2) := io.issue_to_seq.fstride
-    next_vt_zero(next_ptr2) := io.fire_regid_imm.vt_zero
-    next_vt(next_ptr2) := io.fire_regid_imm.vt
-    next_mem(next_ptr2) := io.fire_regid_imm.mem
-    next_imm(next_ptr2) := Cat(Bits(0,1), io.fire_regid_imm.imm(63,0))
-    next_imm2(next_ptr2) := io.fire_regid_imm.imm2
-    next_rtype(next_ptr2) := io.fire_regid_imm.rtype
-
-    next_aiw_imm1_rtag(next_ptr2) := io.fire_regid_imm.aiw.imm1_rtag
-    next_aiw_cnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.cnt_rtag
-    next_aiw_numCnt_rtag(next_ptr2) := io.fire_regid_imm.aiw.numCnt_rtag
-    next_aiw_cnt(next_ptr2) := io.fire_regid_imm.cnt
-    next_aiw_pc_next(next_ptr2) := io.fire_regid_imm.aiw.pc_next
-    next_aiw_update_imm1(next_ptr2) := io.fire_regid_imm.aiw.update_imm1
-    next_aiw_update_numCnt(next_ptr2) := Bool(true)
-  }
-
-  val next_vlen_update = UInt(width = SZ_LGBANK + 2)
-
-  next_vlen_update := Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr)(SZ_LGBANK-1,0), bcntm1(SZ_LGBANK-1,0))
-
-  // increase throughput when certain operations (FMA, VLDQ, VSDQ) are used by
-  // allowing up to 32 elements to proceed in half precision
-  // allowing up to 16 elements to proceed in single precision
-  val turbo_capable = io.seq.vau1 || io.seq.vldq || io.seq.vsdq
-
-  when (turbo_capable)
-  {
-    when (io.prec === PREC_SINGLE)
-    {
-      val bcntx2p1 = (bcntm1(SZ_LGBANK-1,0) << UInt(1)) + UInt(1)
-      next_vlen_update := Mux(array_vlen(reg_ptr) < bcntx2p1, array_vlen(reg_ptr), bcntx2p1)
+    when (io.issueop.bits.active.viu) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.viu := Bool(true)
+      seq.e(ptr1).utidx := io.issueop.bits.utidx
+      seq.e(ptr1).fn.viu := io.issueop.bits.fn.viu
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
+      seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
+      seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
+      seq.aiw(ptr1) := io.issueop.bits.aiw
     }
-    .elsewhen (io.prec === PREC_HALF)
-    {
-      val bcntx4p3 = (bcntm1(SZ_LGBANK-1,0) << UInt(2)) + UInt(3)
-      next_vlen_update := Mux(array_vlen(reg_ptr) < bcntx4p3, array_vlen(reg_ptr), bcntx4p3)
-    }
-  }
 
-  when (io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2 || io.seq.vaq || io.seq.vldq || io.seq.vsdq)
-  {
-    next_vlen(reg_ptr) := array_vlen(reg_ptr) - next_vlen_update - UInt(1) // WHY?!
-    next_utidx(reg_ptr) := array_utidx(reg_ptr) + io.issue_to_seq.bcnt
-    // rtype: vs vt vr vd
-    next_vs(reg_ptr) := array_vs(reg_ptr) + Mux(array_rtype(reg_ptr)(3), array_fstride(reg_ptr), array_xstride(reg_ptr))
-    next_vt(reg_ptr) := array_vt(reg_ptr) + Mux(array_rtype(reg_ptr)(2), array_fstride(reg_ptr), array_xstride(reg_ptr))
-    next_vr(reg_ptr) := array_vr(reg_ptr) + Mux(array_rtype(reg_ptr)(1), array_fstride(reg_ptr), array_xstride(reg_ptr))
-    next_vd(reg_ptr) := array_vd(reg_ptr) + Mux(array_rtype(reg_ptr)(0), array_fstride(reg_ptr), array_xstride(reg_ptr))
-
-    when (array_last(reg_ptr))
-    {
-      next_val(reg_ptr) := Bool(false)
-      next_last(reg_ptr) := Bool(false)
-      next_viu(reg_ptr) := Bool(false)
-      next_vau0(reg_ptr) := Bool(false)
-      next_vau1(reg_ptr) := Bool(false)
-      next_vau2(reg_ptr) := Bool(false)
-      next_vaq(reg_ptr) := Bool(false)
-      next_vldq(reg_ptr) := Bool(false)
-      next_vsdq(reg_ptr) := Bool(false)
-      next_utmemop(reg_ptr) := Bool(false)
-      next_aiw_update_imm1(reg_ptr) := Bool(false)
-      next_aiw_update_numCnt(reg_ptr) := Bool(false)
+    when (io.issueop.bits.active.vau0) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vau0 := Bool(true)
+      seq.e(ptr1).fn.vau0 := io.issueop.bits.fn.vau0
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
+      seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr1) := io.issueop.bits.aiw
     }
-    .otherwise
-    {
-      when (next_vlen(reg_ptr) < io.issue_to_seq.bcnt)
-      {
-        next_last(reg_ptr) :=  Bool(true)
-      }
-      .elsewhen (turbo_capable && io.prec === PREC_SINGLE &&
-                ((next_vlen(reg_ptr) >> UInt(1)) < io.issue_to_seq.bcnt)) // do NOT ceil
-      {
-        next_last(reg_ptr) :=  Bool(true)
-      }
-      .elsewhen (turbo_capable && io.prec === PREC_HALF &&
-                ((next_vlen(reg_ptr) >> UInt(2)) < io.issue_to_seq.bcnt))
-      {
-        next_last(reg_ptr) :=  Bool(true)
-      }
+
+    when (io.issueop.bits.active.vau1) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := turbo_last
+      seq.e(ptr1).active.vau1 := Bool(true)
+      seq.e(ptr1).fn.vau1 := io.issueop.bits.fn.vau1
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
+      seq.e(ptr1).reg.vr := io.issueop.bits.reg.vr
+      seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr1) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.vau2) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vau2 := Bool(true)
+      seq.e(ptr1).fn.vau2 := io.issueop.bits.fn.vau2
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr1) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.amo) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vgu := Bool(true)
+      seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).imm.imm := Bits(0)
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := last
+      seq.e(ptr2).active.vsu := Bool(true)
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
+
+      seq.valid(ptr3) := Bool(true)
+      seq.vlen(ptr3) := vlen
+      seq.last(ptr3) := last
+      seq.e(ptr3).active.vlu := Bool(true)
+      seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr3) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.utld) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vgu := Bool(true)
+      seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := turbo_last
+      seq.e(ptr2).active.vlu := Bool(true)
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr2) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.utst) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vgu := Bool(true)
+      seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
+      seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := turbo_last
+      seq.e(ptr2).active.vsu := Bool(true)
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu  
+      seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
+      seq.aiw(ptr2) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.vld) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vgu := Bool(true)
+      seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr1).imm := io.issueop.bits.imm
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := last
+      seq.e(ptr2).active.vlu := Bool(true)
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
+      seq.e(ptr2).imm := io.issueop.bits.imm
+      seq.aiw(ptr2) := io.issueop.bits.aiw
+    }
+
+    when (io.issueop.bits.active.vst) {
+      seq.valid(ptr1) := Bool(true)
+      seq.vlen(ptr1) := vlen
+      seq.last(ptr1) := last
+      seq.e(ptr1).active.vgu := Bool(true)
+      seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu 
+      seq.e(ptr1).imm := io.issueop.bits.imm
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := last
+      seq.e(ptr2).active.vsu := Bool(true)
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
+      seq.e(ptr2).imm := io.issueop.bits.imm
+      seq.aiw(ptr2) := io.issueop.bits.aiw
     }
 
   }
 
-  val mem_base_plus_stride = array_imm(reg_ptr) + (array_imm2(reg_ptr) << UInt(3))
+  // figure out stalls due to vaq/vldq/vsdq
+  val ot = new BuildOrderTable(SZ_BANK)
+  ot.mark(io.issueop.valid && io.issueop.bits.active.viu, ptr1)
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vau0, ptr1)
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vau1, ptr1)
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vau2, ptr1)
+  ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vsu), (ptr3, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.utld, (ptr1, ot.vgu), (ptr2, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vsu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vsu))
 
-  when ((io.seq.vaq || io.seq.vldq || io.seq.vsdq) && !io.seq_regid_imm.utmemop)
-  {
-    next_imm(reg_ptr) := mem_base_plus_stride
-  }
+  val reg_vaq_stall = Reg(init = Bool(false))
+  val reg_vldq_stall = Reg(init = Bool(false))
+  val reg_vsdq_stall = Reg(init = Bool(false))
 
-  val next_dep_vaq = Vec.fill(SZ_BANK){Bool()}
-  val next_dep_vldq = Vec.fill(SZ_BANK){Bool()}
-  val next_dep_vsdq = Vec.fill(SZ_BANK){Bool()}
+  val masked_vaq_stall = ot.check(ptr, ot.vgu) & reg_vaq_stall
+  val masked_vldq_stall = ot.check(ptr, ot.vlu) & reg_vldq_stall
+  val masked_vsdq_stall = ot.check(ptr, ot.vsu) & reg_vsdq_stall
 
-  val array_dep_vaq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val array_dep_vldq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val array_dep_vsdq = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  when (seq.vgu_val(ptr) & !masked_vldq_stall & !masked_vsdq_stall) { reg_vaq_stall := io.qstall.vaq }
+  when (seq.vlu_val(ptr) & !masked_vaq_stall & !masked_vsdq_stall) { reg_vldq_stall := io.qstall.vldq }
+  when (seq.vsu_val(ptr) & !masked_vldq_stall & !masked_vsdq_stall) { reg_vsdq_stall := io.qstall.vsdq }
 
-  array_dep_vaq := next_dep_vaq
-  array_dep_vldq := next_dep_vldq
-  array_dep_vsdq := next_dep_vsdq
-
-  next_dep_vaq := array_dep_vaq
-  next_dep_vldq := array_dep_vldq
-  next_dep_vsdq := array_dep_vsdq
-
-  when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
-  {
-    next_dep_vaq(next_ptr1) := Bool(true)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-  }
-
-  when (io.fire.amo)
-  {
-    for(i <- 0 until SZ_BANK)
-      next_dep_vaq(i) := Bool(false)
-    next_dep_vaq(next_ptr1) := Bool(false)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-
-    for(i <- 0 until SZ_BANK)
-      next_dep_vsdq(i) := Bool(false)
-    next_dep_vaq(next_ptr2) := Bool(false)
-    next_dep_vldq(next_ptr2) := Bool(true)
-    next_dep_vsdq(next_ptr2) := Bool(false)
-
-    for(i <- 0 until SZ_BANK)
-      next_dep_vldq(i) := Bool(false)
-    next_dep_vaq(next_ptr3) := Bool(false)
-    next_dep_vldq(next_ptr3) := Bool(false)
-    next_dep_vsdq(next_ptr3) := Bool(false)
-  }
-
-  when (io.fire.utld)
-  {
-    for(i <- 0 until SZ_BANK)
-      next_dep_vaq(i) := Bool(false)
-    next_dep_vaq(next_ptr1) := Bool(false)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-
-    for(i <- 0 until SZ_BANK)
-      next_dep_vldq(i) := Bool(false)
-    next_dep_vaq(next_ptr2) := Bool(false)
-    next_dep_vldq(next_ptr2) := Bool(false)
-    next_dep_vsdq(next_ptr2) := Bool(true)
-  }
-
-  when (io.fire.utst)
-  {
-    for(i <- 0 until SZ_BANK)
-      next_dep_vaq(i) := Bool(false)
-    next_dep_vaq(next_ptr1) := Bool(false)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-
-    for(i <- 0 until SZ_BANK)
-      next_dep_vsdq(i) := Bool(false)
-    next_dep_vaq(next_ptr2) := Bool(false)
-    next_dep_vldq(next_ptr2) := Bool(true)
-    next_dep_vsdq(next_ptr2) := Bool(false)
-  }
-
-  when (io.fire.vld)
-  {
-    for(i <- 0 until SZ_BANK)
-      next_dep_vaq(i) := Bool(false)
-    next_dep_vaq(next_ptr1) := Bool(false)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-
-    for(i <- 0 until SZ_BANK)
-      next_dep_vldq(i) := Bool(false)
-    next_dep_vaq(next_ptr2) := Bool(false)
-    next_dep_vldq(next_ptr2) := Bool(false)
-    next_dep_vsdq(next_ptr2) := Bool(true)
-  }
-
-  when (io.fire.vst)
-  {
-    for(i <- 0 until SZ_BANK)
-      next_dep_vaq(i) := Bool(false)
-    next_dep_vaq(next_ptr1) := Bool(false)
-    next_dep_vldq(next_ptr1) := Bool(true)
-    next_dep_vsdq(next_ptr1) := Bool(true)
-    
-    for(i <- 0 until SZ_BANK)
-      next_dep_vsdq(i) := Bool(false)
-    next_dep_vaq(next_ptr2) := Bool(false)
-    next_dep_vldq(next_ptr2) := Bool(true)
-    next_dep_vsdq(next_ptr2) := Bool(false)
-  }
-
-  val current_val = array_val(reg_ptr)
-  val current_vaq_val = current_val & array_vaq(reg_ptr)
-  val current_vldq_val = current_val & array_vldq(reg_ptr)
-  val current_vsdq_val = current_val & array_vsdq(reg_ptr)
-
-  val pop_count = // if v[sl]dq, use tcnt
-    Mux(current_vldq_val || current_vsdq_val, io.seq_regid_imm.tcnt, io.seq_regid_imm.cnt)
-
-  io.seq_regid_imm.pop_count := pop_count
-
-  val reg_vaq_stall = Reg(init=Bool(false))
-  val reg_vldq_stall = Reg(init=Bool(false))
-  val reg_vsdq_stall = Reg(init=Bool(false))
-
-  val masked_vaq_stall = array_dep_vaq(reg_ptr) & reg_vaq_stall
-  val masked_vldq_stall = array_dep_vldq(reg_ptr) & reg_vldq_stall
-  val masked_vsdq_stall = array_dep_vsdq(reg_ptr) & reg_vsdq_stall
-
-  when (current_vaq_val & !masked_vldq_stall & !masked_vsdq_stall) { reg_vaq_stall := io.qstall.vaq }
-  when (current_vldq_val & !masked_vaq_stall & !masked_vsdq_stall) { reg_vldq_stall := io.qstall.vldq }
-  when (current_vsdq_val & !masked_vldq_stall & !masked_vsdq_stall) { reg_vsdq_stall := io.qstall.vsdq }
-
-  val masked_xcpt_stall = (!current_vldq_val && !current_vsdq_val) && io.xcpt_to_seq.stall
+  val masked_xcpt_stall = (!seq.vlu_val(ptr) && !seq.vsu_val(ptr)) && io.xcpt_to_seq.stall
 
   val stall =
     masked_xcpt_stall |
-    array_dep_vaq(reg_ptr) & reg_vaq_stall |
-    array_dep_vldq(reg_ptr) & reg_vldq_stall |
-    array_dep_vsdq(reg_ptr) & reg_vsdq_stall |
-    current_vaq_val & io.qstall.vaq |
-    current_vldq_val & io.qstall.vldq |
-    current_vsdq_val & io.qstall.vsdq
+    masked_vaq_stall | masked_vldq_stall | masked_vsdq_stall |
+    seq.vgu_val(ptr) && io.qstall.vaq |
+    seq.vlu_val(ptr) && io.qstall.vldq |
+    seq.vsu_val(ptr) && io.qstall.vsdq
 
-  val reg_stall =
-    current_vaq_val & reg_vaq_stall |
-    current_vldq_val & reg_vldq_stall |
-    current_vsdq_val & reg_vsdq_stall
+  seq.stall(ptr) := stall
 
-  next_stall(reg_ptr) := stall
+  val valid = !stall && seq.valid(ptr)
 
-  io.seq_to_hazard.stall := (array_stall & array_val).orR
+  // update sequencer state
+  val nelements = seq.nelements(ptr)
+  val nstrip = seq.nstrip(ptr)
+  val islast = seq.islast(ptr)
 
-  io.seq_to_hazard.last := ~stall & current_val & array_last(reg_ptr)
-  io.seq_to_expand.last := ~stall & current_val & array_last(reg_ptr)
+  when (valid) {
+    when (seq.active(ptr)) {
+      seq.vlen(ptr) := seq.vlen(ptr) - nelements
+      seq.e(ptr).utidx := seq.e(ptr).utidx + bcnt
+      seq.e(ptr).reg.vs.id := seq.e(ptr).reg.vs.id + seq.stride(seq.e(ptr).reg.vs.float)
+      seq.e(ptr).reg.vt.id := seq.e(ptr).reg.vt.id + seq.stride(seq.e(ptr).reg.vt.float)
+      seq.e(ptr).reg.vr.id := seq.e(ptr).reg.vr.id + seq.stride(seq.e(ptr).reg.vr.float)
+      seq.e(ptr).reg.vd.id := seq.e(ptr).reg.vd.id + seq.stride(seq.e(ptr).reg.vd.float)
 
-  io.seq.viu := ~stall & current_val & array_viu(reg_ptr)
-  io.seq.vau0 := ~stall & current_val & array_vau0(reg_ptr)
-  io.seq.vau1 := ~stall & current_val & array_vau1(reg_ptr)
-  io.seq.vau2 := ~stall & current_val & array_vau2(reg_ptr)
-  io.seq.vaq := ~stall & current_vaq_val
-  io.seq.vldq := ~stall & current_vldq_val
-  io.seq.vsdq := ~stall & current_vsdq_val
+      when (islast) {
+        seq.valid(ptr) := Bool(false)
+        seq.last(ptr) := Bool(false)
+        seq.e(ptr).active.viu := Bool(false)
+        seq.e(ptr).active.vau0 := Bool(false)
+        seq.e(ptr).active.vau1 := Bool(false)
+        seq.e(ptr).active.vau2 := Bool(false)
+        seq.e(ptr).active.vgu := Bool(false)
+        seq.e(ptr).active.vlu := Bool(false)
+        seq.e(ptr).active.vsu := Bool(false)
+        seq.aiw(ptr).active.imm1 := Bool(false)
+        seq.aiw(ptr).active.cnt := Bool(false)
+      }
+      .otherwise {
+        seq.last(ptr) := islast
+      }
+    }
 
-  io.seq_fn.viu := array_fn_viu(reg_ptr)
-  io.seq_fn.vau0 := array_fn_vau0(reg_ptr)
-  io.seq_fn.vau1 := array_fn_vau1(reg_ptr)
-  io.seq_fn.vau2 := array_fn_vau2(reg_ptr)
+    when (seq.mem_active(ptr) && !seq.e(ptr).fn.vmu.utmemop()) {
+      seq.e(ptr).imm.imm := seq.next_addr_base(ptr)
+    }
 
-  io.seq_regid_imm.cnt := 
-    Mux(array_vlen(reg_ptr) < bcntm1, array_vlen(reg_ptr), bcntm1) + UInt(1)
-
-  io.seq_regid_imm.tcnt := io.seq_regid_imm.cnt
-
-  def div2ceil(x: UInt) = (x + UInt(1)) >> UInt(1)
-  def div4ceil(x: UInt) = (x + UInt(3)) >> UInt(2)
-
-  // set turbo count
-  // d[24]c = divided by {2,4}, ceiling
-  when (io.prec === PREC_SINGLE) {
-    val vlen_d2c = div2ceil(array_vlen(reg_ptr))
-    io.seq_regid_imm.tcnt := Mux(vlen_d2c < bcnt, vlen_d2c, bcnt)
-  } .elsewhen (io.prec === PREC_HALF) {
-    val vlen_d4c = div4ceil(array_vlen(reg_ptr))
-    io.seq_regid_imm.tcnt := Mux(vlen_d4c < bcnt, vlen_d4c, bcnt)
+    when (seq.alu_active(ptr) || seq.ldst_active(ptr)) {
+      seq.aiw(ptr).cnt.utidx := seq.aiw(ptr).cnt.utidx + nelements
+    }
   }
 
-  io.seq_regid_imm.utidx := array_utidx(reg_ptr)
-  io.seq_regid_imm.vs_zero := array_vs_zero(reg_ptr)
-  io.seq_regid_imm.vt_zero := array_vt_zero(reg_ptr)
-  io.seq_regid_imm.vr_zero := array_vr_zero(reg_ptr)
-  io.seq_regid_imm.vs := array_vs(reg_ptr)
-  io.seq_regid_imm.vt := array_vt(reg_ptr)
-  io.seq_regid_imm.vr := array_vr(reg_ptr)
-  io.seq_regid_imm.vd := array_vd(reg_ptr)
-  io.seq_regid_imm.rtype := array_rtype(reg_ptr)
-  io.seq_regid_imm.mem := array_mem(reg_ptr)
-  io.seq_regid_imm.imm := array_imm(reg_ptr)
-  io.seq_regid_imm.imm2 := array_imm2(reg_ptr)
-  io.seq_regid_imm.utmemop := array_utmemop(reg_ptr)
+  // output
+  io.seq_to_hazard.stall := (seq.stall.toBits & seq.valid.toBits).orR
+  io.seq_to_hazard.last := !stall && seq.valid(ptr) && islast
 
-  // looking for one cycle ahead
-  io.qcntp1 := Mux(reg_stall, pop_count, pop_count + UInt(1, SZ_QCNT))
-  // looking for two cycles ahead
-  io.qcntp2 := Mux(reg_stall, pop_count, pop_count + UInt(2, SZ_QCNT))
+  io.seqop.valid := valid
+  io.seqop.bits.cnt := nstrip
+  io.seqop.bits.last := islast
+  io.seqop.bits <> seq.e(ptr)
+
+  val cnt = nstrip
+  val reg_stall =
+    seq.vgu_val(ptr) & reg_vaq_stall |
+    seq.vlu_val(ptr) & reg_vldq_stall |
+    seq.vsu_val(ptr) & reg_vsdq_stall
+
+  io.qcntp1 := Mux(reg_stall, cnt, cnt + UInt(1, SZ_QCNT))
+  io.qcntp2 := Mux(reg_stall, cnt, cnt + UInt(2, SZ_QCNT))
 
   // aiw
-  io.seq_to_aiw.update_imm1.valid := Bool(false)
-  io.seq_to_aiw.update_cnt.valid := Bool(false)
-  io.seq_to_aiw.last := Bool(false)
-  io.seq_to_aiw.update_numCnt.valid := Bool(false)
-
-  val seq_alu = io.seq.viu || io.seq.vau0 || io.seq.vau1 || io.seq.vau2
-  val seq_mem = io.seq.vldq || io.seq.vsdq
-  val seq_vmem = seq_mem && !array_utmemop(reg_ptr)
-  val seq_utmem = seq_mem && array_utmemop(reg_ptr)
+  io.aiwop.imm1.valid := Bool(false)
+  io.aiwop.cnt.valid := Bool(false)
+  io.aiwop.numcnt.valid := Bool(false)
+  io.aiwop.numcnt.bits.last := Bool(false)
   
-  when (seq_alu || seq_mem)
-  {
-    io.seq_to_aiw.update_cnt.valid := array_aiw_update_numCnt(reg_ptr)
-    next_aiw_cnt(reg_ptr) := io.seq_to_aiw.update_cnt.bits.data
+  when (valid) {
+    when (seq.alu_active(ptr) || seq.ldst_active(ptr)) {
+      io.aiwop.cnt.valid := seq.aiw(ptr).active.cnt
 
-    when (array_last(reg_ptr))
-    {
-      io.seq_to_aiw.last := array_aiw_update_numCnt(reg_ptr)
-      io.seq_to_aiw.update_numCnt.valid := array_aiw_update_numCnt(reg_ptr)
+      when (islast) {
+        io.aiwop.numcnt.valid := seq.aiw(ptr).active.cnt
+        io.aiwop.numcnt.bits.last := seq.aiw(ptr).active.cnt
+      }
+    }
+
+    when (seq.alu_active(ptr) || seq.utldst_active(ptr)) {
+      when (islast) {
+        io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
+      }
+    } 
+
+    when (seq.vldst_active(ptr)) {
+      io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
     }
   }
 
-  when (seq_alu || seq_utmem)
-  {
-    when (array_last(reg_ptr))
-    {
-      io.seq_to_aiw.update_imm1.valid := array_aiw_update_imm1(reg_ptr)
-    }
-  } 
-  .elsewhen (seq_vmem)
-  {
-    io.seq_to_aiw.update_imm1.valid := array_aiw_update_imm1(reg_ptr)
-  }
+  io.aiwop.imm1.bits <> seq.aiw(ptr).imm1
+  io.aiwop.imm1.bits.base := seq.next_addr_base(ptr)
+  io.aiwop.imm1.bits.ldst := seq.ldst_active(ptr)
+  io.aiwop.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
+  io.aiwop.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
+  io.aiwop.numcnt.bits <> seq.aiw(ptr).numcnt
 
-  io.seq_to_aiw.update_imm1.bits.addr := array_aiw_imm1_rtag(reg_ptr).toUInt
-  io.seq_to_aiw.update_imm1.bits.data := 
-    Mux(io.seq.vldq || io.seq.vsdq, mem_base_plus_stride,
-        array_aiw_pc_next(reg_ptr))
-
-  io.seq_to_aiw.update_cnt.bits.addr := array_aiw_cnt_rtag(reg_ptr).toUInt
-  io.seq_to_aiw.update_cnt.bits.data := array_aiw_cnt(reg_ptr) + next_vlen_update + UInt(1)
-
-  io.seq_to_aiw.update_numCnt.bits := array_aiw_numCnt_rtag(reg_ptr)
+  seq.defreset
 }

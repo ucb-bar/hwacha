@@ -19,17 +19,13 @@ object Constants extends
 
 trait MachineConstants
 {
-  val SZ_VLENMAX = 11
-  val SZ_VLEN = 11
+  val SZ_VLEN = 12
   val SZ_REGLEN = 6
   val SZ_REGCNT = 6
 
   val SZ_ADDR = 64
-  val SZ_INST = 32
   val SZ_DATA = 66
   val SZ_EXC = 5
-  val SZ_XLEN = 64
-  val SZ_FLEN = 65
 }
 
 trait VectorCommandQueueConstants
@@ -42,9 +38,6 @@ trait VectorCommandQueueConstants
 
   val SZ_VSTRIDE = 64
   val SZ_XIMM2 = 64
-
-  val SZ_VRESP = 32
-  val SZ_XRESP = 1
 }
 
 object PrecConstants
@@ -160,17 +153,6 @@ trait VIUConstants
   val SZ_VIU_DW = 1
   val SZ_VIU_T1 = 2
   val SZ_VIU_T0 = 2
-  val SZ_VIU_T = SZ_VIU_T1 + SZ_VIU_T0
-
-  val SZ_VBR_FN = 12
-  val SZ_VIU_FN = 12
-
-  val RG_VIU_T = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T-1           , SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW)
-  val RG_VIU_T0 = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1+SZ_VIU_T0-1, SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1)
-  val RG_VIU_T1 = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW+SZ_VIU_T1-1          , SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW)
-  val RG_VIU_DW = (SZ_VIU_OP+SZ_VIU_FP+SZ_VIU_DW-1                    , SZ_VIU_OP+SZ_VIU_FP) 
-  val RG_VIU_FP = (SZ_VIU_OP+SZ_VIU_FP-1                              , SZ_VIU_OP)
-  val RG_VIU_OP = (SZ_VIU_OP-1,0)
 }
 
 trait VAU0Constants extends DecodeConstants
@@ -182,18 +164,6 @@ trait VAU0Constants extends DecodeConstants
   val A0_MH   = UInt(1, SZ_VAU0_OP)
   val A0_MHSU = UInt(2, SZ_VAU0_OP)
   val A0_MHU  = UInt(3, SZ_VAU0_OP)
-
-  // acutal ops
-  val VAU0_32 = Cat(DW32,A0_M)
-  val VAU0_32H = Cat(DW32,A0_MH)
-  val VAU0_32HSU = Cat(DW32,A0_MHSU)
-  val VAU0_32HU = Cat(DW32,A0_MHU)
-  val VAU0_64 = Cat(DW64,A0_M)
-  val VAU0_64H = Cat(DW64,A0_MH)
-  val VAU0_64HSU = Cat(DW64,A0_MHSU)
-  val VAU0_64HU = Cat(DW64,A0_MHU)
-
-  val SZ_VAU0_FN = 3
 }
 
 trait VAU1Constants
@@ -209,13 +179,7 @@ trait VAU1Constants
   val A1_NMSUB = UInt(6, SZ_VAU1_OP)
   val A1_NMADD = UInt(7, SZ_VAU1_OP)
 
-  val SZ_VAU1_FN = 8
-
-  val RG_VAU1_FP = (7,6)
-  val RG_VAU1_RM = (5,3)
-  val RG_VAU1_FN = (2,0)
-
-  val FN_VAU1_FMA = (x: Bits) => x(2)
+  val IS_A1_OP_FMA = (x: Bits) => x(2)
 }
 
 trait VAU2Constants
@@ -235,12 +199,6 @@ trait VAU2Constants
   val A2_MFTX  = UInt(9, SZ_VAU2_OP)
   val A2_CDTS  = UInt(10, SZ_VAU2_OP)
   val A2_CSTD  = UInt(11, SZ_VAU2_OP)
-
-  val SZ_VAU2_FN = 9
-
-  val RG_VAU2_FP = (8,7)
-  val RG_VAU2_RM = (6,4)
-  val RG_VAU2_FN = (3,0)
 }
 
 trait VMUConstants extends LaneConstants
@@ -267,6 +225,9 @@ trait VMUConstants extends LaneConstants
   val VM_ULD = UInt(2, SZ_VMU_OP)
   val VM_UST = UInt(3, SZ_VMU_OP)
   val VM_AMO = UInt(4, SZ_VMU_OP)
+
+  val IS_VM_OP_UTMEMOP =
+    (x: UInt) => x === VM_ULD || x === VM_UST || x === VM_AMO
 }
 
 object Commands extends Commands

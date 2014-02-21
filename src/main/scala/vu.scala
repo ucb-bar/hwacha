@@ -179,7 +179,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   vmu.io.irq <> irq.io.vmu_to_irq
 
-  vmu.io.prec := vxu.io.prec
+  vmu.io.cfg <> vxu.io.cfg
 
   // aiw
   aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
@@ -190,7 +190,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   aiw.io.issue_to_aiw <> vxu.io.issue_to_aiw
   aiw.io.aiw_to_issue <> vxu.io.aiw_to_issue
-  aiw.io.seq_to_aiw <> vxu.io.seq_to_aiw
+  aiw.io.op <> vxu.io.aiwop
 
   // evac
   evac.io.aiw_cmdb <> aiw.io.aiw_deq_cmdb

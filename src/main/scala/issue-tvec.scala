@@ -19,16 +19,29 @@ class ioIssueTVECToPC extends Bundle
   val fire = Bool(OUTPUT)
 }
 
+class HwachaConfigIO extends Bundle
+{
+  val prec = Bits(OUTPUT, SZ_PREC)
+  val bactive = Bits(OUTPUT, SZ_BANK)
+  val bcnt = UInt(OUTPUT, SZ_BCNT)
+  val nxregs = UInt(OUTPUT, SZ_REGCNT)
+  val nfregs = UInt(OUTPUT, SZ_REGCNT)
+  val xstride = UInt(OUTPUT, SZ_REGLEN)
+  val fstride = UInt(OUTPUT, SZ_REGLEN)
+  val xfsplit = UInt(OUTPUT, SZ_BREGLEN)
+}
+
 class IssueTVEC extends Module
 {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO
+
     val irq = new io_issue_tvec_to_irq_handler()
 
     val vf = new io_vf()
     val active = Bool(OUTPUT)
 
     val issue_to_hazard = new io_vxu_issue_to_hazard().asOutput
-    val issue_to_seq = new io_vxu_issue_to_seq().asOutput
     val issue_to_lane = new io_vxu_issue_to_lane().asOutput
 
     val vcmdq = new VCMDQIO().flip
@@ -50,8 +63,6 @@ class IssueTVEC extends Module
     val issue_to_aiw = new io_issue_to_aiw()
 
     val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
-
-    val prec = Bits(OUTPUT, SZ_PREC)
   }
 
   val ISSUE_TVEC = Bits(0,1)
@@ -323,31 +334,26 @@ class IssueTVEC extends Module
 // SIGNALS                                                                 \\
 //-------------------------------------------------------------------------\\
 
+  io.cfg.prec := reg_precision
+  io.cfg.bactive := reg_bactive
+  io.cfg.bcnt := reg_bcnt
+  io.cfg.nxregs := reg_nxregs
+  io.cfg.nfregs := reg_nfregs
+  io.cfg.xstride := reg_xstride
+  io.cfg.fstride := reg_fstride
+  io.cfg.xfsplit := reg_xf_split
+
   io.vf.active := (reg_state === ISSUE_VT)
   io.vf.fire := fire_vf
   io.vf.pc := io.vcmdq.imm1.bits(31,0).toUInt
-  io.vf.nxregs := reg_nxregs
-  io.vf.nfregs := reg_nfregs
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
-  io.vf.xstride := reg_xstride
-  io.vf.fstride := reg_fstride
-  io.vf.xf_split := reg_xf_split
   io.vf.vlen := reg_vlen
 
   val rtype_vd = vd(5)
   val rtype_vt = vt(5)
 
-  io.issue_to_hazard.bcnt := reg_bcnt
   io.issue_to_hazard.stride := Mux(rtype_vd, reg_fstride, reg_xstride)
-  io.issue_to_seq.vlen := reg_vlen - cnt
-  io.issue_to_seq.xf_split := reg_xf_split
-  io.issue_to_seq.xstride := reg_xstride
-  io.issue_to_seq.fstride := reg_fstride
-  io.issue_to_seq.bcnt := reg_bcnt
-  io.issue_to_lane.bactive := reg_bactive
-
-  io.prec := reg_precision
 
 
 //-------------------------------------------------------------------------\\
@@ -386,11 +392,16 @@ class IssueTVEC extends Module
   io.bhazard.vld := bhazard(1)
   io.bhazard.vst := bhazard(2)
 
-  io.fn.vbr := Bits(0, SZ_VBR_FN)
-  io.fn.viu := Cat(M0,vmsrc,DW64,FP_,I_MOV)
-  io.fn.vau0 := Bits(0,SZ_VAU0_FN)
-  io.fn.vau1 := Bits(0,SZ_VAU1_FN)
-  io.fn.vau2 := Bits(0,SZ_VAU2_FN)
+  io.fn.viu.t0 := M0
+  io.fn.viu.t1 := vmsrc
+  io.fn.viu.dw := DW64
+  io.fn.viu.fp := FPD
+  io.fn.viu.op := I_MOV
+
+  io.fn.vmu.float := mem_type_float.toBool
+  io.fn.vmu.typ := mem_type
+  io.fn.vmu.cmd := mem_cmd
+  io.fn.vmu.op := Mux(io.valid.vld, VM_VLD, VM_VST)
 
   val vt_m1 = Cat(Bits(0,1),vt(4,0)) - UInt(1,1)
   val vd_m1 = Cat(Bits(0,1),vd(4,0)) - UInt(1,1)
@@ -412,9 +423,6 @@ class IssueTVEC extends Module
   io.decoded.vr_active := Bool(false)
   io.decoded.vd_active := vd_active.toBool
   io.decoded.rtype := Cat(Bool(false), rtype_vt, Bool(false), rtype_vd) // vs vt vr vd
-  io.decoded.mem.cmd := mem_cmd
-  io.decoded.mem.typ := mem_type
-  io.decoded.mem.typ_float := mem_type_float.toBool
   io.decoded.imm := io.vcmdq.imm1.bits
   io.decoded.imm2 := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))
   io.decoded.cnt_valid := io.vcmdq.cnt.valid

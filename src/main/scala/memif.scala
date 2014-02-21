@@ -16,8 +16,6 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
 
     val store_ack = Bool(OUTPUT)
-
-    val prec = Bits(INPUT, SZ_PREC)
   }
 
 

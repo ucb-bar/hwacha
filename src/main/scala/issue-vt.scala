@@ -14,13 +14,8 @@ class io_vf extends Bundle
   val fire = Bool(OUTPUT)
   val stop = Bool(INPUT)
   val pc = UInt(OUTPUT, SZ_ADDR)
-  val nxregs = Bits(OUTPUT, SZ_REGCNT)
-  val nfregs = Bits(OUTPUT, SZ_REGCNT)
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
   val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
-  val xf_split = Bits(OUTPUT, SZ_BANK)
-  val xstride = Bits(OUTPUT, SZ_REGLEN)
-  val fstride = Bits(OUTPUT, SZ_REGLEN)
   val vlen = Bits(OUTPUT, SZ_VLEN)
 }
 
@@ -184,10 +179,10 @@ object VTDecodeTable
 class IssueVT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
+
     val irq = new io_issue_vt_to_irq_handler()
-
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
-
     val vf = new io_vf().flip
 
     val valid = new io_vxu_issue_fire().asOutput
@@ -289,8 +284,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     ))
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
-  val regid_xbase = (cnt >> UInt(3)) * io.vf.xstride
-  val regid_fbase = ((cnt >> UInt(3)) * io.vf.fstride) + io.vf.xf_split
+  val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
+  val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
 
   io.vcmdq.cnt.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
   io.aiw_cntb.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
@@ -337,10 +332,27 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.bhazard.vld := Bool(false)
   io.bhazard.vst := Bool(false)
 
-  io.fn.viu := Cat(viu_t0,viu_t1,viu_dw,viu_fp,viu_op)
-  io.fn.vau0 := Cat(vau0_dw,vau0_op)
-  io.fn.vau1 := Cat(vau1_fp,vau1_rm,vau1_op)
-  io.fn.vau2 := Cat(vau2_fp,vau2_rm,vau2_op)
+  io.fn.viu.t0 := viu_t0
+  io.fn.viu.t1 := viu_t1
+  io.fn.viu.dw := viu_dw
+  io.fn.viu.fp := viu_fp
+  io.fn.viu.op := viu_op
+
+  io.fn.vau0.dw := vau0_dw
+  io.fn.vau0.op := vau0_op
+
+  io.fn.vau1.fp := vau1_fp
+  io.fn.vau1.rm := vau1_rm
+  io.fn.vau1.op := vau1_op
+
+  io.fn.vau2.fp := vau2_fp
+  io.fn.vau2.rm := vau2_rm
+  io.fn.vau2.op := vau2_op
+
+  io.fn.vmu.float := vd_fp || vt_fp
+  io.fn.vmu.typ := vmu_type
+  io.fn.vmu.cmd := vmu_cmd
+  io.fn.vmu.op := vmu_op
 
   val vs = io.imem.resp.bits.data(19,15) // rs1
   val vt = io.imem.resp.bits.data(24,20) // rs2
@@ -357,10 +369,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.decoded.vlen := io.vf.vlen - cnt
   io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
   // nxregs counts the zero register so it "just works out"
-  io.decoded.vs_base := Mux(vs_fp, vs + io.vf.xf_split, vs_m1)
-  io.decoded.vt_base := Mux(vt_fp, vt + io.vf.xf_split, vt_m1)
-  io.decoded.vr_base := Mux(vr_fp, vr + io.vf.xf_split, vr_m1)
-  io.decoded.vd_base := Mux(vd_fp, vd + io.vf.xf_split, vd_m1)
+  io.decoded.vs_base := Mux(vs_fp, vs + io.cfg.xfsplit, vs_m1)
+  io.decoded.vt_base := Mux(vt_fp, vt + io.cfg.xfsplit, vt_m1)
+  io.decoded.vr_base := Mux(vr_fp, vr + io.cfg.xfsplit, vr_m1)
+  io.decoded.vd_base := Mux(vd_fp, vd + io.cfg.xfsplit, vd_m1)
   io.decoded.vs := Mux(vs_fp, vs + regid_fbase, vs_m1 + regid_xbase)
   io.decoded.vt := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
   io.decoded.vr := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
@@ -374,17 +386,14 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.decoded.vr_active := vr_val
   io.decoded.vd_active := vd_val
   io.decoded.rtype := Cat(vs_fp, vt_fp, vr_fp, vd_fp)
-  io.decoded.mem.cmd := vmu_cmd
-  io.decoded.mem.typ := vmu_type
-  io.decoded.mem.typ_float := vd_fp || vt_fp
   io.decoded.imm := imm
   io.decoded.cnt_valid := io.vcmdq.cnt.valid
   io.decoded.cnt := cnt
 
-  val illegal_vd = vd_val && (vd >= io.vf.nfregs && vd_fp || vd >= io.vf.nxregs && !vd_fp)
-  val illegal_vt = vt_val && (vt >= io.vf.nfregs && vt_fp || vt >= io.vf.nxregs && !vt_fp)
-  val illegal_vs = vs_val && (vs >= io.vf.nfregs && vs_fp || vs >= io.vf.nxregs && !vs_fp)
-  val illegal_vr = vr_val && (vr >= io.vf.nfregs && vr_fp || vr >= io.vf.nxregs && !vr_fp)
+  val illegal_vd = vd_val && (vd >= io.cfg.nfregs && vd_fp || vd >= io.cfg.nxregs && !vd_fp)
+  val illegal_vt = vt_val && (vt >= io.cfg.nfregs && vt_fp || vt >= io.cfg.nxregs && !vt_fp)
+  val illegal_vs = vs_val && (vs >= io.cfg.nfregs && vs_fp || vs >= io.cfg.nxregs && !vs_fp)
+  val illegal_vr = vr_val && (vr >= io.cfg.nfregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
 
   io.irq.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
   io.irq.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if

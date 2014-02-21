@@ -15,16 +15,12 @@ class io_expand_to_xcpt_handler extends Bundle
   val empty = Bool(OUTPUT)
 }
 
-class Expander(implicit conf: HwachaConfiguration) extends Module 
+class Expander(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val seq_to_expand = new io_vxu_seq_to_expand().asInput
     val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput
 
-    val seq = new io_vxu_seq_fu().asInput
-    val seq_fn = new io_vxu_seq_fn().asInput
-    val seq_regid_imm = new io_vxu_seq_regid_imm().asInput
-
+    val seqop = new SequencerOpIO().flip
     val laneop = new LaneOpIO
 
     val expand_to_xcpt = new io_expand_to_xcpt_handler()
@@ -62,248 +58,228 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vluexp = new BuildExpander(new VLUOp, conf.shift_buf_read)
   val vsuexp = new BuildExpander(new VSUOp, conf.shift_buf_read)
 
-  when (io.seq.viu) 
-  {
-    val rports2 = io.seq_fn.viu(RG_VIU_T) === Cat(ML,MR)
+  when (io.seqop.valid) {
 
-    rexp.valid(0) := Bool(true)
-    rexp.bits(0).last := io.seq_to_expand.last
-    rexp.bits(0).cnt := io.seq_regid_imm.cnt
-    rexp.bits(0).addr := io.seq_regid_imm.vs
-    rexp.bits(0).oplen := Bits("b01")
-    rexp.bits(0).rblen := rblen(Bits(0))
-
-    when (rports2) {
-      rexp.valid(1) := Bool(true)
-      rexp.bits(1).last := io.seq_to_expand.last
-      rexp.bits(1).cnt := io.seq_regid_imm.cnt
-      rexp.bits(1).addr := io.seq_regid_imm.vt
-      rexp.bits(1).oplen := Bits("b00")
-      rexp.bits(1).rblen := rblen(Bits(0))
-    }
-
-    when (io.seq_fn.viu(RG_VIU_T) === Cat(M0,MR)) {
-      rexp.bits(0).addr := io.seq_regid_imm.vt
-    }
-
-    val viu_wptr = Mux(rports2, Bits(conf.int_stages+2), Bits(conf.int_stages+1))
-
-    wexp.valid(viu_wptr) := Bool(true)
-    wexp.bits(viu_wptr).last := io.seq_to_expand.last
-    wexp.bits(viu_wptr).cnt := io.seq_regid_imm.cnt
-    wexp.bits(viu_wptr).addr := io.seq_regid_imm.vd
-    wexp.bits(viu_wptr).sel := Bits(4)
-
-    when (rports2) {
-      viuexp.valid(2) := Bool(true)
-      viuexp.bits(2).cnt := io.seq_regid_imm.cnt
-      viuexp.bits(2).fn.t0 := io.seq_fn.viu(RG_VIU_T0)
-      viuexp.bits(2).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
-      viuexp.bits(2).fn.dw := io.seq_fn.viu(RG_VIU_DW)
-      viuexp.bits(2).fn.fp := io.seq_fn.viu(RG_VIU_FP)
-      viuexp.bits(2).fn.op := io.seq_fn.viu(RG_VIU_OP)
-
-      when (io.seq_regid_imm.vs_zero) { viuexp.bits(2).fn.t0 := M0 }
-      when (io.seq_regid_imm.vt_zero) { viuexp.bits(2).fn.t1 := M0 }
-    }
-    .otherwise {
-      viuexp.valid(1) := Bool(true)
-      viuexp.bits(1).cnt := io.seq_regid_imm.cnt
-      viuexp.bits(1).fn.t0 := io.seq_fn.viu(RG_VIU_T0)
-      viuexp.bits(1).fn.t1 := io.seq_fn.viu(RG_VIU_T1)
-      viuexp.bits(1).fn.dw := io.seq_fn.viu(RG_VIU_DW)
-      viuexp.bits(1).fn.fp := io.seq_fn.viu(RG_VIU_FP)
-      viuexp.bits(1).fn.op := io.seq_fn.viu(RG_VIU_OP)
-      viuexp.bits(1).utidx := io.seq_regid_imm.utidx
-      viuexp.bits(1).imm := io.seq_regid_imm.imm
-
-      when (io.seq_regid_imm.vs_zero) { viuexp.bits(1).fn.t0 := M0 }
-    }
-  }
-
-  when (io.seq.vau0) 
-  {
-    rexp.valid(0) := Bool(true)
-    rexp.bits(0).last := io.seq_to_expand.last
-    rexp.bits(0).cnt := io.seq_regid_imm.cnt
-    rexp.bits(0).addr := io.seq_regid_imm.vs
-    rexp.bits(0).oplen := Bits("b01")
-    rexp.bits(0).rblen := rblen(Bits(0))
-
-    rexp.valid(1) := Bool(true)
-    rexp.bits(1).last := io.seq_to_expand.last
-    rexp.bits(1).cnt := io.seq_regid_imm.cnt
-    rexp.bits(1).addr := io.seq_regid_imm.vt
-    rexp.bits(1).oplen := Bits("b00")
-    rexp.bits(1).rblen := rblen(Bits("b0000_0011"))
-
-    when (io.seq_regid_imm.vs_zero) { rexp.bits(1).rblen(0) := Bool(false) }
-    when (io.seq_regid_imm.vt_zero) { rexp.bits(1).rblen(1) := Bool(false) }
-
-    val vau0_wptr = Bits(conf.imul_stages+2)
-
-    wexp.valid(vau0_wptr) := Bool(true)
-    wexp.bits(vau0_wptr).last := io.seq_to_expand.last
-    wexp.bits(vau0_wptr).cnt := io.seq_regid_imm.cnt
-    wexp.bits(vau0_wptr).addr := io.seq_regid_imm.vd
-    wexp.bits(vau0_wptr).sel := Bits(0)
-
-    vau0exp.valid(1) := Bool(true)
-    vau0exp.bits(1).cnt := io.seq_regid_imm.cnt
-    vau0exp.bits(1).fn := new VAU0Fn().fromBits(io.seq_fn.vau0)
-  }
-
-  when (io.seq.vau1)
-  {
-    val rports3 = FN_VAU1_FMA(io.seq_fn.vau1)
-
-    when (rports3) {
+    when (io.seqop.bits.active.viu) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seq_to_expand.last
-      rexp.bits(0).cnt := io.seq_regid_imm.tcnt // turbo
-      rexp.bits(0).addr := io.seq_regid_imm.vs
-      rexp.bits(0).oplen := Bits("b10")
+      rexp.bits(0).last := io.seqop.bits.last
+      rexp.bits(0).cnt := io.seqop.bits.cnt
+      rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+      rexp.bits(0).oplen := Bits("b01")
+      rexp.bits(0).rblen := rblen(Bits(0))
+
+      when (io.seqop.bits.fn.viu.rtype()) {
+        rexp.valid(1) := Bool(true)
+        rexp.bits(1).last := io.seqop.bits.last
+        rexp.bits(1).cnt := io.seqop.bits.cnt
+        rexp.bits(1).addr := io.seqop.bits.reg.vt.id
+        rexp.bits(1).oplen := Bits("b00")
+        rexp.bits(1).rblen := rblen(Bits(0))
+      }
+
+      when (io.seqop.bits.fn.viu.itype()) {
+        rexp.bits(0).addr := io.seqop.bits.reg.vt.id
+      }
+
+      val viu_wptr =
+        Mux(io.seqop.bits.fn.viu.rtype(), Bits(conf.int_stages+2), Bits(conf.int_stages+1))
+
+      wexp.valid(viu_wptr) := Bool(true)
+      wexp.bits(viu_wptr).last := io.seqop.bits.last
+      wexp.bits(viu_wptr).cnt := io.seqop.bits.cnt
+      wexp.bits(viu_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(viu_wptr).sel := Bits(4)
+
+      when (io.seqop.bits.fn.viu.rtype()) {
+        viuexp.valid(2) := Bool(true)
+        viuexp.bits(2).cnt := io.seqop.bits.cnt
+        viuexp.bits(2).fn := io.seqop.bits.fn.viu
+
+        when (io.seqop.bits.reg.vs.zero) { viuexp.bits(2).fn.t0 := M0 }
+        when (io.seqop.bits.reg.vt.zero) { viuexp.bits(2).fn.t1 := M0 }
+      }
+      .otherwise {
+        viuexp.valid(1) := Bool(true)
+        viuexp.bits(1).cnt := io.seqop.bits.cnt
+        viuexp.bits(1).fn := io.seqop.bits.fn.viu
+        viuexp.bits(1).utidx := io.seqop.bits.utidx
+        viuexp.bits(1).imm := io.seqop.bits.imm.imm
+
+        when (io.seqop.bits.reg.vs.zero) { viuexp.bits(1).fn.t0 := M0 }
+      }
+    }
+
+    when (io.seqop.bits.active.vau0) {
+      rexp.valid(0) := Bool(true)
+      rexp.bits(0).last := io.seqop.bits.last
+      rexp.bits(0).cnt := io.seqop.bits.cnt
+      rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+      rexp.bits(0).oplen := Bits("b01")
       rexp.bits(0).rblen := rblen(Bits(0))
 
       rexp.valid(1) := Bool(true)
-      rexp.bits(1).last := io.seq_to_expand.last
-      rexp.bits(1).cnt := io.seq_regid_imm.tcnt
-      rexp.bits(1).addr := io.seq_regid_imm.vt
-      rexp.bits(1).oplen := Bits("b01")
-      rexp.bits(1).rblen := rblen(Bits(0))
-      
-      rexp.valid(2) := Bool(true)
-      rexp.bits(2).last := io.seq_to_expand.last
-      rexp.bits(2).cnt := io.seq_regid_imm.tcnt
-      rexp.bits(2).addr := io.seq_regid_imm.vr
-      rexp.bits(2).oplen := Bits("b00")
-      rexp.bits(2).rblen := rblen(Bits("b0001_1100"))
-
-      when (io.seq_regid_imm.vs_zero) { rexp.bits(2).rblen(2) := Bool(false) }
-      when (io.seq_regid_imm.vt_zero) { rexp.bits(2).rblen(3) := Bool(false) }
-      when (io.seq_regid_imm.vr_zero) { rexp.bits(2).rblen(4) := Bool(false) }
-    }
-    .otherwise {
-      rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seq_to_expand.last
-      rexp.bits(0).cnt := io.seq_regid_imm.tcnt
-      rexp.bits(0).addr := io.seq_regid_imm.vs
-      rexp.bits(0).oplen := Bits("b10")
-      rexp.bits(0).rblen := rblen(Bits(0))
-      
-      rexp.valid(1) := Bool(true)
-      rexp.bits(1).last := io.seq_to_expand.last
-      rexp.bits(1).cnt := io.seq_regid_imm.tcnt
-      rexp.bits(1).addr := io.seq_regid_imm.vt
+      rexp.bits(1).last := io.seqop.bits.last
+      rexp.bits(1).cnt := io.seqop.bits.cnt
+      rexp.bits(1).addr := io.seqop.bits.reg.vt.id
       rexp.bits(1).oplen := Bits("b00")
-      rexp.bits(1).rblen := rblen(Bits("b0001_0100"))
+      rexp.bits(1).rblen := rblen(Bits("b0000_0011"))
 
-      when (io.seq_regid_imm.vs_zero) { rexp.bits(1).rblen(2) := Bool(false) }
-      when (io.seq_regid_imm.vt_zero) { rexp.bits(1).rblen(4) := Bool(false) }
+      when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(0) := Bool(false) }
+      when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(1) := Bool(false) }
+
+      val vau0_wptr = Bits(conf.imul_stages+2)
+
+      wexp.valid(vau0_wptr) := Bool(true)
+      wexp.bits(vau0_wptr).last := io.seqop.bits.last
+      wexp.bits(vau0_wptr).cnt := io.seqop.bits.cnt
+      wexp.bits(vau0_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(vau0_wptr).sel := Bits(0)
+
+      vau0exp.valid(1) := Bool(true)
+      vau0exp.bits(1).cnt := io.seqop.bits.cnt
+      vau0exp.bits(1).fn := io.seqop.bits.fn.vau0
     }
 
-    val vau1_wptr = Mux(rports3, Bits(conf.fma_stages+3), Bits(conf.fma_stages+2))
+    when (io.seqop.bits.active.vau1) {
+      when (io.seqop.bits.fn.vau1.fma()) {
+        rexp.valid(0) := Bool(true)
+        rexp.bits(0).last := io.seqop.bits.last
+        rexp.bits(0).cnt := io.seqop.bits.cnt
+        rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+        rexp.bits(0).oplen := Bits("b10")
+        rexp.bits(0).rblen := rblen(Bits(0))
 
-    wexp.valid(vau1_wptr) := Bool(true)
-    wexp.bits(vau1_wptr).last := io.seq_to_expand.last
-    wexp.bits(vau1_wptr).cnt := io.seq_regid_imm.tcnt
-    wexp.bits(vau1_wptr).addr := io.seq_regid_imm.vd
-    wexp.bits(vau1_wptr).sel := Bits(1)
+        rexp.valid(1) := Bool(true)
+        rexp.bits(1).last := io.seqop.bits.last
+        rexp.bits(1).cnt := io.seqop.bits.cnt
+        rexp.bits(1).addr := io.seqop.bits.reg.vt.id
+        rexp.bits(1).oplen := Bits("b01")
+        rexp.bits(1).rblen := rblen(Bits(0))
 
-    when (rports3) {
-      vau1exp.valid(2) := Bool(true)
-      vau1exp.bits(2).cnt := io.seq_regid_imm.cnt
-      vau1exp.bits(2).fn := new VAU1Fn().fromBits(io.seq_fn.vau1)
+        rexp.valid(2) := Bool(true)
+        rexp.bits(2).last := io.seqop.bits.last
+        rexp.bits(2).cnt := io.seqop.bits.cnt
+        rexp.bits(2).addr := io.seqop.bits.reg.vr.id
+        rexp.bits(2).oplen := Bits("b00")
+        rexp.bits(2).rblen := rblen(Bits("b0001_1100"))
+
+        when (io.seqop.bits.reg.vs.zero) { rexp.bits(2).rblen(2) := Bool(false) }
+        when (io.seqop.bits.reg.vt.zero) { rexp.bits(2).rblen(3) := Bool(false) }
+        when (io.seqop.bits.reg.vr.zero) { rexp.bits(2).rblen(4) := Bool(false) }
+      }
+      .otherwise {
+        rexp.valid(0) := Bool(true)
+        rexp.bits(0).last := io.seqop.bits.last
+        rexp.bits(0).cnt := io.seqop.bits.cnt
+        rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+        rexp.bits(0).oplen := Bits("b10")
+        rexp.bits(0).rblen := rblen(Bits(0))
+
+        rexp.valid(1) := Bool(true)
+        rexp.bits(1).last := io.seqop.bits.last
+        rexp.bits(1).cnt := io.seqop.bits.cnt
+        rexp.bits(1).addr := io.seqop.bits.reg.vt.id
+        rexp.bits(1).oplen := Bits("b00")
+        rexp.bits(1).rblen := rblen(Bits("b0001_0100"))
+
+        when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(2) := Bool(false) }
+        when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(4) := Bool(false) }
+      }
+
+      val vau1_wptr =
+        Mux(io.seqop.bits.fn.vau1.fma(), Bits(conf.fma_stages+3), Bits(conf.fma_stages+2))
+
+      wexp.valid(vau1_wptr) := Bool(true)
+      wexp.bits(vau1_wptr).last := io.seqop.bits.last
+      wexp.bits(vau1_wptr).cnt := io.seqop.bits.cnt
+      wexp.bits(vau1_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(vau1_wptr).sel := Bits(1)
+
+      when (io.seqop.bits.fn.vau1.fma()) {
+        vau1exp.valid(2) := Bool(true)
+        vau1exp.bits(2).cnt := io.seqop.bits.cnt
+        vau1exp.bits(2).fn := io.seqop.bits.fn.vau1
+      }
+      .otherwise {
+        vau1exp.valid(1) := Bool(true)
+        vau1exp.bits(1).cnt := io.seqop.bits.cnt
+        vau1exp.bits(1).fn := io.seqop.bits.fn.vau1
+      }
     }
-    .otherwise {
-      vau1exp.valid(1) := Bool(true)
-      vau1exp.bits(1).cnt := io.seq_regid_imm.cnt
-      vau1exp.bits(1).fn := new VAU1Fn().fromBits(io.seq_fn.vau1)
-    }
-  }
 
-  when (io.seq.vau2)
-  {
-    rexp.valid(0) := Bool(true)
-    rexp.bits(0).last := io.seq_to_expand.last
-    rexp.bits(0).cnt := io.seq_regid_imm.cnt
-    rexp.bits(0).addr := io.seq_regid_imm.vs
-    rexp.bits(0).oplen := Bits("b00")
-    rexp.bits(0).rblen := rblen(Bits("b0010_0000"))
-
-    when (io.seq_regid_imm.vs_zero) { rexp.bits(0).rblen(5) := Bool(false) }
-
-    val vau2_wptr = Bits(conf.fconv_stages+1)
-
-    wexp.valid(vau2_wptr) := Bool(true)
-    wexp.bits(vau2_wptr).last := io.seq_to_expand.last
-    wexp.bits(vau2_wptr).cnt := io.seq_regid_imm.cnt
-    wexp.bits(vau2_wptr).addr := io.seq_regid_imm.vd
-    wexp.bits(vau2_wptr).sel := Bits(2)
-
-    vau2exp.valid(0) := Bool(true)
-    vau2exp.bits(0).cnt := io.seq_regid_imm.cnt
-    vau2exp.bits(0).fn := new VAU2Fn().fromBits(io.seq_fn.vau2)
-  }
-
-  when (io.seq.vaq)
-  {
-    rexp.valid(0) := Bool(true)
-    rexp.bits(0).last := io.seq_to_expand.last
-    rexp.bits(0).cnt := io.seq_regid_imm.cnt
-
-    when (io.seq_regid_imm.utmemop) {
-      rexp.bits(0).addr := io.seq_regid_imm.vs
+    when (io.seqop.bits.active.vau2) {
+      rexp.valid(0) := Bool(true)
+      rexp.bits(0).last := io.seqop.bits.last
+      rexp.bits(0).cnt := io.seqop.bits.cnt
+      rexp.bits(0).addr := io.seqop.bits.reg.vs.id
       rexp.bits(0).oplen := Bits("b00")
-      rexp.bits(0).rblen := rblen(Bits("b0100_0000"))
+      rexp.bits(0).rblen := rblen(Bits("b0010_0000"))
 
-      when (io.seq_regid_imm.vs_zero) { rexp.bits(0).rblen(6) := Bool(false) }
+      when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(5) := Bool(false) }
+
+      val vau2_wptr = Bits(conf.fconv_stages+1)
+
+      wexp.valid(vau2_wptr) := Bool(true)
+      wexp.bits(vau2_wptr).last := io.seqop.bits.last
+      wexp.bits(vau2_wptr).cnt := io.seqop.bits.cnt
+      wexp.bits(vau2_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(vau2_wptr).sel := Bits(2)
+
+      vau2exp.valid(0) := Bool(true)
+      vau2exp.bits(0).cnt := io.seqop.bits.cnt
+      vau2exp.bits(0).fn := io.seqop.bits.fn.vau2
     }
-    .otherwise {
-      rexp.bits(0).rblen := rblen(Bits(0))
+
+    when (io.seqop.bits.active.vgu) {
+      rexp.valid(0) := Bool(true)
+      rexp.bits(0).last := io.seqop.bits.last
+      rexp.bits(0).cnt := io.seqop.bits.cnt
+
+      when (io.seqop.bits.fn.vmu.utmemop()) {
+        rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+        rexp.bits(0).oplen := Bits("b00")
+        rexp.bits(0).rblen := rblen(Bits("b0100_0000"))
+
+        when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(6) := Bool(false) }
+      }
+      .otherwise {
+        rexp.bits(0).rblen := rblen(Bits(0))
+      }
+
+      vguexp.valid(0) := Bool(true)
+      vguexp.bits(0).cnt := io.seqop.bits.cnt
+      vguexp.bits(0).fn := io.seqop.bits.fn.vmu
+      vguexp.bits(0).base := io.seqop.bits.imm.imm
+      vguexp.bits(0).stride := io.seqop.bits.imm.stride
     }
 
-    vguexp.valid(0) := Bool(true)
-    vguexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vguexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
-    vguexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
-    vguexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
-    vguexp.bits(0).base := io.seq_regid_imm.imm
-    vguexp.bits(0).stride := io.seq_regid_imm.imm2
-    vguexp.bits(0).utmemop := io.seq_regid_imm.utmemop
-  }
+    when (io.seqop.bits.active.vlu) {
+      wexp.valid(1) := Bool(true)
+      wexp.bits(1).last := io.seqop.bits.last
+      wexp.bits(1).cnt := io.seqop.bits.cnt
+      wexp.bits(1).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(1).sel := Bits(3)
 
-  when (io.seq.vldq)
-  {
-    wexp.valid(1) := Bool(true)
-    wexp.bits(1).last := io.seq_to_expand.last
-    wexp.bits(1).cnt := io.seq_regid_imm.tcnt
-    wexp.bits(1).addr := io.seq_regid_imm.vd
-    wexp.bits(1).sel := Bits(3)
+      vluexp.valid(0) := Bool(true)
+      vluexp.bits(0).cnt := io.seqop.bits.cnt
+      vluexp.bits(0).fn := io.seqop.bits.fn.vmu
+    }
 
-    vluexp.valid(0) := Bool(true)
-    vluexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vluexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
-    vluexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
-    vluexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
-  }
+    when (io.seqop.bits.active.vsu) {
+      rexp.valid(0) := Bool(true)
+      rexp.bits(0).last := io.seqop.bits.last
+      rexp.bits(0).cnt := io.seqop.bits.cnt
+      rexp.bits(0).addr := io.seqop.bits.reg.vt.id
+      rexp.bits(0).oplen := Bits("b00")
+      rexp.bits(0).rblen := rblen(Bits("b1000_0000"))
 
-  when (io.seq.vsdq)
-  {
-    rexp.valid(0) := Bool(true)
-    rexp.bits(0).last := io.seq_to_expand.last
-    rexp.bits(0).cnt := io.seq_regid_imm.tcnt
-    rexp.bits(0).addr := io.seq_regid_imm.vt
-    rexp.bits(0).oplen := Bits("b00")
-    rexp.bits(0).rblen := rblen(Bits("b1000_0000"))
+      when (io.seqop.bits.reg.vt.zero) { rexp.bits(0).rblen(7) := Bool(false) }
 
-    when (io.seq_regid_imm.vt_zero) { rexp.bits(0).rblen(7) := Bool(false) }
+      vsuexp.valid(0) := Bool(true)
+      vsuexp.bits(0).cnt := io.seqop.bits.cnt
+      vsuexp.bits(0).fn := io.seqop.bits.fn.vmu
+    }
 
-    vsuexp.valid(0) := Bool(true)
-    vsuexp.bits(0).cnt := io.seq_regid_imm.cnt
-    vsuexp.bits(0).fn.float := io.seq_regid_imm.mem.typ_float
-    vsuexp.bits(0).fn.typ := io.seq_regid_imm.mem.typ
-    vsuexp.bits(0).fn.cmd := io.seq_regid_imm.mem.cmd
   }
 
   io.expand_to_hazard.ren := rexp.valid(0)
