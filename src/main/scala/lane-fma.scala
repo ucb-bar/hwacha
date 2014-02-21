@@ -15,7 +15,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
     val in1 = Bits(INPUT, SZ_DATA)
     val in2 = Bits(INPUT, SZ_DATA)
     val out = Bits(OUTPUT, SZ_DATA)
-    val exc = Bits(OUTPUT, SZ_EXC)
+    val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
   }
 
   def OP(ops: Bits*) = ops.toList.map(x => {io.fn.op === x}).reduceLeft(_ || _)

@@ -19,7 +19,9 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
   }
 
 
-  // REQUEST
+//-------------------------------------------------------------------------\\
+// REQUEST                                                                 \\
+//-------------------------------------------------------------------------\\
 
   val ex_pf_cmd = is_mcmd_pf(io.vaq.bits.cmd)
   val ex_load_cmd = is_mcmd_load(io.vaq.bits.cmd)
@@ -60,7 +62,9 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     )
 
 
-  // RESPONSE
+//-------------------------------------------------------------------------\\
+// RESPONSE                                                                \\
+//-------------------------------------------------------------------------\\
 
   io.store_ack := io.dmem.resp.valid && is_mcmd_store(io.dmem.resp.bits.cmd)
   io.vldq.valid := io.dmem.resp.valid && io.dmem.resp.bits.has_data

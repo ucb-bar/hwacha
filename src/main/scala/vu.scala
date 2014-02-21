@@ -16,8 +16,8 @@ class io_xcpt extends Bundle
 class VCMDQIO extends Bundle
 {
   val cmd = Decoupled(new HwachaCommand)
-  val imm1 = Decoupled(Bits(width = SZ_XIMM))
-  val imm2 = Decoupled(Bits(width = SZ_XIMM2))
+  val imm1 = Decoupled(Bits(width = SZ_VIMM))
+  val imm2 = Decoupled(Bits(width = SZ_VSTRIDE))
   val cnt = Decoupled(Bits(width = SZ_VLEN+1))
 }
 

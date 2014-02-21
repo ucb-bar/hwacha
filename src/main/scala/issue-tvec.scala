@@ -9,7 +9,7 @@ import uncore.constants.MemoryOpConstants._
 class io_issue_tvec_to_irq_handler extends Bundle
 {
   val illegal = Bool(OUTPUT)
-  val cmd = Bits(OUTPUT, SZ_XCMD)
+  val cmd = Bits(OUTPUT, SZ_VCMD)
 }
 
 class ioIssueTVECToPC extends Bundle
@@ -95,7 +95,7 @@ class IssueTVEC extends Module
   
 
   val cs =
-  ListLookup(cmd,
+  rocket.DecodeLogic(cmd,
                      //                                                                 vd_valid
                      //                                                                 | vd_active
                      //                                                                 | | vt_active

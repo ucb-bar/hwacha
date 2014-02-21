@@ -101,7 +101,7 @@ class DecodedRegister extends Bundle
 class DecodedImmediate extends Bundle
 {
   val imm = Bits(width = SZ_DATA)
-  val stride = Bits(width = SZ_XIMM2)
+  val stride = Bits(width = SZ_VSTRIDE)
 }
 
 class DecodedInstruction extends Bundle
@@ -261,7 +261,7 @@ class VGUOp extends LaneOp
 {
   val fn = new VMUFn
   val base = Bits(width = SZ_DATA)
-  val stride = Bits(width = SZ_XIMM2)
+  val stride = Bits(width = SZ_VSTRIDE)
   val check = new io_vxu_mem_check
 }
 
@@ -275,9 +275,9 @@ class VSUOp extends LaneOp
   val fn = new VMUFn
 }
 
-class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))
-class io_vxu_immq extends DecoupledIO(Bits(width = SZ_XIMM))
-class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_XIMM2))
+class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_VCMD))
+class io_vxu_immq extends DecoupledIO(Bits(width = SZ_VIMM))
+class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
 class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
 class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
 

@@ -26,7 +26,7 @@ class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val reg_irq_illegal_vt = Reg(init=Bool(false))
   val reg_irq_illegal_tvec = Reg(init=Bool(false))
   val reg_irq_pc = Reg(Bits(width = SZ_ADDR))
-  val reg_irq_cmd_tvec = Reg(Bits(width = SZ_XCMD))
+  val reg_irq_cmd_tvec = Reg(Bits(width = SZ_VCMD))
 
   val reg_irq_ma_ld = Reg(init=Bool(false))
   val reg_irq_ma_st = Reg(init=Bool(false))

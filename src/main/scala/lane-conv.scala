@@ -12,8 +12,8 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
     val valid = Bool(INPUT)
     val fn = new VAU2Fn().asInput
     val in = Bits(INPUT, SZ_DATA)
-    val exc = Bits(OUTPUT, SZ_EXC)
     val out = Bits(OUTPUT, SZ_DATA)
+    val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
   }
 
   def OP(ops: Bits*) = ops.toList.map(x => {io.fn.op === x}).reduceLeft( _ || _ )
@@ -122,14 +122,14 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
     ))
 
   val next_exc_sp = MuxCase(
-    Bits(0, SZ_EXC), Array(
+    Bits(0), Array(
       OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> exc_int2float_sp,
       OP(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU) -> exc_float2int_sp,
       OP(A2_CDTS) -> exc_float2float_sp
     ))
 
   val next_exc_dp = MuxCase(
-    Bits(0, SZ_EXC), Array(
+    Bits(0), Array(
       OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> exc_int2float_dp,
       OP(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU) -> exc_float2int_dp,
       OP(A2_CSTD) -> exc_float2float_dp

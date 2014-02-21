@@ -25,19 +25,13 @@ trait MachineConstants
 
   val SZ_ADDR = 64
   val SZ_DATA = 66
-  val SZ_EXC = 5
 }
 
 trait VectorCommandQueueConstants
 {
   val SZ_VCMD = 20
-  val SZ_XCMD = 20
-
   val SZ_VIMM = 64
-  val SZ_XIMM = 64
-
   val SZ_VSTRIDE = 64
-  val SZ_XIMM2 = 64
 }
 
 object PrecConstants
@@ -60,7 +54,6 @@ trait LaneConstants
   val SZ_BPTR1 = SZ_LGBANK+1
   val SZ_BPTR2 = SZ_LGBANK+2
   val SZ_BCNT = SZ_LGBANK+1
-  val SZ_BVLEN = 3
   val SZ_BREGLEN = 8
   val SZ_BOPL = 2
   val SZ_BRPORT = SZ_BANK
@@ -92,7 +85,7 @@ trait DecodeConstants
   val ML = Bits("b10", 2)
   val MI = Bits("b11", 2)
 
-  val R_ = Bits("b00", 2)
+  val R_ = Bits("b?0", 2)
   val RX = Bits("b01", 2)
   val RF = Bits("b11", 2)
 
@@ -103,11 +96,11 @@ trait DecodeConstants
   val IMM_S = UInt(2, SZ_I)
   val IMM_U = UInt(3, SZ_I)
 
-  val DW__ = Bits("b0", 1)
+  val DW__ = Bool.DC
   val DW32 = Bits("b0", 1)
   val DW64 = Bits("b1", 1)
 
-  val FP_ = Bits("b00", 2)
+  val FP_ = Bits.DC(2)
   val FPS = Bits("b00", 2)
   val FPD = Bits("b01", 2)
   val FPH = Bits("b10", 2)
@@ -118,7 +111,6 @@ trait DecodeConstants
 
   val SZ_DW = 1
   val SZ_FP = 2
-  val SZ_MTF = 1
 }
 
 trait VIUConstants

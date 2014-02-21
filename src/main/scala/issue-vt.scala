@@ -349,7 +349,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.fn.vau2.rm := vau2_rm
   io.fn.vau2.op := vau2_op
 
-  io.fn.vmu.float := vd_fp || vt_fp
+  io.fn.vmu.float := vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
   io.fn.vmu.typ := vmu_type
   io.fn.vmu.cmd := vmu_cmd
   io.fn.vmu.op := vmu_op
