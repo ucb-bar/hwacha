@@ -447,14 +447,13 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   io.seqop.bits.last := islast
   io.seqop.bits <> seq.e(ptr)
 
-  val cnt = nstrip
   val reg_stall =
     seq.vgu_val(ptr) & reg_vaq_stall |
     seq.vlu_val(ptr) & reg_vldq_stall |
     seq.vsu_val(ptr) & reg_vsdq_stall
 
-  io.qcntp1 := Mux(reg_stall, cnt, cnt + UInt(1, SZ_QCNT))
-  io.qcntp2 := Mux(reg_stall, cnt, cnt + UInt(2, SZ_QCNT))
+  io.qcntp1 := Mux(reg_stall, nstrip, nstrip + UInt(1, SZ_QCNT))
+  io.qcntp2 := Mux(reg_stall, nstrip, nstrip + UInt(2, SZ_QCNT))
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

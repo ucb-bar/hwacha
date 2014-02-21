@@ -6,6 +6,11 @@ import Constants._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
+
+//-------------------------------------------------------------------------\\
+// vector command queue types
+//-------------------------------------------------------------------------\\
+
 class HwachaCommand extends Bundle
 {
   val cmcode = Bits(width = 8)
@@ -23,6 +28,11 @@ class HwachaImm1 extends Bundle
   val nxregs = UInt(width = SZ_REGCNT)
   val vlen = UInt(width = SZ_VLEN)
 }
+
+
+//-------------------------------------------------------------------------\\
+// vector functional unit fn types
+//-------------------------------------------------------------------------\\
 
 class VIUFn extends Bundle
 {
@@ -67,6 +77,143 @@ class VMUFn extends Bundle
 
   def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
 }
+
+
+//-------------------------------------------------------------------------\\
+// decoded information types
+//-------------------------------------------------------------------------\\
+
+class RegInfo extends Bundle
+{
+  val zero = Bool()
+  val float = Bool()
+  val id = Bits(width = SZ_BREGLEN)
+}
+
+class DecodedRegister extends Bundle
+{
+  val vs = new RegInfo
+  val vt = new RegInfo
+  val vr = new RegInfo
+  val vd = new RegInfo
+}
+
+class DecodedImmediate extends Bundle
+{
+  val imm = Bits(width = SZ_DATA)
+  val stride = Bits(width = SZ_XIMM2)
+}
+
+class DecodedInstruction extends Bundle
+{
+  val utidx = UInt(width = SZ_VLEN)
+  val fn = new Bundle {
+    val viu = new VIUFn
+    val vau0 = new VAU0Fn
+    val vau1 = new VAU1Fn
+    val vau2 = new VAU2Fn
+    val vmu = new VMUFn
+  }
+  val reg = new DecodedRegister
+  val imm = new DecodedImmediate
+}
+
+
+//-------------------------------------------------------------------------\\
+// aiw types
+//-------------------------------------------------------------------------\\
+
+class AIWImm1Entry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_IMM1)
+  val pc_next = Bits(width = SZ_ADDR)
+}
+
+class AIWImm1Op extends AIWImm1Entry
+{
+  val base = Bits(width = SZ_VIMM)
+  val ldst = Bool()
+}
+
+class AIWCntEntry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_CNT)
+  val utidx = UInt(width = SZ_VLEN)
+}
+
+class AIWCntOp extends AIWCntEntry
+
+class AIWNumCntEntry extends Bundle
+{
+  val rtag = Bits(width = SZ_AIW_NUMCNT)
+}
+
+class AIWNumCntOp extends AIWNumCntEntry
+{
+  val last = Bool()
+}
+
+class AIWEntry extends Bundle
+{
+  val active = new Bundle {
+    val imm1 = Bool()
+    val cnt = Bool()
+  }
+  val imm1 = new AIWImm1Entry
+  val cnt = new AIWCntEntry
+  val numcnt = new AIWNumCntEntry
+}
+
+
+//-------------------------------------------------------------------------\\
+// issue op
+//-------------------------------------------------------------------------\\
+
+class IssueOp extends DecodedInstruction
+{
+  val vlen = UInt(width = SZ_VLEN)
+  val active = new Bundle {
+    val viu = Bool()
+    val vau0 = Bool()
+    val vau1 = Bool()
+    val vau2 = Bool()
+    val amo = Bool()
+    val utld = Bool()
+    val utst = Bool()
+    val vld = Bool()
+    val vst = Bool()
+  }
+  val aiw = new AIWEntry
+}
+
+
+//-------------------------------------------------------------------------\\
+// sequencer op
+//-------------------------------------------------------------------------\\
+
+class SequencerEntry extends DecodedInstruction
+{
+  val active = new Bundle {
+    val viu = Bool()
+    val vau0 = Bool()
+    val vau1 = Bool()
+    val vau2 = Bool()
+    val vgu = Bool()
+    val vlu = Bool()
+    val vsu = Bool()
+  }
+}
+
+class SequencerOp extends SequencerEntry
+{
+  val cnt = Bits(width = SZ_BCNT)
+  val last = Bool()
+}
+
+
+//-------------------------------------------------------------------------\\
+// bank, lane op
+//-------------------------------------------------------------------------\\
 
 class LaneOp extends Bundle
 {
@@ -126,118 +273,6 @@ class VLUOp extends LaneOp
 class VSUOp extends LaneOp
 {
   val fn = new VMUFn
-}
-
-class RegInfo extends Bundle
-{
-  val zero = Bool()
-  val float = Bool()
-  val id = Bits(width = SZ_BREGLEN)
-}
-
-class DecodedRegister extends Bundle
-{
-  val vs = new RegInfo
-  val vt = new RegInfo
-  val vr = new RegInfo
-  val vd = new RegInfo
-}
-
-class DecodedImmediate extends Bundle
-{
-  val imm = Bits(width = SZ_DATA)
-  val stride = Bits(width = SZ_XIMM2)
-}
-
-class DecodedInstruction extends Bundle
-{
-  val utidx = UInt(width = SZ_VLEN)
-  val fn = new Bundle {
-    val viu = new VIUFn
-    val vau0 = new VAU0Fn
-    val vau1 = new VAU1Fn
-    val vau2 = new VAU2Fn
-    val vmu = new VMUFn
-  }
-  val reg = new DecodedRegister
-  val imm = new DecodedImmediate
-}
-
-class SequencerEntry extends DecodedInstruction
-{
-  val active = new Bundle {
-    val viu = Bool()
-    val vau0 = Bool()
-    val vau1 = Bool()
-    val vau2 = Bool()
-    val vgu = Bool()
-    val vlu = Bool()
-    val vsu = Bool()
-  }
-}
-
-class SequencerOp extends SequencerEntry
-{
-  val cnt = Bits(width = SZ_BCNT)
-  val last = Bool()
-}
-
-class AIWImm1Entry extends Bundle
-{
-  val rtag = Bits(width = SZ_AIW_IMM1)
-  val pc_next = Bits(width = SZ_ADDR)
-}
-
-class AIWImm1Op extends AIWImm1Entry
-{
-  val base = Bits(width = SZ_VIMM)
-  val ldst = Bool()
-}
-
-class AIWCntEntry extends Bundle
-{
-  val rtag = Bits(width = SZ_AIW_CNT)
-  val utidx = UInt(width = SZ_VLEN)
-}
-
-class AIWCntOp extends AIWCntEntry
-
-class AIWNumCntEntry extends Bundle
-{
-  val rtag = Bits(width = SZ_AIW_NUMCNT)
-}
-
-class AIWNumCntOp extends AIWNumCntEntry
-{
-  val last = Bool()
-}
-
-class AIWEntry extends Bundle
-{
-  val active = new Bundle {
-    val imm1 = Bool()
-    val cnt = Bool()
-  }
-  val imm1 = new AIWImm1Entry
-  val cnt = new AIWCntEntry
-  val numcnt = new AIWNumCntEntry
-}
-
-class IssueOp extends DecodedInstruction
-{
-  val vlen = UInt(width = SZ_VLEN)
-  val active = new Bundle {
-    val viu = Bool()
-    val vau0 = Bool()
-    val vau1 = Bool()
-    val vau2 = Bool()
-    val amo = Bool()
-    val utld = Bool()
-    val utst = Bool()
-    val vld = Bool()
-    val vst = Bool()
-  }
-  val aiw = new AIWEntry
 }
 
 class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_XCMD))
