@@ -275,8 +275,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // Hookup vcmdq.cmd
   val vr1 = Mux(sel_vr1===VR_RS1, raw_inst(19,15), raw_inst(11,7))
   val vr2 = Mux(sel_vr2===VR_RS1, raw_inst(19,15), raw_inst(11,7))
-  val sel_vrtype = Mux(sel_vctype===VCT_F, UInt(1,1), UInt(0,1))
-  val construct_vcmd = Cat(sel_vcmd, sel_vrtype, vr1, sel_vrtype, vr2)
+  val construct_vcmd = Cat(sel_vcmd, vr1, vr2)
 
   vu.io.vcmdq.cmd.valid := cmd_valid && emit_vcmd && construct_ready(vcmd_ready) 
   vu.io.vcmdq.cmd.bits :=

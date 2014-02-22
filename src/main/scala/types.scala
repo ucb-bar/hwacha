@@ -14,8 +14,8 @@ import uncore.constants.MemoryOpConstants._
 class HwachaCommand extends Bundle
 {
   val cmcode = Bits(width = 8)
-  val vd = UInt(width = 6)
-  val vt = UInt(width = 6)
+  val vd = UInt(width = 5)
+  val vt = UInt(width = 5)
 }
 
 class HwachaImm1 extends Bundle

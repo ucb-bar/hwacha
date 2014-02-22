@@ -29,7 +29,7 @@ trait MachineConstants
 
 trait VectorCommandQueueConstants
 {
-  val SZ_VCMD = 20
+  val SZ_VCMD = 18
   val SZ_VIMM = 64
   val SZ_VSTRIDE = 64
 }

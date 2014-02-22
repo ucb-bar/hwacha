@@ -311,8 +311,8 @@ class IssueTVEC extends Module
   io.fn.viu := new VIUFn().fromBits(Cat(M0, viu_t1, DW64, FPD, I_MOV))
   io.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
 
-  val vt_m1 = vt(4,0) - UInt(1)
-  val vd_m1 = vd(4,0) - UInt(1)
+  val vt_m1 = vt - UInt(1)
+  val vd_m1 = vd - UInt(1)
 
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
   val regid_fbase = ((cnt >> UInt(3)) * reg_fstride) + reg_xf_split
@@ -329,16 +329,16 @@ class IssueTVEC extends Module
     ))
 
   io.decoded.vlen := reg_vlen - cnt
-  io.decoded.utidx := Bits(0)
-  io.decoded.vd_base := Mux(vd_fp, regid_fbase + vd(4,0), regid_xbase + vd_m1)
-  io.decoded.vs := Bits(0)
-  io.decoded.vt := Mux(vt_fp, regid_fbase + vt(4,0), regid_xbase + vt_m1)
-  io.decoded.vr := Bits(0)
-  io.decoded.vd := Mux(vd_fp, regid_fbase + vd(4,0), regid_xbase + vd_m1)
+  io.decoded.utidx := UInt(0)
+  io.decoded.vd_base := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
+  io.decoded.vs := UInt(0)
+  io.decoded.vt := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
+  io.decoded.vr := UInt(0)
+  io.decoded.vd := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
   io.decoded.vs_zero := Bool(true)
-  io.decoded.vt_zero := !vt_fp && vt === Bits(0)
+  io.decoded.vt_zero := !vt_fp && vt === UInt(0)
   io.decoded.vr_zero := Bool(true)
-  io.decoded.vd_zero := !vd_fp && vd === Bits(0) && vd_val
+  io.decoded.vd_zero := !vd_fp && vd === UInt(0) && vd_val
   io.decoded.vs_active := Bool(false)
   io.decoded.vt_active := vt_val
   io.decoded.vr_active := Bool(false)
@@ -353,8 +353,8 @@ class IssueTVEC extends Module
   io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
   io.decoded.aiw.update_imm1 := !io.valid.viu
 
-  val illegal_vd = vd_val && (vd(4,0) >= reg_nfregs && vd_fp || vd(4,0) >= reg_nxregs && !vd_fp)
-  val illegal_vt = vt_val && (vt(4,0) >= reg_nfregs && vt_fp || vt(4,0) >= reg_nxregs && !vt_fp)
+  val illegal_vd = vd_val && (vd >= reg_nfregs && vd_fp || vd >= reg_nxregs && !vd_fp)
+  val illegal_vt = vt_val && (vt >= reg_nfregs && vt_fp || vt >= reg_nxregs && !vt_fp)
   
   io.irq.illegal := 
     io.vcmdq.cmd.valid && tvec_active && 

@@ -342,16 +342,15 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vr = io.imem.resp.bits.data(31,27) // rs3
   val vd = io.imem.resp.bits.data(11, 7) // rd
 
-  val vs_m1 = Cat(Bits(0,1),vs) - UInt(1)
-  val vt_m1 = Cat(Bits(0,1),vt) - UInt(1)
-  val vr_m1 = Cat(Bits(0,1),vr) - UInt(1)
-  val vd_m1 = Cat(Bits(0,1),vd) - UInt(1)
+  val vs_m1 = vs - UInt(1)
+  val vt_m1 = vt - UInt(1)
+  val vr_m1 = vr - UInt(1)
+  val vd_m1 = vd - UInt(1)
 
   mask_stall := decode_stop
 
   io.decoded.vlen := io.vf.vlen - cnt
-  io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
-  // nxregs counts the zero register so it "just works out"
+  io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
   io.decoded.vs_base := Mux(vs_fp, vs + io.cfg.xfsplit, vs_m1)
   io.decoded.vt_base := Mux(vt_fp, vt + io.cfg.xfsplit, vt_m1)
   io.decoded.vr_base := Mux(vr_fp, vr + io.cfg.xfsplit, vr_m1)
@@ -360,10 +359,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.decoded.vt := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
   io.decoded.vr := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
   io.decoded.vd := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
-  io.decoded.vs_zero := !vs_fp && vs === Bits(0)
-  io.decoded.vt_zero := !vt_fp && vt === Bits(0)
-  io.decoded.vr_zero := !vr_fp && vr === Bits(0)
-  io.decoded.vd_zero := !vd_fp && vd === Bits(0) && vd_val || mask_stall
+  io.decoded.vs_zero := !vs_fp && vs === UInt(0)
+  io.decoded.vt_zero := !vt_fp && vt === UInt(0)
+  io.decoded.vr_zero := !vr_fp && vr === UInt(0)
+  io.decoded.vd_zero := !vd_fp && vd === UInt(0) && vd_val || mask_stall
   io.decoded.vs_active := vs_val
   io.decoded.vt_active := vt_val
   io.decoded.vr_active := vr_val
