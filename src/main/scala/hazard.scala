@@ -4,155 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class NextPointer extends Module
-{
-  val io = new Bundle
-  {
-    val ptr = UInt(INPUT, SZ_BPTR)
-    val incr = UInt(INPUT, SZ_BPTR1)
-    val bcnt = UInt(INPUT, SZ_BCNT)
-    val nptr = UInt(OUTPUT, SZ_BPTR)
-  }
-
-  val add = io.ptr + io.incr
-
-  io.nptr := MuxLookup(
-    Cat(add, io.bcnt), UInt(0, SZ_BPTR), Array(
-      Cat(UInt(0,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(0,5),UInt(4,4)) -> UInt(0,3),
-      Cat(UInt(0,5),UInt(5,4)) -> UInt(0,3),
-      Cat(UInt(0,5),UInt(6,4)) -> UInt(0,3),
-      Cat(UInt(0,5),UInt(7,4)) -> UInt(0,3),
-      Cat(UInt(0,5),UInt(8,4)) -> UInt(0,3),
-      Cat(UInt(1,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(1,5),UInt(4,4)) -> UInt(1,3),
-      Cat(UInt(1,5),UInt(5,4)) -> UInt(1,3),
-      Cat(UInt(1,5),UInt(6,4)) -> UInt(1,3),
-      Cat(UInt(1,5),UInt(7,4)) -> UInt(1,3),
-      Cat(UInt(1,5),UInt(8,4)) -> UInt(1,3),
-      Cat(UInt(2,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(2,5),UInt(4,4)) -> UInt(2,3),
-      Cat(UInt(2,5),UInt(5,4)) -> UInt(2,3),
-      Cat(UInt(2,5),UInt(6,4)) -> UInt(2,3),
-      Cat(UInt(2,5),UInt(7,4)) -> UInt(2,3),
-      Cat(UInt(2,5),UInt(8,4)) -> UInt(2,3),
-      Cat(UInt(3,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(3,5),UInt(4,4)) -> UInt(3,3),
-      Cat(UInt(3,5),UInt(5,4)) -> UInt(3,3),
-      Cat(UInt(3,5),UInt(6,4)) -> UInt(3,3),
-      Cat(UInt(3,5),UInt(7,4)) -> UInt(3,3),
-      Cat(UInt(3,5),UInt(8,4)) -> UInt(3,3),
-      Cat(UInt(4,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(4,5),UInt(4,4)) -> UInt(0,3),
-      Cat(UInt(4,5),UInt(5,4)) -> UInt(4,3),
-      Cat(UInt(4,5),UInt(6,4)) -> UInt(4,3),
-      Cat(UInt(4,5),UInt(7,4)) -> UInt(4,3),
-      Cat(UInt(4,5),UInt(8,4)) -> UInt(4,3),
-      Cat(UInt(5,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(5,5),UInt(4,4)) -> UInt(1,3),
-      Cat(UInt(5,5),UInt(5,4)) -> UInt(0,3),
-      Cat(UInt(5,5),UInt(6,4)) -> UInt(5,3),
-      Cat(UInt(5,5),UInt(7,4)) -> UInt(5,3),
-      Cat(UInt(5,5),UInt(8,4)) -> UInt(5,3),
-      Cat(UInt(6,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(6,5),UInt(4,4)) -> UInt(2,3),
-      Cat(UInt(6,5),UInt(5,4)) -> UInt(1,3),
-      Cat(UInt(6,5),UInt(6,4)) -> UInt(0,3),
-      Cat(UInt(6,5),UInt(7,4)) -> UInt(6,3),
-      Cat(UInt(6,5),UInt(8,4)) -> UInt(6,3),
-      Cat(UInt(7,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(7,5),UInt(4,4)) -> UInt(3,3),
-      Cat(UInt(7,5),UInt(5,4)) -> UInt(2,3),
-      Cat(UInt(7,5),UInt(6,4)) -> UInt(1,3),
-      Cat(UInt(7,5),UInt(7,4)) -> UInt(0,3),
-      Cat(UInt(7,5),UInt(8,4)) -> UInt(7,3),
-      Cat(UInt(8,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(8,5),UInt(4,4)) -> UInt(0,3),
-      Cat(UInt(8,5),UInt(5,4)) -> UInt(3,3),
-      Cat(UInt(8,5),UInt(6,4)) -> UInt(2,3),
-      Cat(UInt(8,5),UInt(7,4)) -> UInt(1,3),
-      Cat(UInt(8,5),UInt(8,4)) -> UInt(0,3),
-      Cat(UInt(9,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(9,5),UInt(4,4)) -> UInt(1,3),
-      Cat(UInt(9,5),UInt(5,4)) -> UInt(4,3),
-      Cat(UInt(9,5),UInt(6,4)) -> UInt(3,3),
-      Cat(UInt(9,5),UInt(7,4)) -> UInt(2,3),
-      Cat(UInt(9,5),UInt(8,4)) -> UInt(1,3),
-      Cat(UInt(10,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(10,5),UInt(4,4)) -> UInt(2,3),
-      Cat(UInt(10,5),UInt(5,4)) -> UInt(0,3),
-      Cat(UInt(10,5),UInt(6,4)) -> UInt(4,3),
-      Cat(UInt(10,5),UInt(7,4)) -> UInt(3,3),
-      Cat(UInt(10,5),UInt(8,4)) -> UInt(2,3),
-      Cat(UInt(11,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(11,5),UInt(4,4)) -> UInt(3,3),
-      Cat(UInt(11,5),UInt(5,4)) -> UInt(1,3),
-      Cat(UInt(11,5),UInt(6,4)) -> UInt(5,3),
-      Cat(UInt(11,5),UInt(7,4)) -> UInt(4,3),
-      Cat(UInt(11,5),UInt(8,4)) -> UInt(3,3),
-      Cat(UInt(12,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(12,5),UInt(4,4)) -> UInt(0,3),
-      Cat(UInt(12,5),UInt(5,4)) -> UInt(2,3),
-      Cat(UInt(12,5),UInt(6,4)) -> UInt(0,3),
-      Cat(UInt(12,5),UInt(7,4)) -> UInt(5,3),
-      Cat(UInt(12,5),UInt(8,4)) -> UInt(4,3),
-      Cat(UInt(13,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(13,5),UInt(4,4)) -> UInt(1,3),
-      Cat(UInt(13,5),UInt(5,4)) -> UInt(3,3),
-      Cat(UInt(13,5),UInt(6,4)) -> UInt(1,3),
-      Cat(UInt(13,5),UInt(7,4)) -> UInt(6,3),
-      Cat(UInt(13,5),UInt(8,4)) -> UInt(5,3),
-      Cat(UInt(14,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(14,5),UInt(4,4)) -> UInt(2,3),
-      Cat(UInt(14,5),UInt(5,4)) -> UInt(4,3),
-      Cat(UInt(14,5),UInt(6,4)) -> UInt(2,3),
-      Cat(UInt(14,5),UInt(7,4)) -> UInt(0,3),
-      Cat(UInt(14,5),UInt(8,4)) -> UInt(6,3),
-      Cat(UInt(15,5),UInt(3,4)) -> UInt(0,3),
-      Cat(UInt(15,5),UInt(4,4)) -> UInt(3,3),
-      Cat(UInt(15,5),UInt(5,4)) -> UInt(0,3),
-      Cat(UInt(15,5),UInt(6,4)) -> UInt(3,3),
-      Cat(UInt(15,5),UInt(7,4)) -> UInt(1,3),
-      Cat(UInt(15,5),UInt(8,4)) -> UInt(7,3),
-      Cat(UInt(16,5),UInt(3,4)) -> UInt(1,3),
-      Cat(UInt(16,5),UInt(4,4)) -> UInt(0,3),
-      Cat(UInt(16,5),UInt(5,4)) -> UInt(1,3),
-      Cat(UInt(16,5),UInt(6,4)) -> UInt(4,3),
-      Cat(UInt(16,5),UInt(7,4)) -> UInt(2,3),
-      Cat(UInt(16,5),UInt(8,4)) -> UInt(0,3),
-      Cat(UInt(17,5),UInt(3,4)) -> UInt(2,3),
-      Cat(UInt(17,5),UInt(4,4)) -> UInt(1,3),
-      Cat(UInt(17,5),UInt(5,4)) -> UInt(2,3),
-      Cat(UInt(17,5),UInt(6,4)) -> UInt(5,3),
-      Cat(UInt(17,5),UInt(7,4)) -> UInt(3,3),
-      Cat(UInt(17,5),UInt(8,4)) -> UInt(1,3)
-      //Cat(UInt(18,5),UInt(3,4)) -> UInt(0,3),
-      //Cat(UInt(18,5),UInt(4,4)) -> UInt(2,3),
-      //Cat(UInt(18,5),UInt(5,4)) -> UInt(3,3),
-      //Cat(UInt(18,5),UInt(6,4)) -> UInt(0,3),
-      //Cat(UInt(18,5),UInt(7,4)) -> UInt(4,3),
-      //Cat(UInt(18,5),UInt(8,4)) -> UInt(2,3),
-      //Cat(UInt(19,5),UInt(3,4)) -> UInt(1,3),
-      //Cat(UInt(19,5),UInt(4,4)) -> UInt(3,3),
-      //Cat(UInt(19,5),UInt(5,4)) -> UInt(4,3),
-      //Cat(UInt(19,5),UInt(6,4)) -> UInt(1,3),
-      //Cat(UInt(19,5),UInt(7,4)) -> UInt(5,3),
-      //Cat(UInt(19,5),UInt(8,4)) -> UInt(3,3),
-      //Cat(UInt(20,5),UInt(3,4)) -> UInt(2,3),
-      //Cat(UInt(20,5),UInt(4,4)) -> UInt(0,3),
-      //Cat(UInt(20,5),UInt(5,4)) -> UInt(0,3),
-      //Cat(UInt(20,5),UInt(6,4)) -> UInt(2,3),
-      //Cat(UInt(20,5),UInt(7,4)) -> UInt(6,3),
-      //Cat(UInt(20,5),UInt(8,4)) -> UInt(4,3),
-      //Cat(UInt(21,5),UInt(3,4)) -> UInt(0,3),
-      //Cat(UInt(21,5),UInt(4,4)) -> UInt(1,3),
-      //Cat(UInt(21,5),UInt(5,4)) -> UInt(1,3),
-      //Cat(UInt(21,5),UInt(6,4)) -> UInt(3,3),
-      //Cat(UInt(21,5),UInt(7,4)) -> UInt(0,3),
-      //Cat(UInt(21,5),UInt(8,4)) -> UInt(5,3)
-    ))
-}
-
 class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
@@ -186,46 +37,13 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     val pending_memop = Bool(OUTPUT)
   }
 
-  val reg_ptr = Reg(init=UInt(0,SZ_LGBANK))
-
-  val next_ptr1_add = reg_ptr + UInt(1, SZ_LGBANK1)
-  val next_ptr2_add = reg_ptr + UInt(2, SZ_LGBANK1)
-  val next_ptr3_add = reg_ptr + UInt(3, SZ_LGBANK1)
-  val next_ptr4_add = reg_ptr + UInt(4, SZ_LGBANK1)
-  val next_ptr5_add = reg_ptr + UInt(5, SZ_LGBANK1)
-
-  val next_ptr1_add_bcnt = next_ptr1_add - io.cfg.bcnt
-  val next_ptr2_add_bcnt = next_ptr2_add - io.cfg.bcnt
-  val next_ptr3_add_bcnt = next_ptr3_add - io.cfg.bcnt
-  val next_ptr4_add_bcnt = next_ptr4_add - io.cfg.bcnt
-  val next_ptr5_add_bcnt = next_ptr5_add - io.cfg.bcnt
-
-  val next_ptr4_add_bcnt2 = next_ptr4_add_bcnt - io.cfg.bcnt
-  val next_ptr5_add_bcnt2 = next_ptr5_add_bcnt - io.cfg.bcnt
-
-  val next_ptr1 = Mux(
-    next_ptr1_add < io.cfg.bcnt, next_ptr1_add(SZ_LGBANK-1,0),
-    next_ptr1_add_bcnt(SZ_LGBANK-1,0))
-
-  val next_ptr2 = Mux(
-    next_ptr2_add < io.cfg.bcnt, next_ptr2_add(SZ_LGBANK-1,0),
-    next_ptr2_add_bcnt(SZ_LGBANK-1,0))
-
-  val next_ptr3 = Mux(
-    next_ptr3_add < io.cfg.bcnt, next_ptr3_add(SZ_LGBANK-1,0),
-    next_ptr3_add_bcnt(SZ_LGBANK-1,0))
-
-  val next_ptr4 = Mux(
-    next_ptr4_add < io.cfg.bcnt, next_ptr4_add(SZ_LGBANK-1,0), Mux(
-    next_ptr4_add_bcnt < io.cfg.bcnt, next_ptr4_add_bcnt(SZ_LGBANK-1,0),
-    next_ptr4_add_bcnt2(SZ_LGBANK-1,0)))
-
-  val next_ptr5 = Mux(
-    next_ptr5_add < io.cfg.bcnt, next_ptr5_add(SZ_LGBANK-1,0), Mux(
-    next_ptr5_add_bcnt < io.cfg.bcnt, next_ptr5_add_bcnt(SZ_LGBANK-1,0),
-    next_ptr5_add_bcnt2(SZ_LGBANK-1,0)))
-
-  reg_ptr := next_ptr1
+  val ptr = Reg(init = UInt(0, SZ_BPTR))
+  val ptr1 = PtrIncr(ptr, 1, io.cfg.bcnt)
+  val ptr2 = PtrIncr(ptr, 2, io.cfg.bcnt)
+  val ptr3 = PtrIncr(ptr, 3, io.cfg.bcnt)
+  val ptr4 = PtrIncr(ptr, 4, io.cfg.bcnt)
+  val ptr5 = PtrIncr(ptr, 5, io.cfg.bcnt)
+  ptr := ptr1
 
   val array_rport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_rport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
@@ -263,168 +81,104 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   
   when (io.fire.viu)
   {
-    next_rport_val(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
 
     when (io.fire_fn.viu.rtype())
     {
-      next_rport_val(next_ptr3) := Bool(true)
+      next_rport_val(ptr3) := Bool(true)
     }
   }
   when (io.fire.vau0)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vau0(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vau0(ptr2) := Bool(true)
 
-    next_rport_val(next_ptr3) := Bool(true)
-    next_rport_vau0(next_ptr3) := Bool(true)
+    next_rport_val(ptr3) := Bool(true)
+    next_rport_vau0(ptr3) := Bool(true)
   }
   when (io.fire.vau1)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vau1(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vau1(ptr2) := Bool(true)
 
-    next_rport_val(next_ptr3) := Bool(true)
-    next_rport_vau1(next_ptr3) := Bool(true)
+    next_rport_val(ptr3) := Bool(true)
+    next_rport_vau1(ptr3) := Bool(true)
 
     when (io.fire_fn.vau1.fma())
     {
-      next_rport_val(next_ptr4) := Bool(true)
-      next_rport_vau1(next_ptr4) := Bool(true)
+      next_rport_val(ptr4) := Bool(true)
+      next_rport_vau1(ptr4) := Bool(true)
     }
   }
   when (io.fire.vau2)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vau2(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vau2(ptr2) := Bool(true)
   }
   when (io.fire.amo || io.fire.utst)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vgu(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vgu(ptr2) := Bool(true)
 
-    next_rport_val(next_ptr3) := Bool(true)
-    next_rport_vsu(next_ptr3) := Bool(true)
+    next_rport_val(ptr3) := Bool(true)
+    next_rport_vsu(ptr3) := Bool(true)
   }
   when (io.fire.utld)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vgu(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vgu(ptr2) := Bool(true)
   }
   when (io.fire.vld)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vgu(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vgu(ptr2) := Bool(true)
   }
   when (io.fire.vst)
   {
-    next_rport_val(next_ptr2) := Bool(true)
-    next_rport_vgu(next_ptr2) := Bool(true)
+    next_rport_val(ptr2) := Bool(true)
+    next_rport_vgu(ptr2) := Bool(true)
     
-    next_rport_val(next_ptr3) := Bool(true)
-    next_rport_vsu(next_ptr3) := Bool(true)
+    next_rport_val(ptr3) := Bool(true)
+    next_rport_vsu(ptr3) := Bool(true)
   }
 
   when (io.lane_to_hazard.rlast)
   {
-    next_rport_val(reg_ptr) := Bool(false)
-    next_rport_vau0(reg_ptr) := Bool(false)
-    next_rport_vau1(reg_ptr) := Bool(false)
-    next_rport_vau2(reg_ptr) := Bool(false)
-    next_rport_vsu(reg_ptr) := Bool(false)
-    next_rport_vgu(reg_ptr) := Bool(false)
+    next_rport_val(ptr) := Bool(false)
+    next_rport_vau0(ptr) := Bool(false)
+    next_rport_vau1(ptr) := Bool(false)
+    next_rport_vau2(ptr) := Bool(false)
+    next_rport_vsu(ptr) := Bool(false)
+    next_rport_vgu(ptr) := Bool(false)
   }
 
   // I had to change this structure to the following in order to cut the
   // critical path.  I'm precomputing all possible write pointers and then
   // muxing them in later.
 
-  // this delay comes from seq/expand
-
-  val DELAY = 2
-
   // tvec wptr calculation
 
-  val tvec_viu_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val tvec_viu_incr = UInt(conf.int_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
 
-  val tvec_viuwptr = Module(new NextPointer)
-
-  tvec_viuwptr.io.ptr := reg_ptr
-  tvec_viuwptr.io.incr := tvec_viu_incr
-  tvec_viuwptr.io.bcnt <> io.cfg.bcnt
-
-  val tvec_viu_wptr1 = tvec_viuwptr.io.nptr
-
-  val tvec_viu_wptr1_add = tvec_viu_wptr1 + UInt(1, SZ_LGBANK1)
-  val tvec_viu_wptr1_add_sub = tvec_viu_wptr1_add - io.cfg.bcnt
-
-  val tvec_viu_wptr2 = Mux(
-    tvec_viu_wptr1_add < io.cfg.bcnt, tvec_viu_wptr1_add(SZ_LGBANK-1,0),
-    tvec_viu_wptr1_add_sub(SZ_LGBANK-1,0))
-
-  val tvec_viu_wptr = MuxCase(
-    Bits(0,SZ_LGBANK), Array(
-      (io.tvec_valid.viu && io.tvec_fn.viu.rtype()) -> tvec_viu_wptr2,
-      io.tvec_valid.viu -> tvec_viu_wptr1
-    ))
+  val tvec_viu_wptr1 = PtrIncr(ptr, tvec_viu_incr, io.cfg.bcnt)
+  val tvec_viu_wptr2 = PtrIncr(tvec_viu_wptr1, 1, io.cfg.bcnt)
+  val tvec_viu_wptr = Mux(io.tvec_fn.viu.rtype(), tvec_viu_wptr2, tvec_viu_wptr1)
 
   // vt wptr calculation
 
-  val vt_viu_incr = UInt(conf.int_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau0_incr = UInt(conf.imul_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau1_incr = UInt(conf.fma_stages,SZ_LGBANK+1) + UInt(2, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
-  val vt_vau2_incr = UInt(conf.fconv_stages,SZ_LGBANK+1) + UInt(1, SZ_LGBANK) + UInt(DELAY, SZ_LGBANK)
+  val vt_viu_incr = UInt(conf.int_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vt_vau0_incr = UInt(conf.imul_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vt_vau1_incr = UInt(conf.fma_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vt_vau2_incr = UInt(conf.fconv_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
 
-  val vt_viuwptr = Module(new NextPointer)
-  val vt_vau0wptr = Module(new NextPointer)
-  val vt_vau1wptr = Module(new NextPointer)
-  val vt_vau2wptr = Module(new NextPointer)
-
-  vt_viuwptr.io.ptr := reg_ptr
-  vt_viuwptr.io.incr := vt_viu_incr
-  vt_viuwptr.io.bcnt <> io.cfg.bcnt
-
-  vt_vau0wptr.io.ptr := reg_ptr
-  vt_vau0wptr.io.incr := vt_vau0_incr
-  vt_vau0wptr.io.bcnt <> io.cfg.bcnt
-
-  vt_vau1wptr.io.ptr := reg_ptr
-  vt_vau1wptr.io.incr := vt_vau1_incr
-  vt_vau1wptr.io.bcnt <> io.cfg.bcnt
-
-  vt_vau2wptr.io.ptr := reg_ptr
-  vt_vau2wptr.io.incr := vt_vau2_incr
-  vt_vau2wptr.io.bcnt <> io.cfg.bcnt
-
-  val vt_viu_wptr1 = vt_viuwptr.io.nptr
-  val vt_vau0_wptr = vt_vau0wptr.io.nptr
-  val vt_vau1_wptr2 = vt_vau1wptr.io.nptr
-  val vt_vau2_wptr = vt_vau2wptr.io.nptr
-
-  val vt_viu_wptr1_add = vt_viu_wptr1 + UInt(1, SZ_LGBANK1)
-  val vt_viu_wptr1_add_sub = vt_viu_wptr1_add - io.cfg.bcnt
-
-  val vt_vau1_wptr2_add = vt_vau1_wptr2 + UInt(1, SZ_LGBANK1)
-  val vt_vau1_wptr2_add_sub = vt_vau1_wptr2_add - io.cfg.bcnt
-
-  val vt_viu_wptr2 = Mux(
-    vt_viu_wptr1_add < io.cfg.bcnt, vt_viu_wptr1_add(SZ_LGBANK-1,0),
-    vt_viu_wptr1_add_sub(SZ_LGBANK-1,0))
-
-  val vt_vau1_wptr3 = Mux(
-    vt_vau1_wptr2_add < io.cfg.bcnt, vt_vau1_wptr2_add(SZ_LGBANK-1,0),
-    vt_vau1_wptr2_add_sub(SZ_LGBANK-1,0))
-
-  val vt_viu_wptr = MuxCase(
-    Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.viu && io.vt_fn.viu.rtype()) -> vt_viu_wptr2,
-      io.vt_valid.viu -> vt_viu_wptr1
-    ))
-
-  val vt_vau1_wptr = MuxCase(
-    Bits(0,SZ_LGBANK), Array(
-      (io.vt_valid.vau1 && io.vt_fn.vau1.fma()) -> vt_vau1_wptr3,
-      io.vt_valid.vau1 -> vt_vau1_wptr2
-    ))
+  val vt_viu_wptr1 = PtrIncr(ptr, vt_viu_incr, io.cfg.bcnt)
+  val vt_viu_wptr2 = PtrIncr(vt_viu_wptr1, 1, io.cfg.bcnt)
+  val vt_viu_wptr = Mux(io.vt_fn.viu.rtype(), vt_viu_wptr2, vt_viu_wptr1)
+  val vt_vau0_wptr = PtrIncr(ptr, vt_vau0_incr, io.cfg.bcnt)
+  val vt_vau1_wptr2 = PtrIncr(ptr, vt_vau1_incr, io.cfg.bcnt)
+  val vt_vau1_wptr3 = PtrIncr(vt_vau1_wptr2, 1, io.cfg.bcnt)
+  val vt_vau1_wptr = Mux(io.vt_fn.vau1.fma(), vt_vau1_wptr3, vt_vau1_wptr2)
+  val vt_vau2_wptr = PtrIncr(ptr, vt_vau2_incr, io.cfg.bcnt)
 
   val vt_wptr = MuxCase(
     Bits(0,SZ_LGBANK), Array(
@@ -525,45 +279,45 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   }
   when (io.fire.amo)
   {
-    next_wport_val(next_ptr5) := Bool(true)
-    next_wport_head(next_ptr5) := Bool(true)
-    next_wport_vlu(next_ptr5) := Bool(true)
-    next_wport_vd(next_ptr5) := io.fire_regid_imm.vd
-    next_wport_vd_base(next_ptr5) := io.fire_regid_imm.vd_base
-    next_wport_stride(next_ptr5) := io.issue_to_hazard.stride
+    next_wport_val(ptr5) := Bool(true)
+    next_wport_head(ptr5) := Bool(true)
+    next_wport_vlu(ptr5) := Bool(true)
+    next_wport_vd(ptr5) := io.fire_regid_imm.vd
+    next_wport_vd_base(ptr5) := io.fire_regid_imm.vd_base
+    next_wport_stride(ptr5) := io.issue_to_hazard.stride
   }
   when (io.fire.utld)
   {
-    next_wport_val(next_ptr4) := Bool(true)
-    next_wport_head(next_ptr4) := Bool(true)
-    next_wport_vlu(next_ptr4) := Bool(true)
-    next_wport_vd(next_ptr4) := io.fire_regid_imm.vd
-    next_wport_vd_base(next_ptr4) := io.fire_regid_imm.vd_base
-    next_wport_stride(next_ptr4) := io.issue_to_hazard.stride
+    next_wport_val(ptr4) := Bool(true)
+    next_wport_head(ptr4) := Bool(true)
+    next_wport_vlu(ptr4) := Bool(true)
+    next_wport_vd(ptr4) := io.fire_regid_imm.vd
+    next_wport_vd_base(ptr4) := io.fire_regid_imm.vd_base
+    next_wport_stride(ptr4) := io.issue_to_hazard.stride
   }
   when (io.fire.vld)
   {
-    next_wport_val(next_ptr4) := Bool(true)
-    next_wport_head(next_ptr4) := Bool(true)
-    next_wport_vlu(next_ptr4) := Bool(true)
-    next_wport_vd(next_ptr4) := io.fire_regid_imm.vd
-    next_wport_vd_base(next_ptr4) := io.fire_regid_imm.vd_base
-    next_wport_stride(next_ptr4) := io.issue_to_hazard.stride
+    next_wport_val(ptr4) := Bool(true)
+    next_wport_head(ptr4) := Bool(true)
+    next_wport_vlu(ptr4) := Bool(true)
+    next_wport_vd(ptr4) := io.fire_regid_imm.vd
+    next_wport_vd_base(ptr4) := io.fire_regid_imm.vd_base
+    next_wport_stride(ptr4) := io.issue_to_hazard.stride
   }
 
   when (io.expand_to_hazard.wen)
   {
-    next_wport_head(reg_ptr) := Bool(false)
-    next_wport_vd(reg_ptr) := array_wport_vd(reg_ptr) + array_wport_stride(reg_ptr)
+    next_wport_head(ptr) := Bool(false)
+    next_wport_vd(ptr) := array_wport_vd(ptr) + array_wport_stride(ptr)
   }
 
   when (io.lane_to_hazard.wlast)
   {
-    next_wport_val(reg_ptr) := Bool(false)
-    next_wport_vau0(reg_ptr) := Bool(false)
-    next_wport_vau1(reg_ptr) := Bool(false)
-    next_wport_vau2(reg_ptr) := Bool(false)
-    next_wport_vlu(reg_ptr) := Bool(false)
+    next_wport_val(ptr) := Bool(false)
+    next_wport_vau0(ptr) := Bool(false)
+    next_wport_vau1(ptr) := Bool(false)
+    next_wport_vau2(ptr) := Bool(false)
+    next_wport_vlu(ptr) := Bool(false)
   }
 
   val array_sport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
@@ -582,33 +336,33 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
   when (io.fire.viu || io.fire.vau0 || io.fire.vau1 || io.fire.vau2)
   {
-    next_sport_val(next_ptr1) := Bool(true)
+    next_sport_val(ptr1) := Bool(true)
   }
   when (io.fire.amo)
   {
-    next_sport_val(next_ptr1) := Bool(true)
-    next_sport_val(next_ptr2) := Bool(true)
-    next_sport_val(next_ptr3) := Bool(true)
+    next_sport_val(ptr1) := Bool(true)
+    next_sport_val(ptr2) := Bool(true)
+    next_sport_val(ptr3) := Bool(true)
   }
   when (io.fire.utld || io.fire.utst)
   {
-    next_sport_val(next_ptr1) := Bool(true)
-    next_sport_val(next_ptr2) := Bool(true)
+    next_sport_val(ptr1) := Bool(true)
+    next_sport_val(ptr2) := Bool(true)
   }
   when (io.fire.vld)
   {
-    next_sport_val(next_ptr1) := Bool(true)
-    next_sport_val(next_ptr2) := Bool(true)
+    next_sport_val(ptr1) := Bool(true)
+    next_sport_val(ptr2) := Bool(true)
   }
   when (io.fire.vst)
   {
-    next_sport_val(next_ptr1) := Bool(true)
-    next_sport_val(next_ptr2) := Bool(true)
+    next_sport_val(ptr1) := Bool(true)
+    next_sport_val(ptr2) := Bool(true)
   }
   
   when (io.seq_to_hazard.last)
   {
-    next_sport_val(reg_ptr) := Bool(false)
+    next_sport_val(ptr) := Bool(false)
   }
 
   // hazard check logic for tvec/vt
@@ -619,9 +373,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val shazard_vlu = (array_wport_val.toBits & array_wport_vlu.toBits).orR
   val shazard_vsu = (array_rport_val.toBits & array_rport_vsu.toBits).orR
 
-  val seqhazard_1slot = array_sport_val(next_ptr1)
-  val seqhazard_2slot = array_sport_val(next_ptr1) | array_sport_val(next_ptr2)
-  val seqhazard_3slot = array_sport_val(next_ptr1) | array_sport_val(next_ptr2) | array_sport_val(next_ptr3)
+  val seqhazard_1slot = array_sport_val(ptr1)
+  val seqhazard_2slot = array_sport_val(ptr1) | array_sport_val(ptr2)
+  val seqhazard_3slot = array_sport_val(ptr1) | array_sport_val(ptr2) | array_sport_val(ptr3)
 
   // checking any pending memory ops for fences
   io.pending_memop := array_rport_vsu.toBits.orR || array_rport_vgu.toBits.orR || array_wport_vlu.toBits.orR
@@ -654,9 +408,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val tvec_dhazard_vt = (array_wport_val.toBits & tvec_comp_vt).orR
   val tvec_dhazard_vd = (array_wport_val.toBits & tvec_comp_vd).orR
 
-  val tvec_bhazard_r1w1 = array_rport_val(next_ptr2) | array_wport_val(tvec_viu_wptr)
-  val tvec_bhazard_vld = array_rport_val(next_ptr2) | array_wport_val(next_ptr4)
-  val tvec_bhazard_vst = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) // not sure about this 
+  val tvec_bhazard_r1w1 = array_rport_val(ptr2) | array_wport_val(tvec_viu_wptr)
+  val tvec_bhazard_vld = array_rport_val(ptr2) | array_wport_val(ptr4)
+  val tvec_bhazard_vst = array_rport_val(ptr2) | array_rport_val(ptr3) // not sure about this 
 
   val tvec_dhazard =
     Cat(
@@ -741,12 +495,12 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val vt_dhazard_vr = (array_wport_val.toBits & vt_comp_vr).orR
   val vt_dhazard_vd = (array_wport_val.toBits & vt_comp_vd).orR
 
-  val vt_bhazard_r1w1 = array_rport_val(next_ptr2) | array_wport_val(vt_wptr)
-  val vt_bhazard_r2w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wport_val(vt_wptr)
-  val vt_bhazard_r3w1 = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_rport_val(next_ptr4) | array_wport_val(vt_wptr)
-  val vt_bhazard_amo = array_rport_val(next_ptr2) | array_rport_val(next_ptr3) | array_wport_val(next_ptr5)
-  val vt_bhazard_utld = array_rport_val(next_ptr2) | array_wport_val(next_ptr4)
-  val vt_bhazard_utst = array_rport_val(next_ptr2) | array_rport_val(next_ptr3)
+  val vt_bhazard_r1w1 = array_rport_val(ptr2) | array_wport_val(vt_wptr)
+  val vt_bhazard_r2w1 = array_rport_val(ptr2) | array_rport_val(ptr3) | array_wport_val(vt_wptr)
+  val vt_bhazard_r3w1 = array_rport_val(ptr2) | array_rport_val(ptr3) | array_rport_val(ptr4) | array_wport_val(vt_wptr)
+  val vt_bhazard_amo = array_rport_val(ptr2) | array_rport_val(ptr3) | array_wport_val(ptr5)
+  val vt_bhazard_utld = array_rport_val(ptr2) | array_wport_val(ptr4)
+  val vt_bhazard_utst = array_rport_val(ptr2) | array_rport_val(ptr3)
 
   val vt_dhazard =
     Cat(

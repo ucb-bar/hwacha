@@ -12,7 +12,7 @@ class io_vxu_seq_to_hazard extends Bundle
 
 class SequencerOpIO extends ValidIO(new SequencerOp)
 
-class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -179,28 +179,11 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   val bcnt = io.cfg.bcnt
 
-  val ptr1 = UInt(width = SZ_BPTR)
-  val ptr2 = UInt(width = SZ_BPTR)
-  val ptr3 = UInt(width = SZ_BPTR)
-
-  val ptr = Reg(next = ptr1, init = UInt(0))
-
-  val ptr1_add = ptr + UInt(1, SZ_LGBANK1)
-  val ptr2_add = ptr + UInt(2, SZ_LGBANK1)
-  val ptr3_add = ptr + UInt(3, SZ_LGBANK1)
-
-  val ptr1_add_bcnt = ptr1_add - bcnt
-  val ptr2_add_bcnt = ptr2_add - bcnt
-  val ptr3_add_bcnt = ptr3_add - bcnt
-
-  ptr1 := Mux(ptr1_add < bcnt, ptr1_add(SZ_LGBANK-1,0),
-              ptr1_add_bcnt(SZ_LGBANK-1,0))
-
-  ptr2 := Mux(ptr2_add < bcnt, ptr2_add(SZ_LGBANK-1,0),
-              ptr2_add_bcnt(SZ_LGBANK-1,0))
-
-  ptr3 := Mux(ptr3_add < bcnt, ptr3_add(SZ_LGBANK-1,0),
-              ptr3_add_bcnt(SZ_LGBANK-1,0))
+  val ptr = Reg(init = UInt(0, SZ_BPTR))
+  val ptr1 = PtrIncr(ptr, 1, bcnt)
+  val ptr2 = PtrIncr(ptr, 2, bcnt)
+  val ptr3 = PtrIncr(ptr, 3, bcnt)
+  ptr := ptr1
 
   val seq = new BuildSequencer(SZ_BANK)
 

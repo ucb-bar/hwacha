@@ -2,8 +2,30 @@ package hwacha
 
 import Chisel._
 import Node._
+import Constants._
 import scala.collection.mutable.ArrayBuffer
 import scala.math._
+
+object PtrIncr
+{
+  // runtime incr
+  def apply(ptr: UInt, incr: UInt, bcnt: UInt)(implicit conf: HwachaConfiguration) = {
+    val rom_nptr_lookup = (
+      for { aptr <- 0 to conf.ptr_incr_max; bcnt <- conf.nbanks to conf.nbanks }
+        yield (Cat(UInt(aptr, conf.ptr_incr_sz), UInt(bcnt, SZ_BCNT)), UInt((aptr + bcnt) % bcnt, SZ_BPTR))
+      ).toArray
+    val aptr = UInt(0, conf.ptr_incr_sz) + ptr + incr
+    Lookup(Cat(aptr, bcnt), UInt(0, SZ_BPTR), rom_nptr_lookup)
+  }
+
+  // fixed incr
+  def apply(ptr: UInt, incr: Int, bcnt: UInt)(implicit conf: HwachaConfiguration) = {
+    require(incr < conf.nbanks)
+    val aptr = ptr + UInt(incr, SZ_BPTR1)
+    val aptr_mbcnt = aptr - bcnt
+    Mux(aptr < bcnt, aptr, aptr_mbcnt)(SZ_BPTR-1, 0)
+  }
+}
 
 object Match
 {
