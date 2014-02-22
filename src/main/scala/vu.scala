@@ -4,15 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_xcpt extends Bundle 
-{
-  val exception = Bool(OUTPUT)
-  val evac_addr = UInt(OUTPUT, SZ_ADDR)
-  val evac = Bool(OUTPUT)
-  val hold = Bool(OUTPUT)
-  val kill = Bool(OUTPUT)
-}
-
 class VCMDQIO extends Bundle
 {
   val cmd = Decoupled(new HwachaCommand)
@@ -39,29 +30,32 @@ class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.deq.cnt <> Queue(io.enq.cnt, conf.vcmdq.ncnt)
 }
 
+class TLBIO extends Bundle
+{
+  val req = Decoupled(new rocket.TLBReq)
+  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
+}
+
 class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = Bool(OUTPUT)
     val irq_cause = UInt(OUTPUT, 5)
     val irq_aux = Bits(OUTPUT, 64)
+    val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
     val vpfcmdq = new VCMDQIO().flip
-
     val vcmdq_user_ready = Bool(OUTPUT)
     val vimm1q_user_ready = Bool(OUTPUT)
     val vimm2q_user_ready = Bool(OUTPUT)
 
-    val busy = Bool(OUTPUT)
-
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
-
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
-    val xcpt = new io_xcpt().flip
+    val busy = Bool(OUTPUT)
   }
 
   val xcpt = Module(new XCPT)

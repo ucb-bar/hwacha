@@ -288,15 +288,6 @@ class io_vsdq extends DecoupledIO(Bits(width = SZ_DATA))
 
 class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
 
-class io_cpu_exception extends Bundle 
-{
-  val supervisor_mode = Bool(OUTPUT)
-  val exception = Bool(OUTPUT)
-  val kill = Bool(OUTPUT)
-  val hold = Bool(OUTPUT)
-  val addr = UInt(OUTPUT, SZ_ADDR)
-}
-
 class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
 {
   val data = Bits(width=DATA_SIZE)
@@ -304,24 +295,10 @@ class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }
 
-class io_qstall extends Bundle
-{
-  val vaq = Bool()
-  val vldq = Bool()
-  val vsdq = Bool()
-}
-
 class io_vxu_mem_check extends Bundle
 {
   val checkcnt = Bool()
   val cnt = UInt(width = 4)
-}
-
-class io_vxu_mem_cmd extends Bundle
-{
-  val cmd = Bits(width = 4)
-  val typ = Bits(width = 3)
-  val typ_float = Bool()
 }
 
 class io_vvaq_bundle extends Bundle
@@ -352,10 +329,4 @@ class io_vxu_aiw_bundle extends Bundle
   val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
   val pc_next = Bits(OUTPUT, SZ_ADDR)
   val update_imm1 = Bool(OUTPUT)
-}
-
-class TLBIO extends Bundle
-{
-  val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
 }

@@ -242,7 +242,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val (vmu_val: Bool) :: vmu_type :: vmu_cmd :: vmu_op :: cs5 = cs4
   val (decode_stop: Bool) :: Nil = cs5
 
-  def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
   val vd_val :: vd_fp :: Nil = parse_rinfo(vdi)
   val vs_val :: vs_fp :: Nil = parse_rinfo(vsi)
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
@@ -264,8 +263,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   vau1_rm := io.imem.resp.bits.data(14,12)
   vau2_rm := io.imem.resp.bits.data(14,12)
 
-  when (io.imem.resp.bits.data(14,12) === Bits("b111",3))
-  {
+  when (io.imem.resp.bits.data(14,12) === Bits("b111",3)) {
     vau1_rm := Bits(0,3)
     vau2_rm := Bits(0,3)
   }

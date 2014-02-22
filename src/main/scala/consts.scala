@@ -34,7 +34,6 @@ trait VectorCommandQueueConstants
   val SZ_VSTRIDE = 64
 }
 
-object PrecConstants
 trait PrecConstants
 {
   val SZ_PREC = 2
@@ -88,6 +87,7 @@ trait DecodeConstants
   val R_ = Bits("b?0", 2)
   val RX = Bits("b01", 2)
   val RF = Bits("b11", 2)
+  def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
 
   val SZ_I = 2
   val IMM_X = UInt.DC(SZ_I)
@@ -104,10 +104,6 @@ trait DecodeConstants
   val FPS = Bits("b00", 2)
   val FPD = Bits("b01", 2)
   val FPH = Bits("b10", 2)
-
-  val MTF_X = Bool(false)
-  val MTF_N = Bool(false)
-  val MTF_Y = Bool(true)
 
   val SZ_DW = 1
   val SZ_FP = 2
@@ -228,9 +224,9 @@ trait Commands
   // command bits for the vector command queue
   val CMD_X = Bits(0,8)
 
-  val CMD_VVCFGIVL = Bits("b00_0000_00",8)
-  val CMD_VSETVL =   Bits("b00_0000_10",8)
-  val CMD_VF =       Bits("b00_0000_11",8)
+  val CMD_VSETCFG = Bits("b00_0000_00",8)
+  val CMD_VSETVL =  Bits("b00_0000_10",8)
+  val CMD_VF =      Bits("b00_0000_11",8)
 
   val CMD_LDWB = Bits("b00_010_000",8)
   val CMD_STAC = Bits("b00_010_001",8)

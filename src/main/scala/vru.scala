@@ -32,7 +32,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   //                  stride     setvl | | |
   //                       |         | | | |
                       List(Bits(0,4),n,n,n,n), Array(
-    CMD_VVCFGIVL   -> List(Bits(0,4),y,y,y,n),
+    CMD_VSETCFG    -> List(Bits(0,4),y,y,y,n),
     CMD_VSETVL     -> List(Bits(0,4),y,y,y,n),
 
     CMD_VLD        -> List(Bits(8,4),n,y,y,n),

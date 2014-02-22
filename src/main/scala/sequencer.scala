@@ -21,7 +21,11 @@ class Sequencer(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
     val qcntp1 = UInt(OUTPUT, SZ_QCNT)
     val qcntp2 = UInt(OUTPUT, SZ_QCNT)
-    val qstall = new io_qstall().asInput
+    val qstall = new Bundle {
+      val vaq = Bool(INPUT)
+      val vldq = Bool(INPUT)
+      val vsdq = Bool(INPUT)
+    }
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO

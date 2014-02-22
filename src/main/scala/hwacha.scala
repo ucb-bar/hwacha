@@ -88,7 +88,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   val default =   List(N, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,RESP_X,     N,N,N)
   val table = Array( 
     // General instructions
-    VSETCFG    -> List(Y, CMD_VVCFGIVL,VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    N,RESP_X,     N,N,N), //* set maxvl register
+    VSETCFG    -> List(Y, CMD_VSETCFG, VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    N,RESP_X,     N,N,N), //* set maxvl register
     VSETVL     -> List(Y, CMD_VSETVL,  VCT_X,  VR_X,  VR_X,   VIMM_VLEN,VIMM_X,    N,Y,Y,N,N,    Y,RESP_NVL,   N,N,N), //* set vl register
     VGETCFG    -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N,N,N),
     VGETVL     -> List(Y, CMD_X,       VCT_X,  VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N,N,N),
@@ -251,7 +251,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val vimm_vlen = Cat(UInt(0,18), next_prec, xf_split(7,0), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
   when (cmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
-      is (CMD_VVCFGIVL) {
+      is (CMD_VSETCFG) {
         printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
         printf("setting prec to %d (0 = DP, 1 = SP, 2 = HP)\n", next_prec)
         cfg_maxvl := new_maxvl

@@ -4,6 +4,15 @@ import Chisel._
 import Node._
 import Constants._
 
+class XCPTIO extends Bundle
+{
+  val exception = Bool(OUTPUT)
+  val evac_addr = UInt(OUTPUT, SZ_ADDR)
+  val evac = Bool(OUTPUT)
+  val hold = Bool(OUTPUT)
+  val kill = Bool(OUTPUT)
+}
+
 class io_xcpt_handler_to_vu extends Bundle
 {
   val busy = Bool(OUTPUT)
@@ -50,7 +59,7 @@ class io_xcpt_handler_to_evac extends Bundle
 class XCPT extends Module 
 {
   val io = new Bundle {
-    val xcpt = new io_xcpt().flip()
+    val xcpt = new XCPTIO().flip()
 
     val xcpt_to_vu = new io_xcpt_handler_to_vu()
     val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
