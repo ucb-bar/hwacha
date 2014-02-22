@@ -330,7 +330,6 @@ class IssueTVEC extends Module
 
   io.decoded.vlen := reg_vlen - cnt
   io.decoded.utidx := UInt(0)
-  io.decoded.vd_base := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
   io.decoded.vs := UInt(0)
   io.decoded.vt := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
   io.decoded.vr := UInt(0)

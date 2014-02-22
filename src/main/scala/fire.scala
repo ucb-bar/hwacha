@@ -67,10 +67,6 @@ class Fire extends Module
   io.fire_regid_imm.vs_zero := io.vt_regid_imm.vs_zero
   io.fire_regid_imm.vt_zero := Mux(switch_tvec, io.tvec_regid_imm.vt_zero, io.vt_regid_imm.vt_zero)
   io.fire_regid_imm.vr_zero := io.vt_regid_imm.vr_zero
-  io.fire_regid_imm.vs_base := io.vt_regid_imm.vs_base
-  io.fire_regid_imm.vt_base := io.vt_regid_imm.vt_base
-  io.fire_regid_imm.vr_base := io.vt_regid_imm.vr_base
-  io.fire_regid_imm.vd_base := Mux(switch_tvec, io.tvec_regid_imm.vd_base, io.vt_regid_imm.vd_base)
   io.fire_regid_imm.vs := io.vt_regid_imm.vs
   io.fire_regid_imm.vt := Mux(switch_tvec, io.tvec_regid_imm.vt, io.vt_regid_imm.vt)
   io.fire_regid_imm.vr := io.vt_regid_imm.vr

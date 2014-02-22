@@ -203,7 +203,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val array_wport_vau2 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_vlu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
   val array_wport_vd = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
-  val array_wport_vd_base = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_BREGLEN))}
   val array_wport_stride = Vec.fill(SZ_BANK){Reg(Bits(width = SZ_REGLEN))}
 
   val next_wport_val = Vec.fill(SZ_BANK){Bool()}
@@ -213,7 +212,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val next_wport_vau2 = Vec.fill(SZ_BANK){Bool()}
   val next_wport_vlu = Vec.fill(SZ_BANK){Bool()}
   val next_wport_vd = Vec.fill(SZ_BANK){Bits(width = SZ_BREGLEN)}
-  val next_wport_vd_base = Vec.fill(SZ_BANK){Bits(width = SZ_BREGLEN)}
   val next_wport_stride = Vec.fill(SZ_BANK){Bits(width = SZ_REGLEN)}
 
   for (i <- 0 until SZ_BANK)
@@ -225,7 +223,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     array_wport_vau2(i) := next_wport_vau2(i)
     array_wport_vlu(i) := next_wport_vlu(i)
     array_wport_vd(i) := next_wport_vd(i)
-    array_wport_vd_base(i) := next_wport_vd_base(i)
     array_wport_stride(i) := next_wport_stride(i)
   }
 
@@ -238,7 +235,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_vau2(i) := array_wport_vau2(i)
     next_wport_vlu(i) := array_wport_vlu(i)
     next_wport_vd(i) := array_wport_vd(i)
-    next_wport_vd_base(i) := array_wport_vd_base(i)
     next_wport_stride(i) := array_wport_stride(i)
   }
 
@@ -247,7 +243,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_val(viu_wptr) := Bool(true)
     next_wport_head(viu_wptr) := Bool(true)
     next_wport_vd(viu_wptr) := io.fire_regid_imm.vd
-    next_wport_vd_base(viu_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(viu_wptr) := io.issue_to_hazard.stride
   }
   when (io.fire.vau0)
@@ -256,7 +251,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(vau0_wptr) := Bool(true)
     next_wport_vau0(vau0_wptr) := Bool(true)
     next_wport_vd(vau0_wptr) := io.fire_regid_imm.vd
-    next_wport_vd_base(vau0_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau0_wptr) := io.issue_to_hazard.stride
   }
   when (io.fire.vau1)
@@ -265,7 +259,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(vau1_wptr) := Bool(true)
     next_wport_vau1(vau1_wptr) := Bool(true)
     next_wport_vd(vau1_wptr) := io.fire_regid_imm.vd
-    next_wport_vd_base(vau1_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau1_wptr) := io.issue_to_hazard.stride
   }
   when (io.fire.vau2)
@@ -274,7 +267,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(vau2_wptr) := Bool(true)
     next_wport_vau2(vau2_wptr) := Bool(true)
     next_wport_vd(vau2_wptr) := io.fire_regid_imm.vd
-    next_wport_vd_base(vau2_wptr) := io.fire_regid_imm.vd_base
     next_wport_stride(vau2_wptr) := io.issue_to_hazard.stride
   }
   when (io.fire.amo)
@@ -283,7 +275,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(ptr5) := Bool(true)
     next_wport_vlu(ptr5) := Bool(true)
     next_wport_vd(ptr5) := io.fire_regid_imm.vd
-    next_wport_vd_base(ptr5) := io.fire_regid_imm.vd_base
     next_wport_stride(ptr5) := io.issue_to_hazard.stride
   }
   when (io.fire.utld)
@@ -292,7 +283,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(ptr4) := Bool(true)
     next_wport_vlu(ptr4) := Bool(true)
     next_wport_vd(ptr4) := io.fire_regid_imm.vd
-    next_wport_vd_base(ptr4) := io.fire_regid_imm.vd_base
     next_wport_stride(ptr4) := io.issue_to_hazard.stride
   }
   when (io.fire.vld)
@@ -301,7 +291,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     next_wport_head(ptr4) := Bool(true)
     next_wport_vlu(ptr4) := Bool(true)
     next_wport_vd(ptr4) := io.fire_regid_imm.vd
-    next_wport_vd_base(ptr4) := io.fire_regid_imm.vd_base
     next_wport_stride(ptr4) := io.issue_to_hazard.stride
   }
 
@@ -383,26 +372,26 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   // hazard check logic for tvec
   val tvec_comp_vt =
     Cat(
-      io.tvec_regid_imm.vt >= array_wport_vd(7),
-      io.tvec_regid_imm.vt >= array_wport_vd(6),
-      io.tvec_regid_imm.vt >= array_wport_vd(5),
-      io.tvec_regid_imm.vt >= array_wport_vd(4),
-      io.tvec_regid_imm.vt >= array_wport_vd(3),
-      io.tvec_regid_imm.vt >= array_wport_vd(2),
-      io.tvec_regid_imm.vt >= array_wport_vd(1),
-      io.tvec_regid_imm.vt >= array_wport_vd(0)
+      io.tvec_regid_imm.vt === array_wport_vd(7),
+      io.tvec_regid_imm.vt === array_wport_vd(6),
+      io.tvec_regid_imm.vt === array_wport_vd(5),
+      io.tvec_regid_imm.vt === array_wport_vd(4),
+      io.tvec_regid_imm.vt === array_wport_vd(3),
+      io.tvec_regid_imm.vt === array_wport_vd(2),
+      io.tvec_regid_imm.vt === array_wport_vd(1),
+      io.tvec_regid_imm.vt === array_wport_vd(0)
     )
 
   val tvec_comp_vd =
     Cat(
-      io.tvec_regid_imm.vd >= array_wport_vd(7),
-      io.tvec_regid_imm.vd >= array_wport_vd(6),
-      io.tvec_regid_imm.vd >= array_wport_vd(5),
-      io.tvec_regid_imm.vd >= array_wport_vd(4),
-      io.tvec_regid_imm.vd >= array_wport_vd(3),
-      io.tvec_regid_imm.vd >= array_wport_vd(2),
-      io.tvec_regid_imm.vd >= array_wport_vd(1),
-      io.tvec_regid_imm.vd >= array_wport_vd(0)
+      io.tvec_regid_imm.vd === array_wport_vd(7),
+      io.tvec_regid_imm.vd === array_wport_vd(6),
+      io.tvec_regid_imm.vd === array_wport_vd(5),
+      io.tvec_regid_imm.vd === array_wport_vd(4),
+      io.tvec_regid_imm.vd === array_wport_vd(3),
+      io.tvec_regid_imm.vd === array_wport_vd(2),
+      io.tvec_regid_imm.vd === array_wport_vd(1),
+      io.tvec_regid_imm.vd === array_wport_vd(0)
     )
 
   val tvec_dhazard_vt = (array_wport_val.toBits & tvec_comp_vt).orR
@@ -444,50 +433,50 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   // hazard check logic for vt
   val vt_comp_vs =
     Cat(
-      io.vt_regid_imm.vs >= array_wport_vd(7),
-      io.vt_regid_imm.vs >= array_wport_vd(6),
-      io.vt_regid_imm.vs >= array_wport_vd(5),
-      io.vt_regid_imm.vs >= array_wport_vd(4),
-      io.vt_regid_imm.vs >= array_wport_vd(3),
-      io.vt_regid_imm.vs >= array_wport_vd(2),
-      io.vt_regid_imm.vs >= array_wport_vd(1),
-      io.vt_regid_imm.vs >= array_wport_vd(0)
+      io.vt_regid_imm.vs === array_wport_vd(7),
+      io.vt_regid_imm.vs === array_wport_vd(6),
+      io.vt_regid_imm.vs === array_wport_vd(5),
+      io.vt_regid_imm.vs === array_wport_vd(4),
+      io.vt_regid_imm.vs === array_wport_vd(3),
+      io.vt_regid_imm.vs === array_wport_vd(2),
+      io.vt_regid_imm.vs === array_wport_vd(1),
+      io.vt_regid_imm.vs === array_wport_vd(0)
     )
 
   val vt_comp_vt = 
     Cat(
-      io.vt_regid_imm.vt >= array_wport_vd(7),
-      io.vt_regid_imm.vt >= array_wport_vd(6),
-      io.vt_regid_imm.vt >= array_wport_vd(5),
-      io.vt_regid_imm.vt >= array_wport_vd(4),
-      io.vt_regid_imm.vt >= array_wport_vd(3),
-      io.vt_regid_imm.vt >= array_wport_vd(2),
-      io.vt_regid_imm.vt >= array_wport_vd(1),
-      io.vt_regid_imm.vt >= array_wport_vd(0)
+      io.vt_regid_imm.vt === array_wport_vd(7),
+      io.vt_regid_imm.vt === array_wport_vd(6),
+      io.vt_regid_imm.vt === array_wport_vd(5),
+      io.vt_regid_imm.vt === array_wport_vd(4),
+      io.vt_regid_imm.vt === array_wport_vd(3),
+      io.vt_regid_imm.vt === array_wport_vd(2),
+      io.vt_regid_imm.vt === array_wport_vd(1),
+      io.vt_regid_imm.vt === array_wport_vd(0)
     )
 
   val vt_comp_vr =
     Cat(
-      io.vt_regid_imm.vr >= array_wport_vd(7),
-      io.vt_regid_imm.vr >= array_wport_vd(6),
-      io.vt_regid_imm.vr >= array_wport_vd(5),
-      io.vt_regid_imm.vr >= array_wport_vd(4),
-      io.vt_regid_imm.vr >= array_wport_vd(3),
-      io.vt_regid_imm.vr >= array_wport_vd(2),
-      io.vt_regid_imm.vr >= array_wport_vd(1),
-      io.vt_regid_imm.vr >= array_wport_vd(0)
+      io.vt_regid_imm.vr === array_wport_vd(7),
+      io.vt_regid_imm.vr === array_wport_vd(6),
+      io.vt_regid_imm.vr === array_wport_vd(5),
+      io.vt_regid_imm.vr === array_wport_vd(4),
+      io.vt_regid_imm.vr === array_wport_vd(3),
+      io.vt_regid_imm.vr === array_wport_vd(2),
+      io.vt_regid_imm.vr === array_wport_vd(1),
+      io.vt_regid_imm.vr === array_wport_vd(0)
     )
 
   val vt_comp_vd =
     Cat(
-      io.vt_regid_imm.vd >= array_wport_vd(7),
-      io.vt_regid_imm.vd >= array_wport_vd(6),
-      io.vt_regid_imm.vd >= array_wport_vd(5),
-      io.vt_regid_imm.vd >= array_wport_vd(4),
-      io.vt_regid_imm.vd >= array_wport_vd(3),
-      io.vt_regid_imm.vd >= array_wport_vd(2),
-      io.vt_regid_imm.vd >= array_wport_vd(1),
-      io.vt_regid_imm.vd >= array_wport_vd(0)
+      io.vt_regid_imm.vd === array_wport_vd(7),
+      io.vt_regid_imm.vd === array_wport_vd(6),
+      io.vt_regid_imm.vd === array_wport_vd(5),
+      io.vt_regid_imm.vd === array_wport_vd(4),
+      io.vt_regid_imm.vd === array_wport_vd(3),
+      io.vt_regid_imm.vd === array_wport_vd(2),
+      io.vt_regid_imm.vd === array_wport_vd(1),
+      io.vt_regid_imm.vd === array_wport_vd(0)
     )
 
   val vt_dhazard_vs = (array_wport_val.toBits & vt_comp_vs).orR

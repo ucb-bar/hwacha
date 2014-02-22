@@ -351,10 +351,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   io.decoded.vlen := io.vf.vlen - cnt
   io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
-  io.decoded.vs_base := Mux(vs_fp, vs + io.cfg.xfsplit, vs_m1)
-  io.decoded.vt_base := Mux(vt_fp, vt + io.cfg.xfsplit, vt_m1)
-  io.decoded.vr_base := Mux(vr_fp, vr + io.cfg.xfsplit, vr_m1)
-  io.decoded.vd_base := Mux(vd_fp, vd + io.cfg.xfsplit, vd_m1)
   io.decoded.vs := Mux(vs_fp, vs + regid_fbase, vs_m1 + regid_xbase)
   io.decoded.vt := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
   io.decoded.vr := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
