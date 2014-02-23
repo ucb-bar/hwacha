@@ -353,26 +353,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := numCnt_rtag
 
-  //io.shazard.viu := Bool(false)
-  //io.shazard.vau0 := vau0_val
-  //io.shazard.vau1 := vau1_val
-  //io.shazard.vau2 := vau2_val
-  //io.shazard.vgu := vmu_val
-  //io.shazard.vlu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_ULD)
-  //io.shazard.vsu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_UST)
-
-  //val rports = PopCount(List(vs_val, vt_val, vr_val))
-
-  //// FIXME: when rports == 0, just check w1
-  //io.bhazard.r1w1 := !vmu_val && vd_val && (rports === UInt(0) || rports === UInt(1))
-  //io.bhazard.r2w1 := !vmu_val && vd_val && rports === UInt(2)
-  //io.bhazard.r3w1 := !vmu_val && vd_val && rports === UInt(3)
-  //io.bhazard.amo := vmu_val && (vmu_op === VM_AMO)
-  //io.bhazard.utld := vmu_val && (vmu_op === VM_ULD)
-  //io.bhazard.utst := vmu_val && (vmu_op === VM_UST)
-  //io.bhazard.vld := Bool(false)
-  //io.bhazard.vst := Bool(false)
-
 
 //-------------------------------------------------------------------------\\
 // IRQ                                                                     \\

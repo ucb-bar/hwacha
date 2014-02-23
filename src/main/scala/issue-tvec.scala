@@ -319,23 +319,6 @@ class IssueTVEC extends Module
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := io.aiw_to_issue.numCnt_rtag
 
-  //io.shazard.viu := Bool(false)
-  //io.shazard.vau0 := Bool(false)
-  //io.shazard.vau1 := Bool(false)
-  //io.shazard.vau2 := Bool(false)
-  //io.shazard.vgu := vmu_val
-  //io.shazard.vlu := vmu_val && vmu_op_vld
-  //io.shazard.vsu := vmu_val && vmu_op_vst
-
-  //io.bhazard.r1w1 := viu_val
-  //io.bhazard.r2w1 := Bool(false)
-  //io.bhazard.r3w1 := Bool(false)
-  //io.bhazard.amo := Bool(false)
-  //io.bhazard.utld := Bool(false)
-  //io.bhazard.utst := Bool(false)
-  //io.bhazard.vld := vmu_val && vmu_op_vld
-  //io.bhazard.vst := vmu_val && vmu_op_vst
-
 
 //-------------------------------------------------------------------------\\
 // IRQ                                                                     \\
