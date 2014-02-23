@@ -85,6 +85,7 @@ class VMUFn extends Bundle
 
 class RegInfo extends Bundle
 {
+  val active = Bool()
   val zero = Bool()
   val float = Bool()
   val id = Bits(width = SZ_BREGLEN)

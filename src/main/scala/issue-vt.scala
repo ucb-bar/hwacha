@@ -180,22 +180,16 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-
-    val irq = new io_issue_vt_to_irq_handler()
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
     val vf = new io_vf().flip
 
-    val valid = new io_vxu_issue_fire().asOutput
-    val ready = Bool(INPUT)
-    val dhazard = new io_vxu_issue_reg().asOutput
-    val shazard = new io_vxu_issue_fu().asOutput
-    val bhazard = new io_vxu_issue_op().asOutput
-    val fn = new io_vxu_issue_fn().asOutput
-    val decoded = new io_vxu_issue_regid_imm().asOutput
-
+    val irq = new io_issue_vt_to_irq_handler()
     val vcmdq = new VCMDQIO().flip
-    val aiw_cntb = new io_vxu_cntq()
+    val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
+    val ready = Bool(INPUT)
+    val op = new IssueOpIO
+
+    val aiw_cntb = new io_vxu_cntq()
     val issue_to_aiw = new io_issue_to_aiw()
     val aiw_to_issue = new io_aiw_to_issue().flip
 
@@ -210,29 +204,28 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
 
+
+//-------------------------------------------------------------------------\\
+// DECODE                                                                  \\
+//-------------------------------------------------------------------------\\
+
+  val imm1_rtag = Reg(init=Bits(0,SZ_AIW_IMM1))
+  val numCnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
+
+  when (io.vf.fire) { 
+    imm1_rtag := io.vf.imm1_rtag
+    numCnt_rtag := io.vf.numCnt_rtag
+  }
+
   io.imem.req.valid := io.vf.fire
   io.imem.req.bits.pc := io.vf.pc
   io.imem.req.bits.mispredict := Bool(false)
   io.imem.req.bits.taken := Bool(false)
   io.imem.invalidate := Bool(false)
   io.imem.resp.ready := io.vf.active && !stall_frontend
+  val inst = io.imem.resp.bits.data
 
-  val imm1_rtag = Reg(init=Bits(0,SZ_AIW_IMM1))
-  val numCnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
-
-  when (io.vf.fire) 
-  { 
-    imm1_rtag := io.vf.imm1_rtag
-    numCnt_rtag := io.vf.numCnt_rtag
-  }
-
-  io.decoded.aiw.imm1_rtag := imm1_rtag
-  io.decoded.aiw.numCnt_rtag := numCnt_rtag
-  io.decoded.aiw.cnt_rtag := io.aiw_to_issue.cnt_rtag
-  io.decoded.aiw.pc_next := io.imem.resp.bits.pc + UInt(4, SZ_ADDR)
-  io.decoded.aiw.update_imm1 := Bool(true)
-
-  val cs = rocket.DecodeLogic(io.imem.resp.bits.data, VTDecodeTable.default, VTDecodeTable.table)
+  val cs = rocket.DecodeLogic(inst, VTDecodeTable.default, VTDecodeTable.table)
 
   val vdi :: vsi :: vti :: vri :: immi :: cs0 = cs
   val (viu_val: Bool) :: viu_t0 :: viu_t1 :: viu_dw :: viu_fp :: viu_op :: cs1 = cs0
@@ -247,100 +240,84 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
   val vr_val :: vr_fp :: Nil = parse_rinfo(vri)
 
-  val unmasked_valid_viu = io.imem.resp.valid && viu_val
-  val unmasked_valid_vau0 = io.imem.resp.valid && vau0_val
-  val unmasked_valid_vau1 = io.imem.resp.valid && vau1_val
-  val unmasked_valid_vau2 = io.imem.resp.valid && vau2_val
-  val unmasked_valid_amo = io.imem.resp.valid && vmu_val && (vmu_op === VM_AMO)
-  val unmasked_valid_utld = io.imem.resp.valid && vmu_val && (vmu_op === VM_ULD)
-  val unmasked_valid_utst = io.imem.resp.valid && vmu_val && (vmu_op === VM_UST)
+  val unmasked_valid_viu = viu_val
+  val unmasked_valid_vau0 = vau0_val
+  val unmasked_valid_vau1 = vau1_val
+  val unmasked_valid_vau2 = vau2_val
+  val unmasked_valid_amo = vmu_val && (vmu_op === VM_AMO)
+  val unmasked_valid_utld = vmu_val && (vmu_op === VM_ULD)
+  val unmasked_valid_utst = vmu_val && (vmu_op === VM_UST)
+
+  val unmasked_valid =
+    io.imem.resp.valid && (viu_val || vau0_val || vau1_val || vau2_val || vmu_val)
 
   io.vf.stop := io.vf.active && io.imem.resp.valid && decode_stop
 
-  val vau1_rm = Bits(width = 3)
-  val vau2_rm = Bits(width = 3)
-
-  vau1_rm := io.imem.resp.bits.data(14,12)
-  vau2_rm := io.imem.resp.bits.data(14,12)
-
-  when (io.imem.resp.bits.data(14,12) === Bits("b111",3)) {
-    vau1_rm := Bits(0,3)
-    vau2_rm := Bits(0,3)
+  val rm = Bits(width = 3)
+  rm := inst(14,12)
+  when (inst(14,12) === Bits("b111",3)) {
+    rm := Bits(0,3)
   }
 
-  val unmasked_valid =
-    unmasked_valid_viu ||
-    unmasked_valid_vau0 || unmasked_valid_vau1 || unmasked_valid_vau2 ||
-    unmasked_valid_amo || unmasked_valid_utld || unmasked_valid_utst
+  val vs = inst(19,15) // rs1
+  val vt = inst(24,20) // rs2
+  val vr = inst(31,27) // rs3
+  val vd = inst(11, 7) // rd
 
   val imm = MuxLookup(
     immi, Bits(0,SZ_DATA), Array(
       IMM_0 -> Bits(0,65),
-      IMM_I -> Cat(Bits(0,1),Fill(52,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,20)),
-      IMM_S -> Cat(Bits(0,1),Fill(52,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,25),io.imem.resp.bits.data(11,7)),
-      IMM_U -> Cat(Bits(0,1),Fill(32,io.imem.resp.bits.data(31)),io.imem.resp.bits.data(31,12),Bits(0,12))
+      IMM_I -> Cat(Bits(0,1),Fill(52,inst(31)),inst(31,20)),
+      IMM_S -> Cat(Bits(0,1),Fill(52,inst(31)),inst(31,25),inst(11,7)),
+      IMM_U -> Cat(Bits(0,1),Fill(32,inst(31)),inst(31,12),Bits(0,12))
     ))
 
-  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, Bits(0))
+  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
   val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
 
-  io.vcmdq.cnt.ready := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
-  io.aiw_cntb.valid := io.vf.active && io.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
+
+//-------------------------------------------------------------------------\\
+// FIRE & QUEUE LOGIC                                                      \\
+//-------------------------------------------------------------------------\\
+
+  val fire = io.vf.active && io.ready && unmasked_valid && !io.op.bits.reg.vd.zero && !stall_issue
+
+  io.vcmdq.cnt.ready := fire
+  io.aiw_cntb.valid := fire
   io.aiw_cntb.bits := cnt
 
   io.issue_to_aiw.markLast := io.vf.stop
-  io.issue_to_aiw.update_numCnt.valid := io.vf.active && io.ready && io.aiw_cntb.ready && unmasked_valid && !io.decoded.vd_zero && !stall_issue
+  io.issue_to_aiw.update_numCnt.valid := fire && io.aiw_cntb.ready
   io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
 
-  val valid_common = io.vf.active && io.aiw_cntb.ready && !stall_issue
 
-  io.valid.viu := valid_common && unmasked_valid_viu
-  io.valid.vau0 := valid_common && unmasked_valid_vau0
-  io.valid.vau1 := valid_common && unmasked_valid_vau1
-  io.valid.vau2 := valid_common && unmasked_valid_vau2
-  io.valid.amo := valid_common && unmasked_valid_amo
-  io.valid.utld := valid_common && unmasked_valid_utld
-  io.valid.utst := valid_common && unmasked_valid_utst
-  io.valid.vld := Bool(false)
-  io.valid.vst := Bool(false)
+//-------------------------------------------------------------------------\\
+// ISSUE                                                                   \\
+//-------------------------------------------------------------------------\\
 
-  io.dhazard.vs := vs_val
-  io.dhazard.vt := vt_val
-  io.dhazard.vr := vr_val
-  io.dhazard.vd := vd_val
+  io.op.valid := io.vf.active && io.imem.resp.valid && io.aiw_cntb.ready && !stall_issue
 
-  io.shazard.viu := Bool(false)
-  io.shazard.vau0 := vau0_val
-  io.shazard.vau1 := vau1_val
-  io.shazard.vau2 := vau2_val
-  io.shazard.vgu := vmu_val
-  io.shazard.vlu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_ULD)
-  io.shazard.vsu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_UST)
+  io.op.bits.active.viu := viu_val
+  io.op.bits.active.vau0 := vau0_val
+  io.op.bits.active.vau1 := vau1_val
+  io.op.bits.active.vau2 := vau2_val
+  io.op.bits.active.amo := vmu_val && (vmu_op === VM_AMO)
+  io.op.bits.active.utld := vmu_val && (vmu_op === VM_ULD)
+  io.op.bits.active.utst := vmu_val && (vmu_op === VM_UST)
+  io.op.bits.active.vld := Bool(false)
+  io.op.bits.active.vst := Bool(false)
 
-  val rports = PopCount(List(vs_val, vt_val, vr_val))
-
-  // FIXME: when rports == 0, just check w1
-  io.bhazard.r1w1 := !vmu_val && vd_val && (rports === UInt(0) || rports === UInt(1))
-  io.bhazard.r2w1 := !vmu_val && vd_val && rports === UInt(2)
-  io.bhazard.r3w1 := !vmu_val && vd_val && rports === UInt(3)
-  io.bhazard.amo := vmu_val && (vmu_op === VM_AMO)
-  io.bhazard.utld := vmu_val && (vmu_op === VM_ULD)
-  io.bhazard.utst := vmu_val && (vmu_op === VM_UST)
-  io.bhazard.vld := Bool(false)
-  io.bhazard.vst := Bool(false)
+  io.op.bits.vlen := io.vf.vlen - cnt
+  io.op.bits.utidx := cnt
 
   val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
-  io.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, viu_dw, viu_fp, viu_op))
-  io.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
-  io.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, vau1_rm, vau1_op))
-  io.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, vau2_rm, vau2_op))
-  io.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
 
-  val vs = io.imem.resp.bits.data(19,15) // rs1
-  val vt = io.imem.resp.bits.data(24,20) // rs2
-  val vr = io.imem.resp.bits.data(31,27) // rs3
-  val vd = io.imem.resp.bits.data(11, 7) // rd
+  io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, viu_dw, viu_fp, viu_op))
+  io.op.bits.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
+  io.op.bits.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, rm, vau1_op))
+  io.op.bits.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, rm, vau2_op))
+  io.op.bits.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
 
   val vs_m1 = vs - UInt(1)
   val vt_m1 = vt - UInt(1)
@@ -349,24 +326,57 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   mask_stall := decode_stop
 
-  io.decoded.vlen := io.vf.vlen - cnt
-  io.decoded.utidx := Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
-  io.decoded.vs := Mux(vs_fp, vs + regid_fbase, vs_m1 + regid_xbase)
-  io.decoded.vt := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
-  io.decoded.vr := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
-  io.decoded.vd := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
-  io.decoded.vs_zero := !vs_fp && vs === UInt(0)
-  io.decoded.vt_zero := !vt_fp && vt === UInt(0)
-  io.decoded.vr_zero := !vr_fp && vr === UInt(0)
-  io.decoded.vd_zero := !vd_fp && vd === UInt(0) && vd_val || mask_stall
-  io.decoded.vs_active := vs_val
-  io.decoded.vt_active := vt_val
-  io.decoded.vr_active := vr_val
-  io.decoded.vd_active := vd_val
-  io.decoded.rtype := Cat(vs_fp, vt_fp, vr_fp, vd_fp)
-  io.decoded.imm := imm
-  io.decoded.cnt_valid := io.vcmdq.cnt.valid
-  io.decoded.cnt := cnt
+  io.op.bits.reg.vs.active := vs_val
+  io.op.bits.reg.vt.active := vt_val
+  io.op.bits.reg.vr.active := vr_val
+  io.op.bits.reg.vd.active := vd_val
+  io.op.bits.reg.vs.zero := !vs_fp && vs === UInt(0)
+  io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
+  io.op.bits.reg.vr.zero := !vr_fp && vr === UInt(0)
+  io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0) && vd_val || mask_stall
+  io.op.bits.reg.vs.float := vs_fp
+  io.op.bits.reg.vt.float := vt_fp
+  io.op.bits.reg.vr.float := vr_fp
+  io.op.bits.reg.vd.float := vd_fp
+  io.op.bits.reg.vs.id := Mux(vs_fp, vs + regid_fbase, vs_m1 + regid_xbase)
+  io.op.bits.reg.vt.id := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
+  io.op.bits.reg.vr.id := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
+  io.op.bits.reg.vd.id := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
+
+  io.op.bits.imm.imm := imm
+
+  io.op.bits.aiw.active.imm1 := Bool(true)
+  io.op.bits.aiw.active.cnt := Bool(true)
+  io.op.bits.aiw.imm1.rtag := imm1_rtag
+  io.op.bits.aiw.imm1.pc_next := io.imem.resp.bits.pc + UInt(4)
+  io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
+  io.op.bits.aiw.cnt.utidx := cnt
+  io.op.bits.aiw.numcnt.rtag := numCnt_rtag
+
+  //io.shazard.viu := Bool(false)
+  //io.shazard.vau0 := vau0_val
+  //io.shazard.vau1 := vau1_val
+  //io.shazard.vau2 := vau2_val
+  //io.shazard.vgu := vmu_val
+  //io.shazard.vlu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_ULD)
+  //io.shazard.vsu := vmu_val && (vmu_op === VM_AMO || vmu_op === VM_UST)
+
+  //val rports = PopCount(List(vs_val, vt_val, vr_val))
+
+  //// FIXME: when rports == 0, just check w1
+  //io.bhazard.r1w1 := !vmu_val && vd_val && (rports === UInt(0) || rports === UInt(1))
+  //io.bhazard.r2w1 := !vmu_val && vd_val && rports === UInt(2)
+  //io.bhazard.r3w1 := !vmu_val && vd_val && rports === UInt(3)
+  //io.bhazard.amo := vmu_val && (vmu_op === VM_AMO)
+  //io.bhazard.utld := vmu_val && (vmu_op === VM_ULD)
+  //io.bhazard.utst := vmu_val && (vmu_op === VM_UST)
+  //io.bhazard.vld := Bool(false)
+  //io.bhazard.vst := Bool(false)
+
+
+//-------------------------------------------------------------------------\\
+// IRQ                                                                     \\
+//-------------------------------------------------------------------------\\
 
   val illegal_vd = vd_val && (vd >= io.cfg.nfregs && vd_fp || vd >= io.cfg.nxregs && !vd_fp)
   val illegal_vt = vt_val && (vt >= io.cfg.nfregs && vt_fp || vt >= io.cfg.nxregs && !vt_fp)

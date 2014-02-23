@@ -43,102 +43,50 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val flush = this.reset || io.xcpt_to_vxu.flush
 
   val issue = Module(new Issue(resetSignal = flush))
+  val hazard = Module(new Hazard(resetSignal = flush))
+  val seq = Module(new Sequencer(resetSignal = flush))
+  val exp = Module(new Expander)
+  val lane = Module(new Lane)
 
-  issue.io.imem <> io.imem
+  io.cfg <> issue.io.cfg
+  io.irq <> issue.io.irq
+
   issue.io.vcmdq <> io.vcmdq
-  
+  issue.io.imem <> io.imem
   issue.io.aiw_cmdb <> io.aiw_cmdb
   issue.io.aiw_imm1b <> io.aiw_imm1b
   issue.io.aiw_imm2b <> io.aiw_imm2b
   issue.io.aiw_cntb <> io.aiw_cntb
   issue.io.aiw_numCntB <> io.aiw_numCntB
-
   issue.io.issue_to_aiw <> io.issue_to_aiw
   issue.io.aiw_to_issue <> io.aiw_to_issue
-
   issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
 
+  hazard.io.cfg <> issue.io.cfg
+  hazard.io.seq_to_hazard <> seq.io.seq_to_hazard
+  hazard.io.expand_to_hazard <> exp.io.expand_to_hazard
+  hazard.io.lane_to_hazard <> lane.io.lane_to_hazard
+  hazard.io.tvec <> issue.io.tvec
+  hazard.io.vt <> issue.io.vt
 
-  val b8fire = Module(new Fire)
+  seq.io.cfg <> issue.io.cfg
+  seq.io.qstall.vaq := !io.vmu.vaq.ready
+  seq.io.qstall.vldq := !io.vmu.vldq.valid
+  seq.io.qstall.vsdq := !io.vmu.vsdq.ready
+  seq.io.issueop <> hazard.io.issueop
+  seq.io.aiwop <> io.aiwop
+  seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
 
-  b8fire.io.tvec_valid <> issue.io.tvec_valid
-  b8fire.io.tvec_dhazard <> issue.io.tvec_dhazard
-  b8fire.io.tvec_shazard <> issue.io.tvec_shazard
-  b8fire.io.tvec_bhazard <> issue.io.tvec_bhazard
-  b8fire.io.tvec_fn <> issue.io.tvec_fn
-  b8fire.io.tvec_regid_imm <> issue.io.tvec_regid_imm
+  exp.io.seqop <> seq.io.seqop
+  exp.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
-  b8fire.io.vt_valid <> issue.io.vt_valid
-  b8fire.io.vt_dhazard <> issue.io.vt_dhazard
-  b8fire.io.vt_shazard <> issue.io.vt_shazard
-  b8fire.io.vt_bhazard <> issue.io.vt_bhazard
-  b8fire.io.vt_fn <> issue.io.vt_fn
-  b8fire.io.vt_regid_imm <> issue.io.vt_regid_imm
+  lane.io.cfg <> issue.io.cfg
+  lane.io.op <> exp.io.laneop
+  lane.io.vmu <> io.vmu
 
+  io.qcntp1 <> seq.io.qcntp1
+  io.qcntp2 <> seq.io.qcntp2
 
-  val b8hazard = Module(new Hazard(resetSignal = flush))
-
-  b8hazard.io.cfg <> issue.io.cfg
-  b8hazard.io.issue_to_hazard <> issue.io.issue_to_hazard
- 
-  b8hazard.io.tvec_valid <> issue.io.tvec_valid
-  b8hazard.io.tvec_ready <> issue.io.tvec_ready
-  b8hazard.io.tvec_ready <> b8fire.io.tvec_ready
-  b8hazard.io.tvec_dhazard <> issue.io.tvec_dhazard
-  b8hazard.io.tvec_shazard <> issue.io.tvec_shazard
-  b8hazard.io.tvec_bhazard <> issue.io.tvec_bhazard
-  b8hazard.io.tvec_fn <> issue.io.tvec_fn
-  b8hazard.io.tvec_regid_imm <> issue.io.tvec_regid_imm
-
-  b8hazard.io.vt_valid <> issue.io.vt_valid
-  b8hazard.io.vt_ready <> issue.io.vt_ready
-  b8hazard.io.vt_ready <> b8fire.io.vt_ready
-  b8hazard.io.vt_dhazard <> issue.io.vt_dhazard
-  b8hazard.io.vt_shazard <> issue.io.vt_shazard
-  b8hazard.io.vt_bhazard <> issue.io.vt_bhazard
-  b8hazard.io.vt_fn <> issue.io.vt_fn
-  b8hazard.io.vt_regid_imm <> issue.io.vt_regid_imm
-
-  b8hazard.io.fire <> b8fire.io.fire
-  b8hazard.io.fire_fn <> b8fire.io.fire_fn
-  b8hazard.io.fire_regid_imm <> b8fire.io.fire_regid_imm
-
-  io.pending_memop := b8hazard.io.pending_memop
+  io.pending_memop := hazard.io.pending_memop
   io.pending_vf := issue.io.pending_vf
-
-
-  val b8seq = Module(new Sequencer(resetSignal = flush))
-
-  b8seq.io.cfg <> issue.io.cfg
-  b8seq.io.seq_to_hazard <> b8hazard.io.seq_to_hazard
-
-  b8seq.io.qstall.vaq := !io.vmu.vaq.ready
-  b8seq.io.qstall.vldq := !io.vmu.vldq.valid
-  b8seq.io.qstall.vsdq := !io.vmu.vsdq.ready
-
-  b8seq.io.issueop <> b8fire.io.issueop
-  b8seq.io.aiwop <> io.aiwop
-
-  b8seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
-
-
-  val b8expand = Module(new Expander)
-
-  b8expand.io.expand_to_hazard <> b8hazard.io.expand_to_hazard
-  b8expand.io.seqop <> b8seq.io.seqop
-  b8expand.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
-
-
-  val b8lane = Module(new Lane)
-  b8lane.io.cfg <> issue.io.cfg
-  b8lane.io.op <> b8expand.io.laneop
-  b8lane.io.lane_to_hazard <> b8hazard.io.lane_to_hazard
-  b8lane.io.vmu <> io.vmu
-
-
-  io.cfg <> issue.io.cfg
-  io.irq <> issue.io.irq
-
-  io.qcntp1 <> b8seq.io.qcntp1
-  io.qcntp2 <> b8seq.io.qcntp2
 }
