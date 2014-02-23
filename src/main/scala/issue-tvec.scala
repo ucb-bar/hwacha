@@ -146,13 +146,13 @@ class IssueTVEC extends Module
   val vd_val :: vd_fp :: Nil = parse_rinfo(vdi)
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
 
-  val valid = viu_val || vmu_val
+  val vfu_valid = viu_val || vmu_val
 
-  val enq_aiw_cmdb = valid || decode_vf
+  val enq_aiw_cmdb = vfu_valid || decode_vf
   val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
   val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
-  val enq_aiw_cntb = valid
-  val enq_aiw_numCntB = valid || decode_vf
+  val enq_aiw_cntb = vfu_valid
+  val enq_aiw_numCntB = vfu_valid || decode_vf
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
@@ -163,7 +163,7 @@ class IssueTVEC extends Module
 // FIRE & QUEUE LOGIC                                                      \\
 //-------------------------------------------------------------------------\\
 
-  val mask_issue_ready = !valid || io.ready
+  val mask_issue_ready = !vfu_valid || io.ready
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw_cmdb.ready
@@ -196,7 +196,7 @@ class IssueTVEC extends Module
   io.aiw_imm2b.valid := queue_common && construct_rv_blob(mask_aiw_imm2b_ready, enq_aiw_imm2b)
   io.aiw_cntb.valid := queue_common && construct_rv_blob(mask_aiw_cntb_ready, enq_aiw_cntb)
   io.aiw_numCntB.valid := queue_common && construct_rv_blob(mask_aiw_numCntB_ready, enq_aiw_numCntB)
-  io.issue_to_aiw.markLast := queue_common && valid && construct_rv_blob(null)
+  io.issue_to_aiw.markLast := queue_common && vfu_valid && construct_rv_blob(null)
 
   io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
   io.aiw_imm1b.bits := io.vcmdq.imm1.bits
@@ -262,7 +262,7 @@ class IssueTVEC extends Module
 // ISSUE                                                                   \\
 //-------------------------------------------------------------------------\\
 
-  io.op.valid := valid_common
+  io.op.valid := valid_common && vfu_valid
 
   val vmu_op_vld = vmu_op === VM_VLD
   val vmu_op_vst = vmu_op === VM_VST
@@ -329,6 +329,6 @@ class IssueTVEC extends Module
   
   io.irq.illegal := 
     io.vcmdq.cmd.valid && tvec_active && 
-    (!valid.orR && !decode_vcfg && !decode_vsetvl && !decode_vf || illegal_vd || illegal_vt)
+    (!vfu_valid && !decode_vcfg && !decode_vsetvl && !decode_vf || illegal_vd || illegal_vt)
   io.irq.cmd := io.vcmdq.cmd.bits.toBits
 }

@@ -240,15 +240,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
   val vr_val :: vr_fp :: Nil = parse_rinfo(vri)
 
-  val unmasked_valid_viu = viu_val
-  val unmasked_valid_vau0 = vau0_val
-  val unmasked_valid_vau1 = vau1_val
-  val unmasked_valid_vau2 = vau2_val
-  val unmasked_valid_amo = vmu_val && (vmu_op === VM_AMO)
-  val unmasked_valid_utld = vmu_val && (vmu_op === VM_ULD)
-  val unmasked_valid_utst = vmu_val && (vmu_op === VM_UST)
-
-  val unmasked_valid =
+  val vfu_valid =
     io.imem.resp.valid && (viu_val || vau0_val || vau1_val || vau2_val || vmu_val)
 
   io.vf.stop := io.vf.active && io.imem.resp.valid && decode_stop
@@ -281,14 +273,15 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 // FIRE & QUEUE LOGIC                                                      \\
 //-------------------------------------------------------------------------\\
 
-  val fire = io.vf.active && io.ready && unmasked_valid && !io.op.bits.reg.vd.zero && !stall_issue
+  val valid_common = io.vf.active && vfu_valid && !stall_issue
+  val queue_common = valid_common && io.ready && !io.op.bits.reg.vd.zero
 
-  io.vcmdq.cnt.ready := fire
-  io.aiw_cntb.valid := fire
+  io.vcmdq.cnt.ready := queue_common && io.aiw_cntb.ready
+  io.aiw_cntb.valid := queue_common
   io.aiw_cntb.bits := cnt
 
   io.issue_to_aiw.markLast := io.vf.stop
-  io.issue_to_aiw.update_numCnt.valid := fire && io.aiw_cntb.ready
+  io.issue_to_aiw.update_numCnt.valid := queue_common && io.aiw_cntb.ready
   io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
 
 
@@ -296,7 +289,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 // ISSUE                                                                   \\
 //-------------------------------------------------------------------------\\
 
-  io.op.valid := io.vf.active && io.imem.resp.valid && io.aiw_cntb.ready && !stall_issue
+  io.op.valid := valid_common && io.aiw_cntb.ready
 
   io.op.bits.active.viu := viu_val
   io.op.bits.active.vau0 := vau0_val
@@ -365,6 +358,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   io.irq.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
   io.irq.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if
-  io.irq.illegal := io.vf.active && io.imem.resp.valid && (!unmasked_valid && !mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
+  io.irq.illegal := io.vf.active && io.imem.resp.valid && (!vfu_valid && !mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
   io.irq.pc := io.imem.resp.bits.pc
 }
