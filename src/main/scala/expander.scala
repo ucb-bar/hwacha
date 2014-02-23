@@ -50,13 +50,13 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   val rexp = new BuildExpander(new ReadBankOp, conf.shift_buf_read)
   val wexp = new BuildExpander(new WriteBankOp, conf.shift_buf_write)
-  val viuexp = new BuildExpander(new VIUOp, conf.shift_buf_read)
-  val vau0exp = new BuildExpander(new VAU0Op, conf.shift_buf_read)
-  val vau1exp = new BuildExpander(new VAU1Op, conf.shift_buf_read)
-  val vau2exp = new BuildExpander(new VAU2Op, conf.shift_buf_read)
-  val vguexp = new BuildExpander(new VGUOp, conf.shift_buf_read)
-  val vluexp = new BuildExpander(new VLUOp, conf.shift_buf_read)
-  val vsuexp = new BuildExpander(new VSUOp, conf.shift_buf_read)
+  val viuexp = new BuildExpander(new VIUOp, 3)
+  val vau0exp = new BuildExpander(new VAU0Op, 3)
+  val vau1exp = new BuildExpander(new VAU1Op, 4)
+  val vau2exp = new BuildExpander(new VAU2Op, 2)
+  val vguexp = new BuildExpander(new VGUOp, 2)
+  val vluexp = new BuildExpander(new VLUOp, 1)
+  val vsuexp = new BuildExpander(new VSUOp, 2)
 
   when (io.seqop.valid) {
 
@@ -140,9 +140,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.bits(vau0_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(vau0_wptr).sel := Bits(0)
 
-      vau0exp.valid(1) := Bool(true)
-      vau0exp.bits(1).cnt := io.seqop.bits.cnt
-      vau0exp.bits(1).fn := io.seqop.bits.fn.vau0
+      vau0exp.valid(2) := Bool(true)
+      vau0exp.bits(2).cnt := io.seqop.bits.cnt
+      vau0exp.bits(2).fn := io.seqop.bits.fn.vau0
     }
 
     when (io.seqop.bits.active.vau1) {
@@ -206,14 +206,14 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.bits(vau1_wptr).sel := Bits(1)
 
       when (io.seqop.bits.fn.vau1.fma()) {
+        vau1exp.valid(3) := Bool(true)
+        vau1exp.bits(3).cnt := io.seqop.bits.cnt
+        vau1exp.bits(3).fn := io.seqop.bits.fn.vau1
+      }
+      .otherwise {
         vau1exp.valid(2) := Bool(true)
         vau1exp.bits(2).cnt := io.seqop.bits.cnt
         vau1exp.bits(2).fn := io.seqop.bits.fn.vau1
-      }
-      .otherwise {
-        vau1exp.valid(1) := Bool(true)
-        vau1exp.bits(1).cnt := io.seqop.bits.cnt
-        vau1exp.bits(1).fn := io.seqop.bits.fn.vau1
       }
     }
 
@@ -236,9 +236,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.bits(vau2_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(vau2_wptr).sel := Bits(2)
 
-      vau2exp.valid(0) := Bool(true)
-      vau2exp.bits(0).cnt := io.seqop.bits.cnt
-      vau2exp.bits(0).fn := io.seqop.bits.fn.vau2
+      vau2exp.valid(1) := Bool(true)
+      vau2exp.bits(1).cnt := io.seqop.bits.cnt
+      vau2exp.bits(1).fn := io.seqop.bits.fn.vau2
     }
 
     when (io.seqop.bits.active.vgu) {
@@ -259,11 +259,13 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).rblen := rblen(Bits(0))
       }
 
-      vguexp.valid(0) := Bool(true)
-      vguexp.bits(0).cnt := io.seqop.bits.cnt
-      vguexp.bits(0).fn := io.seqop.bits.fn.vmu
-      vguexp.bits(0).base := io.seqop.bits.imm.imm
-      vguexp.bits(0).stride := io.seqop.bits.imm.stride
+      vguexp.valid(1) := Bool(true)
+      vguexp.bits(1).cnt := io.seqop.bits.cnt
+      vguexp.bits(1).fn := io.seqop.bits.fn.vmu
+      vguexp.bits(1).base := io.seqop.bits.imm.imm
+      vguexp.bits(1).stride := io.seqop.bits.imm.stride
+      vguexp.bits(1).check.checkcnt := Bool(true)
+      vguexp.bits(1).check.cnt := io.seqop.bits.cnt
     }
 
     when (io.seqop.bits.active.vlu) {
@@ -289,9 +291,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
       when (io.seqop.bits.reg.vt.zero) { rexp.bits(0).rblen(7) := Bool(false) }
 
-      vsuexp.valid(0) := Bool(true)
-      vsuexp.bits(0).cnt := io.seqop.bits.cnt
-      vsuexp.bits(0).fn := io.seqop.bits.fn.vmu
+      vsuexp.valid(1) := Bool(true)
+      vsuexp.bits(1).cnt := io.seqop.bits.cnt
+      vsuexp.bits(1).fn := io.seqop.bits.fn.vmu
     }
 
   }
