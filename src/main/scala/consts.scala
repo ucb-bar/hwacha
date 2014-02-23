@@ -105,6 +105,7 @@ trait DecodeConstants
   val FPD = Bits("b01", 2)
   val FPH = Bits("b10", 2)
 
+  val SZ_BMUXSEL = 2
   val SZ_DW = 1
   val SZ_FP = 2
 }
@@ -136,11 +137,6 @@ trait VIUConstants
   val I_FMAX = UInt(19, SZ_VIU_OP)
   val I_MOVZ = UInt(20, SZ_VIU_OP)
   val I_MOVN = UInt(21, SZ_VIU_OP)
-
-  val SZ_VIU_FP = 2
-  val SZ_VIU_DW = 1
-  val SZ_VIU_T1 = 2
-  val SZ_VIU_T0 = 2
 }
 
 trait VAU0Constants extends DecodeConstants

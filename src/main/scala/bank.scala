@@ -36,41 +36,42 @@ class Bank extends Module
 
   def op_valid(op: ValidIO[LaneOp]) = op.valid && op.bits.cnt.orR && io.active
 
-  val read_op = Reg(Valid(new ReadBankOp).asDirectionless)
-  read_op.valid := io.op.in.read.valid
+  val s1_read_op = Reg(Valid(new ReadBankOp).asDirectionless)
+  s1_read_op.valid := io.op.in.read.valid
   when (io.op.in.read.valid) {
-    read_op.bits.last := io.op.in.read.bits.last
-    read_op.bits.oplen := io.op.in.read.bits.oplen
-    read_op.bits.rblen := io.op.in.read.bits.rblen
-    read_op.bits.cnt := Mux(op_valid(io.op.in.read), io.op.in.read.bits.cnt - UInt(1), UInt(0))
-    read_op.bits.addr := io.op.in.read.bits.addr
+    s1_read_op.bits.last := io.op.in.read.bits.last
+    s1_read_op.bits.ren := io.op.in.read.bits.ren
+    s1_read_op.bits.oplen := io.op.in.read.bits.oplen
+    s1_read_op.bits.rblen := io.op.in.read.bits.rblen
+    s1_read_op.bits.cnt := Mux(op_valid(io.op.in.read), io.op.in.read.bits.cnt - UInt(1), UInt(0))
+    s1_read_op.bits.addr := io.op.in.read.bits.addr
   }
   when (this.reset) {
-    read_op.valid := Bool(false)
+    s1_read_op.valid := Bool(false)
   }
 
-  val write_op = Reg(Valid(new WriteBankOp).asDirectionless)
-  write_op.valid := io.op.in.write.valid
+  val s1_write_op = Reg(Valid(new WriteBankOp).asDirectionless)
+  s1_write_op.valid := io.op.in.write.valid
   when (io.op.in.write.valid) {
-    write_op.bits.last := io.op.in.write.bits.last
-    write_op.bits.cnt := Mux(op_valid(io.op.in.write), io.op.in.write.bits.cnt - UInt(1), UInt(0))
-    write_op.bits.addr := io.op.in.write.bits.addr
-    write_op.bits.sel := io.op.in.write.bits.sel
+    s1_write_op.bits.last := io.op.in.write.bits.last
+    s1_write_op.bits.cnt := Mux(op_valid(io.op.in.write), io.op.in.write.bits.cnt - UInt(1), UInt(0))
+    s1_write_op.bits.addr := io.op.in.write.bits.addr
+    s1_write_op.bits.sel := io.op.in.write.bits.sel
   }
   when (this.reset) {
-    write_op.valid := Bool(false)
+    s1_write_op.valid := Bool(false)
   }
 
-  val viu_op = Reg(Valid(new VIUOp).asDirectionless)
-  viu_op.valid := io.op.in.viu.valid
+  val s1_viu_op = Reg(Valid(new VIUOp).asDirectionless)
+  s1_viu_op.valid := io.op.in.viu.valid
   when (io.op.in.viu.valid) {
-    viu_op.bits.cnt := Mux(op_valid(io.op.in.viu), io.op.in.viu.bits.cnt - UInt(1), UInt(0))
-    viu_op.bits.fn := io.op.in.viu.bits.fn
-    viu_op.bits.utidx := io.op.in.viu.bits.utidx + UInt(1)
-    viu_op.bits.imm := io.op.in.viu.bits.imm
+    s1_viu_op.bits.cnt := Mux(op_valid(io.op.in.viu), io.op.in.viu.bits.cnt - UInt(1), UInt(0))
+    s1_viu_op.bits.fn := io.op.in.viu.bits.fn
+    s1_viu_op.bits.utidx := io.op.in.viu.bits.utidx + UInt(1)
+    s1_viu_op.bits.imm := io.op.in.viu.bits.imm
   }
   when (this.reset) {
-    viu_op.valid := Bool(false)
+    s1_viu_op.valid := Bool(false)
   }
 
   // every signal related to the read port is delayed by one cycle 
@@ -78,14 +79,14 @@ class Bank extends Module
 
   val s1_read_op_valid = Reg(next=op_valid(io.op.in.read))
 
-  io.rw.rblen := read_op.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_op_valid)
+  io.rw.rblen := s1_read_op.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_op_valid)
 
   val rfile = Module(new BankRegfile)
   val alu = Module(new BankALU)
 
-  rfile.io.ren := op_valid(io.op.in.read)
+  rfile.io.ren := op_valid(io.op.in.read) && io.op.in.read.bits.ren
   rfile.io.raddr := io.op.in.read.bits.addr
-  rfile.io.roplen := read_op.bits.oplen & Fill(SZ_BOPL, s1_read_op_valid)
+  rfile.io.roplen := s1_read_op.bits.oplen & Fill(SZ_BOPL, s1_read_op_valid)
   
   rfile.io.wen := alu.io.wen_masked
   rfile.io.waddr := io.op.in.write.bits.addr
@@ -125,9 +126,9 @@ class Bank extends Module
   alu.io.in0 := viu_in0
   alu.io.in1 := viu_in1
 
-  io.op.out.read := Mux(io.active, read_op, io.op.in.read)
-  io.op.out.write := Mux(io.active, write_op, io.op.in.write)
-  io.op.out.viu := Mux(io.active, viu_op, io.op.in.viu)
+  io.op.out.read := Mux(io.active, s1_read_op, io.op.in.read)
+  io.op.out.write := Mux(io.active, s1_write_op, io.op.in.write)
+  io.op.out.viu := Mux(io.active, s1_viu_op, io.op.in.viu)
 }
 
 class BankRegfile extends Module

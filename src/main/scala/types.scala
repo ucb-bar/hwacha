@@ -36,14 +36,14 @@ class HwachaImm1 extends Bundle
 
 class VIUFn extends Bundle
 {
-  val t0 = Bits(width = SZ_VIU_T0)
-  val t1 = Bits(width = SZ_VIU_T0)
+  val t0 = Bits(width = SZ_BMUXSEL)
+  val t1 = Bits(width = SZ_BMUXSEL)
   val dw = Bits(width = SZ_DW)
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
   def rtype(dummy: Int = 0) = t0 === ML && t1 === MR
-  def itype(dummy: Int = 0) = t0 === M0 && t1 === MR
+  def s2only(dummy: Int = 0) = t0 === M0 && t1 === MR
 }
 
 class VAU0Fn extends Bundle
@@ -225,6 +225,7 @@ class ReadBankOp extends LaneOp
 {
   val last = Bool()
   val addr = Bits(width = SZ_BREGLEN)
+  val ren = Bool()
   val oplen = Bits(width = SZ_BOPL)
   val rblen = Vec.fill(SZ_BRPORT){Bool()}
 }
