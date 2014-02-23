@@ -23,9 +23,9 @@ class Bank extends Module
     
     val rw = new Bundle {
       val rblen = Bits(OUTPUT, SZ_BRPORT)
-      val rdata = Bits(OUTPUT, SZ_DATA)
       val ropl0 = Bits(OUTPUT, SZ_DATA)
       val ropl1 = Bits(OUTPUT, SZ_DATA)
+      val ropl2 = Bits(OUTPUT, SZ_DATA)
 
       val wbl0 = Bits(INPUT, SZ_DATA)
       val wbl1 = Bits(INPUT, SZ_DATA)
@@ -74,12 +74,13 @@ class Bank extends Module
     s1_viu_op.valid := Bool(false)
   }
 
-  // every signal related to the read port is delayed by one cycle 
-  // because of the register file is an sram
+  // oplen delayed 1 cycle
+  // rblen delayed 2 cycle
 
   val s1_read_op_valid = Reg(next=op_valid(io.op.in.read))
+  val s2_rblen = Reg(next = s1_read_op.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_op_valid))
 
-  io.rw.rblen := s1_read_op.bits.rblen.toBits & Fill(SZ_BRPORT, s1_read_op_valid)
+  io.rw.rblen := s2_rblen
 
   val rfile = Module(new BankRegfile)
   val alu = Module(new BankALU)
@@ -92,30 +93,27 @@ class Bank extends Module
   rfile.io.waddr := io.op.in.write.bits.addr
   rfile.io.wsel := io.op.in.write.bits.sel
 
-  io.rw.rdata := rfile.io.rdata
   io.rw.ropl0 := rfile.io.ropl0
   io.rw.ropl1 := rfile.io.ropl1
+  io.rw.ropl2 := rfile.io.ropl2
 
   rfile.io.wbl0 := io.rw.wbl0
   rfile.io.wbl1 := io.rw.wbl1
   rfile.io.wbl2 := io.rw.wbl2
   rfile.io.wbl3 := io.rw.wbl3
-
-  val viu_rdata = rfile.io.viu_rdata
-  val viu_ropl = rfile.io.viu_ropl
   rfile.io.viu_wdata := alu.io.out
 
   val viu_in0 = MuxLookup(
     io.op.in.viu.bits.fn.t0, UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
-      ML -> viu_ropl,
-      MR -> viu_rdata
+      ML -> rfile.io.ropl0,
+      MR -> rfile.io.rdata
     ))
 
   val viu_in1 = MuxLookup(
     io.op.in.viu.bits.fn.t1, UInt(0, SZ_DATA), Array(
       M0 -> UInt(0, SZ_DATA),
-      MR -> viu_rdata,
+      MR -> rfile.io.rdata,
       MI -> io.op.in.viu.bits.imm
     ))
 
@@ -145,14 +143,12 @@ class BankRegfile extends Module
     val rdata = Bits(OUTPUT, SZ_DATA)
     val ropl0 = Bits(OUTPUT, SZ_DATA)
     val ropl1 = Bits(OUTPUT, SZ_DATA)
+    val ropl2 = Bits(OUTPUT, SZ_DATA)
 
     val wbl0 = Bits(INPUT, SZ_DATA)
     val wbl1 = Bits(INPUT, SZ_DATA)
     val wbl2 = Bits(INPUT, SZ_DATA)
     val wbl3 = Bits(INPUT, SZ_DATA)
-
-    val viu_rdata = Bits(OUTPUT, SZ_DATA)
-    val viu_ropl = Bits(OUTPUT, SZ_DATA)
     val viu_wdata = Bits(INPUT, SZ_DATA)
   }
 
@@ -172,14 +168,15 @@ class BankRegfile extends Module
   val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf
 
-  val ropl0Reg = Reg(Bits(width = SZ_DATA))
-  val ropl1Reg = Reg(Bits(width = SZ_DATA))
-  when (io.roplen(0)) { ropl0Reg := rdata_rf }
-  when (io.roplen(1)) { ropl1Reg := rdata_rf }
+  val ropl0 = Reg(Bits(width = SZ_DATA))
+  val ropl1 = Reg(Bits(width = SZ_DATA))
+  val ropl2 = Reg(Bits(width = SZ_DATA))
 
-  io.ropl0 := ropl0Reg
-  io.ropl1 := ropl1Reg
+  when (io.roplen(0)) { ropl0 := rdata_rf }
+  when (io.roplen(1)) { ropl1 := rdata_rf }
+  when (io.roplen(2)) { ropl2 := rdata_rf }
 
-  io.viu_rdata := rdata_rf
-  io.viu_ropl := io.ropl0
+  io.ropl0 := ropl0
+  io.ropl1 := ropl1
+  io.ropl2 := ropl2
 }

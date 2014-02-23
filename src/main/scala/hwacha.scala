@@ -24,13 +24,14 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
 
   val ptr_incr_max =
     nbanks-1 +
-    List(int_stages+2, imul_stages+2, fma_stages+3, fconv_stages+1).reduce(scala.math.max(_,_)) +
+    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) +
     delay_seq_exp +
     2 // buffer
   val ptr_incr_sz = log2Up(ptr_incr_max)
 
   val shift_buf_read = 3
-  val shift_buf_write = fma_stages + 4
+  val shift_buf_write =
+    List(imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) + 1
 
   val vcmdq = new {
     val ncmd = 19

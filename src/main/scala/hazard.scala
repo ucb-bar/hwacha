@@ -38,9 +38,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   ptr := ptr1
 
   val viu_incr = UInt(conf.int_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau0_incr = UInt(conf.imul_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau1_incr = UInt(conf.fma_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau2_incr = UInt(conf.fconv_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vau0_incr = UInt(conf.imul_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vau1_incr = UInt(conf.fma_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val vau2_incr = UInt(conf.fconv_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
 
   val viu_wptr1 = PtrIncr(ptr, viu_incr, io.cfg.bcnt)
   val viu_wptr2 = PtrIncr(viu_wptr1, 1, io.cfg.bcnt)

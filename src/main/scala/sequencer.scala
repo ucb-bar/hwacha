@@ -440,7 +440,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     seq.vsu_val(ptr) & reg_vsdq_stall
 
   io.qcntp1 := Mux(reg_stall, nstrip, nstrip + UInt(1, SZ_QCNT))
-  io.qcntp2 := Mux(reg_stall, nstrip, nstrip + UInt(2, SZ_QCNT))
+  io.qcntp2 := Mux(reg_stall, nstrip, nstrip + UInt(3, SZ_QCNT))
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

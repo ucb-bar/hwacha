@@ -16,55 +16,49 @@ class LaneMem extends Module
   }
 
   // VGU
-  val s1_vgu_op = Reg(Valid(new VGUOp).asDirectionless)
-  s1_vgu_op.valid := io.op.vgu.valid
-  when (io.op.vgu.valid) {
-    s1_vgu_op.bits := io.op.vgu.bits
-  }
-  val s1_paddr = RegEnable(Mux(io.op.vgu.bits.fn.utmemop(), io.data.paddr, Bits(0)), io.op.vgu.valid)
-  val s1_addr = s1_vgu_op.bits.base + s1_paddr
+  // Timing Diagram
+  // | Seq | Exp/SRAM-Addr-Setup | SRAM-Clock-Q | XBar/Addr-Gen/VAQ-Setup |
+  //                                              ^ io.op.vgu starts here
+  val paddr = Mux(io.op.vgu.bits.fn.utmemop(), io.data.paddr, Bits(0))
+  val addr = io.op.vgu.bits.base + paddr
 
-  io.vmu.vaq.valid := s1_vgu_op.valid
-  io.vmu.vaq.bits <> s1_vgu_op.bits.check
-  io.vmu.vaq.bits.cmd <> s1_vgu_op.bits.fn.cmd
-  io.vmu.vaq.bits.typ <> s1_vgu_op.bits.fn.typ
-  io.vmu.vaq.bits.typ_float <> s1_vgu_op.bits.fn.float
-  io.vmu.vaq.bits.idx := s1_addr(PGIDX_BITS-1, 0)
-  io.vmu.vaq.bits.vpn := s1_addr(VADDR_BITS, PGIDX_BITS)
+  io.vmu.vaq.valid := io.op.vgu.valid
+  io.vmu.vaq.bits <> io.op.vgu.bits.check
+  io.vmu.vaq.bits.cmd <> io.op.vgu.bits.fn.cmd
+  io.vmu.vaq.bits.typ <> io.op.vgu.bits.fn.typ
+  io.vmu.vaq.bits.typ_float <> io.op.vgu.bits.fn.float
+  io.vmu.vaq.bits.idx := addr(PGIDX_BITS-1, 0)
+  io.vmu.vaq.bits.vpn := addr(VADDR_BITS, PGIDX_BITS)
 
   // FIXME
   io.vmu.evaq.valid := io.op.vgu.valid
   io.vmu.evaq.bits.cmd := io.op.vgu.bits.fn.cmd
 
   // VSU
-  val s1_vsu_op = Reg(Valid(new VSUOp).asDirectionless)
-  s1_vsu_op.valid := io.op.vsu.valid
-  when (io.op.vsu.valid) {
-    s1_vsu_op.bits := io.op.vsu.bits
-  }
-  val s1_sdata = RegEnable(io.data.sdata, io.op.vsu.valid) 
-
+  // Timing Diagram
+  // | Seq | Exp/SRAM-Addr-Setup | SRAM-Clock-Q | XBar/Recoding/VSDQ-Setup |
+  //                                              ^ io.op.vsu starts here
   val rf64f64 = Module(new hardfloat.recodedFloat64ToFloat64)
-  rf64f64.io.in := unpack_float_d(s1_sdata, 0)
-  val s1_sdata_f_dp = rf64f64.io.out
+  rf64f64.io.in := unpack_float_d(io.data.sdata, 0)
+  val sdata_f_dp = rf64f64.io.out
 
   val rf32f32 = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32.io.in := unpack_float_s(s1_sdata, 0)
-  val s1_sdata_f_sp = rf32f32.io.out
+  rf32f32.io.in := unpack_float_s(io.data.sdata, 0)
+  val sdata_f_sp = rf32f32.io.out
 
-  val s1_sdata_f_hp = unpack_float_h(s1_sdata, 0)
+  val sdata_f_hp = unpack_float_h(io.data.sdata, 0)
 
-  val s1_store_fp = s1_vsu_op.bits.fn.float
-  val s1_store_fp_d = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_D
-  val s1_store_fp_w = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_W
-  val s1_store_fp_h = s1_store_fp && s1_vsu_op.bits.fn.typ === MT_H
+  val store_fp = io.op.vsu.bits.fn.float
+  val store_fp_d = store_fp && io.op.vsu.bits.fn.typ === MT_D
+  val store_fp_w = store_fp && io.op.vsu.bits.fn.typ === MT_W
+  val store_fp_h = store_fp && io.op.vsu.bits.fn.typ === MT_H
 
-  io.vmu.vsdq.valid := s1_vsu_op.valid
+  io.vmu.vsdq.valid := io.op.vsu.valid
   io.vmu.vsdq.bits := MuxCase(
-    s1_sdata(63,0), Array(	
-      (s1_store_fp_d) -> s1_sdata_f_dp,
-      (s1_store_fp_w) -> s1_sdata_f_sp,
-      (s1_store_fp_h) -> s1_sdata_f_hp
+    io.data.sdata(63,0), Array(
+      (store_fp_d) -> sdata_f_dp,
+      (store_fp_w) -> sdata_f_sp,
+      (store_fp_h) -> sdata_f_hp
     ))
 
   // FIXME
@@ -76,7 +70,7 @@ class LaneMem extends Module
   when (io.op.vlu.valid) {
     s1_vlu_op.bits := io.op.vlu.bits
   }
-  val s1_ldata = RegEnable(io.vmu.vldq.bits, io.op.vlu.valid) 
+  val s1_ldata = RegEnable(io.vmu.vldq.bits, io.op.vlu.valid)
 
   val f64rf64 = Module(new hardfloat.float64ToRecodedFloat64)
   f64rf64.io.in := s1_ldata

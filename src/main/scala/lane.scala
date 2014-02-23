@@ -59,9 +59,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   val conn = new ArrayBuffer[BankOpIO]
   val rblen = new ArrayBuffer[Bits]
-  val rdata = new ArrayBuffer[Bits]
   val ropl0 = new ArrayBuffer[Bits]
   val ropl1 = new ArrayBuffer[Bits]
+  val ropl2 = new ArrayBuffer[Bits]
 
   val lfu = Module(new LaneLFU)
   val imul = Module(new LaneMul)
@@ -77,9 +77,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     
     conn += bank.io.op.out
     rblen += bank.io.rw.rblen
-    rdata += bank.io.rw.rdata
     ropl0 += bank.io.rw.ropl0
     ropl1 += bank.io.rw.ropl1
+    ropl2 += bank.io.rw.ropl2
 
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma.io.out
@@ -92,7 +92,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
   // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
-  val rbl = List(ropl0, rdata, ropl1, ropl0, rdata, rdata, rdata, rdata).zipWithIndex.map(
+  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
   lfu.io.op <> io.op
