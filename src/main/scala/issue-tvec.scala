@@ -28,7 +28,7 @@ object TVECDecodeTable
 {
                   //                                   deq_vcmdq_imm1
                   //                                   | deq_vcmdq_imm2
-                  //                                   | | deq_vxu_cnt
+                  //                                   | | deq_vcmdq_cnt
                   //                                   | | | decode_vcfg
                   //                                   | | | | decode_vsetvl
                   //  vd vt VIUfn VMUfn                | | | | | decode_vf
@@ -148,11 +148,11 @@ class IssueTVEC extends Module
 
   val valid = viu_val || vmu_val
 
-  val decode_aiw_cmdb = valid || decode_vf
-  val decode_aiw_imm1b = decode_aiw_cmdb && deq_vcmdq_imm1
-  val decode_aiw_imm2b = decode_aiw_cmdb && deq_vcmdq_imm2
-  val decode_aiw_cntb = valid
-  val decode_aiw_numCntB = valid || decode_vf
+  val enq_aiw_cmdb = valid || decode_vf
+  val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
+  val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
+  val enq_aiw_cntb = valid
+  val enq_aiw_numCntB = valid || decode_vf
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
@@ -166,11 +166,11 @@ class IssueTVEC extends Module
   val mask_issue_ready = !valid || io.ready
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
-  val mask_aiw_cmdb_ready = !decode_aiw_cmdb || io.aiw_cmdb.ready
+  val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw_cmdb.ready
   val mask_aiw_imm1b_ready = !deq_vcmdq_imm1 || io.aiw_imm1b.ready
   val mask_aiw_imm2b_ready = !deq_vcmdq_imm2 || io.aiw_imm2b.ready
-  val mask_aiw_cntb_ready = !decode_aiw_cntb || io.aiw_cntb.ready
-  val mask_aiw_numCntB_ready = !decode_aiw_numCntB || io.aiw_numCntB.ready
+  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw_cntb.ready
+  val mask_aiw_numCntB_ready = !enq_aiw_numCntB || io.aiw_numCntB.ready
 
   def construct_rv_blob(exclude: Bool, include: Bool*) = {
     val rvs = Array(
@@ -191,11 +191,11 @@ class IssueTVEC extends Module
   io.vcmdq.imm1.ready := queue_common && construct_rv_blob(mask_vxu_immq_valid, deq_vcmdq_imm1)
   io.vcmdq.imm2.ready := queue_common && construct_rv_blob(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
   io.vcmdq.cnt.ready := queue_common && construct_rv_blob(null, deq_vcmdq_cnt)
-  io.aiw_cmdb.valid := queue_common && construct_rv_blob(mask_aiw_cmdb_ready, decode_aiw_cmdb)
-  io.aiw_imm1b.valid := queue_common && construct_rv_blob(mask_aiw_imm1b_ready, decode_aiw_imm1b)
-  io.aiw_imm2b.valid := queue_common && construct_rv_blob(mask_aiw_imm2b_ready, decode_aiw_imm2b)
-  io.aiw_cntb.valid := queue_common && construct_rv_blob(mask_aiw_cntb_ready, decode_aiw_cntb)
-  io.aiw_numCntB.valid := queue_common && construct_rv_blob(mask_aiw_numCntB_ready, decode_aiw_numCntB)
+  io.aiw_cmdb.valid := queue_common && construct_rv_blob(mask_aiw_cmdb_ready, enq_aiw_cmdb)
+  io.aiw_imm1b.valid := queue_common && construct_rv_blob(mask_aiw_imm1b_ready, enq_aiw_imm1b)
+  io.aiw_imm2b.valid := queue_common && construct_rv_blob(mask_aiw_imm2b_ready, enq_aiw_imm2b)
+  io.aiw_cntb.valid := queue_common && construct_rv_blob(mask_aiw_cntb_ready, enq_aiw_cntb)
+  io.aiw_numCntB.valid := queue_common && construct_rv_blob(mask_aiw_numCntB_ready, enq_aiw_numCntB)
   io.issue_to_aiw.markLast := queue_common && valid && construct_rv_blob(null)
 
   io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
