@@ -4,26 +4,13 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_expand_to_hazard extends Bundle
-{
-  val wen = Bool()
-  val rlast = Bool()
-  val wlast = Bool()
-}
-
-class io_expand_to_xcpt_handler extends Bundle
-{
-  val empty = Bool(OUTPUT)
-}
-
 class Expander(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val expand_to_hazard = new io_vxu_expand_to_hazard().asOutput
-
     val seqop = new SequencerOpIO().flip
     val laneop = new LaneOpIO
 
+    val expand_to_hazard = new ExpanderToHazardIO
     val expand_to_xcpt = new io_expand_to_xcpt_handler()
   }
 

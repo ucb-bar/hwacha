@@ -284,20 +284,10 @@ class VSUOp extends LaneOp
   val fn = new VMUFn
 }
 
-class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_VCMD))
-class io_vxu_immq extends DecoupledIO(Bits(width = SZ_VIMM))
-class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
-class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
-class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
 
-class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
-
-class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
-{
-  val data = Bits(width=DATA_SIZE)
-  val addr = UInt(width=ADDR_SIZE)
-  override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
-}
+//-------------------------------------------------------------------------\\
+// vmu types
+//-------------------------------------------------------------------------\\
 
 class VVAQEntry extends Bundle
 {
@@ -312,6 +302,23 @@ class VPAQEntry extends Bundle
   val cmd = Bits(width = M_SZ)
   val typ = Bits(width = MT_SZ)
   val addr = Bits(width = PADDR_BITS)
+}
+
+
+// aiw FIXME
+class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_VCMD))
+class io_vxu_immq extends DecoupledIO(Bits(width = SZ_VIMM))
+class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
+class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
+class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
+
+class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
+
+class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
+{
+  val data = Bits(width=DATA_SIZE)
+  val addr = UInt(width=ADDR_SIZE)
+  override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }
 
 class io_vxu_aiw_bundle extends Bundle

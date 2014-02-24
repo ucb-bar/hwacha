@@ -4,20 +4,13 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_seq_to_hazard extends Bundle
-{
-  val stall = Bool()
-  val last = Bool()
-  val active = new VFU
-  val cnt = Bits(width = SZ_BCNT)
-}
-
 class SequencerOpIO extends ValidIO(new SequencerOp)
 
 class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
+    val xcpt = new XCPTSequencerIO().flip
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO
@@ -27,8 +20,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
 
-    val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
-    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
+    val seq_to_hazard = new SequencerToHazardIO
   }
 
   class BuildSequencer[T<:Data](n: Int)
@@ -418,7 +410,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   when (seq.vlu_val(ptr) && !construct_mask(masked_vlu_stall)) { reg_vlu_stall := vlu_stall }
   when (seq.vsu_val(ptr) && !construct_mask(masked_vsu_stall)) { reg_vsu_stall := vsu_stall }
 
-  val masked_xcpt_stall = (!seq.vlu_val(ptr) && !seq.vsu_val(ptr)) && io.xcpt_to_seq.stall
+  val masked_xcpt_stall = (!seq.vlu_val(ptr) && !seq.vsu_val(ptr)) && io.xcpt.stall
 
   val stall =
     masked_xcpt_stall ||

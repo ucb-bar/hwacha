@@ -6,12 +6,6 @@ import Constants._
 import Commands._
 import uncore.constants.MemoryOpConstants._
 
-class io_issue_tvec_to_irq_handler extends Bundle
-{
-  val illegal = Bool(OUTPUT)
-  val cmd = Bits(OUTPUT, SZ_VCMD)
-}
-
 class HwachaConfigIO extends Bundle
 {
   val prec = Bits(OUTPUT, SZ_PREC)
@@ -83,10 +77,11 @@ class IssueTVEC extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
-    val active = Bool(OUTPUT)
-    val vf = new io_vf()
+    val irq = new IRQIssueTVECIO
+    val xcpt = new XCPTIssueIO().flip
 
-    val irq = new io_issue_tvec_to_irq_handler()
+    val active = Bool(OUTPUT)
+    val vf = new VFIO
     val vcmdq = new VCMDQIO().flip
 
     val ready = Bool(INPUT)
@@ -99,8 +94,6 @@ class IssueTVEC extends Module
     val aiw_numCntB = new io_vxu_numcntq()
     val aiw_to_issue = new io_aiw_to_issue().flip
     val issue_to_aiw = new io_issue_to_aiw()
-
-    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
   }
 
   val ISSUE_TVEC = UInt(0,1)
@@ -120,7 +113,7 @@ class IssueTVEC extends Module
   val reg_precision = Reg(init = PREC_DOUBLE)
 
   val stall_sticky = Reg(init=Bool(false))
-  val stall = io.irq.illegal || stall_sticky || io.xcpt_to_issue.stall
+  val stall = io.irq.illegal || stall_sticky || io.xcpt.stall
 
   when (io.irq.illegal) { stall_sticky := Bool(true) }
 

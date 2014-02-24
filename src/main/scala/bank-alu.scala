@@ -7,8 +7,7 @@ import Compaction._
 
 class BankALU extends Module
 {
-  val io = new Bundle()
-  {
+  val io = new Bundle() {
     val valid = Bool(INPUT)
     val wen = Bool(INPUT)
     val wen_masked = Bool(OUTPUT)

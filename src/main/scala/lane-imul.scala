@@ -6,8 +6,7 @@ import Constants._
 
 class LaneMul(implicit conf: HwachaConfiguration) extends Module
 {
-  val io = new Bundle
-  {
+  val io = new Bundle {
     val valid = Bool(INPUT)
     val fn = new VAU0Fn().asInput
     val in0 = Bits(INPUT, SZ_DATA)

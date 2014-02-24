@@ -4,15 +4,12 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_to_xcpt_handler extends Bundle
-{
-  val expand = new io_expand_to_xcpt_handler()
-}
-
 class VXU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val irq = new io_issue_to_irq_handler()
+    val irq = new IRQIssueIO
+    val xcpt = new XCPTVXUIO().flip
+
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
@@ -35,11 +32,10 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val aiwop = new AIWOpIO
 
-    val xcpt_to_vxu = new io_xcpt_handler_to_vxu().flip()
     val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
   }
 
-  val flush = this.reset || io.xcpt_to_vxu.flush
+  val flush = this.reset || io.xcpt.flush
 
   val issue = Module(new Issue(resetSignal = flush))
   val hazard = Module(new Hazard(resetSignal = flush))
@@ -58,7 +54,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   issue.io.aiw_numCntB <> io.aiw_numCntB
   issue.io.issue_to_aiw <> io.issue_to_aiw
   issue.io.aiw_to_issue <> io.aiw_to_issue
-  issue.io.xcpt_to_issue <> io.xcpt_to_vxu.issue
+  issue.io.xcpt <> io.xcpt.issue
 
   hazard.io.cfg <> issue.io.cfg
   hazard.io.seq_to_hazard <> seq.io.seq_to_hazard
@@ -69,7 +65,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   seq.io.cfg <> issue.io.cfg
   seq.io.issueop <> hazard.io.issueop
   seq.io.aiwop <> io.aiwop
-  seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
+  seq.io.xcpt <> io.xcpt.seq
 
   exp.io.seqop <> seq.io.seqop
   exp.io.expand_to_xcpt <> io.vxu_to_xcpt.expand

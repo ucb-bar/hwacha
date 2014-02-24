@@ -7,8 +7,7 @@ import Compaction._
 
 class LaneConv(implicit conf: HwachaConfiguration) extends Module 
 {
-  val io = new Bundle
-  {
+  val io = new Bundle {
     val valid = Bool(INPUT)
     val fn = new VAU2Fn().asInput
     val in = Bits(INPUT, SZ_DATA)

@@ -8,7 +8,7 @@ import rocket.Instructions._
 import Instructions._
 import uncore.constants.MemoryOpConstants._
 
-class io_vf extends Bundle
+class VFIO extends Bundle
 {
   val active = Bool(OUTPUT)
   val fire = Bool(OUTPUT)
@@ -17,14 +17,6 @@ class io_vf extends Bundle
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
   val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
   val vlen = Bits(OUTPUT, SZ_VLEN)
-}
-
-class io_issue_vt_to_irq_handler extends Bundle
-{
-  val ma_inst = Bool(OUTPUT)
-  val fault_inst = Bool(OUTPUT)
-  val illegal = Bool(OUTPUT)
-  val pc = Bits(OUTPUT, SZ_ADDR)
 }
 
 object VTDecodeTable
@@ -180,9 +172,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val vf = new io_vf().flip
+    val irq = new IRQIssueVTIO
+    val xcpt = new XCPTIssueIO().flip
 
-    val irq = new io_issue_vt_to_irq_handler()
+    val vf = new VFIO().flip
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
@@ -192,14 +185,12 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     val aiw_cntb = new io_vxu_cntq()
     val issue_to_aiw = new io_issue_to_aiw()
     val aiw_to_issue = new io_aiw_to_issue().flip
-
-    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
   }
 
   val stall_sticky = Reg(init=Bool(false))
   val mask_stall = Bool()
 
-  val stall_issue = stall_sticky || io.irq.illegal || io.xcpt_to_issue.stall
+  val stall_issue = stall_sticky || io.irq.illegal || io.xcpt.stall
   val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.ma_inst || io.irq.fault_inst
 
   when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }

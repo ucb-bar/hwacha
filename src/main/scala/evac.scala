@@ -8,11 +8,6 @@ import Commands._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
-class io_evac_to_xcpt_handler extends Bundle
-{
-  val done = Bool(OUTPUT)
-}
-
 class io_evac_to_vmu extends Bundle
 {
   val evac_mode = Bool(OUTPUT)
@@ -26,6 +21,8 @@ class io_evac_to_aiw extends Bundle
 class Evac extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTEvacIO().flip
+
     val aiw_cmdb = new io_vxu_cmdq().flip
     val aiw_imm1b = new io_vxu_immq().flip
     val aiw_imm2b = new io_vxu_imm2q().flip
@@ -40,7 +37,6 @@ class Evac extends Module
     val vaq  = new VVAQIO
     val vsdq = new VSDQIO
 
-    val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
     val evac_to_xcpt = new io_evac_to_xcpt_handler()
     val evac_to_vmu = new io_evac_to_vmu()
   }
@@ -170,11 +166,11 @@ class Evac extends Module
 
     is (STATE_IDLE) 
     {
-      when (io.xcpt_to_evac.start) 
+      when (io.xcpt.start) 
       { 
         state_next := STATE_CMDB 
         cmd_sel_next := SEL_CMDB
-        addr_next := io.xcpt_to_evac.addr
+        addr_next := io.xcpt.addr
       }
     }
 

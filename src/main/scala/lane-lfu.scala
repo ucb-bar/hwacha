@@ -7,7 +7,6 @@ class LaneLFU extends Module
 {
   val io = new Bundle {
     val op = new LaneFUOpIO().flip
-
     val vau0 = Valid(new VAU0Op)
     val vau1 = Valid(new VAU1Op)
     val vau2 = Valid(new VAU2Op)

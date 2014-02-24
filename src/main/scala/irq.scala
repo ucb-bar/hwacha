@@ -4,17 +4,40 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_irq_to_issue extends Bundle
+class IRQIssueTVECIO extends Bundle
 {
-  val stall_tvec = Bool(OUTPUT)
-  val stall_vf = Bool(OUTPUT)
+  val illegal = Bool(OUTPUT)
+  val cmd = Bits(OUTPUT, SZ_VCMD)
+}
+
+class IRQIssueVTIO extends Bundle
+{
+  val ma_inst = Bool(OUTPUT)
+  val fault_inst = Bool(OUTPUT)
+  val illegal = Bool(OUTPUT)
+  val pc = Bits(OUTPUT, SZ_ADDR)
+}
+
+class IRQIssueIO extends Bundle
+{
+  val tvec = new IRQIssueTVECIO()
+  val vt = new IRQIssueVTIO()
+}
+
+class IRQVMUIO extends Bundle
+{
+  val ma_ld = Bool(OUTPUT)
+  val ma_st = Bool(OUTPUT)
+  val faulted_ld = Bool(OUTPUT)
+  val faulted_st = Bool(OUTPUT)
+  val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
 }
 
 class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val issue_to_irq = new io_issue_to_irq_handler().flip
-    val vmu_to_irq = new io_vmu_to_irq_handler().flip
+    val issue = new IRQIssueIO().flip
+    val vmu = new IRQVMUIO().flip
 
     val irq = Bool(OUTPUT)
     val irq_cause = UInt(OUTPUT, 5)
@@ -36,22 +59,22 @@ class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
   when (!io.irq)
   {
-    reg_irq_ma_inst := io.issue_to_irq.vt.ma_inst
-    reg_irq_fault_inst := io.issue_to_irq.vt.fault_inst
-    reg_irq_illegal_vt := io.issue_to_irq.vt.illegal
-    reg_irq_illegal_tvec := io.issue_to_irq.tvec.illegal
+    reg_irq_ma_inst := io.issue.vt.ma_inst
+    reg_irq_fault_inst := io.issue.vt.fault_inst
+    reg_irq_illegal_vt := io.issue.vt.illegal
+    reg_irq_illegal_tvec := io.issue.tvec.illegal
 
-    reg_irq_ma_ld := io.vmu_to_irq.ma_ld
-    reg_irq_ma_st := io.vmu_to_irq.ma_st
-    reg_irq_faulted_ld := io.vmu_to_irq.faulted_ld
-    reg_irq_faulted_st := io.vmu_to_irq.faulted_st
+    reg_irq_ma_ld := io.vmu.ma_ld
+    reg_irq_ma_st := io.vmu.ma_st
+    reg_irq_faulted_ld := io.vmu.faulted_ld
+    reg_irq_faulted_st := io.vmu.faulted_st
 
-    when (io.issue_to_irq.vt.ma_inst || io.issue_to_irq.vt.fault_inst || io.issue_to_irq.vt.illegal) { reg_irq_pc := io.issue_to_irq.vt.pc }
-    when (io.issue_to_irq.tvec.illegal) { reg_irq_cmd_tvec := io.issue_to_irq.tvec.cmd }
+    when (io.issue.vt.ma_inst || io.issue.vt.fault_inst || io.issue.vt.illegal) { reg_irq_pc := io.issue.vt.pc }
+    when (io.issue.tvec.illegal) { reg_irq_cmd_tvec := io.issue.tvec.cmd }
 
-    when (io.vmu_to_irq.ma_ld || io.vmu_to_irq.ma_st || io.vmu_to_irq.faulted_ld || io.vmu_to_irq.faulted_st) 
+    when (io.vmu.ma_ld || io.vmu.ma_st || io.vmu.faulted_ld || io.vmu.faulted_st) 
     {
-      reg_mem_xcpt_addr := io.vmu_to_irq.mem_xcpt_addr
+      reg_mem_xcpt_addr := io.vmu.mem_xcpt_addr
     }
   }
 

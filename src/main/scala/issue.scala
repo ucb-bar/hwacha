@@ -4,27 +4,10 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vxu_cnt_valid extends ValidIO(Bits(width = SZ_VLEN) )
-
-class io_vxu_issue_to_seq extends Bundle
-{
-  val vlen = Bits(width = SZ_VLEN)
-  val xf_split = Bits(width = SZ_BANK)
-  val xstride = Bits(width = SZ_REGLEN)
-  val fstride = Bits(width = SZ_REGLEN)
-  val bcnt = Bits(width = SZ_BCNT)
-}
-
 class io_issue_to_aiw extends Bundle
 {
   val markLast = Bool(OUTPUT)
   val update_numCnt = new io_update_num_cnt()
-}
-
-class io_issue_to_irq_handler extends Bundle
-{
-  val tvec = new io_issue_tvec_to_irq_handler()
-  val vt = new io_issue_vt_to_irq_handler()
 }
 
 class IssueOpIO extends ValidIO(new IssueOp)
@@ -33,8 +16,9 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
+    val irq = new IRQIssueIO
+    val xcpt = new XCPTIssueIO().flip
 
-    val irq = new io_issue_to_irq_handler()
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
@@ -59,8 +43,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
     val issue_to_aiw = new io_issue_to_aiw()
     val aiw_to_issue = new io_aiw_to_issue().flip
-
-    val xcpt_to_issue = new io_xcpt_handler_to_issue().flip()
   }
 
   val tvec = Module(new IssueTVEC)
@@ -108,6 +90,6 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)
 
   // xcpt
-  tvec.io.xcpt_to_issue <> io.xcpt_to_issue
-  vt.io.xcpt_to_issue <> io.xcpt_to_issue
+  tvec.io.xcpt <> io.xcpt
+  vt.io.xcpt <> io.xcpt
 }

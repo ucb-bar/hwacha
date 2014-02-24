@@ -60,18 +60,18 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   val xcpt = Module(new XCPT)
 
-  val flush_kill = this.reset || xcpt.io.xcpt_to_vu.flush_kill
-  val flush_irq = this.reset || xcpt.io.xcpt_to_vu.flush_irq
-  val flush_aiw = this.reset || xcpt.io.xcpt_to_vu.flush_aiw
-  val flush_vru = this.reset || xcpt.io.xcpt_to_vu.flush_vru
-  val flush_vmu = this.reset || xcpt.io.xcpt_to_vu.flush_vmu
+  val flush_kill = this.reset || xcpt.io.vu.flush_kill
+  val flush_irq = this.reset || xcpt.io.vu.flush_irq
+  val flush_aiw = this.reset || xcpt.io.vu.flush_aiw
+  val flush_vru = this.reset || xcpt.io.vu.flush_vru
+  val flush_vmu = this.reset || xcpt.io.vu.flush_vmu
 
   val vcmdq = Module(new VCMDQ(resetSignal = flush_kill))
 
-  vcmdq.io.enq.cmd <> MaskStall(io.vcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.io.enq.imm1 <> MaskStall(io.vcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.io.enq.imm2 <> MaskStall(io.vcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
-  vcmdq.io.enq.cnt <> MaskStall(io.vcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
+  vcmdq.io.enq.cmd <> MaskStall(io.vcmdq.cmd, xcpt.io.vu.busy)
+  vcmdq.io.enq.imm1 <> MaskStall(io.vcmdq.imm1, xcpt.io.vu.busy)
+  vcmdq.io.enq.imm2 <> MaskStall(io.vcmdq.imm2, xcpt.io.vu.busy)
+  vcmdq.io.enq.cnt <> MaskStall(io.vcmdq.cnt, xcpt.io.vu.busy)
 
   val vxu = Module(new VXU)
   val vmu = Module(new VMU(resetSignal = flush_vmu))
@@ -92,10 +92,10 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val vru = Module(new VRU(resetSignal = flush_vru))
     val vpfcmdq = Module(new VCMDQ(resetSignal = flush_kill))
 
-    vpfcmdq.io.enq.cmd <> MaskStall(io.vpfcmdq.cmd, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.io.enq.imm1 <> MaskStall(io.vpfcmdq.imm1, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.io.enq.imm2 <> MaskStall(io.vpfcmdq.imm2, xcpt.io.xcpt_to_vu.busy)
-    vpfcmdq.io.enq.cnt <> MaskStall(io.vpfcmdq.cnt, xcpt.io.xcpt_to_vu.busy)
+    vpfcmdq.io.enq.cmd <> MaskStall(io.vpfcmdq.cmd, xcpt.io.vu.busy)
+    vpfcmdq.io.enq.imm1 <> MaskStall(io.vpfcmdq.imm1, xcpt.io.vu.busy)
+    vpfcmdq.io.enq.imm2 <> MaskStall(io.vpfcmdq.imm2, xcpt.io.vu.busy)
+    vpfcmdq.io.enq.cnt <> MaskStall(io.vpfcmdq.cnt, xcpt.io.vu.busy)
 
     vru.io.vcmdq <> vpfcmdq.io.deq
 
@@ -120,9 +120,9 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vcmdqcnt.cmd.io.qcnt := UInt(11)
   vcmdqcnt.imm1.io.qcnt := UInt(11)
   vcmdqcnt.imm2.io.qcnt := UInt(9)
-  io.vcmdq_user_ready := vcmdqcnt.cmd.io.watermark && !xcpt.io.xcpt_to_vu.busy
-  io.vimm1q_user_ready := vcmdqcnt.imm1.io.watermark && !xcpt.io.xcpt_to_vu.busy
-  io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !xcpt.io.xcpt_to_vu.busy
+  io.vcmdq_user_ready := vcmdqcnt.cmd.io.watermark && !xcpt.io.vu.busy
+  io.vimm1q_user_ready := vcmdqcnt.imm1.io.watermark && !xcpt.io.vu.busy
+  io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !xcpt.io.vu.busy
 
   // fence
   mrt.io.lreq <> vxu.io.lreq
@@ -162,9 +162,9 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   io.imem <> vxu.io.imem
 
-  vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
+  vxu.io.xcpt <> xcpt.io.vxu
 
-  irq.io.issue_to_irq <> vxu.io.irq
+  irq.io.issue <> vxu.io.irq
 
   // vmu
   vmu.io.lane <> vxu.io.vmu
@@ -175,10 +175,10 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   vmu.io.vtlb <> io.vtlb
 
-  vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
+  vmu.io.xcpt <> xcpt.io.vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
 
-  vmu.io.irq <> irq.io.vmu_to_irq
+  vmu.io.irq <> irq.io.vmu
 
   // aiw
   aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
@@ -210,5 +210,5 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
   evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
 
-  evac.io.xcpt_to_evac <> xcpt.io.xcpt_to_evac
+  evac.io.xcpt <> xcpt.io.evac
 }

@@ -13,7 +13,7 @@ class XCPTIO extends Bundle
   val kill = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_vu extends Bundle
+class XCPTVUIO extends Bundle
 {
   val busy = Bool(OUTPUT)
   val flush_kill = Bool(OUTPUT)
@@ -23,52 +23,67 @@ class io_xcpt_handler_to_vu extends Bundle
   val flush_vmu = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_issue extends Bundle 
+class XCPTIssueIO extends Bundle 
 {
   val stall = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_seq extends Bundle 
+class XCPTSequencerIO extends Bundle 
 {
   val stall = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_tlb extends Bundle 
-{
-  val stall = Bool(OUTPUT)
-}
-
-class io_xcpt_handler_to_vxu extends Bundle
+class XCPTVXUIO extends Bundle
 {
   val flush = Bool(OUTPUT)
-  val issue = new io_xcpt_handler_to_issue
-  val seq = new io_xcpt_handler_to_seq
+  val issue = new XCPTIssueIO
+  val seq = new XCPTSequencerIO
 }
 
-class io_xcpt_handler_to_vmu extends Bundle 
+class XCPTTLBIO extends Bundle 
 {
-  val tlb = new io_xcpt_handler_to_tlb()
+  val stall = Bool(OUTPUT)
 }
 
-class io_xcpt_handler_to_evac extends Bundle
+class XCPTVMUIO extends Bundle 
+{
+  val tlb = new XCPTTLBIO
+}
+
+class XCPTEvacIO extends Bundle
 {
   val start = Bool(OUTPUT)
   val addr = UInt(OUTPUT, SZ_ADDR)
 }
 
+class io_expand_to_xcpt_handler extends Bundle
+{
+  val empty = Bool(OUTPUT)
+}
+
+class io_vxu_to_xcpt_handler extends Bundle
+{
+  val expand = new io_expand_to_xcpt_handler
+}
+
+class io_evac_to_xcpt_handler extends Bundle
+{
+  val done = Bool(OUTPUT)
+}
+
 class XCPT extends Module 
 {
   val io = new Bundle {
-    val xcpt = new XCPTIO().flip()
+    val xcpt = new XCPTIO().flip
 
-    val xcpt_to_vu = new io_xcpt_handler_to_vu()
-    val xcpt_to_vxu = new io_xcpt_handler_to_vxu()
-    val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
-    val xcpt_to_evac = new io_xcpt_handler_to_evac()
+    val vu = new XCPTVUIO
+    val vxu = new XCPTVXUIO
+    val vmu = new XCPTVMUIO
+    val evac = new XCPTEvacIO
 
     val pending_memreq = Bool(INPUT)
-    val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
-    val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
+    val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip
+    val evac_to_xcpt = new io_evac_to_xcpt_handler().flip
   }
 
   val next_hold_issue = Bool()
@@ -84,9 +99,9 @@ class XCPT extends Module
   next_hold_tlb := hold_tlb
 
   // output assignments
-  io.xcpt_to_vxu.issue.stall := hold_issue
-  io.xcpt_to_vxu.seq.stall := hold_seq
-  io.xcpt_to_vmu.tlb.stall := hold_tlb
+  io.vxu.issue.stall := hold_issue
+  io.vxu.seq.stall := hold_seq
+  io.vmu.tlb.stall := hold_tlb
 
   val NORMAL = Bits(0, 3)
   val XCPT_DRAIN = Bits(1, 3)
@@ -123,18 +138,18 @@ class XCPT extends Module
     next_kill := Bool(true)
   }
 
-  io.xcpt_to_evac.addr := addr
+  io.evac.addr := addr
 
   //set defaults
-  io.xcpt_to_vu.busy := (state != NORMAL) && (state != HOLD)
-  io.xcpt_to_vu.flush_kill := Bool(false)
-  io.xcpt_to_vu.flush_irq := Bool(false)
-  io.xcpt_to_vu.flush_aiw := Bool(false)
-  io.xcpt_to_vu.flush_vru := Bool(false)
-  io.xcpt_to_vu.flush_vmu := Bool(false)
-  io.xcpt_to_vxu.flush := Bool(false)
+  io.vu.busy := (state != NORMAL) && (state != HOLD)
+  io.vu.flush_kill := Bool(false)
+  io.vu.flush_irq := Bool(false)
+  io.vu.flush_aiw := Bool(false)
+  io.vu.flush_vru := Bool(false)
+  io.vu.flush_vmu := Bool(false)
+  io.vxu.flush := Bool(false)
 
-  io.xcpt_to_evac.start := Bool(false)
+  io.evac.start := Bool(false)
 
   switch (state)
   {
@@ -175,15 +190,15 @@ class XCPT extends Module
 
     is (XCPT_FLUSH)
     {
-      io.xcpt_to_vu.flush_irq := Bool(true)
-      io.xcpt_to_vu.flush_vru := Bool(true)
-      io.xcpt_to_vu.flush_vmu := Bool(true)
-      io.xcpt_to_vxu.flush := Bool(true)
+      io.vu.flush_irq := Bool(true)
+      io.vu.flush_vru := Bool(true)
+      io.vu.flush_vmu := Bool(true)
+      io.vxu.flush := Bool(true)
 
       when (kill)
       { 
-        io.xcpt_to_vu.flush_kill := Bool(true)
-        io.xcpt_to_vu.flush_aiw := Bool(true)
+        io.vu.flush_kill := Bool(true)
+        io.vu.flush_aiw := Bool(true)
       }
 
       when (evac)
@@ -206,7 +221,7 @@ class XCPT extends Module
 
     is (XCPT_EVAC)
     {
-      io.xcpt_to_evac.start := Bool(true)
+      io.evac.start := Bool(true)
 
       when (io.evac_to_xcpt.done) 
       {

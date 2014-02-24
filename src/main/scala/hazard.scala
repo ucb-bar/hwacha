@@ -4,13 +4,25 @@ import Chisel._
 import Node._
 import Constants._
 
+class SequencerToHazardIO extends Bundle
+{
+  val stall = Bool(OUTPUT)
+  val last = Bool(OUTPUT)
+  val active = new VFU().asOutput
+  val cnt = Bits(OUTPUT, SZ_BCNT)
+}
+
+class ExpanderToHazardIO extends Bundle
+{
+  val wen = Bool(OUTPUT)
+  val rlast = Bool(OUTPUT)
+  val wlast = Bool(OUTPUT)
+}
+
 class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-
-    val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
-    val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
 
     val tvec = new Bundle {
       val active = Bool(INPUT)
@@ -25,6 +37,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val issueop = new IssueOpIO
     
+    val seq_to_hazard = new SequencerToHazardIO().flip
+    val expand_to_hazard = new ExpanderToHazardIO().flip
     val pending_memop = Bool(OUTPUT)
   }
 

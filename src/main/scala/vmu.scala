@@ -4,15 +4,6 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vmu_to_irq_handler extends Bundle
-{
-  val ma_ld = Bool(OUTPUT)
-  val ma_st = Bool(OUTPUT)
-  val faulted_ld = Bool(OUTPUT)
-  val faulted_st = Bool(OUTPUT)
-  val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
-}
-
 class VVAQIO extends DecoupledIO(new VVAQEntry)
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
@@ -52,7 +43,8 @@ class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
 class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val irq = new io_vmu_to_irq_handler()
+    val irq = new IRQVMUIO
+    val xcpt = new XCPTVMUIO().flip
 
     val lane = new VMUIO().flip
     val pf = new Bundle {
@@ -68,7 +60,6 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
-    val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
     val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
@@ -78,7 +69,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   val memif = Module(new MemIF)
 
   addr.io.irq <> io.irq
-  addr.io.stall := io.xcpt_to_vmu.tlb.stall
+  addr.io.stall := io.xcpt.tlb.stall
   addr.io.pf <> io.pf.vaq
   addr.io.lane <> io.lane.addr
   addr.io.evac <> io.evac.vaq
@@ -108,7 +99,7 @@ class AddressTLB extends Module
     val ack = Bool(OUTPUT)
     val stall = Bool(INPUT)
 
-    val irq = new io_vmu_to_irq_handler()
+    val irq = new IRQVMUIO
   }
 
   val sticky_stall = Reg(init=Bool(false))
@@ -185,7 +176,7 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
 class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val irq = new io_vmu_to_irq_handler()
+    val irq = new IRQVMUIO
     val stall = Bool(INPUT)
 
     val pf = new VVAQIO().flip
