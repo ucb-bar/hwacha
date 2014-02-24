@@ -37,8 +37,8 @@ class Evac extends Module
 
     val vcmdq = new VCMDQIO().flip
 
-    val vsdq = new io_vsdq()
-    val vaq  = new io_vvaq()
+    val vaq  = new VVAQIO
+    val vsdq = new VSDQIO
 
     val xcpt_to_evac = new io_xcpt_handler_to_evac().flip()
     val evac_to_xcpt = new io_evac_to_xcpt_handler()
@@ -154,11 +154,8 @@ class Evac extends Module
   io.vcmdq.cnt.ready := Bool(false)
 
   io.vaq.valid := Bool(false)
-  io.vaq.bits.checkcnt := Bool(false)
-  io.vaq.bits.cnt := UInt(0)
   io.vaq.bits.cmd := M_XWR
   io.vaq.bits.typ := MT_D
-  io.vaq.bits.typ_float := Bool(false)
   io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
   io.vaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
 

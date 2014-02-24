@@ -7,6 +7,8 @@ import Constants._
 class io_vxu_expand_to_hazard extends Bundle
 {
   val wen = Bool()
+  val rlast = Bool()
+  val wlast = Bool()
 }
 
 class io_expand_to_xcpt_handler extends Bundle
@@ -28,6 +30,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   class BuildExpander[T<:Data](gen: T, n: Int)
   {
     val valid = Vec.fill(n){Reg(init=Bool(false))}
+    val last = Vec.fill(n){Reg(init=Bool(false))}
     val bits = Vec.fill(n){Reg(gen)}
 
     (0 until n).reverse.foreach(i => ({
@@ -35,9 +38,11 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       valid(i) := step_en
       if (i==n-1) {
         bits(i) := bits(i).fromBits(Bits(0))
+        last(i) := Bool(false)
       } else {
         when (step_en) {
           bits(i) := bits(i+1)
+          last(i) := last(i+1)
         }
       }
     }))
@@ -65,7 +70,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     when (io.seqop.bits.active.viu) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seqop.bits.last
+      rexp.last(0) := io.seqop.bits.last
       rexp.bits(0).cnt := io.seqop.bits.cnt
       rexp.bits(0).addr := io.seqop.bits.reg.vs.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
@@ -74,7 +79,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
       when (io.seqop.bits.fn.viu.rtype()) {
         rexp.valid(1) := Bool(true)
-        rexp.bits(1).last := io.seqop.bits.last
+        rexp.last(1) := io.seqop.bits.last
         rexp.bits(1).cnt := io.seqop.bits.cnt
         rexp.bits(1).addr := io.seqop.bits.reg.vt.id
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
@@ -91,7 +96,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         Mux(io.seqop.bits.fn.viu.rtype(), Bits(conf.int_stages+2), Bits(conf.int_stages+1))
 
       wexp.valid(viu_wptr) := Bool(true)
-      wexp.bits(viu_wptr).last := io.seqop.bits.last
+      wexp.last(viu_wptr) := io.seqop.bits.last
       wexp.bits(viu_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(viu_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(viu_wptr).sel := Bits(4)
@@ -117,7 +122,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     when (io.seqop.bits.active.vau0) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seqop.bits.last
+      rexp.last(0) := io.seqop.bits.last
       rexp.bits(0).cnt := io.seqop.bits.cnt
       rexp.bits(0).addr := io.seqop.bits.reg.vs.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
@@ -125,7 +130,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).rblen := rblen(Bits(0))
 
       rexp.valid(1) := Bool(true)
-      rexp.bits(1).last := io.seqop.bits.last
+      rexp.last(1) := io.seqop.bits.last
       rexp.bits(1).cnt := io.seqop.bits.cnt
       rexp.bits(1).addr := io.seqop.bits.reg.vt.id
       rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
@@ -138,7 +143,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       val vau0_wptr = Bits(conf.imul_stages+3)
 
       wexp.valid(vau0_wptr) := Bool(true)
-      wexp.bits(vau0_wptr).last := io.seqop.bits.last
+      wexp.last(vau0_wptr) := io.seqop.bits.last
       wexp.bits(vau0_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(vau0_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(vau0_wptr).sel := Bits(0)
@@ -151,7 +156,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     when (io.seqop.bits.active.vau1) {
       when (io.seqop.bits.fn.vau1.fma()) {
         rexp.valid(0) := Bool(true)
-        rexp.bits(0).last := io.seqop.bits.last
+        rexp.last(0) := io.seqop.bits.last
         rexp.bits(0).cnt := io.seqop.bits.cnt
         rexp.bits(0).addr := io.seqop.bits.reg.vs.id
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
@@ -159,7 +164,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).rblen := rblen(Bits(0))
 
         rexp.valid(1) := Bool(true)
-        rexp.bits(1).last := io.seqop.bits.last
+        rexp.last(1) := io.seqop.bits.last
         rexp.bits(1).cnt := io.seqop.bits.cnt
         rexp.bits(1).addr := io.seqop.bits.reg.vt.id
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
@@ -167,7 +172,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(1).rblen := rblen(Bits(0))
 
         rexp.valid(2) := Bool(true)
-        rexp.bits(2).last := io.seqop.bits.last
+        rexp.last(2) := io.seqop.bits.last
         rexp.bits(2).cnt := io.seqop.bits.cnt
         rexp.bits(2).addr := io.seqop.bits.reg.vr.id
         rexp.bits(2).ren := ren(io.seqop.bits.reg.vr)
@@ -180,7 +185,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       }
       .otherwise {
         rexp.valid(0) := Bool(true)
-        rexp.bits(0).last := io.seqop.bits.last
+        rexp.last(0) := io.seqop.bits.last
         rexp.bits(0).cnt := io.seqop.bits.cnt
         rexp.bits(0).addr := io.seqop.bits.reg.vs.id
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
@@ -188,7 +193,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).rblen := rblen(Bits(0))
 
         rexp.valid(1) := Bool(true)
-        rexp.bits(1).last := io.seqop.bits.last
+        rexp.last(1) := io.seqop.bits.last
         rexp.bits(1).cnt := io.seqop.bits.cnt
         rexp.bits(1).addr := io.seqop.bits.reg.vt.id
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
@@ -203,7 +208,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         Mux(io.seqop.bits.fn.vau1.fma(), Bits(conf.fma_stages+4), Bits(conf.fma_stages+3))
 
       wexp.valid(vau1_wptr) := Bool(true)
-      wexp.bits(vau1_wptr).last := io.seqop.bits.last
+      wexp.last(vau1_wptr) := io.seqop.bits.last
       wexp.bits(vau1_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(vau1_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(vau1_wptr).sel := Bits(1)
@@ -222,7 +227,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     when (io.seqop.bits.active.vau2) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seqop.bits.last
+      rexp.last(0) := io.seqop.bits.last
       rexp.bits(0).cnt := io.seqop.bits.cnt
       rexp.bits(0).addr := io.seqop.bits.reg.vs.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
@@ -234,7 +239,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       val vau2_wptr = Bits(conf.fconv_stages+2)
 
       wexp.valid(vau2_wptr) := Bool(true)
-      wexp.bits(vau2_wptr).last := io.seqop.bits.last
+      wexp.last(vau2_wptr) := io.seqop.bits.last
       wexp.bits(vau2_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(vau2_wptr).addr := io.seqop.bits.reg.vd.id
       wexp.bits(vau2_wptr).sel := Bits(2)
@@ -246,7 +251,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     when (io.seqop.bits.active.vgu) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seqop.bits.last
+      rexp.last(0) := io.seqop.bits.last
       rexp.bits(0).cnt := io.seqop.bits.cnt
 
       when (io.seqop.bits.fn.vmu.utmemop()) {
@@ -267,13 +272,11 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       vguexp.bits(2).fn := io.seqop.bits.fn.vmu
       vguexp.bits(2).base := io.seqop.bits.imm.imm
       vguexp.bits(2).stride := io.seqop.bits.imm.stride
-      vguexp.bits(2).check.checkcnt := Bool(true)
-      vguexp.bits(2).check.cnt := io.seqop.bits.cnt
     }
 
     when (io.seqop.bits.active.vlu) {
       wexp.valid(1) := Bool(true)
-      wexp.bits(1).last := io.seqop.bits.last
+      wexp.last(1) := io.seqop.bits.last
       wexp.bits(1).cnt := io.seqop.bits.cnt
       wexp.bits(1).addr := io.seqop.bits.reg.vd.id
       wexp.bits(1).sel := Bits(3)
@@ -285,7 +288,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
     when (io.seqop.bits.active.vsu) {
       rexp.valid(0) := Bool(true)
-      rexp.bits(0).last := io.seqop.bits.last
+      rexp.last(0) := io.seqop.bits.last
       rexp.bits(0).cnt := io.seqop.bits.cnt
       rexp.bits(0).addr := io.seqop.bits.reg.vt.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vt)
@@ -302,6 +305,8 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   }
 
   io.expand_to_hazard.wen := wexp.valid(0)
+  io.expand_to_hazard.rlast := rexp.valid(0) && rexp.last(0)
+  io.expand_to_hazard.wlast := wexp.valid(0) && wexp.last(0)
 
   io.laneop.read <> rexp.ondeck
   io.laneop.write <> wexp.ondeck

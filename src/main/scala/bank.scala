@@ -39,7 +39,6 @@ class Bank extends Module
   val s1_read_op = Reg(Valid(new ReadBankOp).asDirectionless)
   s1_read_op.valid := io.op.in.read.valid
   when (io.op.in.read.valid) {
-    s1_read_op.bits.last := io.op.in.read.bits.last
     s1_read_op.bits.ren := io.op.in.read.bits.ren
     s1_read_op.bits.oplen := io.op.in.read.bits.oplen
     s1_read_op.bits.rblen := io.op.in.read.bits.rblen
@@ -53,7 +52,6 @@ class Bank extends Module
   val s1_write_op = Reg(Valid(new WriteBankOp).asDirectionless)
   s1_write_op.valid := io.op.in.write.valid
   when (io.op.in.write.valid) {
-    s1_write_op.bits.last := io.op.in.write.bits.last
     s1_write_op.bits.cnt := Mux(op_valid(io.op.in.write), io.op.in.write.bits.cnt - UInt(1), UInt(0))
     s1_write_op.bits.addr := io.op.in.write.bits.addr
     s1_write_op.bits.sel := io.op.in.write.bits.sel

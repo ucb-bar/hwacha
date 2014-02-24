@@ -66,8 +66,8 @@ class XCPT extends Module
     val xcpt_to_vmu = new io_xcpt_handler_to_vmu()
     val xcpt_to_evac = new io_xcpt_handler_to_evac()
 
+    val pending_memreq = Bool(INPUT)
     val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip()
-    val vmu_to_xcpt = new io_vmu_to_xcpt_handler().flip()
     val evac_to_xcpt = new io_evac_to_xcpt_handler().flip()
   }
 
@@ -166,7 +166,7 @@ class XCPT extends Module
 
     is (XCPT_DRAIN)
     {
-      when (io.vxu_to_xcpt.expand.empty && io.vmu_to_xcpt.no_pending_load_store)
+      when (io.vxu_to_xcpt.expand.empty && io.pending_memreq)
       {
         next_state := XCPT_FLUSH
       }
@@ -216,7 +216,7 @@ class XCPT extends Module
 
     is (XCPT_DRAIN_EVAC)
     {
-      when (io.vmu_to_xcpt.no_pending_load_store)
+      when (io.pending_memreq)
       {
         next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)

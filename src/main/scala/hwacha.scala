@@ -161,6 +161,9 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   
   implicit val conf = hc
 
+  // D$ tag requirement for hwacha
+  require(rc.dcacheReqTagBits >= log2Up(conf.nvldq))
+
   val icache = Module(new rocket.Frontend()(hc.vicache, rc.tl))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))
   val ptlb = Module(new rocket.TLB(hc.nptlb))

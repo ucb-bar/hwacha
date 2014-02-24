@@ -5,12 +5,6 @@ import Node._
 import Constants._
 import scala.collection.mutable.ArrayBuffer
 
-class io_lane_to_hazard extends Bundle
-{
-  val rlast = Bool()
-  val wlast = Bool()
-}
-
 class LaneOpIO extends Bundle
 {
   val read = Valid(new ReadBankOp)
@@ -53,8 +47,8 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
-    val lane_to_hazard = new io_lane_to_hazard().asOutput
     val vmu = new VMUIO
+    val lret = new MRTLoadRetireIO
   }
 
   val conn = new ArrayBuffer[BankOpIO]
@@ -87,9 +81,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     bank.io.rw.wbl3 := mem.io.data.ldata
   }
 
-  io.lane_to_hazard.rlast := conn.last.read.valid && conn.last.read.bits.last
-  io.lane_to_hazard.wlast := conn.last.write.valid && conn.last.write.bits.last
-
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
   // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
   val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
@@ -117,4 +108,5 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   mem.io.data.sdata := rbl(7)
 
   io.vmu <> mem.io.vmu
+  io.lret <> mem.io.lret
 }

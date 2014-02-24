@@ -75,8 +75,6 @@ class LaneLFU extends Module
     vgu_op.bits.fn := io.op.vgu.bits.fn
     when (!io.op.vgu.bits.fn.utmemop()) { vgu_stride := io.op.vgu.bits.stride }
     vgu_op.bits.stride := io.op.vgu.bits.stride
-    vgu_op.bits.check.checkcnt := Bool(false)
-    vgu_op.bits.check.cnt := io.op.vgu.bits.cnt
   }
   vgu_op.bits.base := vgu_base + vgu_stride
 

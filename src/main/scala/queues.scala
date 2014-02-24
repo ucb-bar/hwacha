@@ -40,11 +40,51 @@ class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Modul
   io.empty := (count === UInt(0,size))
 }
 
-class VLDQEnqBundle(DATA_SIZE: Int, TAG_SIZE: Int) extends Bundle
+class LookAheadPortIO(sz: Int) extends Bundle
+{
+  val reserve = new Bundle {
+    val valid = Bool(OUTPUT)
+    val cnt = UInt(OUTPUT, sz)
+  }
+  val available = new Bundle {
+    val cnt = UInt(OUTPUT, sz)
+    val check = Bool(INPUT)
+  }
+}
+
+class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
+{
+  val sz = log2Down(max_cnt)+1
+  val io = new Bundle {
+    val la = new LookAheadPortIO(sz).flip
+    val inc = Bool(INPUT)
+    val dec = Bool(INPUT)
+  }
+
+  val reg_count = Reg(init = UInt(reset_cnt, sz))
+
+  when (io.la.reserve.valid) {
+    reg_count := reg_count - io.la.reserve.cnt
+    when (io.inc ^ io.dec) {
+      when (io.inc) { reg_count := reg_count - io.la.reserve.cnt + UInt(1) }
+      when (io.dec) { reg_count := reg_count - io.la.reserve.cnt - UInt(1) }
+    }
+  }
+  .otherwise {
+    when (io.inc ^ io.dec) {
+      when (io.inc) { reg_count := reg_count + UInt(1) }
+      when (io.dec) { reg_count := reg_count - UInt(1) }
+    }
+  }
+
+  io.la.available.check := reg_count >= io.la.available.cnt
+}
+
+class VLDQEnqOp(DATA_SIZE: Int, TAG_SIZE: Int) extends Bundle
 {
   val data = Bits(width = DATA_SIZE)
   val rtag = UInt(width = TAG_SIZE)
-  override def clone = new VLDQEnqBundle(DATA_SIZE, TAG_SIZE).asInstanceOf[this.type]
+  override def clone = new VLDQEnqOp(DATA_SIZE, TAG_SIZE).asInstanceOf[this.type]
 }
 
 class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
@@ -54,16 +94,15 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
   val io = new Bundle {
     val deq_rtag = Decoupled(Bits(width = TAG_SIZE))
     val deq_data = Decoupled(Bits(width = DATA_SIZE))
-    val enq = Valid(new VLDQEnqBundle(DATA_SIZE, TAG_SIZE)).flip
-
-    val qcnt = UInt(INPUT, TAG_SIZE)
-    val watermark = Bool(OUTPUT)
+    val enq = Valid(new VLDQEnqOp(DATA_SIZE, TAG_SIZE)).flip
+    val la = new LookAheadPortIO(log2Down(TAG_ENTRIES)+1).flip
   }
 
   val read_ptr = Reg(init=UInt(0, TAG_SIZE))
   val read_ptr1 = read_ptr + UInt(1)
   val write_ptr = Reg(init=UInt(0, TAG_SIZE))
   val write_ptr1 = write_ptr + UInt(1)
+  val reserve_ptr = Reg(init=UInt(0, TAG_SIZE))
   val full = Reg(init=Bool(false))
 
   val bump_rptr = io.deq_data.fire()
@@ -102,16 +141,21 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
   // Logic for watermark
   val shifted_vb_array = Reg(init=Bits(0, TAG_ENTRIES))
   val shifted_write_ptr =
-    Mux(read_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - read_ptr,
-        UInt(TAG_ENTRIES) - read_ptr + io.enq.bits.rtag)(TAG_SIZE-1,0)
+    Mux(reserve_ptr <= io.enq.bits.rtag, io.enq.bits.rtag - reserve_ptr,
+        UInt(TAG_ENTRIES) - reserve_ptr + io.enq.bits.rtag)(TAG_SIZE-1,0)
 
   val shifted_vb_update_write =
     Mux(io.enq.valid, (Bits(1) << shifted_write_ptr),
         Bits(0, TAG_ENTRIES))
 
-  shifted_vb_array :=
-    Mux(bump_rptr, ((shifted_vb_array | shifted_vb_update_write) >> UInt(1)),
-        (shifted_vb_array | shifted_vb_update_write))
+  var mux_tree = shifted_vb_array | shifted_vb_update_write
+  for (i <- 1 until MAX_QCNT)
+    mux_tree = Mux(io.la.reserve.cnt === UInt(i), mux_tree >> UInt(i), mux_tree)
+  shifted_vb_array := Mux(io.la.reserve.valid, mux_tree, shifted_vb_array | shifted_vb_update_write)
+
+  when (io.la.reserve.valid) {
+    reserve_ptr := reserve_ptr + io.la.reserve.cnt
+  }
 
   // a limited version of leading count ones
   // maximum cnt is defined by MAX_QCNT
@@ -122,5 +166,5 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
     sel = sel & shifted_vb_array(i+1)
   }
 
-  io.watermark := locnt >= io.qcnt
+  io.la.available.check := locnt >= io.la.available.cnt
 }

@@ -12,15 +12,14 @@ class io_vxu_to_xcpt_handler extends Bundle
 class VXU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO
-
     val irq = new io_issue_to_irq_handler()
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
     val vmu = new VMUIO
-    val qcntp1 = UInt(OUTPUT, SZ_QCNT)
-    val qcntp2 = UInt(OUTPUT, SZ_QCNT)
+    val lreq = new MRTLoadRequestIO
+    val sreq = new MRTStoreRequestIO
+    val lret = new MRTLoadRetireIO
     
     val pending_memop = Bool(OUTPUT)
     val pending_vf = Bool(OUTPUT)
@@ -48,7 +47,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val exp = Module(new Expander)
   val lane = Module(new Lane)
 
-  io.cfg <> issue.io.cfg
   io.irq <> issue.io.irq
 
   issue.io.vcmdq <> io.vcmdq
@@ -65,14 +63,10 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   hazard.io.cfg <> issue.io.cfg
   hazard.io.seq_to_hazard <> seq.io.seq_to_hazard
   hazard.io.expand_to_hazard <> exp.io.expand_to_hazard
-  hazard.io.lane_to_hazard <> lane.io.lane_to_hazard
   hazard.io.tvec <> issue.io.tvec
   hazard.io.vt <> issue.io.vt
 
   seq.io.cfg <> issue.io.cfg
-  seq.io.qstall.vaq := !io.vmu.vaq.ready
-  seq.io.qstall.vldq := !io.vmu.vldq.valid
-  seq.io.qstall.vsdq := !io.vmu.vsdq.ready
   seq.io.issueop <> hazard.io.issueop
   seq.io.aiwop <> io.aiwop
   seq.io.xcpt_to_seq <> io.xcpt_to_vxu.seq
@@ -82,10 +76,12 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   lane.io.cfg <> issue.io.cfg
   lane.io.op <> exp.io.laneop
-  lane.io.vmu <> io.vmu
 
-  io.qcntp1 <> seq.io.qcntp1
-  io.qcntp2 <> seq.io.qcntp2
+  io.vmu <> seq.io.vmu
+  io.vmu <> lane.io.vmu
+  io.lreq <> seq.io.lreq
+  io.sreq <> seq.io.sreq
+  io.lret <> lane.io.lret
 
   io.pending_memop := hazard.io.pending_memop
   io.pending_vf := issue.io.pending_vf

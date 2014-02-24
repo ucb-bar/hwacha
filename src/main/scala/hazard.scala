@@ -11,7 +11,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val seq_to_hazard = new io_vxu_seq_to_hazard().asInput
     val expand_to_hazard = new io_vxu_expand_to_hazard().asInput
-    val lane_to_hazard = new io_lane_to_hazard().asInput
 
     val tvec = new Bundle {
       val active = Bool(INPUT)
@@ -52,170 +51,165 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val viu_wptr = Mux(io.issueop.bits.fn.viu.rtype(), viu_wptr2, viu_wptr1)
   val vau1_wptr = Mux(io.issueop.bits.fn.vau1.fma(), vau1_wptr3, vau1_wptr2)
 
-  val tbl_rport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_rport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_rport_vau1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_rport_vau2 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_rport_vsu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_rport_vgu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-
-  val tbl_wport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_wport_vau0 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_wport_vau1 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_wport_vau2 = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_wport_vlu = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
-  val tbl_wport_vd = Vec.fill(SZ_BANK){Reg(new RegInfo)}
-
-  val tbl_sport_val = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val tbl_rport = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val tbl_wport = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val tbl_vd = Vec.fill(SZ_BANK){Reg(new RegInfo)}
+  val tbl_seqslot = Vec.fill(SZ_BANK){Reg(init=Bool(false))}
+  val tbl_vfu = Reg(init=new VFU().fromBits(Bits(0)))
 
   when (io.issueop.valid) {
 
     when (io.issueop.bits.active.viu) {
-      tbl_rport_val(ptr2) := Bool(true)
-
+      tbl_rport(ptr2) := Bool(true)
       when (io.issueop.bits.fn.viu.rtype()) {
-        tbl_rport_val(ptr3) := Bool(true)
+        tbl_rport(ptr3) := Bool(true)
       }
-
-      tbl_wport_val(viu_wptr) := Bool(true)
-      tbl_wport_vd(viu_wptr) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
+      tbl_wport(viu_wptr) := Bool(true)
+      tbl_vd(viu_wptr) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_vfu.viu := Bool(false) // just to make chisel happy
     }
 
     when (io.issueop.bits.active.vau0) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vau0(ptr2) := Bool(true)
-
-      tbl_rport_val(ptr3) := Bool(true)
-      tbl_rport_vau0(ptr3) := Bool(true)
-
-      tbl_wport_val(vau0_wptr) := Bool(true)
-      tbl_wport_vau0(vau0_wptr) := Bool(true)
-      tbl_wport_vd(vau0_wptr) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
+      tbl_rport(ptr2) := Bool(true)
+      tbl_rport(ptr3) := Bool(true)
+      tbl_wport(vau0_wptr) := Bool(true)
+      tbl_vd(vau0_wptr) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_vfu.vau0 := Bool(true)
     }
 
     when (io.issueop.bits.active.vau1) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vau1(ptr2) := Bool(true)
-
-      tbl_rport_val(ptr3) := Bool(true)
-      tbl_rport_vau1(ptr3) := Bool(true)
-
+      tbl_rport(ptr2) := Bool(true)
+      tbl_rport(ptr3) := Bool(true)
       when (io.issueop.bits.fn.vau1.fma()) {
-        tbl_rport_val(ptr4) := Bool(true)
-        tbl_rport_vau1(ptr4) := Bool(true)
+        tbl_rport(ptr4) := Bool(true)
       }
-
-      tbl_wport_val(vau1_wptr) := Bool(true)
-      tbl_wport_vau1(vau1_wptr) := Bool(true)
-      tbl_wport_vd(vau1_wptr) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
+      tbl_wport(vau1_wptr) := Bool(true)
+      tbl_vd(vau1_wptr) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_vfu.vau1 := Bool(true)
     }
 
     when (io.issueop.bits.active.vau2) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vau2(ptr2) := Bool(true)
-
-      tbl_wport_val(vau2_wptr) := Bool(true)
-      tbl_wport_vau2(vau2_wptr) := Bool(true)
-      tbl_wport_vd(vau2_wptr) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
+      tbl_rport(ptr2) := Bool(true)
+      tbl_wport(vau2_wptr) := Bool(true)
+      tbl_vd(vau2_wptr) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_vfu.vau2 := Bool(true)
     }
 
     when (io.issueop.bits.active.amo) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vgu(ptr2) := Bool(true)
-
-      tbl_rport_val(ptr3) := Bool(true)
-      tbl_rport_vsu(ptr3) := Bool(true)
-
-      tbl_wport_val(ptr5) := Bool(true)
-      tbl_wport_vlu(ptr5) := Bool(true)
-      tbl_wport_vd(ptr5) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
-      tbl_sport_val(ptr2) := Bool(true)
-      tbl_sport_val(ptr3) := Bool(true)
+      tbl_rport(ptr2) := Bool(true)
+      tbl_rport(ptr3) := Bool(true)
+      tbl_wport(ptr5) := Bool(true)
+      tbl_vd(ptr5) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_seqslot(ptr2) := Bool(true)
+      tbl_seqslot(ptr3) := Bool(true)
+      tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vsu := Bool(true)
+      tbl_vfu.vlu := Bool(true)
     }
 
     when (io.issueop.bits.active.utst || io.issueop.bits.active.vst) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vgu(ptr2) := Bool(true)
-
-      tbl_rport_val(ptr3) := Bool(true)
-      tbl_rport_vsu(ptr3) := Bool(true)
-
-      tbl_sport_val(ptr1) := Bool(true)
-      tbl_sport_val(ptr2) := Bool(true)
+      tbl_rport(ptr2) := Bool(true)
+      tbl_rport(ptr3) := Bool(true)
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_seqslot(ptr2) := Bool(true)
+      tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vsu := Bool(true)
     }
 
     when (io.issueop.bits.active.utld || io.issueop.bits.active.vld) {
-      tbl_rport_val(ptr2) := Bool(true)
-      tbl_rport_vgu(ptr2) := Bool(true)
-
-      tbl_wport_val(ptr4) := Bool(true)
-      tbl_wport_vlu(ptr4) := Bool(true)
-      tbl_wport_vd(ptr4) := io.issueop.bits.reg.vd
-
-      tbl_sport_val(ptr1) := Bool(true)
-      tbl_sport_val(ptr2) := Bool(true)
+      // don't allocate read port for vcu
+      tbl_rport(ptr2) := Bool(true)
+      tbl_wport(ptr5) := Bool(true)
+      tbl_vd(ptr5) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_seqslot(ptr2) := Bool(true)
+      tbl_seqslot(ptr3) := Bool(true)
+      tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vcu := Bool(true)
+      tbl_vfu.vlu := Bool(true)
     }
   }
 
-  when (io.seq_to_hazard.last) {
-    tbl_sport_val(ptr) := Bool(false)
+  when (io.expand_to_hazard.rlast) {
+    tbl_rport(ptr) := Bool(false)
+  }
+
+  when (io.expand_to_hazard.wlast) {
+    tbl_wport(ptr) := Bool(false)
   }
 
   when (io.expand_to_hazard.wen) {
-    tbl_wport_vd(ptr).id := tbl_wport_vd(ptr).id + Mux(tbl_wport_vd(ptr).float, io.cfg.fstride, io.cfg.xstride)
+    tbl_vd(ptr).id := tbl_vd(ptr).id + Mux(tbl_vd(ptr).float, io.cfg.fstride, io.cfg.xstride)
   }
 
-  when (io.lane_to_hazard.rlast) {
-    tbl_rport_val(ptr) := Bool(false)
-    tbl_rport_vau0(ptr) := Bool(false)
-    tbl_rport_vau1(ptr) := Bool(false)
-    tbl_rport_vau2(ptr) := Bool(false)
-    tbl_rport_vsu(ptr) := Bool(false)
-    tbl_rport_vgu(ptr) := Bool(false)
+  def clear_shazards(active: VFU) = {
+    when (active.vau0) { tbl_vfu.vau0 := Bool(false) }
+    when (active.vau1) { tbl_vfu.vau1 := Bool(false) }
+    when (active.vau2) { tbl_vfu.vau2 := Bool(false) }
+    when (active.vgu) { tbl_vfu.vgu := Bool(false) }
+    when (active.vcu) { tbl_vfu.vcu := Bool(false) }
+    when (active.vlu) { tbl_vfu.vlu := Bool(false) }
+    when (active.vsu) { tbl_vfu.vsu := Bool(false) }
   }
 
-  when (io.lane_to_hazard.wlast) {
-    tbl_wport_val(ptr) := Bool(false)
-    tbl_wport_vau0(ptr) := Bool(false)
-    tbl_wport_vau1(ptr) := Bool(false)
-    tbl_wport_vau2(ptr) := Bool(false)
-    tbl_wport_vlu(ptr) := Bool(false)
+  val n = conf.nbanks-1
+  val last = Vec.fill(n){Reg(init=Bool(false))}
+  val clear_vfu = Vec.fill(n){Reg(new VFU().fromBits(Bits(0)))}
+  (0 until n).reverse.foreach(i => ({
+    val step_en = if (i==n-1) Bool(false) else last(i+1)
+    last(i) := step_en
+    if (i==n-1) {
+      clear_vfu(i) := clear_vfu(i).fromBits(Bits(0))
+    } else {
+      when (step_en) {
+        clear_vfu(i) := clear_vfu(i+1)
+      }
+    }
+  }))
+
+  when (io.seq_to_hazard.last) {
+    tbl_seqslot(ptr) := Bool(false)
+
+    when (io.seq_to_hazard.cnt === UInt(1)) {
+      clear_shazards(io.seq_to_hazard.active)
+    }
+    .otherwise {
+      val cnt = io.seq_to_hazard.cnt - UInt(2)
+      last(cnt) := Bool(true)
+      when (last(cnt)) {
+        clear_vfu(cnt) := new VFU().fromBits(clear_vfu(cnt).toBits | io.seq_to_hazard.active.toBits)
+      }
+      .otherwise {
+        clear_vfu(cnt) := io.seq_to_hazard.active
+      }
+    }
+  }
+
+  when (last(0)) {
+    clear_shazards(clear_vfu(0))
   }
 
   // hazard check logic for tvec/vt
-  def zipReduce(valid: Vec[Bool], p: Vec[Bool]) = valid.zip(p).map(b => b._1 && b._2).reduce(_||_)
-  val shazard_vau0 = zipReduce(tbl_rport_val, tbl_rport_vau0) || zipReduce(tbl_wport_val, tbl_wport_vau0)
-  val shazard_vau1 = zipReduce(tbl_rport_val, tbl_rport_vau1) || zipReduce(tbl_wport_val, tbl_wport_vau1)
-  val shazard_vau2 = zipReduce(tbl_rport_val, tbl_rport_vau2) || zipReduce(tbl_wport_val, tbl_wport_vau2)
-  val shazard_vgu = zipReduce(tbl_rport_val, tbl_rport_vgu)
-  val shazard_vlu = zipReduce(tbl_wport_val, tbl_wport_vlu)
-  val shazard_vsu = zipReduce(tbl_rport_val, tbl_rport_vsu)
+  val seqhazard_1slot = tbl_seqslot(ptr1)
+  val seqhazard_2slot = tbl_seqslot(ptr1) | tbl_seqslot(ptr2)
+  val seqhazard_3slot = tbl_seqslot(ptr1) | tbl_seqslot(ptr2) | tbl_seqslot(ptr3)
 
-  val seqhazard_1slot = tbl_sport_val(ptr1)
-  val seqhazard_2slot = tbl_sport_val(ptr1) | tbl_sport_val(ptr2)
-  val seqhazard_3slot = tbl_sport_val(ptr1) | tbl_sport_val(ptr2) | tbl_sport_val(ptr3)
-
-  val bhazard_amo = tbl_rport_val(ptr2) | tbl_rport_val(ptr3) | tbl_wport_val(ptr5)
-  val bhazard_utld = tbl_rport_val(ptr2) | tbl_wport_val(ptr4)
-  val bhazard_utst = tbl_rport_val(ptr2) | tbl_rport_val(ptr3)
-  val bhazard_vld = tbl_rport_val(ptr2) | tbl_wport_val(ptr4)
-  val bhazard_vst = tbl_rport_val(ptr2) | tbl_rport_val(ptr3)
+  val bhazard_amo = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
+  val bhazard_utld = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
+  val bhazard_utst = tbl_rport(ptr2) | tbl_rport(ptr3)
+  val bhazard_vld = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
+  val bhazard_vst = tbl_rport(ptr2) | tbl_rport(ptr3)
 
   def check_hazards(op: IssueOpIO) = {
-    val dhazard_vs = tbl_wport_val.zip(tbl_wport_vd).map{ case (valid,vd) => valid && op.bits.reg.vs.id === vd.id }.reduce(_||_)
-    val dhazard_vt = tbl_wport_val.zip(tbl_wport_vd).map{ case (valid,vd) => valid && op.bits.reg.vt.id === vd.id }.reduce(_||_)
-    val dhazard_vr = tbl_wport_val.zip(tbl_wport_vd).map{ case (valid,vd) => valid && op.bits.reg.vr.id === vd.id }.reduce(_||_)
-    val dhazard_vd = tbl_wport_val.zip(tbl_wport_vd).map{ case (valid,vd) => valid && op.bits.reg.vd.id === vd.id }.reduce(_||_)
+    val dhazard_vs = tbl_wport.zip(tbl_vd).map{ case (valid,vd) => valid && op.bits.reg.vs.id === vd.id }.reduce(_||_)
+    val dhazard_vt = tbl_wport.zip(tbl_vd).map{ case (valid,vd) => valid && op.bits.reg.vt.id === vd.id }.reduce(_||_)
+    val dhazard_vr = tbl_wport.zip(tbl_vd).map{ case (valid,vd) => valid && op.bits.reg.vr.id === vd.id }.reduce(_||_)
+    val dhazard_vd = tbl_wport.zip(tbl_vd).map{ case (valid,vd) => valid && op.bits.reg.vd.id === vd.id }.reduce(_||_)
     val dhazard = List(
         op.bits.reg.vs.active && dhazard_vs && !op.bits.reg.vs.zero,
         op.bits.reg.vt.active && dhazard_vt && !op.bits.reg.vt.zero,
@@ -226,12 +220,13 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     val memop = List(op.bits.active.amo, op.bits.active.utld, op.bits.active.utst, op.bits.active.vld, op.bits.active.vst).reduce(_||_)
 
     val shazard = List(
-      shazard_vau0 && op.bits.active.vau0,
-      shazard_vau1 && op.bits.active.vau1,
-      shazard_vau2 && op.bits.active.vau2,
-      shazard_vgu && memop,
-      shazard_vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),
-      shazard_vsu && List(op.bits.active.amo, op.bits.active.utst, op.bits.active.vst).reduce(_||_)
+      tbl_vfu.vau0 && op.bits.active.vau0,
+      tbl_vfu.vau1 && op.bits.active.vau1,
+      tbl_vfu.vau2 && op.bits.active.vau2,
+      tbl_vfu.vgu && memop,
+      tbl_vfu.vcu && List(op.bits.active.utld, op.bits.active.vld).reduce(_||_),
+      tbl_vfu.vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),
+      tbl_vfu.vsu && List(op.bits.active.amo, op.bits.active.utst, op.bits.active.vst).reduce(_||_)
     ).reduce(_||_)
 
     val seqhazard = List(
@@ -240,9 +235,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       seqhazard_1slot && op.bits.active.vau1,
       seqhazard_1slot && op.bits.active.vau2,
       seqhazard_3slot && op.bits.active.amo,
-      seqhazard_2slot && op.bits.active.utld,
+      seqhazard_3slot && op.bits.active.utld,
       seqhazard_2slot && op.bits.active.utst,
-      seqhazard_2slot && op.bits.active.vld,
+      seqhazard_3slot && op.bits.active.vld,
       seqhazard_2slot && op.bits.active.vst
     ).reduce(_||_)
 
@@ -256,9 +251,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val rports = PopCount(List(op.bits.reg.vs.active, op.bits.reg.vt.active, op.bits.reg.vr.active))
 
-    val bhazard_r1w1 = tbl_rport_val(ptr2) | tbl_wport_val(wptr)
-    val bhazard_r2w1 = tbl_rport_val(ptr2) | tbl_rport_val(ptr3) | tbl_wport_val(wptr)
-    val bhazard_r3w1 = tbl_rport_val(ptr2) | tbl_rport_val(ptr3) | tbl_rport_val(ptr4) | tbl_wport_val(wptr)
+    val bhazard_r1w1 = tbl_rport(ptr2) | tbl_wport(wptr)
+    val bhazard_r2w1 = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(wptr)
+    val bhazard_r3w1 = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_rport(ptr4) | tbl_wport(wptr)
     val bhazard = List(
       bhazard_r1w1 && !memop && op.bits.reg.vd.active && (rports === UInt(0) || rports === UInt(1)),
       bhazard_r2w1 && !memop && op.bits.reg.vd.active && rports === UInt(2),
@@ -282,5 +277,5 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   io.issueop.valid := Mux(io.tvec.active, fire_tvec, fire_vt)
   io.issueop.bits := Mux(io.tvec.active, io.tvec.op.bits, io.vt.op.bits)
 
-  io.pending_memop := List(tbl_rport_vgu, tbl_rport_vsu, tbl_wport_vlu).map(vb => vb.reduce(_||_)).reduce(_||_)
+  io.pending_memop := tbl_vfu.vsu || tbl_vfu.vlu
 }

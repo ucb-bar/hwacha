@@ -8,6 +8,8 @@ class io_vxu_seq_to_hazard extends Bundle
 {
   val stall = Bool()
   val last = Bool()
+  val active = new VFU
+  val cnt = Bits(width = SZ_BCNT)
 }
 
 class SequencerOpIO extends ValidIO(new SequencerOp)
@@ -16,20 +18,17 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
-    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
-
-    val qcntp1 = UInt(OUTPUT, SZ_QCNT)
-    val qcntp2 = UInt(OUTPUT, SZ_QCNT)
-    val qstall = new Bundle {
-      val vaq = Bool(INPUT)
-      val vldq = Bool(INPUT)
-      val vsdq = Bool(INPUT)
-    }
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO
     val aiwop = new AIWOpIO
+
+    val vmu = new VMUIO
+    val lreq = new MRTLoadRequestIO
+    val sreq = new MRTStoreRequestIO
+
+    val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
+    val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
   }
 
   class BuildSequencer[T<:Data](n: Int)
@@ -117,6 +116,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       e(slot).imm.imm + (e(slot).imm.stride << UInt(3))
 
     def vgu_val(slot: UInt) = valid(slot) && e(slot).active.vgu
+    def vcu_val(slot: UInt) = valid(slot) && e(slot).active.vcu
     def vlu_val(slot: UInt) = valid(slot) && e(slot).active.vlu
     def vsu_val(slot: UInt) = valid(slot) && e(slot).active.vsu
 
@@ -134,7 +134,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       ldst_active(slot) && e(slot).fn.vmu.utmemop()
 
     def mem_active(slot: UInt) =
-      e(slot).active.vgu || ldst_active(slot)
+      e(slot).active.vgu || e(slot).active.vcu || ldst_active(slot)
 
     def active(slot: UInt) =
       alu_active(slot) || mem_active(slot)
@@ -142,10 +142,11 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
   class BuildOrderTable(nslots: Int)
   {
-    val nvfu = 3
+    val nvfu = 4
     val vgu = 0
-    val vlu = 1
-    val vsu = 2
+    val vcu = 1
+    val vlu = 2
+    val vsu = 3
 
     val tbl = Vec.fill(nslots){Vec.fill(nvfu){Reg(init=Bool(false))}}
 
@@ -284,11 +285,17 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
-      seq.last(ptr2) := turbo_last
-      seq.e(ptr2).active.vlu := Bool(true)
+      seq.last(ptr2) := last
+      seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
-      seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
-      seq.aiw(ptr2) := io.issueop.bits.aiw
+
+      seq.valid(ptr3) := Bool(true)
+      seq.vlen(ptr3) := vlen
+      seq.last(ptr3) := turbo_last
+      seq.e(ptr3).active.vlu := Bool(true)
+      seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
+      seq.aiw(ptr3) := io.issueop.bits.aiw
     }
 
     when (io.issueop.bits.active.utst) {
@@ -320,11 +327,17 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := last
-      seq.e(ptr2).active.vlu := Bool(true)
+      seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
-      seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
-      seq.e(ptr2).imm := io.issueop.bits.imm
-      seq.aiw(ptr2) := io.issueop.bits.aiw
+
+      seq.valid(ptr3) := Bool(true)
+      seq.vlen(ptr3) := vlen
+      seq.last(ptr3) := last
+      seq.e(ptr3).active.vlu := Bool(true)
+      seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
+      seq.e(ptr3).imm := io.issueop.bits.imm
+      seq.aiw(ptr3) := io.issueop.bits.aiw
     }
 
     when (io.issueop.bits.active.vst) {
@@ -347,48 +360,67 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
   }
 
-  // figure out stalls due to vaq/vldq/vsdq
+  // common
+  val nelements = seq.nelements(ptr)
+  val nstrip = seq.nstrip(ptr)
+  val islast = seq.islast(ptr)
+
+  // figure out stalls due to vmu
   val ot = new BuildOrderTable(SZ_BANK)
   ot.mark(io.issueop.valid && io.issueop.bits.active.viu, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau0, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau1, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau2, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vsu), (ptr3, ot.vlu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.utld, (ptr1, ot.vgu), (ptr2, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.utld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vsu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vsu))
 
-  val reg_vaq_stall = Reg(init = Bool(false))
-  val reg_vldq_stall = Reg(init = Bool(false))
-  val reg_vsdq_stall = Reg(init = Bool(false))
+  io.vmu.addr.vla.available.cnt := nelements
+  io.vmu.addr.pla.available.cnt := nelements
+  io.vmu.ldata.la.available.cnt := nelements
+  io.vmu.sdata.la.available.cnt := nelements
 
-  val masked_vaq_stall = ot.check(ptr, ot.vgu) & reg_vaq_stall
-  val masked_vldq_stall = ot.check(ptr, ot.vlu) & reg_vldq_stall
-  val masked_vsdq_stall = ot.check(ptr, ot.vsu) & reg_vsdq_stall
+  val vgu_stall = !io.vmu.addr.vla.available.check
+  val vcu_stall = !io.vmu.addr.pla.available.check
+  val vlu_stall = !io.vmu.ldata.la.available.check
+  val vsu_stall = !io.vmu.addr.pla.available.check || !io.vmu.sdata.la.available.check
 
-  when (seq.vgu_val(ptr) & !masked_vldq_stall & !masked_vsdq_stall) { reg_vaq_stall := io.qstall.vaq }
-  when (seq.vlu_val(ptr) & !masked_vaq_stall & !masked_vsdq_stall) { reg_vldq_stall := io.qstall.vldq }
-  when (seq.vsu_val(ptr) & !masked_vldq_stall & !masked_vsdq_stall) { reg_vsdq_stall := io.qstall.vsdq }
+  val reg_vgu_stall = Reg(init = Bool(false))
+  val reg_vcu_stall = Reg(init = Bool(false))
+  val reg_vlu_stall = Reg(init = Bool(false))
+  val reg_vsu_stall = Reg(init = Bool(false))
+
+  val masked_vgu_stall = ot.check(ptr, ot.vgu) & reg_vgu_stall
+  val masked_vcu_stall = ot.check(ptr, ot.vcu) & reg_vcu_stall
+  val masked_vlu_stall = ot.check(ptr, ot.vlu) & reg_vlu_stall
+  val masked_vsu_stall = ot.check(ptr, ot.vsu) & reg_vsu_stall
+
+  def construct_mask(exclude: Bool) = {
+    Array(masked_vgu_stall, masked_vcu_stall, masked_vlu_stall, masked_vsu_stall).filter(_ != exclude).reduce(_||_)
+  }
+
+  when (seq.vgu_val(ptr) && !construct_mask(masked_vgu_stall)) { reg_vgu_stall := vgu_stall }
+  when (seq.vcu_val(ptr) && !construct_mask(masked_vcu_stall)) { reg_vcu_stall := vcu_stall }
+  when (seq.vlu_val(ptr) && !construct_mask(masked_vlu_stall)) { reg_vlu_stall := vlu_stall }
+  when (seq.vsu_val(ptr) && !construct_mask(masked_vsu_stall)) { reg_vsu_stall := vsu_stall }
 
   val masked_xcpt_stall = (!seq.vlu_val(ptr) && !seq.vsu_val(ptr)) && io.xcpt_to_seq.stall
 
   val stall =
-    masked_xcpt_stall |
-    masked_vaq_stall | masked_vldq_stall | masked_vsdq_stall |
-    seq.vgu_val(ptr) && io.qstall.vaq |
-    seq.vlu_val(ptr) && io.qstall.vldq |
-    seq.vsu_val(ptr) && io.qstall.vsdq
+    masked_xcpt_stall ||
+    masked_vgu_stall || masked_vcu_stall || masked_vlu_stall || masked_vsu_stall ||
+    seq.vgu_val(ptr) && vgu_stall ||
+    seq.vcu_val(ptr) && vcu_stall ||
+    seq.vlu_val(ptr) && vlu_stall ||
+    seq.vsu_val(ptr) && vsu_stall
 
   seq.stall(ptr) := stall
 
   val valid = !stall && seq.valid(ptr)
 
   // update sequencer state
-  val nelements = seq.nelements(ptr)
-  val nstrip = seq.nstrip(ptr)
-  val islast = seq.islast(ptr)
-
   when (valid) {
     when (seq.active(ptr)) {
       seq.vlen(ptr) := seq.vlen(ptr) - nelements
@@ -406,6 +438,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
         seq.e(ptr).active.vau1 := Bool(false)
         seq.e(ptr).active.vau2 := Bool(false)
         seq.e(ptr).active.vgu := Bool(false)
+        seq.e(ptr).active.vcu := Bool(false)
         seq.e(ptr).active.vlu := Bool(false)
         seq.e(ptr).active.vsu := Bool(false)
         seq.aiw(ptr).active.imm1 := Bool(false)
@@ -427,20 +460,29 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
   // output
   io.seq_to_hazard.stall := (seq.stall.toBits & seq.valid.toBits).orR
-  io.seq_to_hazard.last := !stall && seq.valid(ptr) && islast
+  io.seq_to_hazard.last := valid && islast
+  io.seq_to_hazard.active := seq.e(ptr).active
+  io.seq_to_hazard.cnt := nstrip
 
   io.seqop.valid := valid
   io.seqop.bits.cnt := nstrip
   io.seqop.bits.last := islast
   io.seqop.bits <> seq.e(ptr)
 
-  val reg_stall =
-    seq.vgu_val(ptr) & reg_vaq_stall |
-    seq.vlu_val(ptr) & reg_vldq_stall |
-    seq.vsu_val(ptr) & reg_vsdq_stall
+  io.vmu.addr.vla.reserve.cnt := nelements
+  io.vmu.addr.pla.reserve.cnt := nelements
+  io.vmu.ldata.la.reserve.cnt := nelements
+  io.vmu.sdata.la.reserve.cnt := nelements
 
-  io.qcntp1 := Mux(reg_stall, nstrip, nstrip + UInt(1, SZ_QCNT))
-  io.qcntp2 := Mux(reg_stall, nstrip, nstrip + UInt(3, SZ_QCNT))
+  io.vmu.addr.vla.reserve.valid := valid && seq.vgu_val(ptr)
+  io.vmu.addr.pla.reserve.valid := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
+  io.vmu.ldata.la.reserve.valid := valid && seq.vlu_val(ptr)
+  io.vmu.sdata.la.reserve.valid := valid && seq.vsu_val(ptr)
+
+  io.lreq.update := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr) && seq.e(ptr).fn.vmu.amo())
+  io.lreq.cnt := nelements
+  io.sreq.update := valid && (seq.vsu_val(ptr) && !seq.e(ptr).fn.vmu.amo())
+  io.sreq.cnt := nelements
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

@@ -78,6 +78,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   val irq = Module(new IRQ(resetSignal = flush_irq))
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
+  val mrt = Module(new MRT)
 
   // counters
   val vcmdqcnt = new {
@@ -98,7 +99,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
     vru.io.vcmdq <> vpfcmdq.io.deq
 
-    vmu.io.pf_vvaq <> vru.io.vvaq
+    vmu.io.pf.vaq <> vru.io.vvaq
     vmu.io.vpftlb <> io.vpftlb
   }
   else
@@ -124,7 +125,15 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !xcpt.io.xcpt_to_vu.busy
 
   // fence
-  io.busy := vcmdq.io.deq.cmd.valid || vxu.io.pending_vf || vxu.io.pending_memop || vmu.io.pending_store
+  mrt.io.lreq <> vxu.io.lreq
+  mrt.io.sreq <> vxu.io.sreq
+  mrt.io.lret <> vxu.io.lret
+  mrt.io.sret.update := io.dmem.resp.valid && is_mcmd_store(io.dmem.resp.bits.cmd)
+
+  io.busy :=
+    vcmdq.io.deq.cmd.valid ||
+    vxu.io.pending_vf || vxu.io.pending_memop ||
+    mrt.io.pending_memreq
 
   io.irq := irq.io.irq
   io.irq_cause := irq.io.irq_cause
@@ -132,6 +141,9 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
+  xcpt.io.pending_memreq := mrt.io.pending_memreq
+  xcpt.io.vxu_to_xcpt <> vxu.io.vxu_to_xcpt
+  xcpt.io.evac_to_xcpt <> evac.io.evac_to_xcpt
 
   // vxu
   vcmdq.io.deq.cmd.ready := (vxu.io.vcmdq.cmd.ready || evac.io.vcmdq.cmd.ready)
@@ -151,17 +163,13 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   io.imem <> vxu.io.imem
 
   vxu.io.xcpt_to_vxu <> xcpt.io.xcpt_to_vxu
-  vxu.io.vxu_to_xcpt <> xcpt.io.vxu_to_xcpt
 
   irq.io.issue_to_irq <> vxu.io.irq
 
   // vmu
-  vmu.io.vxu <> vxu.io.vmu
-  vmu.io.evac_vvaq <> evac.io.vaq
-  vmu.io.evac_vsdq <> evac.io.vsdq
-
-  vmu.io.qcntp1 := vxu.io.qcntp1
-  vmu.io.qcntp2 := vxu.io.qcntp2
+  vmu.io.lane <> vxu.io.vmu
+  vmu.io.evac.vaq <> evac.io.vaq
+  vmu.io.evac.vsdq <> evac.io.vsdq
 
   vmu.io.dmem <> io.dmem
 
@@ -169,11 +177,8 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   vmu.io.xcpt_to_vmu <> xcpt.io.xcpt_to_vmu
   vmu.io.evac_to_vmu <> evac.io.evac_to_vmu
-  vmu.io.vmu_to_xcpt <> xcpt.io.vmu_to_xcpt
 
   vmu.io.irq <> irq.io.vmu_to_irq
-
-  vmu.io.cfg <> vxu.io.cfg
 
   // aiw
   aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
@@ -206,5 +211,4 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
 
   evac.io.xcpt_to_evac <> xcpt.io.xcpt_to_evac
-  evac.io.evac_to_xcpt <> xcpt.io.evac_to_xcpt
 }

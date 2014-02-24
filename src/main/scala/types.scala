@@ -76,6 +76,7 @@ class VMUFn extends Bundle
   val op = Bits(width = SZ_VMU_OP)
 
   def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
+  def amo(dummy: Int = 0) = (op === VM_AMO)
 }
 
 
@@ -192,17 +193,21 @@ class IssueOp extends DecodedInstruction
 // sequencer op
 //-------------------------------------------------------------------------\\
 
+class VFU extends Bundle
+{
+  val viu = Bool()
+  val vau0 = Bool()
+  val vau1 = Bool()
+  val vau2 = Bool()
+  val vgu = Bool()
+  val vcu = Bool()
+  val vlu = Bool()
+  val vsu = Bool()
+}
+
 class SequencerEntry extends DecodedInstruction
 {
-  val active = new Bundle {
-    val viu = Bool()
-    val vau0 = Bool()
-    val vau1 = Bool()
-    val vau2 = Bool()
-    val vgu = Bool()
-    val vlu = Bool()
-    val vsu = Bool()
-  }
+  val active = new VFU
 }
 
 class SequencerOp extends SequencerEntry
@@ -223,7 +228,6 @@ class LaneOp extends Bundle
 
 class ReadBankOp extends LaneOp
 {
-  val last = Bool()
   val addr = Bits(width = SZ_BREGLEN)
   val ren = Bool()
   val oplen = Bits(width = SZ_BOPL)
@@ -232,7 +236,6 @@ class ReadBankOp extends LaneOp
 
 class WriteBankOp extends LaneOp
 {
-  val last = Bool()
   val addr = Bits(width = SZ_BREGLEN)
   val sel = Bits(width = SZ_BWPORT)
 }
@@ -264,7 +267,11 @@ class VGUOp extends LaneOp
   val fn = new VMUFn
   val base = Bits(width = SZ_DATA)
   val stride = Bits(width = SZ_VSTRIDE)
-  val check = new io_vxu_mem_check
+}
+
+class VCUOp extends LaneOp
+{
+  val fn = new VMUFn
 }
 
 class VLUOp extends LaneOp
@@ -283,11 +290,6 @@ class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
 class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
 class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
 
-class io_vvaq extends DecoupledIO(new io_vvaq_bundle)
-class io_vpaq extends DecoupledIO(new io_vpaq_bundle)
-class io_vldq extends DecoupledIO(Bits(width = SZ_DATA))
-class io_vsdq extends DecoupledIO(Bits(width = SZ_DATA))
-
 class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
 
 class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
@@ -297,30 +299,18 @@ class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }
 
-class io_vxu_mem_check extends Bundle
+class VVAQEntry extends Bundle
 {
-  val checkcnt = Bool()
-  val cnt = UInt(width = 4)
-}
-
-class io_vvaq_bundle extends Bundle
-{
-  val checkcnt = Bool()
-  val cnt = UInt(width = 4)
-  val cmd = Bits(width = 4)
-  val typ = Bits(width = 3)
-  val typ_float = Bool()
+  val cmd = Bits(width = M_SZ)
+  val typ = Bits(width = MT_SZ)
   val idx = Bits(width = PGIDX_BITS)
   val vpn = Bits(width = VPN_BITS)
 }
 
-class io_vpaq_bundle extends Bundle
+class VPAQEntry extends Bundle
 {
-  val checkcnt = Bool()
-  val cnt = UInt(width = 4)
-  val cmd = Bits(width = 4)
-  val typ = Bits(width = 3)
-  val typ_float = Bool()
+  val cmd = Bits(width = M_SZ)
+  val typ = Bits(width = MT_SZ)
   val addr = Bits(width = PADDR_BITS)
 }
 

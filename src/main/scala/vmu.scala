@@ -4,35 +4,64 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_vmu_to_xcpt_handler extends Bundle 
+class io_vmu_to_irq_handler extends Bundle
 {
-  val no_pending_load_store = Bool(OUTPUT)
+  val ma_ld = Bool(OUTPUT)
+  val ma_st = Bool(OUTPUT)
+  val faulted_ld = Bool(OUTPUT)
+  val faulted_st = Bool(OUTPUT)
+  val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
 }
 
-class VMUIO extends Bundle 
-{
-  val vaq = new io_vvaq
-  val vldq = new io_vldq().flip
-  val vsdq = new io_vsdq
+class VVAQIO extends DecoupledIO(new VVAQEntry)
+class VPAQIO extends DecoupledIO(new VPAQEntry)
 
-  val evaq = new io_vvaq
-  val evsdq = new io_vsdq
+class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
+{
+  val q = new VVAQIO
+  val vla = new LookAheadPortIO(log2Down(conf.nvvaq)+1)
+  val pla = new LookAheadPortIO(log2Down(conf.nvpaq)+1)
+}
+
+class VLDQIO extends DecoupledIO(Bits(width = SZ_DATA))
+class VLDQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
+{
+  val q = new VLDQIO().flip
+  val la = new LookAheadPortIO(log2Down(conf.nvldq)+1)
+}
+class VLDQMemIfIO(implicit conf: HwachaConfiguration) extends Bundle
+{
+  val update = Valid(new VLDQEnqOp(66, log2Up(conf.nvldq))).flip
+  val rtag = Decoupled(Bits(width = log2Up(conf.nvldq)))
+}
+
+class VSDQIO extends DecoupledIO(Bits(width = SZ_DATA))
+class VSDQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
+{
+  val q = new VSDQIO
+  val la = new LookAheadPortIO(log2Down(conf.nvsdq)+1)
+}
+
+class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
+{
+  val addr = new VAQLaneIO
+  val ldata = new VLDQLaneIO
+  val sdata = new VSDQLaneIO
 }
 
 class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
+    val irq = new io_vmu_to_irq_handler()
 
-    val pf_vvaq = new io_vvaq().flip
-    val vxu = new VMUIO().flip
-    val evac_vvaq = new io_vvaq().flip
-    val evac_vsdq = new io_vsdq().flip
-
-    val qcntp1 = UInt(INPUT, SZ_QCNT)
-    val qcntp2 = UInt(INPUT, SZ_QCNT)
-
-    val pending_store = Bool(OUTPUT)
+    val lane = new VMUIO().flip
+    val pf = new Bundle {
+      val vaq = new VVAQIO().flip
+    }
+    val evac = new Bundle {
+      val vaq = new VVAQIO().flip
+      val vsdq = new VSDQIO().flip
+    }
 
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
 
@@ -41,299 +70,242 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
     val xcpt_to_vmu = new io_xcpt_handler_to_vmu().flip()
     val evac_to_vmu = new io_evac_to_vmu().flip
-    val vmu_to_xcpt  = new io_vmu_to_xcpt_handler()
-
-    val irq = new io_vmu_to_irq_handler()
   }
 
   val addr = Module(new VMUAddress)
   val ldata = Module(new VMULoadData)
   val sdata = Module(new VMUStoreData)
-  val counters = Module(new VMUCounters)
   val memif = Module(new MemIF)
-  val unpack = Module(new UnpackStore)
 
+  addr.io.irq <> io.irq
+  addr.io.stall := io.xcpt_to_vmu.tlb.stall
+  addr.io.pf <> io.pf.vaq
+  addr.io.lane <> io.lane.addr
+  addr.io.evac <> io.evac.vaq
+  addr.io.evac_to_vmu <> io.evac_to_vmu
 
-  // address unit
-  addr.io.vvaq_pf <> io.pf_vvaq
-  addr.io.vvaq_lane <> io.vxu.vaq
-  addr.io.vvaq_evac <> io.evac_vvaq
+  ldata.io.lane <> io.lane.ldata
+
+  sdata.io.lane <> io.lane.sdata
+  sdata.io.evac <> io.evac.vsdq
+  sdata.io.evac_to_vmu <> io.evac_to_vmu
+
+  memif.io.vaq <> addr.io.memif
+  memif.io.vldq <> ldata.io.memif
+  memif.io.vsdq <> sdata.io.memif
 
   io.vtlb <> addr.io.vtlb
   io.vpftlb <> addr.io.vpftlb
-
-  memif.io.vaq <> unpack.io.out.vaq
-  unpack.io.in.vaq <> addr.io.vaq
-
-  addr.io.irq <> io.irq
-
-  addr.io.vvaq_lane_dec := io.vxu.evaq.valid
-  // vvaq counts available space
-  counters.io.vvaq_dec := addr.io.vvaq_do_enq
-  counters.io.vvaq_inc := addr.io.vvaq_do_deq
-  // vpaq counts occupied space
-  counters.io.vpaq_inc := addr.io.vpaq_do_enq
-  counters.io.vpaq_dec := addr.io.vpaq_do_deq
-  // vpasdq counts occupied space
-  counters.io.vpasdq_inc := addr.io.vpaq_do_enq_vsdq
-  counters.io.vpaq_qcnt := addr.io.vpaq_qcnt
-  addr.io.vvaq_watermark := counters.io.vvaq_watermark
-  addr.io.vpaq_watermark := counters.io.vpaq_watermark
-  addr.io.vsreq_watermark := counters.io.vsreq_watermark
-  addr.io.vlreq_watermark := counters.io.vlreq_watermark
-
-
-  // load data unit
-  io.vxu.vldq <> ldata.io.vldq_lane
-
-  ldata.io.vldq <> memif.io.vldq
-  memif.io.vldq_rtag <> ldata.io.vldq_rtag
-
-  ldata.io.qcnt := io.qcntp1
-  // vlreq counts available space
-  counters.io.vlreq_inc := io.vxu.vldq.ready
-  counters.io.vlreq_dec :=
-    io.vxu.evaq.valid && (
-      is_mcmd_load(io.vxu.evaq.bits.cmd) ||
-      is_mcmd_amo(io.vxu.evaq.bits.cmd)
-    )
-
-
-  // store data unit
-  sdata.io.vsdq_lane <> io.vxu.vsdq
-  sdata.io.vsdq_evac <> io.evac_vsdq
-
-  memif.io.vsdq <> unpack.io.out.vsdq
-  unpack.io.in.vsdq <> sdata.io.vsdq
-
-  sdata.io.vsdq_lane_dec := io.vxu.evsdq.valid
-  // vsdq counts available space
-  counters.io.vsdq_inc := sdata.io.vsdq_do_deq
-  counters.io.vsdq_dec := sdata.io.vsdq_do_enq
-  // vsreq counts available space
-  counters.io.vsreq_inc := memif.io.store_ack
-  counters.io.vsreq_dec :=
-    Mux(io.evac_to_vmu.evac_mode, io.evac_vvaq.fire(),
-        io.vxu.evaq.valid && is_mcmd_store(io.vxu.evaq.bits.cmd))
-  // vpasdq counts occupied space
-  counters.io.vpasdq_dec := sdata.io.vsdq_do_enq
-  sdata.io.vpasdq_watermark := counters.io.vpasdq_watermark
-  sdata.io.vsdq_watermark := counters.io.vsdq_watermark
-
-
-  // counters
-  counters.io.qcnt := io.qcntp2
-  io.pending_store := counters.io.pending_store
-
-
-  // memif interface
   io.dmem <> memif.io.dmem
-
-  unpack.io.cfg <> io.cfg
-
-  // exception handler
-  addr.io.evac_to_vmu <> io.evac_to_vmu
-  addr.io.stall := io.xcpt_to_vmu.tlb.stall
-  sdata.io.evac_to_vmu <> io.evac_to_vmu
-
-  io.vmu_to_xcpt.no_pending_load_store :=
-    !counters.io.pending_load && !counters.io.pending_store &&
-    !addr.io.vpaq_to_xcpt.vpaq_valid
 }
 
-class UnpackStore(implicit conf: HwachaConfiguration) extends Module
+class AddressTLB extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
+    val vvaq = new VVAQIO().flip
+    val vpaq = new VPAQIO
+    val tlb = new TLBIO
+    val ack = Bool(OUTPUT)
+    val stall = Bool(INPUT)
 
-    val in = new Bundle {
-      val vaq = Decoupled(new io_vpaq_bundle()).flip
-      val vsdq = Decoupled(Bits(width = 65)).flip
-    }
-
-    val out = new Bundle {
-      val vaq = Decoupled(new io_vpaq_bundle())
-      val vsdq = Decoupled(Bits(width = 65))
-    }
+    val irq = new io_vmu_to_irq_handler()
   }
 
-  val store = is_mcmd_store(io.in.vaq.bits.cmd) && io.in.vaq.bits.typ_float
+  val sticky_stall = Reg(init=Bool(false))
+  val stall = io.stall || sticky_stall
 
-  val minor = Reg(init = UInt(0, 2))
+  io.tlb.req.valid := !stall && io.vvaq.valid && io.vpaq.ready
+  io.tlb.req.bits.asid := UInt(0)
+  io.tlb.req.bits.vpn := io.vvaq.bits.vpn.toUInt
+  io.tlb.req.bits.passthrough := Bool(false)
+  io.tlb.req.bits.instruction := Bool(false)
 
-  val minor_next = MuxLookup(
-    io.cfg.prec, Bits(0, 2),
-    Array(
-      (PREC_SINGLE) -> Cat(~minor(1), Bits(0, 1)),
-      (PREC_HALF)   -> (minor + UInt(1))
-    ))
+  val mcmd_load = is_mcmd_load(io.vvaq.bits.cmd)
+  val mcmd_store = is_mcmd_store(io.vvaq.bits.cmd)
+  val mcmd_amo = is_mcmd_amo(io.vvaq.bits.cmd)
+  val mcmd_pfr = is_mcmd_pfr(io.vvaq.bits.cmd)
+  val mcmd_pfw = is_mcmd_pfw(io.vvaq.bits.cmd)
 
-  val unpack_finishing = (minor_next === UInt(0))
+  val ma_half = is_mtype_halfword(io.vvaq.bits.typ) && io.vvaq.bits.idx(0) != UInt(0)
+  val ma_word = is_mtype_word(io.vvaq.bits.typ) && io.vvaq.bits.idx(1,0) != UInt(0)
+  val ma_double = is_mtype_doubleword(io.vvaq.bits.typ) && io.vvaq.bits.idx(2,0) != UInt(0)
+  val ma_addr = ma_half || ma_word || ma_double
+  val ma_ld = ma_addr && (mcmd_load || mcmd_amo)
+  val ma_st = ma_addr && (mcmd_store || mcmd_amo)
 
-  io.in.vaq.ready := io.out.vaq.ready
-  io.in.vsdq.ready := io.out.vsdq.ready && Mux(store, unpack_finishing, Bool(true))
-  io.out.vaq.valid := io.in.vaq.valid
-  io.out.vsdq.valid := io.in.vsdq.valid
+  val xcpt_ld = io.tlb.resp.xcpt_ld && (mcmd_load || mcmd_amo)
+  val xcpt_st = io.tlb.resp.xcpt_st && (mcmd_store || mcmd_amo)
+  val xcpt_pf = io.tlb.resp.xcpt_ld && mcmd_pfr || io.tlb.resp.xcpt_st && mcmd_pfw
+  val xcpt_stall = ma_addr || xcpt_ld || xcpt_st
+  val xcpt = xcpt_stall || xcpt_pf
 
-  // d'oh
-  io.out.vaq.bits := io.in.vaq.bits
-  io.out.vsdq.bits := io.in.vsdq.bits
+  io.ack := io.tlb.req.fire() && !io.tlb.resp.miss && !xcpt
 
-  val shift = minor << UInt(4)
+  io.vvaq.ready := !stall && io.vpaq.ready && io.tlb.req.ready && !io.tlb.resp.miss && !xcpt_stall
 
-  when (store && io.in.vaq.valid && io.in.vsdq.valid && io.out.vaq.ready && io.out.vsdq.ready) {
-    minor := minor_next
-  }
+  io.vpaq.valid := io.ack
+  io.vpaq.bits := io.vvaq.bits
+  io.vpaq.bits.addr := Cat(io.tlb.resp.ppn, io.vvaq.bits.idx)
 
-  when (store) {
-    io.out.vsdq.bits := MuxLookup(io.cfg.prec, io.in.vsdq.bits, Array(
-      PREC_SINGLE -> ((io.in.vsdq.bits >> shift) & Bits("hFFFFFFFF", 32)),
-      PREC_HALF   -> ((io.in.vsdq.bits >> shift) & Bits("hFFFF", 16))
-    ))
-  }
+  when (io.tlb.req.fire() && xcpt_stall) { sticky_stall := Bool(true) }
+
+  io.irq.ma_ld := io.tlb.req.fire() && ma_ld
+  io.irq.ma_st := io.tlb.req.fire() && ma_st
+  io.irq.faulted_ld := io.tlb.req.fire() && xcpt_ld
+  io.irq.faulted_st := io.tlb.req.fire() && xcpt_st
+  io.irq.mem_xcpt_addr := Cat(io.vvaq.bits.vpn, io.vvaq.bits.idx)
 }
 
-class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
+class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
+{
+  val sz = log2Down(conf.nvpaq)+1
+  val io = new Bundle {
+    val original = new VPAQIO().flip
+    val la = new LookAheadPortIO(sz).flip
+    val masked = new VPAQIO
+  }
+
+  val reg_count = Reg(init = UInt(0, sz))
+
+  when (io.la.reserve.valid) {
+    reg_count := reg_count + io.la.reserve.cnt
+    when (io.masked.fire()) { reg_count := reg_count + io.la.reserve.cnt - UInt(1) }
+  }
+  .otherwise {
+    when (io.masked.fire()) { reg_count := reg_count - UInt(1) }
+  }
+
+  val stall = reg_count === UInt(0)
+
+  io.masked.valid := io.original.valid && !stall
+  io.masked.bits := io.original.bits
+  io.original.ready := io.masked.ready && !stall
+}
+
+class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val vsdq_lane = new io_vsdq().flip
-    val vsdq_evac = new io_vsdq().flip
+    val irq = new io_vmu_to_irq_handler()
+    val stall = Bool(INPUT)
 
-    val vsdq = new io_vsdq()
+    val pf = new VVAQIO().flip
+    val lane = new VAQLaneIO().flip
+    val evac = new VVAQIO().flip
+    val memif = new VPAQIO
 
-    val vsdq_lane_dec = Bool(INPUT)
-
-    val vsdq_do_enq = Bool(OUTPUT)
-    val vsdq_do_deq = Bool(OUTPUT)
-    val vpasdq_watermark = Bool(INPUT)
-    val vsdq_watermark = Bool(INPUT)
+    val vtlb = new TLBIO
+    val vpftlb = new TLBIO
 
     val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
-  val vsdq_arb = Module(new Arbiter(Bits(width = 65), 2))
-  val vsdq = Module(new Queue(Bits(width = 65), conf.nvsdq))
+  // when the lane is valid it should be able to enq
+  assert(!io.lane.q.valid || io.lane.q.ready,
+    "vaq invariant not met, probably a counter logic problem")
 
-  vsdq_arb.io.in(0) <> io.vsdq_lane
-  vsdq_arb.io.in(1) <> io.vsdq_evac
-  vsdq_arb.io.out.ready :=
-    Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready,
-        io.vsdq_watermark && io.vpasdq_watermark)
+  // VVAQ
+  val vvaq_arb = Module(new Arbiter(new VVAQEntry, 2))
+  val vvaq = Module(new Queue(new VVAQEntry, conf.nvvaq))
+  val vvaq_lacntr = Module(new LookAheadCounter(conf.nvvaq, conf.nvvaq))
+  val vvaq_tlb = Module(new AddressTLB)
+  val vpaq = Module(new Queue(new VPAQEntry, conf.nvpaq))
+  val vpaq_lacntr = Module(new LookAheadCounter(0, conf.nvpaq))
+  val vpaq_throttle = Module(new VPAQThrottle)
 
-  vsdq.io.enq.valid := vsdq_arb.io.out.valid
-  vsdq.io.enq.bits := vsdq_arb.io.out.bits
+  vvaq_tlb.io.irq <> io.irq
 
-  io.vsdq <> vsdq.io.deq
+  // vvaq hookup
+  vvaq_arb.io.in(0) <> io.lane.q
+  vvaq_arb.io.in(1) <> io.evac
+  vvaq.io.enq <> vvaq_arb.io.out
 
-  io.vsdq_do_enq :=
-    Mux(io.evac_to_vmu.evac_mode, vsdq.io.enq.ready && io.vsdq_evac.valid,
-        io.vsdq_lane_dec)
-  io.vsdq_do_deq := io.vsdq.ready && vsdq.io.deq.valid
+  vvaq_lacntr.io.la <> io.lane.vla
+  //FIXME Chisel
+  //vvaq_lacntr.io.inc := vvaq.io.deq.fire()
+  vvaq_lacntr.io.inc := vvaq.io.deq.valid && vvaq_tlb.io.vvaq.ready
+  vvaq_lacntr.io.dec := io.evac_to_vmu.evac_mode && io.evac.fire()
+
+  // vvaq address translation
+  vvaq_tlb.io.vvaq <> vvaq.io.deq
+  vpaq.io.enq <> vvaq_tlb.io.vpaq
+  io.vtlb <> vvaq_tlb.io.tlb
+  vvaq_tlb.io.stall := io.stall
+
+  vpaq_lacntr.io.la <> io.lane.pla
+  //FIXME Chisel
+  //vpaq_lacntr.io.inc := vpaq.io.enq.fire()
+  vpaq_lacntr.io.inc := vvaq_tlb.io.vpaq.valid && vpaq.io.enq.ready
+  vpaq_lacntr.io.dec := Bool(false)
+
+  vpaq_throttle.io.original <> vpaq.io.deq
+  vpaq_throttle.io.la <> io.lane.pla
+
+  if (conf.vru) {
+    val vpfvaq = Module(new Queue(new VVAQEntry, conf.nvpfvaq))
+    val vpfvaq_tlb = Module(new AddressTLB)
+    val vpfpaq = Module(new Queue(new VPAQEntry, conf.nvpfpaq))
+
+    vpfvaq.io.enq <> io.pf
+
+    vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
+    vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
+    io.vpftlb <> vpfvaq_tlb.io.tlb
+    vpfvaq_tlb.io.stall := io.stall
+
+    val vpaq_arb = Module(new RRArbiter(new VPAQEntry, 2))
+
+    vpaq_arb.io.in(0) <> vpaq_throttle.io.masked
+    vpaq_arb.io.in(1) <> MaskStall(vpfpaq.io.deq, io.stall)
+    io.memif <> vpaq_arb.io.out
+  }
+  else {
+    io.memif <> vpaq_throttle.io.masked
+  }
 }
 
 class VMULoadData(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val vldq_lane = new io_vldq()
-
-    val vldq = Valid(new VLDQEnqBundle(66, log2Up(conf.nvldq))).flip
-    val vldq_rtag = Decoupled(Bits(width = log2Up(conf.nvldq)))
-
-    val qcnt = UInt(INPUT, SZ_QCNT)
+    val lane = new VLDQLaneIO().flip
+    val memif = new VLDQMemIfIO
   }
 
-  // needs to make sure log2Up(vldq_entries)+1 <= CPU_TAG_BITS-3
+  // when the lane is ready it should be able to deq
+  assert(!io.lane.q.ready || io.lane.q.valid,
+    "vldq invariant not met, probably a counter logic problem")
+
   val vldq = Module(new VLDQ(66, conf.nvldq, 10))
 
-  vldq.io.deq_data.ready := io.vldq_lane.ready
-  io.vldq_lane.valid := vldq.io.watermark // vldq.deq_data.valid
-  io.vldq_lane.bits := vldq.io.deq_data.bits
-
-  vldq.io.enq <> io.vldq
-  io.vldq_rtag <> vldq.io.deq_rtag
-
-  // vldq has an embedded counter
-  // vldq counts occupied space
-  // vldq occupies an entry, when it accepts an entry from the memory system
-  // vldq frees an entry, when the lane consumes it
-  vldq.io.qcnt := io.qcnt
+  vldq.io.enq <> io.memif.update
+  io.lane.q <> vldq.io.deq_data
+  io.memif.rtag <> vldq.io.deq_rtag
+  vldq.io.la <> io.lane.la
 }
 
-class VMUCounters(implicit conf: HwachaConfiguration) extends Module
+class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val vvaq_inc = Bool(INPUT)
-    val vvaq_dec = Bool(INPUT)
-    val vpaq_inc = Bool(INPUT)
-    val vpaq_dec = Bool(INPUT)
-    val vsdq_inc = Bool(INPUT)
-    val vsdq_dec = Bool(INPUT)
-    val vpasdq_inc = Bool(INPUT)
-    val vpasdq_dec = Bool(INPUT)
-    val vlreq_inc = Bool(INPUT)
-    val vlreq_dec = Bool(INPUT)
-    val vsreq_inc = Bool(INPUT)
-    val vsreq_dec = Bool(INPUT)
+    val lane = new VSDQLaneIO().flip
+    val evac = new VSDQIO().flip
+    val memif = new VSDQIO
 
-    val qcnt = UInt(INPUT, SZ_QCNT)
-    val vvaq_watermark = Bool(OUTPUT)
-    val vsdq_watermark = Bool(OUTPUT)
-    val vpasdq_watermark = Bool(OUTPUT)
-    val vlreq_watermark = Bool(OUTPUT)
-    val vsreq_watermark = Bool(OUTPUT)
-
-    val vpaq_qcnt = UInt(INPUT, SZ_QCNT)
-    val vpaq_watermark = Bool(OUTPUT)
-
-    val pending_load = Bool(OUTPUT)
-    val pending_store = Bool(OUTPUT)
+    val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
-  val vvaq_count = Module(new qcnt(conf.nvvaq, conf.nvvaq))
-  val vpaq_count = Module(new qcnt(0, conf.nvpaq))
-  val vsdq_count = Module(new qcnt(conf.nvsdq, conf.nvsdq))
-  val vpasdq_count = Module(new qcnt(0, conf.nvpasdq))
-  val vsreq_count = Module(new qcnt(conf.nvsreq, conf.nvsreq)) // vector stores in flight
-  val vlreq_count = Module(new qcnt(conf.nvlreq, conf.nvlreq)) // vector loads in flight
+  // when the lane is valid it should be able to enq
+  assert(!io.lane.q.valid || io.lane.q.ready,
+    "vsdq invariant not met, probably a counter logic problem")
 
-  // vvaq counts available space
-  vvaq_count.io.inc := io.vvaq_inc
-  vvaq_count.io.dec := io.vvaq_dec
-  vvaq_count.io.qcnt := io.qcnt
-  io.vvaq_watermark := vvaq_count.io.watermark
+  val arb = Module(new Arbiter(Bits(width = 65), 2))
+  val vsdq = Module(new Queue(Bits(width = 65), conf.nvsdq))
+  val lacntr = Module(new LookAheadCounter(conf.nvsdq, conf.nvsdq))
 
-  // vpaq counts occupied space
-  vpaq_count.io.inc := io.vpaq_inc
-  vpaq_count.io.dec := io.vpaq_dec
-  vpaq_count.io.qcnt := io.vpaq_qcnt
-  io.vpaq_watermark := vpaq_count.io.watermark
+  arb.io.in(0) <> io.lane.q
+  arb.io.in(1) <> io.evac
+  vsdq.io.enq <> arb.io.out
+  io.memif <> vsdq.io.deq
 
-  // vsdq counts available space
-  vsdq_count.io.inc := io.vsdq_inc
-  vsdq_count.io.dec := io.vsdq_dec
-  vsdq_count.io.qcnt := io.qcnt
-  io.vsdq_watermark := vsdq_count.io.watermark
-
-  // vpasdq counts occupied space
-  vpasdq_count.io.inc := io.vpasdq_inc
-  vpasdq_count.io.dec := io.vpasdq_dec
-  vpasdq_count.io.qcnt := io.qcnt
-  io.vpasdq_watermark := vpasdq_count.io.watermark
-
-  // vlreq counts available space
-  vlreq_count.io.inc := io.vlreq_inc
-  vlreq_count.io.dec := io.vlreq_dec
-  vlreq_count.io.qcnt := io.qcnt
-  io.vlreq_watermark := vlreq_count.io.watermark
-
-  // vsreq counts available space
-  vsreq_count.io.inc := io.vsreq_inc
-  vsreq_count.io.dec := io.vsreq_dec
-  vsreq_count.io.qcnt := io.qcnt
-  io.vsreq_watermark := vsreq_count.io.watermark
-
-  // there is no loads in flight, when the counter is full
-  io.pending_load := !vlreq_count.io.full
-  // there is no stores in flight, when the counter is full
-  io.pending_store := !vsreq_count.io.full
+  lacntr.io.la <> io.lane.la
+  lacntr.io.inc := vsdq.io.deq.fire()
+  lacntr.io.dec := io.evac_to_vmu.evac_mode && io.evac.fire()
 }
