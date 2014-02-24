@@ -19,8 +19,8 @@ class VPAQIO extends DecoupledIO(new VPAQEntry)
 class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
 {
   val q = new VVAQIO
-  val vla = new LookAheadPortIO(log2Down(conf.nvvaq)+1)
-  val pla = new LookAheadPortIO(log2Down(conf.nvpaq)+1)
+  val vala = new LookAheadPortIO(log2Down(conf.nvvaq)+1)
+  val pala = new LookAheadPortIO(log2Down(conf.nvpaq)+1)
 }
 
 class VLDQIO extends DecoupledIO(Bits(width = SZ_DATA))
@@ -167,9 +167,9 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
 
   val reg_count = Reg(init = UInt(0, sz))
 
-  when (io.la.reserve.valid) {
-    reg_count := reg_count + io.la.reserve.cnt
-    when (io.masked.fire()) { reg_count := reg_count + io.la.reserve.cnt - UInt(1) }
+  when (io.la.reserve) {
+    reg_count := reg_count + io.la.cnt
+    when (io.masked.fire()) { reg_count := reg_count + io.la.cnt - UInt(1) }
   }
   .otherwise {
     when (io.masked.fire()) { reg_count := reg_count - UInt(1) }
@@ -219,7 +219,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   vvaq_arb.io.in(1) <> io.evac
   vvaq.io.enq <> vvaq_arb.io.out
 
-  vvaq_lacntr.io.la <> io.lane.vla
+  vvaq_lacntr.io.la <> io.lane.vala
   //FIXME Chisel
   //vvaq_lacntr.io.inc := vvaq.io.deq.fire()
   vvaq_lacntr.io.inc := vvaq.io.deq.valid && vvaq_tlb.io.vvaq.ready
@@ -231,14 +231,14 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   io.vtlb <> vvaq_tlb.io.tlb
   vvaq_tlb.io.stall := io.stall
 
-  vpaq_lacntr.io.la <> io.lane.pla
+  vpaq_lacntr.io.la <> io.lane.pala
   //FIXME Chisel
   //vpaq_lacntr.io.inc := vpaq.io.enq.fire()
   vpaq_lacntr.io.inc := vvaq_tlb.io.vpaq.valid && vpaq.io.enq.ready
   vpaq_lacntr.io.dec := Bool(false)
 
   vpaq_throttle.io.original <> vpaq.io.deq
-  vpaq_throttle.io.la <> io.lane.pla
+  vpaq_throttle.io.la <> io.lane.pala
 
   if (conf.vru) {
     val vpfvaq = Module(new Queue(new VVAQEntry, conf.nvpfvaq))

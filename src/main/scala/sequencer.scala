@@ -24,8 +24,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val aiwop = new AIWOpIO
 
     val vmu = new VMUIO
-    val lreq = new MRTLoadRequestIO
-    val sreq = new MRTStoreRequestIO
+    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
+    val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
 
     val seq_to_hazard = new io_vxu_seq_to_hazard().asOutput
     val xcpt_to_seq = new io_xcpt_handler_to_seq().flip()
@@ -377,15 +377,27 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vsu))
 
-  io.vmu.addr.vla.available.cnt := nelements
-  io.vmu.addr.pla.available.cnt := nelements
-  io.vmu.ldata.la.available.cnt := nelements
-  io.vmu.sdata.la.available.cnt := nelements
+  io.vmu.addr.vala.cnt := nelements
+  io.vmu.addr.pala.cnt := nelements
+  io.vmu.ldata.la.cnt := nelements
+  io.vmu.sdata.la.cnt := nelements
+  io.lreq.cnt := nelements
+  io.sreq.cnt := nelements
 
-  val vgu_stall = !io.vmu.addr.vla.available.check
-  val vcu_stall = !io.vmu.addr.pla.available.check
-  val vlu_stall = !io.vmu.ldata.la.available.check
-  val vsu_stall = !io.vmu.addr.pla.available.check || !io.vmu.sdata.la.available.check
+  val vmu_fn_amo = seq.e(ptr).fn.vmu.amo()
+
+  val vgu_stall = // stall vgu op when
+    !io.vmu.addr.vala.available // not enough space in vvaq
+  val vcu_stall = // stall vcu op when
+    !io.vmu.addr.pala.available || // not sufficient physical addresses
+    !io.lreq.available // not enough space in lreq counter
+  val vlu_stall = // stall vlu op when
+    !io.vmu.ldata.la.available // not sufficient load data
+  val vsu_stall = // stall vsu op when
+    !io.vmu.addr.pala.available || // not sufficient physical addresses
+    !io.vmu.sdata.la.available || // not enough space in vsdq
+    vmu_fn_amo && !io.lreq.available || // amo pa check, but not enough space in lreq counter
+    !vmu_fn_amo && !io.sreq.available // utst/vst pa check, but not enough space in sreq counter
 
   val reg_vgu_stall = Reg(init = Bool(false))
   val reg_vcu_stall = Reg(init = Bool(false))
@@ -469,20 +481,12 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.seqop.bits.last := islast
   io.seqop.bits <> seq.e(ptr)
 
-  io.vmu.addr.vla.reserve.cnt := nelements
-  io.vmu.addr.pla.reserve.cnt := nelements
-  io.vmu.ldata.la.reserve.cnt := nelements
-  io.vmu.sdata.la.reserve.cnt := nelements
-
-  io.vmu.addr.vla.reserve.valid := valid && seq.vgu_val(ptr)
-  io.vmu.addr.pla.reserve.valid := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
-  io.vmu.ldata.la.reserve.valid := valid && seq.vlu_val(ptr)
-  io.vmu.sdata.la.reserve.valid := valid && seq.vsu_val(ptr)
-
-  io.lreq.update := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr) && seq.e(ptr).fn.vmu.amo())
-  io.lreq.cnt := nelements
-  io.sreq.update := valid && (seq.vsu_val(ptr) && !seq.e(ptr).fn.vmu.amo())
-  io.sreq.cnt := nelements
+  io.vmu.addr.vala.reserve := valid && seq.vgu_val(ptr)
+  io.vmu.addr.pala.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
+  io.vmu.ldata.la.reserve := valid && seq.vlu_val(ptr)
+  io.vmu.sdata.la.reserve := valid && seq.vsu_val(ptr)
+  io.lreq.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr) && vmu_fn_amo)
+  io.sreq.reserve := valid && (seq.vsu_val(ptr) && !vmu_fn_amo)
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

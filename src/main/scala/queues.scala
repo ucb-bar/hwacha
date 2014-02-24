@@ -42,14 +42,9 @@ class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Modul
 
 class LookAheadPortIO(sz: Int) extends Bundle
 {
-  val reserve = new Bundle {
-    val valid = Bool(OUTPUT)
-    val cnt = UInt(OUTPUT, sz)
-  }
-  val available = new Bundle {
-    val cnt = UInt(OUTPUT, sz)
-    val check = Bool(INPUT)
-  }
+  val cnt = UInt(OUTPUT, sz)
+  val reserve = Bool(OUTPUT)
+  val available = Bool(INPUT)
 }
 
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
@@ -59,15 +54,17 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) e
     val la = new LookAheadPortIO(sz).flip
     val inc = Bool(INPUT)
     val dec = Bool(INPUT)
+    val full = Bool(OUTPUT)
+    val empty = Bool(OUTPUT)
   }
 
   val reg_count = Reg(init = UInt(reset_cnt, sz))
 
-  when (io.la.reserve.valid) {
-    reg_count := reg_count - io.la.reserve.cnt
+  when (io.la.reserve) {
+    reg_count := reg_count - io.la.cnt
     when (io.inc ^ io.dec) {
-      when (io.inc) { reg_count := reg_count - io.la.reserve.cnt + UInt(1) }
-      when (io.dec) { reg_count := reg_count - io.la.reserve.cnt - UInt(1) }
+      when (io.inc) { reg_count := reg_count - io.la.cnt + UInt(1) }
+      when (io.dec) { reg_count := reg_count - io.la.cnt - UInt(1) }
     }
   }
   .otherwise {
@@ -77,7 +74,9 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) e
     }
   }
 
-  io.la.available.check := reg_count >= io.la.available.cnt
+  io.la.available := reg_count >= io.la.cnt
+  io.full := reg_count === UInt(max_cnt)
+  io.empty := reg_count === UInt(0)
 }
 
 class VLDQEnqOp(DATA_SIZE: Int, TAG_SIZE: Int) extends Bundle
@@ -150,11 +149,11 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
 
   var mux_tree = shifted_vb_array | shifted_vb_update_write
   for (i <- 1 until MAX_QCNT)
-    mux_tree = Mux(io.la.reserve.cnt === UInt(i), mux_tree >> UInt(i), mux_tree)
-  shifted_vb_array := Mux(io.la.reserve.valid, mux_tree, shifted_vb_array | shifted_vb_update_write)
+    mux_tree = Mux(io.la.cnt === UInt(i), mux_tree >> UInt(i), mux_tree)
+  shifted_vb_array := Mux(io.la.reserve, mux_tree, shifted_vb_array | shifted_vb_update_write)
 
-  when (io.la.reserve.valid) {
-    reserve_ptr := reserve_ptr + io.la.reserve.cnt
+  when (io.la.reserve) {
+    reserve_ptr := reserve_ptr + io.la.cnt
   }
 
   // a limited version of leading count ones
@@ -166,5 +165,5 @@ class VLDQ(DATA_SIZE: Int, TAG_ENTRIES: Int, MAX_QCNT: Int) extends Module
     sel = sel & shifted_vb_array(i+1)
   }
 
-  io.la.available.check := locnt >= io.la.available.cnt
+  io.la.available := locnt >= io.la.cnt
 }

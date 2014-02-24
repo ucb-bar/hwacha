@@ -17,8 +17,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
 
     val vmu = new VMUIO
-    val lreq = new MRTLoadRequestIO
-    val sreq = new MRTStoreRequestIO
+    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
+    val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
     val lret = new MRTLoadRetireIO
     
     val pending_memop = Bool(OUTPUT)

@@ -298,9 +298,9 @@ class IssueTVEC extends Module
       MT_D->  UInt(8,4)
     ))
 
-  io.op.bits.reg.vs.active := Bool(false)
+  io.op.bits.reg.vs.active := Bool(false) // need to explicitly set these to false
   io.op.bits.reg.vt.active := vt_val
-  io.op.bits.reg.vr.active := Bool(false)
+  io.op.bits.reg.vr.active := Bool(false) // since these affect hazard check results
   io.op.bits.reg.vd.active := vd_val
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0) && vd_val

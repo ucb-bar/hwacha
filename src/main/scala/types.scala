@@ -193,16 +193,16 @@ class IssueOp extends DecodedInstruction
 // sequencer op
 //-------------------------------------------------------------------------\\
 
-class VFU extends Bundle
+class VFU extends Bundle // vector functional unit
 {
-  val viu = Bool()
-  val vau0 = Bool()
-  val vau1 = Bool()
-  val vau2 = Bool()
-  val vgu = Bool()
-  val vcu = Bool()
-  val vlu = Bool()
-  val vsu = Bool()
+  val viu = Bool()  // vector integer unit
+  val vau0 = Bool() // vector arithmetic 0 unit; imul
+  val vau1 = Bool() // vector arithmetic 1 unit; fma
+  val vau2 = Bool() // vector arithmetic 2 unit; fconv
+  val vgu = Bool()  // vector address generation unit
+  val vcu = Bool()  // vector address check unit
+  val vlu = Bool()  // vector load (data) unit
+  val vsu = Bool()  // vector store (data) unit
 }
 
 class SequencerEntry extends DecodedInstruction
