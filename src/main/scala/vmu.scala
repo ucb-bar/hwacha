@@ -159,12 +159,14 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
 
   val reg_count = Reg(init = UInt(0, sz))
 
-  when (io.la.reserve) {
-    reg_count := reg_count + io.la.cnt
-    when (io.masked.fire()) { reg_count := reg_count + io.la.cnt - UInt(1) }
-  }
-  .otherwise {
-    when (io.masked.fire()) { reg_count := reg_count - UInt(1) }
+  when (!io.bypass) {
+    when (io.la.reserve) {
+      reg_count := reg_count + io.la.cnt
+      when (io.masked.fire()) { reg_count := reg_count + io.la.cnt - UInt(1) }
+    }
+    .otherwise {
+      when (io.masked.fire()) { reg_count := reg_count - UInt(1) }
+    }
   }
 
   val stall = !io.bypass && reg_count === UInt(0)
