@@ -409,7 +409,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   when (seq.vlu_val(ptr) && !construct_mask(masked_vlu_stall)) { reg_vlu_stall := vlu_stall }
   when (seq.vsu_val(ptr) && !construct_mask(masked_vsu_stall)) { reg_vsu_stall := vsu_stall }
 
-  val masked_xcpt_stall = (!seq.vlu_val(ptr) && !seq.vsu_val(ptr)) && io.xcpt.stall
+  val masked_xcpt_stall = io.xcpt.stall && !seq.vlu_val(ptr)
 
   val stall =
     masked_xcpt_stall ||
