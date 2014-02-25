@@ -265,8 +265,6 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   when (cmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VSETCFG) {
-        printf("setting maxvl to %d (was %d)\n", new_maxvl, cfg_maxvl)
-        printf("setting prec to %d (0 = DP, 1 = SP, 2 = HP)\n", next_prec)
         cfg_maxvl := new_maxvl
         cfg_vl := UInt(0)
         cfg_regs := Cat(nfpr(5,0),nxpr(5,0))
