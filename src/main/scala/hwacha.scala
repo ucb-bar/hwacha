@@ -172,7 +172,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // Cofiguration state
   val cfg_maxvl = Reg(init=UInt(32, log2Up(hc.nreg_total)+1))
   val cfg_vl    = Reg(init=UInt(0, log2Up(hc.nreg_total)+1))
-  val cfg_regs  = Reg(init=UInt(0, 12))
+  val cfg_regs  = Reg(init=Cat(UInt(32, 6), UInt(32, 6)))
   
   // Decode
   val raw_inst = io.cmd.bits.inst.toBits
