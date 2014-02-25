@@ -39,9 +39,7 @@ class TLBIO extends Bundle
 class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val irq = Bool(OUTPUT)
-    val irq_cause = UInt(OUTPUT, 5)
-    val irq_aux = Bits(OUTPUT, 64)
+    val irq = new IRQIO
     val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
@@ -61,7 +59,6 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   val xcpt = Module(new XCPT)
 
   val flush_kill = this.reset || xcpt.io.vu.flush_kill
-  val flush_irq = this.reset || xcpt.io.vu.flush_irq
   val flush_aiw = this.reset || xcpt.io.vu.flush_aiw
   val flush_vru = this.reset || xcpt.io.vu.flush_vru
   val flush_vmu = this.reset || xcpt.io.vu.flush_vmu
@@ -75,7 +72,7 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   val vxu = Module(new VXU)
   val vmu = Module(new VMU(resetSignal = flush_vmu))
-  val irq = Module(new IRQ(resetSignal = flush_irq))
+  val irq = Module(new IRQ)
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
   val mrt = Module(new MRT)
@@ -126,22 +123,23 @@ class vu(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   // fence
   mrt.io.lreq <> vxu.io.lreq
-  mrt.io.sreq <> vxu.io.sreq
+  mrt.io.sreq.vxu <> vxu.io.sreq
+  //FIXME Chisel
+  //mrt.io.sreq.evac := evac.io.vaq.fire()
+  mrt.io.sreq.evac := evac.io.vaq.valid && vmu.io.evac.vaq.ready
   mrt.io.lret <> vxu.io.lret
   mrt.io.sret.update := io.dmem.resp.valid && is_mcmd_store(io.dmem.resp.bits.cmd)
 
   io.busy :=
     vcmdq.io.deq.cmd.valid ||
     vxu.io.pending_vf || vxu.io.pending_memop ||
-    mrt.io.pending_memreq
+    mrt.io.pending_memop
 
-  io.irq := irq.io.irq
-  io.irq_cause := irq.io.irq_cause
-  io.irq_aux := irq.io.irq_aux
+  io.irq <> irq.io.irq
 
   // xcpt
   xcpt.io.xcpt <> io.xcpt
-  xcpt.io.pending_memreq := mrt.io.pending_memreq
+  xcpt.io.pending_memop := mrt.io.pending_memop
   xcpt.io.vxu_to_xcpt <> vxu.io.vxu_to_xcpt
   xcpt.io.evac_to_xcpt <> evac.io.evac_to_xcpt
 

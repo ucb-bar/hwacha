@@ -17,7 +17,6 @@ class XCPTVUIO extends Bundle
 {
   val busy = Bool(OUTPUT)
   val flush_kill = Bool(OUTPUT)
-  val flush_irq = Bool(OUTPUT)
   val flush_aiw = Bool(OUTPUT)
   val flush_vru = Bool(OUTPUT)
   val flush_vmu = Bool(OUTPUT)
@@ -48,6 +47,7 @@ class XCPTTLBIO extends Bundle
 class XCPTVMUIO extends Bundle 
 {
   val tlb = new XCPTTLBIO
+  val drain = Bool(OUTPUT)
 }
 
 class XCPTEvacIO extends Bundle
@@ -81,7 +81,7 @@ class XCPT extends Module
     val vmu = new XCPTVMUIO
     val evac = new XCPTEvacIO
 
-    val pending_memreq = Bool(INPUT)
+    val pending_memop = Bool(INPUT)
     val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip
     val evac_to_xcpt = new io_evac_to_xcpt_handler().flip
   }
@@ -102,6 +102,7 @@ class XCPT extends Module
   io.vxu.issue.stall := hold_issue
   io.vxu.seq.stall := hold_seq
   io.vmu.tlb.stall := hold_tlb
+  io.vmu.drain := Bool(false)
 
   val NORMAL = Bits(0, 3)
   val XCPT_DRAIN = Bits(1, 3)
@@ -143,7 +144,6 @@ class XCPT extends Module
   //set defaults
   io.vu.busy := (state != NORMAL) && (state != HOLD)
   io.vu.flush_kill := Bool(false)
-  io.vu.flush_irq := Bool(false)
   io.vu.flush_aiw := Bool(false)
   io.vu.flush_vru := Bool(false)
   io.vu.flush_vmu := Bool(false)
@@ -181,7 +181,7 @@ class XCPT extends Module
 
     is (XCPT_DRAIN)
     {
-      when (io.vxu_to_xcpt.expand.empty && io.pending_memreq)
+      when (io.vxu_to_xcpt.expand.empty && !io.pending_memop)
       {
         next_state := XCPT_FLUSH
       }
@@ -190,7 +190,6 @@ class XCPT extends Module
 
     is (XCPT_FLUSH)
     {
-      io.vu.flush_irq := Bool(true)
       io.vu.flush_vru := Bool(true)
       io.vu.flush_vmu := Bool(true)
       io.vxu.flush := Bool(true)
@@ -222,17 +221,18 @@ class XCPT extends Module
     is (XCPT_EVAC)
     {
       io.evac.start := Bool(true)
+      io.vmu.drain := Bool(true)
 
-      when (io.evac_to_xcpt.done) 
-      {
+      when (io.evac_to_xcpt.done) {
         next_state := XCPT_DRAIN_EVAC
       }
     }
 
     is (XCPT_DRAIN_EVAC)
     {
-      when (io.pending_memreq)
-      {
+      io.vmu.drain := Bool(true)
+
+      when (!io.pending_memop) {
         next_hold_issue := Bool(false)
         next_hold_seq := Bool(false)
         next_hold_tlb := Bool(false)

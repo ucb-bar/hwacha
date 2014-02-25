@@ -18,10 +18,13 @@ class MRT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
-    val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1).flip
+    val sreq = new Bundle {
+      val vxu = new LookAheadPortIO(log2Down(conf.nvsreq)+1).flip
+      val evac = Bool(INPUT)
+    }
     val lret = new MRTLoadRetireIO().flip
     val sret = new MRTStoreRetireIO().flip
-    val pending_memreq = Bool(OUTPUT)
+    val pending_memop = Bool(OUTPUT)
   }
 
   val lcnt = Module(new LookAheadCounter(conf.nvlreq, conf.nvlreq))
@@ -31,9 +34,9 @@ class MRT(implicit conf: HwachaConfiguration) extends Module
   lcnt.io.inc := io.lret.update
   lcnt.io.dec := Bool(false)
 
-  scnt.io.la <> io.sreq
+  scnt.io.la <> io.sreq.vxu
   scnt.io.inc := io.sret.update
-  scnt.io.dec := Bool(false)
+  scnt.io.dec := io.sreq.evac
 
-  io.pending_memreq := !lcnt.io.full || !scnt.io.full
+  io.pending_memop := !lcnt.io.full || !scnt.io.full
 }

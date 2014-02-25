@@ -33,69 +33,53 @@ class IRQVMUIO extends Bundle
   val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
 }
 
-class IRQ(resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class IRQIO extends Bundle
+{
+  val request = Bool(OUTPUT)
+  val cause = UInt(OUTPUT, 5)
+  val aux = Bits(OUTPUT, 64)
+  val clear = Bool(INPUT)
+}
+
+class IRQ extends Module
 {
   val io = new Bundle {
     val issue = new IRQIssueIO().flip
     val vmu = new IRQVMUIO().flip
 
-    val irq = Bool(OUTPUT)
-    val irq_cause = UInt(OUTPUT, 5)
-    val irq_aux = Bits(OUTPUT, 64)
+    val irq = new IRQIO
   }
 
-  val reg_irq_ma_inst = Reg(init=Bool(false))
-  val reg_irq_fault_inst = Reg(init=Bool(false))
-  val reg_irq_illegal_vt = Reg(init=Bool(false))
-  val reg_irq_illegal_tvec = Reg(init=Bool(false))
-  val reg_irq_pc = Reg(Bits(width = SZ_ADDR))
-  val reg_irq_cmd_tvec = Reg(Bits(width = SZ_VCMD))
+  val reg_irq = Reg(init=Bool(false))
+  val reg_cause = Reg(init=UInt(0, 5))
+  val reg_aux = Reg(init=Bits(0, 64))
 
-  val reg_irq_ma_ld = Reg(init=Bool(false))
-  val reg_irq_ma_st = Reg(init=Bool(false))
-  val reg_irq_faulted_ld = Reg(init=Bool(false))
-  val reg_irq_faulted_st = Reg(init=Bool(false))
-  val reg_mem_xcpt_addr = Reg(Bits(width = SZ_ADDR))
+  val irqs = List(
+    (io.issue.vt.ma_inst, 4, io.issue.vt.pc),
+    (io.issue.vt.fault_inst, 5, io.issue.vt.pc),
+    (io.issue.vt.illegal, 6, io.issue.vt.pc),
+    (io.issue.tvec.illegal, 1, io.issue.tvec.cmd),
+    (io.vmu.ma_ld, 8, io.vmu.mem_xcpt_addr),
+    (io.vmu.ma_st, 9, io.vmu.mem_xcpt_addr),
+    (io.vmu.faulted_ld, 10, io.vmu.mem_xcpt_addr),
+    (io.vmu.faulted_st, 11, io.vmu.mem_xcpt_addr)
+  )
 
-  when (!io.irq)
-  {
-    reg_irq_ma_inst := io.issue.vt.ma_inst
-    reg_irq_fault_inst := io.issue.vt.fault_inst
-    reg_irq_illegal_vt := io.issue.vt.illegal
-    reg_irq_illegal_tvec := io.issue.tvec.illegal
-
-    reg_irq_ma_ld := io.vmu.ma_ld
-    reg_irq_ma_st := io.vmu.ma_st
-    reg_irq_faulted_ld := io.vmu.faulted_ld
-    reg_irq_faulted_st := io.vmu.faulted_st
-
-    when (io.issue.vt.ma_inst || io.issue.vt.fault_inst || io.issue.vt.illegal) { reg_irq_pc := io.issue.vt.pc }
-    when (io.issue.tvec.illegal) { reg_irq_cmd_tvec := io.issue.tvec.cmd }
-
-    when (io.vmu.ma_ld || io.vmu.ma_st || io.vmu.faulted_ld || io.vmu.faulted_st) 
-    {
-      reg_mem_xcpt_addr := io.vmu.mem_xcpt_addr
+  when (!reg_irq) {
+    for ((cond, cause, aux) <- irqs) {
+      when (cond) {
+        reg_irq := Bool(true)
+        reg_cause := UInt(cause)
+        reg_aux := aux
+      }
     }
   }
 
-  val dmem_xcpt = reg_irq_ma_ld || reg_irq_ma_st || reg_irq_faulted_ld || reg_irq_faulted_st
+  when (io.irq.clear) {
+    reg_irq := Bool(false)
+  }
 
-  io.irq := reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt || reg_irq_illegal_tvec || dmem_xcpt
-
-  io.irq_cause :=
-    Mux(reg_irq_ma_inst, UInt(4),
-    Mux(reg_irq_fault_inst, UInt(5),
-    Mux(reg_irq_illegal_vt, UInt(6),
-    Mux(reg_irq_illegal_tvec, UInt(1),
-    Mux(reg_irq_ma_ld, UInt(8),
-    Mux(reg_irq_ma_st, UInt(9),
-    Mux(reg_irq_faulted_ld, UInt(10),
-    Mux(reg_irq_faulted_st, UInt(11),
-        UInt(1)))))))))
-
-  io.irq_aux :=
-    Mux(reg_irq_ma_inst || reg_irq_fault_inst || reg_irq_illegal_vt, reg_irq_pc,
-    Mux(reg_irq_illegal_tvec, reg_irq_cmd_tvec,
-    Mux(dmem_xcpt, reg_mem_xcpt_addr,
-        Bits(0))))
+  io.irq.request := reg_irq
+  io.irq.cause := reg_cause
+  io.irq.aux := reg_aux
 }

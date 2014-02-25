@@ -69,7 +69,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   val memif = Module(new MemIF)
 
   addr.io.irq <> io.irq
-  addr.io.stall := io.xcpt.tlb.stall
+  addr.io.xcpt <> io.xcpt
   addr.io.pf <> io.pf.vaq
   addr.io.lane <> io.lane.addr
   addr.io.evac <> io.evac.vaq
@@ -153,6 +153,7 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val original = new VPAQIO().flip
     val la = new LookAheadPortIO(sz).flip
+    val bypass = Bool(INPUT)
     val masked = new VPAQIO
   }
 
@@ -166,7 +167,7 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
     when (io.masked.fire()) { reg_count := reg_count - UInt(1) }
   }
 
-  val stall = reg_count === UInt(0)
+  val stall = !io.bypass && reg_count === UInt(0)
 
   io.masked.valid := io.original.valid && !stall
   io.masked.bits := io.original.bits
@@ -177,6 +178,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val irq = new IRQVMUIO
+    val xcpt = new XCPTVMUIO().flip
     val stall = Bool(INPUT)
 
     val pf = new VVAQIO().flip
@@ -220,16 +222,17 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   vvaq_tlb.io.vvaq <> vvaq.io.deq
   vpaq.io.enq <> vvaq_tlb.io.vpaq
   io.vtlb <> vvaq_tlb.io.tlb
-  vvaq_tlb.io.stall := io.stall
+  vvaq_tlb.io.stall := io.xcpt.tlb.stall
 
   vpaq_lacntr.io.la <> io.lane.pala
   //FIXME Chisel
   //vpaq_lacntr.io.inc := vpaq.io.enq.fire()
   vpaq_lacntr.io.inc := vvaq_tlb.io.vpaq.valid && vpaq.io.enq.ready
-  vpaq_lacntr.io.dec := Bool(false)
+  vpaq_lacntr.io.dec := io.xcpt.drain && vpaq.io.deq.valid && vpaq_throttle.io.original.ready
 
   vpaq_throttle.io.original <> vpaq.io.deq
   vpaq_throttle.io.la <> io.lane.pala
+  vpaq_throttle.io.bypass := io.xcpt.drain
 
   if (conf.vru) {
     val vpfvaq = Module(new Queue(new VVAQEntry, conf.nvpfvaq))
@@ -241,7 +244,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
     vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
     vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
     io.vpftlb <> vpfvaq_tlb.io.tlb
-    vpfvaq_tlb.io.stall := io.stall
+    vpfvaq_tlb.io.stall := io.xcpt.tlb.stall
 
     val vpaq_arb = Module(new RRArbiter(new VPAQEntry, 2))
 
