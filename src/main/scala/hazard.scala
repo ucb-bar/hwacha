@@ -122,6 +122,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_seqslot(ptr2) := Bool(true)
       tbl_seqslot(ptr3) := Bool(true)
       tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vcu := Bool(true)
       tbl_vfu.vsu := Bool(true)
       tbl_vfu.vlu := Bool(true)
     }
@@ -132,12 +133,13 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_seqslot(ptr1) := Bool(true)
       tbl_seqslot(ptr2) := Bool(true)
       tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vcu := Bool(true)
       tbl_vfu.vsu := Bool(true)
     }
 
     when (io.issueop.bits.active.utld || io.issueop.bits.active.vld) {
-      // don't allocate read port for vcu
       tbl_rport(ptr2) := Bool(true)
+      // ptr3 for vcu, but don't allocate a rport for it
       tbl_wport(ptr5) := Bool(true)
       tbl_vd(ptr5) := io.issueop.bits.reg.vd
       tbl_seqslot(ptr1) := Bool(true)
@@ -214,9 +216,9 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val seqhazard_3slot = tbl_seqslot(ptr1) | tbl_seqslot(ptr2) | tbl_seqslot(ptr3)
 
   val bhazard_amo = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
-  val bhazard_utld = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
+  val bhazard_utld = tbl_rport(ptr2) | tbl_wport(ptr5)
   val bhazard_utst = tbl_rport(ptr2) | tbl_rport(ptr3)
-  val bhazard_vld = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
+  val bhazard_vld = tbl_rport(ptr2) | tbl_wport(ptr5)
   val bhazard_vst = tbl_rport(ptr2) | tbl_rport(ptr3)
 
   def check_hazards(op: IssueOpIO) = {
@@ -238,7 +240,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_vfu.vau1 && op.bits.active.vau1,
       tbl_vfu.vau2 && op.bits.active.vau2,
       tbl_vfu.vgu && memop,
-      tbl_vfu.vcu && List(op.bits.active.utld, op.bits.active.vld).reduce(_||_),
+      tbl_vfu.vcu && memop,
       tbl_vfu.vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),
       tbl_vfu.vsu && List(op.bits.active.amo, op.bits.active.utst, op.bits.active.vst).reduce(_||_)
     ).reduce(_||_)

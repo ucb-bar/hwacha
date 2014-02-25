@@ -76,7 +76,8 @@ class VMUFn extends Bundle
   val op = Bits(width = SZ_VMU_OP)
 
   def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
-  def amo(dummy: Int = 0) = (op === VM_AMO)
+  def lreq(dummy: Int = 0) = (op === VM_AMO) || (op === VM_ULD) || (op === VM_VLD)
+  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
 }
 
 

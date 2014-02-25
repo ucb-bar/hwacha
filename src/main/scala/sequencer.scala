@@ -253,6 +253,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := last
+      seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).active.vsu := Bool(true)
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
@@ -302,6 +303,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := turbo_last
+      seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).active.vsu := Bool(true)
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu  
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
@@ -343,6 +345,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := last
+      seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).active.vsu := Bool(true)
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
@@ -363,11 +366,11 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau0, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau1, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau2, ptr1)
-  ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vsu), (ptr3, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.utld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vsu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vsu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
 
   io.vmu.addr.vala.cnt := nelements
   io.vmu.addr.pala.cnt := nelements
@@ -376,20 +379,16 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.lreq.cnt := nelements
   io.sreq.cnt := nelements
 
-  val vmu_fn_amo = seq.e(ptr).fn.vmu.amo()
-
   val vgu_stall = // stall vgu op when
     !io.vmu.addr.vala.available // not enough space in vvaq
   val vcu_stall = // stall vcu op when
     !io.vmu.addr.pala.available || // not sufficient physical addresses
-    !io.lreq.available // not enough space in lreq counter
+    seq.e(ptr).fn.vmu.lreq() && !io.lreq.available || // not enough space in lreq counter
+    seq.e(ptr).fn.vmu.sreq() && !io.sreq.available    // not enough space in sreq counter
   val vlu_stall = // stall vlu op when
-    !io.vmu.ldata.la.available // not sufficient load data
+    !io.vmu.ldata.la.available // not sufficient data in vldq
   val vsu_stall = // stall vsu op when
-    !io.vmu.addr.pala.available || // not sufficient physical addresses
-    !io.vmu.sdata.la.available || // not enough space in vsdq
-    vmu_fn_amo && !io.lreq.available || // amo pa check, but not enough space in lreq counter
-    !vmu_fn_amo && !io.sreq.available // utst/vst pa check, but not enough space in sreq counter
+    !io.vmu.sdata.la.available // not enough space in vsdq
 
   val reg_vgu_stall = Reg(init = Bool(false))
   val reg_vcu_stall = Reg(init = Bool(false))
@@ -477,8 +476,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.vmu.addr.pala.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
   io.vmu.ldata.la.reserve := valid && seq.vlu_val(ptr)
   io.vmu.sdata.la.reserve := valid && seq.vsu_val(ptr)
-  io.lreq.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr) && vmu_fn_amo)
-  io.sreq.reserve := valid && (seq.vsu_val(ptr) && !vmu_fn_amo)
+  io.lreq.reserve := valid && (seq.vcu_val(ptr) && seq.e(ptr).fn.vmu.lreq())
+  io.sreq.reserve := valid && (seq.vsu_val(ptr) && seq.e(ptr).fn.vmu.sreq())
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)
