@@ -267,6 +267,7 @@ class IssueTVEC extends Module
   io.op.bits.active.vst := vmu_val && vmu_op_vst
 
   io.op.bits.vlen := reg_vlen - cnt
+  io.op.bits.utidx := cnt
 
   val vmu_float = vmu_op_vld && vd_fp || vmu_op_vst && vt_fp
 
@@ -297,6 +298,13 @@ class IssueTVEC extends Module
   io.op.bits.reg.vd.float := vd_fp
   io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
+
+  io.op.bits.regcheck.vs.active := Bool(false) // need to explicitly set these to false
+  io.op.bits.regcheck.vt.active := vt_val
+  io.op.bits.regcheck.vr.active := Bool(false) // since these affect hazard check results
+  io.op.bits.regcheck.vd.active := vd_val
+  io.op.bits.regcheck.vt.base := vt
+  io.op.bits.regcheck.vd.base := vd
 
   io.op.bits.imm.imm := io.vcmdq.imm1.bits
   io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))

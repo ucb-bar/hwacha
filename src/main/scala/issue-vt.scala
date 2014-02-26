@@ -329,6 +329,15 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.reg.vr.id := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
   io.op.bits.reg.vd.id := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
 
+  io.op.bits.regcheck.vs.active := vs_val
+  io.op.bits.regcheck.vt.active := vt_val
+  io.op.bits.regcheck.vr.active := vr_val
+  io.op.bits.regcheck.vd.active := vd_val
+  io.op.bits.regcheck.vs.base := vs
+  io.op.bits.regcheck.vt.base := vt
+  io.op.bits.regcheck.vr.base := vr
+  io.op.bits.regcheck.vd.base := vd
+
   io.op.bits.imm.imm := imm
 
   io.op.bits.aiw.active.imm1 := Bool(true)

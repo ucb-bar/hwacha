@@ -99,6 +99,12 @@ class RegInfo extends Bundle
   val id = Bits(width = SZ_BREGLEN)
 }
 
+class RegHazardInfo extends Bundle
+{
+  val active = Bool()
+  val base = Bits(width = 5)
+}
+
 class DecodedRegister extends Bundle
 {
   val vs = new RegInfo
@@ -191,6 +197,12 @@ class IssueOp extends DecodedInstruction
     val utst = Bool()
     val vld = Bool()
     val vst = Bool()
+  }
+  val regcheck = new Bundle {
+    val vs = new RegHazardInfo
+    val vt = new RegHazardInfo
+    val vr = new RegHazardInfo
+    val vd = new RegHazardInfo
   }
   val aiw = new AIWEntry
 }
