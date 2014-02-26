@@ -12,8 +12,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val vmu = new vmunit.VMUIO
 
-    val vmu = new VMUIO
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
     val lret = new MRTLoadRetireIO
@@ -71,8 +71,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   lane.io.cfg <> issue.io.cfg
   lane.io.op <> exp.io.laneop
 
-  io.vmu <> seq.io.vmu
-  io.vmu <> lane.io.vmu
+  io.vmu <> issue.io.vmu
   io.lreq <> seq.io.lreq
   io.sreq <> seq.io.sreq
   io.lret <> lane.io.lret

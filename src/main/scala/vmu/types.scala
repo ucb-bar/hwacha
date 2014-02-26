@@ -1,5 +1,5 @@
 package hwacha
-package vmu
+package vmunit
 
 import Chisel._
 import Constants._
@@ -55,6 +55,7 @@ class VMDBIO(implicit conf: HwachaConfiguration) extends Bundle
 
 class VMUFn extends Bundle
 {
+  val float = Bool()
   val op = Bits(width = SZ_VMU_OP)
   val typ = Bits(width = MT_SZ)
 

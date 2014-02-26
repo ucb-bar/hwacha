@@ -21,6 +21,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val vmu = new vmunit.VMUIO
 
     val tvec = new Bundle {
       val active = Bool(OUTPUT)
@@ -87,6 +88,9 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.issue_to_aiw.markLast := Mux(tvec.io.active, tvec.io.issue_to_aiw.markLast, vt.io.issue_to_aiw.markLast)
   io.aiw_cntb.valid := Mux(tvec.io.active, tvec.io.aiw_cntb.valid, vt.io.aiw_cntb.valid)
   io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)
+
+  // vmu
+  io.vmu <> tvec.io.vmu
 
   // xcpt
   tvec.io.xcpt <> io.xcpt

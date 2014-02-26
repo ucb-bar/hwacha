@@ -69,7 +69,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vcmdq.io.enq.cnt <> MaskStall(io.vcmdq.cnt, io.xcpt.prop.vu.busy)
 
   val vxu = Module(new VXU)
-  val vmu = Module(new VMU(resetSignal = flush_vmu))
+  val vmu = Module(new vmunit.VMU(resetSignal = flush_vmu))
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
   val mrt = Module(new MRT)
@@ -93,7 +93,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
     vru.io.vcmdq <> vpfcmdq.io.deq
 
-    vmu.io.pf.vaq <> vru.io.vvaq
+    //vmu.io.pf.vaq <> vru.io.vvaq
     vmu.io.vpftlb <> io.vpftlb
   }
   else
@@ -158,7 +158,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vmu.io.xcpt <> io.xcpt
 
   vmu.io.lane <> vxu.io.vmu
-  vmu.io.evac.vaq <> evac.io.vaq
+  //vmu.io.evac.vaq <> evac.io.vaq
   vmu.io.evac.vsdq <> evac.io.vsdq
   vmu.io.dmem <> io.dmem
   vmu.io.vtlb <> io.vtlb

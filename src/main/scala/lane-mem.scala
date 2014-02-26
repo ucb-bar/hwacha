@@ -24,7 +24,7 @@ class LaneMem(implicit conf: HwachaConfiguration) extends Module
   val addr = io.op.vgu.bits.base + paddr
 
   io.vmu.addr.q.valid := io.op.vgu.valid
-  io.vmu.addr.q.bits.cmd <> io.op.vgu.bits.fn.cmd
+  io.vmu.addr.q.bits.cmd <> vmu_op_mcmd(io.op.vgu.bits.fn.op)
   io.vmu.addr.q.bits.typ <> io.op.vgu.bits.fn.typ
   io.vmu.addr.q.bits.idx := addr(PGIDX_BITS-1, 0)
   io.vmu.addr.q.bits.vpn := addr(VADDR_BITS, PGIDX_BITS)

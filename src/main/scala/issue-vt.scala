@@ -23,148 +23,148 @@ object VTDecodeTable
 {
                 //   vd vs vt vr i     VIUfn                   VAU0fn         VAU1fn         VAU2fn         VMUfn                   decode_stop
                 //   |  |  |  |  |     |                       |              |              |              |                       |
-  val default = List(R_,R_,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F)
+  val default = List(R_,R_,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F)
   val table = Array(
-    UTIDX->     List(RX,R_,R_,R_,IMM_X,T,M0,M0,DW64,FP_,I_IDX, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MOVZ->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MOVN->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMOVZ->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMOVN->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    UTIDX->     List(RX,R_,R_,R_,IMM_X,T,M0,M0,DW64,FP_,I_IDX, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MOVZ->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MOVN->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMOVZ->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMOVN->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    LUI->       List(RX,R_,R_,R_,IMM_U,T,M0,MI,DW64,FP_,I_MOV, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    ADDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLTI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLTIU->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLTU,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    XORI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_XOR, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRAI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    ORI->       List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_OR,  F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    ANDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_AND, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    LUI->       List(RX,R_,R_,R_,IMM_U,T,M0,MI,DW64,FP_,I_MOV, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    ADDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLTI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLTIU->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLTU,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    XORI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_XOR, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRAI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    ORI->       List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_OR,  F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    ANDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_AND, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    ADD->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SUB->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SUB, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLL->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLT->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLTU->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLTU,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    XOR->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_XOR, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRL->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRA->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    OR->        List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_OR,  F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    AND->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_AND, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    ADD->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SUB->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SUB, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLL->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLT->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLTU->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SLTU,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    XOR->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_XOR, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRL->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRA->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    OR->        List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_OR,  F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    AND->       List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW64,FP_,I_AND, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    ADDIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLLIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRLIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRAIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    ADDIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLLIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRLIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRAIW->     List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW32,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    ADDW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SUBW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SUB, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SLLW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRLW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    SRAW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    ADDW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SUBW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SUB, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SLLW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRLW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SRL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    SRAW->      List(RX,RX,RX,R_,IMM_X,T,ML,MR,DW32,FP_,I_SRA, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    FSGNJ_S->   List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSGNJN_S->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSGNJX_S->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FEQ_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FEQ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FLT_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FLE_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FLE, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMIN_S->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FMIN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMAX_S->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FMAX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSGNJ_D->   List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSGNJN_D->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSGNJX_D->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FEQ_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FEQ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FLT_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FLE_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FLE, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMIN_D->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FMIN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMAX_D->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FMAX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    FSGNJ_S->   List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSGNJN_S->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSGNJX_S->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FSJX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FEQ_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FEQ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FLT_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FLE_S->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FLE, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMIN_S->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FMIN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMAX_S->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPS,I_FMAX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSGNJ_D->   List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSGNJN_D->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSGNJX_D->  List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FSJX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FEQ_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FEQ, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FLT_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FLE_D->     List(RX,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FLE, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMIN_D->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FMIN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMAX_D->    List(RF,RF,RF,R_,IMM_X,T,ML,MR,DW64,FPD,I_FMAX,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    MUL->       List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_M,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MULH->      List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MH,  F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MULHU->     List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MHU, F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MULHSU->    List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MHSU,F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    MULW->      List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW32,A0_M,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    MUL->       List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_M,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MULH->      List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MH,  F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MULHU->     List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MHU, F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MULHSU->    List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW64,A0_MHSU,F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    MULW->      List(RX,RX,RX,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   T,DW32,A0_M,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    FADD_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_ADD,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSUB_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_SUB,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMUL_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_MUL,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FADD_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_ADD,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSUB_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_SUB,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMUL_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MUL,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMADD_S->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MADD, F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMSUB_S->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MSUB, F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FNMSUB_S->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_NMSUB,F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FNMADD_S->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_NMADD,F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FADD_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_ADD,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FSUB_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_SUB,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMUL_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MUL,  F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMADD_D->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MADD, F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FMSUB_D->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MSUB, F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FNMSUB_D->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_NMSUB,F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
-    FNMADD_D->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_NMADD,F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    FADD_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_ADD,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSUB_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_SUB,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMUL_H->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPH,A1_MUL,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FADD_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_ADD,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSUB_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_SUB,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMUL_S->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MUL,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMADD_S->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MADD, F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMSUB_S->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_MSUB, F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FNMSUB_S->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_NMSUB,F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FNMADD_S->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPS,A1_NMADD,F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FADD_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_ADD,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FSUB_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_SUB,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMUL_D->    List(RF,RF,RF,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MUL,  F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMADD_D->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MADD, F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FMSUB_D->   List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_MSUB, F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FNMSUB_D->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_NMSUB,F,FP_,A2_X,    F,MT_X, VM_X,       F),
+    FNMADD_D->  List(RF,RF,RF,RF,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   T,FPD,A1_NMADD,F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
-    FCVT_S_D->  List(RF,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CDTS, F,MT_X,M_X,      VM_X,  F),
-    FCVT_D_S->  List(RF,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CSTD, F,MT_X,M_X,      VM_X,  F),
-    FCVT_L_S->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTL, F,MT_X,M_X,      VM_X,  F),
-    FCVT_LU_S-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTLU,F,MT_X,M_X,      VM_X,  F),
-    FCVT_W_S->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTW, F,MT_X,M_X,      VM_X,  F),
-    FCVT_WU_S-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTWU,F,MT_X,M_X,      VM_X,  F),
-    FCVT_S_L->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CLTF, F,MT_X,M_X,      VM_X,  F),
-    FCVT_S_LU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CLUTF,F,MT_X,M_X,      VM_X,  F),
-    FCVT_S_W->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CWTF, F,MT_X,M_X,      VM_X,  F),
-    FCVT_S_WU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CWUTF,F,MT_X,M_X,      VM_X,  F),
-    FMV_S_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_MXTF, F,MT_X,M_X,      VM_X,  F),
-    FMV_X_S->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_MFTX, F,MT_X,M_X,      VM_X,  F),
-    FCVT_L_D->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTL, F,MT_X,M_X,      VM_X,  F),
-    FCVT_LU_D-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTLU,F,MT_X,M_X,      VM_X,  F),
-    FCVT_W_D->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTW, F,MT_X,M_X,      VM_X,  F),
-    FCVT_WU_D-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTWU,F,MT_X,M_X,      VM_X,  F),
-    FCVT_D_L->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CLTF, F,MT_X,M_X,      VM_X,  F),
-    FCVT_D_LU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CLUTF,F,MT_X,M_X,      VM_X,  F),
-    FCVT_D_W->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CWTF, F,MT_X,M_X,      VM_X,  F),
-    FCVT_D_WU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CWUTF,F,MT_X,M_X,      VM_X,  F),
-    FMV_D_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MXTF, F,MT_X,M_X,      VM_X,  F),
-    FMV_X_D->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MFTX, F,MT_X,M_X,      VM_X,  F),
+    FCVT_S_D->  List(RF,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CDTS, F,MT_X, VM_X,       F),
+    FCVT_D_S->  List(RF,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CSTD, F,MT_X, VM_X,       F),
+    FCVT_L_S->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTL, F,MT_X, VM_X,       F),
+    FCVT_LU_S-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTLU,F,MT_X, VM_X,       F),
+    FCVT_W_S->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTW, F,MT_X, VM_X,       F),
+    FCVT_WU_S-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CFTWU,F,MT_X, VM_X,       F),
+    FCVT_S_L->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CLTF, F,MT_X, VM_X,       F),
+    FCVT_S_LU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CLUTF,F,MT_X, VM_X,       F),
+    FCVT_S_W->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CWTF, F,MT_X, VM_X,       F),
+    FCVT_S_WU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_CWUTF,F,MT_X, VM_X,       F),
+    FMV_S_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_MXTF, F,MT_X, VM_X,       F),
+    FMV_X_S->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPS,A2_MFTX, F,MT_X, VM_X,       F),
+    FCVT_L_D->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTL, F,MT_X, VM_X,       F),
+    FCVT_LU_D-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTLU,F,MT_X, VM_X,       F),
+    FCVT_W_D->  List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTW, F,MT_X, VM_X,       F),
+    FCVT_WU_D-> List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CFTWU,F,MT_X, VM_X,       F),
+    FCVT_D_L->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CLTF, F,MT_X, VM_X,       F),
+    FCVT_D_LU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CLUTF,F,MT_X, VM_X,       F),
+    FCVT_D_W->  List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CWTF, F,MT_X, VM_X,       F),
+    FCVT_D_WU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CWUTF,F,MT_X, VM_X,       F),
+    FMV_D_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MXTF, F,MT_X, VM_X,       F),
+    FMV_X_D->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MFTX, F,MT_X, VM_X,       F),
 
-    LB->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XRD,    VM_ULD,F),
-    LH->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_ULD,F),
-    LW->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_ULD,F),
-    LD->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_ULD,F),
-    LBU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_BU,M_XRD,   VM_ULD,F),
-    LHU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_HU,M_XRD,   VM_ULD,F),
-    LWU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_WU,M_XRD,   VM_ULD,F),
-    SB->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B,M_XWR,    VM_UST,F),
-    SH->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_UST,F),
-    SW->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_UST,F),
-    SD->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_UST,F),
-    AMOADD_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_ADD, VM_AMO,F),
-    AMOXOR_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_XOR, VM_AMO,F),
-    AMOOR_W->   List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_OR,  VM_AMO,F),
-    AMOAND_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_AND, VM_AMO,F),
-    AMOMIN_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_MIN, VM_AMO,F),
-    AMOMAX_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_MAX, VM_AMO,F),
-    AMOMINU_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_MINU,VM_AMO,F),
-    AMOMAXU_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_MAXU,VM_AMO,F),
-    AMOSWAP_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XA_SWAP,VM_AMO,F),
-    AMOADD_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_ADD, VM_AMO,F),
-    AMOXOR_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_XOR, VM_AMO,F),
-    AMOOR_D->   List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_OR,  VM_AMO,F),
-    AMOAND_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_AND, VM_AMO,F),
-    AMOMIN_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MIN, VM_AMO,F),
-    AMOMAX_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MAX, VM_AMO,F),
-    AMOMINU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MINU,VM_AMO,F),
-    AMOMAXU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_MAXU,VM_AMO,F),
-    AMOSWAP_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XA_SWAP,VM_AMO,F),
-    FLH->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XRD,    VM_ULD,F),
-    FLW->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XRD,    VM_ULD,F),
-    FLD->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XRD,    VM_ULD,F),
-    FSH->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H,M_XWR,    VM_UST,F),
-    FSW->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W,M_XWR,    VM_UST,F),
-    FSD->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D,M_XWR,    VM_UST,F),
+    LB->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B, VM_ULD,     F),
+    LH->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H, VM_ULD,     F),
+    LW->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_ULD,     F),
+    LD->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_ULD,     F),
+    LBU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_BU,VM_ULD,     F),
+    LHU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_HU,VM_ULD,     F),
+    LWU->       List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_WU,VM_ULD,     F),
+    SB->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B, VM_UST,     F),
+    SH->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H, VM_UST,     F),
+    SW->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_UST,     F),
+    SD->        List(R_,RX,RX,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_UST,     F),
+    AMOADD_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_ADD, F),
+    AMOXOR_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_XOR, F),
+    AMOOR_W->   List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_OR,  F),
+    AMOAND_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_AND, F),
+    AMOMIN_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_MIN, F),
+    AMOMAX_W->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_MAX, F),
+    AMOMINU_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_MINU,F),
+    AMOMAXU_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_MAXU,F),
+    AMOSWAP_W-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_AMO_SWAP,F),
+    AMOADD_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_ADD, F),
+    AMOXOR_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_XOR, F),
+    AMOOR_D->   List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_OR,  F),
+    AMOAND_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_AND, F),
+    AMOMIN_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_MIN, F),
+    AMOMAX_D->  List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_MAX, F),
+    AMOMINU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_MINU,F),
+    AMOMAXU_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_MAXU,F),
+    AMOSWAP_D-> List(RX,RX,RX,R_,IMM_0,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_AMO_SWAP,F),
+    FLH->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H, VM_ULD,     F),
+    FLW->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_ULD,     F),
+    FLD->       List(RF,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_ULD,     F),
+    FSH->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H, VM_UST,     F),
+    FSW->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_W, VM_UST,     F),
+    FSD->       List(R_,RX,RF,R_,IMM_S,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_D, VM_UST,     F),
 
-    STOP->      List(R_,R_,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  T)
+    STOP->      List(R_,R_,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       T)
   )
 }
 
@@ -178,6 +178,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     val vf = new VFIO().flip
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val vmu = new vmunit.VMUIO
 
     val ready = Bool(INPUT)
     val op = new IssueOpIO
@@ -225,7 +226,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val (vau0_val: Bool) :: vau0_dw :: vau0_op :: cs2 = cs1
   val (vau1_val: Bool) :: vau1_fp :: vau1_op :: cs3 = cs2
   val (vau2_val: Bool) :: vau2_fp :: vau2_op :: cs4 = cs3
-  val (vmu_val: Bool) :: vmu_type :: vmu_cmd :: vmu_op :: cs5 = cs4
+  val (vmu_val: Bool) :: vmu_type :: vmu_op :: cs5 = cs4
   val (decode_stop: Bool) :: Nil = cs5
 
   val vd_val :: vd_fp :: Nil = parse_rinfo(vdi)
@@ -288,7 +289,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.active.vau0 := vau0_val
   io.op.bits.active.vau1 := vau1_val
   io.op.bits.active.vau2 := vau2_val
-  io.op.bits.active.amo := vmu_val && (vmu_op === VM_AMO)
+  io.op.bits.active.amo := vmu_val && is_mcmd_amo(vmu_op_mcmd(vmu_op))
   io.op.bits.active.utld := vmu_val && (vmu_op === VM_ULD)
   io.op.bits.active.utst := vmu_val && (vmu_op === VM_UST)
   io.op.bits.active.vld := Bool(false)
@@ -303,7 +304,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
   io.op.bits.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, rm, vau1_op))
   io.op.bits.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, rm, vau2_op))
-  io.op.bits.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
+  io.op.bits.fn.vmu := new vmunit.VMUFn().fromBits(Cat(vmu_float, vmu_op, vmu_type))
 
   val vs_m1 = vs - UInt(1)
   val vt_m1 = vt - UInt(1)
@@ -338,6 +339,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := numCnt_rtag
+
+  io.op.bits.vmu.op.fn := io.op.bits.fn.vmu
+  io.op.bits.vmu.op.vlen := io.op.bits.vlen
 
 
 //-------------------------------------------------------------------------\\

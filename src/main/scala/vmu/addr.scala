@@ -1,5 +1,5 @@
 package hwacha
-package vmu
+package vmunit
 
 import Chisel._
 import Constants._

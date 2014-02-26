@@ -15,7 +15,7 @@ object Constants extends
   VAU0Constants with
   VAU1Constants with
   VAU2Constants with
-  VMUConstants
+  vmunit.VMUConstants
 
 trait MachineConstants
 {
@@ -185,34 +185,34 @@ trait VAU2Constants
   val A2_CSTD  = UInt(11, SZ_VAU2_OP)
 }
 
-trait VMUConstants extends LaneConstants
-{
-  def is_mtype_byte(typ: UInt) = (typ === MT_B || typ === MT_BU)
-  def is_mtype_halfword(typ: UInt) = (typ === MT_H || typ === MT_HU)
-  def is_mtype_word(typ: UInt) = (typ === MT_W || typ === MT_WU)
-  def is_mtype_doubleword(typ: UInt) = (typ === MT_D)
-
-  def is_mcmd_load(cmd: UInt) = (cmd === M_XRD)
-  def is_mcmd_store(cmd: UInt) = (cmd === M_XWR)
-  def is_mcmd_amo(cmd: UInt) = isAMO(cmd)
-  def is_mcmd_pfr(cmd: UInt) = (cmd === M_PFR)
-  def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
-  def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
-
-  val SZ_QCNT = SZ_LGBANK1
-
-  val SZ_VMU_OP = 3
-
-  val VM_X   = UInt.DC(SZ_VMU_OP)
-  val VM_VLD = UInt(0, SZ_VMU_OP)
-  val VM_VST = UInt(1, SZ_VMU_OP)
-  val VM_ULD = UInt(2, SZ_VMU_OP)
-  val VM_UST = UInt(3, SZ_VMU_OP)
-  val VM_AMO = UInt(4, SZ_VMU_OP)
-
-  val IS_VM_OP_UTMEMOP =
-    (x: UInt) => x === VM_ULD || x === VM_UST || x === VM_AMO
-}
+//trait VMUConstants extends LaneConstants
+//{
+//  def is_mtype_byte(typ: UInt) = (typ === MT_B || typ === MT_BU)
+//  def is_mtype_halfword(typ: UInt) = (typ === MT_H || typ === MT_HU)
+//  def is_mtype_word(typ: UInt) = (typ === MT_W || typ === MT_WU)
+//  def is_mtype_doubleword(typ: UInt) = (typ === MT_D)
+//
+//  def is_mcmd_load(cmd: UInt) = (cmd === M_XRD)
+//  def is_mcmd_store(cmd: UInt) = (cmd === M_XWR)
+//  def is_mcmd_amo(cmd: UInt) = isAMO(cmd)
+//  def is_mcmd_pfr(cmd: UInt) = (cmd === M_PFR)
+//  def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
+//  def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
+//
+//  val SZ_QCNT = SZ_LGBANK1
+//
+//  val SZ_VMU_OP = 3
+//
+//  val VM_X   = UInt.DC(SZ_VMU_OP)
+//  val VM_VLD = UInt(0, SZ_VMU_OP)
+//  val VM_VST = UInt(1, SZ_VMU_OP)
+//  val VM_ULD = UInt(2, SZ_VMU_OP)
+//  val VM_UST = UInt(3, SZ_VMU_OP)
+//  val VM_AMO = UInt(4, SZ_VMU_OP)
+//
+//  val IS_VM_OP_UTMEMOP =
+//    (x: UInt) => x === VM_ULD || x === VM_UST || x === VM_AMO
+//}
 
 object Commands extends Commands
 trait Commands

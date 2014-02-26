@@ -78,11 +78,10 @@ class VMUFn extends Bundle
 {
   val float = Bool()
   val typ = Bits(width = MT_SZ)
-  val cmd = Bits(width = M_SZ)
   val op = Bits(width = SZ_VMU_OP)
 
-  def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
-  def lreq(dummy: Int = 0) = (op === VM_AMO) || (op === VM_ULD) || (op === VM_VLD)
+  def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
+  def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
   def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
 }
 
@@ -121,7 +120,7 @@ class DecodedInstruction extends Bundle
     val vau0 = new VAU0Fn
     val vau1 = new VAU1Fn
     val vau2 = new VAU2Fn
-    val vmu = new VMUFn
+    val vmu = new vmunit.VMUFn
   }
   val reg = new DecodedRegister
   val imm = new DecodedImmediate
@@ -193,6 +192,10 @@ class IssueOp extends DecodedInstruction
     val vst = Bool()
   }
   val aiw = new AIWEntry
+  val vmu = new Bundle {
+    val op = new vmunit.VMUOp
+    val stride = Bits(width = SZ_VSTRIDE)
+  }
 }
 
 

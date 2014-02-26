@@ -1,5 +1,5 @@
 package hwacha
-package vmu
+package vmunit
 
 import Chisel._
 import Constants._
@@ -53,6 +53,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
 
     val vtlb = new TLBIO
+    val vpftlb = new TLBIO
   }
 
   val ctrl = Module(new VMUControl)
