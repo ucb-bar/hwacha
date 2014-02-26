@@ -207,9 +207,9 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
 
   val cmd_valid = inst_val && io.cmd.valid && (!check_vl || cfg_vl != UInt(0))
   val resp_ready  = !emit_response || resp_q.io.enq.ready
-  val vcmd_ready  = !emit_vcmd  || vu.io.vcmdq_user_ready
-  val vimm1_ready = !emit_vimm1 || vu.io.vimm1q_user_ready
-  val vimm2_ready = !emit_vimm2 || vu.io.vimm2q_user_ready
+  val vcmd_ready  = !emit_vcmd  || Mux(io.s, vu.io.vcmdq.cmd.ready, vu.io.vcmdq_user_ready)
+  val vimm1_ready = !emit_vimm1 || Mux(io.s, vu.io.vcmdq.imm1.ready, vu.io.vimm1q_user_ready)
+  val vimm2_ready = !emit_vimm2 || Mux(io.s, vu.io.vcmdq.imm2.ready, vu.io.vimm2q_user_ready)
   val vcnt_ready  = !emit_cnt || vu.io.vcmdq.cnt.ready
 
   def construct_ready(exclude: Bool): Bool = {
