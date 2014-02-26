@@ -29,6 +29,12 @@ class HwachaImm1 extends Bundle
   val vlen = UInt(width = SZ_VLEN)
 }
 
+class HwachaCnt extends Bundle
+{
+  val cnt = UInt(width = SZ_VLEN)
+  val last = Bool()
+}
+
 
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types

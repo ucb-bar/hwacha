@@ -170,7 +170,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
             div = Mux(stride_lobits <= high && stride_lobits >= lo, UInt(i), div)
           }
 
-          vec_pfed_count_reg := Mux(!io.vcmdq.cnt.valid, SInt(0), io.vcmdq.cnt.bits.toUInt).toUInt
+          vec_pfed_count_reg := Mux(!io.vcmdq.cnt.valid, SInt(0), io.vcmdq.cnt.bits.cnt.toUInt).toUInt
           vec_count_reg := Mux(stride_lobits === UInt(0), SInt(1), vlen_reg)
           vec_per_pf_reg := Mux(stride_lobits === UInt(0), UInt(1), div)
           vec_pf_remainder_reg := pf_len - (div * stride_lobits)

@@ -257,7 +257,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
       IMM_U -> Cat(Bits(0,1),Fill(32,inst(31)),inst(31,12),Bits(0,12))
     ))
 
-  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
+  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
   val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
 

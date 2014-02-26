@@ -298,13 +298,13 @@ class Evac extends Module
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcmdq.cnt.bits(10,0)
+        io.vsdq.bits := io.vcmdq.cnt.bits.cnt
 
         when (io.vsdq.ready && io.vaq.ready)
         {
           addr_next := addr_plus_8
 
-          when (io.vcmdq.cnt.bits(11)) // the last count of a VF
+          when (io.vcmdq.cnt.bits.last) // the last count of a VF
           {
             state_next := STATE_VCMDQ
             cmd_sel_next := SEL_VCMDQ
@@ -447,7 +447,7 @@ class Evac extends Module
       {
         io.vaq.valid := io.vsdq.ready
         io.vsdq.valid := io.vaq.ready
-        io.vsdq.bits := io.vcmdq.cnt.bits(10,0)
+        io.vsdq.bits := io.vcmdq.cnt.bits.cnt
 
         when (io.vsdq.ready && io.vaq.ready)
         {

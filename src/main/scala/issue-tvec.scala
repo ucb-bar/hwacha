@@ -143,7 +143,7 @@ class IssueTVEC extends Module
   val enq_aiw_cntb = vfu_valid
   val enq_aiw_numCntB = vfu_valid || decode_vf
 
-  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits, UInt(0))
+  val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
   val regid_fbase = ((cnt >> UInt(3)) * reg_fstride) + reg_xf_split
 

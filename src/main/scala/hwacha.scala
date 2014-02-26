@@ -329,7 +329,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
 
   // Hookup vcmdq.cnt
   vu.io.vcmdq.cnt.valid := cmd_valid && emit_cnt && construct_ready(vcnt_ready)
-  vu.io.vcmdq.cnt.bits := io.cmd.bits.rs1
+  vu.io.vcmdq.cnt.bits.cnt := io.cmd.bits.rs1
+  vu.io.vcmdq.cnt.bits.last := io.cmd.bits.rs2(1)
   
   // Hookup resp queue
   resp_q.io.enq.valid := cmd_valid && emit_response && construct_ready(resp_ready)
