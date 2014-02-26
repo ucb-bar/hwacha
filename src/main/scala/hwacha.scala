@@ -345,12 +345,16 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   irq.io.rocc.clear := resp_q.io.enq.valid && sel_resp === RESP_CAUSE
 
   irq.io.vu.top.illegal_cfg := io.cmd.valid &&
-    vcmd_valid && (sel_vcmd === CMD_VSETCFG) && (nxpr === UInt(0) || nxpr > UInt(32) || nfpr > UInt(32))
+    vcmd_valid && (sel_vcmd === CMD_VSETCFG) && (nxpr > UInt(32) || nfpr > UInt(32))
   irq.io.vu.top.illegal_inst := io.cmd.valid && !inst_val
   irq.io.vu.top.priv_inst := Bool(false)
   irq.io.vu.top.illegal_regid := Bool(false)
 
-  irq.io.vu.top.aux := raw_inst
+  irq.io.vu.top.aux := MuxCase(
+    raw_inst, Array(
+      (irq.io.vu.top.illegal_cfg && nxpr > UInt(32)) -> UInt(0),
+      (irq.io.vu.top.illegal_cfg && nfpr > UInt(32)) -> UInt(1)
+    ))
 
   val reg_hold = Reg(init=Bool(false))
   when (cmd_valid && decl_hold && construct_ready(null)) { reg_hold := Bool(true) }
