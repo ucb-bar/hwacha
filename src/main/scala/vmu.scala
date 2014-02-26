@@ -95,7 +95,6 @@ class AddressTLB extends Module
     val vvaq = new VVAQIO().flip
     val vpaq = new VPAQIO
     val tlb = new TLBIO
-    val ack = Bool(OUTPUT)
     val stall = Bool(INPUT)
   }
 
@@ -127,11 +126,10 @@ class AddressTLB extends Module
   val xcpt_stall = ma_addr || xcpt_ld || xcpt_st
   val xcpt = xcpt_stall || xcpt_pf
 
-  io.ack := io.tlb.req.fire() && !io.tlb.resp.miss && !xcpt
 
   io.vvaq.ready := !stall && io.vpaq.ready && io.tlb.req.ready && !io.tlb.resp.miss && !xcpt_stall
 
-  io.vpaq.valid := io.ack
+  io.vpaq.valid := io.tlb.req.fire() && !io.tlb.resp.miss && !xcpt
   io.vpaq.bits := io.vvaq.bits
   io.vpaq.bits.addr := Cat(io.tlb.resp.ppn, io.vvaq.bits.idx)
 
