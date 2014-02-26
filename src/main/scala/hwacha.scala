@@ -351,7 +351,6 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
     vcmd_valid && (sel_vcmd === CMD_VSETCFG) && (nxpr > UInt(32) || nfpr > UInt(32))
   irq.io.vu.top.illegal_inst := io.cmd.valid && !inst_val
   irq.io.vu.top.priv_inst := io.cmd.valid && inst_priv && !io.s
-  irq.io.vu.top.illegal_regid := Bool(false)
   irq.io.vu.top.illegal_regid := io.cmd.valid && vr_valid &&
     Mux(vr_type===VRT_I, vr1 >= cfg_xregs || vr2 >= cfg_xregs,
                          vr1 >= cfg_fregs || vr2 >= cfg_fregs)
