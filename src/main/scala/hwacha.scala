@@ -40,6 +40,8 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
     val ncnt = 8
   }
 
+  val vmu = hwacha.vmu.HwachaVMUConfig()
+
   val nvvaq = 16
   val nvpaq = 16
   val nvpfvaq = 16
