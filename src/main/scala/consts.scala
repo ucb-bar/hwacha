@@ -218,8 +218,7 @@ object Commands extends Commands
 trait Commands
 {
   // command bits for the vector command queue
-  // this CMD_NONE shouldn't overlap any other commands
-  val CMD_NONE = Bits("b1111_1111",8)
+  val CMD_X = Bits("b????_????",8)
 
   val CMD_VSETCFG = Bits("b00_0000_00",8)
   val CMD_VSETVL =  Bits("b00_0000_10",8)
