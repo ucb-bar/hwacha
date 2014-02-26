@@ -77,8 +77,7 @@ class IssueTVEC extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
-    val irq = new IRQIssueTVECIO
-    val xcpt = new XCPTIssueIO().flip
+    val xcpt = new XCPTIO().flip
 
     val active = Bool(OUTPUT)
     val vf = new VFIO
@@ -112,10 +111,7 @@ class IssueTVEC extends Module
   val reg_xf_split = Reg(init = Bits(0,SZ_BANK))
   val reg_precision = Reg(init = PREC_DOUBLE)
 
-  val stall_sticky = Reg(init=Bool(false))
-  val stall = io.irq.illegal || stall_sticky || io.xcpt.stall
-
-  when (io.irq.illegal) { stall_sticky := Bool(true) }
+  val stall = io.xcpt.prop.issue.stall
 
 
 //-------------------------------------------------------------------------\\
@@ -311,17 +307,4 @@ class IssueTVEC extends Module
   io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := io.aiw_to_issue.numCnt_rtag
-
-
-//-------------------------------------------------------------------------\\
-// IRQ                                                                     \\
-//-------------------------------------------------------------------------\\
-
-  val illegal_vd = vd_val && (vd >= reg_nfregs && vd_fp || vd >= reg_nxregs && !vd_fp)
-  val illegal_vt = vt_val && (vt >= reg_nfregs && vt_fp || vt >= reg_nxregs && !vt_fp)
-  
-  io.irq.illegal := 
-    io.vcmdq.cmd.valid && tvec_active && 
-    (!vfu_valid && !decode_vcfg && !decode_vsetvl && !decode_vf || illegal_vd || illegal_vt)
-  io.irq.cmd := io.vcmdq.cmd.bits.toBits
 }

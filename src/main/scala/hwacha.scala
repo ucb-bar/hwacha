@@ -167,7 +167,10 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val icache = Module(new rocket.Frontend()(hc.vicache, rc.tl))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))
   val ptlb = Module(new rocket.TLB(hc.nptlb))
-  val vu = Module(new vu)
+
+  val irq = Module(new IRQ)
+  val xcpt = Module(new XCPT)
+  val vu = Module(new VU)
  
   // Cofiguration state
   val cfg_maxvl = Reg(init=UInt(32, log2Up(hc.nreg_total)+1))
@@ -222,7 +225,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // TODO: SETUP PREFETCH QUEUES
 
   // Setup interrupt 
-  io.interrupt := vu.io.irq.request
+  io.interrupt := irq.io.rocc.request
 
   val reg_prec = Reg(init = PREC_DOUBLE)
   val next_prec = Bits(width = SZ_PREC)
@@ -318,25 +321,27 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   resp_q.io.enq.valid := cmd_valid && emit_response && construct_ready(resp_ready)
   resp_q.io.enq.bits.data := MuxLookup(sel_resp, new_vl, Array(
     RESP_NVL   -> new_vl,
-    RESP_CAUSE -> vu.io.irq.cause,
-    RESP_AUX   -> vu.io.irq.aux,
+    RESP_CAUSE -> irq.io.rocc.cause,
+    RESP_AUX   -> irq.io.rocc.aux,
     RESP_CFG   -> cfg_regs,
     RESP_VL    -> cfg_vl
   ))
   resp_q.io.enq.bits.rd := io.cmd.bits.inst.rd
 
   // Hookup some signal ports
-  vu.io.irq.clear := resp_q.io.enq.valid && sel_resp === RESP_CAUSE
+  irq.io.vu <> vu.io.irq
+  irq.io.rocc.clear := resp_q.io.enq.valid && sel_resp === RESP_CAUSE
 
   val reg_hold = Reg(init=Bool(false))
   when (cmd_valid && decl_hold && construct_ready(null)) { reg_hold := Bool(true) }
   when (reg_hold && !io.s) { reg_hold := Bool(false) }
 
-  vu.io.xcpt.evac := cmd_valid && decl_evac && construct_ready(null)
-  vu.io.xcpt.evac_addr := io.cmd.bits.rs1
-  vu.io.xcpt.hold := reg_hold
-  vu.io.xcpt.kill := cmd_valid && decl_kill && construct_ready(null)
-  vu.io.xcpt.exception := io.exception
+  xcpt.io.rocc.exception := io.exception
+  xcpt.io.rocc.evac := cmd_valid && decl_evac && construct_ready(null)
+  xcpt.io.rocc.evac_addr := io.cmd.bits.rs1
+  xcpt.io.rocc.hold := reg_hold
+  xcpt.io.rocc.kill := cmd_valid && decl_kill && construct_ready(null)
+  vu.io.xcpt <> xcpt.io.vu
 
   // TODO: hook this stuff up properly
   vu.io.vpfcmdq.cmd.valid := Bool(false)

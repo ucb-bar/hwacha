@@ -4,50 +4,41 @@ import Chisel._
 import Node._
 import Constants._
 
-class IRQIssueTVECIO extends Bundle
-{
-  val illegal = Bool(OUTPUT)
-  val cmd = Bits(OUTPUT, SZ_VCMD)
-}
-
-class IRQIssueVTIO extends Bundle
-{
-  val ma_inst = Bool(OUTPUT)
-  val fault_inst = Bool(OUTPUT)
-  val illegal = Bool(OUTPUT)
-  val pc = Bits(OUTPUT, SZ_ADDR)
-}
-
-class IRQIssueIO extends Bundle
-{
-  val tvec = new IRQIssueTVECIO()
-  val vt = new IRQIssueVTIO()
-}
-
-class IRQVMUIO extends Bundle
-{
-  val ma_ld = Bool(OUTPUT)
-  val ma_st = Bool(OUTPUT)
-  val faulted_ld = Bool(OUTPUT)
-  val faulted_st = Bool(OUTPUT)
-  val mem_xcpt_addr = Bits(OUTPUT, SZ_ADDR)
-}
-
 class IRQIO extends Bundle
 {
-  val request = Bool(OUTPUT)
-  val cause = UInt(OUTPUT, 5)
-  val aux = Bits(OUTPUT, 64)
-  val clear = Bool(INPUT)
+  val top = new Bundle {
+    val illegal_cfg = Bool(OUTPUT)
+    val illegal_inst = Bool(OUTPUT)
+    val priv_inst = Bool(OUTPUT)
+    val illegal_regid = Bool(OUTPUT)
+    val aux = Bits(OUTPUT, 64)
+  }
+  val issue = new Bundle {
+    val ma_inst = Bool(OUTPUT)
+    val fault_inst = Bool(OUTPUT)
+    val illegal = Bool(OUTPUT)
+    val illegal_regid = Bool(OUTPUT)
+    val aux = Bits(OUTPUT, 64)
+  }
+  val vmu = new Bundle {
+    val ma_ld = Bool(OUTPUT)
+    val ma_st = Bool(OUTPUT)
+    val faulted_ld = Bool(OUTPUT)
+    val faulted_st = Bool(OUTPUT)
+    val aux = Bits(OUTPUT, 64)
+  }
 }
 
 class IRQ extends Module
 {
   val io = new Bundle {
-    val issue = new IRQIssueIO().flip
-    val vmu = new IRQVMUIO().flip
-
-    val irq = new IRQIO
+    val vu = new IRQIO().flip
+    val rocc = new Bundle {
+      val request = Bool(OUTPUT)
+      val cause = UInt(OUTPUT, 5)
+      val aux = Bits(OUTPUT, 64)
+      val clear = Bool(INPUT)
+    }
   }
 
   val reg_irq = Reg(init=Bool(false))
@@ -55,18 +46,22 @@ class IRQ extends Module
   val reg_aux = Reg(init=Bits(0, 64))
 
   val irqs = List(
-    (io.issue.vt.ma_inst, 4, io.issue.vt.pc),
-    (io.issue.vt.fault_inst, 5, io.issue.vt.pc),
-    (io.issue.vt.illegal, 6, io.issue.vt.pc),
-    (io.issue.tvec.illegal, 1, io.issue.tvec.cmd),
-    (io.vmu.ma_ld, 8, io.vmu.mem_xcpt_addr),
-    (io.vmu.ma_st, 9, io.vmu.mem_xcpt_addr),
-    (io.vmu.faulted_ld, 10, io.vmu.mem_xcpt_addr),
-    (io.vmu.faulted_st, 11, io.vmu.mem_xcpt_addr)
+    //(io.vu.top.illegal_cfg, 0, io.top.aux),
+    //(io.vu.top.illegal_inst, 1, io.top.aux),
+    //(io.vu.top.priv_inst, 2, io.top.aux),
+    //(io.vu.top.illegal_regid, 3, io.top.aux),
+    (io.vu.issue.ma_inst, 4, io.vu.issue.aux),
+    (io.vu.issue.fault_inst, 5, io.vu.issue.aux),
+    (io.vu.issue.illegal, 6, io.vu.issue.aux),
+    (io.vu.issue.illegal_regid, 7, io.vu.issue.aux),
+    (io.vu.vmu.ma_ld, 8, io.vu.vmu.aux),
+    (io.vu.vmu.ma_st, 9, io.vu.vmu.aux),
+    (io.vu.vmu.faulted_ld, 10, io.vu.vmu.aux),
+    (io.vu.vmu.faulted_st, 11, io.vu.vmu.aux)
   )
 
   when (!reg_irq) {
-    for ((cond, cause, aux) <- irqs) {
+    for ((cond, cause, aux) <- irqs.reverse) {
       when (cond) {
         reg_irq := Bool(true)
         reg_cause := UInt(cause)
@@ -75,11 +70,11 @@ class IRQ extends Module
     }
   }
 
-  when (io.irq.clear) {
+  when (io.rocc.clear) {
     reg_irq := Bool(false)
   }
 
-  io.irq.request := reg_irq
-  io.irq.cause := reg_cause
-  io.irq.aux := reg_aux
+  io.rocc.request := reg_irq
+  io.rocc.cause := reg_cause
+  io.rocc.aux := reg_aux
 }

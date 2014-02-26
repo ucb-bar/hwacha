@@ -172,8 +172,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val irq = new IRQIssueVTIO
-    val xcpt = new XCPTIssueIO().flip
+    val irq = new IRQIO
+    val xcpt = new XCPTIO().flip
 
     val vf = new VFIO().flip
     val vcmdq = new VCMDQIO().flip
@@ -190,10 +190,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val stall_sticky = Reg(init=Bool(false))
   val mask_stall = Bool()
 
-  val stall_issue = stall_sticky || io.irq.illegal || io.xcpt.stall
-  val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.ma_inst || io.irq.fault_inst
+  val stall_issue = stall_sticky || io.irq.issue.illegal || io.irq.issue.illegal_regid || io.xcpt.prop.issue.stall
+  val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.issue.ma_inst || io.irq.issue.fault_inst
 
-  when (io.irq.ma_inst || io.irq.fault_inst || io.irq.illegal) { stall_sticky := Bool(true) }
+  when (io.irq.issue.ma_inst || io.irq.issue.fault_inst || io.irq.issue.illegal || io.irq.issue.illegal_regid) { stall_sticky := Bool(true) }
 
 
 //-------------------------------------------------------------------------\\
@@ -347,8 +347,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val illegal_vs = vs_val && (vs >= io.cfg.nfregs && vs_fp || vs >= io.cfg.nxregs && !vs_fp)
   val illegal_vr = vr_val && (vr >= io.cfg.nfregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
 
-  io.irq.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
-  io.irq.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if
-  io.irq.illegal := io.vf.active && io.imem.resp.valid && (!vfu_valid && !mask_stall || illegal_vd || illegal_vt || illegal_vs || illegal_vr)
-  io.irq.pc := io.imem.resp.bits.pc
+  io.irq.issue.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
+  io.irq.issue.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if
+  io.irq.issue.illegal := io.vf.active && io.imem.resp.valid && (!vfu_valid && !mask_stall)
+  io.irq.issue.illegal_regid := io.vf.active && io.imem.resp.valid && (illegal_vd || illegal_vt || illegal_vs || illegal_vr)
+  io.irq.issue.aux := io.imem.resp.bits.pc
 }

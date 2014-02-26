@@ -16,8 +16,8 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
-    val irq = new IRQIssueIO
-    val xcpt = new XCPTIssueIO().flip
+    val irq = new IRQIO
+    val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
@@ -50,8 +50,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
   io.cfg <> tvec.io.cfg
   vt.io.cfg <> tvec.io.cfg
-  io.irq.tvec := tvec.io.irq
-  io.irq.vt := vt.io.irq
+  io.irq <> vt.io.irq
   vt.io.vf <> tvec.io.vf
   io.pending_vf := tvec.io.vf.active
 

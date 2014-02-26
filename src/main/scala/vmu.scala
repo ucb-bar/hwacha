@@ -43,8 +43,8 @@ class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
 class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val irq = new IRQVMUIO
-    val xcpt = new XCPTVMUIO().flip
+    val irq = new IRQIO
+    val xcpt = new XCPTIO().flip
 
     val lane = new VMUIO().flip
     val pf = new Bundle {
@@ -59,8 +59,6 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
-
-    val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
   val addr = Module(new VMUAddress)
@@ -73,13 +71,12 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   addr.io.pf <> io.pf.vaq
   addr.io.lane <> io.lane.addr
   addr.io.evac <> io.evac.vaq
-  addr.io.evac_to_vmu <> io.evac_to_vmu
 
   ldata.io.lane <> io.lane.ldata
 
+  sdata.io.xcpt <> io.xcpt
   sdata.io.lane <> io.lane.sdata
   sdata.io.evac <> io.evac.vsdq
-  sdata.io.evac_to_vmu <> io.evac_to_vmu
 
   memif.io.vaq <> addr.io.memif
   memif.io.vldq <> ldata.io.memif
@@ -93,13 +90,13 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 class AddressTLB extends Module
 {
   val io = new Bundle {
+    val irq = new IRQIO
+
     val vvaq = new VVAQIO().flip
     val vpaq = new VPAQIO
     val tlb = new TLBIO
     val ack = Bool(OUTPUT)
     val stall = Bool(INPUT)
-
-    val irq = new IRQVMUIO
   }
 
   val sticky_stall = Reg(init=Bool(false))
@@ -140,11 +137,11 @@ class AddressTLB extends Module
 
   when (io.tlb.req.fire() && xcpt_stall) { sticky_stall := Bool(true) }
 
-  io.irq.ma_ld := io.tlb.req.fire() && ma_ld
-  io.irq.ma_st := io.tlb.req.fire() && ma_st
-  io.irq.faulted_ld := io.tlb.req.fire() && xcpt_ld
-  io.irq.faulted_st := io.tlb.req.fire() && xcpt_st
-  io.irq.mem_xcpt_addr := Cat(io.vvaq.bits.vpn, io.vvaq.bits.idx)
+  io.irq.vmu.ma_ld := io.tlb.req.fire() && ma_ld
+  io.irq.vmu.ma_st := io.tlb.req.fire() && ma_st
+  io.irq.vmu.faulted_ld := io.tlb.req.fire() && xcpt_ld
+  io.irq.vmu.faulted_st := io.tlb.req.fire() && xcpt_st
+  io.irq.vmu.aux := Cat(io.vvaq.bits.vpn, io.vvaq.bits.idx)
 }
 
 class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
@@ -179,8 +176,8 @@ class VPAQThrottle(implicit conf: HwachaConfiguration) extends Module
 class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val irq = new IRQVMUIO
-    val xcpt = new XCPTVMUIO().flip
+    val irq = new IRQIO
+    val xcpt = new XCPTIO().flip
     val stall = Bool(INPUT)
 
     val pf = new VVAQIO().flip
@@ -190,8 +187,6 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
-
-    val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
   // when the lane is valid it should be able to enq
@@ -207,7 +202,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   val vpaq_lacntr = Module(new LookAheadCounter(0, conf.nvpaq))
   val vpaq_throttle = Module(new VPAQThrottle)
 
-  vvaq_tlb.io.irq <> io.irq
+  io.irq <> vvaq_tlb.io.irq
 
   // vvaq hookup
   vvaq_arb.io.in(0) <> io.lane.q
@@ -218,23 +213,23 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   //FIXME Chisel
   //vvaq_lacntr.io.inc := vvaq.io.deq.fire()
   vvaq_lacntr.io.inc := vvaq.io.deq.valid && vvaq_tlb.io.vvaq.ready
-  vvaq_lacntr.io.dec := io.evac_to_vmu.evac_mode && io.evac.fire()
+  vvaq_lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
 
   // vvaq address translation
   vvaq_tlb.io.vvaq <> vvaq.io.deq
   vpaq.io.enq <> vvaq_tlb.io.vpaq
   io.vtlb <> vvaq_tlb.io.tlb
-  vvaq_tlb.io.stall := io.xcpt.tlb.stall
+  vvaq_tlb.io.stall := io.xcpt.prop.vmu.stall
 
   vpaq_lacntr.io.la <> io.lane.pala
   //FIXME Chisel
   //vpaq_lacntr.io.inc := vpaq.io.enq.fire()
   vpaq_lacntr.io.inc := vvaq_tlb.io.vpaq.valid && vpaq.io.enq.ready
-  vpaq_lacntr.io.dec := io.xcpt.drain && vpaq.io.deq.valid && vpaq_throttle.io.original.ready
+  vpaq_lacntr.io.dec := io.xcpt.prop.vmu.drain && vpaq.io.deq.valid && vpaq_throttle.io.original.ready
 
   vpaq_throttle.io.original <> vpaq.io.deq
   vpaq_throttle.io.la <> io.lane.pala
-  vpaq_throttle.io.bypass := io.xcpt.drain
+  vpaq_throttle.io.bypass := io.xcpt.prop.vmu.drain
 
   if (conf.vru) {
     val vpfvaq = Module(new Queue(new VVAQEntry, conf.nvpfvaq))
@@ -246,7 +241,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
     vpfvaq_tlb.io.vvaq <> vpfvaq.io.deq
     vpfpaq.io.enq <> vpfvaq_tlb.io.vpaq
     io.vpftlb <> vpfvaq_tlb.io.tlb
-    vpfvaq_tlb.io.stall := io.xcpt.tlb.stall
+    vpfvaq_tlb.io.stall := io.xcpt.prop.vmu.stall
 
     val vpaq_arb = Module(new RRArbiter(new VPAQEntry, 2))
 
@@ -281,11 +276,10 @@ class VMULoadData(implicit conf: HwachaConfiguration) extends Module
 class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTIO().flip
     val lane = new VSDQLaneIO().flip
     val evac = new VSDQIO().flip
     val memif = new VSDQIO
-
-    val evac_to_vmu = new io_evac_to_vmu().flip
   }
 
   // when the lane is valid it should be able to enq
@@ -303,5 +297,5 @@ class VMUStoreData(implicit conf: HwachaConfiguration) extends Module
 
   lacntr.io.la <> io.lane.la
   lacntr.io.inc := vsdq.io.deq.fire()
-  lacntr.io.dec := io.evac_to_vmu.evac_mode && io.evac.fire()
+  lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
 }

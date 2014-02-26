@@ -7,8 +7,8 @@ import Constants._
 class VXU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val irq = new IRQIssueIO
-    val xcpt = new XCPTVXUIO().flip
+    val irq = new IRQIO
+    val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
@@ -31,11 +31,9 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val aiw_to_issue = new io_aiw_to_issue().flip()
 
     val aiwop = new AIWOpIO
-
-    val vxu_to_xcpt = new io_vxu_to_xcpt_handler()
   }
 
-  val flush = this.reset || io.xcpt.flush
+  val flush = this.reset || io.xcpt.prop.vu.flush_vxu
 
   val issue = Module(new Issue(resetSignal = flush))
   val hazard = Module(new Hazard(resetSignal = flush))
@@ -45,6 +43,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   io.irq <> issue.io.irq
 
+  issue.io.xcpt <> io.xcpt
   issue.io.vcmdq <> io.vcmdq
   issue.io.imem <> io.imem
   issue.io.aiw_cmdb <> io.aiw_cmdb
@@ -54,7 +53,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   issue.io.aiw_numCntB <> io.aiw_numCntB
   issue.io.issue_to_aiw <> io.issue_to_aiw
   issue.io.aiw_to_issue <> io.aiw_to_issue
-  issue.io.xcpt <> io.xcpt.issue
 
   hazard.io.cfg <> issue.io.cfg
   hazard.io.seq_to_hazard <> seq.io.seq_to_hazard
@@ -63,12 +61,12 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   hazard.io.vt <> issue.io.vt
 
   seq.io.cfg <> issue.io.cfg
+  seq.io.xcpt <> io.xcpt
   seq.io.issueop <> hazard.io.issueop
   seq.io.aiwop <> io.aiwop
-  seq.io.xcpt <> io.xcpt.seq
 
+  exp.io.xcpt <> io.xcpt
   exp.io.seqop <> seq.io.seqop
-  exp.io.expand_to_xcpt <> io.vxu_to_xcpt.expand
 
   lane.io.cfg <> issue.io.cfg
   lane.io.op <> exp.io.laneop

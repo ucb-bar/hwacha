@@ -6,103 +6,77 @@ import Constants._
 
 class XCPTIO extends Bundle
 {
-  val exception = Bool(OUTPUT)
-  val evac_addr = UInt(OUTPUT, SZ_ADDR)
-  val evac = Bool(OUTPUT)
-  val hold = Bool(OUTPUT)
-  val kill = Bool(OUTPUT)
-}
+  val prop = new Bundle {
+    val vu = new Bundle {
+      val busy = Bool(OUTPUT)
+      val flush_top = Bool(OUTPUT)
+      val flush_kill = Bool(OUTPUT)
+      val flush_aiw = Bool(OUTPUT)
+      val flush_vxu = Bool(OUTPUT)
+      val flush_vru = Bool(OUTPUT)
+      val flush_vmu = Bool(OUTPUT)
+    }
 
-class XCPTVUIO extends Bundle
-{
-  val busy = Bool(OUTPUT)
-  val flush_kill = Bool(OUTPUT)
-  val flush_aiw = Bool(OUTPUT)
-  val flush_vru = Bool(OUTPUT)
-  val flush_vmu = Bool(OUTPUT)
-}
+    val top = new Bundle {
+      val stall = Bool(OUTPUT)
+    }
 
-class XCPTIssueIO extends Bundle 
-{
-  val stall = Bool(OUTPUT)
-}
+    val issue = new Bundle {
+      val stall = Bool(OUTPUT)
+    }
 
-class XCPTSequencerIO extends Bundle 
-{
-  val stall = Bool(OUTPUT)
-}
+    val seq = new Bundle {
+      val stall = Bool(OUTPUT)
+    }
 
-class XCPTVXUIO extends Bundle
-{
-  val flush = Bool(OUTPUT)
-  val issue = new XCPTIssueIO
-  val seq = new XCPTSequencerIO
-}
+    val vmu = new Bundle {
+      val stall = Bool(OUTPUT)
+      val drain = Bool(OUTPUT)
+    }
 
-class XCPTTLBIO extends Bundle 
-{
-  val stall = Bool(OUTPUT)
-}
+    val evac = new Bundle {
+      val start = Bool(OUTPUT)
+      val addr = UInt(OUTPUT, SZ_ADDR)
+    }
+  }
+  val report = new Bundle {
+    val exp = new Bundle {
+      val empty = Bool(INPUT)
+    }
 
-class XCPTVMUIO extends Bundle 
-{
-  val tlb = new XCPTTLBIO
-  val drain = Bool(OUTPUT)
-}
+    val mrt = new Bundle {
+      val pending = Bool(INPUT)
+    }
 
-class XCPTEvacIO extends Bundle
-{
-  val start = Bool(OUTPUT)
-  val addr = UInt(OUTPUT, SZ_ADDR)
-}
-
-class io_expand_to_xcpt_handler extends Bundle
-{
-  val empty = Bool(OUTPUT)
-}
-
-class io_vxu_to_xcpt_handler extends Bundle
-{
-  val expand = new io_expand_to_xcpt_handler
-}
-
-class io_evac_to_xcpt_handler extends Bundle
-{
-  val done = Bool(OUTPUT)
+    val evac = new Bundle {
+      val done = Bool(INPUT)
+    }
+  }
 }
 
 class XCPT extends Module 
 {
   val io = new Bundle {
-    val xcpt = new XCPTIO().flip
+    val rocc = new Bundle {
+      val exception = Bool(INPUT)
+      val evac = Bool(INPUT)
+      val evac_addr = UInt(INPUT, SZ_ADDR)
+      val hold = Bool(INPUT)
+      val kill = Bool(INPUT)
+    }
 
-    val vu = new XCPTVUIO
-    val vxu = new XCPTVXUIO
-    val vmu = new XCPTVMUIO
-    val evac = new XCPTEvacIO
-
-    val pending_memop = Bool(INPUT)
-    val vxu_to_xcpt = new io_vxu_to_xcpt_handler().flip
-    val evac_to_xcpt = new io_evac_to_xcpt_handler().flip
+    val vu = new XCPTIO
   }
 
-  val next_hold_issue = Bool()
-  val next_hold_seq = Bool()
-  val next_hold_tlb = Bool()
-
-  val hold_issue = Reg(next = next_hold_issue, init = Bool(false))
-  val hold_seq = Reg(next = next_hold_seq, init = Bool(false))
-  val hold_tlb = Reg(next = next_hold_tlb, init = Bool(false))
-
-  next_hold_issue := hold_issue
-  next_hold_seq := hold_seq
-  next_hold_tlb := hold_tlb
+  val hold_exec = Reg(init = Bool(false))
+  val hold_tlb = Reg(init = Bool(false))
 
   // output assignments
-  io.vxu.issue.stall := hold_issue
-  io.vxu.seq.stall := hold_seq
-  io.vmu.tlb.stall := hold_tlb
-  io.vmu.drain := Bool(false)
+  io.vu.prop.top.stall := hold_exec
+  io.vu.prop.issue.stall := hold_exec
+  io.vu.prop.seq.stall := hold_exec
+  io.vu.prop.vmu.stall := hold_tlb
+  io.vu.prop.vmu.drain := Bool(false)
 
   val NORMAL = Bits(0, 3)
   val XCPT_DRAIN = Bits(1, 3)
@@ -111,146 +85,111 @@ class XCPT extends Module
   val XCPT_DRAIN_EVAC = Bits(4, 3)  
   val HOLD = Bits(5, 3)
 
-  val next_state = Bits(width = 4)
-  val state = Reg(next = next_state, init = NORMAL)
+  val state = Reg(init = NORMAL)
+  val addr = Reg(init = UInt(0, SZ_ADDR))
+  val evac = Reg(init = Bool(false))
+  val kill = Reg(init = Bool(false))
 
-  val next_addr = UInt(width = SZ_ADDR)
-  val addr = Reg(next = next_addr, init = UInt(0, SZ_ADDR) )
-
-  val next_evac = Bool()
-  val evac = Reg(next = next_evac, init = Bool(false))
-
-  val next_kill = Bool()
-  val kill = Reg(next = next_kill, init = Bool(false))
-
-  next_state := state
-  next_addr := addr
-  next_evac := evac
-  next_kill := kill
-
-  when (io.xcpt.evac)
-  {
-    next_evac := Bool(true)
-    next_addr := io.xcpt.evac_addr
+  when (io.rocc.evac) {
+    evac := Bool(true)
+    addr := io.rocc.evac_addr
   }
 
-  when (io.xcpt.kill)
-  {
-    next_kill := Bool(true)
+  when (io.rocc.kill) {
+    kill := Bool(true)
   }
 
-  io.evac.addr := addr
+  io.vu.prop.vu.busy := (state != NORMAL) && (state != HOLD)
+  io.vu.prop.vu.flush_top := Bool(false)
+  io.vu.prop.vu.flush_kill := Bool(false)
+  io.vu.prop.vu.flush_aiw := Bool(false)
+  io.vu.prop.vu.flush_vxu := Bool(false)
+  io.vu.prop.vu.flush_vru := Bool(false)
+  io.vu.prop.vu.flush_vmu := Bool(false)
 
-  //set defaults
-  io.vu.busy := (state != NORMAL) && (state != HOLD)
-  io.vu.flush_kill := Bool(false)
-  io.vu.flush_aiw := Bool(false)
-  io.vu.flush_vru := Bool(false)
-  io.vu.flush_vmu := Bool(false)
-  io.vxu.flush := Bool(false)
+  io.vu.prop.evac.start := Bool(false)
+  io.vu.prop.evac.addr := addr
 
-  io.evac.start := Bool(false)
+  switch (state) {
 
-  switch (state)
-  {
-    is (NORMAL)
-    {
+    is (NORMAL) {
+      when (io.rocc.exception)  {
+        hold_exec := Bool(true)
+        hold_tlb := Bool(true)
 
-      when (io.xcpt.exception) 
-      {
-        next_hold_issue := Bool(true)
-        next_hold_seq := Bool(true)
-        next_hold_tlb := Bool(true)
+        evac := Bool(false)
+        kill := Bool(false)
 
-        next_evac := Bool(false)
-        next_kill := Bool(false)
-
-        next_state := XCPT_DRAIN
+        state := XCPT_DRAIN
       }
 
-      when (io.xcpt.hold)
-      {
-        next_hold_issue := Bool(true)
-        next_hold_seq := Bool(true)
-        next_hold_tlb := Bool(true)
+      when (io.rocc.hold) {
+        hold_exec := Bool(true)
+        hold_tlb := Bool(true)
 
-        next_state := HOLD
+        state := HOLD
       }
-
     }
 
-    is (XCPT_DRAIN)
-    {
-      when (io.vxu_to_xcpt.expand.empty && !io.pending_memop)
-      {
-        next_state := XCPT_FLUSH
+    is (XCPT_DRAIN) {
+      when (io.vu.report.exp.empty && !io.vu.report.mrt.pending) {
+        state := XCPT_FLUSH
       }
-
     }
 
-    is (XCPT_FLUSH)
-    {
-      io.vu.flush_vru := Bool(true)
-      io.vu.flush_vmu := Bool(true)
-      io.vxu.flush := Bool(true)
+    is (XCPT_FLUSH) {
+      io.vu.prop.vu.flush_top := Bool(true)
+      io.vu.prop.vu.flush_vxu := Bool(true)
+      io.vu.prop.vu.flush_vru := Bool(true)
+      io.vu.prop.vu.flush_vmu := Bool(true)
 
-      when (kill)
-      { 
-        io.vu.flush_kill := Bool(true)
-        io.vu.flush_aiw := Bool(true)
+      when (kill) {
+        io.vu.prop.vu.flush_kill := Bool(true)
+        io.vu.prop.vu.flush_aiw := Bool(true)
       }
 
-      when (evac)
-      {
-        next_hold_tlb := Bool(false)
+      when (evac) {
+        hold_tlb := Bool(false)
 
-        next_state := XCPT_EVAC
+        state := XCPT_EVAC
       }
 
-      when (kill)
-      {
-        next_hold_issue := Bool(false)
-        next_hold_seq := Bool(false)
-        next_hold_tlb := Bool(false)
-        next_kill := Bool(false)
+      when (kill) {
+        hold_exec := Bool(false)
+        hold_tlb := Bool(false)
+        kill := Bool(false)
         
-        next_state := NORMAL
+        state := NORMAL
       }
     }
 
-    is (XCPT_EVAC)
-    {
-      io.evac.start := Bool(true)
-      io.vmu.drain := Bool(true)
+    is (XCPT_EVAC) {
+      io.vu.prop.evac.start := Bool(true)
+      io.vu.prop.vmu.drain := Bool(true)
 
-      when (io.evac_to_xcpt.done) {
-        next_state := XCPT_DRAIN_EVAC
+      when (io.vu.report.evac.done) {
+        state := XCPT_DRAIN_EVAC
       }
     }
 
-    is (XCPT_DRAIN_EVAC)
-    {
-      io.vmu.drain := Bool(true)
+    is (XCPT_DRAIN_EVAC) {
+      io.vu.prop.vmu.drain := Bool(true)
 
-      when (!io.pending_memop) {
-        next_hold_issue := Bool(false)
-        next_hold_seq := Bool(false)
-        next_hold_tlb := Bool(false)
-        next_evac := Bool(false)
+      when (!io.vu.report.mrt.pending) {
+        hold_exec := Bool(false)
+        hold_tlb := Bool(false)
+        evac := Bool(false)
         
-        next_state := NORMAL
+        state := NORMAL
       }
     }
 
-    is (HOLD)
-    {
-      when (!io.xcpt.hold) 
-      {
-        next_hold_issue := Bool(false)
-        next_hold_seq := Bool(false)
-        next_hold_tlb := Bool(false)
+    is (HOLD) {
+      when (!io.rocc.hold)  {
+        hold_exec := Bool(false)
+        hold_tlb := Bool(false)
 
-        next_state := NORMAL
+        state := NORMAL
       }
     }
 

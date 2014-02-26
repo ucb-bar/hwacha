@@ -7,11 +7,12 @@ import Constants._
 class Expander(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTIO().flip
+
     val seqop = new SequencerOpIO().flip
     val laneop = new LaneOpIO
 
     val expand_to_hazard = new ExpanderToHazardIO
-    val expand_to_xcpt = new io_expand_to_xcpt_handler()
   }
 
   class BuildExpander[T<:Data](gen: T, n: Int)
@@ -305,6 +306,6 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   io.laneop.vlu <> vluexp.ondeck
   io.laneop.vsu <> vsuexp.ondeck
 
-  io.expand_to_xcpt.empty :=
+  io.xcpt.report.exp.empty :=
     !(List(rexp, wexp, viuexp, vau0exp, vau1exp, vau2exp, vguexp, vluexp, vsuexp).map(e => e.valid.toBits().orR()).reduce(_||_))
 }

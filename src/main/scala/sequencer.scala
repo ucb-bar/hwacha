@@ -10,7 +10,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val xcpt = new XCPTSequencerIO().flip
+    val xcpt = new XCPTIO().flip
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO
@@ -409,7 +409,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   when (seq.vlu_val(ptr) && !construct_mask(masked_vlu_stall)) { reg_vlu_stall := vlu_stall }
   when (seq.vsu_val(ptr) && !construct_mask(masked_vsu_stall)) { reg_vsu_stall := vsu_stall }
 
-  val masked_xcpt_stall = io.xcpt.stall && !seq.vlu_val(ptr)
+  val masked_xcpt_stall = io.xcpt.prop.seq.stall && !seq.vlu_val(ptr)
 
   val stall =
     masked_xcpt_stall ||

@@ -8,11 +8,6 @@ import Commands._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
-class io_evac_to_vmu extends Bundle
-{
-  val evac_mode = Bool(OUTPUT)
-}
-
 class io_evac_to_aiw extends Bundle
 {
   val update_numCnt = new io_update_num_cnt()
@@ -21,7 +16,7 @@ class io_evac_to_aiw extends Bundle
 class Evac extends Module
 {
   val io = new Bundle {
-    val xcpt = new XCPTEvacIO().flip
+    val xcpt = new XCPTIO().flip
 
     val aiw_cmdb = new io_vxu_cmdq().flip
     val aiw_imm1b = new io_vxu_immq().flip
@@ -36,9 +31,6 @@ class Evac extends Module
 
     val vaq  = new VVAQIO
     val vsdq = new VSDQIO
-
-    val evac_to_xcpt = new io_evac_to_xcpt_handler()
-    val evac_to_vmu = new io_evac_to_vmu()
   }
   
   val n = Bits(0,1)
@@ -158,19 +150,18 @@ class Evac extends Module
   io.vsdq.valid := Bool(false)
   io.vsdq.bits := Bits(0)
 
-  io.evac_to_xcpt.done := Bool(false)
-  io.evac_to_vmu.evac_mode := state != STATE_IDLE
+  io.xcpt.report.evac.done := Bool(false)
 
   switch (state)
   {
 
     is (STATE_IDLE) 
     {
-      when (io.xcpt.start) 
+      when (io.xcpt.prop.evac.start) 
       { 
         state_next := STATE_CMDB 
         cmd_sel_next := SEL_CMDB
-        addr_next := io.xcpt.addr
+        addr_next := io.xcpt.prop.evac.addr
       }
     }
 
@@ -484,7 +475,7 @@ class Evac extends Module
 
     is (STATE_DONE)
     {
-      io.evac_to_xcpt.done := Bool(true)
+      io.xcpt.report.evac.done := Bool(true)
       state_next := STATE_IDLE
     }
 

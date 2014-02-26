@@ -17,6 +17,7 @@ class MRTStoreRetireIO extends Bundle
 class MRT(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTIO().flip
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
     val sreq = new Bundle {
       val vxu = new LookAheadPortIO(log2Down(conf.nvsreq)+1).flip
@@ -39,4 +40,5 @@ class MRT(implicit conf: HwachaConfiguration) extends Module
   scnt.io.dec := io.sreq.evac
 
   io.pending_memop := !lcnt.io.full || !scnt.io.full
+  io.xcpt.report.mrt.pending := io.pending_memop
 }
