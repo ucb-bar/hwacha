@@ -4,40 +4,28 @@ import Chisel._
 import Node._
 import scala.math._
 
-class io_qcnt(w: Int) extends Bundle
+class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
-  val inc = Bool(INPUT)
-  val dec = Bool(INPUT)
-  val qcnt = UInt(INPUT, w)
-  val watermark = Bool(OUTPUT)
-  val qcnt2 = UInt(INPUT, w)
-  val watermark2 = Bool(OUTPUT)
-  val full = Bool(OUTPUT)
-  val empty = Bool(OUTPUT)
-}
-
-class qcnt(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
-  val size = log2Down(max_cnt) + 1
-
-  val io = new io_qcnt(size)
-  val count = Reg(init=UInt(reset_cnt, size))
-  val next_count = UInt(width = size)
-
-  next_count := count
-  when (io.inc ^ io.dec) {
-    when (io.inc) {next_count := count + UInt(1)}
-    when (!io.inc) {next_count := count - UInt(1)}
+  val sz = log2Down(max_cnt)+1
+  val io = new Bundle {
+    val inc = Bool(INPUT)
+    val dec = Bool(INPUT)
+    val qcnt = UInt(INPUT, sz)
+    val watermark = Bool(OUTPUT)
+    val full = Bool(OUTPUT)
+    val empty = Bool(OUTPUT)
   }
 
-  count := next_count
+  val count = Reg(init = UInt(reset_cnt, sz))
 
-  // we need to look at what's in the queue on the next cycle
+  when (io.inc ^ io.dec) {
+    when (io.inc) { count := count + UInt(1) }
+    when (io.dec) { count := count - UInt(1) }
+  }
+
   io.watermark := count >= io.qcnt
-  io.watermark2 := count >= io.qcnt2
-
-  io.full := (count === UInt(reset_cnt,size))
-  io.empty := (count === UInt(0,size))
+  io.full := count === UInt(max_cnt)
+  io.empty := count === UInt(0)
 }
 
 class LookAheadPortIO(sz: Int) extends Bundle
@@ -58,25 +46,25 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) e
     val empty = Bool(OUTPUT)
   }
 
-  val reg_count = Reg(init = UInt(reset_cnt, sz))
+  val count = Reg(init = UInt(reset_cnt, sz))
 
   when (io.la.reserve) {
-    reg_count := reg_count - io.la.cnt
+    count := count - io.la.cnt
     when (io.inc ^ io.dec) {
-      when (io.inc) { reg_count := reg_count - io.la.cnt + UInt(1) }
-      when (io.dec) { reg_count := reg_count - io.la.cnt - UInt(1) }
+      when (io.inc) { count := count - io.la.cnt + UInt(1) }
+      when (io.dec) { count := count - io.la.cnt - UInt(1) }
     }
   }
   .otherwise {
     when (io.inc ^ io.dec) {
-      when (io.inc) { reg_count := reg_count + UInt(1) }
-      when (io.dec) { reg_count := reg_count - UInt(1) }
+      when (io.inc) { count := count + UInt(1) }
+      when (io.dec) { count := count - UInt(1) }
     }
   }
 
-  io.la.available := reg_count >= io.la.cnt
-  io.full := reg_count === UInt(max_cnt)
-  io.empty := reg_count === UInt(0)
+  io.la.available := count >= io.la.cnt
+  io.full := count === UInt(max_cnt)
+  io.empty := count === UInt(0)
 }
 
 class VLDQEnqOp(DATA_SIZE: Int, TAG_SIZE: Int) extends Bundle

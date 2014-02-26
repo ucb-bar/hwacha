@@ -76,9 +76,9 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   // counters
   val vcmdqcnt = new {
-    val cmd = Module(new qcnt(conf.vcmdq.ncmd, conf.vcmdq.ncmd, resetSignal = flush_kill))
-    val imm1 = Module(new qcnt(conf.vcmdq.nimm1, conf.vcmdq.nimm1, resetSignal = flush_kill))
-    val imm2 = Module(new qcnt(conf.vcmdq.nimm2, conf.vcmdq.nimm2, resetSignal = flush_kill))
+    val cmd = Module(new QCounter(conf.vcmdq.ncmd, conf.vcmdq.ncmd, resetSignal = flush_kill))
+    val imm1 = Module(new QCounter(conf.vcmdq.nimm1, conf.vcmdq.nimm1, resetSignal = flush_kill))
+    val imm2 = Module(new QCounter(conf.vcmdq.nimm2, conf.vcmdq.nimm2, resetSignal = flush_kill))
   }
 
   if (conf.vru)

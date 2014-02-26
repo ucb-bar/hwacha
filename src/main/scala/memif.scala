@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import uncore.constants.MemoryOpConstants._
 
 class MemIF(implicit conf: HwachaConfiguration) extends Module
 {

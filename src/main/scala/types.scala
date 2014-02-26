@@ -321,12 +321,3 @@ class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle
   val addr = UInt(width=ADDR_SIZE)
   override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }
-
-class io_vxu_aiw_bundle extends Bundle
-{
-  val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
-  val numCnt_rtag = Bits(OUTPUT, SZ_AIW_CMD)
-  val cnt_rtag = Bits(OUTPUT, SZ_AIW_CNT)
-  val pc_next = Bits(OUTPUT, SZ_ADDR)
-  val update_imm1 = Bool(OUTPUT)
-}

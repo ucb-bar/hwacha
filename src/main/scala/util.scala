@@ -66,45 +66,17 @@ object MaskStall
   }
 }
 
-class MaskReady[T <: Data](data: => T) extends Module
-{
-  val io = new Bundle()
-  {
-    val input = Decoupled(data).flip
-    val output = Decoupled(data)
-    val ready = Bool(INPUT)
-  }
-
-  io.output.valid := io.input.valid
-  io.output.bits := io.input.bits
-  io.input.ready := io.output.ready && io.ready
-}
-
-object MaskReady
-{
-  def apply[T <: Data](deq: DecoupledIO[T], ready: Bool) =
-  {
-    val mr = Module(new MaskReady(deq.bits.clone))
-    mr.io.input <> deq
-    mr.io.ready := ready
-    mr.io.output
-  }
-}
-
-class io_buffer(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
-{
-  val enq = Decoupled(Bits(width=DATA_SIZE)).flip
-  val deq = Decoupled(Bits(width=DATA_SIZE))
-  val update = Valid(new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE)).flip
-
-  val rtag = Bits(OUTPUT, ADDR_SIZE)
-}
-
 class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
 
-  val io = new io_buffer(DATA_SIZE, ADDR_SIZE)
+  val io = new Bundle {
+    val enq = Decoupled(Bits(width=DATA_SIZE)).flip
+    val deq = Decoupled(Bits(width=DATA_SIZE))
+    val update = Valid(new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE)).flip
+
+    val rtag = Bits(OUTPUT, ADDR_SIZE)
+  }
 
   val read_ptr_next = UInt( width=ADDR_SIZE)
   val write_ptr_next = UInt( width=ADDR_SIZE)
@@ -165,24 +137,21 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
   io.rtag := write_ptr
 }
 
-class io_counter_vec(ADDR_SIZE: Int) extends Bundle
-{
-  val enq = Decoupled(Bits(width=1)).flip()
-  val deq = Decoupled(Bits(width=1))
-
-  val update_from_issue = new io_update_num_cnt().flip()
-  val update_from_seq = new io_update_num_cnt().flip()
-  val update_from_evac = new io_update_num_cnt().flip()
-
-  val markLast = Bool(INPUT)
-  val deq_last = Bool(OUTPUT)
-  val rtag = Bits(OUTPUT, ADDR_SIZE)
-}
-
 class CounterVec(DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
-  val io = new io_counter_vec(ADDR_SIZE)
+  val io = new Bundle {
+    val enq = Decoupled(Bits(width=1)).flip()
+    val deq = Decoupled(Bits(width=1))
+
+    val update_from_issue = new io_update_num_cnt().flip()
+    val update_from_seq = new io_update_num_cnt().flip()
+    val update_from_evac = new io_update_num_cnt().flip()
+
+    val markLast = Bool(INPUT)
+    val deq_last = Bool(OUTPUT)
+    val rtag = Bits(OUTPUT, ADDR_SIZE)
+  }
 
   val next_write_ptr = UInt(width = ADDR_SIZE)
   val write_ptr = Reg(next = next_write_ptr, init = UInt(0, ADDR_SIZE))
@@ -242,7 +211,7 @@ class CounterVec(DEPTH: Int) extends Module
 
   for(i <- 0 until DEPTH)
   {
-    val counter = Module(new qcnt(0, DEPTH))
+    val counter = Module(new QCounter(0, DEPTH))
     counter.io.inc := inc_vec(i)
     counter.io.dec := dec_vec(i)
     empty_vec(i) := counter.io.empty
