@@ -106,7 +106,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants
     VGETVL     -> List(Y, N, N, CMD_X,       N, VRT_X, VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N,N,N),
     VF         -> List(Y, N, Y, CMD_VF,      N, VRT_X, VR_X,  VR_X,   VIMM_ADDR,VIMM_X,    Y,Y,Y,N,N,    N,RESP_X,     N,N,N),
     VMVV       -> List(Y, N, Y, CMD_VMVV,    Y, VRT_I, VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,Y,N,N,N,    N,RESP_X,     N,N,N),
-    VMSV       -> List(Y, N, Y, CMD_VMSV,    Y, VRT_I, VR_RD, VR_RS1, VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X,     N,N,N),
+    VMSV       -> List(Y, N, Y, CMD_VMSV,    Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X,     N,N,N),
     VFMVV      -> List(Y, N, Y, CMD_VFMVV,   Y, VRT_F, VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,Y,N,N,N,    N,RESP_X,     N,N,N),
     // Memory load/stores (x-registers)
     VLD        -> List(Y, N, Y, CMD_VLD,     Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,RESP_X,     N,N,N),
@@ -351,10 +351,10 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   irq.io.vu.top.illegal_inst := io.cmd.valid && !inst_val
   irq.io.vu.top.priv_inst := io.cmd.valid && inst_priv && !io.s
   irq.io.vu.top.illegal_regid := Bool(false)
-/*  irq.io.vu.top.illegal_regid := io.cmd.valid && vr_valid &&
+  irq.io.vu.top.illegal_regid := io.cmd.valid && vr_valid &&
     Mux(vr_type===VRT_I, vr1 >= cfg_xregs || vr2 >= cfg_xregs,
                          vr1 >= cfg_fregs || vr2 >= cfg_fregs)
-*/
+
   irq.io.vu.top.aux := MuxCase(
     raw_inst, Array(
       (irq.io.vu.top.illegal_cfg && nxpr > UInt(32)) -> UInt(0),
