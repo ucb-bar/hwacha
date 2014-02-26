@@ -106,9 +106,9 @@ class IssueTVEC extends Module
   val reg_nfregs = Reg(init = Bits(32,SZ_REGCNT))
   val reg_bactive = Reg(init = Bits("b1111_1111",SZ_BANK))
   val reg_bcnt = Reg(init = Bits(8,SZ_LGBANK1))
-  val reg_xstride = Reg(init = Bits(63,SZ_REGLEN))
-  val reg_fstride = Reg(init = Bits(63,SZ_REGLEN))
-  val reg_xf_split = Reg(init = Bits(0,SZ_BANK))
+  val reg_xstride = Reg(init = Bits(31,SZ_REGLEN))
+  val reg_fstride = Reg(init = Bits(32,SZ_REGLEN))
+  val reg_xf_split = Reg(init = Bits(31*4,SZ_BANK))
   val reg_precision = Reg(init = PREC_DOUBLE)
 
   val stall = io.xcpt.prop.issue.stall
