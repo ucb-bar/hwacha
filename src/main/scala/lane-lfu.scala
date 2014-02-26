@@ -52,11 +52,6 @@ class LaneLFU extends Module
     vau2_op.bits.fn := io.op.vau2.bits.fn
   }
 
-  val vgu_base = Bits()
-  val vgu_stride = Bits()
-  vgu_base := io.op.vgu.bits.base
-  vgu_stride := Bits(0)
-
   val vgu_op = Reg(Valid(new VGUOp).asDirectionless)
   when (vgu_op.bits.cnt.orR) {
     vgu_op.bits.cnt := vgu_op.bits.cnt - UInt(1)
@@ -64,43 +59,11 @@ class LaneLFU extends Module
   when (vgu_op.bits.cnt === UInt(1)) {
     vgu_op.valid := Bool(false)
   }
-  when (vgu_op.valid && !vgu_op.bits.fn.utmemop()) {
-    vgu_base := vgu_op.bits.base
-    vgu_stride := vgu_op.bits.stride
-  }
   when (io.op.vgu.valid && io.op.vgu.bits.cnt > UInt(1)) {
     vgu_op.valid := Bool(true)
     vgu_op.bits.cnt := io.op.vgu.bits.cnt - UInt(1)
     vgu_op.bits.fn := io.op.vgu.bits.fn
-    when (!io.op.vgu.bits.fn.utmemop()) { vgu_stride := io.op.vgu.bits.stride }
-    vgu_op.bits.stride := io.op.vgu.bits.stride
-  }
-  vgu_op.bits.base := vgu_base + vgu_stride
-
-  val vlu_op = Reg(Valid(new VLUOp).asDirectionless)
-  when (vlu_op.bits.cnt.orR) {
-    vlu_op.bits.cnt := vlu_op.bits.cnt - UInt(1)
-  }
-  when (vlu_op.bits.cnt === UInt(1)) {
-    vlu_op.valid := Bool(false)
-  }
-  when (io.op.vlu.valid && io.op.vlu.bits.cnt > UInt(1)) {
-    vlu_op.valid := Bool(true)
-    vlu_op.bits.cnt := io.op.vlu.bits.cnt - UInt(1)
-    vlu_op.bits.fn := io.op.vlu.bits.fn
-  }
-
-  val vsu_op = Reg(Valid(new VSUOp).asDirectionless)
-  when (vsu_op.bits.cnt.orR) {
-    vsu_op.bits.cnt := vsu_op.bits.cnt - UInt(1)
-  }
-  when (vsu_op.bits.cnt === UInt(1)) {
-    vsu_op.valid := Bool(false)
-  }
-  when (io.op.vsu.valid && io.op.vsu.bits.cnt > UInt(1)) {
-    vsu_op.valid := Bool(true)
-    vsu_op.bits.cnt := io.op.vsu.bits.cnt - UInt(1)
-    vsu_op.bits.fn := io.op.vsu.bits.fn
+    vgu_op.bits.base := io.op.vgu.bits.base
   }
 
   when (this.reset) {
@@ -108,8 +71,6 @@ class LaneLFU extends Module
     vau1_op.valid := Bool(false)
     vau2_op.valid := Bool(false)
     vgu_op.valid := Bool(false)
-    vlu_op.valid := Bool(false)
-    vsu_op.valid := Bool(false)
   }
 
   def bypass[T<:Data](result: ValidIO[T], op: ValidIO[T], reg_op: ValidIO[T]) = {
@@ -121,6 +82,4 @@ class LaneLFU extends Module
   bypass(io.vau1, io.op.vau1, vau1_op)
   bypass(io.vau2, io.op.vau2, vau2_op)
   bypass(io.mem.vgu, io.op.vgu, vgu_op)
-  bypass(io.mem.vlu, io.op.vlu, vlu_op)
-  bypass(io.mem.vsu, io.op.vsu, vsu_op)
 }

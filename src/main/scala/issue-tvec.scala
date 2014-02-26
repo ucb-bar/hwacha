@@ -86,6 +86,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
     val ready = Bool(INPUT)
     val op = new IssueOpIO
 
+    val deckop = new DeckOpIO
     val vmu = new vmunit.VMUIO
     val aiw_cmdb = new io_vxu_cmdq()
     val aiw_imm1b = new io_vxu_immq()
@@ -138,6 +139,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 
   val vfu_valid = viu_val || vmu_val
 
+  val enq_deck_op = vmu_val
   val enq_vmu_cmdq = vmu_val
   val enq_vmu_strideq = vmu_val
   val enq_aiw_cmdb = vfu_valid || decode_vf
@@ -158,6 +160,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val mask_issue_ready = !vfu_valid || io.ready
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
+  val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
   val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
   val mask_vmu_strideq_ready = !enq_vmu_strideq || io.vmu.issue.strideq.ready
   val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw_cmdb.ready
@@ -169,6 +172,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   def construct_rv_blob(exclude: Bool, include: Bool*) = {
     val rvs = Array(
       io.vcmdq.cmd.valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
+      mask_deck_op_ready,
       mask_vmu_cmdq_ready, mask_vmu_strideq_ready,
       mask_aiw_cmdb_ready, mask_aiw_imm1b_ready, mask_aiw_imm2b_ready, mask_aiw_cntb_ready, mask_aiw_numCntB_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
@@ -186,6 +190,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.vcmdq.imm1.ready := queue_common && construct_rv_blob(mask_vxu_immq_valid, deq_vcmdq_imm1)
   io.vcmdq.imm2.ready := queue_common && construct_rv_blob(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
   io.vcmdq.cnt.ready := queue_common && construct_rv_blob(null, deq_vcmdq_cnt)
+  io.deckop.valid := queue_common && construct_rv_blob(mask_deck_op_ready, enq_deck_op)
   io.vmu.issue.cmdq.valid := queue_common && construct_rv_blob(mask_vmu_cmdq_ready, enq_vmu_cmdq)
   io.vmu.issue.strideq.valid := queue_common && construct_rv_blob(mask_vmu_strideq_ready, enq_vmu_strideq)
   io.aiw_cmdb.valid := queue_common && construct_rv_blob(mask_aiw_cmdb_ready, enq_aiw_cmdb)
@@ -315,6 +320,11 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := io.aiw_to_issue.numCnt_rtag
+
+  io.deckop.bits.vlen := io.op.bits.vlen
+  io.deckop.bits.utidx := cnt
+  io.deckop.bits.fn := io.op.bits.fn.vmu
+  io.deckop.bits.reg := io.op.bits.reg
 
   io.vmu.issue.cmdq.bits.fn := io.op.bits.fn.vmu
   io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen

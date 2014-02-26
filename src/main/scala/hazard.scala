@@ -127,7 +127,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_vfu.vlu := Bool(true)
     }
 
-    when (io.issueop.bits.active.utst || io.issueop.bits.active.vst) {
+    when (io.issueop.bits.active.utst) {
       tbl_rport(ptr2) := Bool(true)
       tbl_rport(ptr3) := Bool(true)
       tbl_seqslot(ptr1) := Bool(true)
@@ -137,7 +137,14 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_vfu.vsu := Bool(true)
     }
 
-    when (io.issueop.bits.active.utld || io.issueop.bits.active.vld) {
+    when (io.issueop.bits.active.vst) {
+      tbl_rport(ptr2) := Bool(true)
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_vfu.vcu := Bool(true)
+      tbl_vfu.vsu := Bool(true)
+    }
+
+    when (io.issueop.bits.active.utld) {
       tbl_rport(ptr2) := Bool(true)
       // ptr3 for vcu, but don't allocate a rport for it
       tbl_wport(ptr5) := Bool(true)
@@ -146,6 +153,16 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_seqslot(ptr2) := Bool(true)
       tbl_seqslot(ptr3) := Bool(true)
       tbl_vfu.vgu := Bool(true)
+      tbl_vfu.vcu := Bool(true)
+      tbl_vfu.vlu := Bool(true)
+    }
+
+    when (io.issueop.bits.active.vld) {
+      // ptr2 for vcu, but don't allocate a rport for it
+      tbl_wport(ptr4) := Bool(true)
+      tbl_vd(ptr4) := io.issueop.bits.reg.vd
+      tbl_seqslot(ptr1) := Bool(true)
+      tbl_seqslot(ptr2) := Bool(true)
       tbl_vfu.vcu := Bool(true)
       tbl_vfu.vlu := Bool(true)
     }
@@ -218,8 +235,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val bhazard_amo = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
   val bhazard_utld = tbl_rport(ptr2) | tbl_wport(ptr5)
   val bhazard_utst = tbl_rport(ptr2) | tbl_rport(ptr3)
-  val bhazard_vld = tbl_rport(ptr2) | tbl_wport(ptr5)
-  val bhazard_vst = tbl_rport(ptr2) | tbl_rport(ptr3)
+  val bhazard_vld = tbl_wport(ptr4)
+  val bhazard_vst = tbl_rport(ptr3)
 
   def check_hazards(op: IssueOpIO) = {
     val dhazard_vs = tbl_wport.zip(tbl_vd).map{ case (valid,vd) => valid && op.bits.reg.vs.id === vd.id }.reduce(_||_)
@@ -253,8 +270,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       seqhazard_3slot && op.bits.active.amo,
       seqhazard_3slot && op.bits.active.utld,
       seqhazard_2slot && op.bits.active.utst,
-      seqhazard_3slot && op.bits.active.vld,
-      seqhazard_2slot && op.bits.active.vst
+      seqhazard_2slot && op.bits.active.vld,
+      seqhazard_1slot && op.bits.active.vst
     ).reduce(_||_)
 
     val wptr = MuxCase(

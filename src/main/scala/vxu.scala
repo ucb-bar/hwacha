@@ -40,6 +40,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val seq = Module(new Sequencer(resetSignal = flush))
   val exp = Module(new Expander)
   val lane = Module(new Lane)
+  val deck = Module(new Deck)
 
   io.irq <> issue.io.irq
 
@@ -70,11 +71,20 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   lane.io.cfg <> issue.io.cfg
   lane.io.op <> exp.io.laneop
+  lane.io.bwqs <> deck.io.bwqs
+
+  deck.io.op <> issue.io.deckop
+  deck.io.lla <> seq.io.lla
+  deck.io.sla <> seq.io.sla
+  deck.io.brqs <> lane.io.brqs
 
   io.vmu <> issue.io.vmu
+  io.vmu <> seq.io.vmu
+  io.vmu <> lane.io.vmu
+  io.vmu <> deck.io.vmu
   io.lreq <> seq.io.lreq
   io.sreq <> seq.io.sreq
-  io.lret <> lane.io.lret
+  io.lret <> seq.io.lret
 
   io.pending_memop := hazard.io.pending_memop
   io.pending_vf := issue.io.pending_vf

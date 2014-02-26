@@ -21,6 +21,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val deckop = new DeckOpIO
     val vmu = new vmunit.VMUIO
 
     val tvec = new Bundle {
@@ -90,6 +91,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)
 
   // vmu
+  io.deckop <> tvec.io.deckop
   io.vmu <> tvec.io.vmu
 
   // xcpt

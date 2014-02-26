@@ -14,8 +14,6 @@ class LaneOpIO extends Bundle
   val vau1 = Valid(new VAU1Op)
   val vau2 = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
 }
 
 class LaneFUOpIO extends Bundle
@@ -24,22 +22,16 @@ class LaneFUOpIO extends Bundle
   val vau1 = Valid(new VAU1Op)
   val vau2 = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
 }
 
 class LaneMemOpIO extends Bundle
 {
   val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
 }
 
 class LaneMemDataIO extends Bundle
 {
   val paddr = Bits(OUTPUT, SZ_DATA)
-  val ldata = Bits(INPUT, SZ_DATA)
-  val sdata = Bits(OUTPUT, SZ_DATA)
 }
 
 class Lane(implicit conf: HwachaConfiguration) extends Module
@@ -47,8 +39,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
-    val vmu = new VMUIO
-    val lret = new MRTLoadRetireIO
+    val brqs = Vec.fill(conf.nbanks){new BRQIO}
+    val bwqs = Vec.fill(conf.nbanks){new BWQIO().flip}
+    val vmu = new vmunit.VMUIO
   }
 
   val conn = new ArrayBuffer[BankOpIO]
@@ -78,7 +71,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma.io.out
     bank.io.rw.wbl2 := conv.io.out
-    bank.io.rw.wbl3 := mem.io.data.ldata
+
+    io.brqs(i) <> bank.io.rw.brq
+    bank.io.rw.bwq <> io.bwqs(i)
   }
 
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
@@ -105,8 +100,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   mem.io.op <> lfu.io.mem
   mem.io.data.paddr := rbl(6)(SZ_ADDR-1,0)
-  mem.io.data.sdata := rbl(7)
 
   io.vmu <> mem.io.vmu
-  io.lret <> mem.io.lret
 }

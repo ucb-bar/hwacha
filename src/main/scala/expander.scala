@@ -48,11 +48,10 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vau1exp = new BuildExpander(new VAU1Op, 5)
   val vau2exp = new BuildExpander(new VAU2Op, 3)
   val vguexp = new BuildExpander(new VGUOp, 3)
-  val vluexp = new BuildExpander(new VLUOp, 1)
-  val vsuexp = new BuildExpander(new VSUOp, 3)
 
   // NOTE: oplen delayed 1 cycle in bank.scala
   // NOTE: rblen delayed 2 cycle in bank.scala
+  // NOTE: brqen delayed 1 cycle in bank.scala
 
   when (io.seqop.valid) {
 
@@ -64,6 +63,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
       rexp.bits(0).oplen := Bits("b001")
       rexp.bits(0).rblen := rblen(Bits(0))
+      rexp.bits(0).brqen := Bool(false)
 
       when (io.seqop.bits.fn.viu.rtype()) {
         rexp.valid(1) := Bool(true)
@@ -73,6 +73,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
         rexp.bits(1).oplen := Bits("b000")
         rexp.bits(1).rblen := rblen(Bits(0))
+        rexp.bits(1).brqen := Bool(false)
       }
 
       when (io.seqop.bits.fn.viu.s2only()) {
@@ -116,6 +117,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
       rexp.bits(0).oplen := Bits("b010")
       rexp.bits(0).rblen := rblen(Bits(0))
+      rexp.bits(0).brqen := Bool(false)
 
       rexp.valid(1) := Bool(true)
       rexp.last(1) := io.seqop.bits.last
@@ -124,6 +126,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
       rexp.bits(1).oplen := Bits("b001")
       rexp.bits(1).rblen := rblen(Bits("b0000_0011"))
+      rexp.bits(1).brqen := Bool(false)
 
       when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(0) := Bool(false) }
       when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(1) := Bool(false) }
@@ -150,6 +153,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
         rexp.bits(0).oplen := Bits("b100")
         rexp.bits(0).rblen := rblen(Bits(0))
+        rexp.bits(0).brqen := Bool(false)
 
         rexp.valid(1) := Bool(true)
         rexp.last(1) := io.seqop.bits.last
@@ -158,6 +162,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
         rexp.bits(1).oplen := Bits("b010")
         rexp.bits(1).rblen := rblen(Bits(0))
+        rexp.bits(1).brqen := Bool(false)
 
         rexp.valid(2) := Bool(true)
         rexp.last(2) := io.seqop.bits.last
@@ -166,6 +171,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(2).ren := ren(io.seqop.bits.reg.vr)
         rexp.bits(2).oplen := Bits("b001")
         rexp.bits(2).rblen := rblen(Bits("b0001_1100"))
+        rexp.bits(2).brqen := Bool(false)
 
         when (io.seqop.bits.reg.vs.zero) { rexp.bits(2).rblen(2) := Bool(false) }
         when (io.seqop.bits.reg.vt.zero) { rexp.bits(2).rblen(3) := Bool(false) }
@@ -179,6 +185,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
         rexp.bits(0).oplen := Bits("b100")
         rexp.bits(0).rblen := rblen(Bits(0))
+        rexp.bits(0).brqen := Bool(false)
 
         rexp.valid(1) := Bool(true)
         rexp.last(1) := io.seqop.bits.last
@@ -187,6 +194,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
         rexp.bits(1).oplen := Bits("b001")
         rexp.bits(1).rblen := rblen(Bits("b0001_0100"))
+        rexp.bits(1).brqen := Bool(false)
 
         when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(2) := Bool(false) }
         when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(4) := Bool(false) }
@@ -221,6 +229,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
       rexp.bits(0).oplen := Bits("b001")
       rexp.bits(0).rblen := rblen(Bits("b0010_0000"))
+      rexp.bits(0).brqen := Bool(false)
 
       when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(5) := Bool(false) }
 
@@ -247,6 +256,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
         rexp.bits(0).oplen := Bits("b001")
         rexp.bits(0).rblen := rblen(Bits("b0100_0000"))
+        rexp.bits(0).brqen := Bool(false)
 
         when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(6) := Bool(false) }
       }
@@ -259,19 +269,6 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       vguexp.bits(2).cnt := io.seqop.bits.cnt
       vguexp.bits(2).fn := io.seqop.bits.fn.vmu
       vguexp.bits(2).base := io.seqop.bits.imm.imm
-      vguexp.bits(2).stride := io.seqop.bits.imm.stride
-    }
-
-    when (io.seqop.bits.active.vlu) {
-      wexp.valid(1) := Bool(true)
-      wexp.last(1) := io.seqop.bits.last
-      wexp.bits(1).cnt := io.seqop.bits.cnt
-      wexp.bits(1).addr := io.seqop.bits.reg.vd.id
-      wexp.bits(1).sel := Bits(3)
-
-      vluexp.valid(0) := Bool(true)
-      vluexp.bits(0).cnt := io.seqop.bits.cnt
-      vluexp.bits(0).fn := io.seqop.bits.fn.vmu
     }
 
     when (io.seqop.bits.active.vsu) {
@@ -282,12 +279,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vt)
       rexp.bits(0).oplen := Bits("b001")
       rexp.bits(0).rblen := rblen(Bits("b1000_0000"))
-
-      when (io.seqop.bits.reg.vt.zero) { rexp.bits(0).rblen(7) := Bool(false) }
-
-      vsuexp.valid(2) := Bool(true)
-      vsuexp.bits(2).cnt := io.seqop.bits.cnt
-      vsuexp.bits(2).fn := io.seqop.bits.fn.vmu
+      rexp.bits(0).brqen := Bool(true)
     }
 
   }
@@ -303,9 +295,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   io.laneop.vau1 <> vau1exp.ondeck
   io.laneop.vau2 <> vau2exp.ondeck
   io.laneop.vgu <> vguexp.ondeck
-  io.laneop.vlu <> vluexp.ondeck
-  io.laneop.vsu <> vsuexp.ondeck
 
   io.xcpt.report.exp.empty :=
-    !(List(rexp, wexp, viuexp, vau0exp, vau1exp, vau2exp, vguexp, vluexp, vsuexp).map(e => e.valid.toBits().orR()).reduce(_||_))
+    !(List(rexp, wexp, viuexp, vau0exp, vau1exp, vau2exp, vguexp).map(e => e.valid.toBits().orR()).reduce(_||_))
 }

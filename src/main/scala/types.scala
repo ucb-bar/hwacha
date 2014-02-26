@@ -242,6 +242,7 @@ class ReadBankOp extends LaneOp
   val ren = Bool()
   val oplen = Bits(width = SZ_BOPL)
   val rblen = Vec.fill(SZ_BRPORT){Bool()}
+  val brqen = Bool()
 }
 
 class WriteBankOp extends LaneOp
@@ -276,7 +277,6 @@ class VGUOp extends LaneOp
 {
   val fn = new VMUFn
   val base = Bits(width = SZ_DATA)
-  val stride = Bits(width = SZ_VSTRIDE)
 }
 
 class VCUOp extends LaneOp
@@ -292,6 +292,30 @@ class VLUOp extends LaneOp
 class VSUOp extends LaneOp
 {
   val fn = new VMUFn
+}
+
+
+//-------------------------------------------------------------------------\\
+// deck types
+//-------------------------------------------------------------------------\\
+
+class DeckOp extends Bundle
+{
+  val vlen = UInt(width = SZ_VLEN)
+  val utidx = UInt(width = SZ_VLEN)
+  val fn = new vmunit.VMUFn
+  val reg = new DecodedRegister
+}
+
+class BRQEntry extends Bundle
+{
+  val data = Bits(width = SZ_DATA)
+}
+
+class BWQEntry extends Bundle
+{
+  val addr = UInt(width = SZ_BREGLEN)
+  val data = Bits(width = SZ_DATA)
 }
 
 
