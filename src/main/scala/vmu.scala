@@ -99,8 +99,8 @@ class AddressTLB extends Module
     val stall = Bool(INPUT)
   }
 
-  val sticky_stall = Reg(init=Bool(false))
-  val stall = io.stall || sticky_stall
+  val stall_hold = Reg(init=Bool(false))
+  val stall = io.stall || stall_hold
 
   io.tlb.req.valid := !stall && io.vvaq.valid && io.vpaq.ready
   io.tlb.req.bits.asid := UInt(0)
@@ -135,7 +135,7 @@ class AddressTLB extends Module
   io.vpaq.bits := io.vvaq.bits
   io.vpaq.bits.addr := Cat(io.tlb.resp.ppn, io.vvaq.bits.idx)
 
-  when (io.tlb.req.fire() && xcpt_stall) { sticky_stall := Bool(true) }
+  when (io.tlb.req.fire() && xcpt_stall) { stall_hold := Bool(true) }
 
   io.irq.vmu.ma_ld := io.tlb.req.fire() && ma_ld
   io.irq.vmu.ma_st := io.tlb.req.fire() && ma_st

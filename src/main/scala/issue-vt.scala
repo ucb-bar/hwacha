@@ -187,13 +187,15 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     val aiw_to_issue = new io_aiw_to_issue().flip
   }
 
-  val stall_sticky = Reg(init=Bool(false))
+  val stall_hold = Reg(init=Bool(false))
   val mask_stall = Bool()
 
-  val stall_issue = stall_sticky || io.irq.issue.illegal || io.irq.issue.illegal_regid || io.xcpt.prop.issue.stall
+  val stall_issue = stall_hold || io.irq.issue.illegal || io.irq.issue.illegal_regid || io.xcpt.prop.issue.stall
   val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.issue.ma_inst || io.irq.issue.fault_inst
 
-  when (io.irq.issue.ma_inst || io.irq.issue.fault_inst || io.irq.issue.illegal || io.irq.issue.illegal_regid) { stall_sticky := Bool(true) }
+  when (io.irq.issue.ma_inst || io.irq.issue.fault_inst || io.irq.issue.illegal || io.irq.issue.illegal_regid) {
+    stall_hold := Bool(true)
+  }
 
 
 //-------------------------------------------------------------------------\\

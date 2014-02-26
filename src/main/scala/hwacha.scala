@@ -155,7 +155,8 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   )
 }
 
-class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends rocket.RoCC(rc) {
+class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends rocket.RoCC(rc)
+{
   import HwachaDecodeTable._
   import Commands._
   
@@ -189,7 +190,16 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val resp_q = Module( new Queue(io.resp.bits, 2) )
   resp_q.io.deq <> io.resp
 
-  val (inst_val: Bool) :: sel_vcmd :: sel_vctype :: sel_vr1 :: sel_vr2 :: sel_vimm1 :: sel_vimm2 :: (check_vl: Bool) :: (emit_vcmd: Bool) :: (emit_vimm1: Bool) :: (emit_vimm2: Bool) :: (emit_cnt: Bool) :: (emit_response: Bool) :: sel_resp :: (decl_evac: Bool):: (decl_hold: Bool) :: (decl_kill: Bool) :: Nil = cs
+  val (inst_val: Bool) :: sel_vcmd :: sel_vctype :: sel_vr1 :: sel_vr2 :: sel_vimm1 :: sel_vimm2 :: cs0 = cs
+  val (check_vl: Bool) :: (emit_vcmd: Bool) :: (emit_vimm1: Bool) :: (emit_vimm2: Bool) :: (emit_cnt: Bool) :: cs1 = cs0
+  val (emit_response: Bool) :: sel_resp :: (decl_evac: Bool):: (decl_hold: Bool) :: (decl_kill: Bool) :: Nil = cs1
+
+  val irq_top = irq.io.vu.top.illegal_cfg || irq.io.vu.top.illegal_inst || irq.io.vu.top.priv_inst || irq.io.vu.top.illegal_regid
+  val stall_hold = Reg(init=Bool(false))
+  val stall = stall_hold || irq_top || xcpt.io.vu.prop.top.stall
+
+  when (irq_top) { stall_hold := Bool(true) }
+  when (xcpt.io.vu.prop.vu.flush_top) { stall_hold := Bool(false) }
 
   val cmd_valid = inst_val && io.cmd.valid && (!check_vl || cfg_vl != UInt(0))
   val resp_ready  = !emit_response || resp_q.io.enq.ready
@@ -201,7 +211,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val vcmd_valid = emit_vcmd && (sel_vctype != VCT_A)
 
   def construct_ready(exclude: Bool): Bool = {
-    val all_readies = Array(resp_ready, vcmd_ready, vimm1_ready, vimm2_ready, vcnt_ready)
+    val all_readies = Array(!stall, resp_ready, vcmd_ready, vimm1_ready, vimm2_ready, vcnt_ready)
     all_readies.filter(_ != exclude).reduce(_&&_)
   }
 
@@ -333,6 +343,14 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   // Hookup some signal ports
   irq.io.vu <> vu.io.irq
   irq.io.rocc.clear := resp_q.io.enq.valid && sel_resp === RESP_CAUSE
+
+  irq.io.vu.top.illegal_cfg := io.cmd.valid &&
+    vcmd_valid && (sel_vcmd === CMD_VSETCFG) && (nxpr === UInt(0) || nxpr > UInt(32) || nfpr > UInt(32))
+  irq.io.vu.top.illegal_inst := io.cmd.valid && !inst_val
+  irq.io.vu.top.priv_inst := Bool(false)
+  irq.io.vu.top.illegal_regid := Bool(false)
+
+  irq.io.vu.top.aux := raw_inst
 
   val reg_hold = Reg(init=Bool(false))
   when (cmd_valid && decl_hold && construct_ready(null)) { reg_hold := Bool(true) }

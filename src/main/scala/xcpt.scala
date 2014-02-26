@@ -68,13 +68,14 @@ class XCPT extends Module
     val vu = new XCPTIO
   }
 
-  val hold_exec = Reg(init = Bool(false))
+  val hold_top = Reg(init = Bool(false))
+  val hold_vu = Reg(init = Bool(false))
   val hold_tlb = Reg(init = Bool(false))
 
   // output assignments
-  io.vu.prop.top.stall := hold_exec
-  io.vu.prop.issue.stall := hold_exec
-  io.vu.prop.seq.stall := hold_exec
+  io.vu.prop.top.stall := hold_top
+  io.vu.prop.issue.stall := hold_vu
+  io.vu.prop.seq.stall := hold_vu
   io.vu.prop.vmu.stall := hold_tlb
   io.vu.prop.vmu.drain := Bool(false)
 
@@ -114,7 +115,8 @@ class XCPT extends Module
 
     is (NORMAL) {
       when (io.rocc.exception)  {
-        hold_exec := Bool(true)
+        hold_top := Bool(true)
+        hold_vu := Bool(true)
         hold_tlb := Bool(true)
 
         evac := Bool(false)
@@ -124,7 +126,7 @@ class XCPT extends Module
       }
 
       when (io.rocc.hold) {
-        hold_exec := Bool(true)
+        hold_vu := Bool(true)
         hold_tlb := Bool(true)
 
         state := HOLD
@@ -133,6 +135,8 @@ class XCPT extends Module
 
     is (XCPT_DRAIN) {
       when (io.vu.report.exp.empty && !io.vu.report.mrt.pending) {
+        hold_top := Bool(false)
+
         state := XCPT_FLUSH
       }
     }
@@ -155,7 +159,7 @@ class XCPT extends Module
       }
 
       when (kill) {
-        hold_exec := Bool(false)
+        hold_vu := Bool(false)
         hold_tlb := Bool(false)
         kill := Bool(false)
         
@@ -176,7 +180,7 @@ class XCPT extends Module
       io.vu.prop.vmu.drain := Bool(true)
 
       when (!io.vu.report.mrt.pending) {
-        hold_exec := Bool(false)
+        hold_vu := Bool(false)
         hold_tlb := Bool(false)
         evac := Bool(false)
         
@@ -186,7 +190,7 @@ class XCPT extends Module
 
     is (HOLD) {
       when (!io.rocc.hold)  {
-        hold_exec := Bool(false)
+        hold_vu := Bool(false)
         hold_tlb := Bool(false)
 
         state := NORMAL

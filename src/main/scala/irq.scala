@@ -46,10 +46,10 @@ class IRQ extends Module
   val reg_aux = Reg(init=Bits(0, 64))
 
   val irqs = List(
-    //(io.vu.top.illegal_cfg, 0, io.top.aux),
-    //(io.vu.top.illegal_inst, 1, io.top.aux),
-    //(io.vu.top.priv_inst, 2, io.top.aux),
-    //(io.vu.top.illegal_regid, 3, io.top.aux),
+    (io.vu.top.illegal_cfg, 0, io.vu.top.aux),
+    (io.vu.top.illegal_inst, 1, io.vu.top.aux),
+    (io.vu.top.priv_inst, 2, io.vu.top.aux),
+    (io.vu.top.illegal_regid, 3, io.vu.top.aux),
     (io.vu.issue.ma_inst, 4, io.vu.issue.aux),
     (io.vu.issue.fault_inst, 5, io.vu.issue.aux),
     (io.vu.issue.illegal, 6, io.vu.issue.aux),
