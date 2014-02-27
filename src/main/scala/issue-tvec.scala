@@ -27,49 +27,49 @@ object TVECDecodeTable
                   //                                   | | | | decode_vsetvl
                   //  vd vt VIUfn VMUfn                | | | | | decode_vf
                   //   |  |  |    |                    | | | | | |
-  val default =   List(R_,R_,F,M0,F,MT_X, M_X,  VM_X,  F,F,F,F,F,F)
+  val default =   List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  F,F,F,F,F,F)
   val table = Array(
-    CMD_VSETCFG-> List(R_,R_,F,M0,F,MT_X, M_X,  VM_X,  T,F,F,T,T,F),
-    CMD_VSETVL->  List(R_,R_,F,M0,F,MT_X, M_X,  VM_X,  T,F,F,F,T,F),
-    CMD_VF->      List(R_,R_,F,M0,F,MT_X, M_X,  VM_X,  T,F,F,F,F,T),
+    CMD_VSETCFG-> List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  T,F,F,T,T,F),
+    CMD_VSETVL->  List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  T,F,F,F,T,F),
+    CMD_VF->      List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  T,F,F,F,F,T),
 
-    CMD_VMVV->    List(RX,RX,T,MR,F,MT_X, M_X,  VM_X,  F,F,T,F,F,F),
-    CMD_VMSV->    List(RX,R_,T,MI,F,MT_X, M_X,  VM_X,  T,F,T,F,F,F),
-    CMD_VFMVV->   List(RF,RF,T,MR,F,MT_X, M_X,  VM_X,  F,F,T,F,F,F),
+    CMD_VMVV->    List(RX,RX,T,MR,M0,F,MT_X, M_X,  VM_X,  F,F,T,F,F,F),
+    CMD_VMSV->    List(RX,R_,T,M0,MI,F,MT_X, M_X,  VM_X,  T,F,T,F,F,F),
+    CMD_VFMVV->   List(RF,RF,T,MR,M0,F,MT_X, M_X,  VM_X,  F,F,T,F,F,F),
 
-    CMD_VLD->     List(RX,R_,F,M0,T,MT_D, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLW->     List(RX,R_,F,M0,T,MT_W, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLWU->    List(RX,R_,F,M0,T,MT_WU,M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLH->     List(RX,R_,F,M0,T,MT_H, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLHU->    List(RX,R_,F,M0,T,MT_HU,M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLB->     List(RX,R_,F,M0,T,MT_B, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VLBU->    List(RX,R_,F,M0,T,MT_BU,M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VSD->     List(R_,RX,F,M0,T,MT_D, M_XWR,VM_VST,T,F,T,F,F,F),
-    CMD_VSW->     List(R_,RX,F,M0,T,MT_W, M_XWR,VM_VST,T,F,T,F,F,F),
-    CMD_VSH->     List(R_,RX,F,M0,T,MT_H, M_XWR,VM_VST,T,F,T,F,F,F),
-    CMD_VSB->     List(R_,RX,F,M0,T,MT_B, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VLD->     List(RX,R_,F,M0,M0,T,MT_D, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLW->     List(RX,R_,F,M0,M0,T,MT_W, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLWU->    List(RX,R_,F,M0,M0,T,MT_WU,M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLH->     List(RX,R_,F,M0,M0,T,MT_H, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLHU->    List(RX,R_,F,M0,M0,T,MT_HU,M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLB->     List(RX,R_,F,M0,M0,T,MT_B, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VLBU->    List(RX,R_,F,M0,M0,T,MT_BU,M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VSD->     List(R_,RX,F,M0,M0,T,MT_D, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VSW->     List(R_,RX,F,M0,M0,T,MT_W, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VSH->     List(R_,RX,F,M0,M0,T,MT_H, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VSB->     List(R_,RX,F,M0,M0,T,MT_B, M_XWR,VM_VST,T,F,T,F,F,F),
 
-    CMD_VFLD->    List(RF,R_,F,M0,T,MT_D, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VFLW->    List(RF,R_,F,M0,T,MT_W, M_XRD,VM_VLD,T,F,T,F,F,F),
-    CMD_VFSD->    List(R_,RF,F,M0,T,MT_D, M_XWR,VM_VST,T,F,T,F,F,F),
-    CMD_VFSW->    List(R_,RF,F,M0,T,MT_W, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VFLD->    List(RF,R_,F,M0,M0,T,MT_D, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VFLW->    List(RF,R_,F,M0,M0,T,MT_W, M_XRD,VM_VLD,T,F,T,F,F,F),
+    CMD_VFSD->    List(R_,RF,F,M0,M0,T,MT_D, M_XWR,VM_VST,T,F,T,F,F,F),
+    CMD_VFSW->    List(R_,RF,F,M0,M0,T,MT_W, M_XWR,VM_VST,T,F,T,F,F,F),
 
-    CMD_VLSTD->   List(RX,R_,F,M0,T,MT_D, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTW->   List(RX,R_,F,M0,T,MT_W, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTWU->  List(RX,R_,F,M0,T,MT_WU,M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTH->   List(RX,R_,F,M0,T,MT_H, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTHU->  List(RX,R_,F,M0,T,MT_HU,M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTB->   List(RX,R_,F,M0,T,MT_B, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTBU->  List(RX,R_,F,M0,T,MT_BU,M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VSSTD->   List(R_,RX,F,M0,T,MT_D, M_XWR,VM_VST,T,T,T,F,F,F),
-    CMD_VSSTW->   List(R_,RX,F,M0,T,MT_W, M_XWR,VM_VST,T,T,T,F,F,F),
-    CMD_VSSTH->   List(R_,RX,F,M0,T,MT_H, M_XWR,VM_VST,T,T,T,F,F,F),
-    CMD_VSSTB->   List(R_,RX,F,M0,T,MT_B, M_XWR,VM_VST,T,T,T,F,F,F),
+    CMD_VLSTD->   List(RX,R_,F,M0,M0,T,MT_D, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTW->   List(RX,R_,F,M0,M0,T,MT_W, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTWU->  List(RX,R_,F,M0,M0,T,MT_WU,M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTH->   List(RX,R_,F,M0,M0,T,MT_H, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTHU->  List(RX,R_,F,M0,M0,T,MT_HU,M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTB->   List(RX,R_,F,M0,M0,T,MT_B, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTBU->  List(RX,R_,F,M0,M0,T,MT_BU,M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VSSTD->   List(R_,RX,F,M0,M0,T,MT_D, M_XWR,VM_VST,T,T,T,F,F,F),
+    CMD_VSSTW->   List(R_,RX,F,M0,M0,T,MT_W, M_XWR,VM_VST,T,T,T,F,F,F),
+    CMD_VSSTH->   List(R_,RX,F,M0,M0,T,MT_H, M_XWR,VM_VST,T,T,T,F,F,F),
+    CMD_VSSTB->   List(R_,RX,F,M0,M0,T,MT_B, M_XWR,VM_VST,T,T,T,F,F,F),
 
-    CMD_VFLSTD->  List(RF,R_,F,M0,T,MT_D, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VFLSTW->  List(RF,R_,F,M0,T,MT_W, M_XRD,VM_VLD,T,T,T,F,F,F),
-    CMD_VFSSTD->  List(R_,RF,F,M0,T,MT_D, M_XWR,VM_VST,T,T,T,F,F,F),
-    CMD_VFSSTW->  List(R_,RF,F,M0,T,MT_W, M_XWR,VM_VST,T,T,T,F,F,F)
+    CMD_VFLSTD->  List(RF,R_,F,M0,M0,T,MT_D, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VFLSTW->  List(RF,R_,F,M0,M0,T,MT_W, M_XRD,VM_VLD,T,T,T,F,F,F),
+    CMD_VFSSTD->  List(R_,RF,F,M0,M0,T,MT_D, M_XWR,VM_VST,T,T,T,F,F,F),
+    CMD_VFSSTW->  List(R_,RF,F,M0,M0,T,MT_W, M_XWR,VM_VST,T,T,T,F,F,F)
   )
 }
 
@@ -127,13 +127,19 @@ class IssueTVEC extends Module
   val cs = rocket.DecodeLogic(cmd, TVECDecodeTable.default, TVECDecodeTable.table)
 
   val vdi :: vti :: cs0 = cs
-  val (viu_val: Bool) :: viu_t1 :: cs1 = cs0
+  val (viu_val: Bool) :: viu_t0 :: viu_t1 :: cs1 = cs0
   val (vmu_val: Bool) :: vmu_type :: vmu_cmd :: vmu_op :: cs2 = cs1
   val (deq_vcmdq_imm1: Bool) :: (deq_vcmdq_imm2: Bool) :: (deq_vcmdq_cnt: Bool) :: cs3 = cs2
   val (decode_vcfg: Bool) :: (decode_vsetvl: Bool) :: (decode_vf: Bool) :: Nil = cs3
 
   val vd_val :: vd_fp :: Nil = parse_rinfo(vdi)
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
+
+  val viu_op = Mux(viu_t0 === MR, I_MOV1, I_MOV2)
+
+  val vmu_op_vld = vmu_op === VM_VLD
+  val vmu_op_vst = vmu_op === VM_VST
+  val vmu_float = vmu_op_vld && vd_fp || vmu_op_vst && vt_fp
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
@@ -241,9 +247,6 @@ class IssueTVEC extends Module
 // DATAPATH                                                                \\
 //-------------------------------------------------------------------------\\
 
-  val vmu_op_vld = vmu_op === VM_VLD
-  val vmu_op_vst = vmu_op === VM_VST
-
   io.op.bits.active.viu := viu_val
   io.op.bits.active.vau0 := Bool(false)
   io.op.bits.active.vau1 := Bool(false)
@@ -257,9 +260,7 @@ class IssueTVEC extends Module
   io.op.bits.vlen := reg_vlen - cnt
   io.op.bits.utidx := cnt
 
-  val vmu_float = vmu_op_vld && vd_fp || vmu_op_vst && vt_fp
-
-  io.op.bits.fn.viu := new VIUFn().fromBits(Cat(M0, viu_t1, DW64, FPD, I_MOV))
+  io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, DW64, FPD, viu_op))
   io.op.bits.fn.vmu := new VMUFn().fromBits(Cat(vmu_float, vmu_type, vmu_cmd, vmu_op))
 
   val vt_m1 = vt - UInt(1)
@@ -276,10 +277,6 @@ class IssueTVEC extends Module
       MT_D->  UInt(8,4)
     ))
 
-  io.op.bits.reg.vs.active := Bool(false) // need to explicitly set these to false
-  io.op.bits.reg.vt.active := vt_val
-  io.op.bits.reg.vr.active := Bool(false) // since these affect hazard check results
-  io.op.bits.reg.vd.active := vd_val
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
   io.op.bits.reg.vt.float := vt_fp
@@ -287,12 +284,18 @@ class IssueTVEC extends Module
   io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
 
-  io.op.bits.regcheck.vs.active := Bool(false) // need to explicitly set these to false
+  io.op.bits.regcheck.vs.active := Bool(false)
   io.op.bits.regcheck.vt.active := vt_val
-  io.op.bits.regcheck.vr.active := Bool(false) // since these affect hazard check results
+  io.op.bits.regcheck.vr.active := Bool(false)
   io.op.bits.regcheck.vd.active := vd_val
   io.op.bits.regcheck.vt.base := vt
   io.op.bits.regcheck.vd.base := vd
+
+  // vmvv, vfmvv sources its operand from rs1
+  // this simplifies the read port scheduling
+  // hazard checking logic may look a little bit funky
+  // but it works out since the hazard unit is agnostic to the actual # of port
+  io.op.bits.reg.vs := io.op.bits.reg.vt
 
   io.op.bits.imm.imm := io.vcmdq.imm1.bits
   io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))

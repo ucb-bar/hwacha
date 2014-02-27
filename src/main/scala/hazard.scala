@@ -50,20 +50,21 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val ptr5 = PtrIncr(ptr, 5, io.cfg.bcnt)
   ptr := ptr1
 
-  val viu_incr = UInt(conf.int_stages + 1 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val viu_incr = UInt(conf.int_stages + conf.delay_seq_exp, conf.ptr_incr_sz)
   val vau0_incr = UInt(conf.imul_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
   val vau1_incr = UInt(conf.fma_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
   val vau2_incr = UInt(conf.fconv_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
 
-  val viu_wptr1 = PtrIncr(ptr, viu_incr, io.cfg.bcnt)
-  val viu_wptr2 = PtrIncr(viu_wptr1, 1, io.cfg.bcnt)
+  val viu_wptr0 = PtrIncr(ptr, viu_incr, io.cfg.bcnt)
+  val viu_wptr1 = PtrIncr(viu_wptr0, 1, io.cfg.bcnt)
+  val viu_wptr2 = PtrIncr(viu_wptr0, 2, io.cfg.bcnt)
   val vau0_wptr = PtrIncr(ptr, vau0_incr, io.cfg.bcnt)
   val vau1_wptr2 = PtrIncr(ptr, vau1_incr, io.cfg.bcnt)
   val vau1_wptr3 = PtrIncr(vau1_wptr2, 1, io.cfg.bcnt)
   val vau2_wptr = PtrIncr(ptr, vau2_incr, io.cfg.bcnt)
 
-  val viu_wptr = Mux(io.issueop.bits.fn.viu.rtype(), viu_wptr2, viu_wptr1)
-  val vau1_wptr = Mux(io.issueop.bits.fn.vau1.fma(), vau1_wptr3, vau1_wptr2)
+  val viu_wptr = io.issueop.bits.fn.viu.wptr_sel(viu_wptr0, viu_wptr1, viu_wptr2)
+  val vau1_wptr = io.issueop.bits.fn.vau1.wptr_sel(vau1_wptr2, vau1_wptr3)
 
   class RegHazardTblInfo extends RegHazardInfo
   {
@@ -82,10 +83,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   when (io.issueop.valid) {
 
     when (io.issueop.bits.active.viu) {
-      tbl_rport(ptr2) := Bool(true)
-      when (io.issueop.bits.fn.viu.rtype()) {
-        tbl_rport(ptr3) := Bool(true)
-      }
+      when (io.issueop.bits.fn.viu.rs1()) { tbl_rport(ptr2) := Bool(true) }
+      when (io.issueop.bits.fn.viu.rs2()) { tbl_rport(ptr3) := Bool(true) }
       tbl_wport(viu_wptr) := Bool(true)
       tbl_vd(viu_wptr).active := Bool(true)
       tbl_vd(viu_wptr).float := io.issueop.bits.reg.vd.float
@@ -110,9 +109,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     when (io.issueop.bits.active.vau1) {
       tbl_rport(ptr2) := Bool(true)
       tbl_rport(ptr3) := Bool(true)
-      when (io.issueop.bits.fn.vau1.fma()) {
-        tbl_rport(ptr4) := Bool(true)
-      }
+      when (io.issueop.bits.fn.vau1.r4type()) { tbl_rport(ptr4) := Bool(true) }
       tbl_wport(vau1_wptr) := Bool(true)
       tbl_vd(vau1_wptr).active := Bool(true)
       tbl_vd(vau1_wptr).float := io.issueop.bits.reg.vd.float
@@ -288,21 +285,23 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val wptr = MuxCase(
       UInt(0), Array(
-        op.bits.active.viu -> Mux(op.bits.fn.viu.rtype(), viu_wptr2, viu_wptr1),
+        op.bits.active.viu -> op.bits.fn.viu.wptr_sel(viu_wptr0, viu_wptr1, viu_wptr2),
         op.bits.active.vau0 -> vau0_wptr,
-        op.bits.active.vau1 -> Mux(op.bits.fn.vau1.fma(), vau1_wptr3, vau1_wptr2),
+        op.bits.active.vau1 -> op.bits.fn.vau1.wptr_sel(vau1_wptr2, vau1_wptr3),
         op.bits.active.vau2 -> vau2_wptr
       ))
 
     val rports = PopCount(List(op.bits.regcheck.vs.active, op.bits.regcheck.vt.active, op.bits.regcheck.vr.active))
 
-    val bhazard_r1w1 = tbl_rport(ptr2) | tbl_wport(wptr)
-    val bhazard_r2w1 = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(wptr)
-    val bhazard_r3w1 = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_rport(ptr4) | tbl_wport(wptr)
+    val bhazard_r0w1 = tbl_wport(wptr)
+    val bhazard_r1w1 = tbl_rport(ptr2) || bhazard_r0w1
+    val bhazard_r2w1 = tbl_rport(ptr3) || bhazard_r1w1
+    val bhazard_r3w1 = tbl_rport(ptr4) || bhazard_r2w1
     val bhazard = List(
-      bhazard_r1w1 && !memop && op.bits.reg.vd.active && (rports === UInt(0) || rports === UInt(1)),
-      bhazard_r2w1 && !memop && op.bits.reg.vd.active && rports === UInt(2),
-      bhazard_r3w1 && !memop && op.bits.reg.vd.active && rports === UInt(3),
+      bhazard_r0w1 && !memop && op.bits.regcheck.vd.active && rports === UInt(0),
+      bhazard_r1w1 && !memop && op.bits.regcheck.vd.active && rports === UInt(1),
+      bhazard_r2w1 && !memop && op.bits.regcheck.vd.active && rports === UInt(2),
+      bhazard_r3w1 && !memop && op.bits.regcheck.vd.active && rports === UInt(3),
       bhazard_amo && op.bits.active.amo,
       bhazard_utld && op.bits.active.utld,
       bhazard_utst && op.bits.active.utst,

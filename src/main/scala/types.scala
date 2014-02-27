@@ -48,8 +48,12 @@ class VIUFn extends Bundle
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
-  def rtype(dummy: Int = 0) = t0 === ML && t1 === MR
-  def s2only(dummy: Int = 0) = t0 === M0 && t1 === MR
+  def rtype(dummy: Int = 0) = t0 === ML
+  def itype(dummy: Int = 0) = t0 === MR
+  def rs1(dummy: Int = 0) = rtype() || itype()
+  def rs2(dummy: Int = 0) = rtype()
+  def wptr_sel(wptr0: Bits, wptr1: Bits, wptr2: Bits) =
+    Mux(rtype(), wptr2, Mux(itype(), wptr1, wptr0)).toUInt
 }
 
 class VAU0Fn extends Bundle
@@ -64,7 +68,9 @@ class VAU1Fn extends Bundle
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU1_OP)
 
-  def fma(dummy: Int = 0) = IS_A1_OP_FMA(op)
+  def r4type(dummy: Int = 0) = IS_A1_OP_FMA(op)
+  def wptr_sel(wptr2: Bits, wptr3: Bits) =
+    Mux(r4type(), wptr3, wptr2).toUInt
 }
 
 class VAU2Fn extends Bundle
@@ -93,7 +99,6 @@ class VMUFn extends Bundle
 
 class RegInfo extends Bundle
 {
-  val active = Bool()
   val zero = Bool()
   val float = Bool()
   val id = Bits(width = SZ_BREGLEN)

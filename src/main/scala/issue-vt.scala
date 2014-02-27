@@ -31,7 +31,7 @@ object VTDecodeTable
     FMOVZ->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
     FMOVN->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
 
-    LUI->       List(RX,R_,R_,R_,IMM_U,T,M0,MI,DW64,FP_,I_MOV, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
+    LUI->       List(RX,R_,R_,R_,IMM_U,T,M0,MI,DW64,FP_,I_MOV2,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
     ADDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
     SLLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
     SLTI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLT, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X,M_X,      VM_X,  F),
@@ -249,6 +249,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
       IMM_U -> Cat(Bits(0,1),Fill(32,inst(31)),inst(31,12),Bits(0,12))
     ))
 
+  val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
+
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
   val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
@@ -302,8 +304,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.vlen := io.vf.vlen - cnt
   io.op.bits.utidx := cnt
 
-  val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
-
   io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, viu_dw, viu_fp, viu_op))
   io.op.bits.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
   io.op.bits.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, rm, vau1_op))
@@ -315,10 +315,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vr_m1 = vr - UInt(1)
   val vd_m1 = vd - UInt(1)
 
-  io.op.bits.reg.vs.active := vs_val
-  io.op.bits.reg.vt.active := vt_val
-  io.op.bits.reg.vr.active := vr_val
-  io.op.bits.reg.vd.active := vd_val
   io.op.bits.reg.vs.zero := !vs_fp && vs === UInt(0)
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vr.zero := !vr_fp && vr === UInt(0)

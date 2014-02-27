@@ -117,7 +117,8 @@ class BankALU extends Module
   val next_result64 = MuxCase(
     Bits(0, SZ_DATA), Array(
       OP(I_IDX) -> s1_utidx,
-      OP(I_MOV,I_MOVZ,I_MOVN) -> s1_in1,
+      OP(I_MOV1) -> s1_in0,
+      OP(I_MOV2,I_MOVZ,I_MOVN) -> s1_in1,
       OP(I_ADD,I_SUB) -> adder_out,
       OP(I_SLL,I_SRL,I_SRA) -> shift_out,
       OP(I_SLT,I_SLTU,I_FEQ,I_FLE,I_FLT) -> comp,
