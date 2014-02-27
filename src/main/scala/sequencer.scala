@@ -116,7 +116,9 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     def alu_active(slot: UInt) =
       e(slot).active.viu ||
-      e(slot).active.vau0 || e(slot).active.vau1t || e(slot).active.vau1f || e(slot).active.vau2
+      e(slot).active.vau0 ||
+      e(slot).active.vau1t || e(slot).active.vau1f ||
+      e(slot).active.vau2t || e(slot).active.vau2f
 
     def ldst_active(slot: UInt) =
       e(slot).active.vlu || e(slot).active.vsu
@@ -237,7 +239,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr1) := Bool(true)
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
-      seq.e(ptr1).active.vau2 := Bool(true)
+      when (io.issueop.bits.sel.vau2) { seq.e(ptr1).active.vau2t := Bool(true) }
+      .otherwise { seq.e(ptr1).active.vau2f := Bool(true) }
       seq.e(ptr1).fn.vau2 := io.issueop.bits.fn.vau2
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
@@ -443,7 +446,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
         seq.e(ptr).active.vau0 := Bool(false)
         seq.e(ptr).active.vau1t := Bool(false)
         seq.e(ptr).active.vau1f := Bool(false)
-        seq.e(ptr).active.vau2 := Bool(false)
+        seq.e(ptr).active.vau2t := Bool(false)
+        seq.e(ptr).active.vau2f := Bool(false)
         seq.e(ptr).active.vgu := Bool(false)
         seq.e(ptr).active.vcu := Bool(false)
         seq.e(ptr).active.vlu := Bool(false)

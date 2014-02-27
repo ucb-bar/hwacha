@@ -13,7 +13,8 @@ class LaneOpIO extends Bundle
   val vau0 = Valid(new VAU0Op)
   val vau1t = Valid(new VAU1Op)
   val vau1f = Valid(new VAU1Op)
-  val vau2 = Valid(new VAU2Op)
+  val vau2t = Valid(new VAU2Op)
+  val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
   val vlu = Valid(new VLUOp)
   val vsu = Valid(new VSUOp)
@@ -24,7 +25,8 @@ class LaneFUOpIO extends Bundle
   val vau0 = Valid(new VAU0Op)
   val vau1t = Valid(new VAU1Op)
   val vau1f = Valid(new VAU1Op)
-  val vau2 = Valid(new VAU2Op)
+  val vau2t = Valid(new VAU2Op)
+  val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
   val vlu = Valid(new VLUOp)
   val vsu = Valid(new VSUOp)
@@ -63,7 +65,8 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val imul = Module(new LaneMul)
   val fma0 = Module(new LaneFMA)
   val fma1 = Module(new LaneFMA)
-  val conv = Module(new LaneConv)
+  val conv0 = Module(new LaneConv)
+  val conv1 = Module(new LaneConv)
   val mem = Module(new LaneMem)
 
   for (i <- 0 until SZ_BANK) {
@@ -81,13 +84,14 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma0.io.out
     bank.io.rw.wbl2 := fma1.io.out
-    bank.io.rw.wbl3 := conv.io.out
-    bank.io.rw.wbl4 := mem.io.data.ldata
+    bank.io.rw.wbl3 := conv0.io.out
+    bank.io.rw.wbl4 := conv1.io.out
+    bank.io.rw.wbl5 := mem.io.data.ldata
   }
 
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
   // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
-  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
+  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
   lfu.io.op <> io.op
@@ -109,13 +113,17 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   fma1.io.in1 := rbl(6)
   fma1.io.in2 := rbl(7)
 
-  conv.io.valid := lfu.io.vau2.valid
-  conv.io.fn := lfu.io.vau2.bits.fn
-  conv.io.in := rbl(8)
+  conv0.io.valid := lfu.io.vau2t.valid
+  conv0.io.fn := lfu.io.vau2t.bits.fn
+  conv0.io.in := rbl(8)
+
+  conv1.io.valid := lfu.io.vau2f.valid
+  conv1.io.fn := lfu.io.vau2f.bits.fn
+  conv1.io.in := rbl(9)
 
   mem.io.op <> lfu.io.mem
-  mem.io.data.paddr := rbl(9)(SZ_ADDR-1,0)
-  mem.io.data.sdata := rbl(10)
+  mem.io.data.paddr := rbl(10)(SZ_ADDR-1,0)
+  mem.io.data.sdata := rbl(11)
 
   io.vmu <> mem.io.vmu
   io.lret <> mem.io.lret

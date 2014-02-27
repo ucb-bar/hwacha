@@ -205,6 +205,7 @@ class IssueOp extends DecodedInstruction
   }
   val sel = new Bundle {
     val vau1 = Bool() // once true, vau1t is scheduled
+    val vau2 = Bool() // once true, vau2t is scheduled
   }
   val regcheck = new Bundle {
     val vs = new RegHazardInfo
@@ -226,7 +227,8 @@ class VFU extends Bundle // vector functional unit
   val vau0 = Bool() // vector arithmetic 0 unit; imul
   val vau1t = Bool() // vector arithmetic 1 unit; fma0
   val vau1f = Bool() // vector arithmetic 1 unit; fma1
-  val vau2 = Bool() // vector arithmetic 2 unit; fconv
+  val vau2t = Bool() // vector arithmetic 2 unit; fconv0
+  val vau2f = Bool() // vector arithmetic 2 unit; fconv1
   val vgu = Bool()  // vector address generation unit
   val vcu = Bool()  // vector address check unit
   val vlu = Bool()  // vector load (data) unit

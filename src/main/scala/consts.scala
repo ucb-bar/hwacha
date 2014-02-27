@@ -55,7 +55,7 @@ trait LaneConstants
   val SZ_BCNT = SZ_LGBANK+1
   val SZ_BREGLEN = 8
   val SZ_BOPL = 3
-  val SZ_BRPORT = 11 // 2 imul, 3 fma0, 3 fma1, 1, fconv, 1 vgu, 1 vsu
+  val SZ_BRPORT = 12 // 2 imul, 3 fma0, 3 fma1, 1 fconv0, 1 fconv1, 1 vgu, 1 vsu
   val SZ_BWPORT = 3
 }
 

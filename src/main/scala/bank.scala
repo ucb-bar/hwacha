@@ -32,6 +32,7 @@ class Bank extends Module
       val wbl2 = Bits(INPUT, SZ_DATA)
       val wbl3 = Bits(INPUT, SZ_DATA)
       val wbl4 = Bits(INPUT, SZ_DATA)
+      val wbl5 = Bits(INPUT, SZ_DATA)
     }
   }
 
@@ -101,6 +102,7 @@ class Bank extends Module
   rfile.io.wbl2 := io.rw.wbl2
   rfile.io.wbl3 := io.rw.wbl3
   rfile.io.wbl4 := io.rw.wbl4
+  rfile.io.wbl5 := io.rw.wbl5
   rfile.io.viu_wdata := alu.io.out
 
   val viu_in0 = MuxLookup(
@@ -150,6 +152,7 @@ class BankRegfile extends Module
     val wbl2 = Bits(INPUT, SZ_DATA)
     val wbl3 = Bits(INPUT, SZ_DATA)
     val wbl4 = Bits(INPUT, SZ_DATA)
+    val wbl5 = Bits(INPUT, SZ_DATA)
     val viu_wdata = Bits(INPUT, SZ_DATA)
   }
 
@@ -160,7 +163,8 @@ class BankRegfile extends Module
       Bits(2) -> io.wbl2,
       Bits(3) -> io.wbl3,
       Bits(4) -> io.wbl4,
-      Bits(5) -> io.viu_wdata
+      Bits(5) -> io.wbl5,
+      Bits(6) -> io.viu_wdata
     ))
 
   val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)

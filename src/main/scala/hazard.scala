@@ -127,7 +127,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       tbl_vd(vau2_wptr).base := io.issueop.bits.regcheck.vd.base
       tbl_vd(vau2_wptr).utidx := io.issueop.bits.utidx
       tbl_seqslot(ptr1) := Bool(true)
-      tbl_vfu.vau2 := Bool(true)
+      when (io.issueop.bits.sel.vau2) { tbl_vfu.vau2t := Bool(true) }
+      .otherwise { tbl_vfu.vau2f := Bool(true) }
     }
 
     when (io.issueop.bits.active.amo) {
@@ -190,7 +191,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     when (active.vau0) { tbl_vfu.vau0 := Bool(false) }
     when (active.vau1t) { tbl_vfu.vau1t := Bool(false) }
     when (active.vau1f) { tbl_vfu.vau1f := Bool(false) }
-    when (active.vau2) { tbl_vfu.vau2 := Bool(false) }
+    when (active.vau2t) { tbl_vfu.vau2t := Bool(false) }
+    when (active.vau2f) { tbl_vfu.vau2f := Bool(false) }
     when (active.vgu) { tbl_vfu.vgu := Bool(false) }
     when (active.vcu) { tbl_vfu.vcu := Bool(false) }
     when (active.vlu) { tbl_vfu.vlu := Bool(false) }
@@ -266,7 +268,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     val shazard = List(
       tbl_vfu.vau0 && op.bits.active.vau0,
       tbl_vfu.vau1t && tbl_vfu.vau1f && op.bits.active.vau1, // shazard when both vau1t and vau1f are used
-      tbl_vfu.vau2 && op.bits.active.vau2,
+      tbl_vfu.vau2t && tbl_vfu.vau2f && op.bits.active.vau2, // shazard when both vau2t and vau2f are used
       tbl_vfu.vgu && memop,
       tbl_vfu.vcu && memop,
       tbl_vfu.vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),
@@ -323,6 +325,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   io.issueop.valid := Mux(io.tvec.active, fire_tvec, fire_vt)
   io.issueop.bits := Mux(io.tvec.active, io.tvec.op.bits, io.vt.op.bits)
   io.issueop.bits.sel.vau1 := !tbl_vfu.vau1t // select vau1t when not in use
+  io.issueop.bits.sel.vau2 := !tbl_vfu.vau2t // select vau2t when not in use
 
   io.pending_memop := tbl_vfu.vsu || tbl_vfu.vlu
 }

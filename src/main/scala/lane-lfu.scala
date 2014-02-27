@@ -10,7 +10,8 @@ class LaneLFU extends Module
     val vau0 = Valid(new VAU0Op)
     val vau1t = Valid(new VAU1Op)
     val vau1f = Valid(new VAU1Op)
-    val vau2 = Valid(new VAU2Op)
+    val vau2t = Valid(new VAU2Op)
+    val vau2f = Valid(new VAU2Op)
     val mem = new LaneMemOpIO
   }
 
@@ -53,17 +54,30 @@ class LaneLFU extends Module
     vau1f_op.bits.fn := io.op.vau1f.bits.fn
   }
 
-  val vau2_op = Reg(Valid(new VAU2Op).asDirectionless)
-  when (vau2_op.bits.cnt.orR) {
-    vau2_op.bits.cnt := vau2_op.bits.cnt - UInt(1)
+  val vau2t_op = Reg(Valid(new VAU2Op).asDirectionless)
+  when (vau2t_op.bits.cnt.orR) {
+    vau2t_op.bits.cnt := vau2t_op.bits.cnt - UInt(1)
   }
-  when (vau2_op.bits.cnt === UInt(1)) {
-    vau2_op.valid := Bool(false)
+  when (vau2t_op.bits.cnt === UInt(1)) {
+    vau2t_op.valid := Bool(false)
   }
-  when (io.op.vau2.valid && io.op.vau2.bits.cnt > UInt(1)) {
-    vau2_op.valid := Bool(true)
-    vau2_op.bits.cnt := io.op.vau2.bits.cnt - UInt(1)
-    vau2_op.bits.fn := io.op.vau2.bits.fn
+  when (io.op.vau2t.valid && io.op.vau2t.bits.cnt > UInt(1)) {
+    vau2t_op.valid := Bool(true)
+    vau2t_op.bits.cnt := io.op.vau2t.bits.cnt - UInt(1)
+    vau2t_op.bits.fn := io.op.vau2t.bits.fn
+  }
+
+  val vau2f_op = Reg(Valid(new VAU2Op).asDirectionless)
+  when (vau2f_op.bits.cnt.orR) {
+    vau2f_op.bits.cnt := vau2f_op.bits.cnt - UInt(1)
+  }
+  when (vau2f_op.bits.cnt === UInt(1)) {
+    vau2f_op.valid := Bool(false)
+  }
+  when (io.op.vau2f.valid && io.op.vau2f.bits.cnt > UInt(1)) {
+    vau2f_op.valid := Bool(true)
+    vau2f_op.bits.cnt := io.op.vau2f.bits.cnt - UInt(1)
+    vau2f_op.bits.fn := io.op.vau2f.bits.fn
   }
 
   val vgu_base = Bits()
@@ -121,7 +135,8 @@ class LaneLFU extends Module
     vau0_op.valid := Bool(false)
     vau1t_op.valid := Bool(false)
     vau1f_op.valid := Bool(false)
-    vau2_op.valid := Bool(false)
+    vau2t_op.valid := Bool(false)
+    vau2f_op.valid := Bool(false)
     vgu_op.valid := Bool(false)
     vlu_op.valid := Bool(false)
     vsu_op.valid := Bool(false)
@@ -135,7 +150,8 @@ class LaneLFU extends Module
   bypass(io.vau0, io.op.vau0, vau0_op)
   bypass(io.vau1t, io.op.vau1t, vau1t_op)
   bypass(io.vau1f, io.op.vau1f, vau1f_op)
-  bypass(io.vau2, io.op.vau2, vau2_op)
+  bypass(io.vau2t, io.op.vau2t, vau2t_op)
+  bypass(io.vau2f, io.op.vau2f, vau2f_op)
   bypass(io.mem.vgu, io.op.vgu, vgu_op)
   bypass(io.mem.vlu, io.op.vlu, vlu_op)
   bypass(io.mem.vsu, io.op.vsu, vsu_op)
