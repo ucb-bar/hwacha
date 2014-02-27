@@ -143,45 +143,45 @@ class DecodedInstruction extends Bundle
 // aiw types
 //-------------------------------------------------------------------------\\
 
-class AIWImm1Entry extends Bundle
+class AIWUpdateImm1Entry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_IMM1)
   val pc_next = Bits(width = SZ_ADDR)
 }
 
-class AIWImm1Op extends AIWImm1Entry
+class AIWUpdateImm1Op extends AIWUpdateImm1Entry
 {
   val base = Bits(width = SZ_VIMM)
   val ldst = Bool()
 }
 
-class AIWCntEntry extends Bundle
+class AIWUpdateCntEntry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_CNT)
   val utidx = UInt(width = SZ_VLEN)
 }
 
-class AIWCntOp extends AIWCntEntry
+class AIWUpdateCntOp extends AIWUpdateCntEntry
 
-class AIWNumCntEntry extends Bundle
+class AIWUpdateNumCntEntry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_NUMCNT)
 }
 
-class AIWNumCntOp extends AIWNumCntEntry
+class AIWUpdateNumCntOp extends AIWUpdateNumCntEntry
 {
   val last = Bool()
 }
 
-class AIWEntry extends Bundle
+class AIWUpdateEntry extends Bundle
 {
   val active = new Bundle {
     val imm1 = Bool()
     val cnt = Bool()
   }
-  val imm1 = new AIWImm1Entry
-  val cnt = new AIWCntEntry
-  val numcnt = new AIWNumCntEntry
+  val imm1 = new AIWUpdateImm1Entry
+  val cnt = new AIWUpdateCntEntry
+  val numcnt = new AIWUpdateNumCntEntry
 }
 
 
@@ -212,7 +212,7 @@ class IssueOp extends DecodedInstruction
     val vr = new RegHazardInfo
     val vd = new RegHazardInfo
   }
-  val aiw = new AIWEntry
+  val aiw = new AIWUpdateEntry
 }
 
 
@@ -330,21 +330,4 @@ class VPAQEntry extends Bundle
   val cmd = Bits(width = M_SZ)
   val typ = Bits(width = MT_SZ)
   val addr = Bits(width = PADDR_BITS)
-}
-
-
-// aiw FIXME
-class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_VCMD))
-class io_vxu_immq extends DecoupledIO(Bits(width = SZ_VIMM))
-class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
-class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
-class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
-
-class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
-
-class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
-{
-  val data = Bits(width=DATA_SIZE)
-  val addr = UInt(width=ADDR_SIZE)
-  override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }

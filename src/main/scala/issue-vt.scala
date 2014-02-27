@@ -15,7 +15,7 @@ class VFIO extends Bundle
   val stop = Bool(INPUT)
   val pc = UInt(OUTPUT, SZ_ADDR)
   val imm1_rtag = Bits(OUTPUT, SZ_AIW_IMM1)
-  val numCnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
+  val numcnt_rtag = Bits(OUTPUT, SZ_AIW_NUMCNT)
   val vlen = Bits(OUTPUT, SZ_VLEN)
 }
 
@@ -182,9 +182,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     val ready = Bool(INPUT)
     val op = new IssueOpIO
 
-    val aiw_cntb = new io_vxu_cntq()
-    val issue_to_aiw = new io_issue_to_aiw()
-    val aiw_to_issue = new io_aiw_to_issue().flip
+    val aiw = new AIWVXUIO
   }
 
   val stall_hold = Reg(init=Bool(false))
@@ -200,11 +198,11 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 //-------------------------------------------------------------------------\\
 
   val imm1_rtag = Reg(init=Bits(0,SZ_AIW_IMM1))
-  val numCnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
+  val numcnt_rtag = Reg(init=Bits(0,SZ_AIW_CMD))
 
   when (io.vf.fire) { 
     imm1_rtag := io.vf.imm1_rtag
-    numCnt_rtag := io.vf.numCnt_rtag
+    numcnt_rtag := io.vf.numcnt_rtag
   }
 
   io.imem.req.valid := io.vf.fire
@@ -268,7 +266,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 //-------------------------------------------------------------------------\\
 
   val mask_issue_ready = !issue_op || io.ready
-  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw_cntb.ready
+  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw.issue.enq.cntb.ready
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
@@ -282,9 +280,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.imem.resp.ready := fire(io.imem.resp.valid)
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
   io.op.valid := fire(mask_issue_ready, issue_op)
-  io.aiw_cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
-  io.issue_to_aiw.markLast := fire(null, decode_stop)
-  io.issue_to_aiw.update_numCnt.valid := fire(null, issue_op)
+  io.aiw.issue.enq.cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
+  io.aiw.issue.marklast := fire(null, decode_stop)
+  io.aiw.issue.update.numcnt.valid := fire(null, issue_op)
   io.vf.stop := fire(null, decode_stop)
 
 
@@ -344,12 +342,12 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.active.cnt := Bool(true)
   io.op.bits.aiw.imm1.rtag := imm1_rtag
   io.op.bits.aiw.imm1.pc_next := io.imem.resp.bits.pc + UInt(4)
-  io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
+  io.op.bits.aiw.cnt.rtag := io.aiw.issue.rtag.cnt
   io.op.bits.aiw.cnt.utidx := cnt
-  io.op.bits.aiw.numcnt.rtag := numCnt_rtag
+  io.op.bits.aiw.numcnt.rtag := numcnt_rtag
 
-  io.aiw_cntb.bits := cnt
-  io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
+  io.aiw.issue.enq.cntb.bits := cnt
+  io.aiw.issue.update.numcnt.bits := numcnt_rtag
 
 
 //-------------------------------------------------------------------------\\

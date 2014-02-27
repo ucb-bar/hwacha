@@ -14,7 +14,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO
-    val aiwop = new AIWOpIO
 
     val vmu = new VMUIO
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
@@ -22,6 +21,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     val hazard = new HazardUpdateIO
     val busy = Bool(OUTPUT)
+
+    val aiw = new AIWVXUIO
   }
 
   class BuildSequencer[T<:Data](n: Int)
@@ -31,7 +32,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val vlen = Vec.fill(n){Reg(UInt(width=SZ_VLEN))}
     val last = Vec.fill(n){Reg(Bool())}
     val e = Vec.fill(n){Reg(new SequencerEntry)}
-    val aiw = Vec.fill(n){Reg(new AIWEntry)}
+    val aiw = Vec.fill(n){Reg(new AIWUpdateEntry)}
 
     def defreset = {
       when (reset) {
@@ -485,38 +486,38 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.busy := seq.valid.reduce(_||_)
 
   // aiw
-  io.aiwop.imm1.valid := Bool(false)
-  io.aiwop.cnt.valid := Bool(false)
-  io.aiwop.numcnt.valid := Bool(false)
-  io.aiwop.numcnt.bits.last := Bool(false)
+  io.aiw.seq.update.imm1.valid := Bool(false)
+  io.aiw.seq.update.cnt.valid := Bool(false)
+  io.aiw.seq.update.numcnt.valid := Bool(false)
+  io.aiw.seq.update.numcnt.bits.last := Bool(false)
   
   when (valid) {
     when (seq.alu_active(ptr) || seq.ldst_active(ptr)) {
-      io.aiwop.cnt.valid := seq.aiw(ptr).active.cnt
+      io.aiw.seq.update.cnt.valid := seq.aiw(ptr).active.cnt
 
       when (islast) {
-        io.aiwop.numcnt.valid := seq.aiw(ptr).active.cnt
-        io.aiwop.numcnt.bits.last := seq.aiw(ptr).active.cnt
+        io.aiw.seq.update.numcnt.valid := seq.aiw(ptr).active.cnt
+        io.aiw.seq.update.numcnt.bits.last := seq.aiw(ptr).active.cnt
       }
     }
 
     when (seq.alu_active(ptr) || seq.utldst_active(ptr)) {
       when (islast) {
-        io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
+        io.aiw.seq.update.imm1.valid := seq.aiw(ptr).active.imm1
       }
     } 
 
     when (seq.vldst_active(ptr)) {
-      io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
+      io.aiw.seq.update.imm1.valid := seq.aiw(ptr).active.imm1
     }
   }
 
-  io.aiwop.imm1.bits <> seq.aiw(ptr).imm1
-  io.aiwop.imm1.bits.base := seq.next_addr_base(ptr)
-  io.aiwop.imm1.bits.ldst := seq.ldst_active(ptr)
-  io.aiwop.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
-  io.aiwop.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
-  io.aiwop.numcnt.bits <> seq.aiw(ptr).numcnt
+  io.aiw.seq.update.imm1.bits <> seq.aiw(ptr).imm1
+  io.aiw.seq.update.imm1.bits.base := seq.next_addr_base(ptr)
+  io.aiw.seq.update.imm1.bits.ldst := seq.ldst_active(ptr)
+  io.aiw.seq.update.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
+  io.aiw.seq.update.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
+  io.aiw.seq.update.numcnt.bits <> seq.aiw(ptr).numcnt
 
   seq.defreset
 }

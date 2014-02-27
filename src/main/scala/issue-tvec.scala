@@ -87,13 +87,7 @@ class IssueTVEC extends Module
     val ready = Bool(INPUT)
     val op = new IssueOpIO
 
-    val aiw_cmdb = new io_vxu_cmdq()
-    val aiw_imm1b = new io_vxu_immq()
-    val aiw_imm2b = new io_vxu_imm2q()
-    val aiw_cntb = new io_vxu_cntq()
-    val aiw_numCntB = new io_vxu_numcntq()
-    val aiw_to_issue = new io_aiw_to_issue().flip
-    val issue_to_aiw = new io_issue_to_aiw()
+    val aiw = new AIWVXUIO
   }
 
   val ISSUE_TVEC = UInt(0,1)
@@ -166,11 +160,11 @@ class IssueTVEC extends Module
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_issue_ready = !issue_op || io.ready
-  val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw_cmdb.ready
-  val mask_aiw_imm1b_ready = !enq_aiw_imm1b || io.aiw_imm1b.ready
-  val mask_aiw_imm2b_ready = !enq_aiw_imm2b || io.aiw_imm2b.ready
-  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw_cntb.ready
-  val mask_aiw_numCntB_ready = !enq_aiw_numCntB || io.aiw_numCntB.ready
+  val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw.issue.enq.cmdb.ready
+  val mask_aiw_imm1b_ready = !enq_aiw_imm1b || io.aiw.issue.enq.imm1b.ready
+  val mask_aiw_imm2b_ready = !enq_aiw_imm2b || io.aiw.issue.enq.imm2b.ready
+  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw.issue.enq.cntb.ready
+  val mask_aiw_numCntB_ready = !enq_aiw_numCntB || io.aiw.issue.enq.numcntb.ready
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
@@ -186,12 +180,12 @@ class IssueTVEC extends Module
   io.vcmdq.imm2.ready := fire(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
   io.op.valid := fire(mask_issue_ready, issue_op)
-  io.aiw_cmdb.valid := fire(mask_aiw_cmdb_ready, enq_aiw_cmdb)
-  io.aiw_imm1b.valid := fire(mask_aiw_imm1b_ready, enq_aiw_imm1b)
-  io.aiw_imm2b.valid := fire(mask_aiw_imm2b_ready, enq_aiw_imm2b)
-  io.aiw_cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
-  io.aiw_numCntB.valid := fire(mask_aiw_numCntB_ready, enq_aiw_numCntB)
-  io.issue_to_aiw.markLast := fire(null, issue_op)
+  io.aiw.issue.enq.cmdb.valid := fire(mask_aiw_cmdb_ready, enq_aiw_cmdb)
+  io.aiw.issue.enq.imm1b.valid := fire(mask_aiw_imm1b_ready, enq_aiw_imm1b)
+  io.aiw.issue.enq.imm2b.valid := fire(mask_aiw_imm2b_ready, enq_aiw_imm2b)
+  io.aiw.issue.enq.cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
+  io.aiw.issue.enq.numcntb.valid := fire(mask_aiw_numCntB_ready, enq_aiw_numCntB)
+  io.aiw.issue.marklast := fire(null, issue_op)
 
 
 //-------------------------------------------------------------------------\\
@@ -242,8 +236,8 @@ class IssueTVEC extends Module
   io.vf.active := (reg_state === ISSUE_VT)
   io.vf.fire := fire(null, decode_vf)
   io.vf.pc := io.vcmdq.imm1.bits(31,0)
-  io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
-  io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
+  io.vf.imm1_rtag := io.aiw.issue.rtag.imm1
+  io.vf.numcnt_rtag := io.aiw.issue.rtag.numcnt
   io.vf.vlen := reg_vlen
 
 
@@ -306,14 +300,14 @@ class IssueTVEC extends Module
 
   io.op.bits.aiw.active.imm1 := vmu_val
   io.op.bits.aiw.active.cnt := Bool(true)
-  io.op.bits.aiw.imm1.rtag := io.aiw_to_issue.imm1_rtag
-  io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
+  io.op.bits.aiw.imm1.rtag := io.aiw.issue.rtag.imm1
+  io.op.bits.aiw.cnt.rtag := io.aiw.issue.rtag.cnt
   io.op.bits.aiw.cnt.utidx := cnt
-  io.op.bits.aiw.numcnt.rtag := io.aiw_to_issue.numCnt_rtag
+  io.op.bits.aiw.numcnt.rtag := io.aiw.issue.rtag.numcnt
 
-  io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
-  io.aiw_imm1b.bits := io.vcmdq.imm1.bits
-  io.aiw_imm2b.bits := io.vcmdq.imm2.bits
-  io.aiw_numCntB.bits := Mux(decode_vf, Bits(0), Bits(1))
-  io.aiw_cntb.bits := cnt
+  io.aiw.issue.enq.cmdb.bits := io.vcmdq.cmd.bits.toBits
+  io.aiw.issue.enq.imm1b.bits := io.vcmdq.imm1.bits
+  io.aiw.issue.enq.imm2b.bits := io.vcmdq.imm2.bits
+  io.aiw.issue.enq.numcntb.bits := Mux(decode_vf, Bits(0), Bits(1))
+  io.aiw.issue.enq.cntb.bits := cnt
 }
