@@ -48,8 +48,12 @@ class VIUFn extends Bundle
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
-  def rtype(dummy: Int = 0) = t0 === ML && t1 === MR
-  def s2only(dummy: Int = 0) = t0 === M0 && t1 === MR
+  def rtype(dummy: Int = 0) = t0 === ML
+  def itype(dummy: Int = 0) = t0 === MR
+  def rs1(dummy: Int = 0) = rtype() || itype()
+  def rs2(dummy: Int = 0) = rtype()
+  def wptr_sel(wptr0: Bits, wptr1: Bits, wptr2: Bits) =
+    Mux(rtype(), wptr2, Mux(itype(), wptr1, wptr0)).toUInt
 }
 
 class VAU0Fn extends Bundle
@@ -64,7 +68,9 @@ class VAU1Fn extends Bundle
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU1_OP)
 
-  def fma(dummy: Int = 0) = IS_A1_OP_FMA(op)
+  def r4type(dummy: Int = 0) = IS_A1_OP_FMA(op)
+  def wptr_sel(wptr2: Bits, wptr3: Bits) =
+    Mux(r4type(), wptr3, wptr2).toUInt
 }
 
 class VAU2Fn extends Bundle
@@ -92,10 +98,15 @@ class VMUFn extends Bundle
 
 class RegInfo extends Bundle
 {
-  val active = Bool()
   val zero = Bool()
   val float = Bool()
   val id = Bits(width = SZ_BREGLEN)
+}
+
+class RegHazardInfo extends Bundle
+{
+  val active = Bool()
+  val base = Bits(width = 5)
 }
 
 class DecodedRegister extends Bundle
@@ -131,45 +142,45 @@ class DecodedInstruction extends Bundle
 // aiw types
 //-------------------------------------------------------------------------\\
 
-class AIWImm1Entry extends Bundle
+class AIWUpdateImm1Entry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_IMM1)
   val pc_next = Bits(width = SZ_ADDR)
 }
 
-class AIWImm1Op extends AIWImm1Entry
+class AIWUpdateImm1Op extends AIWUpdateImm1Entry
 {
   val base = Bits(width = SZ_VIMM)
   val ldst = Bool()
 }
 
-class AIWCntEntry extends Bundle
+class AIWUpdateCntEntry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_CNT)
   val utidx = UInt(width = SZ_VLEN)
 }
 
-class AIWCntOp extends AIWCntEntry
+class AIWUpdateCntOp extends AIWUpdateCntEntry
 
-class AIWNumCntEntry extends Bundle
+class AIWUpdateNumCntEntry extends Bundle
 {
   val rtag = Bits(width = SZ_AIW_NUMCNT)
 }
 
-class AIWNumCntOp extends AIWNumCntEntry
+class AIWUpdateNumCntOp extends AIWUpdateNumCntEntry
 {
   val last = Bool()
 }
 
-class AIWEntry extends Bundle
+class AIWUpdateEntry extends Bundle
 {
   val active = new Bundle {
     val imm1 = Bool()
     val cnt = Bool()
   }
-  val imm1 = new AIWImm1Entry
-  val cnt = new AIWCntEntry
-  val numcnt = new AIWNumCntEntry
+  val imm1 = new AIWUpdateImm1Entry
+  val cnt = new AIWUpdateCntEntry
+  val numcnt = new AIWUpdateNumCntEntry
 }
 
 
@@ -191,7 +202,17 @@ class IssueOp extends DecodedInstruction
     val vld = Bool()
     val vst = Bool()
   }
-  val aiw = new AIWEntry
+  val sel = new Bundle {
+    val vau1 = Bool() // once true, vau1t is scheduled
+    val vau2 = Bool() // once true, vau2t is scheduled
+  }
+  val regcheck = new Bundle {
+    val vs = new RegHazardInfo
+    val vt = new RegHazardInfo
+    val vr = new RegHazardInfo
+    val vd = new RegHazardInfo
+  }
+  val aiw = new AIWUpdateEntry
   val vmu = new Bundle {
     val op = new vmunit.VMUOp
     val stride = Bits(width = SZ_VSTRIDE)
@@ -207,8 +228,10 @@ class VFU extends Bundle // vector functional unit
 {
   val viu = Bool()  // vector integer unit
   val vau0 = Bool() // vector arithmetic 0 unit; imul
-  val vau1 = Bool() // vector arithmetic 1 unit; fma
-  val vau2 = Bool() // vector arithmetic 2 unit; fconv
+  val vau1t = Bool() // vector arithmetic 1 unit; fma0
+  val vau1f = Bool() // vector arithmetic 1 unit; fma1
+  val vau2t = Bool() // vector arithmetic 2 unit; fconv0
+  val vau2f = Bool() // vector arithmetic 2 unit; fconv1
   val vgu = Bool()  // vector address generation unit
   val vcu = Bool()  // vector address check unit
   val vlu = Bool()  // vector load (data) unit
@@ -341,21 +364,4 @@ class VPAQEntry extends Bundle
   val cmd = Bits(width = M_SZ)
   val typ = Bits(width = MT_SZ)
   val addr = Bits(width = PADDR_BITS)
-}
-
-
-// aiw FIXME
-class io_vxu_cmdq extends DecoupledIO(Bits(width = SZ_VCMD))
-class io_vxu_immq extends DecoupledIO(Bits(width = SZ_VIMM))
-class io_vxu_imm2q extends DecoupledIO(Bits(width = SZ_VSTRIDE))
-class io_vxu_cntq extends DecoupledIO(Bits(width = SZ_VLEN))
-class io_vxu_numcntq extends DecoupledIO(Bits(width = 1))
-
-class io_update_num_cnt extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
-
-class io_aiwUpdateReq(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
-{
-  val data = Bits(width=DATA_SIZE)
-  val addr = UInt(width=ADDR_SIZE)
-  override def clone = new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
 }

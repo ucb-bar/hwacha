@@ -12,11 +12,6 @@ class VCMDQIO extends Bundle
   val cnt = Decoupled(new HwachaCnt)
 }
 
-class AIWVCMDQIO extends VCMDQIO
-{
-  val numcnt = Decoupled(Bits(width = 1))
-}
-
 class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
@@ -102,6 +97,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     io.vpfcmdq.imm1.ready := Bool(true)
     io.vpfcmdq.imm2.ready := Bool(true)
     io.vpfcmdq.cnt.ready := Bool(true)
+    io.vpftlb.req.valid := Bool(false)
   }
 
   vcmdqcnt.cmd.io.dec := vcmdq.io.enq.cmd.ready && io.vcmdq.cmd.valid
@@ -163,28 +159,8 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vmu.io.dmem <> io.dmem
   vmu.io.vtlb <> io.vtlb
 
-  // aiw
-  aiw.io.aiw_enq_cmdb <> vxu.io.aiw_cmdb
-  aiw.io.aiw_enq_imm1b <> vxu.io.aiw_imm1b
-  aiw.io.aiw_enq_imm2b <> vxu.io.aiw_imm2b
-  aiw.io.aiw_enq_cntb <> vxu.io.aiw_cntb
-  aiw.io.aiw_enq_numCntB <> vxu.io.aiw_numCntB
-
-  aiw.io.issue_to_aiw <> vxu.io.issue_to_aiw
-  aiw.io.aiw_to_issue <> vxu.io.aiw_to_issue
-  aiw.io.op <> vxu.io.aiwop
-
   // evac
   evac.io.xcpt <> io.xcpt
-
-  evac.io.aiw_cmdb <> aiw.io.aiw_deq_cmdb
-  evac.io.aiw_imm1b <> aiw.io.aiw_deq_imm1b
-  evac.io.aiw_imm2b <> aiw.io.aiw_deq_imm2b
-  evac.io.aiw_cntb <> aiw.io.aiw_deq_cntb
-  evac.io.aiw_numCntB <> aiw.io.aiw_deq_numCntB
-  evac.io.aiw_numCntB_last <> aiw.io.aiw_deq_numCntB_last
-
-  evac.io.evac_to_aiw <> aiw.io.evac_to_aiw
 
   evac.io.vcmdq.cmd.bits := vcmdq.io.deq.cmd.bits
   evac.io.vcmdq.cmd.valid := vcmdq.io.deq.cmd.valid
@@ -194,4 +170,8 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   evac.io.vcmdq.imm2.valid := vcmdq.io.deq.imm2.valid
   evac.io.vcmdq.cnt.bits := vcmdq.io.deq.cnt.bits
   evac.io.vcmdq.cnt.valid := vcmdq.io.deq.cnt.valid
+
+  // aiw
+  aiw.io.vxu <> vxu.io.aiw
+  aiw.io.evac <> evac.io.aiw
 }

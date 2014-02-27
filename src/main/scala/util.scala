@@ -66,6 +66,13 @@ object MaskStall
   }
 }
 
+class AIWUpdateBufferEntry(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
+{
+  val data = Bits(width=DATA_SIZE)
+  val addr = UInt(width=ADDR_SIZE)
+  override def clone = new AIWUpdateBufferEntry(DATA_SIZE, ADDR_SIZE).asInstanceOf[this.type]
+}
+
 class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
@@ -73,7 +80,7 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
   val io = new Bundle {
     val enq = Decoupled(Bits(width=DATA_SIZE)).flip
     val deq = Decoupled(Bits(width=DATA_SIZE))
-    val update = Valid(new io_aiwUpdateReq(DATA_SIZE, ADDR_SIZE)).flip
+    val update = Valid(new AIWUpdateBufferEntry(DATA_SIZE, ADDR_SIZE)).flip
 
     val rtag = Bits(OUTPUT, ADDR_SIZE)
   }
@@ -137,6 +144,8 @@ class Buffer(DATA_SIZE: Int, DEPTH: Int) extends Module
   io.rtag := write_ptr
 }
 
+class AIWUpdateCounterVecIO extends ValidIO(Bits(width=SZ_AIW_NUMCNT))
+
 class CounterVec(DEPTH: Int) extends Module
 {
   val ADDR_SIZE = log2Up(DEPTH)
@@ -144,9 +153,9 @@ class CounterVec(DEPTH: Int) extends Module
     val enq = Decoupled(Bits(width=1)).flip()
     val deq = Decoupled(Bits(width=1))
 
-    val update_from_issue = new io_update_num_cnt().flip()
-    val update_from_seq = new io_update_num_cnt().flip()
-    val update_from_evac = new io_update_num_cnt().flip()
+    val update_from_issue = new AIWUpdateCounterVecIO().flip
+    val update_from_seq = new AIWUpdateCounterVecIO().flip
+    val update_from_evac = new AIWUpdateCounterVecIO().flip
 
     val markLast = Bool(INPUT)
     val deq_last = Bool(OUTPUT)

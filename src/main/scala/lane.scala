@@ -11,16 +11,20 @@ class LaneOpIO extends Bundle
   val write = Valid(new WriteBankOp)
   val viu = Valid(new VIUOp)
   val vau0 = Valid(new VAU0Op)
-  val vau1 = Valid(new VAU1Op)
-  val vau2 = Valid(new VAU2Op)
+  val vau1t = Valid(new VAU1Op)
+  val vau1f = Valid(new VAU1Op)
+  val vau2t = Valid(new VAU2Op)
+  val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
 }
 
 class LaneFUOpIO extends Bundle
 {
   val vau0 = Valid(new VAU0Op)
-  val vau1 = Valid(new VAU1Op)
-  val vau2 = Valid(new VAU2Op)
+  val vau1t = Valid(new VAU1Op)
+  val vau1f = Valid(new VAU1Op)
+  val vau2t = Valid(new VAU2Op)
+  val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
 }
 
@@ -52,8 +56,10 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   val lfu = Module(new LaneLFU)
   val imul = Module(new LaneMul)
-  val fma = Module(new LaneFMA)
-  val conv = Module(new LaneConv)
+  val fma0 = Module(new LaneFMA)
+  val fma1 = Module(new LaneFMA)
+  val conv0 = Module(new LaneConv)
+  val conv1 = Module(new LaneConv)
   val mem = Module(new LaneMem)
 
   for (i <- 0 until SZ_BANK) {
@@ -69,8 +75,10 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     ropl2 += bank.io.rw.ropl2
 
     bank.io.rw.wbl0 := imul.io.out
-    bank.io.rw.wbl1 := fma.io.out
-    bank.io.rw.wbl2 := conv.io.out
+    bank.io.rw.wbl1 := fma0.io.out
+    bank.io.rw.wbl2 := fma1.io.out
+    bank.io.rw.wbl3 := conv0.io.out
+    bank.io.rw.wbl4 := conv1.io.out
 
     io.brqs(i) <> bank.io.rw.brq
     bank.io.rw.bwq <> io.bwqs(i)
@@ -78,7 +86,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
 
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
   // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
-  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
+  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
   lfu.io.op <> io.op
@@ -88,18 +96,28 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   imul.io.in0 := rbl(0)
   imul.io.in1 := rbl(1)
 
-  fma.io.valid := lfu.io.vau1.valid
-  fma.io.fn := lfu.io.vau1.bits.fn
-  fma.io.in0 := rbl(2)
-  fma.io.in1 := rbl(3)
-  fma.io.in2 := rbl(4)
+  fma0.io.valid := lfu.io.vau1t.valid
+  fma0.io.fn := lfu.io.vau1t.bits.fn
+  fma0.io.in0 := rbl(2)
+  fma0.io.in1 := rbl(3)
+  fma0.io.in2 := rbl(4)
 
-  conv.io.valid := lfu.io.vau2.valid
-  conv.io.fn := lfu.io.vau2.bits.fn
-  conv.io.in := rbl(5)
+  fma1.io.valid := lfu.io.vau1f.valid
+  fma1.io.fn := lfu.io.vau1f.bits.fn
+  fma1.io.in0 := rbl(5)
+  fma1.io.in1 := rbl(6)
+  fma1.io.in2 := rbl(7)
+
+  conv0.io.valid := lfu.io.vau2t.valid
+  conv0.io.fn := lfu.io.vau2t.bits.fn
+  conv0.io.in := rbl(8)
+
+  conv1.io.valid := lfu.io.vau2f.valid
+  conv1.io.fn := lfu.io.vau2f.bits.fn
+  conv1.io.in := rbl(9)
 
   mem.io.op <> lfu.io.mem
-  mem.io.data.paddr := rbl(6)(SZ_ADDR-1,0)
+  mem.io.data.paddr := rbl(10)(SZ_ADDR-1,0)
 
   io.vmu <> mem.io.vmu
 }

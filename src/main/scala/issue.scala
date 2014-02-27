@@ -4,18 +4,13 @@ import Chisel._
 import Node._
 import Constants._
 
-class io_issue_to_aiw extends Bundle
-{
-  val markLast = Bool(OUTPUT)
-  val update_numCnt = new io_update_num_cnt()
-}
-
 class IssueOpIO extends ValidIO(new IssueOp)
 
 class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
+    val keepcfg = Bool(INPUT)
     val irq = new IRQIO
     val xcpt = new XCPTIO().flip
 
@@ -37,14 +32,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     
     val pending_vf = Bool(OUTPUT)
 
-    val aiw_cmdb = new io_vxu_cmdq()
-    val aiw_imm1b = new io_vxu_immq()
-    val aiw_imm2b = new io_vxu_imm2q()
-    val aiw_cntb = new io_vxu_cntq()
-    val aiw_numCntB = new io_vxu_numcntq()
-
-    val issue_to_aiw = new io_issue_to_aiw()
-    val aiw_to_issue = new io_aiw_to_issue().flip
+    val aiw = new AIWVXUIO
   }
 
   val tvec = Module(new IssueTVEC)
@@ -54,6 +42,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   vt.io.cfg <> tvec.io.cfg
   io.irq <> vt.io.irq
   vt.io.vf <> tvec.io.vf
+  tvec.io.keepcfg := io.keepcfg
   io.pending_vf := tvec.io.vf.active
 
   // vcmdq
@@ -77,18 +66,20 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   vt.io.ready <> io.vt.ready
 
   // aiw
-  tvec.io.aiw_cmdb <> io.aiw_cmdb
-  tvec.io.aiw_imm1b <> io.aiw_imm1b
-  tvec.io.aiw_imm2b <> io.aiw_imm2b
-  tvec.io.aiw_cntb.ready := io.aiw_cntb.ready
-  tvec.io.aiw_numCntB <> io.aiw_numCntB
-  tvec.io.aiw_to_issue <> io.aiw_to_issue
-  vt.io.aiw_cntb.ready := io.aiw_cntb.ready
-  vt.io.aiw_to_issue <> io.aiw_to_issue
-  vt.io.issue_to_aiw.update_numCnt <> io.issue_to_aiw.update_numCnt
-  io.issue_to_aiw.markLast := Mux(tvec.io.active, tvec.io.issue_to_aiw.markLast, vt.io.issue_to_aiw.markLast)
-  io.aiw_cntb.valid := Mux(tvec.io.active, tvec.io.aiw_cntb.valid, vt.io.aiw_cntb.valid)
-  io.aiw_cntb.bits := Mux(tvec.io.active, tvec.io.aiw_cntb.bits, vt.io.aiw_cntb.bits)
+  io.aiw.issue.enq.cmdb <> tvec.io.aiw.issue.enq.cmdb
+  io.aiw.issue.enq.imm1b <> tvec.io.aiw.issue.enq.imm1b
+  io.aiw.issue.enq.imm2b <> tvec.io.aiw.issue.enq.imm2b
+  tvec.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
+  vt.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
+  io.aiw.issue.enq.cntb.valid := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.valid, vt.io.aiw.issue.enq.cntb.valid)
+  io.aiw.issue.enq.cntb.bits := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.bits, vt.io.aiw.issue.enq.cntb.bits)
+  io.aiw.issue.enq.numcntb <> tvec.io.aiw.issue.enq.numcntb
+
+  tvec.io.aiw.issue.rtag <> io.aiw.issue.rtag
+  vt.io.aiw.issue.rtag <> io.aiw.issue.rtag
+
+  io.aiw.issue.marklast := Mux(tvec.io.active, tvec.io.aiw.issue.marklast, vt.io.aiw.issue.marklast)
+  io.aiw.issue.update <> vt.io.aiw.issue.update
 
   // vmu
   io.deckop <> tvec.io.deckop

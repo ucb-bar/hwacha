@@ -55,7 +55,7 @@ trait LaneConstants
   val SZ_BCNT = SZ_LGBANK+1
   val SZ_BREGLEN = 8
   val SZ_BOPL = 3
-  val SZ_BRPORT = SZ_BANK
+  val SZ_BRPORT = 12 // 2 imul, 3 fma0, 3 fma1, 1 fconv0, 1 fconv1, 1 vgu, 1 vsu
   val SZ_BWPORT = 3
 }
 
@@ -126,17 +126,18 @@ trait VIUConstants
   val I_AND  = UInt(8, SZ_VIU_OP)
   val I_SUB  = UInt(9, SZ_VIU_OP)
   val I_IDX  = UInt(10, SZ_VIU_OP)
-  val I_MOV  = UInt(11, SZ_VIU_OP)
-  val I_FSJ  = UInt(12, SZ_VIU_OP)
-  val I_FSJN = UInt(13, SZ_VIU_OP)
-  val I_FSJX = UInt(14, SZ_VIU_OP)
-  val I_FEQ  = UInt(15, SZ_VIU_OP)
-  val I_FLT  = UInt(16, SZ_VIU_OP)
-  val I_FLE  = UInt(17, SZ_VIU_OP)
-  val I_FMIN = UInt(18, SZ_VIU_OP)
-  val I_FMAX = UInt(19, SZ_VIU_OP)
-  val I_MOVZ = UInt(20, SZ_VIU_OP)
-  val I_MOVN = UInt(21, SZ_VIU_OP)
+  val I_MOV1 = UInt(11, SZ_VIU_OP)
+  val I_MOV2 = UInt(12, SZ_VIU_OP)
+  val I_FSJ  = UInt(13, SZ_VIU_OP)
+  val I_FSJN = UInt(14, SZ_VIU_OP)
+  val I_FSJX = UInt(15, SZ_VIU_OP)
+  val I_FEQ  = UInt(16, SZ_VIU_OP)
+  val I_FLT  = UInt(17, SZ_VIU_OP)
+  val I_FLE  = UInt(18, SZ_VIU_OP)
+  val I_FMIN = UInt(19, SZ_VIU_OP)
+  val I_FMAX = UInt(20, SZ_VIU_OP)
+  val I_MOVZ = UInt(21, SZ_VIU_OP)
+  val I_MOVN = UInt(22, SZ_VIU_OP)
 }
 
 trait VAU0Constants extends DecodeConstants
@@ -265,4 +266,6 @@ trait Commands
   val CMD_VFLSTW = Bits("b1_01_0_1_0_10",8)
   val CMD_VFSSTD = Bits("b1_01_1_1_0_11",8)
   val CMD_VFSSTW = Bits("b1_01_1_1_0_10",8)
+
+  def is_cmd_pfw(cmd: Bits) = cmd(4)
 }

@@ -14,7 +14,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     val issueop = new IssueOpIO().flip
     val seqop = new SequencerOpIO
-    val aiwop = new AIWOpIO
 
     val vmu = new vmunit.VMUIO
     val lla = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
@@ -23,7 +22,10 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
     val lret = new MRTLoadRetireIO
 
-    val seq_to_hazard = new SequencerToHazardIO
+    val hazard = new HazardUpdateIO
+    val busy = Bool(OUTPUT)
+
+    val aiw = new AIWVXUIO
   }
 
   class BuildSequencer[T<:Data](n: Int)
@@ -33,7 +35,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val vlen = Vec.fill(n){Reg(UInt(width=SZ_VLEN))}
     val last = Vec.fill(n){Reg(Bool())}
     val e = Vec.fill(n){Reg(new SequencerEntry)}
-    val aiw = Vec.fill(n){Reg(new AIWEntry)}
+    val aiw = Vec.fill(n){Reg(new AIWUpdateEntry)}
 
     def defreset = {
       when (reset) {
@@ -52,7 +54,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     // allowing up to 32 elements to proceed in half precision
     // allowing up to 16 elements to proceed in single precision
     def turbo_capable(slot: UInt) =
-      e(slot).active.vau1 ||
+      e(slot).active.vau1t || e(slot).active.vau1f ||
       e(slot).active.vlu ||
       e(slot).active.vsu
 
@@ -117,7 +119,9 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     def alu_active(slot: UInt) =
       e(slot).active.viu ||
-      e(slot).active.vau0 || e(slot).active.vau1 || e(slot).active.vau2
+      e(slot).active.vau0 ||
+      e(slot).active.vau1t || e(slot).active.vau1f ||
+      e(slot).active.vau2t || e(slot).active.vau2f
 
     def ldst_active(slot: UInt) =
       e(slot).active.vlu || e(slot).active.vsu
@@ -224,7 +228,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr1) := Bool(true)
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := turbo_last
-      seq.e(ptr1).active.vau1 := Bool(true)
+      when (io.issueop.bits.sel.vau1) { seq.e(ptr1).active.vau1t := Bool(true) }
+      .otherwise { seq.e(ptr1).active.vau1f := Bool(true) }
       seq.e(ptr1).fn.vau1 := io.issueop.bits.fn.vau1
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
@@ -237,7 +242,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr1) := Bool(true)
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
-      seq.e(ptr1).active.vau2 := Bool(true)
+      when (io.issueop.bits.sel.vau2) { seq.e(ptr1).active.vau2t := Bool(true) }
+      .otherwise { seq.e(ptr1).active.vau2f := Bool(true) }
       seq.e(ptr1).fn.vau2 := io.issueop.bits.fn.vau2
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
@@ -427,8 +433,10 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
         seq.last(ptr) := Bool(false)
         seq.e(ptr).active.viu := Bool(false)
         seq.e(ptr).active.vau0 := Bool(false)
-        seq.e(ptr).active.vau1 := Bool(false)
-        seq.e(ptr).active.vau2 := Bool(false)
+        seq.e(ptr).active.vau1t := Bool(false)
+        seq.e(ptr).active.vau1f := Bool(false)
+        seq.e(ptr).active.vau2t := Bool(false)
+        seq.e(ptr).active.vau2f := Bool(false)
         seq.e(ptr).active.vgu := Bool(false)
         seq.e(ptr).active.vcu := Bool(false)
         seq.e(ptr).active.vlu := Bool(false)
@@ -451,10 +459,10 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   }
 
   // output
-  io.seq_to_hazard.stall := (seq.stall.toBits & seq.valid.toBits).orR
-  io.seq_to_hazard.last := valid && islast
-  io.seq_to_hazard.active := seq.e(ptr).active
-  io.seq_to_hazard.cnt := nstrip
+  io.hazard.seq.stall := (seq.stall.toBits & seq.valid.toBits).orR
+  io.hazard.seq.last := valid && islast
+  io.hazard.seq.active := seq.e(ptr).active
+  io.hazard.seq.cnt := nstrip
 
   io.seqop.valid := valid
   io.seqop.bits.cnt := nstrip
@@ -470,39 +478,41 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.lret.update := io.lla.reserve
   io.lret.cnt := io.lla.cnt
 
+  io.busy := seq.valid.reduce(_||_)
+
   // aiw
-  io.aiwop.imm1.valid := Bool(false)
-  io.aiwop.cnt.valid := Bool(false)
-  io.aiwop.numcnt.valid := Bool(false)
-  io.aiwop.numcnt.bits.last := Bool(false)
+  io.aiw.seq.update.imm1.valid := Bool(false)
+  io.aiw.seq.update.cnt.valid := Bool(false)
+  io.aiw.seq.update.numcnt.valid := Bool(false)
+  io.aiw.seq.update.numcnt.bits.last := Bool(false)
   
   when (valid) {
     when (seq.alu_active(ptr) || seq.ldst_active(ptr)) {
-      io.aiwop.cnt.valid := seq.aiw(ptr).active.cnt
+      io.aiw.seq.update.cnt.valid := seq.aiw(ptr).active.cnt
 
       when (islast) {
-        io.aiwop.numcnt.valid := seq.aiw(ptr).active.cnt
-        io.aiwop.numcnt.bits.last := seq.aiw(ptr).active.cnt
+        io.aiw.seq.update.numcnt.valid := seq.aiw(ptr).active.cnt
+        io.aiw.seq.update.numcnt.bits.last := seq.aiw(ptr).active.cnt
       }
     }
 
     when (seq.alu_active(ptr) || seq.utldst_active(ptr)) {
       when (islast) {
-        io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
+        io.aiw.seq.update.imm1.valid := seq.aiw(ptr).active.imm1
       }
     } 
 
     when (seq.vldst_active(ptr)) {
-      io.aiwop.imm1.valid := seq.aiw(ptr).active.imm1
+      io.aiw.seq.update.imm1.valid := seq.aiw(ptr).active.imm1
     }
   }
 
-  io.aiwop.imm1.bits <> seq.aiw(ptr).imm1
-  io.aiwop.imm1.bits.base := seq.next_addr_base(ptr)
-  io.aiwop.imm1.bits.ldst := seq.ldst_active(ptr)
-  io.aiwop.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
-  io.aiwop.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
-  io.aiwop.numcnt.bits <> seq.aiw(ptr).numcnt
+  io.aiw.seq.update.imm1.bits <> seq.aiw(ptr).imm1
+  io.aiw.seq.update.imm1.bits.base := seq.next_addr_base(ptr)
+  io.aiw.seq.update.imm1.bits.ldst := seq.ldst_active(ptr)
+  io.aiw.seq.update.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
+  io.aiw.seq.update.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
+  io.aiw.seq.update.numcnt.bits <> seq.aiw(ptr).numcnt
 
   seq.defreset
 }
