@@ -213,10 +213,6 @@ class IssueOp extends DecodedInstruction
     val vd = new RegHazardInfo
   }
   val aiw = new AIWUpdateEntry
-  val vmu = new Bundle {
-    val op = new vmunit.VMUOp
-    val stride = Bits(width = SZ_VSTRIDE)
-  }
 }
 
 

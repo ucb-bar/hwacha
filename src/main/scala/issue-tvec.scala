@@ -318,14 +318,8 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := io.aiw.issue.rtag.numcnt
 
-  io.aiw.issue.enq.cmdb.bits := io.vcmdq.cmd.bits.toBits
-  io.aiw.issue.enq.imm1b.bits := io.vcmdq.imm1.bits
-  io.aiw.issue.enq.imm2b.bits := io.vcmdq.imm2.bits
-  io.aiw.issue.enq.numcntb.bits := Mux(decode_vf, Bits(0), Bits(1))
-  io.aiw.issue.enq.cntb.bits := cnt
-
   io.deckop.bits.vlen := io.op.bits.vlen
-  io.deckop.bits.utidx := cnt
+  io.deckop.bits.utidx := io.op.bits.utidx
   io.deckop.bits.fn := io.op.bits.fn.vmu
   io.deckop.bits.reg := io.op.bits.reg
 
@@ -333,4 +327,10 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
   io.vmu.issue.cmdq.bits.base := io.vcmdq.imm1.bits
   io.vmu.issue.strideq.bits := io.op.bits.imm.stride
+
+  io.aiw.issue.enq.cmdb.bits := io.vcmdq.cmd.bits.toBits
+  io.aiw.issue.enq.imm1b.bits := io.vcmdq.imm1.bits
+  io.aiw.issue.enq.imm2b.bits := io.vcmdq.imm2.bits
+  io.aiw.issue.enq.numcntb.bits := Mux(decode_vf, Bits(0), Bits(1))
+  io.aiw.issue.enq.cntb.bits := cnt
 }

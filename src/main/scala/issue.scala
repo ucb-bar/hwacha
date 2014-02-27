@@ -38,6 +38,13 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   val tvec = Module(new IssueTVEC)
   val vt = Module(new IssueVT)
 
+  def arb_producers[T<:Data](issue: DecoupledIO[T], sel: Bool, tvec: DecoupledIO[T], vt: DecoupledIO[T]) = {
+    tvec.ready := issue.ready
+    vt.ready := issue.ready
+    issue.valid := Mux(sel, tvec.valid, vt.valid)
+    issue.bits := Mux(sel, tvec.bits, vt.bits)
+  }
+
   io.cfg <> tvec.io.cfg
   vt.io.cfg <> tvec.io.cfg
   io.irq <> vt.io.irq
@@ -69,10 +76,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.aiw.issue.enq.cmdb <> tvec.io.aiw.issue.enq.cmdb
   io.aiw.issue.enq.imm1b <> tvec.io.aiw.issue.enq.imm1b
   io.aiw.issue.enq.imm2b <> tvec.io.aiw.issue.enq.imm2b
-  tvec.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
-  vt.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
-  io.aiw.issue.enq.cntb.valid := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.valid, vt.io.aiw.issue.enq.cntb.valid)
-  io.aiw.issue.enq.cntb.bits := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.bits, vt.io.aiw.issue.enq.cntb.bits)
+  arb_producers(io.aiw.issue.enq.cntb, tvec.io.active, tvec.io.aiw.issue.enq.cntb, vt.io.aiw.issue.enq.cntb)
   io.aiw.issue.enq.numcntb <> tvec.io.aiw.issue.enq.numcntb
 
   tvec.io.aiw.issue.rtag <> io.aiw.issue.rtag
@@ -82,8 +86,9 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.aiw.issue.update <> vt.io.aiw.issue.update
 
   // vmu
-  io.deckop <> tvec.io.deckop
-  io.vmu <> tvec.io.vmu
+  arb_producers(io.deckop, tvec.io.active, tvec.io.deckop, vt.io.deckop)
+  arb_producers(io.vmu.issue.cmdq, tvec.io.active, tvec.io.vmu.issue.cmdq, vt.io.vmu.issue.cmdq)
+  arb_producers(io.vmu.issue.strideq, tvec.io.active, tvec.io.vmu.issue.strideq, vt.io.vmu.issue.strideq)
 
   // xcpt
   tvec.io.xcpt <> io.xcpt

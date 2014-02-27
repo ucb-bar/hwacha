@@ -182,6 +182,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
     val ready = Bool(INPUT)
     val op = new IssueOpIO
 
+    val deckop = new DeckOpIO
     val vmu = new vmunit.VMUIO
     val aiw = new AIWVXUIO
   }
@@ -259,6 +260,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val issue_op = !vd_zero && vfu_val
 
   val deq_vcmdq_cnt = issue_op
+  val enq_deck_op = vmu_val
+  val enq_vmu_cmdq = vmu_val
+  val enq_vmu_strideq = Bool(false)
   val enq_aiw_cntb = issue_op
 
 
@@ -267,6 +271,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 //-------------------------------------------------------------------------\\
 
   val mask_issue_ready = !issue_op || io.ready
+  val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
+  val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
+  val mask_vmu_strideq_ready = !enq_vmu_strideq || io.vmu.issue.strideq.ready
   val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw.issue.enq.cntb.ready
 
   def fire(exclude: Bool, include: Bool*) = {
@@ -274,6 +281,8 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
       !stall, io.vf.active,
       io.imem.resp.valid,
       mask_issue_ready,
+      mask_deck_op_ready,
+      mask_vmu_cmdq_ready, mask_vmu_strideq_ready,
       mask_aiw_cntb_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
@@ -281,6 +290,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.imem.resp.ready := fire(io.imem.resp.valid)
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
   io.op.valid := fire(mask_issue_ready, issue_op)
+  io.deckop.valid := fire(mask_deck_op_ready, enq_deck_op)
+  io.vmu.issue.cmdq.valid := fire(mask_vmu_cmdq_ready, enq_vmu_cmdq)
+  io.vmu.issue.strideq.valid := fire(mask_vmu_strideq_ready, enq_vmu_strideq)
   io.aiw.issue.enq.cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
   io.aiw.issue.marklast := fire(null, decode_stop)
   io.aiw.issue.update.numcnt.valid := fire(null, issue_op)
@@ -350,8 +362,13 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.aiw.issue.enq.cntb.bits := cnt
   io.aiw.issue.update.numcnt.bits := numcnt_rtag
 
-  io.op.bits.vmu.op.fn := io.op.bits.fn.vmu
-  io.op.bits.vmu.op.vlen := io.op.bits.vlen
+  io.deckop.bits.vlen := io.op.bits.vlen
+  io.deckop.bits.utidx := io.op.bits.utidx
+  io.deckop.bits.fn := io.op.bits.fn.vmu
+  io.deckop.bits.reg := io.op.bits.reg
+
+  io.vmu.issue.cmdq.bits.fn := io.op.bits.fn.vmu
+  io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
 
 
 //-------------------------------------------------------------------------\\
