@@ -7,7 +7,7 @@ import Constants._
 case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
-  val vru = false
+  val vru = true
   val confprec = false
 
   // rocket pipeline latencies
