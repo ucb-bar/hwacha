@@ -61,7 +61,7 @@ class VMUFn extends Bundle
 
   def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
   def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
+  def sreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_UST) || (op === VM_VST)
 }
 
 class VMUOp extends Bundle
@@ -111,5 +111,5 @@ class VLDQMemIf(implicit conf: HwachaConfiguration) extends Bundle
 class VLDQEntry extends Bundle
 {
   val meta = new VMUMetadata
-  val data = Bits(width = SZ_VMU_ADDR)
+  val data = Bits(width = SZ_VMU_DATA)
 }

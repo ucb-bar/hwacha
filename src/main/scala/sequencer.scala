@@ -17,7 +17,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val aiwop = new AIWOpIO
 
     val vmu = new vmunit.VMUIO
-    val lla = new LookAheadPortIO(log2Down(conf.nvldq)+1)
+    val lla = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sla = new LookAheadPortIO(log2Down(conf.nvsdq)+1)
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
@@ -467,6 +467,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.sla.reserve := valid && seq.vsu_val(ptr)
   io.lreq.reserve := valid && (seq.vcu_val(ptr) && seq.e(ptr).fn.vmu.lreq())
   io.sreq.reserve := valid && (seq.vsu_val(ptr) && seq.e(ptr).fn.vmu.sreq())
+  io.lret.update := io.lla.reserve
+  io.lret.cnt := io.lla.cnt
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

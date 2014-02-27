@@ -48,6 +48,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vau1exp = new BuildExpander(new VAU1Op, 5)
   val vau2exp = new BuildExpander(new VAU2Op, 3)
   val vguexp = new BuildExpander(new VGUOp, 3)
+  val vluwexp = new BuildExpander(new WriteBankOp, 2)
 
   // NOTE: oplen delayed 1 cycle in bank.scala
   // NOTE: rblen delayed 2 cycle in bank.scala
@@ -271,6 +272,11 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       vguexp.bits(2).base := io.seqop.bits.imm.imm
     }
 
+    when (io.seqop.bits.active.vlu) {
+      vluwexp.valid(1) := Bool(true)
+      vluwexp.last(1) := io.seqop.bits.last
+    }
+
     when (io.seqop.bits.active.vsu) {
       rexp.valid(0) := Bool(true)
       rexp.last(0) := io.seqop.bits.last
@@ -284,9 +290,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   }
 
-  io.expand_to_hazard.wen := wexp.valid(0)
+  io.expand_to_hazard.wen := wexp.valid(0) || vluwexp.valid(0)
   io.expand_to_hazard.rlast := rexp.valid(0) && rexp.last(0)
-  io.expand_to_hazard.wlast := wexp.valid(0) && wexp.last(0)
+  io.expand_to_hazard.wlast := wexp.valid(0) && wexp.last(0) || vluwexp.valid(0) && vluwexp.last(0)
 
   io.laneop.read <> rexp.ondeck
   io.laneop.write <> wexp.ondeck
