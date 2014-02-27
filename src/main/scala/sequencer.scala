@@ -20,7 +20,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
 
-    val seq_to_hazard = new SequencerToHazardIO
+    val hazard = new HazardUpdateIO
     val busy = Bool(OUTPUT)
   }
 
@@ -465,10 +465,10 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   }
 
   // output
-  io.seq_to_hazard.stall := (seq.stall.toBits & seq.valid.toBits).orR
-  io.seq_to_hazard.last := valid && islast
-  io.seq_to_hazard.active := seq.e(ptr).active
-  io.seq_to_hazard.cnt := nstrip
+  io.hazard.seq.stall := (seq.stall.toBits & seq.valid.toBits).orR
+  io.hazard.seq.last := valid && islast
+  io.hazard.seq.active := seq.e(ptr).active
+  io.hazard.seq.cnt := nstrip
 
   io.seqop.valid := valid
   io.seqop.bits.cnt := nstrip

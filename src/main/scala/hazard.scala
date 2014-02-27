@@ -4,19 +4,19 @@ import Chisel._
 import Node._
 import Constants._
 
-class SequencerToHazardIO extends Bundle
+class HazardUpdateIO extends Bundle
 {
-  val stall = Bool(OUTPUT)
-  val last = Bool(OUTPUT)
-  val active = new VFU().asOutput
-  val cnt = Bits(OUTPUT, SZ_BCNT)
-}
-
-class ExpanderToHazardIO extends Bundle
-{
-  val wen = Bool(OUTPUT)
-  val rlast = Bool(OUTPUT)
-  val wlast = Bool(OUTPUT)
+  val seq = new Bundle {
+    val stall = Bool(OUTPUT)
+    val last = Bool(OUTPUT)
+    val active = new VFU().asOutput
+    val cnt = Bits(OUTPUT, SZ_BCNT)
+  }
+  val exp = new Bundle {
+    val wen = Bool(OUTPUT)
+    val rlast = Bool(OUTPUT)
+    val wlast = Bool(OUTPUT)
+  }
 }
 
 class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
@@ -37,8 +37,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val issueop = new IssueOpIO
     
-    val seq_to_hazard = new SequencerToHazardIO().flip
-    val expand_to_hazard = new ExpanderToHazardIO().flip
+    val update = new HazardUpdateIO().flip
     val pending_memop = Bool(OUTPUT)
   }
 
@@ -175,15 +174,15 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     }
   }
 
-  when (io.expand_to_hazard.rlast) {
+  when (io.update.exp.rlast) {
     tbl_rport(ptr) := Bool(false)
   }
 
-  when (io.expand_to_hazard.wlast) {
+  when (io.update.exp.wlast) {
     tbl_wport(ptr) := Bool(false)
   }
 
-  when (io.expand_to_hazard.wen) {
+  when (io.update.exp.wen) {
     tbl_vd(ptr).active := Bool(false)
   }
 
@@ -213,20 +212,20 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     }
   }))
 
-  when (io.seq_to_hazard.last) {
+  when (io.update.seq.last) {
     tbl_seqslot(ptr) := Bool(false)
 
-    when (io.seq_to_hazard.cnt === UInt(1)) {
-      clear_shazards(io.seq_to_hazard.active)
+    when (io.update.seq.cnt === UInt(1)) {
+      clear_shazards(io.update.seq.active)
     }
     .otherwise {
-      val cnt = io.seq_to_hazard.cnt - UInt(2)
+      val cnt = io.update.seq.cnt - UInt(2)
       last(cnt) := Bool(true)
       when (last(cnt)) {
-        clear_vfu(cnt) := new VFU().fromBits(clear_vfu(cnt).toBits | io.seq_to_hazard.active.toBits)
+        clear_vfu(cnt) := new VFU().fromBits(clear_vfu(cnt).toBits | io.update.seq.active.toBits)
       }
       .otherwise {
-        clear_vfu(cnt) := io.seq_to_hazard.active
+        clear_vfu(cnt) := io.update.seq.active
       }
     }
   }
@@ -311,7 +310,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       bhazard_vst && op.bits.active.vst
     ).reduce(_||_)
 
-    !io.seq_to_hazard.stall && !dhazard && !shazard && !seqhazard && !bhazard
+    !io.update.seq.stall && !dhazard && !shazard && !seqhazard && !bhazard
   }
 
   io.tvec.ready := check_hazards(io.tvec.op)

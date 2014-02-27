@@ -56,8 +56,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   issue.io.aiw_to_issue <> io.aiw_to_issue
 
   hazard.io.cfg <> issue.io.cfg
-  hazard.io.seq_to_hazard <> seq.io.seq_to_hazard
-  hazard.io.expand_to_hazard <> exp.io.expand_to_hazard
+  hazard.io.update <> seq.io.hazard
+  hazard.io.update <> exp.io.hazard
   hazard.io.tvec <> issue.io.tvec
   hazard.io.vt <> issue.io.vt
 

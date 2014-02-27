@@ -12,7 +12,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     val seqop = new SequencerOpIO().flip
     val laneop = new LaneOpIO
 
-    val expand_to_hazard = new ExpanderToHazardIO
+    val hazard = new HazardUpdateIO
   }
 
   class BuildExpander[T<:Data](gen: T, n: Int)
@@ -300,9 +300,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
   }
 
-  io.expand_to_hazard.wen := wexp.valid(0)
-  io.expand_to_hazard.rlast := rexp.valid(0) && rexp.last(0)
-  io.expand_to_hazard.wlast := wexp.valid(0) && wexp.last(0)
+  io.hazard.exp.wen := wexp.valid(0)
+  io.hazard.exp.rlast := rexp.valid(0) && rexp.last(0)
+  io.hazard.exp.wlast := wexp.valid(0) && wexp.last(0)
 
   io.laneop.read <> rexp.ondeck
   io.laneop.write <> wexp.ondeck
