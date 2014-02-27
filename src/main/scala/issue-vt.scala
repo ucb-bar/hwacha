@@ -188,14 +188,11 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   }
 
   val stall_hold = Reg(init=Bool(false))
-  val mask_stall = Bool()
 
-  val stall_issue = stall_hold || io.irq.issue.illegal || io.irq.issue.illegal_regid || io.xcpt.prop.issue.stall
-  val stall_frontend = stall_issue || !(io.ready && (mask_stall || io.aiw_cntb.ready)) || io.irq.issue.ma_inst || io.irq.issue.fault_inst
+  val irq = io.irq.issue.ma_inst || io.irq.issue.fault_inst || io.irq.issue.illegal || io.irq.issue.illegal_regid
+  val stall = stall_hold || irq || io.xcpt.prop.issue.stall
 
-  when (io.irq.issue.ma_inst || io.irq.issue.fault_inst || io.irq.issue.illegal || io.irq.issue.illegal_regid) {
-    stall_hold := Bool(true)
-  }
+  when (irq) { stall_hold := Bool(true) }
 
 
 //-------------------------------------------------------------------------\\
@@ -215,7 +212,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.imem.req.bits.mispredict := Bool(false)
   io.imem.req.bits.taken := Bool(false)
   io.imem.invalidate := Bool(false)
-  io.imem.resp.ready := io.vf.active && !stall_frontend
+
   val inst = io.imem.resp.bits.data
 
   val cs = rocket.DecodeLogic(inst, VTDecodeTable.default, VTDecodeTable.table)
@@ -232,11 +229,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vs_val :: vs_fp :: Nil = parse_rinfo(vsi)
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
   val vr_val :: vr_fp :: Nil = parse_rinfo(vri)
-
-  val vfu_valid =
-    io.imem.resp.valid && (viu_val || vau0_val || vau1_val || vau2_val || vmu_val)
-
-  io.vf.stop := io.vf.active && io.imem.resp.valid && decode_stop
 
   val rm = Bits(width = 3)
   rm := inst(14,12)
@@ -261,28 +253,41 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
   val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
 
-
-//-------------------------------------------------------------------------\\
-// FIRE & QUEUE LOGIC                                                      \\
-//-------------------------------------------------------------------------\\
-
-  val valid_common = io.vf.active && vfu_valid && !stall_issue
-  val queue_common = valid_common && io.ready && !io.op.bits.reg.vd.zero
-
-  io.vcmdq.cnt.ready := queue_common && io.aiw_cntb.ready
-  io.aiw_cntb.valid := queue_common
-  io.aiw_cntb.bits := cnt
-
-  io.issue_to_aiw.markLast := io.vf.stop
-  io.issue_to_aiw.update_numCnt.valid := queue_common && io.aiw_cntb.ready
-  io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
+  val vfu_val = viu_val || vau0_val || vau1_val || vau2_val || vmu_val
+  val vd_zero = !vd_fp && vd === UInt(0) && vd_val
+  val issue_op = !vd_zero && vfu_val
+  val deq_vcmdq_cnt = issue_op
+  val enq_aiw_cntb = issue_op
 
 
 //-------------------------------------------------------------------------\\
-// ISSUE                                                                   \\
+// READY & VALID LOGIC                                                     \\
 //-------------------------------------------------------------------------\\
 
-  io.op.valid := valid_common && io.aiw_cntb.ready
+  val mask_issue_ready = !issue_op || io.ready
+  val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw_cntb.ready
+
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Array(
+      !stall, io.vf.active,
+      io.imem.resp.valid,
+      mask_issue_ready,
+      mask_aiw_cntb_ready)
+    rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
+  }
+
+  io.imem.resp.ready := fire(io.imem.resp.valid)
+  io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
+  io.op.valid := fire(mask_issue_ready, issue_op)
+  io.aiw_cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
+  io.issue_to_aiw.markLast := fire(null, decode_stop)
+  io.issue_to_aiw.update_numCnt.valid := fire(null, issue_op)
+  io.vf.stop := fire(null, decode_stop)
+
+
+//-------------------------------------------------------------------------\\
+// DATAPATH                                                                \\
+//-------------------------------------------------------------------------\\
 
   io.op.bits.active.viu := viu_val
   io.op.bits.active.vau0 := vau0_val
@@ -310,8 +315,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vr_m1 = vr - UInt(1)
   val vd_m1 = vd - UInt(1)
 
-  mask_stall := decode_stop
-
   io.op.bits.reg.vs.active := vs_val
   io.op.bits.reg.vt.active := vt_val
   io.op.bits.reg.vr.active := vr_val
@@ -319,7 +322,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.reg.vs.zero := !vs_fp && vs === UInt(0)
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vr.zero := !vr_fp && vr === UInt(0)
-  io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0) && vd_val || mask_stall
+  io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
   io.op.bits.reg.vs.float := vs_fp
   io.op.bits.reg.vt.float := vt_fp
   io.op.bits.reg.vr.float := vr_fp
@@ -348,6 +351,9 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := numCnt_rtag
 
+  io.aiw_cntb.bits := cnt
+  io.issue_to_aiw.update_numCnt.bits := numCnt_rtag
+
 
 //-------------------------------------------------------------------------\\
 // IRQ                                                                     \\
@@ -358,9 +364,10 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val illegal_vs = vs_val && (vs >= io.cfg.nfregs && vs_fp || vs >= io.cfg.nxregs && !vs_fp)
   val illegal_vr = vr_val && (vr >= io.cfg.nfregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
 
-  io.irq.issue.ma_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_ma
-  io.irq.issue.fault_inst := io.vf.active && io.imem.resp.valid && io.imem.resp.bits.xcpt_if
-  io.irq.issue.illegal := io.vf.active && io.imem.resp.valid && (!vfu_valid && !mask_stall)
-  io.irq.issue.illegal_regid := io.vf.active && io.imem.resp.valid && (illegal_vd || illegal_vt || illegal_vs || illegal_vr)
+  val irq_common = io.vf.active && io.imem.resp.valid
+  io.irq.issue.ma_inst := irq_common && io.imem.resp.bits.xcpt_ma
+  io.irq.issue.fault_inst := irq_common && io.imem.resp.bits.xcpt_if
+  io.irq.issue.illegal := irq_common && !(vfu_val || decode_stop)
+  io.irq.issue.illegal_regid := irq_common && (illegal_vd || illegal_vt || illegal_vs || illegal_vr)
   io.irq.issue.aux := io.imem.resp.bits.pc
 }

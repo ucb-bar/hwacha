@@ -135,70 +135,60 @@ class IssueTVEC extends Module
   val vd_val :: vd_fp :: Nil = parse_rinfo(vdi)
   val vt_val :: vt_fp :: Nil = parse_rinfo(vti)
 
-  val vfu_valid = viu_val || vmu_val
-
-  val enq_aiw_cmdb = vfu_valid || decode_vf
-  val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
-  val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
-  val enq_aiw_cntb = vfu_valid
-  val enq_aiw_numCntB = vfu_valid || decode_vf
-
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
   val regid_xbase = (cnt >> UInt(3)) * reg_xstride
   val regid_fbase = ((cnt >> UInt(3)) * reg_fstride) + reg_xf_split
 
+  val vfu_val = viu_val || vmu_val
+  val vd_zero = !vd_fp && vd === UInt(0) && vd_val
+  val issue_op = !vd_zero && vfu_val
+  val enq_aiw_cmdb = issue_op || decode_vf
+  val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
+  val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
+  val enq_aiw_cntb = issue_op
+  val enq_aiw_numCntB = issue_op || decode_vf
+
 
 //-------------------------------------------------------------------------\\
-// FIRE & QUEUE LOGIC                                                      \\
+// READY & VALID LOGIC                                                     \\
 //-------------------------------------------------------------------------\\
 
-  val mask_issue_ready = !vfu_valid || io.ready
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
+  val mask_issue_ready = !issue_op || io.ready
   val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw_cmdb.ready
-  val mask_aiw_imm1b_ready = !deq_vcmdq_imm1 || io.aiw_imm1b.ready
-  val mask_aiw_imm2b_ready = !deq_vcmdq_imm2 || io.aiw_imm2b.ready
+  val mask_aiw_imm1b_ready = !enq_aiw_imm1b || io.aiw_imm1b.ready
+  val mask_aiw_imm2b_ready = !enq_aiw_imm2b || io.aiw_imm2b.ready
   val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw_cntb.ready
   val mask_aiw_numCntB_ready = !enq_aiw_numCntB || io.aiw_numCntB.ready
 
-  def construct_rv_blob(exclude: Bool, include: Bool*) = {
+  def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
+      !stall, tvec_active,
       io.vcmdq.cmd.valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
+      mask_issue_ready,
       mask_aiw_cmdb_ready, mask_aiw_imm1b_ready, mask_aiw_imm2b_ready, mask_aiw_cntb_ready, mask_aiw_numCntB_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
 
-  val valid_common = !stall && tvec_active && construct_rv_blob(null)
-
-  val fire_common = valid_common && mask_issue_ready
-  val fire_vcfg = fire_common && decode_vcfg
-  val fire_vsetvl = fire_common && decode_vsetvl
-  val fire_vf = fire_common && decode_vf
-
-  val queue_common = !stall && tvec_active && mask_issue_ready
-  io.vcmdq.cmd.ready := queue_common && construct_rv_blob(io.vcmdq.cmd.valid)
-  io.vcmdq.imm1.ready := queue_common && construct_rv_blob(mask_vxu_immq_valid, deq_vcmdq_imm1)
-  io.vcmdq.imm2.ready := queue_common && construct_rv_blob(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
-  io.vcmdq.cnt.ready := queue_common && construct_rv_blob(null, deq_vcmdq_cnt)
-  io.aiw_cmdb.valid := queue_common && construct_rv_blob(mask_aiw_cmdb_ready, enq_aiw_cmdb)
-  io.aiw_imm1b.valid := queue_common && construct_rv_blob(mask_aiw_imm1b_ready, enq_aiw_imm1b)
-  io.aiw_imm2b.valid := queue_common && construct_rv_blob(mask_aiw_imm2b_ready, enq_aiw_imm2b)
-  io.aiw_cntb.valid := queue_common && construct_rv_blob(mask_aiw_cntb_ready, enq_aiw_cntb)
-  io.aiw_numCntB.valid := queue_common && construct_rv_blob(mask_aiw_numCntB_ready, enq_aiw_numCntB)
-  io.issue_to_aiw.markLast := queue_common && vfu_valid && construct_rv_blob(null)
-
-  io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
-  io.aiw_imm1b.bits := io.vcmdq.imm1.bits
-  io.aiw_imm2b.bits := io.vcmdq.imm2.bits
-  io.aiw_numCntB.bits := Mux(decode_vf, Bits(0), Bits(1))
-  io.aiw_cntb.bits := cnt
+  io.vcmdq.cmd.ready := fire(io.vcmdq.cmd.valid)
+  io.vcmdq.imm1.ready := fire(mask_vxu_immq_valid, deq_vcmdq_imm1)
+  io.vcmdq.imm2.ready := fire(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
+  io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
+  io.op.valid := fire(mask_issue_ready, issue_op)
+  io.aiw_cmdb.valid := fire(mask_aiw_cmdb_ready, enq_aiw_cmdb)
+  io.aiw_imm1b.valid := fire(mask_aiw_imm1b_ready, enq_aiw_imm1b)
+  io.aiw_imm2b.valid := fire(mask_aiw_imm2b_ready, enq_aiw_imm2b)
+  io.aiw_cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
+  io.aiw_numCntB.valid := fire(mask_aiw_numCntB_ready, enq_aiw_numCntB)
+  io.issue_to_aiw.markLast := fire(null, issue_op)
 
 
 //-------------------------------------------------------------------------\\
 // REGISTERS                                                               \\
 //-------------------------------------------------------------------------\\
 
-  when (fire_vcfg) {
+  when (fire(null, decode_vcfg)) {
     reg_vlen := imm1.vlen
     reg_nxregs := imm1.nxregs
     reg_nfregs := imm1.nfregs
@@ -214,10 +204,10 @@ class IssueTVEC extends Module
     reg_xf_split := imm1.xf_split // location of X/F register split in bank: number of xregs times the number of uts per bank
     reg_precision := imm1.prec
   }
-  when (fire_vsetvl) {
+  when (fire(null, decode_vsetvl)) {
     reg_vlen := imm1.vlen
   }
-  when (fire_vf) {
+  when (fire(null, decode_vf)) {
     reg_state := ISSUE_VT
   }
   when (io.vf.stop) {
@@ -240,7 +230,7 @@ class IssueTVEC extends Module
 
   io.active := tvec_active    
   io.vf.active := (reg_state === ISSUE_VT)
-  io.vf.fire := fire_vf
+  io.vf.fire := fire(null, decode_vf)
   io.vf.pc := io.vcmdq.imm1.bits(31,0)
   io.vf.imm1_rtag := io.aiw_to_issue.imm1_rtag
   io.vf.numCnt_rtag := io.aiw_to_issue.numCnt_rtag
@@ -248,10 +238,8 @@ class IssueTVEC extends Module
 
 
 //-------------------------------------------------------------------------\\
-// ISSUE                                                                   \\
+// DATAPATH                                                                \\
 //-------------------------------------------------------------------------\\
-
-  io.op.valid := valid_common && vfu_valid
 
   val vmu_op_vld = vmu_op === VM_VLD
   val vmu_op_vst = vmu_op === VM_VST
@@ -293,7 +281,7 @@ class IssueTVEC extends Module
   io.op.bits.reg.vr.active := Bool(false) // since these affect hazard check results
   io.op.bits.reg.vd.active := vd_val
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
-  io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0) && vd_val
+  io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
   io.op.bits.reg.vt.float := vt_fp
   io.op.bits.reg.vd.float := vd_fp
   io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
@@ -315,4 +303,10 @@ class IssueTVEC extends Module
   io.op.bits.aiw.cnt.rtag := io.aiw_to_issue.cnt_rtag
   io.op.bits.aiw.cnt.utidx := cnt
   io.op.bits.aiw.numcnt.rtag := io.aiw_to_issue.numCnt_rtag
+
+  io.aiw_cmdb.bits := io.vcmdq.cmd.bits.toBits
+  io.aiw_imm1b.bits := io.vcmdq.imm1.bits
+  io.aiw_imm2b.bits := io.vcmdq.imm2.bits
+  io.aiw_numCntB.bits := Mux(decode_vf, Bits(0), Bits(1))
+  io.aiw_cntb.bits := cnt
 }

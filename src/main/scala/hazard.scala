@@ -259,7 +259,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
         op.bits.regcheck.vs.active && dhazard_vs && !op.bits.reg.vs.zero,
         op.bits.regcheck.vt.active && dhazard_vt && !op.bits.reg.vt.zero,
         op.bits.regcheck.vr.active && dhazard_vr && !op.bits.reg.vr.zero,
-        op.bits.regcheck.vd.active && dhazard_vd
+        op.bits.regcheck.vd.active && dhazard_vd && !op.bits.reg.vd.zero
       ).reduce(_||_)
 
     val memop = List(op.bits.active.amo, op.bits.active.utld, op.bits.active.utst, op.bits.active.vld, op.bits.active.vst).reduce(_||_)
@@ -310,14 +310,14 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
       bhazard_vst && op.bits.active.vst
     ).reduce(_||_)
 
-    op.bits.reg.vd.zero || !io.seq_to_hazard.stall && !dhazard && !shazard && !seqhazard && !bhazard
+    !io.seq_to_hazard.stall && !dhazard && !shazard && !seqhazard && !bhazard
   }
 
   io.tvec.ready := check_hazards(io.tvec.op)
   io.vt.ready := check_hazards(io.vt.op)
 
-  val fire_tvec = io.tvec.op.valid && !io.tvec.op.bits.reg.vd.zero && io.tvec.ready
-  val fire_vt = io.vt.op.valid && !io.vt.op.bits.reg.vd.zero && io.vt.ready
+  val fire_tvec = io.tvec.op.valid && io.tvec.ready
+  val fire_vt = io.vt.op.valid && io.vt.ready
 
   io.issueop.valid := Mux(io.tvec.active, fire_tvec, fire_vt)
   io.issueop.bits := Mux(io.tvec.active, io.tvec.op.bits, io.vt.op.bits)
