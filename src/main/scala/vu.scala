@@ -102,6 +102,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     io.vpfcmdq.imm1.ready := Bool(true)
     io.vpfcmdq.imm2.ready := Bool(true)
     io.vpfcmdq.cnt.ready := Bool(true)
+    io.vpftlb.req.valid := Bool(false)
   }
 
   vcmdqcnt.cmd.io.dec := vcmdq.io.enq.cmd.ready && io.vcmdq.cmd.valid
