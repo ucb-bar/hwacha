@@ -206,9 +206,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     if (i==n-1) {
       clear_vfu(i) := clear_vfu(i).fromBits(Bits(0))
     } else {
-      when (step_en) {
-        clear_vfu(i) := clear_vfu(i+1)
-      }
+      clear_vfu(i) := clear_vfu(i+1)
     }
   }))
 
@@ -221,12 +219,15 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     .otherwise {
       val cnt = io.update.seq.cnt - UInt(2)
       last(cnt) := Bool(true)
-      when (last(cnt)) {
-        clear_vfu(cnt) := new VFU().fromBits(clear_vfu(cnt).toBits | io.update.seq.active.toBits)
-      }
-      .otherwise {
-        clear_vfu(cnt) := io.update.seq.active
-      }
+      when (io.update.seq.active.vau0) { clear_vfu(cnt).vau0 := Bool(true) }
+      when (io.update.seq.active.vau1t) { clear_vfu(cnt).vau1t := Bool(true) }
+      when (io.update.seq.active.vau1f) { clear_vfu(cnt).vau1f := Bool(true) }
+      when (io.update.seq.active.vau2t) { clear_vfu(cnt).vau2t := Bool(true) }
+      when (io.update.seq.active.vau2f) { clear_vfu(cnt).vau2f := Bool(true) }
+      when (io.update.seq.active.vgu) { clear_vfu(cnt).vgu := Bool(true) }
+      when (io.update.seq.active.vcu) { clear_vfu(cnt).vcu := Bool(true) }
+      when (io.update.seq.active.vlu) { clear_vfu(cnt).vlu := Bool(true) }
+      when (io.update.seq.active.vsu) { clear_vfu(cnt).vsu := Bool(true) }
     }
   }
 
