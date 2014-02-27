@@ -45,7 +45,8 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val wexp = new BuildExpander(new WriteBankOp, conf.shift_buf_write)
   val viuexp = new BuildExpander(new VIUOp, 3)
   val vau0exp = new BuildExpander(new VAU0Op, 4)
-  val vau1exp = new BuildExpander(new VAU1Op, 5)
+  val vau1texp = new BuildExpander(new VAU1Op, 5)
+  val vau1fexp = new BuildExpander(new VAU1Op, 5)
   val vau2exp = new BuildExpander(new VAU2Op, 3)
   val vguexp = new BuildExpander(new VGUOp, 3)
   val vluexp = new BuildExpander(new VLUOp, 1)
@@ -83,7 +84,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.last(viu_wptr) := io.seqop.bits.last
       wexp.bits(viu_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(viu_wptr).addr := io.seqop.bits.reg.vd.id
-      wexp.bits(viu_wptr).sel := Bits(4)
+      wexp.bits(viu_wptr).sel := Bits(5)
 
       when (io.seqop.bits.fn.viu.rtype()) {
         viuexp.valid(2) := Bool(true)
@@ -125,7 +126,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(1).addr := io.seqop.bits.reg.vt.id
       rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
       rexp.bits(1).oplen := Bits("b001")
-      rexp.bits(1).rblen := rblen(Bits("b0000_0011"))
+      rexp.bits(1).rblen := rblen(Bits("b11"))
 
       when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(0) := Bool(false) }
       when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(1) := Bool(false) }
@@ -143,77 +144,82 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       vau0exp.bits(3).fn := io.seqop.bits.fn.vau0
     }
 
-    when (io.seqop.bits.active.vau1) {
-      when (io.seqop.bits.fn.vau1.r4type()) {
-        rexp.valid(0) := Bool(true)
-        rexp.last(0) := io.seqop.bits.last
-        rexp.bits(0).cnt := io.seqop.bits.cnt
-        rexp.bits(0).addr := io.seqop.bits.reg.vs.id
-        rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
-        rexp.bits(0).oplen := Bits("b100")
-        rexp.bits(0).rblen := rblen(Bits(0))
+    def expand_vau1(cond: Bool, rbl: Int, wsel: Int, vau1exp: BuildExpander[VAU1Op]) = {
+      when (cond) {
+        when (io.seqop.bits.fn.vau1.r4type()) {
+          rexp.valid(0) := Bool(true)
+          rexp.last(0) := io.seqop.bits.last
+          rexp.bits(0).cnt := io.seqop.bits.cnt
+          rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+          rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
+          rexp.bits(0).oplen := Bits("b100")
+          rexp.bits(0).rblen := rblen(Bits(0))
 
-        rexp.valid(1) := Bool(true)
-        rexp.last(1) := io.seqop.bits.last
-        rexp.bits(1).cnt := io.seqop.bits.cnt
-        rexp.bits(1).addr := io.seqop.bits.reg.vt.id
-        rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
-        rexp.bits(1).oplen := Bits("b010")
-        rexp.bits(1).rblen := rblen(Bits(0))
+          rexp.valid(1) := Bool(true)
+          rexp.last(1) := io.seqop.bits.last
+          rexp.bits(1).cnt := io.seqop.bits.cnt
+          rexp.bits(1).addr := io.seqop.bits.reg.vt.id
+          rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
+          rexp.bits(1).oplen := Bits("b010")
+          rexp.bits(1).rblen := rblen(Bits(0))
 
-        rexp.valid(2) := Bool(true)
-        rexp.last(2) := io.seqop.bits.last
-        rexp.bits(2).cnt := io.seqop.bits.cnt
-        rexp.bits(2).addr := io.seqop.bits.reg.vr.id
-        rexp.bits(2).ren := ren(io.seqop.bits.reg.vr)
-        rexp.bits(2).oplen := Bits("b001")
-        rexp.bits(2).rblen := rblen(Bits("b0001_1100"))
+          rexp.valid(2) := Bool(true)
+          rexp.last(2) := io.seqop.bits.last
+          rexp.bits(2).cnt := io.seqop.bits.cnt
+          rexp.bits(2).addr := io.seqop.bits.reg.vr.id
+          rexp.bits(2).ren := ren(io.seqop.bits.reg.vr)
+          rexp.bits(2).oplen := Bits("b001")
+          rexp.bits(2).rblen := rblen(Bits("b111") << UInt(rbl))
 
-        when (io.seqop.bits.reg.vs.zero) { rexp.bits(2).rblen(2) := Bool(false) }
-        when (io.seqop.bits.reg.vt.zero) { rexp.bits(2).rblen(3) := Bool(false) }
-        when (io.seqop.bits.reg.vr.zero) { rexp.bits(2).rblen(4) := Bool(false) }
-      }
-      .otherwise {
-        rexp.valid(0) := Bool(true)
-        rexp.last(0) := io.seqop.bits.last
-        rexp.bits(0).cnt := io.seqop.bits.cnt
-        rexp.bits(0).addr := io.seqop.bits.reg.vs.id
-        rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
-        rexp.bits(0).oplen := Bits("b100")
-        rexp.bits(0).rblen := rblen(Bits(0))
+          when (io.seqop.bits.reg.vs.zero) { rexp.bits(2).rblen(rbl) := Bool(false) }
+          when (io.seqop.bits.reg.vt.zero) { rexp.bits(2).rblen(rbl+1) := Bool(false) }
+          when (io.seqop.bits.reg.vr.zero) { rexp.bits(2).rblen(rbl+2) := Bool(false) }
+        }
+        .otherwise {
+          rexp.valid(0) := Bool(true)
+          rexp.last(0) := io.seqop.bits.last
+          rexp.bits(0).cnt := io.seqop.bits.cnt
+          rexp.bits(0).addr := io.seqop.bits.reg.vs.id
+          rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
+          rexp.bits(0).oplen := Bits("b100")
+          rexp.bits(0).rblen := rblen(Bits(0))
 
-        rexp.valid(1) := Bool(true)
-        rexp.last(1) := io.seqop.bits.last
-        rexp.bits(1).cnt := io.seqop.bits.cnt
-        rexp.bits(1).addr := io.seqop.bits.reg.vt.id
-        rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
-        rexp.bits(1).oplen := Bits("b001")
-        rexp.bits(1).rblen := rblen(Bits("b0001_0100"))
+          rexp.valid(1) := Bool(true)
+          rexp.last(1) := io.seqop.bits.last
+          rexp.bits(1).cnt := io.seqop.bits.cnt
+          rexp.bits(1).addr := io.seqop.bits.reg.vt.id
+          rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
+          rexp.bits(1).oplen := Bits("b001")
+          rexp.bits(1).rblen := rblen(Bits("b101") << UInt(rbl))
 
-        when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(2) := Bool(false) }
-        when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(4) := Bool(false) }
-      }
+          when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(rbl) := Bool(false) }
+          when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(rbl+2) := Bool(false) }
+        }
 
-      val n = conf.fma_stages
-      val vau1_wptr = io.seqop.bits.fn.vau1.wptr_sel(Bits(n+3), Bits(n+4))
+        val n = conf.fma_stages
+        val vau1_wptr = io.seqop.bits.fn.vau1.wptr_sel(Bits(n+3), Bits(n+4))
 
-      wexp.valid(vau1_wptr) := Bool(true)
-      wexp.last(vau1_wptr) := io.seqop.bits.last
-      wexp.bits(vau1_wptr).cnt := io.seqop.bits.cnt
-      wexp.bits(vau1_wptr).addr := io.seqop.bits.reg.vd.id
-      wexp.bits(vau1_wptr).sel := Bits(1)
+        wexp.valid(vau1_wptr) := Bool(true)
+        wexp.last(vau1_wptr) := io.seqop.bits.last
+        wexp.bits(vau1_wptr).cnt := io.seqop.bits.cnt
+        wexp.bits(vau1_wptr).addr := io.seqop.bits.reg.vd.id
+        wexp.bits(vau1_wptr).sel := Bits(wsel)
 
-      when (io.seqop.bits.fn.vau1.r4type()) {
-        vau1exp.valid(4) := Bool(true)
-        vau1exp.bits(4).cnt := io.seqop.bits.cnt
-        vau1exp.bits(4).fn := io.seqop.bits.fn.vau1
-      }
-      .otherwise {
-        vau1exp.valid(3) := Bool(true)
-        vau1exp.bits(3).cnt := io.seqop.bits.cnt
-        vau1exp.bits(3).fn := io.seqop.bits.fn.vau1
+        when (io.seqop.bits.fn.vau1.r4type()) {
+          vau1exp.valid(4) := Bool(true)
+          vau1exp.bits(4).cnt := io.seqop.bits.cnt
+          vau1exp.bits(4).fn := io.seqop.bits.fn.vau1
+        }
+        .otherwise {
+          vau1exp.valid(3) := Bool(true)
+          vau1exp.bits(3).cnt := io.seqop.bits.cnt
+          vau1exp.bits(3).fn := io.seqop.bits.fn.vau1
+        }
       }
     }
+
+    expand_vau1(io.seqop.bits.active.vau1t, 2, 1, vau1texp)
+    expand_vau1(io.seqop.bits.active.vau1f, 5, 2, vau1fexp)
 
     when (io.seqop.bits.active.vau2) {
       rexp.valid(0) := Bool(true)
@@ -222,9 +228,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).addr := io.seqop.bits.reg.vs.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
       rexp.bits(0).oplen := Bits("b001")
-      rexp.bits(0).rblen := rblen(Bits("b0010_0000"))
+      rexp.bits(0).rblen := rblen(Bits("b1") << UInt(8))
 
-      when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(5) := Bool(false) }
+      when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(8) := Bool(false) }
 
       val vau2_wptr = Bits(conf.fconv_stages+2)
 
@@ -232,7 +238,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.last(vau2_wptr) := io.seqop.bits.last
       wexp.bits(vau2_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(vau2_wptr).addr := io.seqop.bits.reg.vd.id
-      wexp.bits(vau2_wptr).sel := Bits(2)
+      wexp.bits(vau2_wptr).sel := Bits(3)
 
       vau2exp.valid(2) := Bool(true)
       vau2exp.bits(2).cnt := io.seqop.bits.cnt
@@ -248,9 +254,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(0).addr := io.seqop.bits.reg.vs.id
         rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
         rexp.bits(0).oplen := Bits("b001")
-        rexp.bits(0).rblen := rblen(Bits("b0100_0000"))
+        rexp.bits(0).rblen := rblen(Bits("b1") << UInt(9))
 
-        when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(6) := Bool(false) }
+        when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(9) := Bool(false) }
       }
       .otherwise {
         rexp.bits(0).ren := Bool(false)
@@ -269,7 +275,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.last(1) := io.seqop.bits.last
       wexp.bits(1).cnt := io.seqop.bits.cnt
       wexp.bits(1).addr := io.seqop.bits.reg.vd.id
-      wexp.bits(1).sel := Bits(3)
+      wexp.bits(1).sel := Bits(4)
 
       vluexp.valid(0) := Bool(true)
       vluexp.bits(0).cnt := io.seqop.bits.cnt
@@ -283,9 +289,9 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       rexp.bits(0).addr := io.seqop.bits.reg.vt.id
       rexp.bits(0).ren := ren(io.seqop.bits.reg.vt)
       rexp.bits(0).oplen := Bits("b001")
-      rexp.bits(0).rblen := rblen(Bits("b1000_0000"))
+      rexp.bits(0).rblen := rblen(Bits("b1") << UInt(10))
 
-      when (io.seqop.bits.reg.vt.zero) { rexp.bits(0).rblen(7) := Bool(false) }
+      when (io.seqop.bits.reg.vt.zero) { rexp.bits(0).rblen(10) := Bool(false) }
 
       vsuexp.valid(2) := Bool(true)
       vsuexp.bits(2).cnt := io.seqop.bits.cnt
@@ -302,12 +308,14 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   io.laneop.write <> wexp.ondeck
   io.laneop.viu <> viuexp.ondeck
   io.laneop.vau0 <> vau0exp.ondeck
-  io.laneop.vau1 <> vau1exp.ondeck
+  io.laneop.vau1t <> vau1texp.ondeck
+  io.laneop.vau1f <> vau1fexp.ondeck
   io.laneop.vau2 <> vau2exp.ondeck
   io.laneop.vgu <> vguexp.ondeck
   io.laneop.vlu <> vluexp.ondeck
   io.laneop.vsu <> vsuexp.ondeck
 
   io.xcpt.report.exp.empty :=
-    !(List(rexp, wexp, viuexp, vau0exp, vau1exp, vau2exp, vguexp, vluexp, vsuexp).map(e => e.valid.toBits().orR()).reduce(_||_))
+    !(List(rexp, wexp, viuexp, vau0exp, vau1texp, vau1fexp, vau2exp, vguexp, vluexp, vsuexp).map(
+      e => e.valid.toBits().orR()).reduce(_||_))
 }

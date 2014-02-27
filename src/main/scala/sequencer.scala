@@ -49,7 +49,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     // allowing up to 32 elements to proceed in half precision
     // allowing up to 16 elements to proceed in single precision
     def turbo_capable(slot: UInt) =
-      e(slot).active.vau1 ||
+      e(slot).active.vau1t || e(slot).active.vau1f ||
       e(slot).active.vlu ||
       e(slot).active.vsu
 
@@ -114,7 +114,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
     def alu_active(slot: UInt) =
       e(slot).active.viu ||
-      e(slot).active.vau0 || e(slot).active.vau1 || e(slot).active.vau2
+      e(slot).active.vau0 || e(slot).active.vau1t || e(slot).active.vau1f || e(slot).active.vau2
 
     def ldst_active(slot: UInt) =
       e(slot).active.vlu || e(slot).active.vsu
@@ -221,7 +221,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.valid(ptr1) := Bool(true)
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := turbo_last
-      seq.e(ptr1).active.vau1 := Bool(true)
+      when (io.issueop.bits.sel.vau1) { seq.e(ptr1).active.vau1t := Bool(true) }
+      .otherwise { seq.e(ptr1).active.vau1f := Bool(true) }
       seq.e(ptr1).fn.vau1 := io.issueop.bits.fn.vau1
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
@@ -438,7 +439,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
         seq.last(ptr) := Bool(false)
         seq.e(ptr).active.viu := Bool(false)
         seq.e(ptr).active.vau0 := Bool(false)
-        seq.e(ptr).active.vau1 := Bool(false)
+        seq.e(ptr).active.vau1t := Bool(false)
+        seq.e(ptr).active.vau1f := Bool(false)
         seq.e(ptr).active.vau2 := Bool(false)
         seq.e(ptr).active.vgu := Bool(false)
         seq.e(ptr).active.vcu := Bool(false)
