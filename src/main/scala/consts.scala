@@ -266,4 +266,6 @@ trait Commands
   val CMD_VFLSTW = Bits("b1_01_0_1_0_10",8)
   val CMD_VFSSTD = Bits("b1_01_1_1_0_11",8)
   val CMD_VFSSTW = Bits("b1_01_1_1_0_10",8)
+
+  def is_cmd_pfw(cmd: Bits) = cmd(4)
 }

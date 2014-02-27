@@ -176,7 +176,6 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val irq = new IRQIO
     val xcpt = new XCPTIO().flip
-    val stall = Bool(INPUT)
 
     val pf = new VVAQIO().flip
     val lane = new VAQLaneIO().flip
@@ -244,7 +243,7 @@ class VMUAddress(implicit conf: HwachaConfiguration) extends Module
     val vpaq_arb = Module(new RRArbiter(new VPAQEntry, 2))
 
     vpaq_arb.io.in(0) <> vpaq_throttle.io.masked
-    vpaq_arb.io.in(1) <> MaskStall(vpfpaq.io.deq, io.stall)
+    vpaq_arb.io.in(1) <> MaskStall(vpfpaq.io.deq, io.xcpt.prop.vmu.stall)
     io.memif <> vpaq_arb.io.out
   }
   else {

@@ -12,8 +12,8 @@ import uncore.constants.MemoryOpConstants._
 class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
-    val vvaq = new VVAQIO
     val vcmdq = new VCMDQIO().flip
+    val vvaq = new VVAQIO
   }
 
   val VRU_Idle = Bits(0, 2)
@@ -108,7 +108,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val pf_len_int = pow(2,OFFSET_BITS).toInt
 
   // cmd(4)==1 -> vector store
-  io.vvaq.bits.cmd := Mux(cmd_reg(4), M_PFW, M_PFR)
+  io.vvaq.bits.cmd := Mux(is_cmd_pfw(cmd_reg), M_PFW, M_PFR)
   io.vvaq.bits.typ := Bits(0)
   io.vvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
   io.vvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
