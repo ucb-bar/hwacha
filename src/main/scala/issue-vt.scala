@@ -258,6 +258,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val vfu_val = viu_val || vau0_val || vau1_val || vau2_val || vmu_val
   val vd_zero = !vd_fp && vd === UInt(0) && vd_val
   val issue_op = !vd_zero && vfu_val
+
   val deq_vcmdq_cnt = issue_op
   val enq_aiw_cntb = issue_op
 

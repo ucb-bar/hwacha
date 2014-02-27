@@ -16,6 +16,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
+    val keepcfg = Bool(INPUT)
     val irq = new IRQIO
     val xcpt = new XCPTIO().flip
 
@@ -52,6 +53,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   vt.io.cfg <> tvec.io.cfg
   io.irq <> vt.io.irq
   vt.io.vf <> tvec.io.vf
+  tvec.io.keepcfg := io.keepcfg
   io.pending_vf := tvec.io.vf.active
 
   // vcmdq

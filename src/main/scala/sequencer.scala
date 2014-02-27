@@ -21,6 +21,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
 
     val seq_to_hazard = new SequencerToHazardIO
+    val busy = Bool(OUTPUT)
   }
 
   class BuildSequencer[T<:Data](n: Int)
@@ -480,6 +481,8 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.vmu.sdata.la.reserve := valid && seq.vsu_val(ptr)
   io.lreq.reserve := valid && (seq.vcu_val(ptr) && seq.e(ptr).fn.vmu.lreq())
   io.sreq.reserve := valid && (seq.vsu_val(ptr) && seq.e(ptr).fn.vmu.sreq())
+
+  io.busy := seq.valid.reduce(_||_)
 
   // aiw
   io.aiwop.imm1.valid := Bool(false)

@@ -20,13 +20,13 @@ class HwachaConfigIO extends Bundle
 
 object TVECDecodeTable
 {
-                  //                                   deq_vcmdq_imm1
-                  //                                   | deq_vcmdq_imm2
-                  //                                   | | deq_vcmdq_cnt
-                  //                                   | | | decode_vcfg
-                  //                                   | | | | decode_vsetvl
-                  //  vd vt VIUfn VMUfn                | | | | | decode_vf
-                  //   |  |  |    |                    | | | | | |
+                  //                                      deq_vcmdq_imm1
+                  //                                      | deq_vcmdq_imm2
+                  //                                      | | deq_vcmdq_cnt
+                  //                                      | | | decode_vcfg
+                  //                                      | | | | decode_vsetvl
+                  //  vd vt VIUfn VMUfn                   | | | | | decode_vf
+                  //   |  |  |    |                       | | | | | |
   val default =   List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  F,F,F,F,F,F)
   val table = Array(
     CMD_VSETCFG-> List(R_,R_,F,M0,M0,F,MT_X, M_X,  VM_X,  T,F,F,T,T,F),
@@ -77,6 +77,7 @@ class IssueTVEC extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
+    val keepcfg = Bool(INPUT)
     val xcpt = new XCPTIO().flip
 
     val active = Bool(OUTPUT)
@@ -148,6 +149,8 @@ class IssueTVEC extends Module
   val vfu_val = viu_val || vmu_val
   val vd_zero = !vd_fp && vd === UInt(0) && vd_val
   val issue_op = !vd_zero && vfu_val
+
+  val deq_vcmdq_cmd = !decode_vcfg || !io.keepcfg
   val enq_aiw_cmdb = issue_op || decode_vf
   val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
   val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
@@ -159,6 +162,7 @@ class IssueTVEC extends Module
 // READY & VALID LOGIC                                                     \\
 //-------------------------------------------------------------------------\\
 
+  val mask_vxu_cmdq_valid = io.vcmdq.cmd.valid && deq_vcmdq_cmd
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_issue_ready = !issue_op || io.ready
@@ -171,13 +175,13 @@ class IssueTVEC extends Module
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
       !stall, tvec_active,
-      io.vcmdq.cmd.valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
+      mask_vxu_cmdq_valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
       mask_issue_ready,
       mask_aiw_cmdb_ready, mask_aiw_imm1b_ready, mask_aiw_imm2b_ready, mask_aiw_cntb_ready, mask_aiw_numCntB_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
 
-  io.vcmdq.cmd.ready := fire(io.vcmdq.cmd.valid)
+  io.vcmdq.cmd.ready := fire(mask_vxu_cmdq_valid, deq_vcmdq_cmd)
   io.vcmdq.imm1.ready := fire(mask_vxu_immq_valid, deq_vcmdq_imm1)
   io.vcmdq.imm2.ready := fire(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)

@@ -43,6 +43,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   io.irq <> issue.io.irq
 
+  issue.io.keepcfg := seq.io.busy
   issue.io.xcpt <> io.xcpt
   issue.io.vcmdq <> io.vcmdq
   issue.io.imem <> io.imem
