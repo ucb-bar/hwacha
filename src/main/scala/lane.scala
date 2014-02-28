@@ -49,7 +49,6 @@ class LaneMemDataIO extends Bundle
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
     val vmu = new VMUIO
     val lret = new MRTLoadRetireIO
@@ -72,7 +71,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   for (i <- 0 until SZ_BANK) {
     val bank = Module(new Bank)
 
-    bank.io.active := io.cfg.bactive(i)
     bank.io.op.in <> (if (i == 0) io.op else conn.last)
     
     conn += bank.io.op.out

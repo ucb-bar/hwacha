@@ -14,8 +14,6 @@ class BankOpIO extends Bundle
 class Bank extends Module
 {
   val io = new Bundle {
-    val active = Bool(INPUT)
-    
     val op = new Bundle {
       val in = new BankOpIO().flip
       val out = new BankOpIO
@@ -36,7 +34,7 @@ class Bank extends Module
     }
   }
 
-  def op_valid(op: ValidIO[LaneOp]) = op.valid && op.bits.cnt.orR && io.active
+  def op_valid(op: ValidIO[LaneOp]) = op.valid && op.bits.cnt.orR
 
   val s1_read_op = Reg(Valid(new ReadBankOp).asDirectionless)
   s1_read_op.valid := io.op.in.read.valid
@@ -126,9 +124,9 @@ class Bank extends Module
   alu.io.in0 := viu_in0
   alu.io.in1 := viu_in1
 
-  io.op.out.read := Mux(io.active, s1_read_op, io.op.in.read)
-  io.op.out.write := Mux(io.active, s1_write_op, io.op.in.write)
-  io.op.out.viu := Mux(io.active, s1_viu_op, io.op.in.viu)
+  io.op.out.read := s1_read_op
+  io.op.out.write := s1_write_op
+  io.op.out.viu := s1_viu_op
 }
 
 class BankRegfile extends Module
