@@ -263,7 +263,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val bhazard_utld = tbl_rport(ptr2) | tbl_wport(ptr5)
   val bhazard_utst = tbl_rport(ptr2) | tbl_rport(ptr3)
   val bhazard_vld = tbl_wport(ptr4)
-  val bhazard_vst = tbl_rport(ptr3)
+  val bhazard_vst = tbl_rport(ptr2)
 
   def check_hazards(op: IssueOpIO) = {
     def check_dhazard(tbl: RegHazardTblInfo, rinfo: RegInfo, rhzinfo: RegHazardInfo) =

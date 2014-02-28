@@ -88,7 +88,7 @@ class VMUFn extends Bundle
 
   def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
   def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_UST) || (op === VM_VST)
+  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
 }
 
 
@@ -339,7 +339,7 @@ class BWQEntry extends Bundle
 
 class BWQInternalEntry(implicit conf: HwachaConfiguration) extends BWQEntry
 {
-  val tag = UInt(width = log2Up(conf.nvlreq))
+  val tag = UInt(width = /*log2Up(conf.nvlreq)*/ SZ_VLEN - log2Up(conf.nbanks))
   override def clone = new BWQInternalEntry().asInstanceOf[this.type]
 }
 

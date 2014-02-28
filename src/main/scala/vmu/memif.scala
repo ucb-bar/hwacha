@@ -46,5 +46,5 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
 
   io.vldq.resp.bits.tag := io.dmem.resp.bits.tag
   io.vldq.resp.bits.data := io.dmem.resp.bits.data_subword
-  io.vldq.resp.valid := io.dmem.resp.valid && (resp_cmd_load || resp_cmd_amo)
+  io.vldq.resp.valid := io.dmem.resp.valid && io.dmem.resp.bits.has_data // (resp_cmd_load || resp_cmd_amo)
 }

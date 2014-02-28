@@ -57,6 +57,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   lane.io.op <> exp.io.laneop
   lane.io.bwqs <> deck.io.bwqs
 
+  deck.io.cfg <> issue.io.cfg
   deck.io.op <> issue.io.deckop
   deck.io.lla <> seq.io.lla
   deck.io.sla <> seq.io.sla

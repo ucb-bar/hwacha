@@ -154,7 +154,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vmu.io.xcpt <> io.xcpt
 
   vmu.io.lane <> vxu.io.vmu
-  //vmu.io.evac.vaq <> evac.io.vaq
+  vmu.io.evac.vaq <> evac.io.vaq
   vmu.io.evac.vsdq <> evac.io.vsdq
   vmu.io.dmem <> io.dmem
   vmu.io.vtlb <> io.vtlb

@@ -13,7 +13,7 @@ class StoreDataUnit(implicit conf: HwachaConfiguration) extends Module
     val memif = new VSDQIO
   }
 
-  val arb = Module(new Arbiter(Bits(width = SZ_VMU_ADDR), 2))
+  val arb = Module(new Arbiter(Bits(width = SZ_VMU_DATA), 2))
   val vsdq = Module(new Queue(Bits(width = SZ_VMU_DATA), conf.vmu.nvsdq))
 
   arb.io.in(0) <> io.lane

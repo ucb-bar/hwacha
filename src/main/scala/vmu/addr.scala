@@ -152,7 +152,7 @@ class AddressTLB extends Module
 
 class VPAQ(implicit conf: HwachaConfiguration) extends Module
 {
-  val sz = log2Down(conf.vmu.nvpaq + 1)
+  val sz = log2Down(conf.vmu.nvpaq) + 1
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO

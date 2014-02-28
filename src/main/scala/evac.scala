@@ -16,8 +16,8 @@ class Evac extends Module
     val aiw = new AIWEvacIO
     val vcmdq = new VCMDQIO().flip
 
-    val vaq = new VVAQIO
-    val vsdq = new VSDQIO
+    val vaq = new vmunit.VVAQIO
+    val vsdq = new vmunit.VSDQIO
   }
   
   val n = Bits(0,1)
@@ -129,10 +129,9 @@ class Evac extends Module
   io.vcmdq.cnt.ready := Bool(false)
 
   io.vaq.valid := Bool(false)
-  io.vaq.bits.cmd := M_XWR
-  io.vaq.bits.typ := MT_D
-  io.vaq.bits.idx := addr_reg(PGIDX_BITS-1, 0)
-  io.vaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
+//  io.vaq.bits.cmd := M_XWR
+//  io.vaq.bits.typ := MT_D
+  io.vaq.bits := addr_reg
 
   io.vsdq.valid := Bool(false)
   io.vsdq.bits := Bits(0)

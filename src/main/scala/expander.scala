@@ -191,6 +191,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
           rexp.bits(0).ren := ren(io.seqop.bits.reg.vs)
           rexp.bits(0).oplen := Bits("b100")
           rexp.bits(0).rblen := rblen(Bits(0))
+          rexp.bits(0).brqen := Bool(false)
 
           rexp.valid(1) := Bool(true)
           rexp.last(1) := io.seqop.bits.last
@@ -199,6 +200,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
           rexp.bits(1).ren := ren(io.seqop.bits.reg.vt)
           rexp.bits(1).oplen := Bits("b001")
           rexp.bits(1).rblen := rblen(Bits("b101") << UInt(rbl))
+          rexp.bits(1).brqen := Bool(false)
 
           when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(rbl) := Bool(false) }
           when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(rbl+2) := Bool(false) }

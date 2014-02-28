@@ -60,8 +60,9 @@ class VMUFn extends Bundle
   val typ = Bits(width = MT_SZ)
 
   def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
-  def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_UST) || (op === VM_VST)
+  def lreq(dummy: Int = 0) = (op === VM_VLD) || (op === VM_ULD) || amoreq()
+  def sreq(dummy: Int = 0) = (op === VM_VST) || (op === VM_UST)
+  def amoreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op))
 }
 
 class VMUOp extends Bundle

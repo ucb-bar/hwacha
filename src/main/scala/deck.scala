@@ -12,7 +12,7 @@ class DeckOpIO extends DecoupledIO(new DeckOp)
 class Deck(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO
+    val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
     val lla = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip()
@@ -41,7 +41,8 @@ class Deck(implicit conf: HwachaConfiguration) extends Module
   io.vmu <> vlu.io.vmu
 
   vsu.io.cfg <> io.cfg
-  vsu.io.op.valid := opq.io.deq.valid && opq.io.deq.bits.fn.sreq()
+  vsu.io.op.valid := opq.io.deq.valid &&
+    (opq.io.deq.bits.fn.sreq() || opq.io.deq.bits.fn.amoreq())
   vsu.io.op.bits := opq.io.deq.bits
   vsu.io.la <> io.sla
   vsu.io.brqs <> io.brqs
@@ -107,7 +108,7 @@ class Deck(implicit conf: HwachaConfiguration) extends Module
 class VLU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO
+    val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
     val bwqs = Vec.fill(conf.nbanks){new BWQIO}
@@ -147,8 +148,8 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val ld_data = Mux1H(UIntToOH(vldq.bits.meta.shift),
     Vec((0 until SZ_VMU_DATA by 8).map(i => (vldq.bits.data >> UInt(i)))))
 */
-  assert(!vldq.fire() || vldq.bits.meta.utcnt === UInt(1),
-    "multiple-element loads currently unsupported by BWQs")
+//  assert(!vldq.fire() || vldq.bits.meta.utcnt === UInt(1),
+//    "multiple-element loads currently unsupported by BWQs")
 
 //--------------------------------------------------------------------\\
 // floating-point recoding
@@ -177,15 +178,13 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 // bank write queues
 //--------------------------------------------------------------------\\
 
-  val vd_base = io.cfg.xfsplit & Fill(SZ_BREGLEN, op.reg.vd.float)
-  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
-
   val lgbank = log2Up(conf.nbanks)
   val vd_bank_id = vldq.bits.meta.utidx(lgbank-1, 0)
   val vd_bank_ut = vldq.bits.meta.utidx(SZ_VLEN-1, lgbank)
-  val vd_addr = (vd_bank_ut * vd_stride) + vd_base + op.reg.vd.id
+  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
+  val vd_addr = (vd_bank_ut * vd_stride) + op.reg.vd.id
 
-  val bw_stat_idx = vldq.bits.meta.utidx - op.utidx
+  val bw_stat_idx = vldq.bits.meta.utidx >> UInt(lgbank) // - op.utidx
 
   val bwqs_deq = new ArrayBuffer[DecoupledIO[BWQInternalEntry]]
   val bwqs_enq_rdy = new ArrayBuffer[Bool]
@@ -209,13 +208,13 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 
   val bw_stat = Reg(Bits(width = conf.nvlreq))
   val bw_stat_update = (0 until conf.nbanks).map(i =>
-    (UIntToOH(bwqs_deq(i).bits.tag) &
+    (UIntToOH(Cat(bwqs_deq(i).bits.tag, UInt(i, lgbank)) - op.utidx) &
       Fill(conf.nvlreq, bwqs_deq(i).fire()))
     ).reduce(_|_)
   val bw_stat_next = bw_stat | bw_stat_update
   val bw_stat_shift = io.la.cnt(SZ_LGBANK1,0) & Fill(SZ_LGBANK1, io.la.reserve)
 
-  bw_stat := Mux1H(UIntToOH(bw_stat_shift(SZ_LGBANK1,0)),
+  bw_stat := Mux1H(UIntToOH(bw_stat_shift),
     Vec((0 to conf.nbanks).map(i => (bw_stat_next >> UInt(i))))) &
     Fill(conf.nvlreq, state != s_idle) // initialization
 
@@ -232,7 +231,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 class VSU(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO
+    val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
     val brqs = Vec.fill(conf.nbanks){new BRQIO().flip}
@@ -321,7 +320,7 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
     Vec(!op.fn.float, op_fp_d, op_fp_s, op_fp_h),
     Vec(br_data, br_data_f_dp, br_data_f_sp, br_data_f_hp))
 
-  io.vmu.sdata.valid := brqs_deq(bank_id).valid
   io.vmu.sdata.bits := st_data
+  io.vmu.sdata.valid := brqs_deq(bank_id).valid && (state === s_busy)
   brqs_deq(bank_id).ready := io.vmu.sdata.ready
 }
