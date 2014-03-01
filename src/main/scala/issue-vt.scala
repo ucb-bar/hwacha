@@ -262,7 +262,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val deq_vcmdq_cnt = issue_op
   val enq_deck_op = vmu_val
   val enq_vmu_cmdq = vmu_val
-  val enq_vmu_strideq = Bool(false)
   val enq_aiw_cntb = issue_op
 
 
@@ -273,7 +272,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   val mask_issue_ready = !issue_op || io.ready
   val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
   val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
-  val mask_vmu_strideq_ready = !enq_vmu_strideq || io.vmu.issue.strideq.ready
   val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw.issue.enq.cntb.ready
 
   def fire(exclude: Bool, include: Bool*) = {
@@ -282,7 +280,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
       io.imem.resp.valid,
       mask_issue_ready,
       mask_deck_op_ready,
-      mask_vmu_cmdq_ready, mask_vmu_strideq_ready,
+      mask_vmu_cmdq_ready,
       mask_aiw_cntb_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
@@ -292,7 +290,6 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.op.valid := fire(mask_issue_ready, issue_op)
   io.deckop.valid := fire(mask_deck_op_ready, enq_deck_op)
   io.vmu.issue.cmdq.valid := fire(mask_vmu_cmdq_ready, enq_vmu_cmdq)
-  io.vmu.issue.strideq.valid := fire(mask_vmu_strideq_ready, enq_vmu_strideq)
   io.aiw.issue.enq.cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
   io.aiw.issue.marklast := fire(null, decode_stop)
   io.aiw.issue.update.numcnt.valid := fire(null, issue_op)

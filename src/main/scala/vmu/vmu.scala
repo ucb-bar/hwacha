@@ -8,8 +8,8 @@ import uncore.constants.AddressConstants._
 
 case class HwachaVMUConfig()
 {
-  val ncmdq = 4
-  val nstrideq = 4
+  val ncmdq = 2
+  val naddrq = 2
 
   val nvvaq = 16
   val nvpaq = 16
@@ -24,7 +24,7 @@ case class HwachaVMUConfig()
 class VMUIssueIO extends Bundle
 {
   val cmdq = new VMUCommandIO
-  val strideq = new VMUStrideIO
+  val addrq = new VMUAddressIO
 }
 
 class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
@@ -125,36 +125,36 @@ class VMUControl(implicit conf: HwachaConfiguration) extends Module
   }
 
   val cmdq = Module(new Queue(new VMUOp, conf.vmu.ncmdq))
-  val strideq = Module(new Queue(UInt(width = SZ_VSTRIDE), conf.vmu.nstrideq))
+  val addrq = Module(new Queue(new VMUAddressOp, conf.vmu.naddrq))
 
   cmdq.io.enq <> io.issue.cmdq
-  strideq.io.enq <> io.issue.strideq
+  addrq.io.enq <> io.issue.addrq
 
   cmdq.io.deq.ready := Bool(false)
-  strideq.io.deq.ready := Bool(false)
+  addrq.io.deq.ready := Bool(false)
 
   val cmd_hold = Reg(new VMUOp)
-  val stride_hold = Reg(UInt(width = SZ_VSTRIDE))
+  val addr_hold = Reg(new VMUAddressOp)
 
   val hold = Bool()
   hold := Bool(true)
-  val cmd = Mux(hold, cmd_hold, cmdq.io.deq.bits)
-  val stride = Mux(hold, stride_hold, strideq.io.deq.bits)
+  val cur_cmd = Mux(hold, cmd_hold, cmdq.io.deq.bits)
+  val cur_addr = Mux(hold, addr_hold, addrq.io.deq.bits)
 
   val decode = new VMUDecodedOp
-  decode.tvec := vmu_op_tvec(cmd.fn.op)
-  decode.cmd.raw := vmu_op_mcmd(cmd.fn.op)
+  decode.tvec := vmu_op_tvec(cur_cmd.fn.op)
+  decode.cmd.raw := vmu_op_mcmd(cur_cmd.fn.op)
   decode.cmd.ld := is_mcmd_load(decode.cmd.raw)
   decode.cmd.st := is_mcmd_store(decode.cmd.raw)
   decode.cmd.amo := is_mcmd_amo(decode.cmd.raw)
-  decode.typ.raw := cmd.fn.typ
+  decode.typ.raw := cur_cmd.fn.typ
   decode.typ.b := is_mtype_byte(decode.typ.raw)
   decode.typ.h := is_mtype_halfword(decode.typ.raw)
   decode.typ.w := is_mtype_word(decode.typ.raw)
   decode.typ.d := is_mtype_doubleword(decode.typ.raw)
-  decode.vlen := cmd.vlen
-  decode.base := cmd.base
-  decode.stride := stride
+  decode.vlen := cur_cmd.vlen
+  decode.base := cur_addr.base
+  decode.stride := cur_addr.stride
 
   io.addr.op <> decode
   io.addr.fire := Bool(false)
@@ -165,18 +165,18 @@ class VMUControl(implicit conf: HwachaConfiguration) extends Module
   val state = Reg(init = s_idle)
 
   val fire = cmdq.io.deq.valid &&
-    (!vmu_op_tvec(cmdq.io.deq.bits.fn.op) || strideq.io.deq.valid)
+    (!vmu_op_tvec(cmdq.io.deq.bits.fn.op) || addrq.io.deq.valid)
 
   switch (state) {
     is (s_idle) {
       cmdq.io.deq.ready := Bool(true)
-      strideq.io.deq.ready := Bool(true)
+      addrq.io.deq.ready := Bool(true)
       hold := Bool(false)
 
       when (fire) {
         state := s_busy
         cmd_hold := cmdq.io.deq.bits
-        stride_hold := strideq.io.deq.bits
+        addr_hold := addrq.io.deq.bits
         io.addr.fire := Bool(true)
         io.store.fire := Bool(true)
       }

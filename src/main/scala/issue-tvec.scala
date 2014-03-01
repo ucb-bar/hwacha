@@ -149,7 +149,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val deq_vcmdq_cmd = !decode_vcfg || !io.keepcfg
   val enq_deck_op = vmu_val
   val enq_vmu_cmdq = vmu_val
-  val enq_vmu_strideq = vmu_val
+  val enq_vmu_addrq = vmu_val
   val enq_aiw_cmdb = issue_op || decode_vf
   val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
   val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
@@ -167,7 +167,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val mask_issue_ready = !issue_op || io.ready
   val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
   val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
-  val mask_vmu_strideq_ready = !enq_vmu_strideq || io.vmu.issue.strideq.ready
+  val mask_vmu_addrq_ready = !enq_vmu_addrq || io.vmu.issue.addrq.ready
   val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw.issue.enq.cmdb.ready
   val mask_aiw_imm1b_ready = !enq_aiw_imm1b || io.aiw.issue.enq.imm1b.ready
   val mask_aiw_imm2b_ready = !enq_aiw_imm2b || io.aiw.issue.enq.imm2b.ready
@@ -180,7 +180,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
       mask_vxu_cmdq_valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
       mask_issue_ready,
       mask_deck_op_ready,
-      mask_vmu_cmdq_ready, mask_vmu_strideq_ready,
+      mask_vmu_cmdq_ready, mask_vmu_addrq_ready,
       mask_aiw_cmdb_ready, mask_aiw_imm1b_ready, mask_aiw_imm2b_ready, mask_aiw_cntb_ready, mask_aiw_numCntB_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
@@ -192,7 +192,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.valid := fire(mask_issue_ready, issue_op)
   io.deckop.valid := fire(mask_deck_op_ready, enq_deck_op)
   io.vmu.issue.cmdq.valid := fire(mask_vmu_cmdq_ready, enq_vmu_cmdq)
-  io.vmu.issue.strideq.valid := fire(mask_vmu_strideq_ready, enq_vmu_strideq)
+  io.vmu.issue.addrq.valid := fire(mask_vmu_addrq_ready, enq_vmu_addrq)
   io.aiw.issue.enq.cmdb.valid := fire(mask_aiw_cmdb_ready, enq_aiw_cmdb)
   io.aiw.issue.enq.imm1b.valid := fire(mask_aiw_imm1b_ready, enq_aiw_imm1b)
   io.aiw.issue.enq.imm2b.valid := fire(mask_aiw_imm2b_ready, enq_aiw_imm2b)
@@ -325,8 +325,8 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 
   io.vmu.issue.cmdq.bits.fn := io.op.bits.fn.vmu
   io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
-  io.vmu.issue.cmdq.bits.base := io.vcmdq.imm1.bits
-  io.vmu.issue.strideq.bits := io.op.bits.imm.stride
+  io.vmu.issue.addrq.bits.base := io.vcmdq.imm1.bits
+  io.vmu.issue.addrq.bits.stride := io.op.bits.imm.stride
 
   io.aiw.issue.enq.cmdb.bits := io.vcmdq.cmd.bits.toBits
   io.aiw.issue.enq.imm1b.bits := io.vcmdq.imm1.bits

@@ -11,7 +11,7 @@ import uncore.constants.AddressConstants._
 //--------------------------------------------------------------------\\
 
 class VMUCommandIO extends DecoupledIO(new VMUOp)
-class VMUStrideIO extends DecoupledIO(Bits(width = SZ_VSTRIDE))
+class VMUAddressIO extends DecoupledIO(new VMUAddressOp)
 
 class VVAQIO extends DecoupledIO(UInt(width = SZ_VMU_ADDR))
 class VPAQIO extends DecoupledIO(new VPAQEntry)
@@ -69,7 +69,12 @@ class VMUOp extends Bundle
 {
   val fn = new VMUFn
   val vlen = UInt(width = SZ_VLEN)
+}
+
+class VMUAddressOp extends Bundle
+{
   val base = UInt(width = SZ_ADDR)
+  val stride = UInt(width = SZ_VSTRIDE)
 }
 
 class VMUMetadata extends Bundle
