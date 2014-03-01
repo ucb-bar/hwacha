@@ -82,6 +82,9 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   ldata.io.vmdb <> addr.io.vmdb
   ldata.io.memif <> memif.io.vldq
   io.lane.ldata <> ldata.io.lane
+
+  //FIXME
+  io.vpftlb.req.valid := Bool(false)
 }
 
 

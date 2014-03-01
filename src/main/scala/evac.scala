@@ -129,8 +129,6 @@ class Evac extends Module
   io.vcmdq.cnt.ready := Bool(false)
 
   io.vaq.valid := Bool(false)
-//  io.vaq.bits.cmd := M_XWR
-//  io.vaq.bits.typ := MT_D
   io.vaq.bits := addr_reg
 
   io.vsdq.valid := Bool(false)

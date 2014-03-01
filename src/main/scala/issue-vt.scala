@@ -363,7 +363,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
   io.aiw.issue.update.numcnt.bits := numcnt_rtag
 
   io.deckop.bits.vlen := io.op.bits.vlen
-  io.deckop.bits.utidx := io.op.bits.utidx
+  io.deckop.bits.utidx := UInt(0)
   io.deckop.bits.fn := io.op.bits.fn.vmu
   io.deckop.bits.reg := io.op.bits.reg
 

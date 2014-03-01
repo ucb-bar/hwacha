@@ -32,6 +32,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
 class AddressGen extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTIO().flip
     val ctrl = new VMUBackendIO().flip
     val vvaq = new VVAQIO().flip
     val vatq = new VATQIO()
@@ -45,12 +46,12 @@ class AddressGen extends Module
   val utidx = Reg(UInt(width = SZ_VLEN))
   val utidx_next = utidx + UInt(1)
 
-  io.vatq.bits.addr := Mux(op_tvec, addr, io.vvaq.bits)
+  io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
   io.vatq.bits.meta.utcnt := UInt(1)
   io.vatq.bits.meta.shift := UInt(0)
-  io.vatq.bits.cmd := io.ctrl.op.cmd.raw
-  io.vatq.bits.typ := io.ctrl.op.typ.raw
+  io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
+  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
 
   io.ctrl.busy := Bool(false)
   io.vvaq.ready := Bool(false)
@@ -81,6 +82,11 @@ class AddressGen extends Module
         }
       }
     }
+  }
+
+  when (io.xcpt.prop.vmu.drain) {
+    io.vvaq.ready := io.vatq.ready
+    io.vatq.valid := io.vvaq.valid
   }
 }
 
@@ -233,6 +239,7 @@ class AddressUnit(implicit conf: HwachaConfiguration) extends Module
   vvaq.io.xcpt <> io.xcpt
   agu.io.vvaq <> vvaq.io.deq
   agu.io.ctrl <> io.ctrl
+  agu.io.xcpt <> io.xcpt
 
   atu.io.enq <> agu.io.vatq
   atu.io.irq <> io.irq

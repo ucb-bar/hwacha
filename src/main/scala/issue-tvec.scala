@@ -319,7 +319,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.aiw.numcnt.rtag := io.aiw.issue.rtag.numcnt
 
   io.deckop.bits.vlen := io.op.bits.vlen
-  io.deckop.bits.utidx := io.op.bits.utidx
+  io.deckop.bits.utidx := UInt(0)
   io.deckop.bits.fn := io.op.bits.fn.vmu
   io.deckop.bits.reg := io.op.bits.reg
 
