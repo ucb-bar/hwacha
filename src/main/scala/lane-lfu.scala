@@ -12,7 +12,7 @@ class LaneLFU extends Module
     val vau1f = Valid(new VAU1Op)
     val vau2t = Valid(new VAU2Op)
     val vau2f = Valid(new VAU2Op)
-    val mem = new LaneMemOpIO
+    val vgu = Valid(new VGUOp)
   }
 
   val vau0_op = Reg(Valid(new VAU0Op).asDirectionless)
@@ -113,5 +113,5 @@ class LaneLFU extends Module
   bypass(io.vau1f, io.op.vau1f, vau1f_op)
   bypass(io.vau2t, io.op.vau2t, vau2t_op)
   bypass(io.vau2f, io.op.vau2f, vau2f_op)
-  bypass(io.mem.vgu, io.op.vgu, vgu_op)
+  bypass(io.vgu, io.op.vgu, vgu_op)
 }
