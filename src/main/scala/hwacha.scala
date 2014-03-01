@@ -10,10 +10,6 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
   val vru = true
   val confprec = false
 
-  // rocket pipeline latencies
-  val dfma_stages = 4
-  val sfma_stages = 3
-
   // pipeline latencies
   val int_stages = 2
   val imul_stages = 4
@@ -40,16 +36,28 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
     val ncnt = 8
   }
 
-  val vmu = hwacha.HwachaVMUConfig()
+  val nbrq = 2
+  val nbwq = 2
 
-  val nvvaq = 16
-  val nvpaq = 16
-  val nvpfvaq = 16
-  val nvpfpaq = 16
-  val nvldq = 128
-  val nvsdq = 16
+  val vmu = new {
+    val ncmdq = 2
+    val naddrq = 2
+
+    val nvvaq = 16
+    val nvpaq = 16
+    val nvsdq = 16
+    val nvldq = 16
+    val nvlmb = 16
+
+    val nvvapfq = 8
+    val nvpapfq = 8
+
+    val SZ_TAG = log2Up(nvlmb)
+  }
+
   val nvsreq = 128
-  val nvlreq = nvldq
+  val nvlreq = 128
+  val nvsdq = nbrq * nbanks
 }
 
 trait HwachaDecodeConstants
@@ -163,7 +171,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   implicit val conf = hc
 
   // D$ tag requirement for hwacha
-  require(rc.dcacheReqTagBits >= log2Up(conf.nvldq))
+  require(rc.dcacheReqTagBits >= log2Up(conf.vmu.SZ_TAG))
 
   val icache = Module(new rocket.Frontend()(hc.vicache, rc.tl))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))

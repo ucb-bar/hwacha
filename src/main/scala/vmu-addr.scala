@@ -22,7 +22,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
   q.io.enq <> arb.io.out
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(conf.nvvaq, conf.nvvaq))
+  val lacntr = Module(new LookAheadCounter(conf.vmu.nvvaq, conf.vmu.nvvaq))
   lacntr.io.la <> io.lane.vala
   lacntr.io.inc := io.deq.fire()
   lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
@@ -169,7 +169,7 @@ class VPAQ(implicit conf: HwachaConfiguration) extends Module
   val q = Module(new Queue(new VPAQEntry, conf.vmu.nvpaq))
   q.io.enq <> io.enq
 
-  val lacntr = Module(new LookAheadCounter(0, conf.nvpaq))
+  val lacntr = Module(new LookAheadCounter(0, conf.vmu.nvpaq))
   // TODO: Support utcnt != 1
   lacntr.io.inc := q.io.enq.fire()
   lacntr.io.dec := q.io.deq.fire() && io.xcpt.prop.vmu.drain

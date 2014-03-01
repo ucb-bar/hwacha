@@ -5,24 +5,6 @@ import Constants._
 import uncore.constants.MemoryOpConstants._
 import uncore.constants.AddressConstants._
 
-case class HwachaVMUConfig()
-{
-  val ncmdq = 2
-  val naddrq = 2
-
-  val nvvaq = 16
-  val nvpaq = 16
-  val nvsdq = 16
-  val nvldq = 16
-  val nvlmb = 16
-
-  val nvvapfq = 8
-  val nvpapfq = 8
-
-  val SZ_TAG = log2Up(nvlmb)
-}
-
-
 class VMUIssueIO extends Bundle
 {
   val cmdq = new VMUCommandIO

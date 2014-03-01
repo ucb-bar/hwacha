@@ -134,7 +134,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val bwqs_enq_rdy = new ArrayBuffer[Bool]
 
   for (i <- 0 until conf.nbanks) {
-    val bwq = Module(new Queue(new BWQInternalEntry, 2))
+    val bwq = Module(new Queue(new BWQInternalEntry, conf.nbwq))
 
     bwq.io.enq.valid := (vd_bank_id === UInt(i)) && vldq.valid
     bwq.io.enq.bits.addr := vd_addr
@@ -220,8 +220,8 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
   val slacntr_avail = new ArrayBuffer[Bool]
 
   for (i <- 0 until conf.nbanks) {
-    val brq = Module(new Queue(new BRQEntry, 2))
-    val slacntr = Module(new LookAheadCounter(2, 2))
+    val brq = Module(new Queue(new BRQEntry, conf.nbrq))
+    val slacntr = Module(new LookAheadCounter(conf.nbrq, conf.nbrq))
 
     brq.io.enq <> io.brqs(i)
     slacntr.io.la.cnt := (io.la.cnt > UInt(i))
