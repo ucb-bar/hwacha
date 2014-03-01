@@ -46,7 +46,6 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val ptr2 = PtrIncr(ptr, 2, io.cfg.bcnt)
   val ptr3 = PtrIncr(ptr, 3, io.cfg.bcnt)
   val ptr4 = PtrIncr(ptr, 4, io.cfg.bcnt)
-  val ptr5 = PtrIncr(ptr, 5, io.cfg.bcnt)
   ptr := ptr1
 
   val viu_incr = UInt(conf.int_stages + conf.delay_seq_exp, conf.ptr_incr_sz)
@@ -134,11 +133,11 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     when (io.issueop.bits.active.amo) {
       tbl_rport(ptr2) := Bool(true)
       tbl_rport(ptr3) := Bool(true)
-      tbl_wport(ptr5) := Bool(true)
-      tbl_vd(ptr5).active := Bool(true)
-      tbl_vd(ptr5).float := io.issueop.bits.reg.vd.float
-      tbl_vd(ptr5).base := io.issueop.bits.regcheck.vd.base
-      tbl_vd(ptr5).utidx := io.issueop.bits.utidx
+      tbl_wport(ptr4) := Bool(true)
+      tbl_vd(ptr4).active := Bool(true)
+      tbl_vd(ptr4).float := io.issueop.bits.reg.vd.float
+      tbl_vd(ptr4).base := io.issueop.bits.regcheck.vd.base
+      tbl_vd(ptr4).utidx := io.issueop.bits.utidx
       tbl_seqslot(ptr1) := Bool(true)
       tbl_seqslot(ptr2) := Bool(true)
       tbl_seqslot(ptr3) := Bool(true)
@@ -168,11 +167,11 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     when (io.issueop.bits.active.utld) {
       tbl_rport(ptr2) := Bool(true)
       // ptr3 for vcu, but don't allocate a rport for it
-      tbl_wport(ptr5) := Bool(true)
-      tbl_vd(ptr5).active := Bool(true)
-      tbl_vd(ptr5).float := io.issueop.bits.reg.vd.float
-      tbl_vd(ptr5).base := io.issueop.bits.regcheck.vd.base
-      tbl_vd(ptr5).utidx := io.issueop.bits.utidx
+      tbl_wport(ptr4) := Bool(true)
+      tbl_vd(ptr4).active := Bool(true)
+      tbl_vd(ptr4).float := io.issueop.bits.reg.vd.float
+      tbl_vd(ptr4).base := io.issueop.bits.regcheck.vd.base
+      tbl_vd(ptr4).utidx := io.issueop.bits.utidx
       tbl_seqslot(ptr1) := Bool(true)
       tbl_seqslot(ptr2) := Bool(true)
       tbl_seqslot(ptr3) := Bool(true)
@@ -183,8 +182,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     when (io.issueop.bits.active.vld) {
       // ptr2 for vcu, but don't allocate a rport for it
-      tbl_wport(ptr4) := Bool(true)
-      tbl_vd(ptr4) := io.issueop.bits.reg.vd
+      tbl_wport(ptr3) := Bool(true)
+      tbl_vd(ptr3) := io.issueop.bits.reg.vd
       tbl_seqslot(ptr1) := Bool(true)
       tbl_seqslot(ptr2) := Bool(true)
       tbl_vfu.vcu := Bool(true)
@@ -259,10 +258,10 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   val seqhazard_2slot = tbl_seqslot(ptr1) | tbl_seqslot(ptr2)
   val seqhazard_3slot = tbl_seqslot(ptr1) | tbl_seqslot(ptr2) | tbl_seqslot(ptr3)
 
-  val bhazard_amo = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr5)
-  val bhazard_utld = tbl_rport(ptr2) | tbl_wport(ptr5)
+  val bhazard_amo = tbl_rport(ptr2) | tbl_rport(ptr3) | tbl_wport(ptr4)
+  val bhazard_utld = tbl_rport(ptr2) | tbl_wport(ptr4)
   val bhazard_utst = tbl_rport(ptr2) | tbl_rport(ptr3)
-  val bhazard_vld = tbl_wport(ptr4)
+  val bhazard_vld = tbl_wport(ptr3)
   val bhazard_vst = tbl_rport(ptr2)
 
   def check_hazards(op: IssueOpIO) = {

@@ -50,7 +50,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vau2texp = new BuildExpander(new VAU2Op, 3)
   val vau2fexp = new BuildExpander(new VAU2Op, 3)
   val vguexp = new BuildExpander(new VGUOp, 3)
-  val vluwexp = new BuildExpander(new WriteBankOp, 2)
+  val vluwexp = new BuildExpander(new WriteBankOp, 1)
 
   // NOTE: oplen delayed 1 cycle in bank.scala
   // NOTE: rblen delayed 2 cycle in bank.scala
@@ -287,8 +287,8 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
     }
 
     when (io.seqop.bits.active.vlu) {
-      vluwexp.valid(1) := Bool(true)
-      vluwexp.last(1) := io.seqop.bits.last
+      vluwexp.valid(0) := Bool(true)
+      vluwexp.last(0) := io.seqop.bits.last
     }
 
     when (io.seqop.bits.active.vsu) {
