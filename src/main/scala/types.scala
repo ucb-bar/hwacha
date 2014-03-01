@@ -80,17 +80,6 @@ class VAU2Fn extends Bundle
   val op = Bits(width = SZ_VAU2_OP)
 }
 
-class VMUFn extends Bundle
-{
-  val float = Bool()
-  val typ = Bits(width = MT_SZ)
-  val op = Bits(width = SZ_VMU_OP)
-
-  def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
-  def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
-}
-
 
 //-------------------------------------------------------------------------\\
 // decoded information types
@@ -294,23 +283,23 @@ class VAU2Op extends LaneOp
 
 class VGUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new vmunit.VMUFn
   val base = Bits(width = SZ_DATA)
 }
 
 class VCUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new vmunit.VMUFn
 }
 
 class VLUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new vmunit.VMUFn
 }
 
 class VSUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new vmunit.VMUFn
 }
 
 
@@ -341,23 +330,4 @@ class BWQInternalEntry(implicit conf: HwachaConfiguration) extends BWQEntry
 {
   val tag = UInt(width = /*log2Up(conf.nvlreq)*/ SZ_VLEN - log2Up(conf.nbanks))
   override def clone = new BWQInternalEntry().asInstanceOf[this.type]
-}
-
-//-------------------------------------------------------------------------\\
-// vmu types
-//-------------------------------------------------------------------------\\
-
-class VVAQEntry extends Bundle
-{
-  val cmd = Bits(width = M_SZ)
-  val typ = Bits(width = MT_SZ)
-  val idx = Bits(width = PGIDX_BITS)
-  val vpn = Bits(width = VPN_BITS)
-}
-
-class VPAQEntry extends Bundle
-{
-  val cmd = Bits(width = M_SZ)
-  val typ = Bits(width = MT_SZ)
-  val addr = Bits(width = PADDR_BITS)
 }
