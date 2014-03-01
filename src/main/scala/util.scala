@@ -6,6 +6,68 @@ import Constants._
 import scala.collection.mutable.ArrayBuffer
 import scala.math._
 
+object Compaction extends Compaction
+{
+  def repack_float_d(n: Bits*) = Cat(Bits(1,1), n(0))
+  def repack_float_s(n: Bits*) = Cat(n(1)(32), n(0)(32), n(1)(31,0), n(0)(31,0))
+  def repack_float_h(n: Bits*) = Cat(Bits("b11",2), n(3), n(2), n(1), n(0))
+
+  def pack_float_d(n: Bits, i: Int): Bits = i match {
+    case 0 => (Bits(1,1) ## n(64,0))
+    case _ => Bits(0, 66)
+  }
+  def pack_float_s(n: Bits, i: Int): Bits = i match {
+    case 0 => Cat(Bits(1,1), n(32), Bits("hFFFFFFFF",32), n(31,0))
+    case 1 => Cat(n(32), Bits(1,1), n(31,0), Bits("hFFFFFFFF",32))
+    case _ => Bits(0)
+  }
+  def pack_float_h(n: Bits, i: Int): Bits = i match {
+    case 0 => Cat(Bits("h3FFFFFFFFFFFF",50), n(15,0))
+    case 1 => Cat(Bits("h3FFFFFFFF",34), n(15,0), Bits("hFFFF",16))
+    case 2 => Cat(Bits("h3FFFF",18), n(15,0), Bits("hFFFFFFFF",32))
+    case 3 => Cat(Bits("b11",2), n(15,0), Bits("hFFFFFFFFFFFF",48))
+    case _ => Bits(0)
+  }
+
+  def unpack_float_d(n: Bits, i: Int): Bits = i match {
+    case 0 => (n(64,0))
+    case _ => Bits(0)
+  }
+  def unpack_float_s(n: Bits, i: Int): Bits = i match {
+    case 0 => (n(64) ## n(31,0))
+    case 1 => (n(65) ## n(63,32))
+    case _ => Bits(0)
+  }
+  def unpack_float_h(n: Bits, i: Int): Bits = i match {
+    case 0 => n(15,0)
+    case 1 => n(31,16)
+    case 2 => n(47,32)
+    case 3 => n(63,48)
+    case _ => Bits(0)
+  }
+
+  def expand_mask(m: Bits) = Cat(
+    m(3) & m(2),
+    m(1) & m(0),
+    Fill(16, m(3)),
+    Fill(16, m(2)),
+    Fill(16, m(1)),
+    Fill(16, m(0)))
+}
+
+trait Compaction
+{
+  def repack_float_d(n: Bits*): Bits
+  def repack_float_s(n: Bits*): Bits
+  def repack_float_h(n: Bits*): Bits
+  def pack_float_d(n: Bits, i: Int): Bits
+  def pack_float_s(n: Bits, i: Int): Bits
+  def pack_float_h(n: Bits, i: Int): Bits
+  def unpack_float_d(n: Bits, i: Int): Bits
+  def unpack_float_s(n: Bits, i: Int): Bits
+  def unpack_float_h(n: Bits, i: Int): Bits
+}
+
 object PtrIncr
 {
   // runtime incr
@@ -64,6 +126,69 @@ object MaskStall
     ms.io.stall := stall
     ms.io.output
   }
+}
+
+class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
+{
+  val sz = log2Down(max_cnt)+1
+  val io = new Bundle {
+    val inc = Bool(INPUT)
+    val dec = Bool(INPUT)
+    val qcnt = UInt(INPUT, sz)
+    val watermark = Bool(OUTPUT)
+    val full = Bool(OUTPUT)
+    val empty = Bool(OUTPUT)
+  }
+
+  val count = Reg(init = UInt(reset_cnt, sz))
+
+  when (io.inc ^ io.dec) {
+    when (io.inc) { count := count + UInt(1) }
+    when (io.dec) { count := count - UInt(1) }
+  }
+
+  io.watermark := count >= io.qcnt
+  io.full := count === UInt(max_cnt)
+  io.empty := count === UInt(0)
+}
+
+class LookAheadPortIO(sz: Int) extends Bundle
+{
+  val cnt = UInt(OUTPUT, sz)
+  val reserve = Bool(OUTPUT)
+  val available = Bool(INPUT)
+}
+
+class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
+{
+  val sz = log2Down(max_cnt)+1
+  val io = new Bundle {
+    val la = new LookAheadPortIO(sz).flip
+    val inc = Bool(INPUT)
+    val dec = Bool(INPUT)
+    val full = Bool(OUTPUT)
+    val empty = Bool(OUTPUT)
+  }
+
+  val count = Reg(init = UInt(reset_cnt, sz))
+
+  when (io.la.reserve) {
+    count := count - io.la.cnt
+    when (io.inc ^ io.dec) {
+      when (io.inc) { count := count - io.la.cnt + UInt(1) }
+      when (io.dec) { count := count - io.la.cnt - UInt(1) }
+    }
+  }
+  .otherwise {
+    when (io.inc ^ io.dec) {
+      when (io.inc) { count := count + UInt(1) }
+      when (io.dec) { count := count - UInt(1) }
+    }
+  }
+
+  io.la.available := count >= io.la.cnt
+  io.full := count === UInt(max_cnt)
+  io.empty := count === UInt(0)
 }
 
 class AIWUpdateBufferEntry(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 
@@ -252,66 +377,4 @@ class CounterVec(DEPTH: Int) extends Module
   io.deq_last := array_last(read_ptr)
 
   io.rtag := write_ptr
-}
-
-object Compaction extends Compaction
-{
-  def repack_float_d(n: Bits*) = Cat(Bits(1,1), n(0))
-  def repack_float_s(n: Bits*) = Cat(n(1)(32), n(0)(32), n(1)(31,0), n(0)(31,0))
-  def repack_float_h(n: Bits*) = Cat(Bits("b11",2), n(3), n(2), n(1), n(0))
-
-  def pack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (Bits(1,1) ## n(64,0))
-    case _ => Bits(0, 66)
-  }
-  def pack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits(1,1), n(32), Bits("hFFFFFFFF",32), n(31,0))
-    case 1 => Cat(n(32), Bits(1,1), n(31,0), Bits("hFFFFFFFF",32))
-    case _ => Bits(0)
-  }
-  def pack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits("h3FFFFFFFFFFFF",50), n(15,0))
-    case 1 => Cat(Bits("h3FFFFFFFF",34), n(15,0), Bits("hFFFF",16))
-    case 2 => Cat(Bits("h3FFFF",18), n(15,0), Bits("hFFFFFFFF",32))
-    case 3 => Cat(Bits("b11",2), n(15,0), Bits("hFFFFFFFFFFFF",48))
-    case _ => Bits(0)
-  }
-
-  def unpack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64,0))
-    case _ => Bits(0)
-  }
-  def unpack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64) ## n(31,0))
-    case 1 => (n(65) ## n(63,32))
-    case _ => Bits(0)
-  }
-  def unpack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => n(15,0)
-    case 1 => n(31,16)
-    case 2 => n(47,32)
-    case 3 => n(63,48)
-    case _ => Bits(0)
-  }
-
-  def expand_mask(m: Bits) = Cat(
-    m(3) & m(2),
-    m(1) & m(0),
-    Fill(16, m(3)),
-    Fill(16, m(2)),
-    Fill(16, m(1)),
-    Fill(16, m(0)))
-}
-
-trait Compaction
-{
-  def repack_float_d(n: Bits*): Bits
-  def repack_float_s(n: Bits*): Bits
-  def repack_float_h(n: Bits*): Bits
-  def pack_float_d(n: Bits, i: Int): Bits
-  def pack_float_s(n: Bits, i: Int): Bits
-  def pack_float_h(n: Bits, i: Int): Bits
-  def unpack_float_d(n: Bits, i: Int): Bits
-  def unpack_float_s(n: Bits, i: Int): Bits
-  def unpack_float_h(n: Bits, i: Int): Bits
 }
