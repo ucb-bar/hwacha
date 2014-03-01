@@ -31,7 +31,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val seq = Module(new Sequencer(resetSignal = flush))
   val exp = Module(new Expander)
   val lane = Module(new Lane)
-  val deck = Module(new Deck)
+  val deck = Module(new Deck(resetSignal = flush))
 
   io.irq <> issue.io.irq
 

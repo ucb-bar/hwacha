@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class DeckOpIO extends DecoupledIO(new DeckOp)
 
-class Deck(implicit conf: HwachaConfiguration) extends Module
+class Deck(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
