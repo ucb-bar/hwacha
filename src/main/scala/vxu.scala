@@ -53,7 +53,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   exp.io.xcpt <> io.xcpt
   exp.io.seqop <> seq.io.seqop
 
-  lane.io.cfg <> issue.io.cfg
   lane.io.op <> exp.io.laneop
   lane.io.bwqs <> deck.io.bwqs
 
