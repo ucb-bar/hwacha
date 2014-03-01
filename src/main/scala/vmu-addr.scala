@@ -1,5 +1,4 @@
 package hwacha
-package vmu
 
 import Chisel._
 import Constants._
@@ -23,7 +22,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
   q.io.enq <> arb.io.out
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(conf.nvvaq, conf.nvvaq))
+  val lacntr = Module(new LookAheadCounter(conf.vmu.nvvaq, conf.vmu.nvvaq))
   lacntr.io.la <> io.lane.vala
   lacntr.io.inc := io.deq.fire()
   lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
@@ -32,6 +31,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
 class AddressGen extends Module
 {
   val io = new Bundle {
+    val xcpt = new XCPTIO().flip
     val ctrl = new VMUBackendIO().flip
     val vvaq = new VVAQIO().flip
     val vatq = new VATQIO()
@@ -45,12 +45,12 @@ class AddressGen extends Module
   val utidx = Reg(UInt(width = SZ_VLEN))
   val utidx_next = utidx + UInt(1)
 
-  io.vatq.bits.addr := Mux(op_tvec, addr, io.vvaq.bits)
+  io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
   io.vatq.bits.meta.utcnt := UInt(1)
   io.vatq.bits.meta.shift := UInt(0)
-  io.vatq.bits.cmd := io.ctrl.op.cmd.raw
-  io.vatq.bits.typ := io.ctrl.op.typ.raw
+  io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
+  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
 
   io.ctrl.busy := Bool(false)
   io.vvaq.ready := Bool(false)
@@ -81,6 +81,11 @@ class AddressGen extends Module
         }
       }
     }
+  }
+
+  when (io.xcpt.prop.vmu.drain) {
+    io.vvaq.ready := io.vatq.ready
+    io.vatq.valid := io.vvaq.valid
   }
 }
 
@@ -152,7 +157,7 @@ class AddressTLB extends Module
 
 class VPAQ(implicit conf: HwachaConfiguration) extends Module
 {
-  val sz = log2Down(conf.vmu.nvpaq + 1)
+  val sz = log2Down(conf.vmu.nvpaq) + 1
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO
@@ -164,7 +169,7 @@ class VPAQ(implicit conf: HwachaConfiguration) extends Module
   val q = Module(new Queue(new VPAQEntry, conf.vmu.nvpaq))
   q.io.enq <> io.enq
 
-  val lacntr = Module(new LookAheadCounter(0, conf.nvpaq))
+  val lacntr = Module(new LookAheadCounter(0, conf.vmu.nvpaq))
   // TODO: Support utcnt != 1
   lacntr.io.inc := q.io.enq.fire()
   lacntr.io.dec := q.io.deq.fire() && io.xcpt.prop.vmu.drain
@@ -233,6 +238,7 @@ class AddressUnit(implicit conf: HwachaConfiguration) extends Module
   vvaq.io.xcpt <> io.xcpt
   agu.io.vvaq <> vvaq.io.deq
   agu.io.ctrl <> io.ctrl
+  agu.io.xcpt <> io.xcpt
 
   atu.io.enq <> agu.io.vatq
   atu.io.irq <> io.irq
@@ -246,4 +252,29 @@ class AddressUnit(implicit conf: HwachaConfiguration) extends Module
   vmda.io.vpaq <> vpaq.io.deq
   io.vmdb <> vmda.io.vmdb
   io.memif <> vmda.io.memif
+}
+
+class PrefetchUnit(implicit conf: HwachaConfiguration) extends Module
+{
+  val io = new Bundle {
+    val xcpt = new XCPTIO().flip
+
+    val vaq = new VVAPFQIO().flip
+    val memif = new VPAQMemIO
+    val tlb = new TLBIO
+  }
+
+  val vvaq = Module(new Queue(new VVAPFQEntry, conf.vmu.nvvapfq))
+  val atu = Module(new AddressTLB)
+  val vpaq = Module(new Queue(new VPAQEntry, conf.vmu.nvpapfq))
+
+  vvaq.io.enq <> io.vaq
+
+  atu.io.enq <> vvaq.io.deq
+  atu.io.stall := io.xcpt.prop.vmu.stall
+  io.tlb <> atu.io.tlb
+
+  vpaq.io.enq <> atu.io.deq
+  io.memif <> MaskStall(vpaq.io.deq, io.xcpt.prop.vmu.stall)
+  io.memif.bits.tag := UInt(0)
 }

@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import uncore.constants.MemoryOpConstants._
+import uncore.constants.AddressConstants._
 
 object Constants extends
   MachineConstants with
@@ -188,31 +189,42 @@ trait VAU2Constants
 
 trait VMUConstants extends LaneConstants
 {
-  def is_mtype_byte(typ: UInt) = (typ === MT_B || typ === MT_BU)
-  def is_mtype_halfword(typ: UInt) = (typ === MT_H || typ === MT_HU)
-  def is_mtype_word(typ: UInt) = (typ === MT_W || typ === MT_WU)
-  def is_mtype_doubleword(typ: UInt) = (typ === MT_D)
-
-  def is_mcmd_load(cmd: UInt) = (cmd === M_XRD)
-  def is_mcmd_store(cmd: UInt) = (cmd === M_XWR)
-  def is_mcmd_amo(cmd: UInt) = isAMO(cmd)
-  def is_mcmd_pfr(cmd: UInt) = (cmd === M_PFR)
-  def is_mcmd_pfw(cmd: UInt) = (cmd === M_PFW)
-  def is_mcmd_pf(cmd: UInt) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
-
   val SZ_QCNT = SZ_LGBANK1
+  val SZ_VMU_ADDR = math.max(PADDR_BITS, VADDR_BITS)
+  val SZ_VMU_DATA = 64
+  val SZ_VMU_OP = 1 + M_SZ
 
-  val SZ_VMU_OP = 3
+  val VM_X = Bits.DC(SZ_VMU_OP)
 
-  val VM_X   = UInt.DC(SZ_VMU_OP)
-  val VM_VLD = UInt(0, SZ_VMU_OP)
-  val VM_VST = UInt(1, SZ_VMU_OP)
-  val VM_ULD = UInt(2, SZ_VMU_OP)
-  val VM_UST = UInt(3, SZ_VMU_OP)
-  val VM_AMO = UInt(4, SZ_VMU_OP)
+  val VM_VLD = (Bool(true)  ## M_XRD)
+  val VM_VST = (Bool(true)  ## M_XWR)
+  val VM_ULD = (Bool(false) ## M_XRD)
+  val VM_UST = (Bool(false) ## M_XWR)
 
-  val IS_VM_OP_UTMEMOP =
-    (x: UInt) => x === VM_ULD || x === VM_UST || x === VM_AMO
+  val VM_AMO_SWAP = (Bool(false) ## M_XA_SWAP)
+  val VM_AMO_ADD  = (Bool(false) ## M_XA_ADD)
+  val VM_AMO_XOR  = (Bool(false) ## M_XA_XOR)
+  val VM_AMO_OR   = (Bool(false) ## M_XA_OR)
+  val VM_AMO_AND  = (Bool(false) ## M_XA_AND)
+  val VM_AMO_MIN  = (Bool(false) ## M_XA_MIN)
+  val VM_AMO_MAX  = (Bool(false) ## M_XA_MAX)
+  val VM_AMO_MINU = (Bool(false) ## M_XA_MINU)
+  val VM_AMO_MAXU = (Bool(false) ## M_XA_MAXU)
+
+  def vmu_op_tvec(op: Bits) = op(M_SZ)
+  def vmu_op_mcmd(op: Bits) = op(M_SZ-1, 0)
+
+  def is_mcmd_load(cmd: Bits) = (cmd === M_XRD)
+  def is_mcmd_store(cmd: Bits) = (cmd === M_XWR)
+  def is_mcmd_amo(cmd: Bits) = isAMO(cmd)
+  def is_mcmd_pfr(cmd: Bits) = (cmd === M_PFR)
+  def is_mcmd_pfw(cmd: Bits) = (cmd === M_PFW)
+  def is_mcmd_pf(cmd: Bits) = (is_mcmd_pfr(cmd) || is_mcmd_pfw(cmd))
+
+  def is_mtype_byte(typ: Bits) = (typ === MT_B || typ === MT_BU)
+  def is_mtype_halfword(typ: Bits) = (typ === MT_H || typ === MT_HU)
+  def is_mtype_word(typ: Bits) = (typ === MT_W || typ === MT_WU)
+  def is_mtype_doubleword(typ: Bits) = (typ === MT_D)
 }
 
 object Commands extends Commands

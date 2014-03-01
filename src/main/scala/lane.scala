@@ -16,8 +16,6 @@ class LaneOpIO extends Bundle
   val vau2t = Valid(new VAU2Op)
   val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
 }
 
 class LaneFUOpIO extends Bundle
@@ -28,30 +26,15 @@ class LaneFUOpIO extends Bundle
   val vau2t = Valid(new VAU2Op)
   val vau2f = Valid(new VAU2Op)
   val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
-}
-
-class LaneMemOpIO extends Bundle
-{
-  val vgu = Valid(new VGUOp)
-  val vlu = Valid(new VLUOp)
-  val vsu = Valid(new VSUOp)
-}
-
-class LaneMemDataIO extends Bundle
-{
-  val paddr = Bits(OUTPUT, SZ_DATA)
-  val ldata = Bits(INPUT, SZ_DATA)
-  val sdata = Bits(OUTPUT, SZ_DATA)
 }
 
 class Lane(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val op = new LaneOpIO().flip
+    val brqs = Vec.fill(conf.nbanks){new BRQIO}
+    val bwqs = Vec.fill(conf.nbanks){new BWQIO().flip}
     val vmu = new VMUIO
-    val lret = new MRTLoadRetireIO
   }
 
   val conn = new ArrayBuffer[BankOpIO]
@@ -66,7 +49,6 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val fma1 = Module(new LaneFMA)
   val conv0 = Module(new LaneConv)
   val conv1 = Module(new LaneConv)
-  val mem = Module(new LaneMem)
 
   for (i <- 0 until SZ_BANK) {
     val bank = Module(new Bank)
@@ -84,12 +66,14 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     bank.io.rw.wbl2 := fma1.io.out
     bank.io.rw.wbl3 := conv0.io.out
     bank.io.rw.wbl4 := conv1.io.out
-    bank.io.rw.wbl5 := mem.io.data.ldata
+
+    io.brqs(i) <> bank.io.rw.brq
+    bank.io.rw.bwq <> io.bwqs(i)
   }
 
   // For each bank, match bank n's rbl enable bit with bank n's corresponding ropl and mask if disabled.
   // For each ropl, reduce all banks' version of that ropl with a bitwise-OR.
-  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
+  val rbl = List(ropl1, ropl0, ropl2, ropl1, ropl0, ropl2, ropl1, ropl0, ropl0, ropl0, ropl0).zipWithIndex.map(
     rblgroup => rblen.zip(rblgroup._1).map(b => Fill(SZ_DATA, b._1(rblgroup._2)) & b._2).reduce(_|_))
 
   lfu.io.op <> io.op
@@ -119,10 +103,9 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   conv1.io.fn := lfu.io.vau2f.bits.fn
   conv1.io.in := rbl(9)
 
-  mem.io.op <> lfu.io.mem
-  mem.io.data.paddr := rbl(10)(SZ_ADDR-1,0)
-  mem.io.data.sdata := rbl(11)
-
-  io.vmu <> mem.io.vmu
-  io.lret <> mem.io.lret
+  // VGU Timing Diagram
+  // | Seq | Exp/SRAM-Addr-Setup | SRAM-Clock-Q | XBar/Addr-Gen/VAQ-Setup |
+  //                                              ^ lfu.io.op.vgu starts here
+  io.vmu.addr.q.valid := lfu.io.vgu.valid
+  io.vmu.addr.q.bits := lfu.io.vgu.bits.base(SZ_ADDR-1,0) + rbl(10)(SZ_ADDR-1,0)
 }

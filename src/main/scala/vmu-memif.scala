@@ -1,5 +1,4 @@
 package hwacha
-package vmu
 
 import Chisel._
 import Constants._
@@ -13,12 +12,14 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
   }
 
+  val req_cmd_pf = is_mcmd_pf(io.vpaq.bits.cmd)
   val req_cmd_load = is_mcmd_load(io.vpaq.bits.cmd)
   val req_cmd_store = is_mcmd_store(io.vpaq.bits.cmd)
   val req_cmd_amo = is_mcmd_amo(io.vpaq.bits.cmd)
 
   io.vpaq.ready :=
     io.dmem.req.ready && (
+      (req_cmd_pf) ||
       (req_cmd_load && !io.vldq.stall) ||
       (req_cmd_store && io.vsdq.valid) ||
       (req_cmd_amo && io.vsdq.valid && !io.vldq.stall)
@@ -46,5 +47,5 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
 
   io.vldq.resp.bits.tag := io.dmem.resp.bits.tag
   io.vldq.resp.bits.data := io.dmem.resp.bits.data_subword
-  io.vldq.resp.valid := io.dmem.resp.valid && (resp_cmd_load || resp_cmd_amo)
+  io.vldq.resp.valid := io.dmem.resp.valid && io.dmem.resp.bits.has_data // (resp_cmd_load || resp_cmd_amo)
 }

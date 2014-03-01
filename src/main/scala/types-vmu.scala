@@ -1,5 +1,4 @@
 package hwacha
-package vmu
 
 import Chisel._
 import Constants._
@@ -11,16 +10,17 @@ import uncore.constants.AddressConstants._
 //--------------------------------------------------------------------\\
 
 class VMUCommandIO extends DecoupledIO(new VMUOp)
-class VMUStrideIO extends DecoupledIO(Bits(width = SZ_VSTRIDE))
+class VMUAddressIO extends DecoupledIO(new VMUAddressOp)
 
 class VVAQIO extends DecoupledIO(UInt(width = SZ_VMU_ADDR))
+class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
 class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
 {
   val q = new VVAQIO
-  val vala = new LookAheadPortIO(log2Down(conf.nvvaq) + 1)
-  val pala = new LookAheadPortIO(log2Down(conf.nvpaq) + 1)
+  val vala = new LookAheadPortIO(log2Down(conf.vmu.nvvaq) + 1)
+  val pala = new LookAheadPortIO(log2Down(conf.vmu.nvpaq) + 1)
 }
 
 class VSDQIO extends DecoupledIO(Bits(width = SZ_VMU_DATA))
@@ -59,15 +59,21 @@ class VMUFn extends Bundle
   val typ = Bits(width = MT_SZ)
 
   def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
-  def lreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op)) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
+  def lreq(dummy: Int = 0) = (op === VM_VLD) || (op === VM_ULD) || amoreq()
+  def sreq(dummy: Int = 0) = (op === VM_VST) || (op === VM_UST)
+  def amoreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op))
 }
 
 class VMUOp extends Bundle
 {
-  val fn = new VMUFn
   val vlen = UInt(width = SZ_VLEN)
+  val fn = new VMUFn
+}
+
+class VMUAddressOp extends Bundle
+{
   val base = UInt(width = SZ_ADDR)
+  val stride = UInt(width = SZ_VSTRIDE)
 }
 
 class VMUMetadata extends Bundle
@@ -83,6 +89,8 @@ class MemOp(n: Int) extends Bundle
   val typ = Bits(width = MT_SZ)
   val addr = UInt(width = n)
 }
+
+class VVAPFQEntry extends MemOp(VADDR_BITS)
 
 class VATQEntry extends MemOp(VADDR_BITS)
 {
@@ -110,5 +118,5 @@ class VLDQMemIf(implicit conf: HwachaConfiguration) extends Bundle
 class VLDQEntry extends Bundle
 {
   val meta = new VMUMetadata
-  val data = Bits(width = SZ_VMU_ADDR)
+  val data = Bits(width = SZ_VMU_DATA)
 }

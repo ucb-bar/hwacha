@@ -1,5 +1,4 @@
 package hwacha
-package vmu
 
 import Chisel._
 import Constants._
@@ -55,8 +54,8 @@ class LoadDataUnit(implicit conf: HwachaConfiguration) extends Module
   io.memif.stall := (count === UInt(0))
 
 
-  assert((!vldq.io.enq.valid || vldq.io.enq.ready),
-    "VLDQ should never be unable to accept a valid response")
+//  assert((!vldq.io.enq.valid || vldq.io.enq.ready),
+//    "VLDQ should never be unable to accept a valid response")
 
   vldq.io.enq.valid := io.memif.resp.valid
   vldq.io.enq.bits.data := io.memif.resp.bits.data

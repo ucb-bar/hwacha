@@ -12,8 +12,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
-
     val vmu = new VMUIO
+
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
     val lret = new MRTLoadRetireIO
@@ -31,6 +31,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   val seq = Module(new Sequencer(resetSignal = flush))
   val exp = Module(new Expander)
   val lane = Module(new Lane)
+  val deck = Module(new Deck(resetSignal = flush))
 
   io.irq <> issue.io.irq
 
@@ -53,12 +54,21 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   exp.io.seqop <> seq.io.seqop
 
   lane.io.op <> exp.io.laneop
+  lane.io.bwqs <> deck.io.bwqs
 
+  deck.io.cfg <> issue.io.cfg
+  deck.io.op <> issue.io.deckop
+  deck.io.lla <> seq.io.lla
+  deck.io.sla <> seq.io.sla
+  deck.io.brqs <> lane.io.brqs
+
+  io.vmu <> issue.io.vmu
   io.vmu <> seq.io.vmu
   io.vmu <> lane.io.vmu
+  io.vmu <> deck.io.vmu
   io.lreq <> seq.io.lreq
   io.sreq <> seq.io.sreq
-  io.lret <> lane.io.lret
+  io.lret <> seq.io.lret
 
   io.aiw <> issue.io.aiw
   io.aiw <> seq.io.aiw

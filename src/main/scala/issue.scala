@@ -16,6 +16,8 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val deckop = new DeckOpIO
+    val vmu = new VMUIO
 
     val tvec = new Bundle {
       val active = Bool(OUTPUT)
@@ -35,6 +37,13 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
   val tvec = Module(new IssueTVEC)
   val vt = Module(new IssueVT)
+
+  def arb_producers[T<:Data](issue: DecoupledIO[T], sel: Bool, tvec: DecoupledIO[T], vt: DecoupledIO[T]) = {
+    tvec.ready := issue.ready
+    vt.ready := issue.ready
+    issue.valid := Mux(sel, tvec.valid, vt.valid)
+    issue.bits := Mux(sel, tvec.bits, vt.bits)
+  }
 
   io.cfg <> tvec.io.cfg
   vt.io.cfg <> tvec.io.cfg
@@ -67,10 +76,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.aiw.issue.enq.cmdb <> tvec.io.aiw.issue.enq.cmdb
   io.aiw.issue.enq.imm1b <> tvec.io.aiw.issue.enq.imm1b
   io.aiw.issue.enq.imm2b <> tvec.io.aiw.issue.enq.imm2b
-  tvec.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
-  vt.io.aiw.issue.enq.cntb.ready := io.aiw.issue.enq.cntb.ready
-  io.aiw.issue.enq.cntb.valid := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.valid, vt.io.aiw.issue.enq.cntb.valid)
-  io.aiw.issue.enq.cntb.bits := Mux(tvec.io.active, tvec.io.aiw.issue.enq.cntb.bits, vt.io.aiw.issue.enq.cntb.bits)
+  arb_producers(io.aiw.issue.enq.cntb, tvec.io.active, tvec.io.aiw.issue.enq.cntb, vt.io.aiw.issue.enq.cntb)
   io.aiw.issue.enq.numcntb <> tvec.io.aiw.issue.enq.numcntb
 
   tvec.io.aiw.issue.rtag <> io.aiw.issue.rtag
@@ -78,6 +84,11 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
   io.aiw.issue.marklast := Mux(tvec.io.active, tvec.io.aiw.issue.marklast, vt.io.aiw.issue.marklast)
   io.aiw.issue.update <> vt.io.aiw.issue.update
+
+  // vmu
+  arb_producers(io.deckop, tvec.io.active, tvec.io.deckop, vt.io.deckop)
+  arb_producers(io.vmu.issue.cmdq, tvec.io.active, tvec.io.vmu.issue.cmdq, vt.io.vmu.issue.cmdq)
+  io.vmu.issue.addrq <> tvec.io.vmu.issue.addrq
 
   // xcpt
   tvec.io.xcpt <> io.xcpt

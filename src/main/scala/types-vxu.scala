@@ -6,36 +6,6 @@ import Constants._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
-
-//-------------------------------------------------------------------------\\
-// vector command queue types
-//-------------------------------------------------------------------------\\
-
-class HwachaCommand extends Bundle
-{
-  val cmcode = Bits(width = 8)
-  val vd = UInt(width = 5)
-  val vt = UInt(width = 5)
-}
-
-class HwachaImm1 extends Bundle
-{
-  val prec = Bits(width = 2)
-  val xf_split = UInt(width = SZ_BREGLEN) 
-  val bcnt = UInt(width = SZ_BCNT)
-  val bactive = Bits(width = SZ_BANK)
-  val nfregs = UInt(width = SZ_REGCNT)
-  val nxregs = UInt(width = SZ_REGCNT)
-  val vlen = UInt(width = SZ_VLEN)
-}
-
-class HwachaCnt extends Bundle
-{
-  val cnt = UInt(width = SZ_VLEN)
-  val last = Bool()
-}
-
-
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
 //-------------------------------------------------------------------------\\
@@ -80,16 +50,9 @@ class VAU2Fn extends Bundle
   val op = Bits(width = SZ_VAU2_OP)
 }
 
-class VMUFn extends Bundle
+class VMULaneFn extends VMUFn
 {
   val float = Bool()
-  val typ = Bits(width = MT_SZ)
-  val cmd = Bits(width = M_SZ)
-  val op = Bits(width = SZ_VMU_OP)
-
-  def utmemop(dummy: Int = 0) = IS_VM_OP_UTMEMOP(op)
-  def lreq(dummy: Int = 0) = (op === VM_AMO) || (op === VM_ULD) || (op === VM_VLD)
-  def sreq(dummy: Int = 0) = (op === VM_UST) || (op === VM_VST)
 }
 
 
@@ -132,7 +95,7 @@ class DecodedInstruction extends Bundle
     val vau0 = new VAU0Fn
     val vau1 = new VAU1Fn
     val vau2 = new VAU2Fn
-    val vmu = new VMUFn
+    val vmu = new VMULaneFn
   }
   val reg = new DecodedRegister
   val imm = new DecodedImmediate
@@ -262,6 +225,7 @@ class ReadBankOp extends LaneOp
   val ren = Bool()
   val oplen = Bits(width = SZ_BOPL)
   val rblen = Vec.fill(SZ_BRPORT){Bool()}
+  val brqen = Bool()
 }
 
 class WriteBankOp extends LaneOp
@@ -294,42 +258,51 @@ class VAU2Op extends LaneOp
 
 class VGUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new VMULaneFn
   val base = Bits(width = SZ_DATA)
-  val stride = Bits(width = SZ_VSTRIDE)
 }
 
 class VCUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new VMULaneFn
 }
 
 class VLUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new VMULaneFn
 }
 
 class VSUOp extends LaneOp
 {
-  val fn = new VMUFn
+  val fn = new VMULaneFn
 }
 
 
 //-------------------------------------------------------------------------\\
-// vmu types
+// deck types
 //-------------------------------------------------------------------------\\
 
-class VVAQEntry extends Bundle
+class DeckOp extends Bundle
 {
-  val cmd = Bits(width = M_SZ)
-  val typ = Bits(width = MT_SZ)
-  val idx = Bits(width = PGIDX_BITS)
-  val vpn = Bits(width = VPN_BITS)
+  val vlen = UInt(width = SZ_VLEN)
+  val utidx = UInt(width = SZ_VLEN)
+  val fn = new VMULaneFn
+  val reg = new DecodedRegister
 }
 
-class VPAQEntry extends Bundle
+class BRQEntry extends Bundle
 {
-  val cmd = Bits(width = M_SZ)
-  val typ = Bits(width = MT_SZ)
-  val addr = Bits(width = PADDR_BITS)
+  val data = Bits(width = SZ_DATA)
+}
+
+class BWQEntry extends Bundle
+{
+  val addr = UInt(width = SZ_BREGLEN)
+  val data = Bits(width = SZ_DATA)
+}
+
+class BWQInternalEntry(implicit conf: HwachaConfiguration) extends BWQEntry
+{
+  val tag = UInt(width = /*log2Up(conf.nvlreq)*/ SZ_VLEN - log2Up(conf.nbanks))
+  override def clone = new BWQInternalEntry().asInstanceOf[this.type]
 }

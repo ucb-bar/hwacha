@@ -11,6 +11,9 @@ class BankOpIO extends Bundle
   val viu = Valid(new VIUOp)
 }
 
+class BRQIO extends DecoupledIO(new BRQEntry)
+class BWQIO extends DecoupledIO(new BWQEntry)
+
 class Bank extends Module
 {
   val io = new Bundle {
@@ -30,7 +33,9 @@ class Bank extends Module
       val wbl2 = Bits(INPUT, SZ_DATA)
       val wbl3 = Bits(INPUT, SZ_DATA)
       val wbl4 = Bits(INPUT, SZ_DATA)
-      val wbl5 = Bits(INPUT, SZ_DATA)
+
+      val brq = new BRQIO
+      val bwq = new BWQIO().flip
     }
   }
 
@@ -42,6 +47,7 @@ class Bank extends Module
     s1_read_op.bits.ren := io.op.in.read.bits.ren
     s1_read_op.bits.oplen := io.op.in.read.bits.oplen
     s1_read_op.bits.rblen := io.op.in.read.bits.rblen
+    s1_read_op.bits.brqen := io.op.in.read.bits.brqen
     s1_read_op.bits.cnt := Mux(op_valid(io.op.in.read), io.op.in.read.bits.cnt - UInt(1), UInt(0))
     s1_read_op.bits.addr := io.op.in.read.bits.addr
   }
@@ -86,6 +92,8 @@ class Bank extends Module
   rfile.io.ren := op_valid(io.op.in.read) && io.op.in.read.bits.ren
   rfile.io.raddr := io.op.in.read.bits.addr
   rfile.io.roplen := s1_read_op.bits.oplen & Fill(SZ_BOPL, s1_read_op_valid)
+  rfile.io.brqen := s1_read_op.bits.brqen & s1_read_op_valid
+  rfile.io.brqzero := !s1_read_op.bits.ren & s1_read_op_valid
   
   rfile.io.wen := alu.io.wen_masked
   rfile.io.waddr := io.op.in.write.bits.addr
@@ -100,8 +108,10 @@ class Bank extends Module
   rfile.io.wbl2 := io.rw.wbl2
   rfile.io.wbl3 := io.rw.wbl3
   rfile.io.wbl4 := io.rw.wbl4
-  rfile.io.wbl5 := io.rw.wbl5
   rfile.io.viu_wdata := alu.io.out
+
+  io.rw.brq <> rfile.io.brq
+  rfile.io.bwq <> io.rw.bwq
 
   val viu_in0 = MuxLookup(
     io.op.in.viu.bits.fn.t0, UInt(0, SZ_DATA), Array(
@@ -150,8 +160,12 @@ class BankRegfile extends Module
     val wbl2 = Bits(INPUT, SZ_DATA)
     val wbl3 = Bits(INPUT, SZ_DATA)
     val wbl4 = Bits(INPUT, SZ_DATA)
-    val wbl5 = Bits(INPUT, SZ_DATA)
     val viu_wdata = Bits(INPUT, SZ_DATA)
+
+    val brqen = Bool(INPUT)
+    val brqzero = Bool(INPUT)
+    val brq = new BRQIO
+    val bwq = new BWQIO().flip
   }
 
   val wdata = MuxLookup(
@@ -161,13 +175,17 @@ class BankRegfile extends Module
       Bits(2) -> io.wbl2,
       Bits(3) -> io.wbl3,
       Bits(4) -> io.wbl4,
-      Bits(5) -> io.wbl5,
-      Bits(6) -> io.viu_wdata
+      Bits(5) -> io.viu_wdata
     ))
+
+  val wen_bwq = io.wen || io.bwq.valid
+  val waddr_bwq = Mux(io.wen, io.waddr, io.bwq.bits.addr)
+  val wdata_bwq = Mux(io.wen, wdata, io.bwq.bits.data)
+  io.bwq.ready := !io.wen
 
   val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)
   val raddr = Reg(Bits())
-  when (io.wen) { rfile(io.waddr) := wdata }
+  when (wen_bwq) { rfile(waddr_bwq) := wdata_bwq }
   when (io.ren) { raddr := io.raddr }
   val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf
@@ -183,4 +201,8 @@ class BankRegfile extends Module
   io.ropl0 := ropl0
   io.ropl1 := ropl1
   io.ropl2 := ropl2
+
+  //assert(!io.brqen || io.brq.ready, "brq invariant not met, look at brq la counters")
+  io.brq.valid := io.brqen
+  io.brq.bits.data := Mux(io.brqzero, Bits(0), rdata_rf)
 }
