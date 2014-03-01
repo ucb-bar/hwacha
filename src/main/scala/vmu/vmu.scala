@@ -17,6 +17,9 @@ case class HwachaVMUConfig()
   val nvldq = 16
   val nvlmb = 16
 
+  val nvvapfq = 8
+  val nvpapfq = 8
+
   val SZ_TAG = log2Up(nvlmb)
 }
 
@@ -43,7 +46,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
     val lane = new VMUIO().flip
     val pf = new Bundle {
-      val vaq = new VVAQIO().flip
+      val vaq = new VVAPFQIO().flip
     }
     val evac = new Bundle {
       val vaq = new VVAQIO().flip
@@ -58,8 +61,10 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
 
   val ctrl = Module(new VMUControl)
   val addr = Module(new AddressUnit)
+  val pf = Module(new PrefetchUnit)
   val sdata = Module(new StoreDataUnit)
   val ldata = Module(new LoadDataUnit)
+  val arb = Module(new RRArbiter(new VPAQMemIf, 2))
   val memif = Module(new MemIF)
 
   ctrl.io.issue <> io.lane.issue
@@ -71,20 +76,24 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   io.irq <> addr.io.irq
   io.vtlb <> addr.io.tlb
 
+  pf.io.xcpt <> io.xcpt
+  pf.io.vaq <> io.pf.vaq
+  io.vpftlb <> pf.io.tlb
+
+  arb.io.in(0) <> addr.io.memif
+  arb.io.in(1) <> pf.io.memif
+
   sdata.io.lane <> io.lane.sdata
   sdata.io.evac <> io.evac.vsdq
   sdata.io.ctrl <> ctrl.io.store
 
-  memif.io.vpaq <> addr.io.memif
+  memif.io.vpaq <> arb.io.out
   memif.io.vsdq <> sdata.io.memif
   io.dmem <> memif.io.dmem
 
   ldata.io.vmdb <> addr.io.vmdb
   ldata.io.memif <> memif.io.vldq
   io.lane.ldata <> ldata.io.lane
-
-  //FIXME
-  io.vpftlb.req.valid := Bool(false)
 }
 
 

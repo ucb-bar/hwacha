@@ -88,9 +88,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
     vru.io.vcmdq <> vpfcmdq.io.deq
 
-    //vmu.io.pf.vaq <> vru.io.vvaq
-    //FIXME
-    vru.io.vvaq.ready := Bool(true)
+    vmu.io.pf.vaq <> vru.io.vaq
     vmu.io.vpftlb <> io.vpftlb
   }
   else

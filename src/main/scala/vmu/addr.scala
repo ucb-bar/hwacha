@@ -254,3 +254,28 @@ class AddressUnit(implicit conf: HwachaConfiguration) extends Module
   io.vmdb <> vmda.io.vmdb
   io.memif <> vmda.io.memif
 }
+
+class PrefetchUnit(implicit conf: HwachaConfiguration) extends Module
+{
+  val io = new Bundle {
+    val xcpt = new XCPTIO().flip
+
+    val vaq = new VVAPFQIO().flip
+    val memif = new VPAQMemIO
+    val tlb = new TLBIO
+  }
+
+  val vvaq = Module(new Queue(new VVAPFQEntry, conf.vmu.nvvapfq))
+  val atu = Module(new AddressTLB)
+  val vpaq = Module(new Queue(new VPAQEntry, conf.vmu.nvpapfq))
+
+  vvaq.io.enq <> io.vaq
+
+  atu.io.enq <> vvaq.io.deq
+  atu.io.stall := io.xcpt.prop.vmu.stall
+  io.tlb <> atu.io.tlb
+
+  vpaq.io.enq <> atu.io.deq
+  io.memif <> MaskStall(vpaq.io.deq, io.xcpt.prop.vmu.stall)
+  io.memif.bits.tag := UInt(0)
+}

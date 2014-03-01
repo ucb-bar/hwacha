@@ -14,6 +14,7 @@ class VMUCommandIO extends DecoupledIO(new VMUOp)
 class VMUAddressIO extends DecoupledIO(new VMUAddressOp)
 
 class VVAQIO extends DecoupledIO(UInt(width = SZ_VMU_ADDR))
+class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
 class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
@@ -90,6 +91,8 @@ class MemOp(n: Int) extends Bundle
   val typ = Bits(width = MT_SZ)
   val addr = UInt(width = n)
 }
+
+class VVAPFQEntry extends MemOp(VADDR_BITS)
 
 class VATQEntry extends MemOp(VADDR_BITS)
 {

@@ -13,7 +13,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val vcmdq = new VCMDQIO().flip
-    val vvaq = new VVAQIO
+    val vaq = new vmunit.VVAPFQIO
   }
 
   val VRU_Idle = Bits(0, 2)
@@ -108,14 +108,13 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val pf_len_int = pow(2,OFFSET_BITS).toInt
 
   // cmd(4)==1 -> vector store
-  io.vvaq.bits.cmd := Mux(is_cmd_pfw(cmd_reg), M_PFW, M_PFR)
-  io.vvaq.bits.typ := Bits(0)
-  io.vvaq.bits.idx := addr_reg(PGIDX_BITS-1,0)
-  io.vvaq.bits.vpn := addr_reg(VADDR_BITS, PGIDX_BITS)
+  io.vaq.bits.cmd := Mux(is_cmd_pfw(cmd_reg), M_PFW, M_PFR)
+  io.vaq.bits.typ := Bits(0)
+  io.vaq.bits.addr := addr_reg
 
   val idle = (state === VRU_Idle)
 
-  io.vvaq.valid := Bool(false)
+  io.vaq.valid := Bool(false)
   io.vcmdq.cmd.ready := Bool(true) && mask_vpfimm1q_valid && mask_vpfimm2q_valid && mask_vpfcntq_valid && idle
   io.vcmdq.imm1.ready := io.vcmdq.cmd.valid && deq_imm1q.toBool && mask_vpfimm2q_valid && mask_vpfcntq_valid && idle
   io.vcmdq.imm2.ready := io.vcmdq.cmd.valid && mask_vpfimm1q_valid && deq_imm2q.toBool && mask_vpfcntq_valid && idle
@@ -195,9 +194,9 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
       {
         when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
         {
-          io.vvaq.valid := Bool(true)
+          io.vaq.valid := Bool(true)
         }
-        when (io.vvaq.ready)
+        when (io.vaq.ready)
         {
           vec_count_reg := vec_count_reg - vec_per_pf_reg - Mux(stride_remaining_reg <= vec_pf_remainder_reg, SInt(1), SInt(0))
           stride_remaining_reg := Mux(stride_remaining_reg <= vec_pf_remainder_reg,
@@ -219,9 +218,9 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
       {
         when (vec_count_reg <= vlen_reg - vec_pfed_count_reg)
         {
-          io.vvaq.valid := Bool(true)
+          io.vaq.valid := Bool(true)
         }
-        when (io.vvaq.ready)
+        when (io.vaq.ready)
         {
           addr_reg := addr_reg + stride_reg
           vec_count_reg := vec_count_reg - SInt(1)

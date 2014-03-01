@@ -13,12 +13,14 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     val dmem = new rocket.HellaCacheIO()(conf.dcache)
   }
 
+  val req_cmd_pf = is_mcmd_pf(io.vpaq.bits.cmd)
   val req_cmd_load = is_mcmd_load(io.vpaq.bits.cmd)
   val req_cmd_store = is_mcmd_store(io.vpaq.bits.cmd)
   val req_cmd_amo = is_mcmd_amo(io.vpaq.bits.cmd)
 
   io.vpaq.ready :=
     io.dmem.req.ready && (
+      (req_cmd_pf) ||
       (req_cmd_load && !io.vldq.stall) ||
       (req_cmd_store && io.vsdq.valid) ||
       (req_cmd_amo && io.vsdq.valid && !io.vldq.stall)
