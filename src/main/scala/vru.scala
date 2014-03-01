@@ -13,7 +13,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val vcmdq = new VCMDQIO().flip
-    val vaq = new vmunit.VVAPFQIO
+    val vaq = new VVAPFQIO
   }
 
   val VRU_Idle = Bits(0, 2)

@@ -17,7 +17,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val vcmdq = new VCMDQIO().flip
     val imem = new rocket.CPUFrontendIO()(conf.vicache)
     val deckop = new DeckOpIO
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
 
     val tvec = new Bundle {
       val active = Bool(OUTPUT)

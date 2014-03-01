@@ -64,7 +64,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vcmdq.io.enq.cnt <> MaskStall(io.vcmdq.cnt, io.xcpt.prop.vu.busy)
 
   val vxu = Module(new VXU)
-  val vmu = Module(new vmunit.VMU(resetSignal = flush_vmu))
+  val vmu = Module(new VMU(resetSignal = flush_vmu))
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
   val mrt = Module(new MRT)

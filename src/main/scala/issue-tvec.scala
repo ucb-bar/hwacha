@@ -20,13 +20,13 @@ class HwachaConfigIO extends Bundle
 
 object TVECDecodeTable
 {
-                  //                                      deq_vcmdq_imm1
-                  //                                      | deq_vcmdq_imm2
-                  //                                      | | deq_vcmdq_cnt
-                  //                                      | | | decode_vcfg
-                  //                                      | | | | decode_vsetvl
-                  //  vd vt VIUfn VMUfn                   | | | | | decode_vf
-                  //   |  |  |    |                       | | | | | |
+                  //                                deq_vcmdq_imm1
+                  //                                | deq_vcmdq_imm2
+                  //                                | | deq_vcmdq_cnt
+                  //                                | | | decode_vcfg
+                  //                                | | | | decode_vsetvl
+                  //   vd vt VIUfn   VMUfn          | | | | | decode_vf
+                  //   |  |  |       |              | | | | | |
   val default =   List(R_,R_,F,M0,M0,F,MT_X, VM_X,  F,F,F,F,F,F)
   val table = Array(
     CMD_VSETCFG-> List(R_,R_,F,M0,M0,F,MT_X, VM_X,  T,F,F,T,T,F),
@@ -88,7 +88,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
     val op = new IssueOpIO
 
     val deckop = new DeckOpIO
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
     val aiw = new AIWVXUIO
   }
 
@@ -272,7 +272,9 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.utidx := cnt
 
   io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, DW64, FPD, viu_op))
-  io.op.bits.fn.vmu := new vmunit.VMUFn().fromBits(Cat(vmu_float, vmu_op, vmu_type))
+  io.op.bits.fn.vmu.float := vmu_float
+  io.op.bits.fn.vmu.op := vmu_op
+  io.op.bits.fn.vmu.typ := vmu_type
 
   val vt_m1 = vt - UInt(1)
   val vd_m1 = vd - UInt(1)
@@ -323,8 +325,9 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.deckop.bits.fn := io.op.bits.fn.vmu
   io.deckop.bits.reg := io.op.bits.reg
 
-  io.vmu.issue.cmdq.bits.fn := io.op.bits.fn.vmu
   io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
+  io.vmu.issue.cmdq.bits.fn.op := io.op.bits.fn.vmu.op
+  io.vmu.issue.cmdq.bits.fn.typ := io.op.bits.fn.vmu.typ
   io.vmu.issue.addrq.bits.base := io.vcmdq.imm1.bits
   io.vmu.issue.addrq.bits.stride := io.op.bits.imm.stride
 

@@ -16,8 +16,8 @@ class Evac extends Module
     val aiw = new AIWEvacIO
     val vcmdq = new VCMDQIO().flip
 
-    val vaq = new vmunit.VVAQIO
-    val vsdq = new vmunit.VSDQIO
+    val vaq = new VVAQIO
+    val vsdq = new VSDQIO
   }
   
   val n = Bits(0,1)

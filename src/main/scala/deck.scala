@@ -21,7 +21,7 @@ class Deck(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends
     val brqs = Vec.fill(conf.nbanks){new BRQIO().flip}
     val bwqs = Vec.fill(conf.nbanks){new BWQIO}
 
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
   }
 
   val opq = Module(new Queue(new DeckOp, 2))
@@ -58,7 +58,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
     val bwqs = Vec.fill(conf.nbanks){new BWQIO}
     val la = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
 
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
   }
 
   val op = Reg(new DeckOp)
@@ -181,7 +181,7 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
     val brqs = Vec.fill(conf.nbanks){new BRQIO().flip}
     val la = new LookAheadPortIO(log2Down(conf.nvsdq)+1).flip
 
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
   }
 
   val op = Reg(new DeckOp)

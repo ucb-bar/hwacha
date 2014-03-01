@@ -6,36 +6,6 @@ import Constants._
 import uncore.constants.AddressConstants._
 import uncore.constants.MemoryOpConstants._
 
-
-//-------------------------------------------------------------------------\\
-// vector command queue types
-//-------------------------------------------------------------------------\\
-
-class HwachaCommand extends Bundle
-{
-  val cmcode = Bits(width = 8)
-  val vd = UInt(width = 5)
-  val vt = UInt(width = 5)
-}
-
-class HwachaImm1 extends Bundle
-{
-  val prec = Bits(width = 2)
-  val xf_split = UInt(width = SZ_BREGLEN) 
-  val bcnt = UInt(width = SZ_BCNT)
-  val bactive = Bits(width = SZ_BANK)
-  val nfregs = UInt(width = SZ_REGCNT)
-  val nxregs = UInt(width = SZ_REGCNT)
-  val vlen = UInt(width = SZ_VLEN)
-}
-
-class HwachaCnt extends Bundle
-{
-  val cnt = UInt(width = SZ_VLEN)
-  val last = Bool()
-}
-
-
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
 //-------------------------------------------------------------------------\\
@@ -80,6 +50,11 @@ class VAU2Fn extends Bundle
   val op = Bits(width = SZ_VAU2_OP)
 }
 
+class VMULaneFn extends VMUFn
+{
+  val float = Bool()
+}
+
 
 //-------------------------------------------------------------------------\\
 // decoded information types
@@ -120,7 +95,7 @@ class DecodedInstruction extends Bundle
     val vau0 = new VAU0Fn
     val vau1 = new VAU1Fn
     val vau2 = new VAU2Fn
-    val vmu = new vmunit.VMUFn
+    val vmu = new VMULaneFn
   }
   val reg = new DecodedRegister
   val imm = new DecodedImmediate
@@ -283,23 +258,23 @@ class VAU2Op extends LaneOp
 
 class VGUOp extends LaneOp
 {
-  val fn = new vmunit.VMUFn
+  val fn = new VMULaneFn
   val base = Bits(width = SZ_DATA)
 }
 
 class VCUOp extends LaneOp
 {
-  val fn = new vmunit.VMUFn
+  val fn = new VMULaneFn
 }
 
 class VLUOp extends LaneOp
 {
-  val fn = new vmunit.VMUFn
+  val fn = new VMULaneFn
 }
 
 class VSUOp extends LaneOp
 {
-  val fn = new vmunit.VMUFn
+  val fn = new VMULaneFn
 }
 
 
@@ -311,7 +286,7 @@ class DeckOp extends Bundle
 {
   val vlen = UInt(width = SZ_VLEN)
   val utidx = UInt(width = SZ_VLEN)
-  val fn = new vmunit.VMUFn
+  val fn = new VMULaneFn
   val reg = new DecodedRegister
 }
 

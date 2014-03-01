@@ -35,7 +35,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     val op = new LaneOpIO().flip
     val brqs = Vec.fill(conf.nbanks){new BRQIO}
     val bwqs = Vec.fill(conf.nbanks){new BWQIO().flip}
-    val vmu = new vmunit.VMUIO
+    val vmu = new VMUIO
   }
 
   val conn = new ArrayBuffer[BankOpIO]
