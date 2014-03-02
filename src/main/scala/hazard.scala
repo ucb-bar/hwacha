@@ -283,8 +283,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val shazard = List(
       tbl_vfu.vau0 && op.bits.active.vau0,
-      tbl_vfu.vau1t && tbl_vfu.vau1f && op.bits.active.vau1, // shazard when both vau1t and vau1f are used
-      tbl_vfu.vau2t && tbl_vfu.vau2f && op.bits.active.vau2, // shazard when both vau2t and vau2f are used
+      tbl_vfu.vau1t && (!Bool(conf.second_fma_pipe) || tbl_vfu.vau1f) && op.bits.active.vau1, // shazard when both vau1t and vau1f are used
+      tbl_vfu.vau2t && (!Bool(conf.second_fconv_pipe) || tbl_vfu.vau2f) && op.bits.active.vau2, // shazard when both vau2t and vau2f are used
       tbl_vfu.vgu && memop,
       tbl_vfu.vcu && memop,
       tbl_vfu.vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),

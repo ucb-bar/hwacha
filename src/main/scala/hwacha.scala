@@ -16,6 +16,9 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
   val fma_stages = 4
   val fconv_stages = 3
 
+  val second_fma_pipe = true
+  val second_fconv_pipe = false
+
   val delay_seq_exp = 2
 
   val ptr_incr_max =

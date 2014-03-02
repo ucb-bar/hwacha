@@ -42,13 +42,13 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   val ropl0 = new ArrayBuffer[Bits]
   val ropl1 = new ArrayBuffer[Bits]
   val ropl2 = new ArrayBuffer[Bits]
+  val wbl2 = new ArrayBuffer[Bits]
+  val wbl4 = new ArrayBuffer[Bits]
 
   val lfu = Module(new LaneLFU)
   val imul = Module(new LaneMul)
   val fma0 = Module(new LaneFMA)
-  val fma1 = Module(new LaneFMA)
   val conv0 = Module(new LaneConv)
-  val conv1 = Module(new LaneConv)
 
   for (i <- 0 until SZ_BANK) {
     val bank = Module(new Bank)
@@ -60,12 +60,14 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     ropl0 += bank.io.rw.ropl0
     ropl1 += bank.io.rw.ropl1
     ropl2 += bank.io.rw.ropl2
+    wbl2 += bank.io.rw.wbl2
+    wbl4 += bank.io.rw.wbl4
 
     bank.io.rw.wbl0 := imul.io.out
     bank.io.rw.wbl1 := fma0.io.out
-    bank.io.rw.wbl2 := fma1.io.out
+    bank.io.rw.wbl2 := Bits(0)
     bank.io.rw.wbl3 := conv0.io.out
-    bank.io.rw.wbl4 := conv1.io.out
+    bank.io.rw.wbl4 := Bits(0)
 
     io.brqs(i) <> bank.io.rw.brq
     bank.io.rw.bwq <> io.bwqs(i)
@@ -89,19 +91,27 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   fma0.io.in1 := rbl(3)
   fma0.io.in2 := rbl(4)
 
-  fma1.io.valid := lfu.io.vau1f.valid
-  fma1.io.fn := lfu.io.vau1f.bits.fn
-  fma1.io.in0 := rbl(5)
-  fma1.io.in1 := rbl(6)
-  fma1.io.in2 := rbl(7)
-
   conv0.io.valid := lfu.io.vau2t.valid
   conv0.io.fn := lfu.io.vau2t.bits.fn
   conv0.io.in := rbl(8)
 
-  conv1.io.valid := lfu.io.vau2f.valid
-  conv1.io.fn := lfu.io.vau2f.bits.fn
-  conv1.io.in := rbl(9)
+  if (conf.second_fma_pipe) {
+    val fma1 = Module(new LaneFMA)
+    fma1.io.valid := lfu.io.vau1f.valid
+    fma1.io.fn := lfu.io.vau1f.bits.fn
+    fma1.io.in0 := rbl(5)
+    fma1.io.in1 := rbl(6)
+    fma1.io.in2 := rbl(7)
+    wbl2.map(_ := fma1.io.out)
+  }
+
+  if (conf.second_fconv_pipe) {
+    val conv1 = Module(new LaneConv)
+    conv1.io.valid := lfu.io.vau2f.valid
+    conv1.io.fn := lfu.io.vau2f.bits.fn
+    conv1.io.in := rbl(9)
+    wbl4.map(_ := conv1.io.out)
+  }
 
   // VGU Timing Diagram
   // | Seq | Exp/SRAM-Addr-Setup | SRAM-Clock-Q | XBar/Addr-Gen/VAQ-Setup |
