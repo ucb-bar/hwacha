@@ -13,7 +13,7 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
   // pipeline latencies
   val int_stages = 2
   val imul_stages = 3
-  val fma_stages = 4
+  val fma_stages = 3
   val fconv_stages = 3
 
   val second_fma_pipe = true
