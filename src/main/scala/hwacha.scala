@@ -226,7 +226,10 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   when (irq_top) { stall_hold := Bool(true) }
   when (xcpt.io.vu.prop.vu.flush_top) { stall_hold := Bool(false) }
 
-  val cmd_valid = inst_val && io.cmd.valid && (!check_vl || cfg_vl != UInt(0))
+  val decode_vcfg = vcmd_valid && (sel_vcmd === CMD_VSETCFG)
+  val mask_vcfg = !decode_vcfg || !vu.io.keepcfg
+
+  val cmd_valid = inst_val && io.cmd.valid && (!check_vl || cfg_vl != UInt(0)) && mask_vcfg
   val resp_ready  = !emit_response || resp_q.io.enq.ready
   val vcmd_ready  = !emit_vcmd  || Mux(io.s, vu.io.vcmdq.cmd.ready, vu.io.vcmdq_user_ready)
   val vimm1_ready = !emit_vimm1 || Mux(io.s, vu.io.vcmdq.imm1.ready, vu.io.vimm1q_user_ready)
@@ -324,7 +327,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val vimm_addr = io.cmd.bits.rs1 + vf_immediate
 
   // Hookup ready port of cmd queue
-  io.cmd.ready := construct_ready(null)
+  io.cmd.ready := mask_vcfg && construct_ready(null)
 
   // Hookup vcmdq.cmd
   val vr1 = Mux(sel_vr1===VR_RS1, raw_inst(19,15), raw_inst(11,7))

@@ -18,8 +18,9 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
     val lret = new MRTLoadRetireIO
     
-    val pending_memop = Bool(OUTPUT)
     val pending_vf = Bool(OUTPUT)
+    val pending_seq = Bool(OUTPUT)
+    val pending_memop = Bool(OUTPUT)
 
     val aiw = new AIWVXUIO
   }
@@ -35,7 +36,6 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
 
   io.irq <> issue.io.irq
 
-  issue.io.keepcfg := seq.io.busy
   issue.io.xcpt <> io.xcpt
   issue.io.vcmdq <> io.vcmdq
   issue.io.imem <> io.imem
@@ -73,6 +73,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
   io.aiw <> issue.io.aiw
   io.aiw <> seq.io.aiw
 
-  io.pending_memop := hazard.io.pending_memop
   io.pending_vf := issue.io.pending_vf
+  io.pending_seq := seq.io.busy
+  io.pending_memop := hazard.io.pending_memop
 }

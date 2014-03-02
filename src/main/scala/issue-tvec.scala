@@ -78,7 +78,6 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
-    val keepcfg = Bool(INPUT)
     val xcpt = new XCPTIO().flip
 
     val active = Bool(OUTPUT)
@@ -147,7 +146,6 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val vd_zero = !vd_fp && vd === UInt(0) && vd_val
   val issue_op = !vd_zero && vfu_val
 
-  val deq_vcmdq_cmd = !decode_vcfg || !io.keepcfg
   val enq_deck_op = vmu_val
   val enq_vmu_cmdq = vmu_val
   val enq_vmu_addrq = vmu_val
@@ -162,7 +160,6 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 // READY & VALID LOGIC                                                     \\
 //-------------------------------------------------------------------------\\
 
-  val mask_vxu_cmdq_valid = io.vcmdq.cmd.valid && deq_vcmdq_cmd
   val mask_vxu_immq_valid = !deq_vcmdq_imm1 || io.vcmdq.imm1.valid
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_issue_ready = !issue_op || io.ready
@@ -178,7 +175,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
       !stall, tvec_active,
-      mask_vxu_cmdq_valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
+      io.vcmdq.cmd.valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
       mask_issue_ready,
       mask_deck_op_ready,
       mask_vmu_cmdq_ready, mask_vmu_addrq_ready,
@@ -186,7 +183,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
 
-  io.vcmdq.cmd.ready := fire(mask_vxu_cmdq_valid, deq_vcmdq_cmd)
+  io.vcmdq.cmd.ready := fire(io.vcmdq.cmd.valid)
   io.vcmdq.imm1.ready := fire(mask_vxu_immq_valid, deq_vcmdq_imm1)
   io.vcmdq.imm2.ready := fire(mask_vxu_imm2q_valid, deq_vcmdq_imm2)
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)

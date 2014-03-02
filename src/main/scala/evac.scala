@@ -50,6 +50,8 @@ class Evac extends Module
                      //   |  |  |  |  |  |  |  |  |  |
                      List(n, n, n, n, n, n, n, n, n, n), Array(
 
+    CMD_VSETCFG->    List(n, n, n, n, n, y, y, n, n, n),
+    CMD_VSETVL->     List(n, n, n, n, n, y, y, n, n, n),
     CMD_VF->         List(y, y, y, n, y, y, y, n, y, n),
 
     CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y, n),
