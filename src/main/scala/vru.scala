@@ -73,7 +73,8 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     // instructions only with commands don't need to be listed here
     CMD_VF         -> List(Bits(0,4),n,n,y,n),
     CMD_VMSV       -> List(Bits(0,4),n,n,y,n),
-    CMD_VFMSV      -> List(Bits(0,4),n,n,y,n)
+    CMD_VFMSV_S    -> List(Bits(0,4),n,n,y,n),
+    CMD_VFMSV_D    -> List(Bits(0,4),n,n,y,n)
   ))
 
   val stride_decoded::setvl::pf::deq_imm1q::deq_imm2q::Nil = cs
@@ -86,7 +87,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val cmd_reg = Reg(init=Bits(0))
   val vec_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
   val vec_pfed_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
-  val stride_reg = Reg(init=UInt(0, SZ_VIMM))
+  val stride_reg = Reg(init=UInt(0, SZ_VSTRIDE))
   
   val vec_per_pf_reg = Reg(init=UInt(0, OFFSET_BITS+1))
   val vec_pf_remainder_reg = Reg(init=UInt(0, OFFSET_BITS))

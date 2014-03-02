@@ -79,8 +79,6 @@ trait HwachaDecodeConstants
   val VIMM_RS1  = Bits(1,3)
   val VIMM_RS2  = Bits(2,3)
   val VIMM_ADDR = Bits(3,3)
-  val VIMM_FPS = Bits(4,3)
-  val VIMM_FPD = Bits(5,3)
 
   val RESP_X     = Bits("b???",3)
   val RESP_NVL   = Bits(0,3)
@@ -116,8 +114,8 @@ object HwachaDecodeTable extends HwachaDecodeConstants
     VMVV       -> List(Y, N, Y, CMD_VMVV,    Y, VRT_I, VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,Y,N,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
     VMSV       -> List(Y, N, Y, CMD_VMSV,    Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
     VFMVV      -> List(Y, N, Y, CMD_VFMVV,   Y, VRT_F, VR_RD, VR_RS1, VIMM_X,   VIMM_X,    Y,Y,N,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
-    VFMSV_S    -> List(Y, N, Y, CMD_VFMSV,   Y, VRT_F, VR_RD, VR_RD,  VIMM_FPS, VIMM_X,    Y,Y,Y,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
-    VFMSV_D    -> List(Y, N, Y, CMD_VFMSV,   Y, VRT_F, VR_RD, VR_RD,  VIMM_FPD, VIMM_X,    Y,Y,Y,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
+    VFMSV_S    -> List(Y, N, Y, CMD_VFMSV_S, Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
+    VFMSV_D    -> List(Y, N, Y, CMD_VFMSV_D, Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,N,N,N,N,     N,RESP_X,     N,N,N),
     // Memory load/stores (x-registers)
     VLD        -> List(Y, N, Y, CMD_VLD,     Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
     VLW        -> List(Y, N, Y, CMD_VLW,     Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
@@ -341,17 +339,11 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   vu.io.vpfcmdq.cmd.bits := vcmd
 
   // Hookup vcmdq.imm1
-  val encode_sp = Module(new hardfloat.float32ToRecodedFloat32)
-  val encode_dp = Module(new hardfloat.float64ToRecodedFloat64)
-  encode_sp.io.in := io.cmd.bits.rs1
-  encode_dp.io.in := io.cmd.bits.rs1
   val vimm1 = MuxLookup(sel_vimm1, vimm_vlen, Array(
     VIMM_VLEN -> vimm_vlen,
     VIMM_RS1  -> io.cmd.bits.rs1,
     VIMM_RS2  -> io.cmd.bits.rs2,
-    VIMM_ADDR -> vimm_addr,
-    VIMM_FPS  -> encode_sp.io.out,
-    VIMM_FPD  -> encode_dp.io.out
+    VIMM_ADDR -> vimm_addr
   ))
   vu.io.vcmdq.imm1.valid := cmd_valid && emit_vimm1 && construct_ready(vimm1_ready)
   vu.io.vcmdq.imm1.bits := vimm1

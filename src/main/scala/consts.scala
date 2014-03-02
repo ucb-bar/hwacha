@@ -243,7 +243,8 @@ trait Commands
   val CMD_VMVV =  Bits("b01_000_000",8)
   val CMD_VMSV =  Bits("b01_001_000",8)
   val CMD_VFMVV = Bits("b01_000_001",8)
-  val CMD_VFMSV = Bits("b01_001_001",8)
+  val CMD_VFMSV_S = Bits("b01_001_001",8)
+  val CMD_VFMSV_D = Bits("b01_011_001",8)
 
   val CMD_VLD =  Bits("b1_00_0_0_0_11",8)
   val CMD_VLW =  Bits("b1_00_0_0_0_10",8)

@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Compaction._
 import Commands._
 import uncore.constants.MemoryOpConstants._
 
@@ -20,57 +21,58 @@ class HwachaConfigIO extends Bundle
 
 object TVECDecodeTable
 {
-                  //                                deq_vcmdq_imm1
-                  //                                | deq_vcmdq_imm2
-                  //                                | | deq_vcmdq_cnt
-                  //                                | | | decode_vcfg
-                  //                                | | | | decode_vsetvl
-                  //   vd vt VIUfn   VMUfn          | | | | | decode_vf
-                  //   |  |  |       |              | | | | | |
-  val default =   List(R_,R_,F,M0,M0,F,MT_X, VM_X,  F,F,F,F,F,F)
+                  //                                      deq_vcmdq_imm1
+                  //                                      | deq_vcmdq_imm2
+                  //                                      | | deq_vcmdq_cnt
+                  //                                      | | | decode_vcfg
+                  //                                      | | | | decode_vsetvl
+                  //   vd vt VIUfn         VMUfn          | | | | | decode_vf
+                  //   |  |  |             |              | | | | | |
+  val default =   List(R_,R_,F,M0,M0,F,FP_,F,MT_X, VM_X,  F,F,F,F,F,F)
   val table = Array(
-    CMD_VSETCFG-> List(R_,R_,F,M0,M0,F,MT_X, VM_X,  T,F,F,T,T,F),
-    CMD_VSETVL->  List(R_,R_,F,M0,M0,F,MT_X, VM_X,  T,F,F,F,T,F),
-    CMD_VF->      List(R_,R_,F,M0,M0,F,MT_X, VM_X,  T,F,F,F,F,T),
+    CMD_VSETCFG-> List(R_,R_,F,M0,M0,F,FP_,F,MT_X, VM_X,  T,F,F,T,T,F),
+    CMD_VSETVL->  List(R_,R_,F,M0,M0,F,FP_,F,MT_X, VM_X,  T,F,F,F,T,F),
+    CMD_VF->      List(R_,R_,F,M0,M0,F,FP_,F,MT_X, VM_X,  T,F,F,F,F,T),
 
-    CMD_VMVV->    List(RX,RX,T,MR,M0,F,MT_X, VM_X,  F,F,T,F,F,F),
-    CMD_VMSV->    List(RX,R_,T,M0,MI,F,MT_X, VM_X,  T,F,T,F,F,F),
-    CMD_VFMVV->   List(RF,RF,T,MR,M0,F,MT_X, VM_X,  F,F,T,F,F,F),
-    CMD_VFMSV->   List(RF,R_,T,M0,MI,F,MT_X, VM_X,  T,F,T,F,F,F),
+    CMD_VMVV->    List(RX,RX,T,MR,M0,F,FP_,F,MT_X, VM_X,  F,F,T,F,F,F),
+    CMD_VMSV->    List(RX,R_,T,M0,MI,F,FP_,F,MT_X, VM_X,  T,F,T,F,F,F),
+    CMD_VFMVV->   List(RF,RF,T,MR,M0,F,FP_,F,MT_X, VM_X,  F,F,T,F,F,F),
+    CMD_VFMSV_S-> List(RF,R_,T,M0,MI,T,FPS,F,MT_X, VM_X,  T,F,T,F,F,F),
+    CMD_VFMSV_D-> List(RF,R_,T,M0,MI,T,FPD,F,MT_X, VM_X,  T,F,T,F,F,F),
 
-    CMD_VLD->     List(RX,R_,F,M0,M0,T,MT_D, VM_VLD,T,F,T,F,F,F),
-    CMD_VLW->     List(RX,R_,F,M0,M0,T,MT_W, VM_VLD,T,F,T,F,F,F),
-    CMD_VLWU->    List(RX,R_,F,M0,M0,T,MT_WU,VM_VLD,T,F,T,F,F,F),
-    CMD_VLH->     List(RX,R_,F,M0,M0,T,MT_H, VM_VLD,T,F,T,F,F,F),
-    CMD_VLHU->    List(RX,R_,F,M0,M0,T,MT_HU,VM_VLD,T,F,T,F,F,F),
-    CMD_VLB->     List(RX,R_,F,M0,M0,T,MT_B, VM_VLD,T,F,T,F,F,F),
-    CMD_VLBU->    List(RX,R_,F,M0,M0,T,MT_BU,VM_VLD,T,F,T,F,F,F),
-    CMD_VSD->     List(R_,RX,F,M0,M0,T,MT_D, VM_VST,T,F,T,F,F,F),
-    CMD_VSW->     List(R_,RX,F,M0,M0,T,MT_W, VM_VST,T,F,T,F,F,F),
-    CMD_VSH->     List(R_,RX,F,M0,M0,T,MT_H, VM_VST,T,F,T,F,F,F),
-    CMD_VSB->     List(R_,RX,F,M0,M0,T,MT_B, VM_VST,T,F,T,F,F,F),
+    CMD_VLD->     List(RX,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,F,T,F,F,F),
+    CMD_VLW->     List(RX,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,F,T,F,F,F),
+    CMD_VLWU->    List(RX,R_,F,M0,M0,F,FP_,T,MT_WU,VM_VLD,T,F,T,F,F,F),
+    CMD_VLH->     List(RX,R_,F,M0,M0,F,FP_,T,MT_H, VM_VLD,T,F,T,F,F,F),
+    CMD_VLHU->    List(RX,R_,F,M0,M0,F,FP_,T,MT_HU,VM_VLD,T,F,T,F,F,F),
+    CMD_VLB->     List(RX,R_,F,M0,M0,F,FP_,T,MT_B, VM_VLD,T,F,T,F,F,F),
+    CMD_VLBU->    List(RX,R_,F,M0,M0,F,FP_,T,MT_BU,VM_VLD,T,F,T,F,F,F),
+    CMD_VSD->     List(R_,RX,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,F,T,F,F,F),
+    CMD_VSW->     List(R_,RX,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,F,T,F,F,F),
+    CMD_VSH->     List(R_,RX,F,M0,M0,F,FP_,T,MT_H, VM_VST,T,F,T,F,F,F),
+    CMD_VSB->     List(R_,RX,F,M0,M0,F,FP_,T,MT_B, VM_VST,T,F,T,F,F,F),
 
-    CMD_VFLD->    List(RF,R_,F,M0,M0,T,MT_D, VM_VLD,T,F,T,F,F,F),
-    CMD_VFLW->    List(RF,R_,F,M0,M0,T,MT_W, VM_VLD,T,F,T,F,F,F),
-    CMD_VFSD->    List(R_,RF,F,M0,M0,T,MT_D, VM_VST,T,F,T,F,F,F),
-    CMD_VFSW->    List(R_,RF,F,M0,M0,T,MT_W, VM_VST,T,F,T,F,F,F),
+    CMD_VFLD->    List(RF,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,F,T,F,F,F),
+    CMD_VFLW->    List(RF,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,F,T,F,F,F),
+    CMD_VFSD->    List(R_,RF,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,F,T,F,F,F),
+    CMD_VFSW->    List(R_,RF,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,F,T,F,F,F),
 
-    CMD_VLSTD->   List(RX,R_,F,M0,M0,T,MT_D, VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTW->   List(RX,R_,F,M0,M0,T,MT_W, VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTWU->  List(RX,R_,F,M0,M0,T,MT_WU,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTH->   List(RX,R_,F,M0,M0,T,MT_H, VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTHU->  List(RX,R_,F,M0,M0,T,MT_HU,VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTB->   List(RX,R_,F,M0,M0,T,MT_B, VM_VLD,T,T,T,F,F,F),
-    CMD_VLSTBU->  List(RX,R_,F,M0,M0,T,MT_BU,VM_VLD,T,T,T,F,F,F),
-    CMD_VSSTD->   List(R_,RX,F,M0,M0,T,MT_D, VM_VST,T,T,T,F,F,F),
-    CMD_VSSTW->   List(R_,RX,F,M0,M0,T,MT_W, VM_VST,T,T,T,F,F,F),
-    CMD_VSSTH->   List(R_,RX,F,M0,M0,T,MT_H, VM_VST,T,T,T,F,F,F),
-    CMD_VSSTB->   List(R_,RX,F,M0,M0,T,MT_B, VM_VST,T,T,T,F,F,F),
+    CMD_VLSTD->   List(RX,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTW->   List(RX,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTWU->  List(RX,R_,F,M0,M0,F,FP_,T,MT_WU,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTH->   List(RX,R_,F,M0,M0,F,FP_,T,MT_H, VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTHU->  List(RX,R_,F,M0,M0,F,FP_,T,MT_HU,VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTB->   List(RX,R_,F,M0,M0,F,FP_,T,MT_B, VM_VLD,T,T,T,F,F,F),
+    CMD_VLSTBU->  List(RX,R_,F,M0,M0,F,FP_,T,MT_BU,VM_VLD,T,T,T,F,F,F),
+    CMD_VSSTD->   List(R_,RX,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,T,T,F,F,F),
+    CMD_VSSTW->   List(R_,RX,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,T,T,F,F,F),
+    CMD_VSSTH->   List(R_,RX,F,M0,M0,F,FP_,T,MT_H, VM_VST,T,T,T,F,F,F),
+    CMD_VSSTB->   List(R_,RX,F,M0,M0,F,FP_,T,MT_B, VM_VST,T,T,T,F,F,F),
 
-    CMD_VFLSTD->  List(RF,R_,F,M0,M0,T,MT_D, VM_VLD,T,T,T,F,F,F),
-    CMD_VFLSTW->  List(RF,R_,F,M0,M0,T,MT_W, VM_VLD,T,T,T,F,F,F),
-    CMD_VFSSTD->  List(R_,RF,F,M0,M0,T,MT_D, VM_VST,T,T,T,F,F,F),
-    CMD_VFSSTW->  List(R_,RF,F,M0,M0,T,MT_W, VM_VST,T,T,T,F,F,F)
+    CMD_VFLSTD->  List(RF,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,T,T,F,F,F),
+    CMD_VFLSTW->  List(RF,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,T,T,F,F,F),
+    CMD_VFSSTD->  List(R_,RF,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,T,T,F,F,F),
+    CMD_VFSSTW->  List(R_,RF,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,T,T,F,F,F)
   )
 }
 
@@ -124,7 +126,7 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val cs = rocket.DecodeLogic(cmd, TVECDecodeTable.default, TVECDecodeTable.table)
 
   val vdi :: vti :: cs0 = cs
-  val (viu_val: Bool) :: viu_t0 :: viu_t1 :: cs1 = cs0
+  val (viu_val: Bool) :: viu_t0 :: viu_t1 :: (viu_fimm_val: Bool) :: viu_fimm_sel :: cs1 = cs0
   val (vmu_val: Bool) :: vmu_type :: vmu_op :: cs2 = cs1
   val (deq_vcmdq_imm1: Bool) :: (deq_vcmdq_imm2: Bool) :: (deq_vcmdq_cnt: Bool) :: cs3 = cs2
   val (decode_vcfg: Bool) :: (decode_vsetvl: Bool) :: (decode_vf: Bool) :: Nil = cs3
@@ -308,8 +310,17 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   // but it works out since the hazard unit is agnostic to the actual # of port
   io.op.bits.reg.vs := io.op.bits.reg.vt
 
-  io.op.bits.imm.imm := io.vcmdq.imm1.bits
-  io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, Cat(Bits(0,60), addr_stride))
+  val encode_sp = Module(new hardfloat.float32ToRecodedFloat32)
+  val encode_dp = Module(new hardfloat.float64ToRecodedFloat64)
+  encode_sp.io.in := io.vcmdq.imm1.bits
+  encode_dp.io.in := io.vcmdq.imm1.bits
+
+  io.op.bits.imm.imm := MuxCase(
+    io.vcmdq.imm1.bits, Array(
+      (viu_fimm_val && viu_fimm_sel === FPS) -> pack_float_s(encode_sp.io.out, 0),
+      (viu_fimm_val && viu_fimm_sel === FPD) -> pack_float_d(encode_dp.io.out, 0)
+    ))
+  io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, addr_stride)
 
   io.op.bits.aiw.active.imm1 := vmu_val
   io.op.bits.aiw.active.cnt := Bool(true)

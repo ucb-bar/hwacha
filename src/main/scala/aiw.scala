@@ -111,7 +111,8 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     CMD_VMVV->       List(n, y, n, n, y),
     CMD_VMSV->       List(n, y, y, n, y),
     CMD_VFMVV->      List(n, y, n, n, y),
-    CMD_VFMSV->      List(n, y, y, n, y),
+    CMD_VFMSV_S->    List(n, y, y, n, y),
+    CMD_VFMSV_D->    List(n, y, y, n, y),
 
     CMD_VLD       -> List(n, y, y, n, y),
     CMD_VLW       -> List(n, y, y, n, y),
