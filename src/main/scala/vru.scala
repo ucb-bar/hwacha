@@ -70,10 +70,10 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     CMD_VFSSTW     -> List(Bits(0,4),n,y,y,y),
 
     // instructions not relevant for prefetch (just dequeue them)
-    CMD_VF         -> List(Bits(1,4),n,n,y,n),
-    CMD_VMVV       -> List(Bits(1,4),n,n,n,n),
-    CMD_VMSV       -> List(Bits(1,4),n,n,y,n),
-    CMD_VFMVV      -> List(Bits(1,4),n,n,n,n)
+    // instructions only with commands don't need to be listed here
+    CMD_VF         -> List(Bits(0,4),n,n,y,n),
+    CMD_VMSV       -> List(Bits(0,4),n,n,y,n),
+    CMD_VFMSV      -> List(Bits(0,4),n,n,y,n)
   ))
 
   val stride_decoded::setvl::pf::deq_imm1q::deq_imm2q::Nil = cs

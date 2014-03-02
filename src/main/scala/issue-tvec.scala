@@ -36,6 +36,7 @@ object TVECDecodeTable
     CMD_VMVV->    List(RX,RX,T,MR,M0,F,MT_X, VM_X,  F,F,T,F,F,F),
     CMD_VMSV->    List(RX,R_,T,M0,MI,F,MT_X, VM_X,  T,F,T,F,F,F),
     CMD_VFMVV->   List(RF,RF,T,MR,M0,F,MT_X, VM_X,  F,F,T,F,F,F),
+    CMD_VFMSV->   List(RF,R_,T,M0,MI,F,MT_X, VM_X,  T,F,T,F,F,F),
 
     CMD_VLD->     List(RX,R_,F,M0,M0,T,MT_D, VM_VLD,T,F,T,F,F,F),
     CMD_VLW->     List(RX,R_,F,M0,M0,T,MT_W, VM_VLD,T,F,T,F,F,F),

@@ -55,6 +55,7 @@ class Evac extends Module
     CMD_VMVV      -> List(n, y, n, n, y, y, n, n, y, n),
     CMD_VMSV      -> List(n, y, y, n, y, y, y, n, y, n),
     CMD_VFMVV     -> List(n, y, n, n, y, y, n, n, y, n),
+    CMD_VFMSV     -> List(n, y, y, n, y, y, y, n, y, n),
 
     CMD_VLD       -> List(n, y, y, n, y, y, y, n, y, y),
     CMD_VLW       -> List(n, y, y, n, y, y, y, n, y, y),
