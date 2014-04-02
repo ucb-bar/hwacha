@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Constants._
 import uncore.constants.MemoryOpConstants._
-import uncore.constants.AddressConstants._
 
 class VVAQ(implicit conf: HwachaConfiguration) extends Module
 {
@@ -14,8 +13,8 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
     val deq = new VVAQIO
   }
 
-  val arb = Module(new Arbiter(UInt(width = SZ_VMU_ADDR), 2))
-  val q = Module(new Queue(UInt(width = SZ_VMU_ADDR), conf.vmu.nvvaq))
+  val arb = Module(new Arbiter(UInt(width = conf.vmu.addr_sz), 2))
+  val q = Module(new Queue(UInt(width = conf.vmu.addr_sz), conf.vmu.nvvaq))
 
   arb.io.in(0) <> io.lane.q
   arb.io.in(1) <> io.evac
@@ -28,7 +27,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
   lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
 }
 
-class AddressGen extends Module
+class AddressGen(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -89,15 +88,11 @@ class AddressGen extends Module
   }
 }
 
-object AddressTLB
+class AddressTLB(implicit conf: HwachaConfiguration) extends Module
 {
-  def vpn(addr: UInt) = addr(VADDR_BITS-1, PGIDX_BITS)
-  def idx(addr: UInt) = addr(PGIDX_BITS-1, 0)
-}
-
-class AddressTLB extends Module
-{
-  import AddressTLB._
+  implicit val as = conf.as
+  def vpn(addr: UInt) = addr(conf.as.vaddrBits-1, conf.as.pgIdxBits)
+  def idx(addr: UInt) = addr(conf.as.pgIdxBits-1, 0)
 
   val io = new Bundle {
     val enq = new VATQIO().flip

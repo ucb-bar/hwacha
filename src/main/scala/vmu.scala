@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Constants._
 import uncore.constants.MemoryOpConstants._
-import uncore.constants.AddressConstants._
 
 class VMUIssueIO extends Bundle
 {

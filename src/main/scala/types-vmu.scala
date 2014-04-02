@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Constants._
 import uncore.constants.MemoryOpConstants._
-import uncore.constants.AddressConstants._
 
 //--------------------------------------------------------------------\\
 // vmu queue I/O
@@ -12,9 +11,9 @@ import uncore.constants.AddressConstants._
 class VMUCommandIO extends DecoupledIO(new VMUOp)
 class VMUAddressIO extends DecoupledIO(new VMUAddressOp)
 
-class VVAQIO extends DecoupledIO(UInt(width = SZ_VMU_ADDR))
-class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
-class VPAQIO extends DecoupledIO(new VPAQEntry)
+class VVAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[UInt](UInt(width = conf.vmu.addr_sz))
+class VVAPFQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VVAPFQEntry](new VVAPFQEntry()(conf))
+class VPAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VPAQEntry](new VPAQEntry()(conf))
 
 class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
 {
@@ -23,15 +22,15 @@ class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
   val pala = new LookAheadPortIO(log2Down(conf.vmu.nvpaq) + 1)
 }
 
-class VSDQIO extends DecoupledIO(Bits(width = SZ_VMU_DATA))
-class VLDQIO extends DecoupledIO(new VLDQEntry)
+class VSDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[Bits](Bits(width = conf.vmu.data_sz))
+class VLDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VLDQEntry](new VLDQEntry()(conf))
 
 
 //--------------------------------------------------------------------\\
 // vmu miscellaneous I/O
 //--------------------------------------------------------------------\\
 
-class VATQIO extends DecoupledIO(new VATQEntry)
+class VATQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VATQEntry](new VATQEntry()(conf))
 
 class VPAQMemIO(implicit conf: HwachaConfiguration)
   extends DecoupledIO[VPAQMemIf](new VPAQMemIf)
@@ -44,7 +43,7 @@ class VLDQMemIO(implicit conf: HwachaConfiguration) extends Bundle
 
 class VMDBIO(implicit conf: HwachaConfiguration) extends Bundle
 {
-  val tag = Bits(INPUT, conf.vmu.SZ_TAG)
+  val tag = Bits(INPUT, conf.vmu.tag_sz)
   val info = Decoupled(new VMUMetadata)
 }
 
@@ -52,6 +51,11 @@ class VMDBIO(implicit conf: HwachaConfiguration) extends Bundle
 //--------------------------------------------------------------------\\
 // vmu types
 //--------------------------------------------------------------------\\
+
+abstract trait VMUBundle extends Bundle {
+  implicit val conf: HwachaConfiguration
+  override def clone = this.getClass.getConstructors.head.newInstance(conf).asInstanceOf[this.type]
+}
 
 class VMUFn extends Bundle
 {
@@ -83,40 +87,38 @@ class VMUMetadata extends Bundle
   val shift = UInt(width = 3) /* TODO: parameterize */
 }
 
-class MemOp(n: Int) extends Bundle
+class MemOp(n: Int)(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
   val cmd = Bits(width = M_SZ)
   val typ = Bits(width = MT_SZ)
   val addr = UInt(width = n)
 }
 
-class VVAPFQEntry extends MemOp(VADDR_BITS)
+class VVAPFQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.vaddrBits)(conf)
 
-class VATQEntry extends MemOp(VADDR_BITS)
+class VATQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.vaddrBits)(conf)
 {
   val meta = new VMUMetadata
 }
 
-class VPAQEntry extends MemOp(PADDR_BITS)
+class VPAQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrBits)(conf)
 {
   val meta = new VMUMetadata
 }
 
-class VPAQMemIf(implicit conf: HwachaConfiguration) extends MemOp(PADDR_BITS)
+class VPAQMemIf(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrBits)(conf)
 {
-  val tag = Bits(width = conf.vmu.SZ_TAG)
-  override def clone = new VPAQMemIf().asInstanceOf[this.type]
+  val tag = Bits(width = conf.vmu.tag_sz)
 }
 
-class VLDQMemIf(implicit conf: HwachaConfiguration) extends Bundle
+class VLDQMemIf(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
-  val tag = Bits(width = conf.vmu.SZ_TAG)
-  val data = Bits(width = SZ_VMU_DATA)
-  override def clone = new VLDQMemIf().asInstanceOf[this.type]
+  val tag = Bits(width = conf.vmu.tag_sz)
+  val data = Bits(width = conf.vmu.data_sz)
 }
 
-class VLDQEntry extends Bundle
+class VLDQEntry(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
   val meta = new VMUMetadata
-  val data = Bits(width = SZ_VMU_DATA)
+  val data = Bits(width = conf.vmu.data_sz)
 }

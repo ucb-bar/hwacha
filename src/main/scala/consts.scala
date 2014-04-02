@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import uncore.constants.MemoryOpConstants._
-import uncore.constants.AddressConstants._
 
 object Constants extends
   MachineConstants with
@@ -190,8 +189,6 @@ trait VAU2Constants
 trait VMUConstants extends LaneConstants
 {
   val SZ_QCNT = SZ_LGBANK1
-  val SZ_VMU_ADDR = math.max(PADDR_BITS, VADDR_BITS)
-  val SZ_VMU_DATA = 64
   val SZ_VMU_OP = 1 + M_SZ
 
   val VM_X = Bits.DC(SZ_VMU_OP)

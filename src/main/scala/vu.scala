@@ -25,10 +25,10 @@ class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
   io.deq.cnt <> Queue(io.enq.cnt, conf.vcmdq.ncnt)
 }
 
-class TLBIO extends Bundle
+class TLBIO(implicit conf: HwachaConfiguration) extends Bundle
 {
-  val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
+  val req = Decoupled(new rocket.TLBReq()(conf.as))
+  val resp = new rocket.TLBResp(1)(conf.as).flip // we don't use hit_idx
 }
 
 class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)

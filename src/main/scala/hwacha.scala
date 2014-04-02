@@ -4,7 +4,7 @@ import Chisel._
 import uncore._
 import Constants._
 
-case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
+case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
@@ -55,7 +55,9 @@ case class HwachaConfiguration(vicache: rocket.ICacheConfig, dcache: rocket.DCac
     val nvvapfq = 8
     val nvpapfq = 8
 
-    val SZ_TAG = log2Up(nvlmb)
+    val tag_sz = log2Up(nvlmb)
+    val addr_sz = math.max(as.paddrBits, as.vaddrBits)
+    val data_sz = 64
   }
 
   val nvsreq = 128
@@ -173,12 +175,12 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   import HwachaDecodeTable._
   import Commands._
 
-  implicit val conf = hc
+  implicit val (conf, as) = (hc, hc.as)
 
   // D$ tag requirement for hwacha
-  require(rc.dcacheReqTagBits >= conf.vmu.SZ_TAG)
+  require(rc.dcacheReqTagBits >= conf.vmu.tag_sz)
 
-  val icache = Module(new rocket.Frontend()(hc.vicache, rc.tl))
+  val icache = Module(new rocket.Frontend()(hc.vicache))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))
   val ptlb = Module(new rocket.TLB(hc.nptlb))
 
