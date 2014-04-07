@@ -209,8 +209,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
   io.imem.req.valid := io.vf.fire
   io.imem.req.bits.pc := io.vf.pc
-  io.imem.req.bits.mispredict := Bool(false)
-  io.imem.req.bits.taken := Bool(false)
+  io.imem.btb_update.valid := Bool(false)
   io.imem.invalidate := Bool(false)
 
   val inst = io.imem.resp.bits.data
