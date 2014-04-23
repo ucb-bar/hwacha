@@ -8,7 +8,7 @@ class MetadataBuffer(implicit conf: HwachaConfiguration) extends Module
   val io = new Bundle {
     val wr = new VMDBIO().flip
     val rd = new Bundle {
-      val tag = Valid(Bits(width = conf.vmu.tag_sz)).flip
+      val tag = Valid(Bits(width = conf.vmu.sz_tag)).flip
       val info = new VMUMetadata().asOutput
     }
   }

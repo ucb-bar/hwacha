@@ -11,7 +11,7 @@ import uncore.constants.MemoryOpConstants._
 class VMUCommandIO extends DecoupledIO(new VMUOp)
 class VMUAddressIO extends DecoupledIO(new VMUAddressOp)
 
-class VVAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[UInt](UInt(width = conf.vmu.addr_sz))
+class VVAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[UInt](UInt(width = conf.vmu.sz_addr))
 class VVAPFQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VVAPFQEntry](new VVAPFQEntry()(conf))
 class VPAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VPAQEntry](new VPAQEntry()(conf))
 
@@ -22,7 +22,7 @@ class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
   val pala = new LookAheadPortIO(log2Down(conf.vmu.nvpaq) + 1)
 }
 
-class VSDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[Bits](Bits(width = conf.vmu.data_sz))
+class VSDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[Bits](Bits(width = conf.vmu.sz_data))
 class VLDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VLDQEntry](new VLDQEntry()(conf))
 
 
@@ -43,7 +43,7 @@ class VLDQMemIO(implicit conf: HwachaConfiguration) extends Bundle
 
 class VMDBIO(implicit conf: HwachaConfiguration) extends Bundle
 {
-  val tag = Bits(INPUT, conf.vmu.tag_sz)
+  val tag = Bits(INPUT, conf.vmu.sz_tag)
   val info = Decoupled(new VMUMetadata)
 }
 
@@ -108,17 +108,17 @@ class VPAQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrB
 
 class VPAQMemIf(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrBits)(conf)
 {
-  val tag = Bits(width = conf.vmu.tag_sz)
+  val tag = Bits(width = conf.vmu.sz_tag)
 }
 
 class VLDQMemIf(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
-  val tag = Bits(width = conf.vmu.tag_sz)
-  val data = Bits(width = conf.vmu.data_sz)
+  val tag = Bits(width = conf.vmu.sz_tag)
+  val data = Bits(width = conf.vmu.sz_data)
 }
 
 class VLDQEntry(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
   val meta = new VMUMetadata
-  val data = Bits(width = conf.vmu.data_sz)
+  val data = Bits(width = conf.vmu.sz_data)
 }

@@ -25,6 +25,24 @@ trait MachineConstants
 
   val SZ_ADDR = 64
   val SZ_DATA = 66
+
+  val SZ_XD = 64
+  val SZ_XW = 32
+  val SZ_XH = 16
+  val SZ_XB = 8
+
+  val N_XD = SZ_DATA / SZ_XD
+  val N_XW = SZ_DATA / SZ_XW
+  val N_XH = SZ_DATA / SZ_XH
+  val N_XB = SZ_DATA / SZ_XB
+
+  val SZ_FPD = SZ_XD + 1
+  val SZ_FPS = SZ_XW + 1
+  val SZ_FPH = SZ_XH
+
+  val N_FPD = SZ_DATA / SZ_FPD
+  val N_FPS = SZ_DATA / SZ_FPS
+  val N_FPH = SZ_DATA / SZ_FPH
 }
 
 trait VectorCommandQueueConstants
@@ -188,7 +206,6 @@ trait VAU2Constants
 
 trait VMUConstants extends LaneConstants
 {
-  val SZ_QCNT = SZ_LGBANK1
   val SZ_VMU_OP = 1 + M_SZ
 
   val VM_X = Bits.DC(SZ_VMU_OP)

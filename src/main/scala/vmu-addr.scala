@@ -13,8 +13,8 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
     val deq = new VVAQIO
   }
 
-  val arb = Module(new Arbiter(UInt(width = conf.vmu.addr_sz), 2))
-  val q = Module(new Queue(UInt(width = conf.vmu.addr_sz), conf.vmu.nvvaq))
+  val arb = Module(new Arbiter(UInt(width = conf.vmu.sz_addr), 2))
+  val q = Module(new Queue(UInt(width = conf.vmu.sz_addr), conf.vmu.nvvaq))
 
   arb.io.in(0) <> io.lane.q
   arb.io.in(1) <> io.evac

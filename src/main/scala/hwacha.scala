@@ -55,9 +55,9 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val nvvapfq = 8
     val nvpapfq = 8
 
-    val tag_sz = log2Up(nvlmb)
-    val addr_sz = math.max(as.paddrBits, as.vaddrBits)
-    val data_sz = 64
+    val sz_tag = log2Up(nvlmb)
+    val sz_addr = math.max(as.paddrBits, as.vaddrBits)
+    val sz_data = 64
   }
 
   val nvsreq = 128
@@ -178,7 +178,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   implicit val (conf, as) = (hc, hc.as)
 
   // D$ tag requirement for hwacha
-  require(rc.dcacheReqTagBits >= conf.vmu.tag_sz)
+  require(rc.dcacheReqTagBits >= conf.vmu.sz_tag)
 
   val icache = Module(new rocket.Frontend()(hc.vicache))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))
