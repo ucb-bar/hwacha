@@ -4,6 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 import Compaction._
+import scala.collection.mutable.ArrayBuffer
 
 class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 {
@@ -48,115 +49,82 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val val_fma_sp = io.valid & FP(FPS)
   val val_fma_hp = io.valid & FP(FPH)
 
-  val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
-  dfma.io.op := Fill(2,val_fma_dp) & fma_op
-  dfma.io.a := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplicand, 0)
-  dfma.io.b := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplier, 0)
-  dfma.io.c := Fill(65,val_fma_dp) & unpack_float_d(fma_addend, 0)
-  dfma.io.roundingMode := Fill(3,val_fma_dp) & io.fn.rm
-  val result_dp0 = dfma.io.out
-
-  val sfma = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
-  sfma.io.op := Fill(2,val_fma_sp) & fma_op
-  sfma.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, 0)
-  sfma.io.b := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplier, 0)
-  sfma.io.c := Fill(33,val_fma_sp) & unpack_float_s(fma_addend, 0)
-  sfma.io.roundingMode := Fill(3,val_fma_sp) & io.fn.rm
-  val result_sp0 = sfma.io.out
-
-  // instantiate second sfma unit (confprec)
-  val result_sp1 = Bits(width = 33)
-  val or_exc_sp = Bits(width = 5)
-  if (conf.confprec) {
-    val sfma1 = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
-    sfma1.io.op := Fill(2,val_fma_sp) & fma_op
-    sfma1.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, 1)
-    sfma1.io.b := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplier, 1)
-    sfma1.io.c := Fill(33,val_fma_sp) & unpack_float_s(fma_addend, 1)
-    sfma1.io.roundingMode := Fill(3,val_fma_sp) & io.fn.rm
-    result_sp1 := sfma1.io.out
-
-    or_exc_sp := sfma.io.exceptionFlags | sfma1.io.exceptionFlags
-  } else {
-    result_sp1 := Bits(0, 38)
-    or_exc_sp := Bits(0, 5)
+  val dfmas = new ArrayBuffer[Bits]
+  val or_exc_dps = new ArrayBuffer[Bits]
+  for (i <- 0 until N_FPD) {
+    if (conf.confprec || i == 0) {
+      val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
+      dfma.io.op := Fill(2,val_fma_dp) & fma_op
+      dfma.io.a := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplicand, i)
+      dfma.io.b := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplier, i)
+      dfma.io.c := Fill(65,val_fma_dp) & unpack_float_d(fma_addend, i)
+      dfma.io.roundingMode := Fill(3, val_fma_dp) & io.fn.rm
+      dfmas += dfma.io.out
+      or_exc_dps += dfma.io.exceptionFlags
+    } else {
+      dfmas += Bits(0, SZ_FPD)
+    }
   }
 
-  val recoded_hp_a = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 0).toUInt, 10, 6)
-  val recoded_hp_b = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, 0).toUInt, 10, 6)
-  val recoded_hp_c = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, 0).toUInt, 10, 6)
-  val hfma = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
-  hfma.io.op := Fill(2, val_fma_hp) & fma_op
-  hfma.io.a := Fill(17, val_fma_hp) & recoded_hp_a
-  hfma.io.b := Fill(17, val_fma_hp) & recoded_hp_b
-  hfma.io.c := Fill(17, val_fma_hp) & recoded_hp_c
-  hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
-  val result_hp0 = hardfloat.recodedFloatNToFloatN(hfma.io.out, 10, 6)
+  val sfmas = new ArrayBuffer[Bits]
+  val or_exc_sps = new ArrayBuffer[Bits]
+  for (i <- 0 until N_FPS) {
+    if (conf.confprec || i == 0) {
+      val sfma = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
+      sfma.io.op := Fill(2,val_fma_sp) & fma_op
+      sfma.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, i)
+      sfma.io.b := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplier, i)
+      sfma.io.c := Fill(33,val_fma_sp) & unpack_float_s(fma_addend, i)
+      sfma.io.roundingMode := Fill(3, val_fma_sp) & io.fn.rm
+      sfmas += sfma.io.out
+      or_exc_sps += sfma.io.exceptionFlags
+    } else {
+      sfmas += Bits(0, SZ_FPS)
+    }
+  }
 
   // packing format: 65 64       49 48       33 32 31       16 15       00
   //                  0 [  hfma3  ] [  hfma2  ]  0 [  hfma1  ] [  hfma0  ]
-  val result_hp1 = Bits(width = 16)
-  val result_hp2 = Bits(width = 16)
-  val result_hp3 = Bits(width = 16)
-  val or_exc_hp = Bits(width = 5)
-  if (conf.confprec) {
-    val recoded_hp_a1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 1).toUInt, 10, 6)
-    val recoded_hp_b1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, 1).toUInt, 10, 6)
-    val recoded_hp_c1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, 1).toUInt, 10, 6)
-    val hfma1 = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
-    hfma1.io.op := Fill(2, val_fma_hp) & fma_op
-    hfma1.io.a := Fill(17, val_fma_hp) & recoded_hp_a1
-    hfma1.io.b := Fill(17, val_fma_hp) & recoded_hp_b1
-    hfma1.io.c := Fill(17, val_fma_hp) & recoded_hp_c1
-    hfma1.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
-    result_hp1 := hardfloat.recodedFloatNToFloatN(hfma1.io.out, 10, 6)
+  val hfmas = new ArrayBuffer[Bits]
+  val or_exc_hps = new ArrayBuffer[Bits]
+  for (i <- 0 until N_FPH) {
+    if (conf.confprec || i == 0) {
+      val recoded_hp_a = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, i).toUInt, 10, 6)
+      val recoded_hp_b = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, i).toUInt, 10, 6)
+      val recoded_hp_c = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, i).toUInt, 10, 6)
 
-    val recoded_hp_a2 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 2)toUInt, 10, 6)
-    val recoded_hp_b2 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, 2).toUInt, 10, 6)
-    val recoded_hp_c2 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, 2).toUInt, 10, 6)
-    val hfma2 = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
-    hfma2.io.op := Fill(2, val_fma_hp) & fma_op
-    hfma2.io.a := Fill(17, val_fma_hp) & recoded_hp_a2
-    hfma2.io.b := Fill(17, val_fma_hp) & recoded_hp_b2
-    hfma2.io.c := Fill(17, val_fma_hp) & recoded_hp_c2
-    hfma2.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
-    result_hp2 := hardfloat.recodedFloatNToFloatN(hfma2.io.out, 10, 6)
-
-    val recoded_hp_a3 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 3).toUInt, 10, 6)
-    val recoded_hp_b3 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, 3).toUInt, 10, 6)
-    val recoded_hp_c3 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, 3).toUInt, 10, 6)
-    val hfma3 = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
-    hfma3.io.op := Fill(2, val_fma_hp) & fma_op
-    hfma3.io.a := Fill(17, val_fma_hp) & recoded_hp_a3
-    hfma3.io.b := Fill(17, val_fma_hp) & recoded_hp_b3
-    hfma3.io.c := Fill(17, val_fma_hp) & recoded_hp_c3
-    hfma3.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
-    result_hp3 := hardfloat.recodedFloatNToFloatN(hfma3.io.out, 10, 6)
-
-    or_exc_hp := hfma.io.exceptionFlags | hfma1.io.exceptionFlags | hfma2.io.exceptionFlags | hfma3.io.exceptionFlags
-  } else {
-    result_hp1 := Bits(0, 16)
-    result_hp2 := Bits(0, 16)
-    result_hp3 := Bits(0, 16)
-    or_exc_hp := Bits(0, 5)
+      val hfma = Module(new hardfloat.mulAddSubRecodedFloatN(10, 6))
+      hfma.io.op := Fill(2, val_fma_hp) & fma_op
+      hfma.io.a := Fill(17, val_fma_hp) & recoded_hp_a
+      hfma.io.b := Fill(17, val_fma_hp) & recoded_hp_b
+      hfma.io.c := Fill(17, val_fma_hp) & recoded_hp_c
+      hfma.io.roundingMode := Fill(3, val_fma_hp) & io.fn.rm
+      hfmas += hardfloat.recodedFloatNToFloatN(hfma.io.out, 10, 6)
+      or_exc_hps += hfma.io.exceptionFlags
+    } else {
+      hfmas += Bits(0, SZ_FPH)
+    }
   }
 
+  val or_exc_dp = or_exc_dps.reduce(_ | _)
+  val or_exc_sp = or_exc_sps.reduce(_ | _)
+  val or_exc_hp = or_exc_hps.reduce(_ | _)
 
   val result = Bits(width = 71)
 
   if (conf.confprec) {
     result := MuxCase(
       Bits("h3FFFFFFFFFFFFFFFFF",71), Array(
-      (val_fma_dp) -> Cat(dfma.io.exceptionFlags, repack_float_d(result_dp0)),
-      (val_fma_sp) -> Cat(or_exc_sp, repack_float_s(result_sp0, result_sp1)),
-      (val_fma_hp) -> Cat(or_exc_hp, repack_float_h(result_hp0, result_hp1, result_hp2, result_hp3))
+      (val_fma_dp) -> Cat(or_exc_dp, repack_float_d(dfmas(0))),
+      (val_fma_sp) -> Cat(or_exc_sp, repack_float_s(sfmas(0), sfmas(1))),
+      (val_fma_hp) -> Cat(or_exc_hp, repack_float_h(hfmas(0), hfmas(1), hfmas(2), hfmas(3)))
       ))
   } else {
     result := MuxCase(
       Bits("h3FFFFFFFFFFFFFFFFF",71), Array(
-      (val_fma_dp) -> Cat(dfma.io.exceptionFlags, pack_float_d(result_dp0, 0)),
-      (val_fma_sp) -> Cat(sfma.io.exceptionFlags, pack_float_s(result_sp0, 0)),
-      (val_fma_hp) -> Cat(hfma.io.exceptionFlags, pack_float_h(result_hp0, 0))
+      (val_fma_dp) -> Cat(or_exc_dp, pack_float_d(dfmas(0), 0)),
+      (val_fma_sp) -> Cat(or_exc_sp, pack_float_s(sfmas(0), 0)),
+      (val_fma_hp) -> Cat(or_exc_hp, pack_float_h(hfmas(0), 0))
       ))
   }
 
