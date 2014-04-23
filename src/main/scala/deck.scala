@@ -226,8 +226,9 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
     brq.io.enq <> io.brqs(i)
     slacntr.io.la.cnt := (io.la.cnt > UInt(i))
     slacntr.io.la.reserve := io.la.reserve
-    slacntr.io.inc := (bank_id === UInt(i)) && io.vmu.sdata.fire()
-    slacntr.io.dec := Bool(false)
+    slacntr.io.inc.cnt := UInt(1)
+    slacntr.io.inc.update := (bank_id === UInt(i)) && io.vmu.sdata.fire()
+    slacntr.io.dec.update := Bool(false)
     slacntr_avail += slacntr.io.la.available
 
     brqs += brq.io.deq

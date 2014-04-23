@@ -23,8 +23,10 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
 
   val lacntr = Module(new LookAheadCounter(conf.vmu.nvvaq, conf.vmu.nvvaq))
   lacntr.io.la <> io.lane.vala
-  lacntr.io.inc := io.deq.fire()
-  lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
+  lacntr.io.inc.cnt := UInt(1)
+  lacntr.io.inc.update := io.deq.fire()
+  lacntr.io.dec.cnt := UInt(1)
+  lacntr.io.dec.update := io.xcpt.prop.vmu.drain && io.evac.fire()
 }
 
 class AddressGen(implicit conf: HwachaConfiguration) extends Module
@@ -166,8 +168,10 @@ class VPAQ(implicit conf: HwachaConfiguration) extends Module
 
   val lacntr = Module(new LookAheadCounter(0, conf.vmu.nvpaq))
   // TODO: Support utcnt != 1
-  lacntr.io.inc := q.io.enq.fire()
-  lacntr.io.dec := q.io.deq.fire() && io.xcpt.prop.vmu.drain
+  lacntr.io.inc.cnt := UInt(1)
+  lacntr.io.inc.update := q.io.enq.fire()
+  lacntr.io.dec.cnt := UInt(1)
+  lacntr.io.dec.update := q.io.deq.fire() && io.xcpt.prop.vmu.drain
   lacntr.io.la <> io.la
 
   // Throttle counter

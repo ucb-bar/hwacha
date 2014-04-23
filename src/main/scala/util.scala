@@ -159,32 +159,30 @@ class LookAheadPortIO(sz: Int) extends Bundle
   val available = Bool(INPUT)
 }
 
+class CounterPortIO(sz: Int) extends Bundle
+{
+  val cnt = UInt(OUTPUT, sz)
+  val update = Bool(OUTPUT)
+}
+
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val la = new LookAheadPortIO(sz).flip
-    val inc = Bool(INPUT)
-    val dec = Bool(INPUT)
+    val inc = new CounterPortIO(sz).flip
+    val dec = new CounterPortIO(sz).flip
     val full = Bool(OUTPUT)
     val empty = Bool(OUTPUT)
   }
 
   val count = Reg(init = UInt(reset_cnt, sz))
 
-  when (io.la.reserve) {
-    count := count - io.la.cnt
-    when (io.inc ^ io.dec) {
-      when (io.inc) { count := count - io.la.cnt + UInt(1) }
-      when (io.dec) { count := count - io.la.cnt - UInt(1) }
-    }
-  }
-  .otherwise {
-    when (io.inc ^ io.dec) {
-      when (io.inc) { count := count + UInt(1) }
-      when (io.dec) { count := count - UInt(1) }
-    }
-  }
+  val add = (io.inc.cnt & Fill(sz, io.inc.update))
+  val sub = (io.dec.cnt & Fill(sz, io.dec.update)) | (io.la.cnt & Fill(sz, io.la.reserve))
+  assert(!(io.la.reserve && io.dec.update), "simultaneous reserve and decrement")
+
+  count := count + add - sub
 
   io.la.available := count >= io.la.cnt
   io.full := count === UInt(max_cnt)

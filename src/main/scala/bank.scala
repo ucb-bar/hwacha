@@ -202,7 +202,8 @@ class BankRegfile extends Module
   io.ropl1 := ropl1
   io.ropl2 := ropl2
 
-  //assert(!io.brqen || io.brq.ready, "brq invariant not met, look at brq la counters")
+  assert(!io.brqen || io.brq.ready,
+    "brq enabled when not ready; check brq counters")
   io.brq.valid := io.brqen
   io.brq.bits.data := Mux(io.brqzero, Bits(0), rdata_rf)
 }
