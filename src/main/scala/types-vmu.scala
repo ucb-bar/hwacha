@@ -66,6 +66,7 @@ class VMUFn extends Bundle
   def lreq(dummy: Int = 0) = (op === VM_VLD) || (op === VM_ULD) || amoreq()
   def sreq(dummy: Int = 0) = (op === VM_VST) || (op === VM_UST)
   def amoreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op))
+  def signext(dummy: Int = 0) = (typ != MT_WU) && (typ != MT_HU) && (typ != MT_BU)
 }
 
 class VMUOp extends Bundle

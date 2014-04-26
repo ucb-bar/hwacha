@@ -53,6 +53,17 @@ object Compaction extends Compaction
     Fill(16, m(2)),
     Fill(16, m(1)),
     Fill(16, m(0)))
+
+  // Pack the given element into the given subword position
+  // and propagate the MSB throughout the higher order bits
+  private def pack(n: Bits, i: Int, w: Int): Bits = {
+    val data = Cat(Fill(SZ_DATA-((i+1)*w), n(w)), n(w-1,0))
+    if (i == 0) data else Cat(data, Bits(0, i*w))
+  }
+  def pack_d(n: Bits, i: Int): Bits = pack(n, i, SZ_XD)
+  def pack_w(n: Bits, i: Int): Bits = pack(n, i, SZ_XW)
+  def pack_h(n: Bits, i: Int): Bits = pack(n, i, SZ_XH)
+  def pack_b(n: Bits, i: Int): Bits = pack(n, i, SZ_XB)
 }
 
 trait Compaction
@@ -66,6 +77,11 @@ trait Compaction
   def unpack_float_d(n: Bits, i: Int): Bits
   def unpack_float_s(n: Bits, i: Int): Bits
   def unpack_float_h(n: Bits, i: Int): Bits
+
+  def pack_d(n: Bits, i: Int): Bits
+  def pack_w(n: Bits, i: Int): Bits
+  def pack_h(n: Bits, i: Int): Bits
+  def pack_b(n: Bits, i: Int): Bits
 }
 
 object PtrIncr
@@ -375,4 +391,35 @@ class CounterVec(DEPTH: Int) extends Module
   io.deq_last := array_last(read_ptr)
 
   io.rtag := write_ptr
+}
+
+// Rotates n input elements into m output slots
+class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module
+{
+  require(n <= m)
+  val io = new Bundle {
+    val in = Vec.fill(n){ gen.clone.asInput }
+    val out = Vec.fill(m){ gen.clone.asOutput }
+    val sel = UInt(INPUT, log2Up(m))
+  }
+
+  var barrel = io.in
+  for (stage <- 0 until log2Up(m)) {
+    val shift = 1 << stage
+    val len = math.min(barrel.length + shift, m)
+
+    barrel = Vec.tabulate(len){ i => {
+      // k: source index with rotation enabled
+      // i: source index with rotation disabled
+      val k = if (rev) (i + shift) % m // shift backward
+        else ((i - shift) + m) % m // shift forward
+      if (i < barrel.length && k < barrel.length) {
+        Mux(io.sel(stage), barrel(k), barrel(i))
+      } else {
+        // If either entry does not exist, use the other.
+        if (i < barrel.length) barrel(i) else barrel(k)
+      }
+    }}
+  }
+  io.out := barrel
 }
