@@ -376,3 +376,34 @@ class CounterVec(DEPTH: Int) extends Module
 
   io.rtag := write_ptr
 }
+
+// Rotates n input elements into m output slots
+class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module
+{
+  require(n <= m)
+  val io = new Bundle {
+    val in = Vec.fill(n){ gen.clone.asInput }
+    val out = Vec.fill(m){ gen.clone.asOutput }
+    val sel = UInt(INPUT, log2Up(m))
+  }
+
+  var barrel = io.in
+  for (stage <- 0 until log2Up(m)) {
+    val shift = 1 << stage
+    val len = math.min(barrel.length + shift, m)
+
+    barrel = Vec.tabulate(len){ i => {
+      // k: source index with rotation enabled
+      // i: source index with rotation disabled
+      val k = if (rev) (i + shift) % m // shift backward
+        else ((i - shift) + m) % m // shift forward
+      if (i < barrel.length && k < barrel.length) {
+        Mux(io.sel(stage), barrel(k), barrel(i))
+      } else {
+        // If either entry does not exist, use the other.
+        if (i < barrel.length) barrel(i) else barrel(k)
+      }
+    }}
+  }
+  io.out := barrel
+}

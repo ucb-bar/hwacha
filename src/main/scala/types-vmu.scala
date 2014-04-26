@@ -55,10 +55,6 @@ class VMDBIO extends HwachaBundle
 // vmu types
 //--------------------------------------------------------------------\\
 
-abstract trait VMUBundle extends HwachaBundle {
-  //override def clone = this.getClass.getConstructors.head.newInstance.asInstanceOf[this.type]
-}
-
 class VMUFn extends Bundle
 {
   val op = Bits(width = SZ_VMU_OP)
@@ -68,6 +64,7 @@ class VMUFn extends Bundle
   def lreq(dummy: Int = 0) = (op === VM_VLD) || (op === VM_ULD) || amoreq()
   def sreq(dummy: Int = 0) = (op === VM_VST) || (op === VM_UST)
   def amoreq(dummy: Int = 0) = is_mcmd_amo(vmu_op_mcmd(op))
+  def signext(dummy: Int = 0) = (typ != MT_WU) && (typ != MT_HU) && (typ != MT_BU)
 }
 
 class VMUOp extends Bundle
@@ -82,14 +79,15 @@ class VMUAddressOp extends Bundle
   val stride = UInt(width = SZ_VSTRIDE)
 }
 
-class VMUMetadata extends Bundle
+class VMUMetadata extends HwachaBundle
 {
+  private val n = log2Up(confvmu.max_utcnt)
   val utidx = UInt(width = SZ_VLEN)
-  val utcnt = UInt(width = 4) /* TODO: parameterize */
-  val shift = UInt(width = 3) /* TODO: parameterize */
+  val utcnt = UInt(width = n) /* NOTE: 2^n encoded as 0 */
+  val offset = UInt(width = n)
 }
 
-class MemOp(n: Int) extends VMUBundle
+class MemOp(n: Int) extends HwachaBundle
 {
   val cmd = Bits(width = M_SZ)
   val typ = Bits(width = MT_SZ)
@@ -113,13 +111,13 @@ class VPAQMemIf extends MemOp(32)
   val tag = Bits(width = confvmu.sz_tag)
 }
 
-class VLDQMemIf extends VMUBundle
+class VLDQMemIf extends HwachaBundle
 {
   val tag = Bits(width = confvmu.sz_tag)
   val data = Bits(width = confvmu.sz_data)
 }
 
-class VLDQEntry extends VMUBundle
+class VLDQEntry extends HwachaBundle
 {
   val meta = new VMUMetadata
   val data = Bits(width = confvmu.sz_data)

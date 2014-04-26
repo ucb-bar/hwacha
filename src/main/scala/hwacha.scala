@@ -75,6 +75,14 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     val sz_tag = log2Up(nvlmb)
     val sz_addr = math.max(params(PAddrBits), params(VAddrBits))
     val sz_data = 64
+
+    val nb = sz_data >> 3
+    val nh = sz_data >> 4
+    val nw = sz_data >> 5
+    val nd = sz_data >> 6
+    require((sz_data & (SZ_XD-1)) == 0)
+
+    val max_utcnt = nb
   }
 
   val nvsreq = 128

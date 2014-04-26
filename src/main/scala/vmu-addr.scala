@@ -49,7 +49,7 @@ class AddressGen extends HwachaModule
   io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
   io.vatq.bits.meta.utcnt := UInt(1)
-  io.vatq.bits.meta.shift := UInt(0)
+  io.vatq.bits.meta.offset := UInt(0)
   io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
   io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
 
