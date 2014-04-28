@@ -36,14 +36,14 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val ptr_incr_max =
     nbanks-1 +
-    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) +
+    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).max +
     delay_seq_exp +
     2 // buffer
   val ptr_incr_sz = log2Up(ptr_incr_max)
 
   val shift_buf_read = 3
   val shift_buf_write =
-    List(imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) + 1
+    List(imul_stages+3, fma_stages+4, fconv_stages+2).max + 1
 
   val confvcmdq = new {
     val ncmd = 19
