@@ -8,7 +8,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
-  val confprec = false
+  val confprec = true
 
   // pipeline latencies
   val int_stages = 2
@@ -23,14 +23,14 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
 
   val ptr_incr_max =
     nbanks-1 +
-    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) +
+    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).max +
     delay_seq_exp +
     2 // buffer
   val ptr_incr_sz = log2Up(ptr_incr_max)
 
   val shift_buf_read = 3
   val shift_buf_write =
-    List(imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) + 1
+    List(imul_stages+3, fma_stages+4, fconv_stages+2).max + 1
 
   val vcmdq = new {
     val ncmd = 19
