@@ -337,6 +337,11 @@ class IssueVT extends HwachaModule
   io.op.bits.reg.vt.id := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
   io.op.bits.reg.vr.id := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
   io.op.bits.reg.vd.id := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
+  // FIXME
+  io.op.bits.reg.vs.prec := PREC_DOUBLE
+  io.op.bits.reg.vt.prec := PREC_DOUBLE
+  io.op.bits.reg.vr.prec := PREC_DOUBLE
+  io.op.bits.reg.vd.prec := PREC_DOUBLE
 
   io.op.bits.regcheck.vs.active := vs_val
   io.op.bits.regcheck.vt.active := vt_val

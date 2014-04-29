@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import Compaction._
 
 class BankOpIO extends Bundle
 {
@@ -177,15 +178,19 @@ class BankRegfile extends Module
       Bits(4) -> io.wbl4,
       Bits(5) -> io.viu_wdata
     ))
+  val wmask = Fill(SZ_BREGMASK, Bits(1, 1))
 
   val wen_bwq = io.wen || io.bwq.valid
   val waddr_bwq = Mux(io.wen, io.waddr, io.bwq.bits.addr)
+  val wmask_bwq = Mux(io.wen, wmask, io.bwq.bits.mask)
   val wdata_bwq = Mux(io.wen, wdata, io.bwq.bits.data)
   io.bwq.ready := !io.wen
 
   val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)
   val raddr = Reg(Bits())
-  when (wen_bwq) { rfile(waddr_bwq) := wdata_bwq }
+  when (wen_bwq) {
+    rfile.write(waddr_bwq, wdata_bwq, expand_mask(wmask_bwq))
+  }
   when (io.ren) { raddr := io.raddr }
   val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
   io.rdata := rdata_rf

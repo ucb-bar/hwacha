@@ -47,12 +47,8 @@ object Compaction extends Compaction
   }
 
   def expand_mask(m: Bits) = Cat(
-    m(3) & m(2),
-    m(1) & m(0),
-    Fill(16, m(3)),
-    Fill(16, m(2)),
-    Fill(16, m(1)),
-    Fill(16, m(0)))
+    (0 until (SZ_BREGMASK & ~0x1) by 2).reverse.map(i => m(i) & m(i+1)) ++
+    (0 until SZ_BREGMASK).reverse.map(i => Fill(SZ_XH, m(i))))
 }
 
 trait Compaction
