@@ -128,8 +128,10 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
                      
     CMD_VFLD      -> List(n, y, y, n, y),
     CMD_VFLW      -> List(n, y, y, n, y),
+    CMD_VFLH      -> List(n, y, y, n, y),
     CMD_VFSD      -> List(n, y, y, n, y),
     CMD_VFSW      -> List(n, y, y, n, y),
+    CMD_VFSH      -> List(n, y, y, n, y),
                      
     CMD_VLSTD     -> List(n, y, y, y, y),
     CMD_VLSTW     -> List(n, y, y, y, y),
@@ -145,8 +147,10 @@ class AIW(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 
     CMD_VFLSTD    -> List(n, y, y, y, y),
     CMD_VFLSTW    -> List(n, y, y, y, y),
+    CMD_VFLSTH    -> List(n, y, y, y, y),
     CMD_VFSSTD    -> List(n, y, y, y, y),
-    CMD_VFSSTW    -> List(n, y, y, y, y)
+    CMD_VFSSTW    -> List(n, y, y, y, y),
+    CMD_VFSSTH    -> List(n, y, y, y, y)
   ))
 
   val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: Nil = cs.map(_.toBool)

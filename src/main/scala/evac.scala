@@ -73,8 +73,10 @@ class Evac()(implicit conf: HwachaConfiguration) extends Module
 
     CMD_VFLD      -> List(n, y, y, n, y, y, y, n, y, y),
     CMD_VFLW      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFLH      -> List(n, y, y, n, y, y, y, n, y, y),
     CMD_VFSD      -> List(n, y, y, n, y, y, y, n, y, y),
     CMD_VFSW      -> List(n, y, y, n, y, y, y, n, y, y),
+    CMD_VFSH      -> List(n, y, y, n, y, y, y, n, y, y),
 
     CMD_VLSTD     -> List(n, y, y, y, y, y, y, y, y, y),
     CMD_VLSTW     -> List(n, y, y, y, y, y, y, y, y, y),
@@ -90,8 +92,10 @@ class Evac()(implicit conf: HwachaConfiguration) extends Module
 
     CMD_VFLSTD    -> List(n, y, y, y, y, y, y, y, y, y),
     CMD_VFLSTW    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VFLSTH    -> List(n, y, y, y, y, y, y, y, y, y),
     CMD_VFSSTD    -> List(n, y, y, y, y, y, y, y, y, y),
-    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y, y)
+    CMD_VFSSTW    -> List(n, y, y, y, y, y, y, y, y, y),
+    CMD_VFSSTH    -> List(n, y, y, y, y, y, y, y, y, y)
   ))
 
   val vf :: deq_ircmdb :: deq_irimm1b :: deq_irimm2b :: deq_ircntb :: deq_vcmdq :: deq_vimm1q :: deq_vimm2q :: deq_vcntq :: is_prefetch :: Nil = cs.map(_.toBool)
