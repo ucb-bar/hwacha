@@ -47,8 +47,10 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     
     CMD_VFLD       -> List(Bits(8,4),n,y,y,n),
     CMD_VFLW       -> List(Bits(4,4),n,y,y,n),
+    CMD_VFLH       -> List(Bits(2,4),n,y,y,n),
     CMD_VFSD       -> List(Bits(8,4),n,y,y,n),
     CMD_VFSW       -> List(Bits(4,4),n,y,y,n),
+    CMD_VFSH       -> List(Bits(2,4),n,y,y,n),
     
     CMD_VLSTD      -> List(Bits(0,4),n,y,y,y),
     CMD_VLSTW      -> List(Bits(0,4),n,y,y,y),
@@ -64,8 +66,10 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
     
     CMD_VFLSTD     -> List(Bits(0,4),n,y,y,y),
     CMD_VFLSTW     -> List(Bits(0,4),n,y,y,y),
+    CMD_VFLSTH     -> List(Bits(0,4),n,y,y,y),
     CMD_VFSSTD     -> List(Bits(0,4),n,y,y,y),
     CMD_VFSSTW     -> List(Bits(0,4),n,y,y,y),
+    CMD_VFSSTH     -> List(Bits(0,4),n,y,y,y),
 
     // instructions not relevant for prefetch (just dequeue them)
     // instructions only with commands don't need to be listed here

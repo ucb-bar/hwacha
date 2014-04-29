@@ -276,8 +276,10 @@ trait Commands
 
   val CMD_VFLD = Bits("b1_00_0_1_0_11",8)
   val CMD_VFLW = Bits("b1_00_0_1_0_10",8)
+  val CMD_VFLH = Bits("b1_00_0_1_0_01",8)
   val CMD_VFSD = Bits("b1_00_1_1_0_11",8)
   val CMD_VFSW = Bits("b1_00_1_1_0_10",8)
+  val CMD_VFSH = Bits("b1_00_1_1_0_01",8)
 
   val CMD_VLSTD =  Bits("b1_01_0_0_0_11",8)
   val CMD_VLSTW =  Bits("b1_01_0_0_0_10",8)
@@ -293,8 +295,10 @@ trait Commands
 
   val CMD_VFLSTD = Bits("b1_01_0_1_0_11",8)
   val CMD_VFLSTW = Bits("b1_01_0_1_0_10",8)
+  val CMD_VFLSTH = Bits("b1_01_0_1_0_01",8)
   val CMD_VFSSTD = Bits("b1_01_1_1_0_11",8)
   val CMD_VFSSTW = Bits("b1_01_1_1_0_10",8)
+  val CMD_VFSSTH = Bits("b1_01_1_1_0_01",8)
 
   def is_cmd_pfw(cmd: Bits) = cmd(4)
 }
