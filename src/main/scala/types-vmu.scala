@@ -81,11 +81,12 @@ class VMUAddressOp extends Bundle
   val stride = UInt(width = SZ_VSTRIDE)
 }
 
-class VMUMetadata extends Bundle
+class VMUMetadata(implicit val conf: HwachaConfiguration) extends VMUBundle
 {
+  private val n = log2Up(conf.vmu.sz_data / SZ_XB)
   val utidx = UInt(width = SZ_VLEN)
-  val utcnt = UInt(width = 4) /* TODO: parameterize */
-  val shift = UInt(width = 3) /* TODO: parameterize */
+  val utcnt = UInt(width = n) /* NOTE: 2^n encoded as 0 */
+  val offset = UInt(width = n)
 }
 
 class MemOp(n: Int)(implicit val conf: HwachaConfiguration) extends VMUBundle

@@ -296,6 +296,9 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.reg.vd.float := vd_fp
   io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
+  // FIXME
+  io.op.bits.reg.vt.prec := PREC_DOUBLE
+  io.op.bits.reg.vd.prec := PREC_DOUBLE
 
   io.op.bits.regcheck.vs.active := Bool(false)
   io.op.bits.regcheck.vt.active := vt_val

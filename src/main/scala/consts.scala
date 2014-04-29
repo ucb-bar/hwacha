@@ -60,6 +60,8 @@ trait PrecConstants
   val PREC_DOUBLE = Bits("b00", SZ_PREC)
   val PREC_SINGLE = Bits("b01", SZ_PREC)
   val PREC_HALF = Bits("b10", SZ_PREC)
+
+  val SZ_BREGMASK = 4
 }
 
 trait LaneConstants

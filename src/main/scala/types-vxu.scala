@@ -64,6 +64,7 @@ class RegInfo extends Bundle
   val zero = Bool()
   val float = Bool()
   val id = Bits(width = SZ_BREGLEN)
+  val prec = Bits(width = SZ_PREC)
 }
 
 class RegHazardInfo extends Bundle
@@ -297,11 +298,14 @@ class BRQEntry extends Bundle
 class BWQEntry extends Bundle
 {
   val addr = UInt(width = SZ_BREGLEN)
+  val mask = Bits(width = SZ_BREGMASK)
   val data = Bits(width = SZ_DATA)
 }
 
-class BWQInternalEntry(implicit conf: HwachaConfiguration) extends BWQEntry
+class BWQInternalEntry(implicit conf: HwachaConfiguration) extends Bundle
 {
-  val tag = UInt(width = /*log2Up(conf.nvlreq)*/ SZ_VLEN - log2Up(conf.nbanks))
+  // Lower utidx bits are evident from the bank ID and therefore omitted
+  val tag = UInt(width = SZ_VLEN - log2Up(conf.nbanks))
+  val data = Bits(width = SZ_DATA)
   override def clone = new BWQInternalEntry().asInstanceOf[this.type]
 }

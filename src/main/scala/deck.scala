@@ -86,15 +86,6 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
     }
   }
 
-  val vldq = io.vmu.ldata
-  val ld_data = vldq.bits.data
-/* // Support for non-zero load shifts
-  val ld_data = Mux1H(UIntToOH(vldq.bits.meta.shift),
-    Vec((0 until SZ_VMU_DATA by 8).map(i => (vldq.bits.data >> UInt(i)))))
-*/
-//  assert(!vldq.fire() || vldq.bits.meta.utcnt === UInt(1),
-//    "multiple-element loads currently unsupported by BWQs")
-
 //--------------------------------------------------------------------\\
 // floating-point recoding
 //--------------------------------------------------------------------\\
@@ -105,24 +96,26 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val op_type_h = is_mtype_halfword(op.fn.typ)
   val op_type_b = is_mtype_byte(op.fn.typ)
 
-  val lgbank = log2Up(conf.nbanks)
-
   private def volume(w: Int) = (conf.vmu.sz_data / w)
   private def unpack(w: Int, i: Int) = io.vmu.ldata.bits.data(((i+1)*w)-1, i*w)
-  private def extend(n: Bits, w: Int) = Cat(op_signext & n(w-1), n)
+  private def prefix(n: Bits, w: Int) = Cat(op_signext & n(w-1), n)
+  private def extend(n: Bits, w: Int, recoded: Boolean = true) = {
+    val m = if (recoded) n else prefix(n, w)
+    Cat(Fill(SZ_DATA-w-1, m(w)), m)
+  }
 
   val src_data_d = Vec.tabulate(volume(SZ_XD)){ i => {
     val element = unpack(SZ_XD, i)
     val f64rf64 = Module(new hardfloat.float64ToRecodedFloat64)
     f64rf64.io.in := element
-    Mux(op.fn.float, f64rf64.io.out, extend(element, SZ_XD))
+    Mux(op.fn.float, f64rf64.io.out, prefix(element, SZ_XD))
   }}
 
   val src_data_w = Vec.tabulate(volume(SZ_XW)){ i => {
     val element = unpack(SZ_XW, i)
     val f32rf32 = Module(new hardfloat.float32ToRecodedFloat32)
     f32rf32.io.in := element
-    Mux(op.fn.float, f32rf32.io.out, extend(element, SZ_XW))
+    Mux(op.fn.float, f32rf32.io.out, prefix(element, SZ_XW))
   }}
 
   val src_data_h = Vec.tabulate(volume(SZ_XH)){ i => unpack(SZ_XH, i) }
@@ -132,9 +125,12 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 // permutation network
 //--------------------------------------------------------------------\\
 
+  val lgbank = log2Up(conf.nbanks)
+
   val src_utidx = io.vmu.ldata.bits.meta.utidx
-  val src_utcnt = io.vmu.ldata.bits.meta.utcnt
-  val src_shift = io.vmu.ldata.bits.meta.shift
+  // NOTE: 2^n encoded as 0
+  val src_utcnt = Cat(io.vmu.ldata.bits.meta.utcnt === UInt(0), io.vmu.ldata.bits.meta.utcnt)
+  val src_offset = io.vmu.ldata.bits.meta.offset
 
   // TODO: Handle configurations in which the number of elements per
   // load (src_utcnt) may exceed the number of banks
@@ -143,11 +139,10 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val bank_utidx = src_utidx(SZ_VLEN-1, lgbank)
   val bank_utidx_next = bank_utidx + UInt(1)
 
-  assert(!io.vmu.ldata.valid || src_shift === UInt(0) || bank_start === UInt(0),
+  assert(!io.vmu.ldata.valid || src_offset === UInt(0) || bank_start === UInt(0),
     "unexpected non-zero load offset")
 
-  val src_rotamt = Mux(src_shift != UInt(0),
-    (UInt(conf.nbanks) - src_shift), bank_start)
+  val src_rotamt = Mux(src_offset != UInt(0), (UInt(conf.nbanks) - src_offset), bank_start)
 
   private def permute[T <: Data](src: Vec[T], sel: UInt, rev: Boolean = false): Vec[T] = {
     require(src.size > 0)
@@ -175,35 +170,64 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 // bank write queues
 //--------------------------------------------------------------------\\
 
-  val vd_bank_ut = bank_utidx
-  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
-  val vd_addr = (vd_bank_ut * vd_stride) + op.reg.vd.id
-
-  val bw_stat_idx = src_utidx >> UInt(lgbank) // - op.utidx
-
-  val bwqs_deq = new ArrayBuffer[DecoupledIO[BWQInternalEntry]]
   val bwqs_enq_ready = Vec.fill(conf.nbanks){ Bool() }
+  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
+
+  val bw_stat_update = Vec.fill(conf.nbanks){ Bits() }
+
+  val prec_d = (op.reg.vd.prec === PREC_DOUBLE)
+  val prec_w = (op.reg.vd.prec === PREC_SINGLE)
+  val prec_h = (op.reg.vd.prec === PREC_HALF)
+
+  val mask = Mux1H(Vec(prec_d, prec_w, prec_h), Vec(
+    Bits("b1111", SZ_BREGMASK),
+    Bits("b0011", SZ_BREGMASK),
+    Bits("b0001", SZ_BREGMASK)))
 
   for (i <- 0 until conf.nbanks) {
     val bwq = Module(new Queue(new BWQInternalEntry, conf.nbwq))
 
     bwq.io.enq.valid := io.vmu.ldata.valid && dst_enable(i)
     bwq.io.enq.bits.data := Mux1H(
-      Vec(op_type_d, op_type_w, op_type_h, op_type_b),
-      Vec(
-        pack_d(dst_data_d(i), 0),
-        pack_w(dst_data_w(i), 0),
-        pack_h(extend(dst_data_h(i), SZ_XH), 0),
-        pack_b(extend(dst_data_b(i), SZ_XB), 0)))
+      Vec(op_type_d, op_type_w, op_type_h, op_type_b), Vec(
+        extend(dst_data_d(i), SZ_XD),
+        extend(dst_data_w(i), SZ_XW),
+        extend(dst_data_h(i), SZ_XH, recoded=false),
+        extend(dst_data_b(i), SZ_XB, recoded=false)))
 
-    // Handle mid-load utidx increment due to permutation "wrap-around"
+    // Handle intra-load utidx increment due to permutation "wrap-around"
     bwq.io.enq.bits.tag := Mux(UInt(i) < bank_start, bank_utidx_next, bank_utidx)
-    bwq.io.enq.bits.addr := vd_addr
     bwqs_enq_ready(i) := bwq.io.enq.ready
 
-    bwqs_deq += bwq.io.deq
+    val vd_utidx = bwq.io.deq.bits.tag
+
+    // For each halfword increment, determine which precisions have
+    // valid shifts to this position, generate the corresponding enable
+    // signals, and OR these together.
+    // TODO: Abstract packed register format into Compaction
+    val shift_sel = Vec((0 until N_XH).map(i =>
+      Seq((prec_h, N_XH, 0), (prec_w, N_XW, 1), (prec_d, N_XD, 2))
+        filter (t => (i & ((1 << t._3) - 1)) == 0)
+        map (t => if (t._2 <= 1)
+          t._1 else
+          t._1 && (vd_utidx(log2Up(t._2)-1,0) === UInt(i >> t._3)))
+        reduce (_||_)
+      ))
+
+    def shift(data: Bits, n: Int, m: Int) = Mux1H(shift_sel,
+      Vec(data +: (1 until shift_sel.length).map(i => {
+        val shamt = m * i
+        Cat(data(n-1, shamt), Fill(shamt, Bits(0)))
+      })))
+
+    io.bwqs(i).bits.data := shift(bwq.io.deq.bits.data, SZ_DATA, SZ_XH)
+    io.bwqs(i).bits.mask := shift(mask, SZ_BREGMASK, 1)
+    io.bwqs(i).bits.addr := op.reg.vd.id + (vd_utidx * vd_stride)
+    io.bwqs(i) <> bwq.io.deq
+
+    val bw_stat_idx = Cat(vd_utidx, UInt(i, lgbank)) - op.utidx
+    bw_stat_update(i) := bwq.io.deq.fire() << bw_stat_idx
   }
-  io.bwqs <> Vec(bwqs_deq)
 
   val src_ready = permute(bwqs_enq_ready, bank_start, rev=true)
   io.vmu.ldata.ready := Mux1H(src_utcnt_sel,
@@ -216,11 +240,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 //--------------------------------------------------------------------\\
 
   val bw_stat = Reg(Bits(width = conf.nvlreq))
-  val bw_stat_update = (0 until conf.nbanks).map(i =>
-    (UIntToOH(Cat(bwqs_deq(i).bits.tag, UInt(i, lgbank)) - op.utidx) &
-      Fill(conf.nvlreq, bwqs_deq(i).fire()))
-    ).reduce(_|_)
-  val bw_stat_next = bw_stat | bw_stat_update
+  val bw_stat_next = bw_stat | bw_stat_update.reduce(_|_)
   val bw_stat_shift = io.la.cnt(SZ_LGBANK1,0) & Fill(SZ_LGBANK1, io.la.reserve)
 
   bw_stat := Mux1H(UIntToOH(bw_stat_shift),
