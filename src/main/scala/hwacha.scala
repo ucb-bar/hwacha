@@ -39,6 +39,22 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val ncnt = 8
   }
 
+  val max_reg_ut = N_XB
+
+  // Maximum element count per reservation (sequencer op)
+  private val max_seqop_ut = nbanks * max_reg_ut
+  val max_vala = nbanks
+  val max_pala = max_seqop_ut
+  val max_lla = max_seqop_ut
+  val max_sla = max_seqop_ut
+  val sz_vala = log2Down(max_vala) + 1
+  val sz_pala = log2Down(max_pala) + 1
+  val sz_lla = log2Down(max_lla) + 1
+  val sz_sla = log2Down(max_sla) + 1
+
+  val nvsreq = 128
+  val nvlreq = 128
+
   val nbrq = 2
   val nbwq = 2
 
@@ -58,11 +74,17 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val sz_tag = log2Up(nvlmb)
     val sz_addr = math.max(as.paddrBits, as.vaddrBits)
     val sz_data = 64
-  }
 
-  val nvsreq = 128
-  val nvlreq = 128
-  val nvsdq = nbrq * nbanks
+    val line_bytes = sz_data >> 3
+    val max_utcnt = line_bytes
+
+    require(nvvaq >= max_vala)
+    // Must account for suboptimal packing of first and last
+    // memory accesses during worst-case address alignment
+    require((nvpaq - 2) * max_utcnt >= max_pala)
+    require(nvsdq * max_utcnt >= max_sla)
+    require(nvlreq >= max_lla)
+  }
 }
 
 trait HwachaDecodeConstants

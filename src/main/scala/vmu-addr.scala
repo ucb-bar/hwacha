@@ -29,7 +29,7 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
   lacntr.io.dec.update := io.xcpt.prop.vmu.drain && io.evac.fire()
 }
 
-class AddressGen(implicit conf: HwachaConfiguration) extends Module
+class AddressGen(implicit val conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -39,19 +39,36 @@ class AddressGen(implicit conf: HwachaConfiguration) extends Module
   }
 
   val op_tvec = io.ctrl.op.tvec
+  val op_pack = (op_tvec && io.ctrl.op.unit && io.ctrl.op.cmd.ld) && !io.xcpt.prop.vmu.drain
 
+  val stride = Mux(op_pack, UInt(conf.vmu.line_bytes), io.ctrl.op.stride)
   val addr = Reg(UInt(width = SZ_ADDR))
-  val addr_next = addr + io.ctrl.op.stride
-
   val utidx = Reg(UInt(width = SZ_VLEN))
-  val utidx_next = utidx + UInt(1)
+
+  private val w = log2Up(conf.vmu.line_bytes)
+  // Non-zero only for the first request of an unaligned memory operation
+  val offset = Fill(w, op_pack && (utidx === UInt(0))) & Mux1H(
+    Vec(io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b),
+    Vec(io.ctrl.op.base(w-1,2), io.ctrl.op.base(w-1,1), io.ctrl.op.base(w-1,0)))
+
+/*
+  val utcnt_pack = Mux1H(
+    Vec(io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d),
+    Vec((0 to 3).map(i => UInt(conf.vmu.line_bytes >> i))))
+ */
+  val utcnt_pack = Cat( // NOTE: Optimized for conf.vmu.sz_data=64
+    io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d)
+  val utcnt_limit = Mux(op_pack, utcnt_pack - offset, UInt(1))
+  val utcnt_resid = io.ctrl.op.vlen - utidx
+  val end = (utcnt_resid <= utcnt_limit)
+  val utcnt = Mux(end, utcnt_resid, utcnt_limit)
 
   io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
-  io.vatq.bits.meta.utcnt := UInt(1)
-  io.vatq.bits.meta.offset := UInt(0)
+  io.vatq.bits.meta.utcnt := utcnt
+  io.vatq.bits.meta.offset := offset
   io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
-  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
+  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain || op_pack, MT_D, io.ctrl.op.typ.raw)
 
   io.ctrl.busy := Bool(false)
   io.vvaq.ready := Bool(false)
@@ -63,7 +80,7 @@ class AddressGen(implicit conf: HwachaConfiguration) extends Module
   switch (state) {
     is (s_idle) {
       when (io.ctrl.fire) {
-        addr := io.ctrl.op.base
+        addr := Cat(io.ctrl.op.base(SZ_ADDR-1, w), io.ctrl.op.base(w-1,0) & Fill(w, !op_pack))
         utidx := UInt(0)
         state := s_busy
       }
@@ -75,9 +92,9 @@ class AddressGen(implicit conf: HwachaConfiguration) extends Module
       io.vatq.valid := op_tvec || io.vvaq.valid
 
       when (io.vatq.fire()) {
-        addr := addr_next
-        utidx := utidx_next
-        when (utidx_next === io.ctrl.op.vlen) {
+        addr := addr + stride
+        utidx := utidx + utcnt
+        when (end) {
           state := s_idle
         }
       }
@@ -154,21 +171,22 @@ class AddressTLB(implicit conf: HwachaConfiguration) extends Module
 
 class VPAQ(implicit conf: HwachaConfiguration) extends Module
 {
-  val sz = log2Down(conf.vmu.nvpaq) + 1
+  private val nvpaq_ut = conf.vmu.nvpaq * conf.vmu.max_utcnt
+  private val sz = log2Down(nvpaq_ut) + 1
+
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO
 
-    val la = new LookAheadPortIO(sz).flip
+    val la = new LookAheadPortIO(conf.sz_pala).flip
     val xcpt = new XCPTIO().flip
   }
 
   val q = Module(new Queue(new VPAQEntry, conf.vmu.nvpaq))
   q.io.enq <> io.enq
 
-  val lacntr = Module(new LookAheadCounter(0, conf.vmu.nvpaq))
-  // TODO: Support utcnt != 1
-  lacntr.io.inc.cnt := UInt(1)
+  val lacntr = Module(new LookAheadCounter(0, nvpaq_ut))
+  lacntr.io.inc.cnt := q.io.enq.bits.meta.utcnt
   lacntr.io.inc.update := q.io.enq.fire()
   lacntr.io.dec.cnt := UInt(1)
   lacntr.io.dec.update := q.io.deq.fire() && io.xcpt.prop.vmu.drain

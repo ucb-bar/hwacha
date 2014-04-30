@@ -18,8 +18,8 @@ class VPAQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[VPAQEntry](
 class VAQLaneIO(implicit conf: HwachaConfiguration) extends Bundle
 {
   val q = new VVAQIO
-  val vala = new LookAheadPortIO(log2Down(conf.vmu.nvvaq) + 1)
-  val pala = new LookAheadPortIO(log2Down(conf.vmu.nvpaq) + 1)
+  val vala = new LookAheadPortIO(conf.sz_vala)
+  val pala = new LookAheadPortIO(conf.sz_pala)
 }
 
 class VSDQIO(implicit conf: HwachaConfiguration) extends DecoupledIO[Bits](Bits(width = conf.vmu.sz_data))
