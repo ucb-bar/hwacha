@@ -21,8 +21,8 @@ class VPAQIO extends DecoupledIO[VPAQEntry](new VPAQEntry)
 class VAQLaneIO extends HwachaBundle
 {
   val q = new VVAQIO
-  val vala = new LookAheadPortIO(log2Down(confvmu.nvvaq) + 1)
-  val pala = new LookAheadPortIO(log2Down(confvmu.nvpaq) + 1)
+  val vala = new LookAheadPortIO(sz_vala)
+  val pala = new LookAheadPortIO(sz_pala)
 }
 
 class VSDQIO extends DecoupledIO[VMUData](new VMUData)

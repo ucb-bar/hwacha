@@ -56,6 +56,20 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   require(confvcmdq.nimm1 >= nbanks)
   require(confvcmdq.nimm2 >= nbanks)
 
+  // Maximum element count per reservation (sequencer op)
+  private val max_seqop_ut = nbanks * N_XH
+  val max_vala = nbanks
+  val max_pala = max_seqop_ut
+  val max_lla = max_seqop_ut
+  val max_sla = max_seqop_ut
+  val sz_vala = log2Down(max_vala) + 1
+  val sz_pala = log2Down(max_pala) + 1
+  val sz_lla = log2Down(max_lla) + 1
+  val sz_sla = log2Down(max_sla) + 1
+
+  val nvsreq = 128
+  val nvlreq = 128
+
   val nbrq = 2
   val nbwq = 2
 
@@ -83,15 +97,17 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     require((sz_data & (SZ_XD-1)) == 0)
 
     val max_utcnt = nb
+
+    // D$ tag requirement for hwacha
+    require(params(rocket.CoreDCacheReqTagBits) >= sz_tag)
+
+    require(nvvaq >= max_vala)
+    // Must account for suboptimal packing of first and last
+    // memory accesses during worst-case address alignment
+    require((nvpaq - 2) * max_utcnt >= max_pala)
+    require(nvsdq * max_utcnt >= max_sla)
+    require(nvlreq >= max_lla)
   }
-
-  val nvsreq = 128
-  val nvlreq = 128
-  val nvsdq = nbrq * nbanks
-
-  // D$ tag requirement for hwacha
-  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.sz_tag)
-
 }
 
 trait HwachaDecodeConstants

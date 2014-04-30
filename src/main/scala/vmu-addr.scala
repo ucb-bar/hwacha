@@ -39,19 +39,42 @@ class AddressGen extends HwachaModule
   }
 
   val op_tvec = io.ctrl.op.tvec
+  val op_pack = (op_tvec && io.ctrl.op.unit) && !io.xcpt.prop.vmu.drain
+  val op_base = io.ctrl.op.base
 
+  private val w = log2Up(confvmu.nb)
   val addr = Reg(UInt(width = SZ_ADDR))
-  val addr_next = addr + io.ctrl.op.stride
-
   val utidx = Reg(UInt(width = SZ_VLEN))
-  val utidx_next = utidx + UInt(1)
+
+  val utcnt_resid = io.ctrl.op.vlen - utidx
+  val utcnt_pack = Mux1H(
+    Vec(io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d),
+    Vec(UInt(confvmu.nb), UInt(confvmu.nh), UInt(confvmu.nw), UInt(confvmu.nd)))
+/*
+  val utcnt_pack = Cat( // NOTE: Optimized for confvmu.sz_data=64
+    io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d)
+*/
+
+  // Control whether to enable packing for the current request
+  val req_pack_ld = op_pack && io.ctrl.op.cmd.ld
+  val req_pack = req_pack_ld
+
+  // Non-zero offset only for the first request of an unaligned load
+  val offset = Fill(w, req_pack_ld && (utidx === UInt(0))) & Mux1H(
+    Vec(io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b),
+    Vec(op_base(w-1,2), op_base(w-1,1), op_base(w-1,0)))
+  val utcnt_limit = Mux(req_pack, utcnt_pack - offset, UInt(1))
+  val end = (utcnt_resid <= utcnt_limit)
+  val utcnt = Mux(end, utcnt_resid, utcnt_limit)
+
+  val stride = Mux(req_pack, UInt(confvmu.nb), io.ctrl.op.stride)
 
   io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
-  io.vatq.bits.meta.utcnt := UInt(1)
-  io.vatq.bits.meta.offset := UInt(0)
+  io.vatq.bits.meta.utcnt := Mux(io.xcpt.prop.vmu.drain, UInt(1), utcnt)
+  io.vatq.bits.meta.offset := offset
   io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
-  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
+  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain || req_pack, MT_D, io.ctrl.op.typ.raw)
 
   io.ctrl.busy := Bool(false)
   io.vvaq.ready := Bool(false)
@@ -63,7 +86,7 @@ class AddressGen extends HwachaModule
   switch (state) {
     is (s_idle) {
       when (io.ctrl.fire) {
-        addr := io.ctrl.op.base
+        addr := Cat(op_base(SZ_ADDR-1, w), op_base(w-1,0) & Fill(w, !req_pack_ld))
         utidx := UInt(0)
         state := s_busy
       }
@@ -75,9 +98,9 @@ class AddressGen extends HwachaModule
       io.vatq.valid := op_tvec || io.vvaq.valid
 
       when (io.vatq.fire()) {
-        addr := addr_next
-        utidx := utidx_next
-        when (utidx_next === io.ctrl.op.vlen) {
+        addr := addr + stride
+        utidx := utidx + utcnt
+        when (end) {
           state := s_idle
         }
       }
@@ -153,21 +176,22 @@ class AddressTLB extends HwachaModule
 
 class VPAQ extends HwachaModule
 {
-  val sz = log2Down(confvmu.nvpaq) + 1
+  private val nvpaq_ut = confvmu.nvpaq * confvmu.max_utcnt
+  private val sz = log2Down(nvpaq_ut) + 1
+
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO
 
-    val la = new LookAheadPortIO(sz).flip
+    val la = new LookAheadPortIO(sz_pala).flip
     val xcpt = new XCPTIO().flip
   }
 
   val q = Module(new Queue(new VPAQEntry, confvmu.nvpaq))
   q.io.enq <> io.enq
 
-  val lacntr = Module(new LookAheadCounter(0, confvmu.nvpaq))
-  // TODO: Support utcnt != 1
-  lacntr.io.inc.cnt := UInt(1)
+  val lacntr = Module(new LookAheadCounter(0, nvpaq_ut))
+  lacntr.io.inc.cnt := q.io.enq.bits.meta.utcnt
   lacntr.io.inc.update := q.io.enq.fire()
   lacntr.io.dec.cnt := UInt(1)
   lacntr.io.dec.update := q.io.deq.fire() && io.xcpt.prop.vmu.drain

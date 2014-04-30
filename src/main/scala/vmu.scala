@@ -96,6 +96,7 @@ class VMUDecodedOp extends Bundle
   val vlen = UInt(width = SZ_VLEN)
   val base = UInt(width = SZ_ADDR)
   val stride = UInt(width = SZ_VSTRIDE)
+  val unit = Bool()
 }
 
 class VMUBackendIO extends Bundle
@@ -144,6 +145,11 @@ class VMUControl extends HwachaModule
   decode.vlen := cur_cmd.vlen
   decode.base := cur_addr.base
   decode.stride := cur_addr.stride
+
+  decode.unit := // Detect unit stride
+    decode.typ.w && (decode.stride === UInt(4)) ||
+    decode.typ.h && (decode.stride === UInt(2)) ||
+    decode.typ.b && (decode.stride === UInt(1))
 
   io.addr.op <> decode
   io.addr.fire := Bool(false)

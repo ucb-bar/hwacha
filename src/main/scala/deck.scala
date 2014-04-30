@@ -15,8 +15,8 @@ class Deck(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
     val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
-    val lla = new LookAheadPortIO(log2Down(nvlreq)+1).flip()
-    val sla = new LookAheadPortIO(log2Down(nvsdq)+1).flip()
+    val lla = new LookAheadPortIO(sz_lla).flip()
+    val sla = new LookAheadPortIO(sz_sla).flip()
 
     val brqs = Vec.fill(nbanks){new BRQIO().flip}
     val bwqs = Vec.fill(nbanks){new BWQIO}
@@ -56,7 +56,7 @@ class VLU extends HwachaModule
     val op = new DeckOpIO().flip
 
     val bwqs = Vec.fill(nbanks){new BWQIO}
-    val la = new LookAheadPortIO(log2Down(nvlreq)+1).flip
+    val la = new LookAheadPortIO(sz_lla).flip
 
     val vmu = new VMUIO
   }
@@ -250,8 +250,8 @@ class VLU extends HwachaModule
 
   // Limited leading-ones count
   var sel = bw_stat(0)
-  var locnt = UInt(0, SZ_LGBANK1)
-  for (i <- 0 until nbanks) {
+  var locnt = UInt(0, sz_lla)
+  for (i <- 0 until max_lla) {
     locnt = Mux(sel, UInt(i+1), locnt)
     sel = sel & bw_stat(i+1)
   }
@@ -265,7 +265,7 @@ class VSU extends HwachaModule
     val op = new DeckOpIO().flip
 
     val brqs = Vec.fill(nbanks){new BRQIO().flip}
-    val la = new LookAheadPortIO(log2Down(nvsdq)+1).flip
+    val la = new LookAheadPortIO(sz_sla).flip
 
     val vmu = new VMUIO
   }

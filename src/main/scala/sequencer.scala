@@ -16,8 +16,8 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     val seqop = new SequencerOpIO
 
     val vmu = new VMUIO
-    val lla = new LookAheadPortIO(log2Down(nvlreq)+1)
-    val sla = new LookAheadPortIO(log2Down(nvsdq)+1)
+    val lla = new LookAheadPortIO(sz_lla)
+    val sla = new LookAheadPortIO(sz_sla)
     val lreq = new LookAheadPortIO(log2Down(nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(nvsreq)+1)
     val lret = new MRTLoadRetireIO(log2Down(nvlreq)+1)
