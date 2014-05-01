@@ -108,9 +108,9 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vcmdqcnt.imm2.io.dec := vcmdq.io.enq.imm2.ready && io.vcmdq.imm2.valid
   vcmdqcnt.imm2.io.inc := (vxu.io.vcmdq.imm2.ready || evac.io.vcmdq.imm2.ready) && vcmdq.io.deq.imm2.valid
 
-  vcmdqcnt.cmd.io.qcnt := UInt(11)
-  vcmdqcnt.imm1.io.qcnt := UInt(11)
-  vcmdqcnt.imm2.io.qcnt := UInt(9)
+  vcmdqcnt.cmd.io.qcnt := UInt(conf.vcmdq.ncmd - conf.nbanks)
+  vcmdqcnt.imm1.io.qcnt := UInt(conf.vcmdq.nimm1 - conf.nbanks)
+  vcmdqcnt.imm2.io.qcnt := UInt(conf.vcmdq.nimm2 - conf.nbanks)
   io.vcmdq_user_ready := vcmdqcnt.cmd.io.watermark && !io.xcpt.prop.vu.busy
   io.vimm1q_user_ready := vcmdqcnt.imm1.io.watermark && !io.xcpt.prop.vu.busy
   io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !io.xcpt.prop.vu.busy

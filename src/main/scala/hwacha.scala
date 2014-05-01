@@ -36,8 +36,12 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val ncmd = 19
     val nimm1 = 19
     val nimm2 = 17
-    val ncnt = 8
+    val ncnt = nbanks
   }
+
+  require(vcmdq.ncmd >= nbanks)
+  require(vcmdq.nimm1 >= nbanks)
+  require(vcmdq.nimm2 >= nbanks)
 
   val nbrq = 2
   val nbwq = 2
