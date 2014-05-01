@@ -47,23 +47,8 @@ object Compaction extends Compaction
   }
 
   def expand_mask(m: Bits) = Cat(
-    m(3) & m(2),
-    m(1) & m(0),
-    Fill(16, m(3)),
-    Fill(16, m(2)),
-    Fill(16, m(1)),
-    Fill(16, m(0)))
-
-  // Pack the given element into the given subword position
-  // and propagate the MSB throughout the higher order bits
-  private def pack(n: Bits, i: Int, w: Int): Bits = {
-    val data = Cat(Fill(SZ_DATA-((i+1)*w), n(w)), n(w-1,0))
-    if (i == 0) data else Cat(data, Bits(0, i*w))
-  }
-  def pack_d(n: Bits, i: Int): Bits = pack(n, i, SZ_XD)
-  def pack_w(n: Bits, i: Int): Bits = pack(n, i, SZ_XW)
-  def pack_h(n: Bits, i: Int): Bits = pack(n, i, SZ_XH)
-  def pack_b(n: Bits, i: Int): Bits = pack(n, i, SZ_XB)
+    (0 until (SZ_BREGMASK & ~0x1) by 2).reverse.map(i => m(i) & m(i+1)) ++
+    (0 until SZ_BREGMASK).reverse.map(i => Fill(SZ_XH, m(i))))
 }
 
 trait Compaction
@@ -77,11 +62,6 @@ trait Compaction
   def unpack_float_d(n: Bits, i: Int): Bits
   def unpack_float_s(n: Bits, i: Int): Bits
   def unpack_float_h(n: Bits, i: Int): Bits
-
-  def pack_d(n: Bits, i: Int): Bits
-  def pack_w(n: Bits, i: Int): Bits
-  def pack_h(n: Bits, i: Int): Bits
-  def pack_b(n: Bits, i: Int): Bits
 }
 
 object PtrIncr
