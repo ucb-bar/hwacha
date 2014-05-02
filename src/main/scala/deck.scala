@@ -249,8 +249,8 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 
   // Limited leading-ones count
   var sel = bw_stat(0)
-  var locnt = UInt(0, SZ_LGBANK1)
-  for (i <- 0 until conf.nbanks) {
+  var locnt = UInt(0, log2Down(max_lla) + 1)
+  for (i <- 0 until max_lla) {
     locnt = Mux(sel, UInt(i+1), locnt)
     sel = sel & bw_stat(i+1)
   }
