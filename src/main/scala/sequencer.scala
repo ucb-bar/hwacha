@@ -376,6 +376,33 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
 
+  // figure out stalls due to rate limit
+  val rate_table = Vec.fill(SZ_BANK){ Vec.fill(SZ_BANK){ Reg(init = Bool(false)) } }
+  val dshb = Vec.fill(PRECS.length){ Vec.fill(SZ_BANK){ Bool() } }
+
+  // mark dependences when valid
+  when (io.issueop.valid) {
+    for (i <- 0 until SZ_BANK) {
+      rate_table(ptr)(i) := Bool(true)
+      rate_table(i)(ptr) := Bool(false)
+    }
+  }
+
+  // once instruction retired...
+  when (islast) {
+    for (i <- 0 until SZ_BANK) {
+      rate_table(i)(ptr) := Bool(false)
+    }
+  }
+
+  // determine if we are rate limited
+  for ((prec, idx) <- PRECS.zipWithIndex; i <- 0 until SZ_BANK)
+    dshb(idx)(i) := (seq.e(ptr).rate === prec) && rate_table(ptr)(i)
+
+  // if more than one rate in use
+  val rate_stall = Bool()
+  rate_stall := PopCount(dshb.map(_.reduce(_ || _)).toSeq) > UInt(1)
+
   io.vmu.addr.vala.cnt := nelements
   io.vmu.addr.pala.cnt := nelements
   io.lla.cnt := nelements
@@ -421,7 +448,8 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     seq.vgu_val(ptr) && vgu_stall ||
     seq.vcu_val(ptr) && vcu_stall ||
     seq.vlu_val(ptr) && vlu_stall ||
-    seq.vsu_val(ptr) && vsu_stall
+    seq.vsu_val(ptr) && vsu_stall ||
+    rate_stall
 
   seq.stall(ptr) := stall
 
