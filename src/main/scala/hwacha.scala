@@ -8,7 +8,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
 {
   val nreg_total = nbanks * nreg_per_bank
   val vru = true
-  val confprec = false
+  val confprec = true
 
   // pipeline latencies
   val int_stages = 2
@@ -23,14 +23,14 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
 
   val ptr_incr_max =
     nbanks-1 +
-    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) +
+    List(int_stages+2, imul_stages+3, fma_stages+4, fconv_stages+2).max +
     delay_seq_exp +
     2 // buffer
   val ptr_incr_sz = log2Up(ptr_incr_max)
 
   val shift_buf_read = 3
   val shift_buf_write =
-    List(imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) + 1
+    List(imul_stages+3, fma_stages+4, fconv_stages+2).max + 1
 
   val vcmdq = new {
     val ncmd = 19
@@ -158,8 +158,10 @@ object HwachaDecodeTable extends HwachaDecodeConstants
     // Memory load/stores (fp-registers)
     VFLD       -> List(Y, N, Y, CMD_VFLD,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
     VFLW       -> List(Y, N, Y, CMD_VFLW,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
+    VFLH       -> List(Y, N, Y, CMD_VFLH,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
     VFSD       -> List(Y, N, Y, CMD_VFSD,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
     VFSW       -> List(Y, N, Y, CMD_VFSW,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
+    VFSH       -> List(Y, N, Y, CMD_VFSH,    Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_X,    Y,Y,Y,N,N,    N,Y,Y,N,N,     N,RESP_X,     N,N,N),
     // Memory strided load/stores (x-registers)
     VLSTD      -> List(Y, N, Y, CMD_VLSTD,   Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
     VLSTW      -> List(Y, N, Y, CMD_VLSTW,   Y, VRT_I, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
@@ -175,8 +177,10 @@ object HwachaDecodeTable extends HwachaDecodeConstants
     // Memory strided load/stores (fp-registers)
     VFLSTD     -> List(Y, N, Y, CMD_VFLSTD,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
     VFLSTW     -> List(Y, N, Y, CMD_VFLSTW,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
+    VFLSTH     -> List(Y, N, Y, CMD_VFLSTH,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
     VFSSTD     -> List(Y, N, Y, CMD_VFSSTD,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
     VFSSTW     -> List(Y, N, Y, CMD_VFSSTW,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
+    VFSSTH     -> List(Y, N, Y, CMD_VFSSTH,  Y, VRT_F, VR_RD, VR_RD,  VIMM_RS1, VIMM_RS2,  Y,Y,Y,Y,N,    N,Y,Y,Y,N,     N,RESP_X,     N,N,N),
     // Exception and save/restore instructions
     VXCPTCAUSE -> List(Y, Y, N, CMD_X,       N, VRT_X, VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,N,N,N,N,     Y,RESP_CAUSE, N,N,N),
     VXCPTAUX   -> List(Y, Y, N, CMD_X,       N, VRT_X, VR_X,  VR_X,   VIMM_X,   VIMM_X,    N,N,N,N,N,    N,N,N,N,N,     Y,RESP_AUX,   N,N,N),

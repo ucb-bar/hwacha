@@ -54,8 +54,10 @@ object TVECDecodeTable
 
     CMD_VFLD->    List(RF,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,F,T,F,F,F),
     CMD_VFLW->    List(RF,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,F,T,F,F,F),
+    CMD_VFLH->    List(RF,R_,F,M0,M0,F,FP_,T,MT_H, VM_VLD,T,F,T,F,F,F),
     CMD_VFSD->    List(R_,RF,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,F,T,F,F,F),
     CMD_VFSW->    List(R_,RF,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,F,T,F,F,F),
+    CMD_VFSH->    List(R_,RF,F,M0,M0,F,FP_,T,MT_H, VM_VST,T,F,T,F,F,F),
 
     CMD_VLSTD->   List(RX,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,T,T,F,F,F),
     CMD_VLSTW->   List(RX,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,T,T,F,F,F),
@@ -71,8 +73,10 @@ object TVECDecodeTable
 
     CMD_VFLSTD->  List(RF,R_,F,M0,M0,F,FP_,T,MT_D, VM_VLD,T,T,T,F,F,F),
     CMD_VFLSTW->  List(RF,R_,F,M0,M0,F,FP_,T,MT_W, VM_VLD,T,T,T,F,F,F),
+    CMD_VFLSTH->  List(RF,R_,F,M0,M0,F,FP_,T,MT_H, VM_VLD,T,T,T,F,F,F),
     CMD_VFSSTD->  List(R_,RF,F,M0,M0,F,FP_,T,MT_D, VM_VST,T,T,T,F,F,F),
-    CMD_VFSSTW->  List(R_,RF,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,T,T,F,F,F)
+    CMD_VFSSTW->  List(R_,RF,F,M0,M0,F,FP_,T,MT_W, VM_VST,T,T,T,F,F,F),
+    CMD_VFSSTH->  List(R_,RF,F,M0,M0,F,FP_,T,MT_H, VM_VST,T,T,T,F,F,F)
   )
 }
 
