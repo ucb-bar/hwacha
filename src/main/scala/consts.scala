@@ -60,6 +60,11 @@ trait PrecConstants
   val PREC_DOUBLE = Bits("b00", SZ_PREC)
   val PREC_SINGLE = Bits("b01", SZ_PREC)
   val PREC_HALF = Bits("b10", SZ_PREC)
+  val PREC_BYTE = Bits("b11", SZ_PREC)
+  val PRECS = List(PREC_DOUBLE, PREC_SINGLE, PREC_HALF, PREC_BYTE)
+
+  val PREC_DEFAULT = PREC_DOUBLE
+  val PREC_FASTEST = PREC_HALF
 
   val SZ_BREGMASK = 4
 }

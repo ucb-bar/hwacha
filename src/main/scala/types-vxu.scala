@@ -201,7 +201,7 @@ class VFU extends Bundle // vector functional unit
 class SequencerEntry extends DecodedInstruction
 {
   val active = new VFU
-  val turbo_capable = Bool()
+  val rate = Bits(width = SZ_PREC)
 }
 
 class SequencerOp extends SequencerEntry

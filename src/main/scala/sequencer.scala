@@ -28,14 +28,21 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     val aiw = new AIWVXUIO
   }
 
+  val entries = Vec.fill(SZ_BANK){Reg(new SequencerEntry)}
+  val seq_vlen = Vec.fill(SZ_BANK){Reg(UInt(width=SZ_VLEN))}
+
   class BuildSequencer[T<:Data](n: Int)
   {
     val valid = Vec.fill(n){Reg(init=Bool(false))}
     val stall = Vec.fill(n){Reg(init=Bool(false))}
-    val vlen = Vec.fill(n){Reg(UInt(width=SZ_VLEN))}
     val last = Vec.fill(n){Reg(Bool())}
-    val e = Vec.fill(n){Reg(new SequencerEntry)}
     val aiw = Vec.fill(n){Reg(new AIWUpdateEntry)}
+
+    def e(n: Int) = entries(n)
+    def e(n: UInt) = entries(n)
+
+    def vlen(n: Int) = seq_vlen(n)
+    def vlen(n: UInt) = seq_vlen(n)
 
     def defreset = {
       when (reset) {
@@ -53,21 +60,11 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     // increase throughput when certain operations (FMA, VLDQ, VSDQ) are used by
     // allowing up to 32 elements to proceed in half precision
     // allowing up to 16 elements to proceed in single precision
-    def turbo_capable(slot: UInt) = e(slot).turbo_capable
+    def turbo_capable(slot: UInt) = (e(slot).rate != PREC_DEFAULT)
 
     def nstrip(slot: UInt) = {
       val ret = UInt(width = SZ_BCNT)
       ret := min(vlen(slot), io.cfg.bcnt)
-
-      when (turbo_capable(slot)) {
-        when (io.cfg.prec === PREC_SINGLE) {
-          ret := min(div2ceil(vlen(slot)), io.cfg.bcnt)
-        }
-        when (io.cfg.prec === PREC_HALF) {
-          ret := min(div4ceil(vlen(slot)), io.cfg.bcnt)
-        }
-      }
-
       ret
     }
 
@@ -200,7 +197,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.viu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).utidx := io.issueop.bits.utidx
       seq.e(ptr1).fn.viu := io.issueop.bits.fn.viu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
@@ -215,7 +212,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vau0 := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vau0 := io.issueop.bits.fn.vau0
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
@@ -229,7 +226,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr1) := turbo_last
       when (io.issueop.bits.sel.vau1) { seq.e(ptr1).active.vau1t := Bool(true) }
       .otherwise { seq.e(ptr1).active.vau1f := Bool(true) }
-      seq.e(ptr1).turbo_capable := Bool(false) // actually true
+      seq.e(ptr1).rate := io.issueop.bits.reg.vd.prec
       seq.e(ptr1).fn.vau1 := io.issueop.bits.fn.vau1
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
@@ -244,7 +241,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr1) := last
       when (io.issueop.bits.sel.vau2) { seq.e(ptr1).active.vau2t := Bool(true) }
       .otherwise { seq.e(ptr1).active.vau2f := Bool(true) }
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vau2 := io.issueop.bits.fn.vau2
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
@@ -256,7 +253,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vgu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := Bits(0)
@@ -266,7 +263,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr2) := last
       seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).active.vsu := Bool(true)
-      seq.e(ptr2).turbo_capable := Bool(false)
+      seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
 
@@ -274,7 +271,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr3) := vlen
       seq.last(ptr3) := last
       seq.e(ptr3).active.vlu := Bool(true)
-      seq.e(ptr3).turbo_capable := Bool(false)
+      seq.e(ptr3).rate := PREC_DEFAULT
       seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr3) := io.issueop.bits.aiw
@@ -285,7 +282,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vgu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
@@ -294,14 +291,14 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := last
       seq.e(ptr2).active.vcu := Bool(true)
-      seq.e(ptr2).turbo_capable := Bool(false)
+      seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
 
       seq.valid(ptr3) := Bool(true)
       seq.vlen(ptr3) := vlen
       seq.last(ptr3) := last
       seq.e(ptr3).active.vlu := Bool(true)
-      seq.e(ptr3).turbo_capable := Bool(false)
+      seq.e(ptr3).rate := PREC_DEFAULT
       seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr3) := io.issueop.bits.aiw
@@ -312,7 +309,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vgu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
@@ -322,7 +319,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr2) := turbo_last
       seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).active.vsu := Bool(true)
-      seq.e(ptr2).turbo_capable := Bool(false)
+      seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu  
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
       seq.aiw(ptr2) := io.issueop.bits.aiw
@@ -333,14 +330,14 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vcu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false)
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
       seq.last(ptr2) := last
       seq.e(ptr2).active.vlu := Bool(true)
-      seq.e(ptr2).turbo_capable := Bool(false) // should be true
+      seq.e(ptr2).rate := io.issueop.bits.reg.vd.prec
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
       seq.e(ptr2).imm := io.issueop.bits.imm
@@ -353,7 +350,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr1) := last
       seq.e(ptr1).active.vcu := Bool(true)
       seq.e(ptr1).active.vsu := Bool(true)
-      seq.e(ptr1).turbo_capable := Bool(false) // should be true
+      seq.e(ptr1).rate := io.issueop.bits.reg.vd.prec
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
       seq.e(ptr1).imm := io.issueop.bits.imm
