@@ -60,7 +60,6 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     // increase throughput when certain operations (FMA, VLDQ, VSDQ) are used by
     // allowing up to 32 elements to proceed in half precision
     // allowing up to 16 elements to proceed in single precision
-    def turbo_capable(slot: UInt) = (e(slot).rate != PREC_DEFAULT)
 
     def nstrip(slot: UInt) = {
       val ret = UInt(width = SZ_BCNT)
@@ -72,13 +71,11 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       val ret = UInt(width = SZ_BCNT+2)
       ret := min(vlen(slot), io.cfg.bcnt)
 
-      when (turbo_capable(slot)) {
-        when (io.cfg.prec === PREC_SINGLE) {
-          ret := min(vlen(slot), io.cfg.bcnt << UInt(1))
-        }
-        when (io.cfg.prec === PREC_HALF) {
-          ret := min(vlen(slot), io.cfg.bcnt << UInt(2))
-        }
+      when (e(slot).rate === PREC_SINGLE) {
+        ret := min(vlen(slot), io.cfg.bcnt << UInt(1))
+      }
+      when (e(slot).rate === PREC_HALF) {
+        ret := min(vlen(slot), io.cfg.bcnt << UInt(2))
       }
 
       ret
@@ -91,13 +88,11 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       val ret = Bool()
       ret := vlen(slot) <= io.cfg.bcnt
 
-      when (turbo_capable(slot)) {
-        when (io.cfg.prec === PREC_SINGLE) {
-          ret := (vlen(slot) >> UInt(1)) <= io.cfg.bcnt
-        }
-        when (io.cfg.prec === PREC_HALF) {
-          ret := (vlen(slot) >> UInt(2)) <= io.cfg.bcnt
-        }
+      when (e(slot).rate === PREC_SINGLE) {
+        ret := (vlen(slot) >> UInt(1)) <= io.cfg.bcnt
+      }
+      when (e(slot).rate === PREC_HALF) {
+        ret := (vlen(slot) >> UInt(2)) <= io.cfg.bcnt
       }
 
       ret
@@ -184,7 +179,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   val vlen = io.issueop.bits.vlen
   val last = vlen <= bcnt
 
-  val turbo_last = MuxLookup(io.cfg.prec, vlen < bcnt, Array(
+  val turbo_last = MuxLookup(seq.e(ptr).rate, vlen < bcnt, Array(
     PREC_DOUBLE -> (vlen <= bcnt),
     PREC_SINGLE -> ((vlen >> UInt(1)) <= bcnt),
     PREC_HALF -> ((vlen >> UInt(2)) <= bcnt)
