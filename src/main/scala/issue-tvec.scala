@@ -294,6 +294,16 @@ class IssueTVEC extends HwachaModule
       MT_D->  UInt(8,4)
     ))
 
+  // precision lookup
+  def mem2prec(mem_type: UInt) = {
+    MuxLookup(mem_type, PREC_DEFAULT, Array(
+                MT_H -> PREC_HALF,
+                MT_W -> PREC_SINGLE,
+                MT_D -> PREC_DOUBLE))
+  }
+
+  val prec_vd = Mux(vmu_float, mem2prec(vmu_type), PREC_DEFAULT)
+
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
   io.op.bits.reg.vt.float := vt_fp
@@ -302,7 +312,7 @@ class IssueTVEC extends HwachaModule
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
   // FIXME
   io.op.bits.reg.vt.prec := PREC_DEFAULT
-  io.op.bits.reg.vd.prec := Mux(cmd === CMD_VFSH || cmd === CMD_VFLH, PREC_HALF, PREC_DEFAULT) // io.cfg.prec
+  io.op.bits.reg.vd.prec := prec_vd
 
   io.op.bits.regcheck.vs.active := Bool(false)
   io.op.bits.regcheck.vt.active := vt_val
