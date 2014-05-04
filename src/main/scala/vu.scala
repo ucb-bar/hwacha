@@ -123,6 +123,7 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   //mrt.io.sreq.evac := evac.io.vaq.fire()
   mrt.io.sreq.evac := evac.io.vaq.valid && vmu.io.evac.vaq.ready
   mrt.io.lret <> vxu.io.lret
+  mrt.io.sret.cnt := io.dmem.resp.bits.tag
   mrt.io.sret.update := io.dmem.resp.valid && is_mcmd_store(io.dmem.resp.bits.cmd)
 
   io.keepcfg :=

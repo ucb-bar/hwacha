@@ -75,8 +75,13 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val sz_addr = math.max(as.paddrBits, as.vaddrBits)
     val sz_data = 64
 
-    val line_bytes = sz_data >> 3
-    val max_utcnt = line_bytes
+    val nb = sz_data >> 3
+    val nh = sz_data >> 4
+    val nw = sz_data >> 5
+    val nd = sz_data >> 6
+    require((sz_data & (SZ_XD-1)) == 0)
+
+    val max_utcnt = nb
 
     require(nvvaq >= max_vala)
     // Must account for suboptimal packing of first and last
@@ -84,6 +89,8 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     require((nvpaq - 2) * max_utcnt >= max_pala)
     require(nvsdq * max_utcnt >= max_sla)
     require(nvlreq >= max_lla)
+
+    val pack_st = false
   }
 }
 
@@ -205,6 +212,8 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
 
   // D$ tag requirement for hwacha
   require(rc.dcacheReqTagBits >= conf.vmu.sz_tag)
+  // utcnt placed in tag for stores
+  require(rc.dcacheReqTagBits >= (log2Down(conf.vmu.max_utcnt)+1))
 
   val icache = Module(new rocket.Frontend()(hc.vicache))
   val dtlb = Module(new rocket.TLB(hc.ndtlb))

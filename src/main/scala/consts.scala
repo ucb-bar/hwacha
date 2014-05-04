@@ -34,7 +34,7 @@ trait MachineConstants
   val N_XD = SZ_DATA / SZ_XD
   val N_XW = SZ_DATA / SZ_XW
   val N_XH = SZ_DATA / SZ_XH
-  val N_XB = SZ_DATA / SZ_XB
+  val N_XB = SZ_DATA / SZ_XH
 
   val SZ_FPD = SZ_XD + 1
   val SZ_FPS = SZ_XW + 1

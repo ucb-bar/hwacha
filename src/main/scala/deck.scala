@@ -96,7 +96,6 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val op_type_h = is_mtype_halfword(op.fn.typ)
   val op_type_b = is_mtype_byte(op.fn.typ)
 
-  private def volume(w: Int) = (conf.vmu.sz_data / w)
   private def unpack(w: Int, i: Int) = io.vmu.ldata.bits.data(((i+1)*w)-1, i*w)
   private def prefix(n: Bits, w: Int) = Cat(op_signext & n(w-1), n)
   private def extend(n: Bits, w: Int, recoded: Boolean = true) = {
@@ -104,22 +103,22 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
     Cat(Fill(SZ_DATA-w-1, m(w)), m)
   }
 
-  val src_data_d = Vec.tabulate(volume(SZ_XD)){ i => {
+  val src_data_d = Vec.tabulate(conf.vmu.nd){ i => {
     val element = unpack(SZ_XD, i)
     val f64rf64 = Module(new hardfloat.float64ToRecodedFloat64)
     f64rf64.io.in := element
     Mux(op.fn.float, f64rf64.io.out, prefix(element, SZ_XD))
   }}
 
-  val src_data_w = Vec.tabulate(volume(SZ_XW)){ i => {
+  val src_data_w = Vec.tabulate(conf.vmu.nw){ i => {
     val element = unpack(SZ_XW, i)
     val f32rf32 = Module(new hardfloat.float32ToRecodedFloat32)
     f32rf32.io.in := element
     Mux(op.fn.float, f32rf32.io.out, prefix(element, SZ_XW))
   }}
 
-  val src_data_h = Vec.tabulate(volume(SZ_XH)){ i => unpack(SZ_XH, i) }
-  val src_data_b = Vec.tabulate(volume(SZ_XB)){ i => unpack(SZ_XB, i) }
+  val src_data_h = Vec.tabulate(conf.vmu.nh){ i => unpack(SZ_XH, i) }
+  val src_data_b = Vec.tabulate(conf.vmu.nb){ i => unpack(SZ_XB, i) }
 
 //--------------------------------------------------------------------\\
 // permutation network
