@@ -190,6 +190,27 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     PREC_HALF -> ((vlen >> UInt(2)) <= bcnt)
   ))
 
+  // figure out stalls due to rate limit
+  val rate_table = Vec.fill(SZ_BANK){ Vec.fill(SZ_BANK){ Reg(init = Bool(false)) } }
+  val dshb = Vec.fill(PRECS.length){ Vec.fill(SZ_BANK){ Bool() } }
+
+  // mark dependences when valid; the intersection should be 1
+  def rate_mark(slot: UInt) = {
+    for (i <- 0 until SZ_BANK) {
+      rate_table(i)(slot) := Bool(false)
+      rate_table(slot)(i) := seq.valid(i)
+    }
+  }
+
+  // determine if we are rate limited
+  for (i <- 0 until SZ_BANK)
+    for ((prec, idx) <- PRECS.zipWithIndex)
+      dshb(idx)(i) := (seq.e(i).rate === prec) && rate_table(ptr)(i)
+
+  // if more than one rate in use
+  val rate_stall = Bool()
+  rate_stall := PopCount(dshb.map(_.reduce(_ || _)).toSeq) > UInt(1)
+
   when (io.issueop.valid) {
 
     when (io.issueop.bits.active.viu) {
@@ -205,6 +226,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
       seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
       seq.aiw(ptr1) := io.issueop.bits.aiw
+      rate_mark(ptr1)
     }
 
     when (io.issueop.bits.active.vau0) {
@@ -218,6 +240,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr1) := io.issueop.bits.aiw
+      rate_mark(ptr1)
     }
 
     when (io.issueop.bits.active.vau1) {
@@ -233,6 +256,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).reg.vr := io.issueop.bits.reg.vr
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr1) := io.issueop.bits.aiw
+      rate_mark(ptr1)
     }
 
     when (io.issueop.bits.active.vau2) {
@@ -246,6 +270,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr1) := io.issueop.bits.aiw
+      rate_mark(ptr1)
     }
 
     when (io.issueop.bits.active.amo) {
@@ -257,6 +282,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := Bits(0)
+      rate_mark(ptr1)
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
@@ -266,6 +292,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
+      rate_mark(ptr2)
 
       seq.valid(ptr3) := Bool(true)
       seq.vlen(ptr3) := vlen
@@ -275,6 +302,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr3) := io.issueop.bits.aiw
+      rate_mark(ptr3)
     }
 
     when (io.issueop.bits.active.utld) {
@@ -286,6 +314,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
+      rate_mark(ptr1)
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
@@ -293,6 +322,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      rate_mark(ptr2)
 
       seq.valid(ptr3) := Bool(true)
       seq.vlen(ptr3) := vlen
@@ -302,6 +332,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr3).reg.vd := io.issueop.bits.reg.vd
       seq.aiw(ptr3) := io.issueop.bits.aiw
+      rate_mark(ptr3)
     }
 
     when (io.issueop.bits.active.utst) {
@@ -313,6 +344,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).imm.imm := io.issueop.bits.imm.imm
+      rate_mark(ptr1)
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
@@ -323,6 +355,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu  
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
       seq.aiw(ptr2) := io.issueop.bits.aiw
+      rate_mark(ptr2)
     }
 
     when (io.issueop.bits.active.vld) {
@@ -332,6 +365,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).active.vcu := Bool(true)
       seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
+      rate_mark(ptr1)
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
@@ -342,6 +376,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).reg.vd := io.issueop.bits.reg.vd
       seq.e(ptr2).imm := io.issueop.bits.imm
       seq.aiw(ptr2) := io.issueop.bits.aiw
+      rate_mark(ptr2)
     }
 
     when (io.issueop.bits.active.vst) {
@@ -355,6 +390,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
       seq.e(ptr1).imm := io.issueop.bits.imm
       seq.aiw(ptr1) := io.issueop.bits.aiw
+      rate_mark(ptr1)
     }
 
   }
@@ -363,6 +399,13 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   val nelements = seq.nelements(ptr)
   val nstrip = seq.nstrip(ptr)
   val islast = seq.islast(ptr)
+
+  // invalidate column in rate table after last
+  when (islast) {
+    for (i <- 0 until SZ_BANK) {
+      rate_table(i)(ptr) := Bool(false)
+    }
+  }
 
   // figure out stalls due to vmu
   val ot = new BuildOrderTable(SZ_BANK)
@@ -375,33 +418,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
-
-  // figure out stalls due to rate limit
-  val rate_table = Vec.fill(SZ_BANK){ Vec.fill(SZ_BANK){ Reg(init = Bool(false)) } }
-  val dshb = Vec.fill(PRECS.length){ Vec.fill(SZ_BANK){ Bool() } }
-
-  // mark dependences when valid
-  when (io.issueop.valid) {
-    for (i <- 0 until SZ_BANK) {
-      rate_table(ptr)(i) := Bool(true)
-      rate_table(i)(ptr) := Bool(false)
-    }
-  }
-
-  // once instruction retired...
-  when (islast) {
-    for (i <- 0 until SZ_BANK) {
-      rate_table(i)(ptr) := Bool(false)
-    }
-  }
-
-  // determine if we are rate limited
-  for ((prec, idx) <- PRECS.zipWithIndex; i <- 0 until SZ_BANK)
-    dshb(idx)(i) := (seq.e(ptr).rate === prec) && rate_table(ptr)(i)
-
-  // if more than one rate in use
-  val rate_stall = Bool()
-  rate_stall := PopCount(dshb.map(_.reduce(_ || _)).toSeq) > UInt(1)
 
   io.vmu.addr.vala.cnt := nelements
   io.vmu.addr.pala.cnt := nelements
