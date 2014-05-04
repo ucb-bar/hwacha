@@ -100,6 +100,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
     // D$ tag requirement for hwacha
     require(params(rocket.CoreDCacheReqTagBits) >= sz_tag)
+    // utcnt placed in tag for stores
+    require(params(rocket.CoreDCacheReqTagBits) >= (log2Down(max_utcnt)+1))
 
     require(nvvaq >= max_vala)
     // Must account for suboptimal packing of first and last
@@ -107,6 +109,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     require((nvpaq - 2) * max_utcnt >= max_pala)
     require(nvsdq * max_utcnt >= max_sla)
     require(nvlreq >= max_lla)
+
+    val pack_st = false
   }
 }
 

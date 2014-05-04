@@ -57,7 +57,12 @@ class AddressGen extends HwachaModule
 
   // Control whether to enable packing for the current request
   val req_pack_ld = op_pack && io.ctrl.op.cmd.ld
-  val req_pack = req_pack_ld
+  val req_pack_st = op_pack && io.ctrl.op.cmd.st &&
+    // Refrain from partially packed stores due to the L1 D$
+    // interface not supporting write masks
+    (addr(w-1,0) === UInt(0)) && (utcnt_resid >= utcnt_pack)
+  val req_pack = req_pack_ld ||
+    (if (confvmu.pack_st) req_pack_st else Bool(false))
 
   // Non-zero offset only for the first request of an unaligned load
   val offset = Fill(w, req_pack_ld && (utidx === UInt(0))) & Mux1H(
@@ -230,7 +235,7 @@ class MetadataAlloc extends HwachaModule
   io.vpaq.ready := io.memif.ready && vmdb_ready
   io.memif.valid := io.vpaq.valid && vmdb_ready
   io.memif.bits <> io.vpaq.bits
-  io.memif.bits.tag := io.vmdb.tag
+  io.memif.bits.tag := Mux(load, io.vmdb.tag, io.vpaq.bits.meta.utcnt)
 }
 
 class AddressUnit extends HwachaModule

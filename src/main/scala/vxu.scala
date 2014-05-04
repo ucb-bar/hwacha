@@ -16,8 +16,8 @@ class VXU extends HwachaModule
 
     val lreq = new LookAheadPortIO(log2Down(nvlreq)+1)
     val sreq = new LookAheadPortIO(log2Down(nvsreq)+1)
-    val lret = new MRTLoadRetireIO(log2Down(nvlreq)+1)
-    
+    val lret = new CounterPortIO(log2Down(nvlreq)+1)
+
     val pending_vf = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
