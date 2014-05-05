@@ -9,11 +9,12 @@ import uncore.constants.MemoryOpConstants._
 
 class HwachaConfigIO extends Bundle
 {
-  val prec = Bits(OUTPUT, SZ_PREC)
   val bactive = Bits(OUTPUT, SZ_BANK)
   val bcnt = UInt(OUTPUT, SZ_BCNT)
   val nxregs = UInt(OUTPUT, SZ_REGCNT)
-  val nfregs = UInt(OUTPUT, SZ_REGCNT)
+  val ndfregs = UInt(OUTPUT, SZ_REGCNT)
+  val nsfregs = UInt(OUTPUT, SZ_REGCNT)
+  val nhfregs = UInt(OUTPUT, SZ_REGCNT)
   val xstride = UInt(OUTPUT, SZ_REGLEN)
   val fstride = UInt(OUTPUT, SZ_REGLEN)
   val xfsplit = UInt(OUTPUT, SZ_BREGLEN)
@@ -106,13 +107,14 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 
   val reg_vlen = Reg(init = Bits(0,SZ_VLEN))
   val reg_nxregs = Reg(init = Bits(32,SZ_REGCNT))
-  val reg_nfregs = Reg(init = Bits(32,SZ_REGCNT))
+  val reg_ndfregs = Reg(init = Bits(32,SZ_REGCNT))
+  val reg_nsfregs = Reg(init = Bits(0,SZ_REGCNT))
+  val reg_nhfregs = Reg(init = Bits(0,SZ_REGCNT))
   val reg_bactive = Reg(init = Bits("b1111_1111",SZ_BANK))
   val reg_bcnt = Reg(init = Bits(8,SZ_LGBANK1))
   val reg_xstride = Reg(init = Bits(31,SZ_REGLEN))
   val reg_fstride = Reg(init = Bits(32,SZ_REGLEN))
   val reg_xf_split = Reg(init = Bits(31*4,SZ_BANK))
-  val reg_precision = Reg(init = PREC_DOUBLE)
 
   val stall = io.xcpt.prop.issue.stall
 
@@ -212,18 +214,14 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   when (fire(null, decode_vcfg)) {
     reg_vlen := imm1.vlen
     reg_nxregs := imm1.nxregs
-    reg_nfregs := imm1.nfregs
+    reg_ndfregs := imm1.ndfregs
+    reg_nsfregs := imm1.nsfregs
+    reg_nhfregs := imm1.nhfregs
     reg_bactive := imm1.bactive
     reg_bcnt := imm1.bcnt
     reg_xstride := imm1.nxregs - UInt(1)
-    reg_fstride := MuxLookup(
-      imm1.prec, imm1.nfregs, Array(
-        PREC_DOUBLE -> (imm1.nfregs),
-        PREC_SINGLE -> ((imm1.nfregs + UInt(1)) >> UInt(1)),
-        PREC_HALF -> ((imm1.nfregs + UInt(3)) >> UInt(2))
-      ))
+    reg_fstride := imm1.ndfregs + imm1.nsfregs + imm1.nhfregs
     reg_xf_split := imm1.xf_split // location of X/F register split in bank: number of xregs times the number of uts per bank
-    reg_precision := imm1.prec
   }
   when (fire(null, decode_vsetvl)) {
     reg_vlen := imm1.vlen
@@ -240,11 +238,12 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 // SIGNALS                                                                 \\
 //-------------------------------------------------------------------------\\
 
-  io.cfg.prec := reg_precision
   io.cfg.bactive := reg_bactive
   io.cfg.bcnt := reg_bcnt
   io.cfg.nxregs := reg_nxregs
-  io.cfg.nfregs := reg_nfregs
+  io.cfg.ndfregs := reg_ndfregs
+  io.cfg.nsfregs := reg_nsfregs
+  io.cfg.nhfregs := reg_nhfregs
   io.cfg.xstride := reg_xstride
   io.cfg.fstride := reg_fstride
   io.cfg.xfsplit := reg_xf_split

@@ -52,7 +52,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val dfmas = new ArrayBuffer[Bits]
   val or_exc_dps = new ArrayBuffer[Bits]
   for (i <- 0 until N_FPD) {
-    if (conf.confprec || i == 0) {
+    if (conf.mixedprec || i == 0) {
       val dfma = Module(new hardfloat.mulAddSubRecodedFloatN(52, 12))
       dfma.io.op := Fill(2,val_fma_dp) & fma_op
       dfma.io.a := Fill(65,val_fma_dp) & unpack_float_d(fma_multiplicand, i)
@@ -69,7 +69,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val sfmas = new ArrayBuffer[Bits]
   val or_exc_sps = new ArrayBuffer[Bits]
   for (i <- 0 until N_FPS) {
-    if (conf.confprec || i == 0) {
+    if (conf.mixedprec || i == 0) {
       val sfma = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
       sfma.io.op := Fill(2,val_fma_sp) & fma_op
       sfma.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, i)
@@ -88,7 +88,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val hfmas = new ArrayBuffer[Bits]
   val or_exc_hps = new ArrayBuffer[Bits]
   for (i <- 0 until N_FPH) {
-    if (conf.confprec || i == 0) {
+    if (conf.mixedprec || i == 0) {
       val recoded_hp_a = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, i).toUInt, 10, 6)
       val recoded_hp_b = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, i).toUInt, 10, 6)
       val recoded_hp_c = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, i).toUInt, 10, 6)
@@ -112,7 +112,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 
   val result = Bits(width = 71)
 
-  if (conf.confprec) {
+  if (conf.mixedprec) {
     result := MuxCase(
       Bits("h3FFFFFFFFFFFFFFFFF",71), Array(
       (val_fma_dp) -> Cat(or_exc_dp, repack_float_d(dfmas(0))),
