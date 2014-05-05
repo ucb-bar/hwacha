@@ -17,7 +17,6 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
   val op_type = Vec(io.ctrl.op.typ.d, io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b)
   val op_pack = if (conf.vmu.pack_st)
     (io.ctrl.op.cmd.st && io.ctrl.op.unit && io.ctrl.op.tvec) else Bool(false)
-  val op_base = io.ctrl.op.base
 
   val utidx = Reg(UInt(width = SZ_VLEN))
   val utcnt = UInt()
@@ -43,10 +42,11 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
   val at_edge = Mux1H(op_type, Vec(Bool(true), utidx(0), utidx(1,0).andR, utidx(2,0).andR))
 
   private val w = log2Up(conf.vmu.nb)
-  val offset = Mux1H(op_type, Vec(UInt(0), op_base(w-1,2), op_base(w-1,1), op_base(w-1,0)))
-  val utcnt_head = offset - utcnt_pack
+  val offset = io.ctrl.op.base(w-1,0)
+  val offset_ut = Mux1H(op_type, Vec(UInt(0), offset(w-1,2), offset(w-1,1), offset))
+  val utcnt_head = utcnt_pack - offset_ut
 
-  val rshift = Fill(op_pack, 3) & Mux1H(op_type,
+  val rshift = /*Fill(op_pack, 3) &*/ Mux1H(op_type,
     Vec(UInt(0), Cat(utidx(0), Bits(0,2)), Cat(utidx(1,0), Bits(0,1)), utidx(2,0)))
 
   val data_solo = Vec((0 until conf.vmu.sz_data by SZ_XB).map(i => io.enq.bits(conf.vmu.sz_data-1,i)))
@@ -93,7 +93,7 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
 
     is (s_pack) {
       utcnt := utcnt_pack
-      dequeue := Bool(true)
+      dequeue := !at_tail || at_end
       when (io.deq.fire()) {
         when (at_end) {
           state := s_idle

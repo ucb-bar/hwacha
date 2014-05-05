@@ -90,7 +90,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     require(nvsdq * max_utcnt >= max_sla)
     require(nvlreq >= max_lla)
 
-    val pack_st = false
+    val pack_st = true
   }
 }
 

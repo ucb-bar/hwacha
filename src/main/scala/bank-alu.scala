@@ -53,11 +53,11 @@ class BankALU extends Module
   val ltu = (s1_in0.toUInt < s1_in1.toUInt)
   val lt = (s1_in0(63) === s1_in1(63)) && ltu || s1_in0(63) && ~s1_in1(63)
 
-  val unpacked_s_s1_in0 = unpack_float_s(s1_in0, 0)
-  val unpacked_s_s1_in1 = unpack_float_s(s1_in1, 0)
+  val unpacked_s_s1_in0 = unpack_w(s1_in0, 0)
+  val unpacked_s_s1_in1 = unpack_w(s1_in1, 0)
 
-  val unpacked_d_s1_in0 = unpack_float_d(s1_in0, 0)
-  val unpacked_d_s1_in1 = unpack_float_d(s1_in1, 0)
+  val unpacked_d_s1_in0 = unpack_d(s1_in0, 0)
+  val unpacked_d_s1_in1 = unpack_d(s1_in1, 0)
 
   val comp_sp = Module(new hardfloat.recodedFloat32Compare(24,8))
   comp_sp.io.a := unpacked_s_s1_in0
@@ -125,8 +125,8 @@ class BankALU extends Module
       OP(I_AND) -> (s1_in0 & s1_in1),
       OP(I_OR) -> (s1_in0 | s1_in1),
       OP(I_XOR) -> (s1_in0 ^ s1_in1),
-      (OP(I_FSJ,I_FSJN,I_FSJX) && FP(FPS)) -> pack_float_s(Cat(sj_sp, unpacked_s_s1_in0(31,0)), 0),
-      (OP(I_FSJ,I_FSJN,I_FSJX) && FP(FPD)) -> pack_float_d(Cat(sj_dp, unpacked_d_s1_in0(63,0)), 0),
+      (OP(I_FSJ,I_FSJN,I_FSJX) && FP(FPS)) -> repack_w(Cat(sj_sp, unpacked_s_s1_in0(31,0))),
+      (OP(I_FSJ,I_FSJN,I_FSJX) && FP(FPD)) -> repack_d(Cat(sj_dp, unpacked_d_s1_in0(63,0))),
       OP(I_FMIN,I_FMAX) -> fminmax
     ))
 
