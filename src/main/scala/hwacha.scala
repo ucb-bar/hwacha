@@ -110,7 +110,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     require(nvsdq * max_utcnt >= max_sla)
     require(nvlreq >= max_lla)
 
-    val pack_st = false
+    val pack_st = true
   }
 }
 

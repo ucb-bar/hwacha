@@ -49,52 +49,52 @@ class LaneConv extends HwachaModule
   val ifsp_rm = Fill(3,val_ifsp) & io.fn.rm
   val ifsp_to = Fill(2,val_ifsp) & op_int2float
   val ifsp_u = hardfloat.anyToRecodedFloatN(ifsp_in, ifsp_rm, ifsp_to, 23, 9, 64)
-  val result_ifsp = pack_float_s(ifsp_u._1, 0)
+  val result_ifsp = repack_w(ifsp_u._1)
   val exc_ifsp = ifsp_u._2
 
-  val fisp_in = Fill(33,val_fisp) & unpack_float_s(io.in, 0)
+  val fisp_in = Fill(33,val_fisp) & unpack_w(io.in, 0)
   val fisp_rm = Fill(3,val_fisp) & io.fn.rm
   val fisp_to = Fill(2,val_fisp) & op_float2int
   val fisp_u = hardfloat.recodedFloatNToAny(fisp_in, fisp_rm, fisp_to, 23, 9, 64)
   val result_fisp = fisp_u._1
   val exc_fisp = fisp_u._2
 
-  val dsp_in = Fill(33,val_dsp) & unpack_float_s(io.in, 0)
+  val dsp_in = Fill(33,val_dsp) & unpack_w(io.in, 0)
   val result_dsp = hardfloat.recodedFloatNToFloatN(dsp_in, 23, 9)
 
   val esp_in = Fill(32,val_esp) & io.in(31,0)
-  val result_esp = pack_float_s(hardfloat.floatNToRecodedFloatN(esp_in, 23, 9), 0)
+  val result_esp = repack_w(hardfloat.floatNToRecodedFloatN(esp_in, 23, 9))
 
-  val dp2sp_in = Fill(65,val_dp2sp) & unpack_float_d(io.in, 0)
+  val dp2sp_in = Fill(65,val_dp2sp) & unpack_d(io.in, 0)
   val dp2sp_rm = Fill(3,val_dp2sp) & io.fn.rm
   val dp2sp_u = hardfloat.recodedFloatNToRecodedFloatM(dp2sp_in, dp2sp_rm, 52, 12, 23, 9)
-  val result_float2float_sp = pack_float_s(dp2sp_u._1, 0)
+  val result_float2float_sp = repack_w(dp2sp_u._1)
   val exc_float2float_sp = dp2sp_u._2
 
   val ifdp_in = Fill(64,val_ifdp) & io.in(63,0)
   val ifdp_rm = Fill(3,val_ifdp) & io.fn.rm
   val ifdp_to = Fill(2,val_ifdp) & op_int2float
   val ifdp_u = hardfloat.anyToRecodedFloatN(ifdp_in, ifdp_rm, ifdp_to, 52, 12, 64)
-  val result_ifdp = pack_float_d(ifdp_u._1, 0)
+  val result_ifdp = repack_d(ifdp_u._1)
   val exc_ifdp = ifdp_u._2
 
-  val fidp_in = Fill(65,val_fidp) & unpack_float_d(io.in, 0)
+  val fidp_in = Fill(65,val_fidp) & unpack_d(io.in, 0)
   val fidp_rm = Fill(3,val_fidp) & io.fn.rm
   val fidp_to = Fill(2,val_fidp) & op_float2int
   val fidp_u = hardfloat.recodedFloatNToAny(fidp_in, fidp_rm, fidp_to, 52, 12, 64)
   val result_fidp = fidp_u._1
   val exc_fidp = fidp_u._2
 
-  val ddp_in = Fill(65,val_ddp) & unpack_float_d(io.in, 0)
+  val ddp_in = Fill(65,val_ddp) & unpack_d(io.in, 0)
   val result_ddp = hardfloat.recodedFloatNToFloatN(ddp_in, 52, 12)
 
   val edp_in = Fill(64,val_edp) & io.in(63,0)
-  val result_edp = pack_float_d(hardfloat.floatNToRecodedFloatN(edp_in, 52, 12), 0)
+  val result_edp = repack_d(hardfloat.floatNToRecodedFloatN(edp_in, 52, 12))
 
-  val sp2dp_in = Fill(33,val_sp2dp) & unpack_float_s(io.in, 0)
+  val sp2dp_in = Fill(33,val_sp2dp) & unpack_w(io.in, 0)
   val sp2dp_rm = Fill(3,val_sp2dp) & io.fn.rm
   val sp2dp_u = hardfloat.recodedFloatNToRecodedFloatM(sp2dp_in, sp2dp_rm, 23, 9, 52, 12)
-  val result_float2float_dp = pack_float_d(sp2dp_u._1, 0)
+  val result_float2float_dp = repack_d(sp2dp_u._1)
   val exc_float2float_dp = sp2dp_u._2
 
   val next_result_sp = MuxCase(

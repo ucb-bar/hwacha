@@ -311,7 +311,7 @@ class IssueTVEC extends HwachaModule
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
   // FIXME
   io.op.bits.reg.vt.prec := PREC_DEFAULT
-  io.op.bits.reg.vd.prec := prec_vd
+  io.op.bits.reg.vd.prec := PREC_DEFAULT
 
   io.op.bits.regcheck.vs.active := Bool(false)
   io.op.bits.regcheck.vt.active := vt_val
@@ -331,8 +331,8 @@ class IssueTVEC extends HwachaModule
 
   io.op.bits.imm.imm := MuxCase(
     io.vcmdq.imm1.bits, Array(
-      (viu_fimm_val && viu_fimm_sel === FPS) -> pack_float_s(encode_sp, 0),
-      (viu_fimm_val && viu_fimm_sel === FPD) -> pack_float_d(encode_dp, 0)
+      (viu_fimm_val && viu_fimm_sel === FPS) -> repack_w(encode_sp),
+      (viu_fimm_val && viu_fimm_sel === FPD) -> repack_d(encode_dp)
     ))
   io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, addr_stride)
 

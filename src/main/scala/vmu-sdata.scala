@@ -17,7 +17,6 @@ class StoreAligner extends HwachaModule
   val op_type = Vec(io.ctrl.op.typ.d, io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b)
   val op_pack = if (confvmu.pack_st)
     (io.ctrl.op.cmd.st && io.ctrl.op.unit && io.ctrl.op.tvec) else Bool(false)
-  val op_base = io.ctrl.op.base
 
   val utidx = Reg(UInt(width = SZ_VLEN))
   val utcnt = UInt()
@@ -40,13 +39,15 @@ class StoreAligner extends HwachaModule
     Vec(UInt(confvmu.nd), UInt(confvmu.nw), UInt(confvmu.nh), UInt(confvmu.nb)))
   val utcnt_resid = io.ctrl.op.vlen - (utidx_next & Fill(state != s_idle, SZ_VLEN))
   val at_tail = (utcnt_resid < utcnt_pack)
-  val at_edge = Mux1H(op_type, Vec(Bool(true), utidx(0), utidx(1,0).andR, utidx(2,0).andR))
+  val at_edge = Mux1H(op_type, Vec(Bool(true) +: (0 to 2).map(utidx(_,0).andR)))
 
   private val w = log2Up(confvmu.nb)
-  val offset = Mux1H(op_type, Vec(UInt(0), op_base(w-1,2), op_base(w-1,1), op_base(w-1,0)))
-  val utcnt_head = offset - utcnt_pack
+  val offset = io.ctrl.op.base(w-1,0)
+  val offset_ut = Mux1H(op_type, Vec(UInt(0), offset(w-1,2), offset(w-1,1), offset))
+  val utcnt_head = utcnt_pack - offset_ut
+  val aligned = (offset === UInt(0))
 
-  val rshift = Fill(op_pack, 3) & Mux1H(op_type,
+  val rshift = /*Fill(op_pack, 3) &*/ Mux1H(op_type,
     Vec(UInt(0), Cat(utidx(0), Bits(0,2)), Cat(utidx(1,0), Bits(0,1)), utidx(2,0)))
 
   val data_solo = Vec((0 until confvmu.sz_data by SZ_XB).map(i => io.enq.bits(confvmu.sz_data-1,i)))
@@ -69,7 +70,7 @@ class StoreAligner extends HwachaModule
       when (io.ctrl.fire && (io.ctrl.op.cmd.st || io.ctrl.op.cmd.amo)) {
         utidx := UInt(0)
         state := Mux(!op_pack || at_tail, s_tail,
-          Mux(offset === UInt(0), s_pack, s_head))
+          Mux(aligned, s_pack, s_head))
       }
     }
 
@@ -93,7 +94,7 @@ class StoreAligner extends HwachaModule
 
     is (s_pack) {
       utcnt := utcnt_pack
-      dequeue := Bool(true)
+      dequeue := aligned || !at_tail || at_end
       when (io.deq.fire()) {
         when (at_end) {
           state := s_idle

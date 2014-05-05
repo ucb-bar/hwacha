@@ -8,43 +8,28 @@ import scala.math._
 
 object Compaction extends Compaction
 {
-  def repack_float_d(n: Bits*) = Cat(Bits(1,1), n(0))
-  def repack_float_s(n: Bits*) = Cat(n(1)(32), n(0)(32), n(1)(31,0), n(0)(31,0))
-  def repack_float_h(n: Bits*) = Cat(Bits("b11",2), n(3), n(2), n(1), n(0))
-
-  def pack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (Bits(1,1) ## n(64,0))
-    case _ => Bits(0, 66)
-  }
-  def pack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits(1,1), n(32), Bits("hFFFFFFFF",32), n(31,0))
-    case 1 => Cat(n(32), Bits(1,1), n(31,0), Bits("hFFFFFFFF",32))
-    case _ => Bits(0)
-  }
-  def pack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits("h3FFFFFFFFFFFF",50), n(15,0))
-    case 1 => Cat(Bits("h3FFFFFFFF",34), n(15,0), Bits("hFFFF",16))
-    case 2 => Cat(Bits("h3FFFF",18), n(15,0), Bits("hFFFFFFFF",32))
-    case 3 => Cat(Bits("b11",2), n(15,0), Bits("hFFFFFFFFFFFF",48))
-    case _ => Bits(0)
+  private def repack(xs: Seq[Bits], sz: Int, n: Int, recoded: Boolean = false) = {
+    val elt = (xs.length until n).map(i => Bits(0, sz+1)) ++ xs
+    val ext = if (recoded) elt.map(x => x(sz)) else Nil
+    Cat(ext ++ elt.map(x => x(sz-1,0)))
   }
 
-  def unpack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64,0))
-    case _ => Bits(0)
+  def repack_d(n: Bits*) = repack(n.reverse, SZ_XD, N_XD, true)
+  def repack_w(n: Bits*) = repack(n.reverse, SZ_XW, N_XW, true)
+  def repack_h(n: Bits*) = repack(n.reverse, SZ_XH, N_XH)
+  def repack_b(n: Bits*) = repack(n.map(x =>
+    Cat(Bits(0, SZ_XH-SZ_XB), x)).reverse, SZ_XH, N_XB)
+
+  private def unpack(x: Bits, i: Int, sz: Int, n: Int, recoded: Boolean = false) = {
+    val off = i * sz
+    val elt = x(off+sz-1, off)
+    if (recoded) Cat(x((n*sz)+i), elt) else elt
   }
-  def unpack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64) ## n(31,0))
-    case 1 => (n(65) ## n(63,32))
-    case _ => Bits(0)
-  }
-  def unpack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => n(15,0)
-    case 1 => n(31,16)
-    case 2 => n(47,32)
-    case 3 => n(63,48)
-    case _ => Bits(0)
-  }
+
+  def unpack_d(n: Bits, i: Int) = unpack(n, i, SZ_XD, N_XD, true)
+  def unpack_w(n: Bits, i: Int) = unpack(n, i, SZ_XW, N_XW, true)
+  def unpack_h(n: Bits, i: Int) = unpack(n, i, SZ_XH, N_XH)
+  def unpack_b(n: Bits, i: Int) = unpack(n, i, SZ_XH, N_XH)(SZ_XB-1,0)
 
   def expand_mask(m: Bits) = Cat(
     (0 until (SZ_BREGMASK & ~0x1) by 2).reverse.map(i => m(i) & m(i+1)) ++
@@ -53,15 +38,17 @@ object Compaction extends Compaction
 
 trait Compaction
 {
-  def repack_float_d(n: Bits*): Bits
-  def repack_float_s(n: Bits*): Bits
-  def repack_float_h(n: Bits*): Bits
-  def pack_float_d(n: Bits, i: Int): Bits
-  def pack_float_s(n: Bits, i: Int): Bits
-  def pack_float_h(n: Bits, i: Int): Bits
-  def unpack_float_d(n: Bits, i: Int): Bits
-  def unpack_float_s(n: Bits, i: Int): Bits
-  def unpack_float_h(n: Bits, i: Int): Bits
+  type RepackFn = (Bits*) => Bits
+  type UnpackFn = (Bits, Int) => Bits
+
+  def repack_d(n: Bits*): Bits
+  def repack_w(n: Bits*): Bits
+  def repack_h(n: Bits*): Bits
+  def repack_b(n: Bits*): Bits
+  def unpack_d(n: Bits, i: Int): Bits
+  def unpack_w(n: Bits, i: Int): Bits
+  def unpack_h(n: Bits, i: Int): Bits
+  def unpack_b(n: Bits, i: Int): Bits
 }
 
 abstract trait UsesPtrIncr extends UsesHwachaParameters
