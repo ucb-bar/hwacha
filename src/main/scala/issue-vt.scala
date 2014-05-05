@@ -384,10 +384,12 @@ class IssueVT extends HwachaModule
 // IRQ                                                                     \\
 //-------------------------------------------------------------------------\\
 
-  val illegal_vd = vd_val && (vd >= io.cfg.nfregs && vd_fp || vd >= io.cfg.nxregs && !vd_fp)
-  val illegal_vt = vt_val && (vt >= io.cfg.nfregs && vt_fp || vt >= io.cfg.nxregs && !vt_fp)
-  val illegal_vs = vs_val && (vs >= io.cfg.nfregs && vs_fp || vs >= io.cfg.nxregs && !vs_fp)
-  val illegal_vr = vr_val && (vr >= io.cfg.nfregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
+  val sum_fregs = io.cfg.ndfregs + io.cfg.nsfregs + io.cfg.nhfregs
+
+  val illegal_vd = vd_val && (vd >= sum_fregs && vd_fp || vd >= io.cfg.nxregs && !vd_fp)
+  val illegal_vt = vt_val && (vt >= sum_fregs && vt_fp || vt >= io.cfg.nxregs && !vt_fp)
+  val illegal_vs = vs_val && (vs >= sum_fregs && vs_fp || vs >= io.cfg.nxregs && !vs_fp)
+  val illegal_vr = vr_val && (vr >= sum_fregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
 
   val irq_common = io.vf.active && io.imem.resp.valid
   io.irq.issue.ma_inst := irq_common && io.imem.resp.bits.xcpt_ma

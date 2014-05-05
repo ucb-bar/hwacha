@@ -235,9 +235,11 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   // Cofiguration state
   val cfg_maxvl = Reg(init=UInt(32, log2Up(nreg_total)+1))
   val cfg_vl    = Reg(init=UInt(0, log2Up(nreg_total)+1))
-  val cfg_regs  = Reg(init=Cat(UInt(32, 6), UInt(32, 6)))
+  val cfg_regs  = Reg(init=Cat(UInt(0, 6), UInt(0, 6), UInt(32, 6), UInt(32, 6)))
   val cfg_xregs = cfg_regs(5,0)
-  val cfg_fregs = cfg_regs(11,6)
+  val cfg_dfregs = cfg_regs(11,6)
+  val cfg_sfregs = cfg_regs(17,12)
+  val cfg_hfregs = cfg_regs(23,18)
 
   // Decode
   val raw_inst = io.cmd.bits.inst.toBits
@@ -317,51 +319,36 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   // Setup interrupt
   io.interrupt := irq.io.rocc.request
 
-  val reg_prec = Reg(init = PREC_DOUBLE)
-  val next_prec = Bits(width = SZ_PREC)
-
-  val prec = (io.cmd.bits.rs1(13,12)).zext.toUInt
-  if (confprec) {
-    next_prec := MuxLookup(prec, PREC_DOUBLE, Array(
-      UInt(0,2) -> PREC_DOUBLE,
-      UInt(1,2) -> PREC_SINGLE,
-      UInt(2,2) -> PREC_HALF
-    ))
-  } else {
-    next_prec := PREC_DOUBLE
-  }
-
   // Logic to handle vector length calculation
-  val nxpr = (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
-  val nfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
-
-  val packing = MuxLookup(next_prec, UInt(0), Array(
-    PREC_DOUBLE -> UInt(0),
-    PREC_SINGLE -> UInt(1),
-    PREC_HALF   -> UInt(2)
-  ))
+  val nxpr =  (io.cmd.bits.rs1( 5,0) + inst_i_imm( 5,0)).zext.toUInt
+  val ndfpr = (io.cmd.bits.rs1(11,6) + inst_i_imm(11,6)).zext.toUInt
+  val nsfpr = io.cmd.bits.rs1(17,12)
+  val nhfpr = io.cmd.bits.rs1(23,18)
 
   // vector length lookup
-  val regs_used = (Mux(nxpr === UInt(0), UInt(0), nxpr - UInt(1)) << packing) + nfpr
+  val xregs_used = Mux(nxpr === UInt(0), UInt(0), nxpr - UInt(1))
+  val regs_used = xregs_used + ndfpr + nsfpr + nhfpr
+  // val regs_used = (((((xregs_used + ndfpr) << UInt(1)) + nsfpr) << UInt(1)) + nhfpr)
   val vlen_width = log2Up(nreg_per_bank + 1)
   val rom_allocation_units = (0 to 164).toArray.map(n => (UInt(n),
     UInt(if (n < 2) (nreg_per_bank) else (nreg_per_bank / n), width = vlen_width)
   ))
 
-  val ut_per_bank = Lookup(regs_used, rom_allocation_units.last._2, rom_allocation_units) << packing
+  // fixme: this calculation
+  val ut_per_bank = Lookup(regs_used, rom_allocation_units.last._2, rom_allocation_units)
   val new_maxvl = ut_per_bank << UInt(3) // microthreads
-  val xf_split = (new_maxvl >> UInt(3)) * (nxpr - UInt(1))
+  val xf_split = ut_per_bank * (nxpr - UInt(1))
 
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
 
-  val vimm_vlen = Cat(UInt(0,18), next_prec, xf_split(7,0), UInt(8,4), SInt(-1,8), nfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
+  val vimm_vlen = Cat(UInt(0, 8), nhfpr(5,0), nsfpr(5,0), xf_split(7,0), UInt(8, 4), SInt(-1, 8), ndfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
   when (cmd_valid && vcmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VSETCFG) {
         cfg_maxvl := new_maxvl
         cfg_vl := UInt(0)
-        cfg_regs := Cat(nfpr(5,0),nxpr(5,0))
-        reg_prec := next_prec
+        cfg_regs := Cat(nhfpr(5,0), nsfpr(5,0), ndfpr(5,0), nxpr(5,0))
+        printf("half: %d single: %d double: %d integer: %d\n", nhfpr, nsfpr, ndfpr, nxpr)
       }
       is (CMD_VSETVL) {
         cfg_vl := new_vl
@@ -433,18 +420,28 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   irq.io.vu <> vu.io.irq
   irq.io.rocc.clear := resp_q.io.enq.valid && sel_resp === RESP_CAUSE
 
+  val num_reg_valid = (nxpr <= UInt(32)) &&
+                      (ndfpr <= UInt(32)) &&
+                      (nsfpr <= UInt(32)) &&
+                      (nhfpr <= UInt(32)) &&
+                      (ndfpr + nsfpr + nhfpr <= UInt(32))
+
   irq.io.vu.top.illegal_cfg := io.cmd.valid &&
-    vcmd_valid && (sel_vcmd === CMD_VSETCFG) && (nxpr > UInt(32) || nfpr > UInt(32))
+    vcmd_valid && (sel_vcmd === CMD_VSETCFG) && !num_reg_valid
   irq.io.vu.top.illegal_inst := io.cmd.valid && !inst_val
   irq.io.vu.top.priv_inst := io.cmd.valid && inst_priv && !io.s
+  val sum_fregs = cfg_dfregs + cfg_sfregs + cfg_hfregs
   irq.io.vu.top.illegal_regid := io.cmd.valid && vr_valid &&
     Mux(vr_type===VRT_I, vr1 >= cfg_xregs || vr2 >= cfg_xregs,
-                         vr1 >= cfg_fregs || vr2 >= cfg_fregs)
+                         vr1 >= sum_fregs || vr2 >= sum_fregs)
 
   irq.io.vu.top.aux := MuxCase(
     raw_inst, Array(
       (irq.io.vu.top.illegal_cfg && nxpr > UInt(32)) -> UInt(0),
-      (irq.io.vu.top.illegal_cfg && nfpr > UInt(32)) -> UInt(1)
+      (irq.io.vu.top.illegal_cfg && ndfpr > UInt(32)) -> UInt(1),
+      (irq.io.vu.top.illegal_cfg && nsfpr > UInt(32)) -> UInt(2),
+      (irq.io.vu.top.illegal_cfg && nhfpr > UInt(32)) -> UInt(3),
+      (irq.io.vu.top.illegal_cfg && (ndfpr + nsfpr + nhfpr > UInt(32))) -> UInt(4)
     ))
 
   val reg_hold = Reg(init=Bool(false))
