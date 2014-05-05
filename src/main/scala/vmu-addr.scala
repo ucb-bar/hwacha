@@ -39,36 +39,47 @@ class AddressGen(implicit val conf: HwachaConfiguration) extends Module
   }
 
   val op_tvec = io.ctrl.op.tvec
-  val op_pack = (op_tvec && io.ctrl.op.unit && io.ctrl.op.cmd.ld) && !io.xcpt.prop.vmu.drain
+  val op_pack = (op_tvec && io.ctrl.op.unit) && !io.xcpt.prop.vmu.drain
+  val op_base = io.ctrl.op.base
 
-  val stride = Mux(op_pack, UInt(conf.vmu.line_bytes), io.ctrl.op.stride)
+  private val w = log2Up(conf.vmu.nb)
   val addr = Reg(UInt(width = SZ_ADDR))
   val utidx = Reg(UInt(width = SZ_VLEN))
 
-  private val w = log2Up(conf.vmu.line_bytes)
-  // Non-zero only for the first request of an unaligned memory operation
-  val offset = Fill(w, op_pack && (utidx === UInt(0))) & Mux1H(
-    Vec(io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b),
-    Vec(io.ctrl.op.base(w-1,2), io.ctrl.op.base(w-1,1), io.ctrl.op.base(w-1,0)))
-
-/*
+  val utcnt_resid = io.ctrl.op.vlen - utidx
   val utcnt_pack = Mux1H(
     Vec(io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d),
-    Vec((0 to 3).map(i => UInt(conf.vmu.line_bytes >> i))))
- */
+    Vec(UInt(conf.vmu.nb), UInt(conf.vmu.nh), UInt(conf.vmu.nw), UInt(conf.vmu.nd)))
+/*
   val utcnt_pack = Cat( // NOTE: Optimized for conf.vmu.sz_data=64
     io.ctrl.op.typ.b, io.ctrl.op.typ.h, io.ctrl.op.typ.w, io.ctrl.op.typ.d)
-  val utcnt_limit = Mux(op_pack, utcnt_pack - offset, UInt(1))
-  val utcnt_resid = io.ctrl.op.vlen - utidx
+*/
+
+  // Control whether to enable packing for the current request
+  val req_pack_ld = op_pack && io.ctrl.op.cmd.ld
+  val req_pack_st = op_pack && io.ctrl.op.cmd.st &&
+    // Refrain from partially packed stores due to the L1 D$
+    // interface not supporting write masks
+    (addr(w-1,0) === UInt(0)) && (utcnt_resid >= utcnt_pack)
+  val req_pack = req_pack_ld ||
+    (if (conf.vmu.pack_st) req_pack_st else Bool(false))
+
+  // Non-zero offset only for the first request of an unaligned load
+  val offset = Fill(w, req_pack_ld && (utidx === UInt(0))) & Mux1H(
+    Vec(io.ctrl.op.typ.w, io.ctrl.op.typ.h, io.ctrl.op.typ.b),
+    Vec(op_base(w-1,2), op_base(w-1,1), op_base(w-1,0)))
+  val utcnt_limit = Mux(req_pack, utcnt_pack - offset, UInt(1))
   val end = (utcnt_resid <= utcnt_limit)
   val utcnt = Mux(end, utcnt_resid, utcnt_limit)
 
+  val stride = Mux(req_pack, UInt(conf.vmu.nb), io.ctrl.op.stride)
+
   io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
-  io.vatq.bits.meta.utcnt := utcnt
+  io.vatq.bits.meta.utcnt := Mux(io.xcpt.prop.vmu.drain, UInt(1), utcnt)
   io.vatq.bits.meta.offset := offset
   io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
-  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain || op_pack, MT_D, io.ctrl.op.typ.raw)
+  io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain || req_pack, MT_D, io.ctrl.op.typ.raw)
 
   io.ctrl.busy := Bool(false)
   io.vvaq.ready := Bool(false)
@@ -80,7 +91,7 @@ class AddressGen(implicit val conf: HwachaConfiguration) extends Module
   switch (state) {
     is (s_idle) {
       when (io.ctrl.fire) {
-        addr := Cat(io.ctrl.op.base(SZ_ADDR-1, w), io.ctrl.op.base(w-1,0) & Fill(w, !op_pack))
+        addr := Cat(op_base(SZ_ADDR-1, w), op_base(w-1,0) & Fill(w, !req_pack_ld))
         utidx := UInt(0)
         state := s_busy
       }
@@ -225,7 +236,7 @@ class MetadataAlloc(implicit conf: HwachaConfiguration) extends Module
   io.vpaq.ready := io.memif.ready && vmdb_ready
   io.memif.valid := io.vpaq.valid && vmdb_ready
   io.memif.bits <> io.vpaq.bits
-  io.memif.bits.tag := io.vmdb.tag
+  io.memif.bits.tag := Mux(load, io.vmdb.tag, io.vpaq.bits.meta.utcnt)
 }
 
 class AddressUnit(implicit conf: HwachaConfiguration) extends Module

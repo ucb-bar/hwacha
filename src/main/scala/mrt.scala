@@ -7,10 +7,8 @@ import Constants._
 class MRTLoadRetireIO(implicit conf: HwachaConfiguration)
   extends CounterPortIO(log2Down(conf.nvlreq) + 1)
 
-class MRTStoreRetireIO extends Bundle
-{
-  val update = Bool(OUTPUT)
-}
+class MRTStoreRetireIO(implicit conf: HwachaConfiguration)
+  extends CounterPortIO(log2Down(conf.nvsreq) + 1)
 
 // Memory Request Tracker:
 // Counts memory operations in transit
@@ -36,7 +34,7 @@ class MRT(implicit conf: HwachaConfiguration) extends Module
   lcnt.io.dec.update := Bool(false)
 
   scnt.io.la <> io.sreq.vxu
-  scnt.io.inc.cnt := UInt(1)
+  scnt.io.inc.cnt := io.sret.cnt
   scnt.io.inc.update := io.sret.update
   scnt.io.dec.cnt := UInt(1)
   scnt.io.dec.update := io.sreq.evac
