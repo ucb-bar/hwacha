@@ -170,7 +170,12 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 //--------------------------------------------------------------------\\
 
   val bwqs_enq_ready = Vec.fill(conf.nbanks){ Bool() }
-  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
+  val vd_stride = Mux(op.reg.vd.float, MuxLookup(op.reg.vd.prec, io.cfg.ndfregs, Array(
+                                                  PREC_DOUBLE -> io.cfg.ndfregs,
+                                                  PREC_SINGLE -> io.cfg.nsfregs,
+                                                    PREC_HALF -> io.cfg.nhfregs
+                                       )),
+                                       io.cfg.nxregs - UInt(1))
 
   val bw_stat_update = Vec.fill(conf.nbanks){ Bits() }
 

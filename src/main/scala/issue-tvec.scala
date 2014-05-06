@@ -15,9 +15,9 @@ class HwachaConfigIO extends Bundle
   val ndfregs = UInt(OUTPUT, SZ_REGCNT)
   val nsfregs = UInt(OUTPUT, SZ_REGCNT)
   val nhfregs = UInt(OUTPUT, SZ_REGCNT)
-  val xstride = UInt(OUTPUT, SZ_REGLEN)
-  val fstride = UInt(OUTPUT, SZ_REGLEN)
-  val xfsplit = UInt(OUTPUT, SZ_BREGLEN)
+  val xdsplit = UInt(OUTPUT, SZ_BREGLEN)
+  val dssplit = UInt(OUTPUT, SZ_BREGLEN)
+  val shsplit = UInt(OUTPUT, SZ_BREGLEN)
 }
 
 object TVECDecodeTable
@@ -112,9 +112,9 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val reg_nhfregs = Reg(init = Bits(0,SZ_REGCNT))
   val reg_bactive = Reg(init = Bits("b1111_1111",SZ_BANK))
   val reg_bcnt = Reg(init = Bits(8,SZ_LGBANK1))
-  val reg_xstride = Reg(init = Bits(31,SZ_REGLEN))
-  val reg_fstride = Reg(init = Bits(32,SZ_REGLEN))
-  val reg_xf_split = Reg(init = Bits(31*4,SZ_BANK))
+  val reg_xd_split = Reg(init = Bits(31*4,SZ_BANK))
+  val reg_ds_split = Reg(init = Bits(31*4,SZ_BANK))
+  val reg_sh_split = Reg(init = Bits(31*4,SZ_BANK))
 
   val stall = io.xcpt.prop.issue.stall
 
@@ -147,8 +147,10 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   val vmu_float = vmu_op_vld && vd_fp || vmu_op_vst && vt_fp
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
-  val regid_xbase = (cnt >> UInt(3)) * reg_xstride
-  val regid_fbase = ((cnt >> UInt(3)) * reg_fstride) + reg_xf_split
+  val regid_xbase = (cnt >> UInt(3)) * (io.cfg.nxregs - UInt(1))
+  val regid_dbase = ((cnt >> UInt(3)) * io.cfg.ndfregs) + reg_xd_split
+  val regid_sbase = ((cnt >> UInt(3)) * io.cfg.nsfregs) + reg_ds_split
+  val regid_hbase = ((cnt >> UInt(3)) * io.cfg.nhfregs) + reg_sh_split
 
   val vfu_val = viu_val || vmu_val
   val vd_zero = !vd_fp && vd === UInt(0) && vd_val
@@ -211,6 +213,10 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
 // REGISTERS                                                               \\
 //-------------------------------------------------------------------------\\
 
+  val xd_split = imm1.ut_per_bank * (imm1.nxregs - UInt(1))
+  val ds_split = xd_split + (imm1.ut_per_bank * imm1.ndfregs)
+  val sh_split = ds_split + ((imm1.ut_per_bank * imm1.nsfregs + UInt(1)) >> UInt(1))
+
   when (fire(null, decode_vcfg)) {
     reg_vlen := imm1.vlen
     reg_nxregs := imm1.nxregs
@@ -219,9 +225,10 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
     reg_nhfregs := imm1.nhfregs
     reg_bactive := imm1.bactive
     reg_bcnt := imm1.bcnt
-    reg_xstride := imm1.nxregs - UInt(1)
-    reg_fstride := imm1.ndfregs + imm1.nsfregs + imm1.nhfregs
-    reg_xf_split := imm1.xf_split // location of X/F register split in bank: number of xregs times the number of uts per bank
+    // location of X/D/S/H register splits in bank
+    reg_xd_split := xd_split
+    reg_ds_split := ds_split
+    reg_sh_split := sh_split
   }
   when (fire(null, decode_vsetvl)) {
     reg_vlen := imm1.vlen
@@ -244,9 +251,9 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.cfg.ndfregs := reg_ndfregs
   io.cfg.nsfregs := reg_nsfregs
   io.cfg.nhfregs := reg_nhfregs
-  io.cfg.xstride := reg_xstride
-  io.cfg.fstride := reg_fstride
-  io.cfg.xfsplit := reg_xf_split
+  io.cfg.xdsplit := reg_xd_split
+  io.cfg.dssplit := reg_ds_split
+  io.cfg.shsplit := reg_sh_split
 
   io.active := tvec_active    
   io.vf.active := (reg_state === ISSUE_VT)
@@ -294,22 +301,38 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
     ))
 
   // precision lookup
-  def mem2prec(mem_type: UInt) = {
-    MuxLookup(mem_type, PREC_DEFAULT, Array(
-                MT_H -> PREC_HALF,
-                MT_W -> PREC_SINGLE,
-                MT_D -> PREC_DOUBLE))
+  def reg2prec(regid: UInt) = {
+    val d = (regid < io.cfg.ndfregs)
+    val ds = (regid < (io.cfg.ndfregs + io.cfg.nsfregs))
+
+    MuxCase(PREC_DOUBLE, Array(
+      ( ds &&  d) -> PREC_DOUBLE,  // ds > d > x
+      ( ds && !d) -> PREC_SINGLE,  // ds > x > d
+      (!ds && !d) -> PREC_HALF     // x > ds > d
+    ))
   }
 
-  val prec_vt = Mux(vmu_op_vst && vt_fp, mem2prec(vmu_type), PREC_DEFAULT)
-  val prec_vd = Mux(vmu_op_vld && vd_fp, mem2prec(vmu_type), PREC_DEFAULT)
+  // subtract dfregs from single and (dfregs + sfregs) from half
+  // to offset the register specifiers used for those
+  def prec2regid_base(prec: UInt) = {
+    MuxLookup(prec, regid_dbase, Array(
+     PREC_DOUBLE -> regid_dbase,
+     PREC_SINGLE -> (regid_sbase - io.cfg.ndfregs),
+       PREC_HALF -> (regid_hbase - io.cfg.ndfregs - io.cfg.nsfregs)))
+  }
+
+  val prec_vt = Mux(vt_val && vt_fp, reg2prec(vt), PREC_DEFAULT)
+  val prec_vd = Mux(vd_val && vd_fp, reg2prec(vd), PREC_DEFAULT)
+
+  val fbase_vt = prec2regid_base(reg2prec(vt))
+  val fbase_vd = prec2regid_base(reg2prec(vd))
 
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
   io.op.bits.reg.vt.float := vt_fp
   io.op.bits.reg.vd.float := vd_fp
-  io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
-  io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
+  io.op.bits.reg.vt.id := Mux(vt_fp, fbase_vt + vt, regid_xbase + vt_m1)
+  io.op.bits.reg.vd.id := Mux(vd_fp, fbase_vd + vd, regid_xbase + vd_m1)
   // FIXME
   io.op.bits.reg.vt.prec := prec_vt
   io.op.bits.reg.vd.prec := prec_vd
