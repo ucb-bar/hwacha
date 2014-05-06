@@ -204,6 +204,10 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
     bwqs_enq_ready(i) := bwq.io.enq.ready
 
     val vd_utidx = bwq.io.deq.bits.tag
+    // Divide bank utidx by packing density for physical uT block ID
+    val vd_utblk = Mux1H(Vec(prec_d, prec_w, prec_h),
+      Vec(Seq(N_XD, N_XW, N_XH).map(i =>
+        if (i <= 1) vd_utidx else (vd_utidx >> UInt(log2Up(i))))))
 
     // For each halfword increment, determine which precisions have
     // valid shifts to this position, generate the corresponding enable
@@ -226,7 +230,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 
     io.bwqs(i).bits.data := shift(bwq.io.deq.bits.data, SZ_DATA, SZ_XH)
     io.bwqs(i).bits.mask := shift(mask, SZ_BREGMASK, 1)
-    io.bwqs(i).bits.addr := op.reg.vd.id + (vd_utidx * vd_stride)
+    io.bwqs(i).bits.addr := op.reg.vd.id + (vd_utblk * vd_stride)
     io.bwqs(i) <> bwq.io.deq
 
     val bw_stat_idx = Cat(vd_utidx, UInt(i, lgbank)) - op.utidx
