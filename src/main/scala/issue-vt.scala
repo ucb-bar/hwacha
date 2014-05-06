@@ -251,12 +251,21 @@ class IssueVT extends HwachaModule
   val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
 
   val cnt = Mux(io.vcmdq.cnt.valid, io.vcmdq.cnt.bits.cnt, UInt(0))
-  val regid_xbase = (cnt >> UInt(3)) * io.cfg.xstride
-  val regid_fbase = ((cnt >> UInt(3)) * io.cfg.fstride) + io.cfg.xfsplit
+  val regid_xbase = (cnt >> UInt(3)) * (io.cfg.nxregs - UInt(1))
+  val regid_dbase = ((cnt >> UInt(3)) * io.cfg.ndfregs) + io.cfg.xdsplit
+  val regid_sbase = ((cnt >> UInt(3)) * io.cfg.nsfregs) + io.cfg.dssplit
+  val regid_hbase = ((cnt >> UInt(3)) * io.cfg.nhfregs) + io.cfg.shsplit
 
   val vfu_val = viu_val || vau0_val || vau1_val || vau2_val || vmu_val
   val vd_zero = !vd_fp && vd === UInt(0) && vd_val
   val issue_op = !vd_zero && vfu_val
+
+  val inst_fp = MuxCase(
+    FP_, Array(
+      (viu_val) -> viu_fp,
+      (vau1_val) -> vau1_fp,
+      (vau2_val) -> vau2_fp
+  ))
 
   val deq_vcmdq_cnt = issue_op
   val enq_deck_op = vmu_val
@@ -320,10 +329,46 @@ class IssueVT extends HwachaModule
   io.op.bits.fn.vmu.op := vmu_op
   io.op.bits.fn.vmu.typ := vmu_type
 
+  val inst_prec = MuxLookup(inst_fp, PREC_DEFAULT, Array(
+                              FPD -> PREC_DOUBLE,
+                              FPS -> PREC_SINGLE,
+                              FPH -> PREC_HALF
+  ))
+
+  // subtract dfregs from single and (dfregs + sfregs) from half
+  // to offset the register specifiers used for those
+  def prec2regid_base(prec: UInt) = {
+    MuxLookup(prec, regid_dbase, Array(
+     PREC_DOUBLE -> regid_dbase,
+     PREC_SINGLE -> (regid_sbase - io.cfg.ndfregs),
+       PREC_HALF -> (regid_hbase - io.cfg.ndfregs - io.cfg.nsfregs)))
+  }
+
+  def reg2prec(regid: UInt) = {
+    val d = (regid < io.cfg.ndfregs)
+    val ds = (regid < (io.cfg.ndfregs + io.cfg.nsfregs))
+
+    MuxCase(PREC_DOUBLE, Array(
+      ( ds &&  d) -> PREC_DOUBLE,  // ds > d > x
+      ( ds && !d) -> PREC_SINGLE,  // ds > x > d
+      (!ds && !d) -> PREC_HALF     // x > ds > d
+    ))
+  }
+
   val vs_m1 = vs - UInt(1)
   val vt_m1 = vt - UInt(1)
   val vr_m1 = vr - UInt(1)
   val vd_m1 = vd - UInt(1)
+
+  val prec_vs = Mux(vs_val && vs_fp, reg2prec(vs), PREC_DEFAULT)
+  val prec_vt = Mux(vt_val && vt_fp, reg2prec(vt), PREC_DEFAULT)
+  val prec_vr = Mux(vr_val && vr_fp, reg2prec(vr), PREC_DEFAULT)
+  val prec_vd = Mux(vd_val && vd_fp, reg2prec(vd), PREC_DEFAULT)
+
+  val fbase_vs = prec2regid_base(prec_vs)
+  val fbase_vt = prec2regid_base(prec_vt)
+  val fbase_vr = prec2regid_base(prec_vr)
+  val fbase_vd = prec2regid_base(prec_vd)
 
   io.op.bits.reg.vs.zero := !vs_fp && vs === UInt(0)
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
@@ -333,20 +378,15 @@ class IssueVT extends HwachaModule
   io.op.bits.reg.vt.float := vt_fp
   io.op.bits.reg.vr.float := vr_fp
   io.op.bits.reg.vd.float := vd_fp
-  io.op.bits.reg.vs.id := Mux(vs_fp, vs + regid_fbase, vs_m1 + regid_xbase)
-  io.op.bits.reg.vt.id := Mux(vt_fp, vt + regid_fbase, vt_m1 + regid_xbase)
-  io.op.bits.reg.vr.id := Mux(vr_fp, vr + regid_fbase, vr_m1 + regid_xbase)
-  io.op.bits.reg.vd.id := Mux(vd_fp, vd + regid_fbase, vd_m1 + regid_xbase)
+  io.op.bits.reg.vs.id := Mux(vs_fp, fbase_vs + vs, vs_m1 + regid_xbase)
+  io.op.bits.reg.vt.id := Mux(vt_fp, fbase_vt + vt, vt_m1 + regid_xbase)
+  io.op.bits.reg.vr.id := Mux(vr_fp, fbase_vr + vr, vr_m1 + regid_xbase)
+  io.op.bits.reg.vd.id := Mux(vd_fp, fbase_vd + vd, vd_m1 + regid_xbase)
   // FIXME
-  io.op.bits.reg.vs.prec := PREC_DEFAULT
-  io.op.bits.reg.vt.prec := PREC_DEFAULT
-  io.op.bits.reg.vr.prec := PREC_DEFAULT
-  io.op.bits.reg.vd.prec := Mux(vau1_val, MuxLookup(vau1_fp, PREC_DEFAULT, Array(
-                                                      FPD -> PREC_DOUBLE,
-                                                      FPS -> PREC_SINGLE,
-                                                      FPH -> PREC_HALF
-                                          )),
-                                          PREC_DEFAULT) // io.cfg.prec
+  io.op.bits.reg.vs.prec := prec_vs
+  io.op.bits.reg.vt.prec := prec_vt
+  io.op.bits.reg.vr.prec := prec_vr
+  io.op.bits.reg.vd.prec := prec_vd
 
   io.op.bits.regcheck.vs.active := vs_val
   io.op.bits.regcheck.vt.active := vt_val

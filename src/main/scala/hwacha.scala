@@ -331,21 +331,19 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   // vector length lookup
   val xregs_used = Mux(nxpr === UInt(0), UInt(0), nxpr - UInt(1))
-  val regs_used = xregs_used + ndfpr + nsfpr + nhfpr
-  // val regs_used = (((((xregs_used + ndfpr) << UInt(1)) + nsfpr) << UInt(1)) + nhfpr)
+  val regs_used = (((((xregs_used + ndfpr) << UInt(1)) + nsfpr) << UInt(1)) + nhfpr) + UInt(3) >> UInt(2)
   val vlen_width = log2Up(nreg_per_bank + 1)
   val rom_allocation_units = (0 to 164).toArray.map(n => (UInt(n),
+    // multiply by 4 and divide by 4 to ensure half-precision registers complete
     UInt(if (n < 2) (nreg_per_bank) else (nreg_per_bank / n), width = vlen_width)
   ))
 
-  // fixme: this calculation
   val ut_per_bank = Lookup(regs_used, rom_allocation_units.last._2, rom_allocation_units)
   val new_maxvl = ut_per_bank << UInt(3) // microthreads
-  val xf_split = ut_per_bank * (nxpr - UInt(1))
 
   val new_vl = Mux(io.cmd.bits.rs1 < cfg_maxvl, io.cmd.bits.rs1, cfg_maxvl)
 
-  val vimm_vlen = Cat(UInt(0, 8), nhfpr(5,0), nsfpr(5,0), xf_split(7,0), UInt(8, 4), SInt(-1, 8), ndfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
+  val vimm_vlen = Cat(UInt(0, 7), ut_per_bank(8,0), UInt(8, 4), SInt(-1, 8), nhfpr(5,0), nsfpr(5,0), ndfpr(5,0), nxpr(5,0), new_vl(SZ_VLEN-1,0))
   when (cmd_valid && vcmd_valid && construct_ready(null)) {
     switch (sel_vcmd) {
       is (CMD_VSETCFG) {

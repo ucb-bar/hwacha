@@ -167,13 +167,17 @@ class VLU extends HwachaModule
 //--------------------------------------------------------------------\\
 
   val bwqs_enq_ready = Vec.fill(nbanks){ Bool() }
-  val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
 
   val bw_stat_update = Vec.fill(nbanks){ Bits() }
 
   val prec_d = (op.reg.vd.prec === PREC_DOUBLE)
   val prec_w = (op.reg.vd.prec === PREC_SINGLE)
   val prec_h = (op.reg.vd.prec === PREC_HALF)
+
+  val vd_stride = Mux(op.reg.vd.float,
+    Mux1H(Vec(prec_d, prec_w, prec_h),
+      Vec(io.cfg.ndfregs, io.cfg.nsfregs, io.cfg.nhfregs)),
+    io.cfg.nxregs - UInt(1))
 
   val mask = Mux1H(Vec(prec_d, prec_w, prec_h), Vec(
     Bits("b1111", SZ_BREGMASK),
