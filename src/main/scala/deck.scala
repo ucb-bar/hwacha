@@ -206,17 +206,17 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
     // TODO: Abstract packed register format into Compaction
     val shift_sel = Vec((0 until N_XH).map(i =>
       Seq((prec_h, N_XH, 0), (prec_w, N_XW, 1), (prec_d, N_XD, 2))
-        filter (t => (i & ((1 << t._3) - 1)) == 0)
-        map (t => if (t._2 <= 1)
-          t._1 else
-          t._1 && (vd_utidx(log2Up(t._2)-1,0) === UInt(i >> t._3)))
+        filter {case (prec_sel, density, shift) => (i & ((1 << shift) - 1)) == 0}
+        map {case (prec_sel, density, shift) => if (density <= 1)
+          prec_sel else
+          prec_sel && (vd_utidx(log2Up(density)-1,0) === UInt(i >> shift))}
         reduce (_||_)
       ))
 
     def shift(data: Bits, n: Int, m: Int) = Mux1H(shift_sel,
       Vec(data +: (1 until shift_sel.length).map(i => {
         val shamt = m * i
-        Cat(data(n-1, shamt), Fill(shamt, Bits(0)))
+        Cat(data(n-shamt-1,0), Fill(shamt, Bits(0)))
       })))
 
     io.bwqs(i).bits.data := shift(bwq.io.deq.bits.data, SZ_DATA, SZ_XH)

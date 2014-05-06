@@ -301,7 +301,8 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
                 MT_D -> PREC_DOUBLE))
   }
 
-  val prec_vd = Mux(vmu_float, mem2prec(vmu_type), PREC_DEFAULT)
+  val prec_vt = Mux(vmu_op_vst && vt_fp, mem2prec(vmu_type), PREC_DEFAULT)
+  val prec_vd = Mux(vmu_op_vld && vd_fp, mem2prec(vmu_type), PREC_DEFAULT)
 
   io.op.bits.reg.vt.zero := !vt_fp && vt === UInt(0)
   io.op.bits.reg.vd.zero := !vd_fp && vd === UInt(0)
@@ -310,8 +311,8 @@ class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
   io.op.bits.reg.vt.id := Mux(vt_fp, regid_fbase + vt, regid_xbase + vt_m1)
   io.op.bits.reg.vd.id := Mux(vd_fp, regid_fbase + vd, regid_xbase + vd_m1)
   // FIXME
-  io.op.bits.reg.vt.prec := PREC_DEFAULT
-  io.op.bits.reg.vd.prec := PREC_DEFAULT
+  io.op.bits.reg.vt.prec := prec_vt
+  io.op.bits.reg.vd.prec := prec_vd
 
   io.op.bits.regcheck.vs.active := Bool(false)
   io.op.bits.regcheck.vt.active := vt_val
