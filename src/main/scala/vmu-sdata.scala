@@ -39,12 +39,13 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
     Vec(UInt(conf.vmu.nd), UInt(conf.vmu.nw), UInt(conf.vmu.nh), UInt(conf.vmu.nb)))
   val utcnt_resid = io.ctrl.op.vlen - (utidx_next & Fill(state != s_idle, SZ_VLEN))
   val at_tail = (utcnt_resid < utcnt_pack)
-  val at_edge = Mux1H(op_type, Vec(Bool(true), utidx(0), utidx(1,0).andR, utidx(2,0).andR))
+  val at_edge = Mux1H(op_type, Vec(Bool(true) +: (0 to 2).map(utidx(_,0).andR)))
 
   private val w = log2Up(conf.vmu.nb)
   val offset = io.ctrl.op.base(w-1,0)
   val offset_ut = Mux1H(op_type, Vec(UInt(0), offset(w-1,2), offset(w-1,1), offset))
   val utcnt_head = utcnt_pack - offset_ut
+  val aligned = (offset === UInt(0))
 
   val rshift = /*Fill(op_pack, 3) &*/ Mux1H(op_type,
     Vec(UInt(0), Cat(utidx(0), Bits(0,2)), Cat(utidx(1,0), Bits(0,1)), utidx(2,0)))
@@ -69,7 +70,7 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
       when (io.ctrl.fire && (io.ctrl.op.cmd.st || io.ctrl.op.cmd.amo)) {
         utidx := UInt(0)
         state := Mux(!op_pack || at_tail, s_tail,
-          Mux(offset === UInt(0), s_pack, s_head))
+          Mux(aligned, s_pack, s_head))
       }
     }
 
@@ -93,7 +94,7 @@ class StoreAligner(implicit conf: HwachaConfiguration) extends Module
 
     is (s_pack) {
       utcnt := utcnt_pack
-      dequeue := !at_tail || at_end
+      dequeue := aligned || !at_tail || at_end
       when (io.deq.fire()) {
         when (at_end) {
           state := s_idle
