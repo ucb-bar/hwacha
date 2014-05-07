@@ -10,6 +10,7 @@ class LaneConv extends HwachaModule
   val io = new Bundle {
     val valid = Bool(INPUT)
     val fn = new VAU2Fn().asInput
+    val ut = UInt(INPUT, 2)
     val in = Bits(INPUT, SZ_DATA)
     val out = Bits(OUTPUT, SZ_DATA)
     val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
@@ -47,7 +48,10 @@ class LaneConv extends HwachaModule
   val val_edp   = io.valid & FP(FPD) & OP(A2_MXTF)
   val val_sp2dp = io.valid & OP(A2_CSTD)
 
-  val dhp_in = Fill(16,val_dhp) & unpack_h(io.in, 0)
+  val sel = Mux1H(Vec(PRECS.map(io.fn.prec.vs === _)),
+    Vec(UInt(0), io.ut(0) << UInt(1), io.ut))
+  val hps = Vec.tabulate(N_XH){ i => unpack_h(io.in, i) }
+  val dhp_in = Fill(16,val_dhp) & hps(sel)
   val result_dhp = dhp_in
 
   val ehp_in = Fill(16,val_ehp) & io.in(15,0)

@@ -310,6 +310,11 @@ class IssueVT extends HwachaModule
 // DATAPATH                                                                \\
 //-------------------------------------------------------------------------\\
 
+  val prec_vs = Bits(width = SZ_PREC)
+  val prec_vt = Bits(width = SZ_PREC)
+  val prec_vr = Bits(width = SZ_PREC)
+  val prec_vd = Bits(width = SZ_PREC)
+
   io.op.bits.active.viu := viu_val
   io.op.bits.active.vau0 := vau0_val
   io.op.bits.active.vau1 := vau1_val
@@ -326,7 +331,7 @@ class IssueVT extends HwachaModule
   io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, viu_dw, viu_fp, viu_op))
   io.op.bits.fn.vau0 := new VAU0Fn().fromBits(Cat(vau0_dw, vau0_op))
   io.op.bits.fn.vau1 := new VAU1Fn().fromBits(Cat(vau1_fp, rm, vau1_op))
-  io.op.bits.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, rm, vau2_op))
+  io.op.bits.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, rm, vau2_op, prec_vs, prec_vd))
   io.op.bits.fn.vmu.float := vmu_float
   io.op.bits.fn.vmu.op := vmu_op
   io.op.bits.fn.vmu.typ := vmu_type
@@ -362,10 +367,10 @@ class IssueVT extends HwachaModule
   val vr_m1 = vr - UInt(1)
   val vd_m1 = vd - UInt(1)
 
-  val prec_vs = Mux(vs_val && vs_fp, reg2prec(vs), PREC_DEFAULT)
-  val prec_vt = Mux(vt_val && vt_fp, reg2prec(vt), PREC_DEFAULT)
-  val prec_vr = Mux(vr_val && vr_fp, reg2prec(vr), PREC_DEFAULT)
-  val prec_vd = Mux(vd_val && vd_fp, reg2prec(vd), PREC_DEFAULT)
+  prec_vs := Mux(vs_val && vs_fp, reg2prec(vs), PREC_DEFAULT)
+  prec_vt := Mux(vt_val && vt_fp, reg2prec(vt), PREC_DEFAULT)
+  prec_vr := Mux(vr_val && vr_fp, reg2prec(vr), PREC_DEFAULT)
+  prec_vd := Mux(vd_val && vd_fp, reg2prec(vd), PREC_DEFAULT)
 
   val fbase_vs = prec2regid_base(prec_vs)
   val fbase_vt = prec2regid_base(prec_vt)

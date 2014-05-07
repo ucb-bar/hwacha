@@ -89,8 +89,26 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       ))
     }
 
-    def stride(float: Bool, prec: UInt) =
+    def stride(float: Bool, prec: UInt) = {
       Mux(float, float_stride(prec), io.cfg.nxregs - UInt(1))
+    }
+
+    def take_stride(reg: RegInfo) = {
+      val multi_rate = e(ptr).active.vau2t || e(ptr).active.vau2f
+
+      val next_utidx = e(ptr).utidx + MuxLookup(e(ptr).rate, bcnt,
+        Array(PREC_DOUBLE -> bcnt,
+              PREC_SINGLE -> (bcnt << UInt(1)),
+                PREC_HALF -> (bcnt << UInt(2))))
+
+      val adv = MuxCase(Bool(true), Array(
+        (reg.prec === PREC_DOUBLE) -> Bool(true),
+        (reg.prec === PREC_SINGLE) -> (next_utidx(3) === UInt(0)),
+          (reg.prec === PREC_HALF) -> (next_utidx(4,3) === UInt(0))
+      ))
+
+      Mux(adv, stride(reg.float, reg.prec), UInt(0))
+    }
 
     def islast(slot: UInt) = {
       val ret = Bool()
@@ -266,7 +284,8 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.last(ptr1) := last
       when (io.issueop.bits.sel.vau2) { seq.e(ptr1).active.vau2t := Bool(true) }
       .otherwise { seq.e(ptr1).active.vau2f := Bool(true) }
-      seq.e(ptr1).rate := PREC_DEFAULT
+      seq.e(ptr1).utidx := io.issueop.bits.utidx
+      seq.e(ptr1).rate := seq.min(io.issueop.bits.reg.vd.prec, io.issueop.bits.reg.vs.prec)
       seq.e(ptr1).fn.vau2 := io.issueop.bits.fn.vau2
       seq.e(ptr1).reg.vs := io.issueop.bits.reg.vs
       seq.e(ptr1).reg.vd := io.issueop.bits.reg.vd
@@ -533,12 +552,12 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   when (valid) {
     when (seq.active(ptr)) {
       seq.vlen(ptr) := seq.vlen(ptr) - nelements
-      seq.e(ptr).utidx := seq.e(ptr).utidx + bcnt
+      seq.e(ptr).utidx := seq.e(ptr).utidx + nelements
       val ri = seq.e(ptr).reg // reginfo
-      seq.e(ptr).reg.vs.id := seq.e(ptr).reg.vs.id + seq.stride(ri.vs.float, ri.vs.prec)
-      seq.e(ptr).reg.vt.id := seq.e(ptr).reg.vt.id + seq.stride(ri.vt.float, ri.vt.prec)
-      seq.e(ptr).reg.vr.id := seq.e(ptr).reg.vr.id + seq.stride(ri.vr.float, ri.vr.prec)
-      seq.e(ptr).reg.vd.id := seq.e(ptr).reg.vd.id + seq.stride(ri.vd.float, ri.vd.prec)
+      seq.e(ptr).reg.vs.id := seq.e(ptr).reg.vs.id + seq.take_stride(ri.vs)
+      seq.e(ptr).reg.vt.id := seq.e(ptr).reg.vt.id + seq.take_stride(ri.vt)
+      seq.e(ptr).reg.vr.id := seq.e(ptr).reg.vr.id + seq.take_stride(ri.vr)
+      seq.e(ptr).reg.vd.id := seq.e(ptr).reg.vd.id + seq.take_stride(ri.vd)
 
       when (islast) {
         seq.valid(ptr) := Bool(false)

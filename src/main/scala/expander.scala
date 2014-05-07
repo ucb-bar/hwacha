@@ -255,6 +255,7 @@ class Expander extends HwachaModule
         vau2exp.valid(2) := Bool(true)
         vau2exp.bits(2).cnt := io.seqop.bits.cnt
         vau2exp.bits(2).fn := io.seqop.bits.fn.vau2
+        vau2exp.bits(2).utidx := io.seqop.bits.utidx(4,3)
       }
     }
 

@@ -93,6 +93,7 @@ class Lane extends HwachaModule
 
   conv0.io.valid := lfu.io.vau2t.valid
   conv0.io.fn := lfu.io.vau2t.bits.fn
+  conv0.io.ut := lfu.io.vau2t.bits.utidx
   conv0.io.in := rbl(8)
 
   if (second_fma_pipe) {
