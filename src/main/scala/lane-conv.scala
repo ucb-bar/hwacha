@@ -34,6 +34,8 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
       OP(A2_CFTWU) -> hardfloat.fpu_recoded.type_uint32
     ))
 
+  val val_decode_hp    = io.valid & FP(FPH) & OP(A2_MFTX)
+  val val_encode_hp    = io.valid & FP(FPH) & OP(A2_MXTF)
   val val_int2float_sp = io.valid & FP(FPS) & OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF)
   val val_float2int_sp = io.valid & FP(FPS) & OP(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU)
   val val_decode_sp    = io.valid & FP(FPS) & OP(A2_MFTX)
@@ -44,6 +46,10 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
   val val_decode_dp    = io.valid & FP(FPD) & OP(A2_MFTX)
   val val_encode_dp    = io.valid & FP(FPD) & OP(A2_MXTF)
   val val_sp2dp        = io.valid & OP(A2_CSTD)
+
+  val result_decode_hp = Fill(16,val_decode_hp) & unpack_h(io.in, 0)
+
+  val result_encode_hp = repack_h(Fill(16,val_encode_hp) & io.in(15,0))
 
   val int2float_sp = Module(new hardfloat.anyToRecodedFloat32)
   int2float_sp.io.in := Fill(64,val_int2float_sp) & io.in(63,0)
@@ -100,6 +106,12 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
   val result_float2float_dp = repack_d(sp2dp.io.out)
   val exc_float2float_dp = sp2dp.io.exception_flags
 
+  val next_result_hp = MuxCase(
+    Bits(0, SZ_DATA), Array(
+      OP(A2_MXTF) -> result_encode_hp,
+      OP(A2_MFTX) -> Cat(Bits(0,2), Fill(48, result_decode_hp(15)), result_decode_hp(15,0))
+  ))
+
   val next_result_sp = MuxCase(
     Bits(0, SZ_DATA), Array(
       OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> result_int2float_sp,
@@ -134,9 +146,11 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
       OP(A2_CSTD) -> exc_float2float_dp
     ))
 
-  val result = Mux(
-    FP(FPD), Cat(next_exc_dp, next_result_dp),
-    Cat(next_exc_sp, next_result_sp))
+  val result = MuxCase(Cat(next_exc_dp, next_result_dp), Array(
+    FP(FPD) -> Cat(next_exc_dp, next_result_dp),
+    FP(FPS) -> Cat(next_exc_sp, next_result_sp),
+    FP(FPH) -> Cat(Bits(0), next_result_hp)
+  ))
 
   val pipereg = ShiftRegister(result, conf.fconv_stages, io.valid)
 
