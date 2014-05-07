@@ -34,6 +34,8 @@ class LaneConv extends HwachaModule
       OP(A2_CFTWU) -> hardfloat.consts.type_uint32
     ))
 
+  val val_dhp   = io.valid & FP(FPH) & OP(A2_MFTX)
+  val val_ehp   = io.valid & FP(FPH) & OP(A2_MXTF)
   val val_ifsp  = io.valid & FP(FPS) & OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF)
   val val_fisp  = io.valid & FP(FPS) & OP(A2_CFTL,A2_CFTLU,A2_CFTW,A2_CFTWU)
   val val_dsp   = io.valid & FP(FPS) & OP(A2_MFTX)
@@ -44,6 +46,12 @@ class LaneConv extends HwachaModule
   val val_ddp   = io.valid & FP(FPD) & OP(A2_MFTX)
   val val_edp   = io.valid & FP(FPD) & OP(A2_MXTF)
   val val_sp2dp = io.valid & OP(A2_CSTD)
+
+  val dhp_in = Fill(16,val_dhp) & unpack_h(io.in, 0)
+  val result_dhp = dhp_in
+
+  val ehp_in = Fill(16,val_ehp) & io.in(15,0)
+  val result_ehp = repack_h(ehp_in)
 
   val ifsp_in = Fill(64,val_ifsp) & io.in(63,0)
   val ifsp_rm = Fill(3,val_ifsp) & io.fn.rm
@@ -97,6 +105,12 @@ class LaneConv extends HwachaModule
   val result_float2float_dp = repack_d(sp2dp_u._1)
   val exc_float2float_dp = sp2dp_u._2
 
+  val next_result_hp = MuxCase(
+    Bits(0, SZ_DATA), Array(
+      OP(A2_MXTF) -> result_ehp,
+      OP(A2_MFTX) -> Cat(Bits(0,2),Fill(48,result_dhp(15)),result_dhp(15,0))
+  ))
+
   val next_result_sp = MuxCase(
     Bits(0, SZ_DATA), Array(
       OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF) -> result_ifsp,
@@ -131,9 +145,11 @@ class LaneConv extends HwachaModule
       OP(A2_CSTD) -> exc_float2float_dp
     ))
 
-  val result = Mux(
-    FP(FPD), Cat(next_exc_dp, next_result_dp),
-    Cat(next_exc_sp, next_result_sp))
+  val result = MuxCase(Cat(next_exc_dp, next_result_dp), Array(
+    FP(FPD) -> Cat(next_exc_dp, next_result_dp),
+    FP(FPS) -> Cat(next_exc_sp, next_result_sp),
+    FP(FPH) -> Cat(Bits(0), next_result_hp)
+  ))
 
   val pipereg = ShiftRegister(result, fconv_stages, io.valid)
 

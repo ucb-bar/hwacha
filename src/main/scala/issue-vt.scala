@@ -127,6 +127,8 @@ object VTDecodeTable
     FCVT_D_WU-> List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_CWUTF,F,MT_X, VM_X,       F),
     FMV_D_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MXTF, F,MT_X, VM_X,       F),
     FMV_X_D->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPD,A2_MFTX, F,MT_X, VM_X,       F),
+    FMV_H_X->   List(RF,RX,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPH,A2_MXTF, F,MT_X, VM_X,       F),
+    FMV_X_H->   List(RX,RF,R_,R_,IMM_X,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    T,FPH,A2_MFTX, F,MT_X, VM_X,       F),
 
     LB->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_B, VM_ULD,     F),
     LH->        List(RX,RX,R_,R_,IMM_I,F,M0,M0,DW__,FP_,I_X,   F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    T,MT_H, VM_ULD,     F),
