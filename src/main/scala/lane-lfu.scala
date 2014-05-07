@@ -65,6 +65,7 @@ class LaneLFU extends Module
     vau2t_op.valid := Bool(true)
     vau2t_op.bits.cnt := io.op.vau2t.bits.cnt - UInt(1)
     vau2t_op.bits.fn := io.op.vau2t.bits.fn
+    vau2t_op.bits.utidx := io.op.vau2t.bits.utidx
   }
 
   val vau2f_op = Reg(Valid(new VAU2Op).asDirectionless)
@@ -78,6 +79,7 @@ class LaneLFU extends Module
     vau2f_op.valid := Bool(true)
     vau2f_op.bits.cnt := io.op.vau2f.bits.cnt - UInt(1)
     vau2f_op.bits.fn := io.op.vau2f.bits.fn
+    vau2f_op.bits.utidx := UInt(0) // FIXME
   }
 
   val vgu_op = Reg(Valid(new VGUOp).asDirectionless)

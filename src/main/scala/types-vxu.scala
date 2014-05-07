@@ -47,6 +47,10 @@ class VAU2Fn extends Bundle
   val fp = Bits(width = SZ_FP)
   val rm = Bits(width = rocket.FPConstants.RM_SZ)
   val op = Bits(width = SZ_VAU2_OP)
+  val prec = new Bundle {
+    val vs = Bits(width = SZ_PREC)
+    val vd = Bits(width = SZ_PREC)
+  }
 }
 
 class VMULaneFn extends VMUFn
@@ -255,6 +259,7 @@ class VAU1Op extends LaneOp
 class VAU2Op extends LaneOp
 {
   val fn = new VAU2Fn
+  val utidx = Bits(width = 2)
 }
 
 class VGUOp extends LaneOp
