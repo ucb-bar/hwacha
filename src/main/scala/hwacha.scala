@@ -63,7 +63,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val naddrq = 2
 
     val nvvaq = 16
-    val nvpaq = 16
+    val nvpaq = 32
     val nvsdq = 16
     val nvldq = 16
     val nvlmb = 16
@@ -89,6 +89,8 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     require((nvpaq - 2) * max_utcnt >= max_pala)
     require(nvsdq * max_utcnt >= max_sla)
     require(nvlreq >= max_lla)
+    // Must allow vcu to proceed up to max_sla elements beyond vsu
+    require(nvpaq >= max_sla)
 
     val pack_st = true
   }

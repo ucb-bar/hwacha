@@ -476,7 +476,12 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.sreq.cnt := nelements
 
   val overtake_stall = Bool()
-  overtake_stall := om_utst.stall || om_vst.stall
+  val overtake_utst = Bool()
+  val overtake_vst = Bool()
+
+  overtake_utst := om_utst.stall
+  overtake_vst := om_vst.stall
+  overtake_stall := overtake_utst || overtake_vst
 
   val vgu_stall = // stall vgu op when
     !io.vmu.addr.vala.available // not enough space in vvaq
