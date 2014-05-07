@@ -174,6 +174,24 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     def check(slot: UInt, vfu: Int) = tbl(slot)(vfu)
   }
 
+  class OvertakeMonitor
+  {
+    val vcu_ptr = Reg(init = UInt(0, SZ_BPTR))
+    val vsu_ptr = Reg(init = UInt(0, SZ_BPTR))
+
+    def set_vcu(vcu: UInt) = { vcu_ptr := vcu }
+    def set_vsu(vsu: UInt) = { vsu_ptr := vsu }
+
+    def stall: Bool = {
+      seq.valid(vcu_ptr) && seq.e(vcu_ptr).active.vcu &&
+      seq.valid(vsu_ptr) && seq.e(vsu_ptr).active.vsu &&
+      (seq.vlen(vsu_ptr) - seq.nelements(vsu_ptr) < seq.vlen(vcu_ptr))
+    }
+  }
+
+  val om_utst = new OvertakeMonitor()
+  val om_vst  = new OvertakeMonitor()
+
   val bcnt = io.cfg.bcnt
 
   val ptr = Reg(init = UInt(0, SZ_BPTR))
@@ -323,13 +341,21 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
-      seq.last(ptr2) := turbo_last
+      seq.last(ptr2) := last
       seq.e(ptr2).active.vcu := Bool(true)
-      seq.e(ptr2).active.vsu := Bool(true)
       seq.e(ptr2).rate := PREC_DEFAULT
-      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu  
-      seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
-      seq.aiw(ptr2) := io.issueop.bits.aiw
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      om_utst.set_vcu(ptr2)
+
+      seq.valid(ptr3) := Bool(true)
+      seq.vlen(ptr3) := vlen
+      seq.last(ptr3) := turbo_last
+      seq.e(ptr3).active.vsu := Bool(true)
+      seq.e(ptr3).rate := io.issueop.bits.reg.vt.prec
+      seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr3).reg.vt := io.issueop.bits.reg.vt
+      seq.aiw(ptr3) := io.issueop.bits.aiw
+      om_utst.set_vsu(ptr3)
     }
 
     when (io.issueop.bits.active.vld) {
@@ -356,12 +382,20 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
       seq.vlen(ptr1) := vlen
       seq.last(ptr1) := last
       seq.e(ptr1).active.vcu := Bool(true)
-      seq.e(ptr1).active.vsu := Bool(true)
-      seq.e(ptr1).rate := io.issueop.bits.reg.vd.prec
+      seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
-      seq.e(ptr1).reg.vt := io.issueop.bits.reg.vt
-      seq.e(ptr1).imm := io.issueop.bits.imm
-      seq.aiw(ptr1) := io.issueop.bits.aiw
+      om_vst.set_vcu(ptr1)
+
+      seq.valid(ptr2) := Bool(true)
+      seq.vlen(ptr2) := vlen
+      seq.last(ptr2) := last
+      seq.e(ptr2).active.vsu := Bool(true)
+      seq.e(ptr2).rate := io.issueop.bits.reg.vt.prec
+      seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
+      seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
+      seq.e(ptr2).imm := io.issueop.bits.imm
+      seq.aiw(ptr2) := io.issueop.bits.aiw
+      om_vst.set_vsu(ptr2)
     }
 
   }
@@ -376,6 +410,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
     // mark bi-sequenced ops
     when (io.issueop.bits.active.utst ||
           io.issueop.bits.active.vld ||
+          io.issueop.bits.active.vst ||
           io.issueop.bits.active.amo ||
           io.issueop.bits.active.utld) {
       for (i <- 0 until SZ_BANK) {
@@ -385,6 +420,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
 
       // mark tri-sequenced ops
       when  (io.issueop.bits.active.amo ||
+             io.issueop.bits.active.utst ||
              io.issueop.bits.active.utld) {
         for (i <- 0 until SZ_BANK) {
           rate_table(i)(ptr3) := Bool(false)
@@ -426,11 +462,11 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau0, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau1, ptr1)
   ot.mark(io.issueop.valid && io.issueop.bits.active.vau2, ptr1)
-  ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu), (ptr3, ot.vlu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.amo, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu), (ptr3, ot.vlu)) // fix
   ot.mark(io.issueop.valid && io.issueop.bits.active.utld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.utst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vsu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
-  ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
+  ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vsu))
 
   io.vmu.addr.vala.cnt := nelements
   io.vmu.addr.pala.cnt := nelements
@@ -438,6 +474,9 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   io.sla.cnt := nelements
   io.lreq.cnt := nelements
   io.sreq.cnt := nelements
+
+  val overtake_stall = Bool()
+  overtake_stall := om_utst.stall || om_vst.stall
 
   val vgu_stall = // stall vgu op when
     !io.vmu.addr.vala.available // not enough space in vvaq
@@ -448,7 +487,8 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   val vlu_stall = // stall vlu op when
     !io.lla.available // not sufficient data in vldq
   val vsu_stall = // stall vsu op when
-    !io.sla.available // not enough space in vsdq
+    !io.sla.available || // not enough space in vsdq
+    overtake_stall       // we would overtake the vcu
 
   val reg_vgu_stall = Reg(init = Bool(false))
   val reg_vcu_stall = Reg(init = Bool(false))
@@ -537,7 +577,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   io.seqop.bits <> seq.e(ptr)
 
   io.vmu.addr.vala.reserve := valid && seq.vgu_val(ptr)
-  io.vmu.addr.pala.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
+  io.vmu.addr.pala.reserve := valid && seq.vcu_val(ptr)
   io.lla.reserve := valid && seq.vlu_val(ptr)
   io.sla.reserve := valid && seq.vsu_val(ptr)
   io.lreq.reserve := valid && (seq.vcu_val(ptr) && seq.e(ptr).fn.vmu.lreq())

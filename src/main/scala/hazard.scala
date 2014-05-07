@@ -149,17 +149,20 @@ class Hazard(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal
 
     when (io.issueop.bits.active.utst) {
       tbl_rport(ptr2) := Bool(true)
-      tbl_rport(ptr3) := Bool(true)
+      // ptr3 is vcu
+      tbl_rport(ptr4) := Bool(true)
       tbl_seqslot(ptr1) := Bool(true)
       tbl_seqslot(ptr2) := Bool(true)
+      tbl_seqslot(ptr3) := Bool(true)
       tbl_vfu.vgu := Bool(true)
       tbl_vfu.vcu := Bool(true)
       tbl_vfu.vsu := Bool(true)
     }
 
     when (io.issueop.bits.active.vst) {
-      tbl_rport(ptr2) := Bool(true)
+      tbl_rport(ptr3) := Bool(true)
       tbl_seqslot(ptr1) := Bool(true)
+      tbl_seqslot(ptr2) := Bool(true)
       tbl_vfu.vcu := Bool(true)
       tbl_vfu.vsu := Bool(true)
     }
@@ -298,9 +301,9 @@ class Hazard(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal
       seqhazard_1slot && op.bits.active.vau2,
       seqhazard_3slot && op.bits.active.amo,
       seqhazard_3slot && op.bits.active.utld,
-      seqhazard_2slot && op.bits.active.utst,
+      seqhazard_3slot && op.bits.active.utst,
       seqhazard_2slot && op.bits.active.vld,
-      seqhazard_1slot && op.bits.active.vst
+      seqhazard_2slot && op.bits.active.vst
     ).reduce(_||_)
 
     val wptr = MuxCase(
