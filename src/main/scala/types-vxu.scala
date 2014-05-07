@@ -236,6 +236,7 @@ class ReadBankOp extends LaneOp
 class WriteBankOp extends LaneOp
 {
   val addr = Bits(width = SZ_BREGLEN)
+  val mask = Bits(width = SZ_BREGMASK)
   val sel = Bits(width = SZ_BWPORT)
 }
 

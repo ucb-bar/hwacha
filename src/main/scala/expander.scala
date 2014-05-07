@@ -52,6 +52,28 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   val vguexp = new BuildExpander(new VGUOp, 3)
   val vluwexp = new BuildExpander(new WriteBankOp, 1)
 
+  def mask(prec_src: Bits, prec_dst: Bits) = {
+    val src_d = (prec_src === PREC_DOUBLE)
+    val src_w = (prec_src === PREC_SINGLE)
+    val src_h = (prec_src === PREC_HALF)
+
+    val dst_d = (prec_dst === PREC_DOUBLE)
+    val dst_w = (prec_dst === PREC_SINGLE)
+    val dst_h = (prec_dst === PREC_HALF)
+
+    val sel0 = dst_d || (dst_w && (src_w || src_h)) || (dst_h && src_h)
+    val sel1 = (dst_w && src_d) && (dst_h && src_w)
+    val sel2 = (dst_h && src_d)
+
+    val base = Mux1H(Vec(sel0, sel1, sel2),
+      Vec(Bits("b1111"), Bits("b0011"), Bits("b0001")))
+    val shift = Mux1H(Vec(dst_d, dst_w, dst_h),
+      Vec((2 to 0 by -1).map(io.seqop.bits.utidx(1,0) << UInt(_))))
+    base << shift(1,0)
+  }
+
+  val wmask = mask(io.seqop.bits.reg.vs.prec, io.seqop.bits.reg.vd.prec)
+
   // NOTE: oplen delayed 1 cycle in bank.scala
   // NOTE: rblen delayed 2 cycle in bank.scala
   // NOTE: brqen delayed 1 cycle in bank.scala
@@ -87,6 +109,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.last(viu_wptr) := io.seqop.bits.last
       wexp.bits(viu_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(viu_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(viu_wptr).mask := wmask
       wexp.bits(viu_wptr).sel := Bits(5)
 
       when (io.seqop.bits.fn.viu.rtype()) {
@@ -142,6 +165,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       wexp.last(vau0_wptr) := io.seqop.bits.last
       wexp.bits(vau0_wptr).cnt := io.seqop.bits.cnt
       wexp.bits(vau0_wptr).addr := io.seqop.bits.reg.vd.id
+      wexp.bits(vau0_wptr).mask := wmask
       wexp.bits(vau0_wptr).sel := Bits(0)
 
       vau0exp.valid(3) := Bool(true)
@@ -213,6 +237,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         wexp.last(vau1_wptr) := io.seqop.bits.last
         wexp.bits(vau1_wptr).cnt := io.seqop.bits.cnt
         wexp.bits(vau1_wptr).addr := io.seqop.bits.reg.vd.id
+        wexp.bits(vau1_wptr).mask := wmask
         wexp.bits(vau1_wptr).sel := Bits(wsel)
 
         when (io.seqop.bits.fn.vau1.r4type()) {
@@ -250,6 +275,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         wexp.last(vau2_wptr) := io.seqop.bits.last
         wexp.bits(vau2_wptr).cnt := io.seqop.bits.cnt
         wexp.bits(vau2_wptr).addr := io.seqop.bits.reg.vd.id
+        wexp.bits(vau2_wptr).mask := wmask
         wexp.bits(vau2_wptr).sel := Bits(wsel)
 
         vau2exp.valid(2) := Bool(true)

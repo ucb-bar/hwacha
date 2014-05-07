@@ -61,6 +61,7 @@ class Bank extends Module
   when (io.op.in.write.valid) {
     s1_write_op.bits.cnt := Mux(op_valid(io.op.in.write), io.op.in.write.bits.cnt - UInt(1), UInt(0))
     s1_write_op.bits.addr := io.op.in.write.bits.addr
+    s1_write_op.bits.mask := io.op.in.write.bits.mask
     s1_write_op.bits.sel := io.op.in.write.bits.sel
   }
   when (this.reset) {
@@ -98,6 +99,7 @@ class Bank extends Module
   
   rfile.io.wen := alu.io.wen_masked
   rfile.io.waddr := io.op.in.write.bits.addr
+  rfile.io.wmask := io.op.in.write.bits.mask
   rfile.io.wsel := io.op.in.write.bits.sel
 
   io.rw.ropl0 := rfile.io.ropl0
@@ -149,6 +151,7 @@ class BankRegfile extends Module
 
     val wen = Bool(INPUT)
     val waddr = Bits(INPUT, SZ_BREGLEN)
+    val wmask = Bits(INPUT, SZ_BREGMASK)
     val wsel = Bits(INPUT, SZ_BWPORT)
 
     val rdata = Bits(OUTPUT, SZ_DATA)
@@ -178,12 +181,11 @@ class BankRegfile extends Module
       Bits(4) -> io.wbl4,
       Bits(5) -> io.viu_wdata
     ))
-  val wmask = Fill(SZ_BREGMASK, Bits(1))
 
   val wen_bwq = io.wen || io.bwq.valid
   val waddr_bwq = Mux(io.wen, io.waddr, io.bwq.bits.addr)
+  val wmask_bwq = Mux(io.wen, io.wmask, io.bwq.bits.mask)
   val wdata_bwq = Mux(io.wen, wdata, io.bwq.bits.data)
-  val wmask_bwq = Mux(io.wen, wmask, io.bwq.bits.mask)
   io.bwq.ready := !io.wen
 
   val rfile = Mem(Bits(width = ((SZ_DATA+3)&(~0x3))), 256, seqRead = true) // FIXME
