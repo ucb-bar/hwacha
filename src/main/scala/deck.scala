@@ -170,18 +170,16 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 //--------------------------------------------------------------------\\
 
   val bwqs_enq_ready = Vec.fill(conf.nbanks){ Bool() }
-  val vd_stride = Mux(op.reg.vd.float, MuxLookup(op.reg.vd.prec, io.cfg.ndfregs, Array(
-                                                  PREC_DOUBLE -> io.cfg.ndfregs,
-                                                  PREC_SINGLE -> io.cfg.nsfregs,
-                                                    PREC_HALF -> io.cfg.nhfregs
-                                       )),
-                                       io.cfg.nxregs - UInt(1))
-
   val bw_stat_update = Vec.fill(conf.nbanks){ Bits() }
 
   val prec_d = (op.reg.vd.prec === PREC_DOUBLE)
   val prec_w = (op.reg.vd.prec === PREC_SINGLE)
   val prec_h = (op.reg.vd.prec === PREC_HALF)
+
+  val vd_stride = Mux(op.reg.vd.float,
+    Mux1H(Vec(prec_d, prec_w, prec_h),
+      Vec(io.cfg.ndfregs, io.cfg.nsfregs, io.cfg.nhfregs)),
+    io.cfg.nxregs - UInt(1))
 
   val mask = Mux1H(Vec(prec_d, prec_w, prec_h), Vec(
     Bits("b1111", SZ_BREGMASK),
@@ -317,6 +315,8 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
   val id_stop = Mux1H(prec_sel, Vec(id_stop_d, id_stop_w, id_stop_h))
 
   val next = (id === id_stop)
+  val dequeue = Reg(Bool())
+  dequeue := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
@@ -330,6 +330,7 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
         id := UInt(0)
       }
     }
+
     is (s_busy) {
       when (io.vmu.sdata.fire()) {
         op.utidx := utidx_next
@@ -338,6 +339,7 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
           id := UInt(0)
         }
         when (end) {
+          dequeue := !next
           state := s_idle
         }
       }
@@ -363,7 +365,8 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
     slacntr.io.dec.update := Bool(false)
     slacntr_avail(i) := slacntr.io.la.available
 
-    brq.io.deq.ready := io.vmu.sdata.ready && (state === s_busy) && (next || end)
+    brq.io.deq.ready := dequeue ||
+      ((state === s_busy) && io.vmu.sdata.ready && next)
     brq.io.deq
   }}
 
