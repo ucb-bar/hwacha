@@ -315,8 +315,6 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
   val id_stop = Mux1H(prec_sel, Vec(id_stop_d, id_stop_w, id_stop_h))
 
   val next = (id === id_stop)
-  val dequeue = Reg(Bool())
-  dequeue := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
@@ -339,7 +337,6 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
           id := UInt(0)
         }
         when (end) {
-          dequeue := !next
           state := s_idle
         }
       }
@@ -365,8 +362,8 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
     slacntr.io.dec.update := Bool(false)
     slacntr_avail(i) := slacntr.io.la.available
 
-    brq.io.deq.ready := dequeue ||
-      ((state === s_busy) && io.vmu.sdata.ready && next)
+    // FIXME: Avoid combinational dependence on own valid signal
+    brq.io.deq.ready := io.vmu.sdata.fire() && (next || end)
     brq.io.deq
   }}
 
@@ -416,10 +413,32 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
   io.vmu.sdata.bits := Mux1H(type_sel,
     Vec(Cat(data_d), Cat(data_w), Cat(data_h), Cat(data_b)))
 
-  val brq_valid_end = Mux1H(
-    Vec((1 until conf.nbanks).map(i => (utcnt_resid(lgbank-1,0) === UInt(i)))),
-    Vec((1 until conf.nbanks).map(i => brqs_deq.take(i).map(_.valid).reduce(_&&_))))
-  val brq_valid = Mux(prec_d && (utcnt_resid(SZ_VLEN-1,lgbank) === UInt(0)),
-    brq_valid_end, brqs_deq.map(_.valid).reduce(_&&_))
-  io.vmu.sdata.valid := brq_valid && (state === s_busy)
+//--------------------------------------------------------------------\\
+// valid signals
+//--------------------------------------------------------------------\\
+
+  val brqs_valid = brqs_deq.map(_.valid)
+  val eq_resid = (1 until conf.nbanks).map(utcnt_resid === UInt(_))
+
+  private def sdata_valid(n: Int) = {
+    val groups = brqs_valid.grouped(n).map(g => {
+      val valid = g.scanLeft(Bool(true))(_&&_)
+      // Consider the occurrence of partially filled groups when at the end
+      // of a vector whose length is not a multiple of the packing density
+      MuxCase(valid.last, eq_resid.take(n-1).zip(valid))
+    }).toIndexedSeq
+    // Select current group
+    if (groups.length > 1) {
+      Vec(groups)(id(log2Up(groups.length)-1, 0))
+    } else {
+      groups.head
+    }
+  }
+  val sdata_valid_d = sdata_valid(conf.vmu.nd)
+  val sdata_valid_w = sdata_valid(conf.vmu.nw)
+  val sdata_valid_h = sdata_valid(conf.vmu.nh)
+  val sdata_valid_b = sdata_valid(conf.vmu.nb)
+
+  io.vmu.sdata.valid := (state === s_busy) && Mux1H(type_sel,
+    Vec(sdata_valid_d, sdata_valid_w, sdata_valid_h, sdata_valid_b))
 }
