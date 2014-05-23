@@ -120,6 +120,7 @@ class StoreDataUnit(implicit conf: HwachaConfiguration) extends Module
 {
   val io = new Bundle {
     val ctrl = new VMUBackendIO().flip
+    val xcpt = new XCPTIO().flip
     val lane = new VSDQIO().flip
     val evac = new VSDQIO().flip
     val memif = new VSDQIO
@@ -127,13 +128,19 @@ class StoreDataUnit(implicit conf: HwachaConfiguration) extends Module
 
   val arb = Module(new Arbiter(Bits(width = conf.vmu.sz_data), 2))
   val vsdq = Module(new Queue(Bits(width = conf.vmu.sz_data), conf.vmu.nvsdq))
-
   val align = Module(new StoreAligner)
-  align.io.enq <> io.lane
   io.ctrl <> align.io.ctrl
 
-  arb.io.in(0) <> align.io.deq
+  arb.io.in(0) <> io.lane
   arb.io.in(1) <> io.evac
   vsdq.io.enq <> arb.io.out
-  io.memif <> vsdq.io.deq
+
+  align.io.enq.valid := vsdq.io.deq.valid
+  align.io.enq.bits := vsdq.io.deq.bits
+
+  // Bypass the StoreAligner during an exception
+  align.io.deq.ready := !io.xcpt.prop.vmu.drain && io.memif.ready
+  vsdq.io.deq.ready := Mux(io.xcpt.prop.vmu.drain, io.memif.ready, align.io.enq.ready)
+  io.memif.valid := Mux(io.xcpt.prop.vmu.drain, vsdq.io.deq.valid, align.io.deq.valid)
+  io.memif.bits := Mux(io.xcpt.prop.vmu.drain, vsdq.io.deq.bits, align.io.deq.bits)
 }
