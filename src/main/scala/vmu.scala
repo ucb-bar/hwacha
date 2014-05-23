@@ -66,6 +66,7 @@ class VMU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   sdata.io.lane <> io.lane.sdata
   sdata.io.evac <> io.evac.vsdq
   sdata.io.ctrl <> ctrl.io.store
+  sdata.io.xcpt <> io.xcpt
 
   memif.io.vpaq <> arb.io.out
   memif.io.vsdq <> sdata.io.memif

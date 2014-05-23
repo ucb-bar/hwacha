@@ -353,8 +353,8 @@ class VSU extends HwachaModule
     val slacntr = Module(new LookAheadCounter(nbrq, nbrq))
 
     brq.io.enq <> io.brqs(i)
-    slacntr.io.la.cnt := (io.la.cnt > UInt(i))
-    slacntr.io.la.reserve := io.la.reserve
+    slacntr.io.la.cnt := UInt(1)
+    slacntr.io.la.reserve := io.la.reserve && (io.la.cnt > UInt(i))
     slacntr.io.inc.cnt := UInt(1)
     slacntr.io.inc.update := brq.io.deq.fire()
     slacntr.io.dec.update := Bool(false)

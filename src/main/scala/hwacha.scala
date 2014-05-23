@@ -78,8 +78,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     val naddrq = 2
 
     val nvvaq = 16
-    val nvpaq = 32
-    val nvsdq = 16
+    val nvpaq = 48
+    val nvsdq = 24
     val nvldq = 16
     val nvlmb = 16
 
