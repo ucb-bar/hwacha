@@ -67,60 +67,19 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       ret
     }
 
-    def nelements(slot: UInt) = {
-      val ret = UInt(width = SZ_BCNT+2)
-      ret := min(vlen(slot), io.cfg.bcnt)
-
-      when (e(slot).rate === PREC_SINGLE) {
-        ret := min(vlen(slot), io.cfg.bcnt << UInt(1))
-      }
-      when (e(slot).rate === PREC_HALF) {
-        ret := min(vlen(slot), io.cfg.bcnt << UInt(2))
-      }
-
-      ret
-    }
-
-    def float_stride(prec: UInt): UInt = {
-      MuxLookup(prec, io.cfg.ndfregs, Array(
-       PREC_DOUBLE -> io.cfg.ndfregs,
-       PREC_SINGLE -> io.cfg.nsfregs,
-         PREC_HALF -> io.cfg.nhfregs
-      ))
-    }
-
-    def stride(float: Bool, prec: UInt) = {
-      Mux(float, float_stride(prec), io.cfg.nxregs - UInt(1))
-    }
-
-    def take_stride(reg: RegInfo) = {
-      val multi_rate = e(ptr).active.vau2t || e(ptr).active.vau2f
-
-      val next_utidx = e(ptr).utidx + MuxLookup(e(ptr).rate, bcnt,
-        Array(PREC_DOUBLE -> bcnt,
-              PREC_SINGLE -> (bcnt << UInt(1)),
-                PREC_HALF -> (bcnt << UInt(2))))
-
-      val adv = MuxCase(Bool(true), Array(
-        (reg.prec === PREC_DOUBLE) -> Bool(true),
-        (reg.prec === PREC_SINGLE) -> (next_utidx(3) === UInt(0)),
-          (reg.prec === PREC_HALF) -> (next_utidx(4,3) === UInt(0))
-      ))
-
-      Mux(adv, stride(reg.float, reg.prec), UInt(0))
-    }
+    def nelements(slot: UInt) =
+      min(vlen(slot), MuxLookup(e(slot).rate, io.cfg.bcnt, Array(
+        PREC_SINGLE -> (io.cfg.bcnt << UInt(1)),
+        PREC_HALF   -> (io.cfg.bcnt << UInt(2))
+      )))
 
     def islast(slot: UInt) = {
+      val n = vlen(slot)
       val ret = Bool()
-      ret := vlen(slot) <= io.cfg.bcnt
-
-      when (e(slot).rate === PREC_SINGLE) {
-        ret := (vlen(slot) >> UInt(1)) <= io.cfg.bcnt
-      }
-      when (e(slot).rate === PREC_HALF) {
-        ret := (vlen(slot) >> UInt(2)) <= io.cfg.bcnt
-      }
-
+      ret := (io.cfg.bcnt >= MuxLookup(e(slot).rate, n, Array(
+        PREC_SINGLE -> (n >> UInt(1)),
+        PREC_HALF   -> (n >> UInt(2))
+      )))
       ret
     }
 
@@ -192,23 +151,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     def check(slot: UInt, vfu: Int) = tbl(slot)(vfu)
   }
 
-  class OvertakeMonitor
-  {
-    val vcu_ptr = Reg(init = UInt(0, SZ_BPTR))
-    val vsu_ptr = Reg(init = UInt(0, SZ_BPTR))
-
-    def set_vcu(vcu: UInt) = { vcu_ptr := vcu }
-    def set_vsu(vsu: UInt) = { vsu_ptr := vsu }
-
-    def stall: Bool = {
-      seq.valid(vcu_ptr) && seq.e(vcu_ptr).active.vcu &&
-      seq.valid(vsu_ptr) && seq.e(vsu_ptr).active.vsu &&
-      (seq.vlen(vsu_ptr) - seq.nelements(vsu_ptr) < seq.vlen(vcu_ptr))
-    }
-  }
-
-  val om_utst = new OvertakeMonitor()
-  val om_vst  = new OvertakeMonitor()
 
   val bcnt = io.cfg.bcnt
 
@@ -229,9 +171,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     PREC_HALF -> ((vlen >> UInt(2)) <= bcnt)
   ))
 
-  // figure out stalls due to rate limit
-  val rate_table = Vec.fill(SZ_BANK){ Vec.fill(SZ_BANK){ Reg(init = Bool(false)) } }
-  val dshb = Vec.fill(PRECS.length){ Vec.fill(SZ_BANK){ Bool() } }
 
   when (io.issueop.valid) {
 
@@ -364,7 +303,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).active.vcu := Bool(true)
       seq.e(ptr2).rate := PREC_DEFAULT
       seq.e(ptr2).fn.vmu := io.issueop.bits.fn.vmu
-      om_utst.set_vcu(ptr2)
 
       seq.valid(ptr3) := Bool(true)
       seq.vlen(ptr3) := vlen
@@ -374,7 +312,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr3).fn.vmu := io.issueop.bits.fn.vmu
       seq.e(ptr3).reg.vt := io.issueop.bits.reg.vt
       seq.aiw(ptr3) := io.issueop.bits.aiw
-      om_utst.set_vsu(ptr3)
     }
 
     when (io.issueop.bits.active.vld) {
@@ -403,7 +340,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr1).active.vcu := Bool(true)
       seq.e(ptr1).rate := PREC_DEFAULT
       seq.e(ptr1).fn.vmu := io.issueop.bits.fn.vmu
-      om_vst.set_vcu(ptr1)
 
       seq.valid(ptr2) := Bool(true)
       seq.vlen(ptr2) := vlen
@@ -414,66 +350,44 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
       seq.e(ptr2).reg.vt := io.issueop.bits.reg.vt
       seq.e(ptr2).imm := io.issueop.bits.imm
       seq.aiw(ptr2) := io.issueop.bits.aiw
-      om_vst.set_vsu(ptr2)
     }
 
   }
-
-  // mark the rate limit table
-  when (io.issueop.valid) {
-    for (i <- 0 until SZ_BANK) {
-      rate_table(i)(ptr1) := Bool(false)
-      rate_table(ptr1)(i) := seq.valid(i)
-    }
-
-    // mark bi-sequenced ops
-    when (io.issueop.bits.active.utst ||
-          io.issueop.bits.active.vld ||
-          io.issueop.bits.active.vst ||
-          io.issueop.bits.active.amo ||
-          io.issueop.bits.active.utld) {
-      for (i <- 0 until SZ_BANK) {
-        rate_table(i)(ptr2) := Bool(false)
-        rate_table(ptr2)(i) := seq.valid(i) && (UInt(i) != ptr1)
-      }
-
-      // mark tri-sequenced ops
-      when  (io.issueop.bits.active.amo ||
-             io.issueop.bits.active.utst ||
-             io.issueop.bits.active.utld) {
-        for (i <- 0 until SZ_BANK) {
-          rate_table(i)(ptr3) := Bool(false)
-          rate_table(ptr3)(i) := seq.valid(i) && (UInt(i) != ptr1 || UInt(i) != ptr2)
-        }
-      }
-    }
-  }
-
-  // determine if we are rate limited
-  for (i <- 0 until SZ_BANK)
-    for ((prec, idx) <- PRECS.zipWithIndex)
-      dshb(idx)(i) := (seq.e(i).rate === prec) && rate_table(ptr)(i)
-
-  // if more than one rate in use
-  val rate_stall = Bool()
-  val dshb_orR = Vec.fill(PRECS.length){ Bool() }
-  for ((prec, idx) <- PRECS.zipWithIndex) {
-    dshb_orR(idx) := dshb(idx).reduce(_ || _)
-  }
-  rate_stall := PopCount(dshb_orR.toSeq) > UInt(1)
-
 
   // common
   val nelements = seq.nelements(ptr)
   val nstrip = seq.nstrip(ptr)
   val islast = seq.islast(ptr)
 
-  // invalidate column in rate table after last
-  when (islast) {
+  val vlen_next = seq.vlen(ptr) - nelements
+  val utidx_next = seq.e(ptr).utidx + nelements
+
+  val depend = Vec.fill(SZ_BANK){ Vec.fill(SZ_BANK){ Reg(init = Bool(false)) } }
+  when (io.issueop.valid) {
     for (i <- 0 until SZ_BANK) {
-      rate_table(i)(ptr) := Bool(false)
+      depend(ptr1)(i) := seq.valid(i)
+      // mark bi-sequenced ops
+      when (io.issueop.bits.active.vld ||
+            io.issueop.bits.active.vst ||
+            io.issueop.bits.active.amo ||
+            io.issueop.bits.active.utld ||
+            io.issueop.bits.active.utst) {
+        depend(ptr2)(i) := seq.valid(i)
+      }
+      // mark tri-sequenced ops
+      when (io.issueop.bits.active.amo ||
+            io.issueop.bits.active.utld ||
+            io.issueop.bits.active.utst) {
+        depend(ptr3)(i) := seq.valid(i)
+      }
     }
   }
+
+  val active_vsu = seq.e(ptr).active.vsu
+  val rate_stall = (0 until depend.length).map(i =>
+    (depend(ptr)(i) || (seq.e(i).active.vcu && active_vsu)) &&
+    (UInt(i) != ptr) && (seq.vlen(i) > vlen_next)
+  ).reduce(_||_)
 
   // figure out stalls due to vmu
   val ot = new BuildOrderTable(SZ_BANK)
@@ -494,14 +408,6 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   io.lreq.cnt := nelements
   io.sreq.cnt := nelements
 
-  val overtake_stall = Bool()
-  val overtake_utst = Bool()
-  val overtake_vst = Bool()
-
-  overtake_utst := om_utst.stall
-  overtake_vst := om_vst.stall
-  overtake_stall := overtake_utst || overtake_vst
-
   val vgu_stall = // stall vgu op when
     !io.vmu.addr.vala.available // not enough space in vvaq
   val vcu_stall = // stall vcu op when
@@ -511,8 +417,7 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   val vlu_stall = // stall vlu op when
     !io.lla.available // not sufficient data in vldq
   val vsu_stall = // stall vsu op when
-    !io.sla.available || // not enough space in vsdq
-    overtake_stall       // we would overtake the vcu
+    !io.sla.available // not enough space in vsdq
 
   val reg_vgu_stall = Reg(init = Bool(false))
   val reg_vcu_stall = Reg(init = Bool(false))
@@ -546,18 +451,34 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
 
   seq.stall(ptr) := stall
 
+  def stride(reg: RegInfo) = {
+    val lgbank = log2Up(conf.nbanks)
+    val sel = Vec(PRECS.map(reg.prec === _))
+
+    // whether to advance to next physical register
+    val adv = Mux1H(sel, Vec(Seq(N_XD, N_XW, N_XH).map(i =>
+      if (i <= 1) Bool(true)
+      else (utidx_next(lgbank+log2Up(i)-1, lgbank) === UInt(0))
+    )))
+
+    val nregs = Mux(reg.float,
+      Mux1H(sel, Vec(io.cfg.ndfregs, io.cfg.nsfregs, io.cfg.nhfregs)),
+      io.cfg.nxregs - UInt(1))
+    (nregs & Fill(SZ_REGCNT, adv))
+  }
+
   val valid = !stall && seq.valid(ptr)
 
   // update sequencer state
   when (valid) {
     when (seq.active(ptr)) {
-      seq.vlen(ptr) := seq.vlen(ptr) - nelements
-      seq.e(ptr).utidx := seq.e(ptr).utidx + nelements
+      seq.vlen(ptr) := vlen_next
+      seq.e(ptr).utidx := utidx_next
       val ri = seq.e(ptr).reg // reginfo
-      seq.e(ptr).reg.vs.id := seq.e(ptr).reg.vs.id + seq.take_stride(ri.vs)
-      seq.e(ptr).reg.vt.id := seq.e(ptr).reg.vt.id + seq.take_stride(ri.vt)
-      seq.e(ptr).reg.vr.id := seq.e(ptr).reg.vr.id + seq.take_stride(ri.vr)
-      seq.e(ptr).reg.vd.id := seq.e(ptr).reg.vd.id + seq.take_stride(ri.vd)
+      seq.e(ptr).reg.vs.id := seq.e(ptr).reg.vs.id + stride(ri.vs)
+      seq.e(ptr).reg.vt.id := seq.e(ptr).reg.vt.id + stride(ri.vt)
+      seq.e(ptr).reg.vr.id := seq.e(ptr).reg.vr.id + stride(ri.vr)
+      seq.e(ptr).reg.vd.id := seq.e(ptr).reg.vd.id + stride(ri.vd)
 
       when (islast) {
         seq.valid(ptr) := Bool(false)
@@ -574,6 +495,11 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
         seq.e(ptr).active.vsu := Bool(false)
         seq.aiw(ptr).active.imm1 := Bool(false)
         seq.aiw(ptr).active.cnt := Bool(false)
+
+        for (i <- 0 until SZ_BANK) {
+          depend(ptr)(i) := Bool(false)
+          depend(i)(ptr) := Bool(false)
+        }
       }
       .otherwise {
         seq.last(ptr) := islast
