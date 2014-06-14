@@ -97,8 +97,8 @@ object Match
     var offset = 0
     for (io <- IOs.toList.reverse)
     {
-      io := x(offset+io.width-1, offset)
-      offset += io.width
+      io := x(offset+io.getWidth-1, offset)
+      offset += io.getWidth
     }
   }
 }
