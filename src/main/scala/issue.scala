@@ -14,7 +14,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val imem = new rocket.CPUFrontendIO
     val deckop = new DeckOpIO
     val vmu = new VMUIO
 

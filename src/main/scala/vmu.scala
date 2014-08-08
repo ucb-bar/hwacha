@@ -33,7 +33,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
       val vsdq = new VSDQIO().flip
     }
 
-    val dmem = new rocket.HellaCacheIO()(conf.dcache)
+    val dmem = new rocket.HellaCacheIO
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO

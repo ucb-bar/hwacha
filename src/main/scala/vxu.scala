@@ -11,7 +11,7 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val imem = new rocket.CPUFrontendIO
     val vmu = new VMUIO
 
     val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)

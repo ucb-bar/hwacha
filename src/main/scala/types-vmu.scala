@@ -94,22 +94,24 @@ class MemOp(n: Int)(implicit val conf: HwachaConfiguration) extends VMUBundle
   val addr = UInt(width = n)
 }
 
-class VVAPFQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.vaddrBits)(conf)
+//TODO PARAMS
+class VVAPFQEntry(implicit conf: HwachaConfiguration) extends MemOp(43)(conf)
 
-class VATQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.vaddrBits)(conf)
+class VATQEntry(implicit conf: HwachaConfiguration) extends MemOp(43)(conf)
 {
   val meta = new VMUMetadata
 }
 
-class VPAQEntry(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrBits)(conf)
+class VPAQEntry(implicit conf: HwachaConfiguration) extends MemOp(32)(conf)
 {
   val meta = new VMUMetadata
 }
 
-class VPAQMemIf(implicit conf: HwachaConfiguration) extends MemOp(conf.as.paddrBits)(conf)
+class VPAQMemIf(implicit conf: HwachaConfiguration) extends MemOp(32)(conf)
 {
   val tag = Bits(width = conf.vmu.tag_sz)
 }
+//TODO PARAMS
 
 class VLDQMemIf(implicit val conf: HwachaConfiguration) extends VMUBundle
 {

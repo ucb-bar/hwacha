@@ -9,7 +9,7 @@ class MemIF(implicit conf: HwachaConfiguration) extends Module
     val vpaq = new VPAQMemIO().flip
     val vsdq = new VSDQIO().flip
     val vldq = new VLDQMemIO()
-    val dmem = new rocket.HellaCacheIO()(conf.dcache)
+    val dmem = new rocket.HellaCacheIO
   }
 
   val req_cmd_pf = is_mcmd_pf(io.vpaq.bits.cmd)

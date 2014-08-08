@@ -177,7 +177,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
     val vf = new VFIO().flip
     val vcmdq = new VCMDQIO().flip
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val imem = new rocket.CPUFrontendIO
 
     val ready = Bool(INPUT)
     val op = new IssueOpIO

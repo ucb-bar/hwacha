@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 import Constants._
-import uncore.constants.MemoryOpConstants._
+import uncore._
 
 class VVAQ(implicit conf: HwachaConfiguration) extends Module
 {
@@ -90,9 +90,8 @@ class AddressGen(implicit conf: HwachaConfiguration) extends Module
 
 class AddressTLB(implicit conf: HwachaConfiguration) extends Module
 {
-  implicit val as = conf.as
-  def vpn(addr: UInt) = addr(conf.as.vaddrBits-1, conf.as.pgIdxBits)
-  def idx(addr: UInt) = addr(conf.as.pgIdxBits-1, 0)
+  def vpn(addr: UInt) = addr(params(VAddrBits)-1, params(PgIdxBits))
+  def idx(addr: UInt) = addr(params(PgIdxBits)-1, 0)
 
   val io = new Bundle {
     val enq = new VATQIO().flip

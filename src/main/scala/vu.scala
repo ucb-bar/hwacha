@@ -27,8 +27,8 @@ class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
 
 class TLBIO(implicit conf: HwachaConfiguration) extends Bundle
 {
-  val req = Decoupled(new rocket.TLBReq()(conf.as))
-  val resp = new rocket.TLBResp(1)(conf.as).flip // we don't use hit_idx
+  val req = Decoupled(new rocket.TLBReq)
+  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
 }
 
 class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
@@ -43,8 +43,8 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val vimm1q_user_ready = Bool(OUTPUT)
     val vimm2q_user_ready = Bool(OUTPUT)
 
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
-    val dmem = new rocket.HellaCacheIO()(conf.dcache)
+    val imem = new rocket.CPUFrontendIO
+    val dmem = new rocket.HellaCacheIO
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
