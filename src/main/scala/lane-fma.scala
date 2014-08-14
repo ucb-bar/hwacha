@@ -5,7 +5,7 @@ import Node._
 import Constants._
 import Compaction._
 
-class LaneFMA(implicit conf: HwachaConfiguration) extends Module
+class LaneFMA extends HwachaModule
 {
   val io = new Bundle {
     val valid = Bool(INPUT)
@@ -67,7 +67,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   // instantiate second sfma unit (confprec)
   val result_sp1 = Bits(width = 33)
   val or_exc_sp = Bits(width = 5)
-  if (conf.confprec) {
+  if (confprec) {
     val sfma1 = Module(new hardfloat.mulAddSubRecodedFloatN(23, 9))
     sfma1.io.op := Fill(2,val_fma_sp) & fma_op
     sfma1.io.a := Fill(33,val_fma_sp) & unpack_float_s(fma_multiplicand, 1)
@@ -99,7 +99,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
   val result_hp2 = Bits(width = 16)
   val result_hp3 = Bits(width = 16)
   val or_exc_hp = Bits(width = 5)
-  if (conf.confprec) {
+  if (confprec) {
     val recoded_hp_a1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplicand, 1).toUInt, 10, 6)
     val recoded_hp_b1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_multiplier, 1).toUInt, 10, 6)
     val recoded_hp_c1 = hardfloat.floatNToRecodedFloatN(unpack_float_h(fma_addend, 1).toUInt, 10, 6)
@@ -144,7 +144,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
 
   val result = Bits(width = 71)
 
-  if (conf.confprec) {
+  if (confprec) {
     result := MuxCase(
       Bits("h3FFFFFFFFFFFFFFFFF",71), Array(
       (val_fma_dp) -> Cat(dfma.io.exceptionFlags, repack_float_d(result_dp0)),
@@ -160,7 +160,7 @@ class LaneFMA(implicit conf: HwachaConfiguration) extends Module
       ))
   }
 
-  val pipereg = ShiftRegister(result, conf.fma_stages, io.valid)
+  val pipereg = ShiftRegister(result, fma_stages, io.valid)
 
   Match(pipereg, io.exc, io.out)
 }

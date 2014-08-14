@@ -7,7 +7,7 @@ import Commands._
 import scala.math._
 import uncore.constants.MemoryOpConstants._
 
-class VRU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val vcmdq = new VCMDQIO().flip

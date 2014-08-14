@@ -7,7 +7,7 @@ import Instructions._
 import Commands._
 import uncore.constants.MemoryOpConstants._
 
-class Evac()(implicit conf: HwachaConfiguration) extends Module
+class Evac extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip

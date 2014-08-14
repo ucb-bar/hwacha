@@ -6,7 +6,7 @@ import Constants._
 
 class IssueOpIO extends ValidIO(new IssueOp)
 
-class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class Issue(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO

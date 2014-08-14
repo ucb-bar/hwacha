@@ -19,7 +19,7 @@ class HazardUpdateIO extends Bundle
   }
 }
 
-class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class Hazard(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) with UsesPtrIncr
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -42,24 +42,24 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
   }
 
   val ptr = Reg(init = UInt(0, SZ_BPTR))
-  val ptr1 = PtrIncr(ptr, 1, io.cfg.bcnt)
-  val ptr2 = PtrIncr(ptr, 2, io.cfg.bcnt)
-  val ptr3 = PtrIncr(ptr, 3, io.cfg.bcnt)
-  val ptr4 = PtrIncr(ptr, 4, io.cfg.bcnt)
+  val ptr1 = ptrIncr(ptr, 1, io.cfg.bcnt)
+  val ptr2 = ptrIncr(ptr, 2, io.cfg.bcnt)
+  val ptr3 = ptrIncr(ptr, 3, io.cfg.bcnt)
+  val ptr4 = ptrIncr(ptr, 4, io.cfg.bcnt)
   ptr := ptr1
 
-  val viu_incr = UInt(conf.int_stages + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau0_incr = UInt(conf.imul_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau1_incr = UInt(conf.fma_stages + 3 + conf.delay_seq_exp, conf.ptr_incr_sz)
-  val vau2_incr = UInt(conf.fconv_stages + 2 + conf.delay_seq_exp, conf.ptr_incr_sz)
+  val viu_incr = UInt(int_stages + delay_seq_exp, ptr_incr_sz)
+  val vau0_incr = UInt(imul_stages + 3 + delay_seq_exp, ptr_incr_sz)
+  val vau1_incr = UInt(fma_stages + 3 + delay_seq_exp, ptr_incr_sz)
+  val vau2_incr = UInt(fconv_stages + 2 + delay_seq_exp, ptr_incr_sz)
 
-  val viu_wptr0 = PtrIncr(ptr, viu_incr, io.cfg.bcnt)
-  val viu_wptr1 = PtrIncr(viu_wptr0, 1, io.cfg.bcnt)
-  val viu_wptr2 = PtrIncr(viu_wptr0, 2, io.cfg.bcnt)
-  val vau0_wptr = PtrIncr(ptr, vau0_incr, io.cfg.bcnt)
-  val vau1_wptr2 = PtrIncr(ptr, vau1_incr, io.cfg.bcnt)
-  val vau1_wptr3 = PtrIncr(vau1_wptr2, 1, io.cfg.bcnt)
-  val vau2_wptr = PtrIncr(ptr, vau2_incr, io.cfg.bcnt)
+  val viu_wptr0 = ptrIncr(ptr, viu_incr, io.cfg.bcnt)
+  val viu_wptr1 = ptrIncr(viu_wptr0, 1, io.cfg.bcnt)
+  val viu_wptr2 = ptrIncr(viu_wptr0, 2, io.cfg.bcnt)
+  val vau0_wptr = ptrIncr(ptr, vau0_incr, io.cfg.bcnt)
+  val vau1_wptr2 = ptrIncr(ptr, vau1_incr, io.cfg.bcnt)
+  val vau1_wptr3 = ptrIncr(vau1_wptr2, 1, io.cfg.bcnt)
+  val vau2_wptr = ptrIncr(ptr, vau2_incr, io.cfg.bcnt)
 
   val viu_wptr = io.issueop.bits.fn.viu.wptr_sel(viu_wptr0, viu_wptr1, viu_wptr2)
   val vau1_wptr = io.issueop.bits.fn.vau1.wptr_sel(vau1_wptr2, vau1_wptr3)
@@ -215,7 +215,7 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
     when (active.vsu) { tbl_vfu.vsu := Bool(false) }
   }
 
-  val n = conf.nbanks-1
+  val n = nbanks-1
   val last = Vec.fill(n){Reg(init=Bool(false))}
   val clear_vfu = Vec.fill(n){Reg(new VFU().fromBits(Bits(0)))}
   (0 until n).reverse.foreach(i => ({
@@ -283,8 +283,8 @@ class Hazard(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) exten
 
     val shazard = List(
       tbl_vfu.vau0 && op.bits.active.vau0,
-      tbl_vfu.vau1t && (!Bool(conf.second_fma_pipe) || tbl_vfu.vau1f) && op.bits.active.vau1, // shazard when both vau1t and vau1f are used
-      tbl_vfu.vau2t && (!Bool(conf.second_fconv_pipe) || tbl_vfu.vau2f) && op.bits.active.vau2, // shazard when both vau2t and vau2f are used
+      tbl_vfu.vau1t && (!Bool(second_fma_pipe) || tbl_vfu.vau1f) && op.bits.active.vau1, // shazard when both vau1t and vau1f are used
+      tbl_vfu.vau2t && (!Bool(second_fconv_pipe) || tbl_vfu.vau2f) && op.bits.active.vau2, // shazard when both vau2t and vau2f are used
       tbl_vfu.vgu && memop,
       tbl_vfu.vcu && memop,
       tbl_vfu.vlu && List(op.bits.active.amo, op.bits.active.utld, op.bits.active.vld).reduce(_||_),

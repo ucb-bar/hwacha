@@ -6,7 +6,7 @@ import Constants._
 
 class SequencerOpIO extends ValidIO(new SequencerOp)
 
-class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) with UsesPtrIncr
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -16,10 +16,10 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
     val seqop = new SequencerOpIO
 
     val vmu = new VMUIO
-    val lla = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
-    val sla = new LookAheadPortIO(log2Down(conf.nvsdq)+1)
-    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
-    val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
+    val lla = new LookAheadPortIO(log2Down(nvlreq)+1)
+    val sla = new LookAheadPortIO(log2Down(nvsdq)+1)
+    val lreq = new LookAheadPortIO(log2Down(nvlreq)+1)
+    val sreq = new LookAheadPortIO(log2Down(nvsreq)+1)
     val lret = new MRTLoadRetireIO
 
     val hazard = new HazardUpdateIO
@@ -180,9 +180,9 @@ class Sequencer(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) ex
   val bcnt = io.cfg.bcnt
 
   val ptr = Reg(init = UInt(0, SZ_BPTR))
-  val ptr1 = PtrIncr(ptr, 1, bcnt)
-  val ptr2 = PtrIncr(ptr, 2, bcnt)
-  val ptr3 = PtrIncr(ptr, 3, bcnt)
+  val ptr1 = ptrIncr(ptr, 1, bcnt)
+  val ptr2 = ptrIncr(ptr, 2, bcnt)
+  val ptr3 = ptrIncr(ptr, 3, bcnt)
   ptr := ptr1
 
   val seq = new BuildSequencer(SZ_BANK)

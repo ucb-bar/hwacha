@@ -4,7 +4,7 @@ import Chisel._
 import Constants._
 import uncore._
 
-class VVAQ(implicit conf: HwachaConfiguration) extends Module
+class VVAQ extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -13,21 +13,21 @@ class VVAQ(implicit conf: HwachaConfiguration) extends Module
     val deq = new VVAQIO
   }
 
-  val arb = Module(new Arbiter(UInt(width = conf.vmu.addr_sz), 2))
-  val q = Module(new Queue(UInt(width = conf.vmu.addr_sz), conf.vmu.nvvaq))
+  val arb = Module(new Arbiter(UInt(width = confvmu.addr_sz), 2))
+  val q = Module(new Queue(UInt(width = confvmu.addr_sz), confvmu.nvvaq))
 
   arb.io.in(0) <> io.lane.q
   arb.io.in(1) <> io.evac
   q.io.enq <> arb.io.out
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(conf.vmu.nvvaq, conf.vmu.nvvaq))
+  val lacntr = Module(new LookAheadCounter(confvmu.nvvaq, confvmu.nvvaq))
   lacntr.io.la <> io.lane.vala
   lacntr.io.inc := io.deq.fire()
   lacntr.io.dec := io.xcpt.prop.vmu.drain && io.evac.fire()
 }
 
-class AddressGen(implicit conf: HwachaConfiguration) extends Module
+class AddressGen extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -88,7 +88,7 @@ class AddressGen(implicit conf: HwachaConfiguration) extends Module
   }
 }
 
-class AddressTLB(implicit conf: HwachaConfiguration) extends Module
+class AddressTLB extends HwachaModule
 {
   def vpn(addr: UInt) = addr(params(VAddrBits)-1, params(PgIdxBits))
   def idx(addr: UInt) = addr(params(PgIdxBits)-1, 0)
@@ -149,9 +149,9 @@ class AddressTLB(implicit conf: HwachaConfiguration) extends Module
   io.irq.vmu.aux := io.enq.bits.addr
 }
 
-class VPAQ(implicit conf: HwachaConfiguration) extends Module
+class VPAQ extends HwachaModule
 {
-  val sz = log2Down(conf.vmu.nvpaq) + 1
+  val sz = log2Down(confvmu.nvpaq) + 1
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO
@@ -160,10 +160,10 @@ class VPAQ(implicit conf: HwachaConfiguration) extends Module
     val xcpt = new XCPTIO().flip
   }
 
-  val q = Module(new Queue(new VPAQEntry, conf.vmu.nvpaq))
+  val q = Module(new Queue(new VPAQEntry, confvmu.nvpaq))
   q.io.enq <> io.enq
 
-  val lacntr = Module(new LookAheadCounter(0, conf.vmu.nvpaq))
+  val lacntr = Module(new LookAheadCounter(0, confvmu.nvpaq))
   // TODO: Support utcnt != 1
   lacntr.io.inc := q.io.enq.fire()
   lacntr.io.dec := q.io.deq.fire() && io.xcpt.prop.vmu.drain
@@ -184,7 +184,7 @@ class VPAQ(implicit conf: HwachaConfiguration) extends Module
   io.deq.bits := q.io.deq.bits
 }
 
-class MetadataAlloc(implicit conf: HwachaConfiguration) extends Module
+class MetadataAlloc extends HwachaModule
 {
   val io = new Bundle {
     val vpaq = new VPAQIO().flip
@@ -205,7 +205,7 @@ class MetadataAlloc(implicit conf: HwachaConfiguration) extends Module
   io.memif.bits.tag := io.vmdb.tag
 }
 
-class AddressUnit(implicit conf: HwachaConfiguration) extends Module
+class AddressUnit extends HwachaModule
 {
   val io = new Bundle {
     val ctrl = new VMUBackendIO().flip
@@ -248,7 +248,7 @@ class AddressUnit(implicit conf: HwachaConfiguration) extends Module
   io.memif <> vmda.io.memif
 }
 
-class PrefetchUnit(implicit conf: HwachaConfiguration) extends Module
+class PrefetchUnit extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -258,9 +258,9 @@ class PrefetchUnit(implicit conf: HwachaConfiguration) extends Module
     val tlb = new TLBIO
   }
 
-  val vvaq = Module(new Queue(new VVAPFQEntry, conf.vmu.nvvapfq))
+  val vvaq = Module(new Queue(new VVAPFQEntry, confvmu.nvvapfq))
   val atu = Module(new AddressTLB)
-  val vpaq = Module(new Queue(new VPAQEntry, conf.vmu.nvpapfq))
+  val vpaq = Module(new Queue(new VPAQEntry, confvmu.nvpapfq))
 
   vvaq.io.enq <> io.vaq
 

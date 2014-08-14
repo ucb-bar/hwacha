@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Constants._
 
-class MemIF(implicit conf: HwachaConfiguration) extends Module
+class MemIF extends HwachaModule
 {
   val io = new Bundle {
     val vpaq = new VPAQMemIO().flip

@@ -12,26 +12,26 @@ class VCMDQIO extends Bundle
   val cnt = Decoupled(new HwachaCnt)
 }
 
-class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VCMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val enq = new VCMDQIO().flip
     val deq = new VCMDQIO()
   }
 
-  io.deq.cmd <> Queue(io.enq.cmd, conf.vcmdq.ncmd)
-  io.deq.imm1 <> Queue(io.enq.imm1, conf.vcmdq.nimm1)
-  io.deq.imm2 <> Queue(io.enq.imm2, conf.vcmdq.nimm2)
-  io.deq.cnt <> Queue(io.enq.cnt, conf.vcmdq.ncnt)
+  io.deq.cmd <> Queue(io.enq.cmd, confvcmdq.ncmd)
+  io.deq.imm1 <> Queue(io.enq.imm1, confvcmdq.nimm1)
+  io.deq.imm2 <> Queue(io.enq.imm2, confvcmdq.nimm2)
+  io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
 }
 
-class TLBIO(implicit conf: HwachaConfiguration) extends Bundle
+class TLBIO extends Bundle
 {
   val req = Decoupled(new rocket.TLBReq)
   val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
 }
 
-class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = new IRQIO
@@ -72,12 +72,12 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   // counters
   val vcmdqcnt = new {
-    val cmd = Module(new QCounter(conf.vcmdq.ncmd, conf.vcmdq.ncmd, resetSignal = flush_kill))
-    val imm1 = Module(new QCounter(conf.vcmdq.nimm1, conf.vcmdq.nimm1, resetSignal = flush_kill))
-    val imm2 = Module(new QCounter(conf.vcmdq.nimm2, conf.vcmdq.nimm2, resetSignal = flush_kill))
+    val cmd = Module(new QCounter(confvcmdq.ncmd, confvcmdq.ncmd, resetSignal = flush_kill))
+    val imm1 = Module(new QCounter(confvcmdq.nimm1, confvcmdq.nimm1, resetSignal = flush_kill))
+    val imm2 = Module(new QCounter(confvcmdq.nimm2, confvcmdq.nimm2, resetSignal = flush_kill))
   }
 
-  if (conf.vru)
+  if (confvru)
   {
     val vru = Module(new VRU(resetSignal = flush_vru))
     val vpfcmdq = Module(new VCMDQ(resetSignal = flush_kill))

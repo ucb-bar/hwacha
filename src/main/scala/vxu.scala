@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class VXU(implicit conf: HwachaConfiguration) extends Module
+class VXU extends HwachaModule
 {
   val io = new Bundle {
     val irq = new IRQIO
@@ -14,8 +14,8 @@ class VXU(implicit conf: HwachaConfiguration) extends Module
     val imem = new rocket.CPUFrontendIO
     val vmu = new VMUIO
 
-    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1)
-    val sreq = new LookAheadPortIO(log2Down(conf.nvsreq)+1)
+    val lreq = new LookAheadPortIO(log2Down(nvlreq)+1)
+    val sreq = new LookAheadPortIO(log2Down(nvsreq)+1)
     val lret = new MRTLoadRetireIO
     
     val pending_vf = Bool(OUTPUT)

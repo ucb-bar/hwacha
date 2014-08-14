@@ -4,10 +4,10 @@ import Chisel._
 import Node._
 import Constants._
 
-class MRTLoadRetireIO(implicit conf: HwachaConfiguration) extends Bundle
+class MRTLoadRetireIO extends HwachaBundle
 {
   val update = Bool(OUTPUT)
-  val cnt = UInt(OUTPUT, log2Down(conf.nvlreq)+1)
+  val cnt = UInt(OUTPUT, log2Down(nvlreq)+1)
 }
 
 class MRTStoreRetireIO extends Bundle
@@ -16,17 +16,17 @@ class MRTStoreRetireIO extends Bundle
 }
 
 // TODO: Eliminate by further genericizing LookAheadCounter
-class MRTLoadRetireCounter(implicit conf: HwachaConfiguration) extends Module
+class MRTLoadRetireCounter extends HwachaModule
 {
-  val sz = log2Down(conf.nvlreq) + 1
+  val sz = log2Down(nvlreq) + 1
   val io = new Bundle {
     val la = new LookAheadPortIO(sz).flip
     val ret = new MRTLoadRetireIO().flip
     val full = Bool(OUTPUT)
   }
 
-  val count = Reg(init = UInt(conf.nvlreq, sz))
-  io.full := (count === UInt(conf.nvlreq))
+  val count = Reg(init = UInt(nvlreq, sz))
+  io.full := (count === UInt(nvlreq))
 
   when (io.la.reserve) {
     count := count - io.la.cnt
@@ -38,13 +38,13 @@ class MRTLoadRetireCounter(implicit conf: HwachaConfiguration) extends Module
   io.la.available := (count >= io.la.cnt)
 }
 
-class MRT(implicit conf: HwachaConfiguration) extends Module
+class MRT extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
-    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
+    val lreq = new LookAheadPortIO(log2Down(nvlreq)+1).flip
     val sreq = new Bundle {
-      val vxu = new LookAheadPortIO(log2Down(conf.nvsreq)+1).flip
+      val vxu = new LookAheadPortIO(log2Down(nvsreq)+1).flip
       val evac = Bool(INPUT)
     }
     val lret = new MRTLoadRetireIO().flip
@@ -53,7 +53,7 @@ class MRT(implicit conf: HwachaConfiguration) extends Module
   }
 
   val lcnt = Module(new MRTLoadRetireCounter)
-  val scnt = Module(new LookAheadCounter(conf.nvsreq, conf.nvsreq))
+  val scnt = Module(new LookAheadCounter(nvsreq, nvsreq))
 
   lcnt.io.la <> io.lreq
   lcnt.io.ret <> io.lret

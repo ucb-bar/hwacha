@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Constants._
 
-class StoreDataUnit(implicit conf: HwachaConfiguration) extends Module
+class StoreDataUnit extends HwachaModule
 {
   val io = new Bundle {
     val ctrl = new VMUBackendIO().flip
@@ -12,8 +12,8 @@ class StoreDataUnit(implicit conf: HwachaConfiguration) extends Module
     val memif = new VSDQIO
   }
 
-  val arb = Module(new Arbiter(Bits(width = conf.vmu.data_sz), 2))
-  val vsdq = Module(new Queue(Bits(width = conf.vmu.data_sz), conf.vmu.nvsdq))
+  val arb = Module(new Arbiter(Bits(width = confvmu.data_sz), 2))
+  val vsdq = Module(new Queue(Bits(width = confvmu.data_sz), confvmu.nvsdq))
 
   arb.io.in(0) <> io.lane
   arb.io.in(1) <> io.evac
