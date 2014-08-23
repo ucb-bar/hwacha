@@ -8,7 +8,6 @@ case object HwachaNBanks extends Field[Int]
 case object HwachaNRegPerBank extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
-case object HwachaFrontendParams extends Field[PF]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters
@@ -76,6 +75,10 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nvsreq = 128
   val nvlreq = 128
   val nvsdq = nbrq * nbanks
+
+  // D$ tag requirement for hwacha
+  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.tag_sz)
+
 }
 
 trait HwachaDecodeConstants
@@ -188,11 +191,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   import HwachaDecodeTable._
   import Commands._
 
-  // D$ tag requirement for hwacha
-  //TODO PARAMS: require(rc.dcacheReqTagBits >= conf.vmu.tag_sz)
-
-  val p = params.alter(params(HwachaFrontendParams))
-  val icache = Module(new rocket.Frontend)(Some(p)) //TODO PARAMS
+  val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB(ndtlb))
   val ptlb = Module(new rocket.TLB(nptlb))
 
