@@ -51,9 +51,9 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     val ncnt = nbanks
   }
 
-  require(vcmdq.ncmd >= nbanks)
-  require(vcmdq.nimm1 >= nbanks)
-  require(vcmdq.nimm2 >= nbanks)
+  require(confvcmdq.ncmd >= nbanks)
+  require(confvcmdq.nimm1 >= nbanks)
+  require(confvcmdq.nimm2 >= nbanks)
 
   val nbrq = 2
   val nbwq = 2
@@ -81,7 +81,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nvsdq = nbrq * nbanks
 
   // D$ tag requirement for hwacha
-  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.tag_sz)
+  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.sz_tag)
 
 }
 
