@@ -76,7 +76,7 @@ object TVECDecodeTable
   )
 }
 
-class IssueTVEC(implicit conf: HwachaConfiguration) extends Module
+class IssueTVEC extends HwachaModule
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO

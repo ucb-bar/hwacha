@@ -12,26 +12,26 @@ class VCMDQIO extends Bundle
   val cnt = Decoupled(new HwachaCnt)
 }
 
-class VCMDQ(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VCMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val enq = new VCMDQIO().flip
     val deq = new VCMDQIO()
   }
 
-  io.deq.cmd <> Queue(io.enq.cmd, conf.vcmdq.ncmd)
-  io.deq.imm1 <> Queue(io.enq.imm1, conf.vcmdq.nimm1)
-  io.deq.imm2 <> Queue(io.enq.imm2, conf.vcmdq.nimm2)
-  io.deq.cnt <> Queue(io.enq.cnt, conf.vcmdq.ncnt)
+  io.deq.cmd <> Queue(io.enq.cmd, confvcmdq.ncmd)
+  io.deq.imm1 <> Queue(io.enq.imm1, confvcmdq.nimm1)
+  io.deq.imm2 <> Queue(io.enq.imm2, confvcmdq.nimm2)
+  io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
 }
 
-class TLBIO(implicit conf: HwachaConfiguration) extends Bundle
+class TLBIO extends Bundle
 {
-  val req = Decoupled(new rocket.TLBReq()(conf.as))
-  val resp = new rocket.TLBResp(1)(conf.as).flip // we don't use hit_idx
+  val req = Decoupled(new rocket.TLBReq)
+  val resp = new rocket.TLBResp(1).flip // we don't use hit_idx
 }
 
-class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = new IRQIO
@@ -43,8 +43,8 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
     val vimm1q_user_ready = Bool(OUTPUT)
     val vimm2q_user_ready = Bool(OUTPUT)
 
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
-    val dmem = new rocket.HellaCacheIO()(conf.dcache)
+    val imem = new rocket.CPUFrontendIO
+    val dmem = new rocket.HellaCacheIO
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
@@ -72,12 +72,12 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
 
   // counters
   val vcmdqcnt = new {
-    val cmd = Module(new QCounter(conf.vcmdq.ncmd, conf.vcmdq.ncmd, resetSignal = flush_kill))
-    val imm1 = Module(new QCounter(conf.vcmdq.nimm1, conf.vcmdq.nimm1, resetSignal = flush_kill))
-    val imm2 = Module(new QCounter(conf.vcmdq.nimm2, conf.vcmdq.nimm2, resetSignal = flush_kill))
+    val cmd = Module(new QCounter(confvcmdq.ncmd, confvcmdq.ncmd, resetSignal = flush_kill))
+    val imm1 = Module(new QCounter(confvcmdq.nimm1, confvcmdq.nimm1, resetSignal = flush_kill))
+    val imm2 = Module(new QCounter(confvcmdq.nimm2, confvcmdq.nimm2, resetSignal = flush_kill))
   }
 
-  if (conf.vru)
+  if (confvru)
   {
     val vru = Module(new VRU(resetSignal = flush_vru))
     val vpfcmdq = Module(new VCMDQ(resetSignal = flush_kill))
@@ -108,9 +108,9 @@ class VU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends M
   vcmdqcnt.imm2.io.dec := vcmdq.io.enq.imm2.ready && io.vcmdq.imm2.valid
   vcmdqcnt.imm2.io.inc := (vxu.io.vcmdq.imm2.ready || evac.io.vcmdq.imm2.ready) && vcmdq.io.deq.imm2.valid
 
-  vcmdqcnt.cmd.io.qcnt := UInt(conf.vcmdq.ncmd - conf.nbanks)
-  vcmdqcnt.imm1.io.qcnt := UInt(conf.vcmdq.nimm1 - conf.nbanks)
-  vcmdqcnt.imm2.io.qcnt := UInt(conf.vcmdq.nimm2 - conf.nbanks)
+  vcmdqcnt.cmd.io.qcnt := UInt(confvcmdq.ncmd - nbanks)
+  vcmdqcnt.imm1.io.qcnt := UInt(confvcmdq.nimm1 - nbanks)
+  vcmdqcnt.imm2.io.qcnt := UInt(confvcmdq.nimm2 - nbanks)
   io.vcmdq_user_ready := vcmdqcnt.cmd.io.watermark && !io.xcpt.prop.vu.busy
   io.vimm1q_user_ready := vcmdqcnt.imm1.io.watermark && !io.xcpt.prop.vu.busy
   io.vimm2q_user_ready := vcmdqcnt.imm2.io.watermark && !io.xcpt.prop.vu.busy

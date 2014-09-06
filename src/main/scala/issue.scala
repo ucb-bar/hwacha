@@ -6,7 +6,7 @@ import Constants._
 
 class IssueOpIO extends ValidIO(new IssueOp)
 
-class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class Issue(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO
@@ -14,7 +14,7 @@ class Issue(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extend
     val xcpt = new XCPTIO().flip
 
     val vcmdq = new VCMDQIO().flip
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val imem = new rocket.CPUFrontendIO
     val deckop = new DeckOpIO
     val vmu = new VMUIO
 

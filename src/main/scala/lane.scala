@@ -28,12 +28,12 @@ class LaneFUOpIO extends Bundle
   val vgu = Valid(new VGUOp)
 }
 
-class Lane(implicit conf: HwachaConfiguration) extends Module
+class Lane extends HwachaModule
 {
   val io = new Bundle {
     val op = new LaneOpIO().flip
-    val brqs = Vec.fill(conf.nbanks){new BRQIO}
-    val bwqs = Vec.fill(conf.nbanks){new BWQIO().flip}
+    val brqs = Vec.fill(nbanks){new BRQIO}
+    val bwqs = Vec.fill(nbanks){new BWQIO().flip}
     val vmu = new VMUIO
   }
 
@@ -95,7 +95,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
   conv0.io.fn := lfu.io.vau2t.bits.fn
   conv0.io.in := rbl(8)
 
-  if (conf.second_fma_pipe) {
+  if (second_fma_pipe) {
     val fma1 = Module(new LaneFMA)
     fma1.io.valid := lfu.io.vau1f.valid
     fma1.io.fn := lfu.io.vau1f.bits.fn
@@ -105,7 +105,7 @@ class Lane(implicit conf: HwachaConfiguration) extends Module
     wbl2.map(_ := fma1.io.out)
   }
 
-  if (conf.second_fconv_pipe) {
+  if (second_fconv_pipe) {
     val conv1 = Module(new LaneConv)
     conv1.io.valid := lfu.io.vau2f.valid
     conv1.io.fn := lfu.io.vau2f.bits.fn

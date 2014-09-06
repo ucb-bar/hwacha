@@ -4,7 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class Expander(implicit conf: HwachaConfiguration) extends Module
+class Expander extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -41,8 +41,8 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
   def ren(rinfo: RegInfo) = !rinfo.zero
   def rblen(b: Bits) = new ReadBankOp().rblen.fromBits(b)
 
-  val rexp = new BuildExpander(new ReadBankOp, conf.shift_buf_read)
-  val wexp = new BuildExpander(new WriteBankOp, conf.shift_buf_write)
+  val rexp = new BuildExpander(new ReadBankOp, shift_buf_read)
+  val wexp = new BuildExpander(new WriteBankOp, shift_buf_write)
   val viuexp = new BuildExpander(new VIUOp, 3)
   val vau0exp = new BuildExpander(new VAU0Op, 4)
   val vau1texp = new BuildExpander(new VAU1Op, 5)
@@ -80,7 +80,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
         rexp.bits(1).brqen := Bool(false)
       }
 
-      val n = conf.int_stages
+      val n = int_stages
       val viu_wptr = io.seqop.bits.fn.viu.wptr_sel(Bits(n), Bits(n+1), Bits(n+2))
 
       wexp.valid(viu_wptr) := Bool(true)
@@ -136,7 +136,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
       when (io.seqop.bits.reg.vs.zero) { rexp.bits(1).rblen(0) := Bool(false) }
       when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(1) := Bool(false) }
 
-      val vau0_wptr = Bits(conf.imul_stages+3)
+      val vau0_wptr = Bits(imul_stages+3)
 
       wexp.valid(vau0_wptr) := Bool(true)
       wexp.last(vau0_wptr) := io.seqop.bits.last
@@ -206,7 +206,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
           when (io.seqop.bits.reg.vt.zero) { rexp.bits(1).rblen(rbl+2) := Bool(false) }
         }
 
-        val n = conf.fma_stages
+        val n = fma_stages
         val vau1_wptr = io.seqop.bits.fn.vau1.wptr_sel(Bits(n+3), Bits(n+4))
 
         wexp.valid(vau1_wptr) := Bool(true)
@@ -244,7 +244,7 @@ class Expander(implicit conf: HwachaConfiguration) extends Module
 
         when (io.seqop.bits.reg.vs.zero) { rexp.bits(0).rblen(rbl) := Bool(false) }
 
-        val vau2_wptr = Bits(conf.fconv_stages+2)
+        val vau2_wptr = Bits(fconv_stages+2)
 
         wexp.valid(vau2_wptr) := Bool(true)
         wexp.last(vau2_wptr) := io.seqop.bits.last

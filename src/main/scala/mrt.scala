@@ -4,32 +4,30 @@ import Chisel._
 import Node._
 import Constants._
 
-class MRTLoadRetireIO(implicit conf: HwachaConfiguration)
-  extends CounterPortIO(log2Down(conf.nvlreq) + 1)
+class MRTLoadRetireIO(sz: Int) extends CounterPortIO(sz)
 
-class MRTStoreRetireIO extends Bundle
-{
+class MRTStoreRetireIO extends Bundle {
   val update = Bool(OUTPUT)
 }
 
 // Memory Request Tracker:
 // Counts memory operations in transit
-class MRT(implicit conf: HwachaConfiguration) extends Module
+class MRT extends HwachaModule
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
-    val lreq = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
+    val lreq = new LookAheadPortIO(log2Down(nvlreq)+1).flip
     val sreq = new Bundle {
-      val vxu = new LookAheadPortIO(log2Down(conf.nvsreq)+1).flip
+      val vxu = new LookAheadPortIO(log2Down(nvsreq)+1).flip
       val evac = Bool(INPUT)
     }
-    val lret = new MRTLoadRetireIO().flip
+    val lret = new MRTLoadRetireIO(log2Down(nvlreq)+1).flip
     val sret = new MRTStoreRetireIO().flip
     val pending_memop = Bool(OUTPUT)
   }
 
-  val lcnt = Module(new LookAheadCounter(conf.nvlreq, conf.nvlreq))
-  val scnt = Module(new LookAheadCounter(conf.nvsreq, conf.nvsreq))
+  val lcnt = Module(new LookAheadCounter(nvlreq, nvlreq))
+  val scnt = Module(new LookAheadCounter(nvsreq, nvsreq))
 
   lcnt.io.la <> io.lreq
   lcnt.io.inc <> io.lret

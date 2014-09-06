@@ -294,14 +294,14 @@ class BRQEntry extends Bundle
   val data = Bits(width = SZ_DATA)
 }
 
-class BWQEntry extends Bundle
+class BWQEntry extends HwachaBundle
 {
   val addr = UInt(width = SZ_BREGLEN)
   val data = Bits(width = SZ_DATA)
 }
 
-class BWQInternalEntry(implicit conf: HwachaConfiguration) extends BWQEntry
+class BWQInternalEntry extends BWQEntry
 {
-  val tag = UInt(width = /*log2Up(conf.nvlreq)*/ SZ_VLEN - log2Up(conf.nbanks))
+  val tag = UInt(width = /*log2Up(nvlreq)*/ SZ_VLEN - log2Up(nbanks))
   override def clone = new BWQInternalEntry().asInstanceOf[this.type]
 }

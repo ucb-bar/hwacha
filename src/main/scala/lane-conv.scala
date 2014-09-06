@@ -5,7 +5,7 @@ import Node._
 import Constants._
 import Compaction._
 
-class LaneConv(implicit conf: HwachaConfiguration) extends Module 
+class LaneConv extends HwachaModule 
 {
   val io = new Bundle {
     val valid = Bool(INPUT)
@@ -138,7 +138,7 @@ class LaneConv(implicit conf: HwachaConfiguration) extends Module
     FP(FPD), Cat(next_exc_dp, next_result_dp),
     Cat(next_exc_sp, next_result_sp))
 
-  val pipereg = ShiftRegister(result, conf.fconv_stages, io.valid)
+  val pipereg = ShiftRegister(result, fconv_stages, io.valid)
 
   Match(pipereg, io.exc, io.out)
 }

@@ -168,7 +168,7 @@ object VTDecodeTable
   )
 }
 
-class IssueVT(implicit conf: HwachaConfiguration) extends Module
+class IssueVT extends HwachaModule
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -177,7 +177,7 @@ class IssueVT(implicit conf: HwachaConfiguration) extends Module
 
     val vf = new VFIO().flip
     val vcmdq = new VCMDQIO().flip
-    val imem = new rocket.CPUFrontendIO()(conf.vicache)
+    val imem = new rocket.CPUFrontendIO
 
     val ready = Bool(INPUT)
     val op = new IssueOpIO

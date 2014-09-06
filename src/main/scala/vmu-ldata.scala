@@ -3,24 +3,24 @@ package hwacha
 import Chisel._
 import Constants._
 
-class MetadataBuffer(implicit conf: HwachaConfiguration) extends Module
+class MetadataBuffer extends HwachaModule
 {
   val io = new Bundle {
     val wr = new VMDBIO().flip
     val rd = new Bundle {
-      val tag = Valid(Bits(width = conf.vmu.sz_tag)).flip
+      val tag = Valid(Bits(width = confvmu.sz_tag)).flip
       val info = new VMUMetadata().asOutput
     }
   }
 
-  val busy = Reg(init = Bits(0, conf.vmu.nvlmb))
-  val data = Mem(new VMUMetadata, conf.vmu.nvlmb)
+  val busy = Reg(init = Bits(0, confvmu.nvlmb))
+  val data = Mem(new VMUMetadata, confvmu.nvlmb)
 
   io.wr.tag := PriorityEncoder(~busy)
-  io.wr.info.ready := !((0 until conf.vmu.nvlmb).map(i => busy(i)).reduce(_&&_))
+  io.wr.info.ready := !((0 until confvmu.nvlmb).map(i => busy(i)).reduce(_&&_))
 
-  val busy_mask_rd = UIntToOH(io.rd.tag.bits) & Fill(conf.vmu.nvlmb, io.rd.tag.valid)
-  val busy_mask_wr = UIntToOH(io.wr.tag) & Fill(conf.vmu.nvlmb, io.wr.info.fire())
+  val busy_mask_rd = UIntToOH(io.rd.tag.bits) & Fill(confvmu.nvlmb, io.rd.tag.valid)
+  val busy_mask_wr = UIntToOH(io.wr.tag) & Fill(confvmu.nvlmb, io.wr.info.fire())
 
   busy := (busy & (~busy_mask_rd)) | busy_mask_wr
   when (io.wr.info.fire()) {
@@ -30,7 +30,7 @@ class MetadataBuffer(implicit conf: HwachaConfiguration) extends Module
   io.rd.info:= data(io.rd.tag.bits)
 }
 
-class LoadDataUnit(implicit conf: HwachaConfiguration) extends Module
+class LoadDataUnit extends HwachaModule
 {
   val io = new Bundle {
     val vmdb = new VMDBIO().flip
@@ -38,11 +38,11 @@ class LoadDataUnit(implicit conf: HwachaConfiguration) extends Module
     val lane = new VLDQIO
   }
 
-  val vldq = Module(new Queue(new VLDQEntry, conf.vmu.nvldq))
+  val vldq = Module(new Queue(new VLDQEntry, confvmu.nvldq))
   val vmdb = Module(new MetadataBuffer)
 
   // Count available space in VLDQ
-  val count = Reg(init = UInt(conf.vmu.nvldq))
+  val count = Reg(init = UInt(confvmu.nvldq))
   val cntr_dec = io.vmdb.info.fire() // Account for in-flight loads
   val cntr_inc = io.lane.fire()
   when (cntr_inc && !cntr_dec) {

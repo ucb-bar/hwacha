@@ -7,7 +7,7 @@ import Commands._
 import scala.math._
 import uncore.constants.MemoryOpConstants._
 
-class VRU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
 {
   val io = new Bundle {
     val vcmdq = new VCMDQIO().flip
@@ -87,9 +87,10 @@ class VRU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   val vec_pfed_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
   val stride_reg = Reg(init=UInt(0, SZ_VSTRIDE))
   
-  val vec_per_pf_reg = Reg(init=UInt(0, conf.dcache.offbits+1))
-  val vec_pf_remainder_reg = Reg(init=UInt(0, conf.dcache.offbits))
-  val stride_remaining_reg = Reg(init=UInt(0, conf.dcache.offbits))
+  val dcOffBits = params[Int]("OFFSET_BITS") //TODO PARAMS
+  val vec_per_pf_reg = Reg(init=UInt(0, dcOffBits+1))
+  val vec_pf_remainder_reg = Reg(init=UInt(0, dcOffBits))
+  val stride_remaining_reg = Reg(init=UInt(0, dcOffBits))
 
   val unit_stride = (stride_decoded != Bits(0,4))
   
@@ -103,8 +104,8 @@ class VRU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
   val cmd_val = io.vcmdq.cmd.valid && mask_vpfimm1q_valid && mask_vpfimm2q_valid && pf.toBool
   val setvl_val = io.vcmdq.cmd.valid && mask_vpfimm1q_valid && setvl.toBool && pf.toBool
 
-  val pf_len = UInt(pow(2,conf.dcache.offbits).toInt)
-  val pf_len_int = pow(2,conf.dcache.offbits).toInt
+  val pf_len = UInt(pow(2,dcOffBits).toInt)
+  val pf_len_int = pow(2,dcOffBits).toInt
 
   // cmd(4)==1 -> vector store
   io.vaq.bits.cmd := Mux(is_cmd_pfw(cmd_reg), M_PFW, M_PFR)
@@ -137,28 +138,28 @@ class VRU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
         {
           state := VRU_IssueShort
 
-          // vec_per_pf_reg = 2**conf.dcache.offbits / stride(conf.dcache.offbits-1, 0)
-          // Assume conf.dcache.offbits >= 4, reasonable since you wouldn't
+          // vec_per_pf_reg = 2**dcOffBits / stride(dcOffBits-1, 0)
+          // Assume dcOffBits >= 4, reasonable since you wouldn't
           // want a cache line with less than two double words
-          val stride_lobits = stride(conf.dcache.offbits,0)
+          val stride_lobits = stride(dcOffBits,0)
           var div = MuxLookup(stride(4,0),
-                        UInt(0,conf.dcache.offbits+1), Array(
-            Bits(1)  -> UInt(pf_len_int/1,conf.dcache.offbits+1),
-            Bits(2)  -> UInt(pf_len_int/2,conf.dcache.offbits+1),
-            Bits(3)  -> UInt(pf_len_int/3,conf.dcache.offbits+1),
-            Bits(4)  -> UInt(pf_len_int/4,conf.dcache.offbits+1),
-            Bits(5)  -> UInt(pf_len_int/5,conf.dcache.offbits+1),
-            Bits(6)  -> UInt(pf_len_int/6,conf.dcache.offbits+1),
-            Bits(7)  -> UInt(pf_len_int/7,conf.dcache.offbits+1),
-            Bits(8)  -> UInt(pf_len_int/8,conf.dcache.offbits+1),
-            Bits(9)  -> UInt(pf_len_int/9,conf.dcache.offbits+1),
-            Bits(10) -> UInt(pf_len_int/10,conf.dcache.offbits+1),
-            Bits(11) -> UInt(pf_len_int/11,conf.dcache.offbits+1),
-            Bits(12) -> UInt(pf_len_int/12,conf.dcache.offbits+1),
-            Bits(13) -> UInt(pf_len_int/13,conf.dcache.offbits+1),
-            Bits(14) -> UInt(pf_len_int/14,conf.dcache.offbits+1),
-            Bits(15) -> UInt(pf_len_int/15,conf.dcache.offbits+1),
-            Bits(16) -> UInt(pf_len_int/16,conf.dcache.offbits+1)
+                        UInt(0,dcOffBits+1), Array(
+            Bits(1)  -> UInt(pf_len_int/1,dcOffBits+1),
+            Bits(2)  -> UInt(pf_len_int/2,dcOffBits+1),
+            Bits(3)  -> UInt(pf_len_int/3,dcOffBits+1),
+            Bits(4)  -> UInt(pf_len_int/4,dcOffBits+1),
+            Bits(5)  -> UInt(pf_len_int/5,dcOffBits+1),
+            Bits(6)  -> UInt(pf_len_int/6,dcOffBits+1),
+            Bits(7)  -> UInt(pf_len_int/7,dcOffBits+1),
+            Bits(8)  -> UInt(pf_len_int/8,dcOffBits+1),
+            Bits(9)  -> UInt(pf_len_int/9,dcOffBits+1),
+            Bits(10) -> UInt(pf_len_int/10,dcOffBits+1),
+            Bits(11) -> UInt(pf_len_int/11,dcOffBits+1),
+            Bits(12) -> UInt(pf_len_int/12,dcOffBits+1),
+            Bits(13) -> UInt(pf_len_int/13,dcOffBits+1),
+            Bits(14) -> UInt(pf_len_int/14,dcOffBits+1),
+            Bits(15) -> UInt(pf_len_int/15,dcOffBits+1),
+            Bits(16) -> UInt(pf_len_int/16,dcOffBits+1)
           ))
 
           for (i <- (pf_len_int/16)-1 to 1 by -1)

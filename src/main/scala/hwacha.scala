@@ -4,10 +4,22 @@ import Chisel._
 import uncore._
 import Constants._
 
-case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: rocket.ICacheConfig, dcache: rocket.DCacheConfig, nbanks: Int, nreg_per_bank: Int, ndtlb: Int, nptlb: Int)
-{
+case object HwachaNBanks extends Field[Int]
+case object HwachaNRegPerBank extends Field[Int]
+case object HwachaNDTLB extends Field[Int]
+case object HwachaNPTLB extends Field[Int]
+
+abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
+abstract class HwachaBundle extends Bundle with UsesHwachaParameters
+
+abstract trait UsesHwachaParameters extends UsesParameters {
+  val nbanks = params(HwachaNBanks)
+  val nreg_per_bank = params(HwachaNRegPerBank)
+  val ndtlb = params(HwachaNDTLB)  
+  val nptlb = params(HwachaNPTLB)  
+
   val nreg_total = nbanks * nreg_per_bank
-  val vru = true
+  val confvru = true
   val confprec = false
 
   // pipeline latencies
@@ -32,7 +44,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
   val shift_buf_write =
     List(imul_stages+3, fma_stages+4, fconv_stages+2).reduce(scala.math.max(_,_)) + 1
 
-  val vcmdq = new {
+  val confvcmdq = new {
     val ncmd = 19
     val nimm1 = 19
     val nimm2 = 17
@@ -46,7 +58,7 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
   val nbrq = 2
   val nbwq = 2
 
-  val vmu = new {
+  val confvmu = new {
     val ncmdq = 2
     val naddrq = 2
 
@@ -60,13 +72,17 @@ case class HwachaConfiguration(as: uncore.AddressSpaceConfiguration, vicache: ro
     val nvpapfq = 8
 
     val sz_tag = log2Up(nvlmb)
-    val sz_addr = math.max(as.paddrBits, as.vaddrBits)
+    val sz_addr = math.max(params(PAddrBits), params(VAddrBits))
     val sz_data = 64
   }
 
   val nvsreq = 128
   val nvlreq = 128
   val nvsdq = nbrq * nbanks
+
+  // D$ tag requirement for hwacha
+  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.tag_sz)
+
 }
 
 trait HwachaDecodeConstants
@@ -174,27 +190,22 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   )
 }
 
-class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends rocket.RoCC(rc)
+class Hwacha extends rocket.RoCC with UsesHwachaParameters
 {
   import HwachaDecodeTable._
   import Commands._
 
-  implicit val (conf, as) = (hc, hc.as)
-
-  // D$ tag requirement for hwacha
-  require(rc.dcacheReqTagBits >= conf.vmu.sz_tag)
-
-  val icache = Module(new rocket.Frontend()(hc.vicache))
-  val dtlb = Module(new rocket.TLB(hc.ndtlb))
-  val ptlb = Module(new rocket.TLB(hc.nptlb))
+  val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
+  val dtlb = Module(new rocket.TLB(ndtlb))
+  val ptlb = Module(new rocket.TLB(nptlb))
 
   val irq = Module(new IRQ)
   val xcpt = Module(new XCPT)
   val vu = Module(new VU)
 
   // Cofiguration state
-  val cfg_maxvl = Reg(init=UInt(32, log2Up(hc.nreg_total)+1))
-  val cfg_vl    = Reg(init=UInt(0, log2Up(hc.nreg_total)+1))
+  val cfg_maxvl = Reg(init=UInt(32, log2Up(nreg_total)+1))
+  val cfg_vl    = Reg(init=UInt(0, log2Up(nreg_total)+1))
   val cfg_regs  = Reg(init=Cat(UInt(32, 6), UInt(32, 6)))
   val cfg_xregs = cfg_regs(5,0)
   val cfg_fregs = cfg_regs(11,6)
@@ -281,7 +292,7 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
   val next_prec = Bits(width = SZ_PREC)
 
   val prec = (io.cmd.bits.rs1(13,12)).zext.toUInt
-  if (conf.confprec) {
+  if (confprec) {
     next_prec := MuxLookup(prec, PREC_DOUBLE, Array(
       UInt(0,2) -> PREC_DOUBLE,
       UInt(1,2) -> PREC_SINGLE,
@@ -303,9 +314,9 @@ class Hwacha(hc: HwachaConfiguration, rc: rocket.RocketConfiguration) extends ro
 
   // vector length lookup
   val regs_used = (Mux(nxpr === UInt(0), UInt(0), nxpr - UInt(1)) << packing) + nfpr
-  val vlen_width = log2Up(hc.nreg_per_bank + 1)
+  val vlen_width = log2Up(nreg_per_bank + 1)
   val rom_allocation_units = (0 to 164).toArray.map(n => (UInt(n),
-    UInt(if (n < 2) (hc.nreg_per_bank) else (hc.nreg_per_bank / n), width = vlen_width)
+    UInt(if (n < 2) (nreg_per_bank) else (nreg_per_bank / n), width = vlen_width)
   ))
 
   val ut_per_bank = Lookup(regs_used, rom_allocation_units.last._2, rom_allocation_units) << packing

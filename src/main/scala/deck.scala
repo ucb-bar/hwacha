@@ -9,17 +9,17 @@ import scala.collection.mutable.ArrayBuffer
 
 class DeckOpIO extends DecoupledIO(new DeckOp)
 
-class Deck(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class Deck(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
-    val lla = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip()
-    val sla = new LookAheadPortIO(log2Down(conf.nvsdq)+1).flip()
+    val lla = new LookAheadPortIO(log2Down(nvlreq)+1).flip()
+    val sla = new LookAheadPortIO(log2Down(nvsdq)+1).flip()
 
-    val brqs = Vec.fill(conf.nbanks){new BRQIO().flip}
-    val bwqs = Vec.fill(conf.nbanks){new BWQIO}
+    val brqs = Vec.fill(nbanks){new BRQIO().flip}
+    val bwqs = Vec.fill(nbanks){new BWQIO}
 
     val vmu = new VMUIO
   }
@@ -49,14 +49,14 @@ class Deck(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends
   io.vmu <> vsu.io.vmu
 }
 
-class VLU(implicit conf: HwachaConfiguration) extends Module
+class VLU extends HwachaModule
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
-    val bwqs = Vec.fill(conf.nbanks){new BWQIO}
-    val la = new LookAheadPortIO(log2Down(conf.nvlreq)+1).flip
+    val bwqs = Vec.fill(nbanks){new BWQIO}
+    val la = new LookAheadPortIO(log2Down(nvlreq)+1).flip
 
     val vmu = new VMUIO
   }
@@ -122,7 +122,7 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 // bank write queues
 //--------------------------------------------------------------------\\
 
-  val lgbank = log2Up(conf.nbanks)
+  val lgbank = log2Up(nbanks)
   val vd_bank_id = vldq.bits.meta.utidx(lgbank-1, 0)
   val vd_bank_ut = vldq.bits.meta.utidx(SZ_VLEN-1, lgbank)
   val vd_stride = Mux(op.reg.vd.float, io.cfg.fstride, io.cfg.xstride)
@@ -133,8 +133,8 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
   val bwqs_deq = new ArrayBuffer[DecoupledIO[BWQInternalEntry]]
   val bwqs_enq_rdy = new ArrayBuffer[Bool]
 
-  for (i <- 0 until conf.nbanks) {
-    val bwq = Module(new Queue(new BWQInternalEntry, conf.nbwq))
+  for (i <- 0 until nbanks) {
+    val bwq = Module(new Queue(new BWQInternalEntry, nbwq))
 
     bwq.io.enq.valid := (vd_bank_id === UInt(i)) && vldq.valid
     bwq.io.enq.bits.addr := vd_addr
@@ -150,36 +150,36 @@ class VLU(implicit conf: HwachaConfiguration) extends Module
 // bank write status array
 //--------------------------------------------------------------------\\
 
-  val bw_stat = Reg(Bits(width = conf.nvlreq))
-  val bw_stat_update = (0 until conf.nbanks).map(i =>
+  val bw_stat = Reg(Bits(width = nvlreq))
+  val bw_stat_update = (0 until nbanks).map(i =>
     (UIntToOH(Cat(bwqs_deq(i).bits.tag, UInt(i, lgbank)) - op.utidx) &
-      Fill(conf.nvlreq, bwqs_deq(i).fire()))
+      Fill(nvlreq, bwqs_deq(i).fire()))
     ).reduce(_|_)
   val bw_stat_next = bw_stat | bw_stat_update
   val bw_stat_shift = io.la.cnt(SZ_LGBANK1,0) & Fill(SZ_LGBANK1, io.la.reserve)
 
   bw_stat := Mux1H(UIntToOH(bw_stat_shift),
-    Vec((0 to conf.nbanks).map(i => (bw_stat_next >> UInt(i))))) &
-    Fill(conf.nvlreq, state != s_idle) // initialization
+    Vec((0 to nbanks).map(i => (bw_stat_next >> UInt(i))))) &
+    Fill(nvlreq, state != s_idle) // initialization
 
   // Limited leading-ones count
   var sel = bw_stat(0)
   var locnt = UInt(0, SZ_LGBANK1)
-  for (i <- 0 until conf.nbanks) {
+  for (i <- 0 until nbanks) {
     locnt = Mux(sel, UInt(i+1), locnt)
     sel = sel & bw_stat(i+1)
   }
   io.la.available := (locnt >= io.la.cnt)
 }
 
-class VSU(implicit conf: HwachaConfiguration) extends Module
+class VSU extends HwachaModule
 {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new DeckOpIO().flip
 
-    val brqs = Vec.fill(conf.nbanks){new BRQIO().flip}
-    val la = new LookAheadPortIO(log2Down(conf.nvsdq)+1).flip
+    val brqs = Vec.fill(nbanks){new BRQIO().flip}
+    val la = new LookAheadPortIO(log2Down(nvsdq)+1).flip
 
     val vmu = new VMUIO
   }
@@ -213,15 +213,15 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
 // bank read queues
 //--------------------------------------------------------------------\\
 
-  val lgbank = log2Up(conf.nbanks)
+  val lgbank = log2Up(nbanks)
   val bank_id = op.utidx(lgbank-1, 0)
 
   val brqs = new ArrayBuffer[DecoupledIO[BRQEntry]]
   val slacntr_avail = new ArrayBuffer[Bool]
 
-  for (i <- 0 until conf.nbanks) {
-    val brq = Module(new Queue(new BRQEntry, conf.nbrq))
-    val slacntr = Module(new LookAheadCounter(conf.nbrq, conf.nbrq))
+  for (i <- 0 until nbanks) {
+    val brq = Module(new Queue(new BRQEntry, nbrq))
+    val slacntr = Module(new LookAheadCounter(nbrq, nbrq))
 
     brq.io.enq <> io.brqs(i)
     slacntr.io.la.cnt := (io.la.cnt > UInt(i))
@@ -237,7 +237,7 @@ class VSU(implicit conf: HwachaConfiguration) extends Module
 
   val brqs_deq = Vec(brqs)
 
-  for (i <- 0 until conf.nbanks) {
+  for (i <- 0 until nbanks) {
     brqs_deq(i).ready := Bool(false)
   }
 

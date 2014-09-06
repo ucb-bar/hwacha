@@ -10,7 +10,7 @@ class VMUIssueIO extends Bundle
   val addrq = new VMUAddressIO
 }
 
-class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
+class VMUIO extends Bundle
 {
   val issue = new VMUIssueIO
   val addr = new VAQLaneIO
@@ -18,7 +18,7 @@ class VMUIO(implicit conf: HwachaConfiguration) extends Bundle
   val ldata = new VLDQIO().flip
 }
 
-class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends Module(_reset = resetSignal)
+class VMU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val irq = new IRQIO
@@ -33,7 +33,7 @@ class VMU(resetSignal: Bool = null)(implicit conf: HwachaConfiguration) extends 
       val vsdq = new VSDQIO().flip
     }
 
-    val dmem = new rocket.HellaCacheIO()(conf.dcache)
+    val dmem = new rocket.HellaCacheIO
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -105,7 +105,7 @@ class VMUBackendIO extends Bundle
   val busy = Bool(INPUT)
 }
 
-class VMUControl(implicit conf: HwachaConfiguration) extends Module
+class VMUControl extends HwachaModule
 {
   val io = new Bundle {
     val issue = new VMUIssueIO().flip
@@ -113,8 +113,8 @@ class VMUControl(implicit conf: HwachaConfiguration) extends Module
     val store = new VMUBackendIO
   }
 
-  val cmdq = Module(new Queue(new VMUOp, conf.vmu.ncmdq))
-  val addrq = Module(new Queue(new VMUAddressOp, conf.vmu.naddrq))
+  val cmdq = Module(new Queue(new VMUOp, confvmu.ncmdq))
+  val addrq = Module(new Queue(new VMUAddressOp, confvmu.naddrq))
 
   cmdq.io.enq <> io.issue.cmdq
   addrq.io.enq <> io.issue.addrq
