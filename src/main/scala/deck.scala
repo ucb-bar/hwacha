@@ -99,13 +99,8 @@ class VLU extends HwachaModule
 // floating-point recoding
 //--------------------------------------------------------------------\\
 
-  val f64rf64 = Module(new hardfloat.float64ToRecodedFloat64)
-  f64rf64.io.in := ld_data
-  val ld_data_rf_dp = f64rf64.io.out
-
-  val f32rf32 = Module(new hardfloat.float32ToRecodedFloat32)
-  f32rf32.io.in := ld_data
-  val ld_data_rf_sp = f32rf32.io.out
+  val ld_data_rf_dp = hardfloat.floatNToRecodedFloatN(ld_data, 52, 12)
+  val ld_data_rf_sp = hardfloat.floatNToRecodedFloatN(ld_data, 23, 9)
 
   val op_fp_d = op.fn.float && (op.fn.typ === MT_D)
   val op_fp_s = op.fn.float && (op.fn.typ === MT_W)
@@ -247,13 +242,8 @@ class VSU extends HwachaModule
 
   val br_data = brqs_deq(bank_id).bits.data
 
-  val rf64f64 = Module(new hardfloat.recodedFloat64ToFloat64)
-  rf64f64.io.in := unpack_float_d(br_data, 0)
-  val br_data_f_dp = rf64f64.io.out
-
-  val rf32f32 = Module(new hardfloat.recodedFloat32ToFloat32)
-  rf32f32.io.in := unpack_float_s(br_data, 0)
-  val br_data_f_sp = rf32f32.io.out
+  val br_data_f_dp = hardfloat.recodedFloatNToFloatN(unpack_float_d(br_data, 0), 52, 12)
+  val br_data_f_sp = hardfloat.recodedFloatNToFloatN(unpack_float_s(br_data, 0), 23, 9)
 
   val br_data_f_hp = unpack_float_h(br_data, 0)
 

@@ -310,15 +310,13 @@ class IssueTVEC extends HwachaModule
   // but it works out since the hazard unit is agnostic to the actual # of port
   io.op.bits.reg.vs := io.op.bits.reg.vt
 
-  val encode_sp = Module(new hardfloat.float32ToRecodedFloat32)
-  val encode_dp = Module(new hardfloat.float64ToRecodedFloat64)
-  encode_sp.io.in := io.vcmdq.imm1.bits
-  encode_dp.io.in := io.vcmdq.imm1.bits
+  val encode_sp = hardfloat.floatNToRecodedFloatN(io.vcmdq.imm1.bits, 23, 9)
+  val encode_dp = hardfloat.floatNToRecodedFloatN(io.vcmdq.imm1.bits, 52, 12)
 
   io.op.bits.imm.imm := MuxCase(
     io.vcmdq.imm1.bits, Array(
-      (viu_fimm_val && viu_fimm_sel === FPS) -> pack_float_s(encode_sp.io.out, 0),
-      (viu_fimm_val && viu_fimm_sel === FPD) -> pack_float_d(encode_dp.io.out, 0)
+      (viu_fimm_val && viu_fimm_sel === FPS) -> pack_float_s(encode_sp, 0),
+      (viu_fimm_val && viu_fimm_sel === FPD) -> pack_float_d(encode_dp, 0)
     ))
   io.op.bits.imm.stride := Mux(io.vcmdq.imm2.ready, imm2, addr_stride)
 

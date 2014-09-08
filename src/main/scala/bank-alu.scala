@@ -59,13 +59,13 @@ class BankALU extends Module
   val unpacked_d_s1_in0 = unpack_float_d(s1_in0, 0)
   val unpacked_d_s1_in1 = unpack_float_d(s1_in1, 0)
 
-  val comp_sp = Module(new hardfloat.recodedFloat32Compare(24,8))
+  val comp_sp = Module(new hardfloat.recodedFloatNCompare(23, 9))
   comp_sp.io.a := unpacked_s_s1_in0
   comp_sp.io.b := unpacked_s_s1_in1
   val less_sp = comp_sp.io.a_lt_b
   val equal_sp = comp_sp.io.a_eq_b
 
-  val comp_dp = Module(new hardfloat.recodedFloat64Compare(53,11))
+  val comp_dp = Module(new hardfloat.recodedFloatNCompare(52, 12))
   comp_dp.io.a := unpacked_d_s1_in0
   comp_dp.io.b := unpacked_d_s1_in1
   val less_dp = comp_dp.io.a_lt_b
