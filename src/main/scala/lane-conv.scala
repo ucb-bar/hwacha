@@ -20,18 +20,18 @@ class LaneConv extends HwachaModule
 
   val op_int2float = MuxCase(
     Bits(0,2), Array(
-      OP(A2_CLTF)  -> hardfloat.fpu_recoded.type_int64,
-      OP(A2_CLUTF) -> hardfloat.fpu_recoded.type_uint64,
-      OP(A2_CWTF)  -> hardfloat.fpu_recoded.type_int32,
-      OP(A2_CWUTF) -> hardfloat.fpu_recoded.type_uint32
+      OP(A2_CLTF)  -> hardfloat.consts.type_int64,
+      OP(A2_CLUTF) -> hardfloat.consts.type_uint64,
+      OP(A2_CWTF)  -> hardfloat.consts.type_int32,
+      OP(A2_CWUTF) -> hardfloat.consts.type_uint32
     ))
 
   val op_float2int = MuxCase(
     Bits(0,2), Array(
-      OP(A2_CFTL)  -> hardfloat.fpu_recoded.type_int64,
-      OP(A2_CFTLU) -> hardfloat.fpu_recoded.type_uint64,
-      OP(A2_CFTW)  -> hardfloat.fpu_recoded.type_int32,
-      OP(A2_CFTWU) -> hardfloat.fpu_recoded.type_uint32
+      OP(A2_CFTL)  -> hardfloat.consts.type_int64,
+      OP(A2_CFTLU) -> hardfloat.consts.type_uint64,
+      OP(A2_CFTW)  -> hardfloat.consts.type_int32,
+      OP(A2_CFTWU) -> hardfloat.consts.type_uint32
     ))
 
   val val_ifsp  = io.valid & FP(FPS) & OP(A2_CLTF,A2_CLUTF,A2_CWTF,A2_CWUTF)

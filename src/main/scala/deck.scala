@@ -242,8 +242,8 @@ class VSU extends HwachaModule
 
   val br_data = brqs_deq(bank_id).bits.data
 
-  val br_data_f_dp = hardfloat.recodedFloatNToFloatN(unpack_float_d(br_data, 0), 52, 12)
-  val br_data_f_sp = hardfloat.recodedFloatNToFloatN(unpack_float_s(br_data, 0), 23, 9)
+  val br_data_f_dp = hardfloat.recodedFloatNToFloatN(unpack_float_d(br_data, 0).toUInt, 52, 12)
+  val br_data_f_sp = hardfloat.recodedFloatNToFloatN(unpack_float_s(br_data, 0).toUInt, 23, 9)
 
   val br_data_f_hp = unpack_float_h(br_data, 0)
 
