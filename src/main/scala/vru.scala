@@ -87,7 +87,7 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val vec_pfed_count_reg = Reg(init=SInt(0, SZ_VLEN+1))
   val stride_reg = Reg(init=UInt(0, SZ_VSTRIDE))
   
-  val dcOffBits = params[Int]("OFFSET_BITS") //TODO PARAMS
+  val dcOffBits = params(HwachaCacheBlockOffsetBits)
   val vec_per_pf_reg = Reg(init=UInt(0, dcOffBits+1))
   val vec_pf_remainder_reg = Reg(init=UInt(0, dcOffBits))
   val stride_remaining_reg = Reg(init=UInt(0, dcOffBits))

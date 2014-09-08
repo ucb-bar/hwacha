@@ -8,6 +8,7 @@ case object HwachaNBanks extends Field[Int]
 case object HwachaNRegPerBank extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
+case object HwachaCacheBlockOffsetBits extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters
