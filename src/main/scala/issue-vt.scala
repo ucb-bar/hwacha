@@ -212,7 +212,9 @@ class IssueVT extends HwachaModule
   io.imem.btb_update.valid := Bool(false)
   io.imem.invalidate := Bool(false)
 
-  val inst = io.imem.resp.bits.data
+  val inst = io.imem.resp.bits.data(0); require(params(rocket.FetchWidth)==1)
+  // require that hwacha fetch is 1 instruction per cycle. This is orthogonal
+  // to rocket, just that rocket is where the term FetchWidth is defined.
 
   val cs = rocket.DecodeLogic(inst, VTDecodeTable.default, VTDecodeTable.table)
 
