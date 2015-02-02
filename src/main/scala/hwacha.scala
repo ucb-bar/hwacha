@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import uncore._
 import Constants._
+import rocket.NTLBEntries
 
 case object HwachaNBanks extends Field[Int]
 case object HwachaNRegPerBank extends Field[Int]
@@ -197,8 +198,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   import Commands._
 
   val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
-  val dtlb = Module(new rocket.TLB(ndtlb))
-  val ptlb = Module(new rocket.TLB(nptlb))
+  val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
+  val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
   val irq = Module(new IRQ)
   val xcpt = Module(new XCPT)
