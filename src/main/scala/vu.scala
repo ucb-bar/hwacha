@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import rocket.NTLBEntries
 
 class VCMDQIO extends Bundle
 {
@@ -28,7 +29,7 @@ class VCMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 class TLBIO extends Bundle
 {
   val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBResp(Some(1)).flip // we don't use hit_idx
+  val resp = new rocket.TLBRespNoHitIndex().flip // we don't use hit_idx
 }
 
 class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
