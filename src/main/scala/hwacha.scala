@@ -279,6 +279,12 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   // Connect VU to D$
   io.mem <> vu.io.dmem
+  //TODO: actually connect to dmem instead of mem
+  io.dmem.acquire.valid := Bool(false)
+  io.dmem.probe.ready := Bool(false)
+  io.dmem.release.valid := Bool(false)
+  io.dmem.grant.ready := Bool(false)
+  io.dmem.finish.valid := Bool(false)
 
   // Connect VU to DTLB and PTLB
   vu.io.vtlb <> dtlb.io
