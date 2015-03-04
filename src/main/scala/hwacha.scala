@@ -270,7 +270,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   // Connect supporting Hwacha memory modules to external ports
   io.imem <> icache.io.mem
-  io.iptw <> icache.io.cpu.ptw
+  io.iptw <> icache.io.ptw
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 
