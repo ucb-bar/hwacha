@@ -10,6 +10,7 @@ case object HwachaNRegPerBank extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
+case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters
@@ -68,7 +69,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
     val nvpaq = 16
     val nvsdq = 16
     val nvldq = 16
-    val nvlmb = 16
+    val nvlmb = params(HwachaNVectorLoadMetaBufferEntries)
 
     val nvvapfq = 8
     val nvpapfq = 8
@@ -284,8 +285,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   io.mem <> vu.io.dmem
   //TODO: actually connect to dmem instead of mem
   io.dmem.acquire.valid := Bool(false)
-  io.dmem.probe.ready := Bool(false)
-  io.dmem.release.valid := Bool(false)
   io.dmem.grant.ready := Bool(false)
   io.dmem.finish.valid := Bool(false)
 
