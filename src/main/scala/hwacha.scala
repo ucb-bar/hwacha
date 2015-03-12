@@ -197,6 +197,10 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   import HwachaDecodeTable._
   import Commands._
 
+  val reg_rocc_inst_pending = Reg(Bits())
+  when (io.cmd.valid && !io.cmd.ready) { reg_rocc_inst_pending := io.cmd.bits.inst.toBits }
+  val rocc_inst = Mux(io.cmd.valid, io.cmd.bits.inst.toBits, reg_rocc_inst_pending)
+
   val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
   val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
@@ -213,9 +217,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   val cfg_fregs = cfg_regs(11,6)
 
   // Decode
-  val raw_inst = io.cmd.bits.inst.toBits
-  val inst_i_imm = raw_inst(31, 20)
-  val logic = rocket.DecodeLogic(raw_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
+  val inst_i_imm = rocc_inst(31, 20)
+  val logic = rocket.DecodeLogic(rocc_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
   val cs = logic.map {
     case b if b.inputs.head.getClass == classOf[Bool] => b.toBool
     case u => u
@@ -349,15 +352,15 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   }
 
   // Calculate the vf address
-  val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
+  val vf_immediate = Cat(rocc_inst(31,25),rocc_inst(11,7)).toSInt
   val vimm_addr = io.cmd.bits.rs1 + vf_immediate
 
   // Hookup ready port of cmd queue
   io.cmd.ready := mask_vcfg && construct_ready(null)
 
   // Hookup vcmdq.cmd
-  val vr1 = Mux(sel_vr1===VR_RS1, raw_inst(19,15), raw_inst(11,7))
-  val vr2 = Mux(sel_vr2===VR_RS1, raw_inst(19,15), raw_inst(11,7))
+  val vr1 = Mux(sel_vr1===VR_RS1, rocc_inst(19,15), rocc_inst(11,7))
+  val vr2 = Mux(sel_vr2===VR_RS1, rocc_inst(19,15), rocc_inst(11,7))
   val construct_vcmd = Cat(sel_vcmd, vr1, vr2)
 
   val vcmd = new HwachaCommand().fromBits(Mux(vcmd_valid, construct_vcmd, io.cmd.bits.rs1))
@@ -421,7 +424,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
                          vr1 >= cfg_fregs || vr2 >= cfg_fregs)
 
   irq.io.vu.top.aux := MuxCase(
-    raw_inst, Array(
+    rocc_inst, Array(
       (irq.io.vu.top.illegal_cfg && nxpr > UInt(32)) -> UInt(0),
       (irq.io.vu.top.illegal_cfg && nfpr > UInt(32)) -> UInt(1)
     ))
