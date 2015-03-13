@@ -84,7 +84,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nvsdq = nbrq * nbanks
 
   // D$ tag requirement for hwacha
-  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.sz_tag)
+  require(params(uncore.TLClientXactIdBits) >= confvmu.sz_tag)
 
 }
 
@@ -282,11 +282,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   icache.io.cpu <> vu.io.imem
 
   // Connect VU to D$
-  io.mem <> vu.io.dmem
-  //TODO: actually connect to dmem instead of mem
-  io.dmem.acquire.valid := Bool(false)
-  io.dmem.grant.ready := Bool(false)
-  io.dmem.finish.valid := Bool(false)
+  io.dmem <> vu.io.dmem
+  io.mem.req.valid := Bool(false)
 
   // Connect VU to DTLB and PTLB
   vu.io.vtlb <> dtlb.io

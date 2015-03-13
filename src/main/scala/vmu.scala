@@ -33,7 +33,7 @@ class VMU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
       val vsdq = new VSDQIO().flip
     }
 
-    val dmem = new rocket.HellaCacheIO
+    val memif = new MemIfIO
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -45,7 +45,6 @@ class VMU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   val sdata = Module(new StoreDataUnit)
   val ldata = Module(new LoadDataUnit)
   val arb = Module(new RRArbiter(new VPAQMemIf, 2))
-  val memif = Module(new MemIF)
 
   ctrl.io.issue <> io.lane.issue
 
@@ -67,12 +66,11 @@ class VMU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   sdata.io.evac <> io.evac.vsdq
   sdata.io.ctrl <> ctrl.io.store
 
-  memif.io.vpaq <> arb.io.out
-  memif.io.vsdq <> sdata.io.memif
-  io.dmem <> memif.io.dmem
+  io.memif.vpaq <> arb.io.out
+  io.memif.vsdq <> sdata.io.memif
 
   ldata.io.vmdb <> addr.io.vmdb
-  ldata.io.memif <> memif.io.vldq
+  ldata.io.memif <> io.memif.vldq
   io.lane.ldata <> ldata.io.lane
 }
 
@@ -159,7 +157,7 @@ class VMUControl extends HwachaModule
   switch (state) {
     is (s_idle) {
       cmdq.io.deq.ready := Bool(true)
-      addrq.io.deq.ready := Bool(true)
+      addrq.io.deq.ready := vmu_op_tvec(cmdq.io.deq.bits.fn.op)
       hold := Bool(false)
 
       when (fire) {

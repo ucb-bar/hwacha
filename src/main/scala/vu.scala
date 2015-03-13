@@ -45,7 +45,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
     val vimm2q_user_ready = Bool(OUTPUT)
 
     val imem = new rocket.CPUFrontendIO
-    val dmem = new rocket.HellaCacheIO
+    val dmem = new uncore.HeaderlessUncachedTileLinkIO
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
@@ -67,6 +67,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 
   val vxu = Module(new VXU)
   val vmu = Module(new VMU(resetSignal = flush_vmu))
+  val memif = Module(new MemIF)
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
   val mrt = Module(new MRT)
@@ -100,6 +101,8 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
     io.vpfcmdq.imm2.ready := Bool(true)
     io.vpfcmdq.cnt.ready := Bool(true)
     io.vpftlb.req.valid := Bool(false)
+
+    vmu.io.pf.vaq.valid := Bool(false)
   }
 
   vcmdqcnt.cmd.io.dec := vcmdq.io.enq.cmd.ready && io.vcmdq.cmd.valid
@@ -124,7 +127,9 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   //mrt.io.sreq.evac := evac.io.vaq.fire()
   mrt.io.sreq.evac := evac.io.vaq.valid && vmu.io.evac.vaq.ready
   mrt.io.lret <> vxu.io.lret
-  mrt.io.sret.update := io.dmem.resp.valid && is_mcmd_store(io.dmem.resp.bits.cmd)
+  mrt.io.sret.update := io.dmem.grant.fire() &&
+    io.dmem.grant.bits.payload.isBuiltInType() &&
+    io.dmem.grant.bits.payload.is(uncore.Grant.putAckType)
 
   io.keepcfg :=
     vcmdq.io.deq.cmd.valid ||
@@ -162,8 +167,11 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   vmu.io.lane <> vxu.io.vmu
   vmu.io.evac.vaq <> evac.io.vaq
   vmu.io.evac.vsdq <> evac.io.vsdq
-  vmu.io.dmem <> io.dmem
   vmu.io.vtlb <> io.vtlb
+
+  // memif
+  memif.io.vmu <> vmu.io.memif
+  memif.io.dmem <> io.dmem
 
   // evac
   evac.io.xcpt <> io.xcpt

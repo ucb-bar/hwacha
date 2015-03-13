@@ -35,19 +35,20 @@ class VLDQIO extends DecoupledIO[VLDQEntry](new VLDQEntry)
 
 class VATQIO extends DecoupledIO[VATQEntry](new VATQEntry)
 
-class VPAQMemIO
-  extends DecoupledIO[VPAQMemIf](new VPAQMemIf)
+class VPAQMemIO extends DecoupledIO(new VPAQMemIf)
+class VLDQMemIO extends DecoupledIO(new VLDQMemIf)
 
-class VLDQMemIO extends Bundle
+class MemIfIO extends Bundle
 {
-  val resp = Valid(new VLDQMemIf)
-  val stall = Bool(INPUT)
+  val vpaq = new VPAQMemIO
+  val vsdq = new VSDQIO
+  val vldq = new VLDQMemIO().flip
 }
 
 class VMDBIO extends HwachaBundle
 {
   val tag = Bits(INPUT, confvmu.sz_tag)
-  val info = Decoupled(new VMUMetadata)
+  val info = Decoupled(new VMUMetadataInternal)
 }
 
 
@@ -89,6 +90,12 @@ class VMUMetadata extends Bundle
   val shift = UInt(width = 3) /* TODO: parameterize */
 }
 
+class VMUMetadataInternal extends VMUMetadata
+{
+  val offset = UInt(width = log2Up(params(uncore.TLDataBits))-3)
+  val typ = Bits(width = MT_SZ)
+}
+
 class MemOp(n: Int) extends VMUBundle
 {
   val cmd = Bits(width = M_SZ)
@@ -116,7 +123,7 @@ class VPAQMemIf extends MemOp(32)
 class VLDQMemIf extends VMUBundle
 {
   val tag = Bits(width = confvmu.sz_tag)
-  val data = Bits(width = confvmu.sz_data)
+  val data = Bits(width = params(uncore.TLDataBits))
 }
 
 class VLDQEntry extends VMUBundle

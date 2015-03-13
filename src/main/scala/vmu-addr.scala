@@ -200,6 +200,8 @@ class MetadataAlloc extends HwachaModule
 
   io.vmdb.info.valid := load && io.vpaq.valid && io.memif.ready
   io.vmdb.info.bits := io.vpaq.bits.meta
+  io.vmdb.info.bits.offset := io.vpaq.bits.addr
+  io.vmdb.info.bits.typ := io.vpaq.bits.typ
 
   val vmdb_ready = !load || io.vmdb.info.ready
 
