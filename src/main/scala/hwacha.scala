@@ -349,7 +349,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   // Calculate the vf address
   val vf_immediate = Cat(rocc_inst(31,25),rocc_inst(11,7)).toSInt
-  val vimm_addr = io.cmd.bits.rs1 + vf_immediate
+  val vimm_addr = (io.cmd.bits.rs1 + vf_immediate).toUInt()(SZ_VIMM-1,0)
 
   // Hookup ready port of cmd queue
   io.cmd.ready := mask_vcfg && construct_ready(null)
