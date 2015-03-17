@@ -509,7 +509,7 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
 
   io.aiw.seq.update.imm1.bits <> seq.aiw(ptr).imm1
   io.aiw.seq.update.imm1.bits.base := seq.next_addr_base(ptr)
-  io.aiw.seq.update.imm1.bits.ldst := seq.ldst_active(ptr)
+  io.aiw.seq.update.imm1.bits.ldst := seq.vldst_active(ptr)
   io.aiw.seq.update.cnt.bits.rtag := seq.aiw(ptr).cnt.rtag
   io.aiw.seq.update.cnt.bits.utidx := seq.aiw(ptr).cnt.utidx + nelements
   io.aiw.seq.update.numcnt.bits <> seq.aiw(ptr).numcnt
