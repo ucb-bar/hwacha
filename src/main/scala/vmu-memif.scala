@@ -30,9 +30,10 @@ class MemIF extends HwachaModule
     req_cmd_pf || req_cmd_load || req_cmd_store || req_cmd_amo,
     "Unknown memory command")
 
-  io.vmu.vpaq.ready := io.dmem.acquire.ready &&
-    (req_cmd_pf || req_cmd_load || (req_cmd_put && io.vmu.vsdq.valid))
+  val vsdq_valid = !req_cmd_put || io.vmu.vsdq.valid
+  io.vmu.vpaq.ready := io.dmem.acquire.ready && vsdq_valid
   io.vmu.vsdq.ready := io.dmem.acquire.ready && io.vmu.vpaq.valid && req_cmd_put
+  io.dmem.acquire.valid := io.vmu.vpaq.valid && vsdq_valid
 
   val req_type = Mux1H(
     Vec(req_cmd_load, req_cmd_store, req_cmd_amo, req_cmd_pf),
@@ -69,19 +70,19 @@ class MemIF extends HwachaModule
     data = req_data,
     union = req_union)
 
-  io.dmem.acquire.valid := io.vmu.vpaq.valid &&
-    ((!req_cmd_store && !req_cmd_amo) || io.vmu.vsdq.valid)
+  val grant_has_data = io.dmem.grant.bits.payload.hasData()
+  val grant_requires_ack = io.dmem.grant.bits.payload.requiresAck()
 
   io.vmu.vldq.bits.tag := io.dmem.grant.bits.payload.client_xact_id
   io.vmu.vldq.bits.data := io.dmem.grant.bits.payload.data
-  io.vmu.vldq.valid := io.dmem.grant.fire() && io.dmem.grant.bits.payload.hasData()
+  io.vmu.vldq.valid := io.dmem.grant.valid && grant_has_data
 
   val finishq = Module(new Queue(new FinishEntry, 2))
 
-  io.dmem.grant.ready := (!io.dmem.grant.bits.payload.hasData() || io.vmu.vldq.ready) &&
-    (!io.dmem.grant.bits.payload.requiresAck() || finishq.io.enq.ready)
+  io.dmem.grant.ready := (!grant_has_data || io.vmu.vldq.ready) &&
+    (!grant_requires_ack || finishq.io.enq.ready)
 
-  finishq.io.enq.valid := io.dmem.grant.bits.payload.requiresAck() && io.dmem.grant.valid
+  finishq.io.enq.valid := io.dmem.grant.valid && grant_requires_ack
   finishq.io.enq.bits.xid := io.dmem.grant.bits.payload.manager_xact_id
   finishq.io.enq.bits.dst := io.dmem.grant.bits.header.src
 
