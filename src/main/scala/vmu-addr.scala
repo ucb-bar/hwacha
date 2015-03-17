@@ -107,17 +107,18 @@ class AddressTLB extends HwachaModule
   val stall_hold = Reg(init = Bool(false))
   val stall = io.stall || stall_hold
 
-  io.tlb.req.valid := !stall && io.enq.valid && io.deq.ready
-  io.tlb.req.bits.asid := UInt(0)
-  io.tlb.req.bits.vpn := vpn(io.enq.bits.addr)
-  io.tlb.req.bits.passthrough := Bool(false)
-  io.tlb.req.bits.instruction := Bool(false)
-
   val mcmd_amo = is_mcmd_amo(io.enq.bits.cmd)
   val mcmd_ld = is_mcmd_load(io.enq.bits.cmd) || mcmd_amo
   val mcmd_st = is_mcmd_store(io.enq.bits.cmd) || mcmd_amo
   val mcmd_pfr = is_mcmd_pfr(io.enq.bits.cmd)
   val mcmd_pfw = is_mcmd_pfw(io.enq.bits.cmd)
+
+  io.tlb.req.valid := !stall && io.enq.valid && io.deq.ready
+  io.tlb.req.bits.asid := UInt(0)
+  io.tlb.req.bits.vpn := vpn(io.enq.bits.addr)
+  io.tlb.req.bits.passthrough := Bool(false)
+  io.tlb.req.bits.instruction := Bool(false)
+  io.tlb.req.bits.store := mcmd_st
 
   val ma_type_h = is_mtype_halfword(io.enq.bits.typ) && (io.enq.bits.addr(0) != UInt(0))
   val ma_type_w = is_mtype_word(io.enq.bits.typ) && (io.enq.bits.addr(1,0) != UInt(0))
