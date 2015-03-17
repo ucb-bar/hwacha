@@ -107,12 +107,13 @@ trait DecodeConstants
   val RF = Bits("b11", 2)
   def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
 
-  val SZ_I = 2
+  val SZ_I = 3
   val IMM_X = UInt.DC(SZ_I)
   val IMM_0 = UInt(0, SZ_I)
   val IMM_I = UInt(1, SZ_I)
   val IMM_S = UInt(2, SZ_I)
   val IMM_U = UInt(3, SZ_I)
+  val IMM_A = UInt(4, SZ_I)
 
   val DW__ = Bool.DC
   val DW32 = Bits("b0", 1)

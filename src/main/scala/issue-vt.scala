@@ -31,6 +31,7 @@ object VTDecodeTable
     FMOVZ->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVZ,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
     FMOVN->     List(RF,RX,RF,R_,IMM_X,T,ML,MR,DW64,FP_,I_MOVN,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
 
+    AUIPC->     List(RX,R_,R_,R_,IMM_A,T,M0,MI,DW64,FP_,I_MOV2,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
     LUI->       List(RX,R_,R_,R_,IMM_U,T,M0,MI,DW64,FP_,I_MOV2,F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
     ADDI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_ADD, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
     SLLI->      List(RX,RX,R_,R_,IMM_I,T,MR,MI,DW64,FP_,I_SLL, F,DW__,A0_X,   F,FP_,A1_X,    F,FP_,A2_X,    F,MT_X, VM_X,       F),
@@ -242,12 +243,16 @@ class IssueVT extends HwachaModule
   val vr = inst(31,27) // rs3
   val vd = inst(11, 7) // rd
 
+  val lui_imm = Cat(Fill(32,inst(31)),inst(31,12),Bits(0,12))
+  val auipc_imm = lui_imm.toSInt + io.imem.resp.bits.pc.toSInt
+
   val imm = MuxLookup(
     immi, Bits(0,SZ_DATA), Array(
       IMM_0 -> Bits(0,65),
       IMM_I -> Cat(Bits(0,1),Fill(52,inst(31)),inst(31,20)),
       IMM_S -> Cat(Bits(0,1),Fill(52,inst(31)),inst(31,25),inst(11,7)),
-      IMM_U -> Cat(Bits(0,1),Fill(32,inst(31)),inst(31,12),Bits(0,12))
+      IMM_U -> Cat(Bits(0,1),lui_imm(63,0)),
+      IMM_A -> Cat(Bits(0,1),auipc_imm(63,0).toUInt)
     ))
 
   val vmu_float = vmu_op === VM_ULD && vd_fp || vmu_op === VM_UST && vt_fp
