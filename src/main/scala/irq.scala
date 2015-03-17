@@ -46,18 +46,18 @@ class IRQ extends Module
   val reg_aux = Reg(init=Bits(0, 64))
 
   val irqs = List(
-    (io.vu.top.illegal_cfg, 0, io.vu.top.aux),
-    (io.vu.top.illegal_inst, 1, io.vu.top.aux),
-    (io.vu.top.priv_inst, 2, io.vu.top.aux),
-    (io.vu.top.illegal_regid, 3, io.vu.top.aux),
-    (io.vu.issue.ma_inst, 4, io.vu.issue.aux),
-    (io.vu.issue.fault_inst, 5, io.vu.issue.aux),
-    (io.vu.issue.illegal, 6, io.vu.issue.aux),
-    (io.vu.issue.illegal_regid, 7, io.vu.issue.aux),
-    (io.vu.vmu.ma_ld, 8, io.vu.vmu.aux),
-    (io.vu.vmu.ma_st, 9, io.vu.vmu.aux),
-    (io.vu.vmu.faulted_ld, 10, io.vu.vmu.aux),
-    (io.vu.vmu.faulted_st, 11, io.vu.vmu.aux)
+    (io.vu.top.illegal_cfg, rocket.Causes.illegal_instruction, io.vu.top.aux),
+    (io.vu.top.illegal_inst, rocket.Causes.illegal_instruction, io.vu.top.aux),
+    (io.vu.top.priv_inst, rocket.Causes.illegal_instruction, io.vu.top.aux),
+    (io.vu.top.illegal_regid, rocket.Causes.illegal_instruction, io.vu.top.aux),
+    (io.vu.issue.ma_inst, rocket.Causes.misaligned_fetch, io.vu.issue.aux),
+    (io.vu.issue.fault_inst, rocket.Causes.fault_fetch, io.vu.issue.aux),
+    (io.vu.issue.illegal, rocket.Causes.illegal_instruction, io.vu.issue.aux),
+    (io.vu.issue.illegal_regid, rocket.Causes.illegal_instruction, io.vu.issue.aux),
+    (io.vu.vmu.ma_ld, rocket.Causes.misaligned_load, io.vu.vmu.aux),
+    (io.vu.vmu.ma_st, rocket.Causes.misaligned_store, io.vu.vmu.aux),
+    (io.vu.vmu.faulted_ld, rocket.Causes.fault_load, io.vu.vmu.aux),
+    (io.vu.vmu.faulted_st, rocket.Causes.fault_store, io.vu.vmu.aux)
   )
 
   when (!reg_irq) {
