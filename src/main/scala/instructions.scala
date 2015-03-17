@@ -21,7 +21,7 @@ object HwachaInstructions
   def VXCPTRESTORE       = Bits("b000000100000?????011000000101011")
   def VXCPTKILL          = Bits("b00000100000000000011000000101011")
   def VXCPTEVAC          = Bits("b000001100000?????011000000101011")
-  def VXCPTHOLD          = Bits("b00001000000000000011000000101011")
+  def VXCPTHOLD          = Bits("b000010000000?????011000000101011")
   def VENQCMD            = Bits("b0000101??????????011000000101011")
   def VENQIMM1           = Bits("b0000110??????????011000000101011")
   def VENQIMM2           = Bits("b0000111??????????011000000101011")
