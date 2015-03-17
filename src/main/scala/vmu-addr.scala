@@ -48,8 +48,8 @@ class AddressGen extends HwachaModule
 
   io.vatq.bits.addr := Mux(!op_tvec || io.xcpt.prop.vmu.drain, io.vvaq.bits, addr)
   io.vatq.bits.meta.utidx := utidx
-  io.vatq.bits.meta.utcnt := UInt(1)
-  io.vatq.bits.meta.shift := UInt(0)
+//  io.vatq.bits.meta.utcnt := UInt(1)
+//  io.vatq.bits.meta.shift := UInt(0)
   io.vatq.bits.cmd := Mux(io.xcpt.prop.vmu.drain, M_XWR, io.ctrl.op.cmd.raw)
   io.vatq.bits.typ := Mux(io.xcpt.prop.vmu.drain, MT_D, io.ctrl.op.typ.raw)
 
@@ -177,12 +177,14 @@ class VPAQ extends HwachaModule
   // Throttle counter
   val count = Reg(init = UInt(0, sz))
   val summand = Fill(sz, io.la.reserve) & io.la.cnt
-  val minuend = Fill(sz, io.deq.fire()) & io.deq.bits.meta.utcnt
+//  val minuend = Fill(sz, io.deq.fire()) & io.deq.bits.meta.utcnt
+  val minuend = io.deq.fire()
   val throttle = !io.xcpt.prop.vmu.drain
   when (throttle) {
     count := count + summand - minuend
   }
-  val stall = (count < q.io.deq.bits.meta.utcnt) && throttle
+//  val stall = (count < q.io.deq.bits.meta.utcnt) && throttle
+  val stall = (count === UInt(0)) && throttle
 
   q.io.deq.ready := io.deq.ready && !stall
   io.deq.valid := q.io.deq.valid && !stall
@@ -209,7 +211,7 @@ class MetadataAlloc extends HwachaModule
   io.vpaq.ready := io.memif.ready && vmdb_ready
   io.memif.valid := io.vpaq.valid && vmdb_ready
   io.memif.bits <> io.vpaq.bits
-  io.memif.bits.tag := io.vmdb.tag
+  io.memif.bits.tag := io.vmdb.tag & Fill(confvmu.sz_tag, load)
 }
 
 class AddressUnit extends HwachaModule

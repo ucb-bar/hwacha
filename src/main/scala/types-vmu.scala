@@ -86,8 +86,8 @@ class VMUAddressOp extends Bundle
 class VMUMetadata extends Bundle
 {
   val utidx = UInt(width = SZ_VLEN)
-  val utcnt = UInt(width = 4) /* TODO: parameterize */
-  val shift = UInt(width = 3) /* TODO: parameterize */
+//  val utcnt = UInt(width = 4) /* TODO: parameterize */
+//  val shift = UInt(width = 3) /* TODO: parameterize */
 }
 
 class VMUMetadataInternal extends VMUMetadata
