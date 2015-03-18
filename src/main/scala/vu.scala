@@ -13,7 +13,7 @@ class VCMDQIO extends Bundle
   val cnt = Decoupled(new HwachaCnt)
 }
 
-class VCMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
+class VecCmdQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 {
   val io = new Bundle {
     val enq = new VCMDQIO().flip
@@ -58,7 +58,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   val flush_vru = this.reset || io.xcpt.prop.vu.flush_vru
   val flush_vmu = this.reset || io.xcpt.prop.vu.flush_vmu
 
-  val vcmdq = Module(new VCMDQ(resetSignal = flush_kill))
+  val vcmdq = Module(new VecCmdQ(resetSignal = flush_kill))
 
   vcmdq.io.enq.cmd <> MaskStall(io.vcmdq.cmd, io.xcpt.prop.vu.busy)
   vcmdq.io.enq.imm1 <> MaskStall(io.vcmdq.imm1, io.xcpt.prop.vu.busy)
@@ -82,7 +82,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   if (confvru)
   {
     val vru = Module(new VRU(resetSignal = flush_vru))
-    val vpfcmdq = Module(new VCMDQ(resetSignal = flush_kill))
+    val vpfcmdq = Module(new VecCmdQ(resetSignal = flush_kill))
 
     vpfcmdq.io.enq.cmd <> MaskStall(io.vpfcmdq.cmd, io.xcpt.prop.vu.busy)
     vpfcmdq.io.enq.imm1 <> MaskStall(io.vpfcmdq.imm1, io.xcpt.prop.vu.busy)
