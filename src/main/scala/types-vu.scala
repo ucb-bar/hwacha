@@ -10,19 +10,18 @@ import Constants._
 
 class HwachaCommand extends Bundle
 {
+  //COLIN FIXME: parameterize widths
   val cmcode = Bits(width = 8)
-  val vd = UInt(width = 5)
-  val vt = UInt(width = 5)
+  val vd = UInt(width = 8)
 }
 
 class HwachaImm1 extends Bundle
 {
   val prec = Bits(width = 2)
-  val xf_split = UInt(width = SZ_BREGLEN) 
   val bcnt = UInt(width = SZ_BCNT)
   val bactive = Bits(width = SZ_BANK)
-  val nfregs = UInt(width = SZ_REGCNT)
-  val nxregs = UInt(width = SZ_REGCNT)
+  val nvregs = UInt(width = SZ_REGCNT)
+  val npregs = UInt(width = SZ_REGCNT)
   val vlen = UInt(width = SZ_VLEN)
 }
 

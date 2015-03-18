@@ -13,8 +13,6 @@ object Constants extends
   DecodeConstants with
   VIUConstants with
   VAU0Constants with
-  VAU1Constants with
-  VAU2Constants with
   VMUConstants
 
 trait MachineConstants
@@ -45,10 +43,44 @@ trait MachineConstants
   val N_FPH = SZ_DATA / SZ_FPH
 }
 
+trait HwachaDecodeConstants
+{
+  val Y = Bool(true)
+  val N = Bool(false)
+  val X = Bits("b?", 1)
+
+  val VRT_X = Bits("b?", 1)
+  val VRT_S = Bits(0, 1)
+  val VRT_A = Bits(1, 1)
+
+  val VR_X   = Bits("b?", 1)
+  val VR_RS1 = Bits(0, 1)
+  val VR_RD  = Bits(1, 1)
+
+  val IMM_X    = Bits("b???",3)
+  val IMM_VLEN = Bits(0,3)
+  val IMM_RS1  = Bits(1,3)
+  val IMM_RS2  = Bits(2,3)
+  val IMM_ADDR = Bits(3,3)
+
+  val RESP_X     = Bits("b???",3)
+  val RESP_NVL   = Bits(0,3)
+  val RESP_CAUSE = Bits(1,3)
+  val RESP_AUX   = Bits(2,3)
+  val RESP_CFG   = Bits(3,3)
+  val RESP_VL    = Bits(4,3)
+
+  val SZ_PREC = 2
+  val PREC_DOUBLE = Bits("b00", SZ_PREC)
+  val PREC_SINGLE = Bits("b01", SZ_PREC)
+  val PREC_HALF   = Bits("b10", SZ_PREC)
+
+}
+
 trait VectorCommandQueueConstants
 {
   val SZ_VCMD = 18
-  val SZ_VIMM = 64
+  val SZ_IMM = 64
   val SZ_VSTRIDE = 64
 }
 
@@ -94,17 +126,21 @@ trait AIWConstants
 
 trait DecodeConstants
 {
-  val T = Bool(true)
-  val F = Bool(false)
+  val Y = Bool(true)
+  val N = Bool(false)
+  val X = Bits("b?", 1)
 
   val M0 = Bits("b00", 2)
   val MR = Bits("b01", 2)
   val ML = Bits("b10", 2)
   val MI = Bits("b11", 2)
 
-  val R_ = Bits("b?0", 2)
-  val RX = Bits("b01", 2)
-  val RF = Bits("b11", 2)
+  val R_ = Bits("b???0", 4)
+  val RA = Bits("b0001", 4)
+  val RS = Bits("b0101", 4)
+  val RV = Bits("b0011", 4)
+  val RP = Bits("b0111", 4)
+  val RX = Bits("b1111", 4)
   def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
 
   val SZ_I = 2
@@ -126,36 +162,59 @@ trait DecodeConstants
   val SZ_BMUXSEL = 2
   val SZ_DW = 1
   val SZ_FP = 2
+
+  val A1_X    = Bits("b??", 2)
+  val A1_ZERO = UInt(0, 2)
+  val A1_RS1  = UInt(1, 2)
+  val A1_PC   = UInt(2, 2)
+
+  val A2_X    = Bits("b??", 2)
+  val A2_ZERO = UInt(0, 2)
+  val A2_FOUR = UInt(1, 2)
+  val A2_RS2  = UInt(2, 2)
+  val A2_IMM  = UInt(3, 2)
+
+  val DW_X  = X
+  val DW_32 = N
+  val DW_64 = Y
+  val DW_XPR = Y
+
+  //riscv-opcode fields
+  val OPC_VD  = UInt(63)
+  val OPC_VS1 = UInt(62)
+  val OPC_VS2 = UInt(61)
+  val OPC_VS3 = UInt(60)
 }
 
 trait VIUConstants
 {
   val SZ_VIU_OP = 5
 
-  val I_X    = UInt.DC(SZ_VIU_OP)
-  val I_ADD  = UInt(0, SZ_VIU_OP)
-  val I_SLL  = UInt(1, SZ_VIU_OP)
-  val I_SLT  = UInt(2, SZ_VIU_OP)
-  val I_SLTU = UInt(3, SZ_VIU_OP)
-  val I_XOR  = UInt(4, SZ_VIU_OP)
-  val I_SRL  = UInt(5, SZ_VIU_OP)
-  val I_SRA  = UInt(6, SZ_VIU_OP)
-  val I_OR   = UInt(7, SZ_VIU_OP)
-  val I_AND  = UInt(8, SZ_VIU_OP)
-  val I_SUB  = UInt(9, SZ_VIU_OP)
-  val I_IDX  = UInt(10, SZ_VIU_OP)
-  val I_MOV1 = UInt(11, SZ_VIU_OP)
-  val I_MOV2 = UInt(12, SZ_VIU_OP)
-  val I_FSJ  = UInt(13, SZ_VIU_OP)
-  val I_FSJN = UInt(14, SZ_VIU_OP)
-  val I_FSJX = UInt(15, SZ_VIU_OP)
-  val I_FEQ  = UInt(16, SZ_VIU_OP)
-  val I_FLT  = UInt(17, SZ_VIU_OP)
-  val I_FLE  = UInt(18, SZ_VIU_OP)
-  val I_FMIN = UInt(19, SZ_VIU_OP)
-  val I_FMAX = UInt(20, SZ_VIU_OP)
-  val I_MOVZ = UInt(21, SZ_VIU_OP)
-  val I_MOVN = UInt(22, SZ_VIU_OP)
+  val FN_X    = Bits("b????")
+  val FN_ADD  = Bits(0)
+  val FN_SL   = Bits(1)
+  val FN_XOR  = Bits(4)
+  val FN_OR   = Bits(6)
+  val FN_AND  = Bits(7)
+  val FN_SR   = Bits(5)
+  val FN_SEQ  = Bits(8)
+  val FN_SNE  = Bits(9)
+  val FN_SUB  = Bits(10)
+  val FN_SRA  = Bits(11)
+  val FN_SLT  = Bits(12)
+  val FN_SGE  = Bits(13)
+  val FN_SLTU = Bits(14)
+  val FN_SGEU = Bits(15)
+
+  val FN_DIV  = FN_XOR
+  val FN_DIVU = FN_SR
+  val FN_REM  = FN_OR
+  val FN_REMU = FN_AND
+
+  val FN_MUL    = FN_ADD
+  val FN_MULH   = FN_SL
+  val FN_MULHSU = FN_SLT
+  val FN_MULHU  = FN_SLTU
 }
 
 trait VAU0Constants extends DecodeConstants
@@ -167,41 +226,6 @@ trait VAU0Constants extends DecodeConstants
   val A0_MH   = UInt(1, SZ_VAU0_OP)
   val A0_MHSU = UInt(2, SZ_VAU0_OP)
   val A0_MHU  = UInt(3, SZ_VAU0_OP)
-}
-
-trait VAU1Constants
-{
-  val SZ_VAU1_OP = 3
-
-  val A1_X     = UInt.DC(SZ_VAU1_OP)
-  val A1_ADD   = UInt(0, SZ_VAU1_OP)
-  val A1_SUB   = UInt(1, SZ_VAU1_OP)
-  val A1_MUL   = UInt(2, SZ_VAU1_OP)
-  val A1_MADD  = UInt(4, SZ_VAU1_OP)
-  val A1_MSUB  = UInt(5, SZ_VAU1_OP)
-  val A1_NMSUB = UInt(6, SZ_VAU1_OP)
-  val A1_NMADD = UInt(7, SZ_VAU1_OP)
-
-  val IS_A1_OP_FMA = (x: Bits) => x(2)
-}
-
-trait VAU2Constants
-{
-  val SZ_VAU2_OP = 4
-
-  val A2_X     = UInt.DC(SZ_VAU2_OP)
-  val A2_CLTF  = UInt(0, SZ_VAU2_OP)
-  val A2_CLUTF = UInt(1, SZ_VAU2_OP)
-  val A2_CWTF  = UInt(2, SZ_VAU2_OP)
-  val A2_CWUTF = UInt(3, SZ_VAU2_OP)
-  val A2_MXTF  = UInt(4, SZ_VAU2_OP)
-  val A2_CFTL  = UInt(5, SZ_VAU2_OP)
-  val A2_CFTLU = UInt(6, SZ_VAU2_OP)
-  val A2_CFTW  = UInt(7, SZ_VAU2_OP)
-  val A2_CFTWU = UInt(8, SZ_VAU2_OP)
-  val A2_MFTX  = UInt(9, SZ_VAU2_OP)
-  val A2_CDTS  = UInt(10, SZ_VAU2_OP)
-  val A2_CSTD  = UInt(11, SZ_VAU2_OP)
 }
 
 trait VMUConstants extends LaneConstants
@@ -250,15 +274,13 @@ trait Commands
   val CMD_VSETCFG = Bits("b00_0000_00",8)
   val CMD_VSETVL =  Bits("b00_0000_10",8)
   val CMD_VF =      Bits("b00_0000_11",8)
+  val CMD_VFT =     Bits("b00_0001_11",8)
 
   val CMD_LDWB = Bits("b00_010_000",8)
   val CMD_STAC = Bits("b00_010_001",8)
 
-  val CMD_VMVV =  Bits("b01_000_000",8)
-  val CMD_VMSV =  Bits("b01_001_000",8)
-  val CMD_VFMVV = Bits("b01_000_001",8)
-  val CMD_VFMSV_S = Bits("b01_001_001",8)
-  val CMD_VFMSV_D = Bits("b01_011_001",8)
+  val CMD_VMSA =  Bits("b01_000_000",8)
+  val CMD_VMSS =  Bits("b01_001_000",8)
 
   val CMD_VLD =  Bits("b1_00_0_0_0_11",8)
   val CMD_VLW =  Bits("b1_00_0_0_0_10",8)
@@ -272,11 +294,6 @@ trait Commands
   val CMD_VSH =  Bits("b1_00_1_0_0_01",8)
   val CMD_VSB =  Bits("b1_00_1_0_0_00",8)
 
-  val CMD_VFLD = Bits("b1_00_0_1_0_11",8)
-  val CMD_VFLW = Bits("b1_00_0_1_0_10",8)
-  val CMD_VFSD = Bits("b1_00_1_1_0_11",8)
-  val CMD_VFSW = Bits("b1_00_1_1_0_10",8)
-
   val CMD_VLSTD =  Bits("b1_01_0_0_0_11",8)
   val CMD_VLSTW =  Bits("b1_01_0_0_0_10",8)
   val CMD_VLSTWU = Bits("b1_01_0_0_1_10",8)
@@ -288,11 +305,6 @@ trait Commands
   val CMD_VSSTW =  Bits("b1_01_1_0_0_10",8)
   val CMD_VSSTH =  Bits("b1_01_1_0_0_01",8)
   val CMD_VSSTB =  Bits("b1_01_1_0_0_00",8)
-
-  val CMD_VFLSTD = Bits("b1_01_0_1_0_11",8)
-  val CMD_VFLSTW = Bits("b1_01_0_1_0_10",8)
-  val CMD_VFSSTD = Bits("b1_01_1_1_0_11",8)
-  val CMD_VFSSTW = Bits("b1_01_1_1_0_10",8)
 
   def is_cmd_pfw(cmd: Bits) = cmd(4)
 }
