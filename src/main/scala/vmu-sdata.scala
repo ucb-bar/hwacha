@@ -57,7 +57,7 @@ class SBox extends VMUModule {
     (1 until tlDataBytes).map(i => UInt((1 << i) - 1)))
   val mask_elt = mask_lut(meta.ecnt)
   val mask_shl = mask_elt << meta.eskip
-  
+
   val mask_mt = Seq(
     op.mt.b && !drain, op.mt.h && !drain,
     op.mt.w && !drain, op.mt.d || drain)

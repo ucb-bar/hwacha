@@ -68,6 +68,8 @@ class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 class TLBQueryIO extends VMUBundle {
   val vpn = Decoupled(UInt(width = vpnBits))
   val ppn = UInt(INPUT, ppnBits)
+  val store = Bool(OUTPUT)
+  val miss = Bool(INPUT)
   val xcpt = new Bundle {
     val ld = Bool(INPUT)
     val st = Bool(INPUT)

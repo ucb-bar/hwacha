@@ -48,45 +48,6 @@ class Deck(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) 
   vsu.io.vsdq <> io.vmu.vsdq
 }
 
-/*
-class VLDQInterposer extends VMUModule {
-  val io = new Bundle {
-    val enq = new VLDQIO().flip
-    val deq = new VLDQIO
-
-    val init = Bool(INPUT)
-    val en = Bool(INPUT)
-  }
-
-  val mid = Reg(Bool())
-  val meta = io.enq.bits.meta
-
-  val ecnt0 = SInt(nbanks) - meta.eskip.zext
-  val ecnt1 = meta.ecnt.zext - ecnt0
-
-  val cut = io.en && (ecnt1 > SInt(0))
-  io.deq.bits.meta.ecnt :=
-    Mux(cut, Mux(mid, ecnt1, ecnt0), meta.ecnt)
-  io.deq.bits.meta.eskip :=
-    Mux(
-
-  val sub = Mux(cut && mid, ecnt0, UInt(0))
-  io.deq.bits.meta.eidx := eidx - sub
-  io.deq.bits.data :=
-    Mux(mid, io.enq.bits.data(tlDataBits-1, nbanks*8),
-      io.enq.bits.data)
-
-  io.deq.valid := io.enq.valid
-  io.enq.ready := io.deq.ready && !(cut && !mid)
-
-  when (init) {
-    mid := Bool(false)
-  } .elsewhen(io.deq.fire()) {
-    mid := cut
-  }
-}
-*/
-
 class VLU extends VMUModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -207,7 +168,7 @@ class VLU extends VMUModule {
       extend(dst_data_h(i), SZ_XH, recoded=false),
       extend(dst_data_w(i), SZ_XW, recoded=true),
       extend(dst_data_d(i), SZ_XD, recoded=true)))
- 
+
     // Handle mid-load utidx increment due to rotation "wrap-around"
     bwq.io.enq.bits.tag := Mux(UInt(i) < bank_start, bank_eidx_next, bank_eidx)
 

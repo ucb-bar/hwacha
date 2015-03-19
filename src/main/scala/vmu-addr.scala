@@ -75,9 +75,10 @@ class ABox0 extends VMUModule {
   }
 
   val addr_valid = busy && (!op.fn.indexed || io.vvaq.valid) && !stall
+  val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
   io.tbox.vpn.valid := addr_valid //&& io.vpaq.ready
-  io.vpaq.valid := addr_valid && io.tbox.vpn.ready && !xcpt
-  io.vvaq.ready := busy && op.fn.indexed && io.tbox.vpn.ready && io.vpaq.ready
+  io.vpaq.valid := addr_valid && tlb_ready && !xcpt
+  io.vvaq.ready := busy && op.fn.indexed && tlb_ready && io.vpaq.ready
 
   switch (state) {
     is (s_idle) {
@@ -105,9 +106,11 @@ class ABox0 extends VMUModule {
     }
   }
 
+  io.tbox.store := op.fn.store || op.fn.amo
+
   val fn_ld = op.fn.load || op.fn.amo
   val fn_st = op.fn.store || op.fn.amo
-  val tlb_finish = io.tbox.vpn.fire()
+  val tlb_finish = tlb_ready && io.tbox.vpn.valid
   val addr_misaligned = mt.tail.zipWithIndex.map(i =>
       i._1 && (addr(i._2, 0) != UInt(0))).reduce(_||_) &&
       addr_valid
@@ -144,22 +147,26 @@ class TBox extends VMUModule {
     tlb.req.bits.vpn := query.vpn.bits
     tlb.req.bits.passthrough := Bool(false)
     tlb.req.bits.instruction := Bool(false)
+    tlb.req.bits.store := query.store
 
     query.vpn.ready := tlb.req.ready
     query.ppn := tlb.resp.ppn
+    query.miss := tlb.resp.miss
     query.xcpt.ld := tlb.resp.xcpt_ld
     query.xcpt.st := tlb.resp.xcpt_st
   }
 
-  val drain = io.xcpt.prop.vmu.drain 
+  val drain = io.xcpt.prop.vmu.drain
   val q = new TLBQueryIO().asDirectionless()
   q.vpn.valid := Mux(drain, evac.vpn.valid, lane.vpn.valid)
   q.vpn.bits := Mux(drain, evac.vpn.bits, lane.vpn.bits)
   translate(io.vtlb, q)
 
   lane.ppn := q.ppn
+  lane.miss := q.miss
   lane.xcpt := q.xcpt
   evac.ppn := q.ppn
+  evac.miss := q.miss
   evac.xcpt := q.xcpt
 
   lane.vpn.ready := io.vtlb.req.ready && !drain
@@ -303,10 +310,12 @@ class VPFQ extends VMUModule {
   val en = !io.xcpt.prop.vmu.stall
   io.tbox.vpn.bits := vpn(vvapfq.io.deq.bits.addr)
   io.tbox.vpn.valid := vvapfq.io.deq.valid && en
+  io.tbox.store := Bool(false)
 
-  io.deq.valid := vvapfq.io.deq.valid && io.tbox.vpn.ready && en &&
+  val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
+  io.deq.valid := vvapfq.io.deq.valid && tlb_ready && en &&
     !(io.tbox.xcpt.ld && io.tbox.xcpt.st)
-  vvapfq.io.deq.ready := io.deq.ready && io.tbox.vpn.ready && en
+  vvapfq.io.deq.ready := io.deq.ready && tlb_ready && en
 
   io.deq.bits.fn := Mux(vvapfq.io.deq.bits.write, M_PFW, M_PFR)
   io.deq.bits.mt := Bits(0)
@@ -340,18 +349,20 @@ class ABox2 extends VMUModule {
   op.meta.last := Bool(false)
 
   val drain = io.xcpt.prop.vmu.drain
+  val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
   io.mbox.bits := Mux(drain, op, io.abox1.bits)
-  io.mbox.valid := Mux(drain, io.evac.valid, io.abox1.valid)
-  io.evac.ready := drain && io.mbox.ready && io.tbox.vpn.ready
+  io.mbox.valid := Mux(drain, io.evac.valid && tlb_ready, io.abox1.valid)
+  io.evac.ready := drain && io.mbox.ready && tlb_ready
   io.abox1.ready := !drain && io.mbox.ready
 
   io.tbox.vpn.bits := vpn(io.evac.bits)
   io.tbox.vpn.valid := drain && io.evac.valid //&& io.mbox.ready
+  io.tbox.store := Bool(true)
 
   io.irq.vmu.ma_ld := Bool(false)
   io.irq.vmu.ma_st := (io.evac.bits(2, 0) != UInt(0))
   io.irq.vmu.faulted_ld := Bool(false)
-  io.irq.vmu.faulted_st := io.tbox.vpn.fire() && io.tbox.xcpt.st
+  io.irq.vmu.faulted_st := io.tbox.vpn.fire() && !io.tbox.miss && io.tbox.xcpt.st
   io.irq.vmu.aux := op.addr
 }
 
