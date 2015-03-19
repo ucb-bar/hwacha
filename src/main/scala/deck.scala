@@ -312,7 +312,6 @@ class VSU extends VMUModule {
   val ecnt_max = Cat(mt.b || mt.h, mt.w, mt.d, Bits(0,1)) // FIXME: parameterize
   val vlen_next = op.vlen.zext - ecnt_max.zext
   val last = (vlen_next <= UInt(0))
-  val last_under_xcpt = last || io.xcpt.prop.vmu.stall
   val ecnt = Mux(last, op.vlen(lgbank,0), ecnt_max)
 
   val out_ready = io.vsdq.ready || beat_mid
@@ -347,6 +346,13 @@ class VSU extends VMUModule {
   val sla_avail = Vec.fill(nbanks)(Bool())
   io.la.available := sla_avail.reduce(_&&_)
 
+  val cnt_sz = log2Down(nbanks*nbrq)+1
+  val in_flight_cnt = Reg(init = UInt(0, cnt_sz))
+  val in_flight_cnt_add = io.la.cnt & Fill(cnt_sz, io.la.reserve)
+  val ecnt_vsdq = Cat(mt.b, mt.h, mt.w, mt.d, Bits(0,1))
+  val in_flight_cnt_sub = Mux(ecnt_vsdq > in_flight_cnt, in_flight_cnt, ecnt_vsdq) & Fill(cnt_sz, io.vsdq.fire())
+  in_flight_cnt := in_flight_cnt + in_flight_cnt_add - in_flight_cnt_sub
+
   val brqs = Vec.tabulate(nbanks){ i => {
     val brq = Module(new Queue(new BRQEntry, nbrq))
     val slacntr = Module(new LookAheadCounter(nbrq, nbrq))
@@ -374,7 +380,9 @@ class VSU extends VMUModule {
   }
 
   val brqs_valid_all = brqs_valid.reduce(_&&_)
-  io.vsdq.valid := brqs_valid_all && (!beat_mid || last_under_xcpt) && (state === s_busy)
+  io.vsdq.valid := (state === s_busy) &&
+    ((brqs_valid_all && (!beat_mid || last) ||
+     io.xcpt.prop.vmu.stall && mt.b && in_flight_cnt === UInt(8) && !beat_mid))
 
   next := out_ready && brqs_valid_all
 
@@ -409,7 +417,7 @@ class VSU extends VMUModule {
   }
 
   // Bypass hold register if final beat is odd
-  val data_b_head = Mux(last_under_xcpt && beat_mid, data_b, data_b_hold)
+  val data_b_head = Mux(last && beat_mid, data_b, data_b_hold)
   io.vsdq.bits := Mux1H(mt_seq,
     Seq(data_b_head ++ data_b, data_h, data_w, data_d).map(i => Cat(i.reverse)))
 
