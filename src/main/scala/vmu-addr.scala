@@ -160,6 +160,7 @@ class TBox extends VMUModule {
   val q = new TLBQueryIO().asDirectionless()
   q.vpn.valid := Mux(drain, evac.vpn.valid, lane.vpn.valid)
   q.vpn.bits := Mux(drain, evac.vpn.bits, lane.vpn.bits)
+  q.store := Mux(drain, evac.store, lane.store)
   translate(io.vtlb, q)
 
   lane.ppn := q.ppn
