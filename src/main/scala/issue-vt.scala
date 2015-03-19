@@ -267,7 +267,7 @@ class IssueVT extends HwachaModule
 
   val deq_vcmdq_cnt = issue_op
   val enq_deck_op = vmu_val
-  val enq_vmu_cmdq = vmu_val
+  val enq_vmu_cmd = vmu_val
   val enq_aiw_cntb = issue_op
 
 
@@ -277,7 +277,7 @@ class IssueVT extends HwachaModule
 
   val mask_issue_ready = !issue_op || io.ready
   val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
-  val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
+  val mask_vmu_cmd_ready = !enq_vmu_cmd || io.vmu.issue.cmd.ready
   val mask_aiw_cntb_ready = !enq_aiw_cntb || io.aiw.issue.enq.cntb.ready
 
   def fire(exclude: Bool, include: Bool*) = {
@@ -286,7 +286,7 @@ class IssueVT extends HwachaModule
       io.imem.resp.valid,
       mask_issue_ready,
       mask_deck_op_ready,
-      mask_vmu_cmdq_ready,
+      mask_vmu_cmd_ready,
       mask_aiw_cntb_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
@@ -295,7 +295,7 @@ class IssueVT extends HwachaModule
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
   io.op.valid := fire(mask_issue_ready, issue_op)
   io.deckop.valid := fire(mask_deck_op_ready, enq_deck_op)
-  io.vmu.issue.cmdq.valid := fire(mask_vmu_cmdq_ready, enq_vmu_cmdq)
+  io.vmu.issue.cmd.valid := fire(mask_vmu_cmd_ready, enq_vmu_cmd)
   io.aiw.issue.enq.cntb.valid := fire(mask_aiw_cntb_ready, enq_aiw_cntb)
   io.aiw.issue.marklast := fire(null, decode_stop)
   io.aiw.issue.update.numcnt.valid := fire(null, issue_op)
@@ -325,7 +325,7 @@ class IssueVT extends HwachaModule
   io.op.bits.fn.vau2 := new VAU2Fn().fromBits(Cat(vau2_fp, rm, vau2_op))
   io.op.bits.fn.vmu.float := vmu_float
   io.op.bits.fn.vmu.op := vmu_op
-  io.op.bits.fn.vmu.typ := vmu_type
+  io.op.bits.fn.vmu.mt := vmu_type
 
   val vs_m1 = vs - UInt(1)
   val vt_m1 = vt - UInt(1)
@@ -366,12 +366,14 @@ class IssueVT extends HwachaModule
 
   io.deckop.bits.vlen := io.op.bits.vlen
   io.deckop.bits.utidx := UInt(0)
-  io.deckop.bits.fn := io.op.bits.fn.vmu
+  io.deckop.bits.fn := io.op.bits.fn.vmu.op
+  io.deckop.bits.mt := io.op.bits.fn.vmu.mt
+  io.deckop.bits.float := io.op.bits.fn.vmu.float
   io.deckop.bits.reg := io.op.bits.reg
 
-  io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
-  io.vmu.issue.cmdq.bits.fn.op := io.op.bits.fn.vmu.op
-  io.vmu.issue.cmdq.bits.fn.typ := io.op.bits.fn.vmu.typ
+  io.vmu.issue.cmd.bits.vlen := io.op.bits.vlen
+  io.vmu.issue.cmd.bits.fn := io.op.bits.fn.vmu.op
+  io.vmu.issue.cmd.bits.mt := io.op.bits.fn.vmu.mt
 
   io.aiw.issue.enq.cntb.bits := cnt
   io.aiw.issue.update.numcnt.bits := numcnt_rtag

@@ -6,13 +6,14 @@ import Constants._
 
 class MRTLoadRetireIO(sz: Int) extends CounterPortIO(sz)
 
-class MRTStoreRetireIO extends Bundle {
+class MRTStoreRetireIO extends Bundle with VMUParameters {
+  val count = UInt(OUTPUT, tlByteAddrBits)
   val update = Bool(OUTPUT)
 }
 
 // Memory Request Tracker:
 // Counts memory operations in transit
-class MRT extends HwachaModule
+class MRT extends HwachaModule with VMUParameters
 {
   val io = new Bundle {
     val xcpt = new XCPTIO().flip
@@ -34,7 +35,7 @@ class MRT extends HwachaModule
   lcnt.io.dec.update := Bool(false)
 
   scnt.io.la <> io.sreq.vxu
-  scnt.io.inc.cnt := UInt(1)
+  scnt.io.inc.cnt := Mux(io.sret.count === UInt(0), UInt(tlDataBytes), io.sret.count) // FIXME
   scnt.io.inc.update := io.sret.update
   scnt.io.dec.cnt := UInt(1)
   scnt.io.dec.update := io.sreq.evac

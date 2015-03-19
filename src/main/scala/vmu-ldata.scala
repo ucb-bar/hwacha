@@ -2,78 +2,53 @@ package hwacha
 
 import Chisel._
 import Constants._
-import uncore.constants.MemoryOpConstants._
 
-class MetadataBuffer extends HwachaModule
-{
+class MetadataBuffer extends VMUModule {
   val io = new Bundle {
-    val wr = new VMDBIO().flip
-    val rd = new Bundle {
-      val tag = Valid(Bits(width = confvmu.sz_tag)).flip
-      val info = new VMUMetadataInternal().asOutput
-    }
+    val r = new MetaReadIO(new VMULoadMetaEntry).flip
+    val w = new MetaWriteIO(new VMULoadMetaEntry).flip
   }
+  private val n = params(HwachaNVectorLoadMetaBufferEntries)
 
-  val busy = Reg(init = Bits(0, confvmu.nvlmb))
-  val data = Mem(new VMUMetadataInternal, confvmu.nvlmb)
+  val valid = Reg(init = Bits(0, n))
+  val data = Mem(io.r.data.clone, n)
 
-  io.wr.tag := PriorityEncoder(~busy)
-  io.wr.info.ready := !((0 until confvmu.nvlmb).map(i => busy(i)).reduce(_&&_))
+  io.w.tag := PriorityEncoder(~valid)
+  io.w.ready := !(valid.toBools.reduce(_&&_))
 
-  val busy_mask_rd = UIntToOH(io.rd.tag.bits) & Fill(confvmu.nvlmb, io.rd.tag.valid)
-  val busy_mask_wr = UIntToOH(io.wr.tag) & Fill(confvmu.nvlmb, io.wr.info.fire())
+  val wen = io.w.valid && io.w.ready
+  val valid_mask_r = UIntToOH(io.r.tag) & Fill(n, io.r.valid)
+  val valid_mask_w = UIntToOH(io.w.tag) & Fill(n, wen)
 
-  busy := (busy & (~busy_mask_rd)) | busy_mask_wr
-  when (io.wr.info.fire()) {
-    data(io.wr.tag) := io.wr.info.bits
+  valid := (valid & (~valid_mask_r)) | valid_mask_w
+  when (wen) {
+    data(io.w.tag) := io.w.data
   }
-
-  io.rd.info:= data(io.rd.tag.bits)
+  io.r.data := data(io.r.tag)
 }
 
-class LoadDataUnit extends HwachaModule
-{
+class VMULoadIO extends Bundle {
+  val meta = new MetaWriteIO(new VMULoadMetaEntry)
+  val load = Decoupled(new VMULoadData)
+}
+
+class LBox extends VMUModule {
   val io = new Bundle {
-    val vmdb = new VMDBIO().flip
-    val memif = new VLDQMemIO().flip
+    val mbox = new VMULoadIO().flip
     val lane = new VLDQIO
   }
 
   val vldq = Module(new Queue(new VLDQEntry, confvmu.nvldq))
   val vmdb = Module(new MetadataBuffer)
 
-  assert(!vldq.io.enq.valid || vldq.io.enq.ready,
-    "VLDQ should never be unable to accept a valid response")
+  vldq.io.enq.bits.data := io.mbox.load.bits.data
+  vldq.io.enq.bits.meta := vmdb.io.r.data
+  vldq.io.enq.valid := io.mbox.load.valid
+  io.mbox.load.ready := vldq.io.enq.ready
 
-  val mt_b = (vmdb.io.rd.info.typ === MT_B)
-  val mt_h = (vmdb.io.rd.info.typ === MT_H)
-  val mt_w = (vmdb.io.rd.info.typ === MT_W)
-  val mt_d = (vmdb.io.rd.info.typ === MT_D)
-  val mt_bu = (vmdb.io.rd.info.typ === MT_BU)
-  val mt_hu = (vmdb.io.rd.info.typ === MT_HU)
-  val mt_wu = (vmdb.io.rd.info.typ === MT_WU)
-
-  val mt_sel = Vec(mt_b, mt_h || mt_hu, mt_w || mt_wu, mt_d)
-  val mt_signext = (mt_b || mt_h || mt_w)
-
-  val resp_shift = Cat(vmdb.io.rd.info.offset, Bits(0, 3)).toUInt
-  val resp_data = io.memif.bits.data >> resp_shift
-
-  val resp_mask = FillInterleaved(8,
-    Mux1H(mt_sel, Vec(Bits(0x00), Bits(0x01), Bits(0x07), Bits(0x7f))))
-  val resp_extend = Fill(confvmu.sz_data-8, mt_signext &&
-    Mux1H(mt_sel, Vec(Seq(7, 15, 31, 63).map(resp_data(_)))))
-
-  io.memif.ready := vldq.io.enq.ready
-  vldq.io.enq.valid := io.memif.valid
-  vldq.io.enq.bits.data := Cat(
-    (resp_data(confvmu.sz_data-1,8) & resp_mask) | (resp_extend & ~resp_mask),
-    resp_data(7,0))
-  vldq.io.enq.bits.meta := vmdb.io.rd.info
-
-  vmdb.io.wr <> io.vmdb
-  vmdb.io.rd.tag.bits := io.memif.bits.tag
-  vmdb.io.rd.tag.valid := vldq.io.enq.fire()
+  vmdb.io.w <> io.mbox.meta
+  vmdb.io.r.tag := io.mbox.load.bits.tag
+  vmdb.io.r.valid := vldq.io.enq.fire()
 
   io.lane <> vldq.io.deq
 }

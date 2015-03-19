@@ -108,9 +108,8 @@ class VRU(resetSignal: Bool = null) extends Module(_reset = resetSignal)
   val pf_len_int = pow(2,dcOffBits).toInt
 
   // cmd(4)==1 -> vector store
-  io.vaq.bits.cmd := Mux(is_cmd_pfw(cmd_reg), M_PFW, M_PFR)
-  io.vaq.bits.typ := Bits(0)
   io.vaq.bits.addr := addr_reg
+  io.vaq.bits.write := is_cmd_pfw(cmd_reg)
 
   val idle = (state === VRU_Idle)
 

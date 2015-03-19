@@ -149,8 +149,8 @@ class IssueTVEC extends HwachaModule
   val issue_op = !vd_zero && vfu_val
 
   val enq_deck_op = vmu_val
-  val enq_vmu_cmdq = vmu_val
-  val enq_vmu_addrq = vmu_val
+  val enq_vmu_cmd = vmu_val
+  val enq_vmu_addr = vmu_val
   val enq_aiw_cmdb = issue_op || decode_vf
   val enq_aiw_imm1b = enq_aiw_cmdb && deq_vcmdq_imm1
   val enq_aiw_imm2b = enq_aiw_cmdb && deq_vcmdq_imm2
@@ -166,8 +166,8 @@ class IssueTVEC extends HwachaModule
   val mask_vxu_imm2q_valid = !deq_vcmdq_imm2 || io.vcmdq.imm2.valid
   val mask_issue_ready = !issue_op || io.ready
   val mask_deck_op_ready = !enq_deck_op || io.deckop.ready
-  val mask_vmu_cmdq_ready = !enq_vmu_cmdq || io.vmu.issue.cmdq.ready
-  val mask_vmu_addrq_ready = !enq_vmu_addrq || io.vmu.issue.addrq.ready
+  val mask_vmu_cmd_ready = !enq_vmu_cmd || io.vmu.issue.cmd.ready
+  val mask_vmu_addr_ready = !enq_vmu_addr || io.vmu.issue.addr.ready
   val mask_aiw_cmdb_ready = !enq_aiw_cmdb || io.aiw.issue.enq.cmdb.ready
   val mask_aiw_imm1b_ready = !enq_aiw_imm1b || io.aiw.issue.enq.imm1b.ready
   val mask_aiw_imm2b_ready = !enq_aiw_imm2b || io.aiw.issue.enq.imm2b.ready
@@ -180,7 +180,7 @@ class IssueTVEC extends HwachaModule
       io.vcmdq.cmd.valid, mask_vxu_immq_valid, mask_vxu_imm2q_valid,
       mask_issue_ready,
       mask_deck_op_ready,
-      mask_vmu_cmdq_ready, mask_vmu_addrq_ready,
+      mask_vmu_cmd_ready, mask_vmu_addr_ready,
       mask_aiw_cmdb_ready, mask_aiw_imm1b_ready, mask_aiw_imm2b_ready, mask_aiw_cntb_ready, mask_aiw_numCntB_ready)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
@@ -191,8 +191,8 @@ class IssueTVEC extends HwachaModule
   io.vcmdq.cnt.ready := fire(null, deq_vcmdq_cnt)
   io.op.valid := fire(mask_issue_ready, issue_op)
   io.deckop.valid := fire(mask_deck_op_ready, enq_deck_op)
-  io.vmu.issue.cmdq.valid := fire(mask_vmu_cmdq_ready, enq_vmu_cmdq)
-  io.vmu.issue.addrq.valid := fire(mask_vmu_addrq_ready, enq_vmu_addrq)
+  io.vmu.issue.cmd.valid := fire(mask_vmu_cmd_ready, enq_vmu_cmd)
+  io.vmu.issue.addr.valid := fire(mask_vmu_addr_ready, enq_vmu_addr)
   io.aiw.issue.enq.cmdb.valid := fire(mask_aiw_cmdb_ready, enq_aiw_cmdb)
   io.aiw.issue.enq.imm1b.valid := fire(mask_aiw_imm1b_ready, enq_aiw_imm1b)
   io.aiw.issue.enq.imm2b.valid := fire(mask_aiw_imm2b_ready, enq_aiw_imm2b)
@@ -274,7 +274,7 @@ class IssueTVEC extends HwachaModule
   io.op.bits.fn.viu := new VIUFn().fromBits(Cat(viu_t0, viu_t1, DW64, FPD, viu_op))
   io.op.bits.fn.vmu.float := vmu_float
   io.op.bits.fn.vmu.op := vmu_op
-  io.op.bits.fn.vmu.typ := vmu_type
+  io.op.bits.fn.vmu.mt := vmu_type
 
   val vt_m1 = vt - UInt(1)
   val vd_m1 = vd - UInt(1)
@@ -329,14 +329,16 @@ class IssueTVEC extends HwachaModule
 
   io.deckop.bits.vlen := io.op.bits.vlen
   io.deckop.bits.utidx := UInt(0)
-  io.deckop.bits.fn := io.op.bits.fn.vmu
+  io.deckop.bits.fn := io.op.bits.fn.vmu.op
+  io.deckop.bits.mt := io.op.bits.fn.vmu.mt
+  io.deckop.bits.float := io.op.bits.fn.vmu.float
   io.deckop.bits.reg := io.op.bits.reg
 
-  io.vmu.issue.cmdq.bits.vlen := io.op.bits.vlen
-  io.vmu.issue.cmdq.bits.fn.op := io.op.bits.fn.vmu.op
-  io.vmu.issue.cmdq.bits.fn.typ := io.op.bits.fn.vmu.typ
-  io.vmu.issue.addrq.bits.base := io.vcmdq.imm1.bits
-  io.vmu.issue.addrq.bits.stride := io.op.bits.imm.stride
+  io.vmu.issue.cmd.bits.vlen := io.op.bits.vlen
+  io.vmu.issue.cmd.bits.fn := io.op.bits.fn.vmu.op
+  io.vmu.issue.cmd.bits.mt := io.op.bits.fn.vmu.mt
+  io.vmu.issue.addr.bits.base := io.vcmdq.imm1.bits
+  io.vmu.issue.addr.bits.stride := io.op.bits.imm.stride
 
   io.aiw.issue.enq.cmdb.bits := io.vcmdq.cmd.bits.toBits
   io.aiw.issue.enq.imm1b.bits := io.vcmdq.imm1.bits

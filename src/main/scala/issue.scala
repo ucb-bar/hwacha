@@ -85,8 +85,8 @@ class Issue(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 
   // vmu
   arb_producers(io.deckop, tvec.io.active, tvec.io.deckop, vt.io.deckop)
-  arb_producers(io.vmu.issue.cmdq, tvec.io.active, tvec.io.vmu.issue.cmdq, vt.io.vmu.issue.cmdq)
-  io.vmu.issue.addrq <> tvec.io.vmu.issue.addrq
+  arb_producers(io.vmu.issue.cmd, tvec.io.active, tvec.io.vmu.issue.cmd, vt.io.vmu.issue.cmd)
+  io.vmu.issue.addr <> tvec.io.vmu.issue.addr
 
   // xcpt
   tvec.io.xcpt <> io.xcpt
