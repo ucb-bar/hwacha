@@ -67,7 +67,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
 
   val vxu = Module(new VXU)
   val vmu = Module(new VMU(resetSignal = flush_vmu))
-  val memif = Module(new MemIF)
+  val memif = Module(new VMUTileLink)
   val aiw = Module(new AIW(resetSignal = flush_aiw))
   val evac = Module(new Evac)
   val mrt = Module(new MRT)
@@ -127,6 +127,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   //mrt.io.sreq.evac := evac.io.vaq.fire()
   mrt.io.sreq.evac := evac.io.vaq.valid && vmu.io.evac.vaq.ready
   mrt.io.lret <> vxu.io.lret
+  mrt.io.sret.count := io.dmem.grant.bits.payload.client_xact_id
   mrt.io.sret.update := io.dmem.grant.fire() &&
     io.dmem.grant.bits.payload.isBuiltInType() &&
     io.dmem.grant.bits.payload.is(uncore.Grant.putAckType)

@@ -367,17 +367,17 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   ot.mark(io.issueop.valid && io.issueop.bits.active.vld, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr3, ot.vlu))
   ot.mark(io.issueop.valid && io.issueop.bits.active.vst, (ptr1, ot.vgu), (ptr2, ot.vcu), (ptr2, ot.vsu))
 
-  io.vmu.addr.vala.cnt := nelements
-  io.vmu.addr.pala.cnt := nelements
+  io.vmu.vaq.vala.cnt := nelements
+  io.vmu.vaq.pala.cnt := nelements
   io.lla.cnt := nelements
   io.sla.cnt := nelements
   io.lreq.cnt := nelements
   io.sreq.cnt := nelements
 
   val vgu_stall = // stall vgu op when
-    !io.vmu.addr.vala.available // not enough space in vvaq
+    !io.vmu.vaq.vala.available // not enough space in vvaq
   val vcu_stall = // stall vcu op when
-    !io.vmu.addr.pala.available || // not sufficient physical addresses
+    !io.vmu.vaq.pala.available || // not sufficient physical addresses
     seq.e(ptr).fn.vmu.lreq() && !io.lreq.available || // not enough space in lreq counter
     seq.e(ptr).fn.vmu.sreq() && !io.sreq.available    // not enough space in sreq counter
   val vlu_stall = // stall vlu op when
@@ -469,8 +469,8 @@ class Sequencer(resetSignal: Bool = null) extends HwachaModule(_reset = resetSig
   io.seqop.bits.last := islast
   io.seqop.bits <> seq.e(ptr)
 
-  io.vmu.addr.vala.reserve := valid && seq.vgu_val(ptr)
-  io.vmu.addr.pala.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
+  io.vmu.vaq.vala.reserve := valid && seq.vgu_val(ptr)
+  io.vmu.vaq.pala.reserve := valid && (seq.vcu_val(ptr) || seq.vsu_val(ptr))
   io.lla.reserve := valid && seq.vlu_val(ptr)
   io.sla.reserve := valid && seq.vsu_val(ptr)
   io.lreq.reserve := valid && (seq.vcu_val(ptr) && seq.e(ptr).fn.vmu.lreq())

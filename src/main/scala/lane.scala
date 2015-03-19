@@ -116,6 +116,6 @@ class Lane extends HwachaModule
   // VGU Timing Diagram
   // | Seq | Exp/SRAM-Addr-Setup | SRAM-Clock-Q | XBar/Addr-Gen/VAQ-Setup |
   //                                              ^ lfu.io.op.vgu starts here
-  io.vmu.addr.q.valid := lfu.io.vgu.valid
-  io.vmu.addr.q.bits := lfu.io.vgu.bits.base(SZ_ADDR-1,0) + rbl(10)(SZ_ADDR-1,0)
+  io.vmu.vaq.q.valid := lfu.io.vgu.valid
+  io.vmu.vaq.q.bits := lfu.io.vgu.bits.base(SZ_ADDR-1,0) + rbl(10)(SZ_ADDR-1,0)
 }

@@ -1,93 +1,144 @@
 package hwacha
 
 import Chisel._
-import Constants._
 import uncore._
 
-class FinishEntry extends Bundle {
-    val xid = Bits(width = params(TLManagerXactIdBits))
-    val dst = UInt(width = log2Up(params(LNEndpoints)))
+class VMUMemInternalIO extends Bundle {
+  val abox = new VMUMemOpIO
+  val sbox = new VMUStoreIO
+  val lbox = new VMULoadIO().flip
 }
 
-class MemIF extends HwachaModule
-{
+class VMUMemIO extends VMUBundle {
+  val abox = Decoupled(new VMUMemOp(UInt(width = tagBits)))
+  val sbox = Decoupled(new VMUStoreData)
+  val lbox = Decoupled(new VMULoadData).flip
+}
+
+class FinishEntry extends Bundle {
+  val xid = Bits(width = params(TLManagerXactIdBits))
+  val dst = UInt(width = log2Up(params(LNEndpoints)))
+}
+
+
+class MBox extends VMUModule {
   val io = new Bundle {
-    val vmu = new MemIfIO().flip
+    val in = new VMUMemInternalIO().flip
+    val out = new VMUMemIO
+  }
+
+  val fn = io.in.abox.bits.fn
+  val fn_load = (fn === M_XRD)
+  val fn_store = (fn === M_XWR)
+  val fn_amo = isAMO(fn)
+
+  val lbox_en = fn_load || fn_amo
+  val sbox_en = fn_store || fn_amo
+
+  val sbox_ready = !sbox_en || io.in.sbox.meta.ready
+  val lbox_ready = !lbox_en || io.in.lbox.meta.ready
+
+  val meta_ready = sbox_ready && lbox_ready
+  io.out.abox.valid := io.in.abox.valid && meta_ready
+  io.in.abox.ready := io.out.abox.ready && meta_ready
+
+  val abox_en = io.in.abox.valid && io.out.abox.ready
+  io.in.sbox.meta.valid := abox_en && sbox_en && lbox_ready
+  io.in.lbox.meta.valid := abox_en && lbox_en && sbox_ready
+
+  // Load metadata
+  io.in.lbox.meta.data.eidx := io.in.abox.bits.meta.eidx
+  io.in.lbox.meta.data.ecnt := io.in.abox.bits.meta.ecnt
+  io.in.lbox.meta.data.eskip := io.in.abox.bits.meta.eskip
+
+  // Store metadata
+  io.in.sbox.meta.bits.ecnt := io.in.abox.bits.meta.ecnt
+  io.in.sbox.meta.bits.eskip := io.in.abox.bits.meta.eskip
+  io.in.sbox.meta.bits.offset := io.in.abox.bits.meta.offset
+  io.in.sbox.meta.bits.first := io.in.abox.bits.meta.first
+  io.in.sbox.meta.bits.last := io.in.abox.bits.meta.last
+
+  io.out.abox.bits.fn := io.in.abox.bits.fn
+  io.out.abox.bits.mt := io.in.abox.bits.mt
+  io.out.abox.bits.addr := io.in.abox.bits.addr
+  io.out.abox.bits.meta := Mux(lbox_en, io.in.lbox.meta.tag, io.in.abox.bits.meta.ecnt) // FIXME
+  io.out.sbox <> io.in.sbox.store
+  io.out.lbox <> io.in.lbox.load
+}
+
+class VMUTileLink extends VMUModule {
+  val io = new Bundle {
+    val vmu = new VMUMemIO().flip
     val dmem = new HeaderlessUncachedTileLinkIO
   }
 
-  private val tlBeatAddrBits = log2Up(params(TLDataBeats))
-  private val tlByteAddrBits = log2Up(params(TLDataBits)) - 3
   private val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
 
-  val req_cmd_pf = is_mcmd_pf(io.vmu.vpaq.bits.cmd)
-  val req_cmd_load = is_mcmd_load(io.vmu.vpaq.bits.cmd)
-  val req_cmd_store = is_mcmd_store(io.vmu.vpaq.bits.cmd)
-  val req_cmd_amo = is_mcmd_amo(io.vmu.vpaq.bits.cmd)
-  val req_cmd_put = req_cmd_store || req_cmd_amo
+  private val abox = io.vmu.abox
+  private val sbox = io.vmu.sbox
+  private val lbox = io.vmu.lbox
 
-  assert(!io.vmu.vpaq.valid ||
-    req_cmd_pf || req_cmd_load || req_cmd_store || req_cmd_amo,
+  private val acquire = io.dmem.acquire
+  private val grant = io.dmem.grant
+  private val finish = io.dmem.finish
+
+  val fn = abox.bits.fn
+  val fn_load = (fn === M_XRD)
+  val fn_store = (fn === M_XWR)
+  val fn_amo = isAMO(fn)
+  val fn_pf = isPrefetch(fn)
+
+  assert(!abox.valid || fn_load || fn_store || fn_amo || fn_pf,
     "Unknown memory command")
 
-  val vsdq_valid = !req_cmd_put || io.vmu.vsdq.valid
-  io.vmu.vpaq.ready := io.dmem.acquire.ready && vsdq_valid
-  io.vmu.vsdq.ready := io.dmem.acquire.ready && io.vmu.vpaq.valid && req_cmd_put
-  io.dmem.acquire.valid := io.vmu.vpaq.valid && vsdq_valid
+  val acq_get = fn_load || fn_amo
+  val acq_put = fn_store || fn_amo
+/*
+  val sbox_valid = !acq_put || sbox.valid
+  sbox.ready := acquire.ready && abox.valid && acq_put
+  abox.ready := acquire.ready && sbox_valid
+  acquire.valid := abox.valid && sbox_valid
+*/
+  sbox.ready := Bool(true)
+  abox.ready := acquire.ready
+  acquire.valid := abox.valid
 
-  val req_type = Mux1H(
-    Vec(req_cmd_load, req_cmd_store, req_cmd_amo, req_cmd_pf),
-    Vec(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
-  val req_shift = io.vmu.vpaq.bits.addr(tlByteAddrBits-1,0)
-  val req_data = io.vmu.vsdq.bits.toBits << Cat(req_shift, Bits(0, 3)).toUInt
+  val acq_type = Mux1H(Seq(fn_load, fn_store, fn_amo, fn_pf),
+    Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
 
-  val req_mt_d = is_mtype_doubleword(io.vmu.vpaq.bits.typ)
-  val req_mt_w = is_mtype_word(io.vmu.vpaq.bits.typ)
-  val req_mt_h = is_mtype_halfword(io.vmu.vpaq.bits.typ)
-  val req_mt_b = is_mtype_byte(io.vmu.vpaq.bits.typ)
+  val acq_shift = abox.bits.addr(tlByteAddrBits-1, 0)
+  val acq_union_amo = Cat(acq_shift, abox.bits.mt, abox.bits.fn)
+  val acq_union = Cat(Mux1H(Seq(fn_load || fn_pf, fn_store, fn_amo),
+    Seq(abox.bits.fn, sbox.bits.mask, acq_union_amo)), Bool(true))
 
-  assert(!io.vmu.vpaq.valid ||
-    req_mt_b || req_mt_h || req_mt_w || req_mt_d,
-    "Unknown memory operand type")
-
-  val req_mask = Mux1H(
-    Vec(req_mt_b, req_mt_h, req_mt_w, req_mt_d),
-    Vec(Bits(0x1), Bits(0x03), Bits(0x0f), Bits(0xff)))
-  val req_union_mask = req_mask << req_shift
-  val req_union_atomic = Cat(req_shift, io.vmu.vpaq.bits.typ, io.vmu.vpaq.bits.cmd)
-  val req_union = Cat(Mux1H(
-      Vec(req_cmd_pf || req_cmd_load, req_cmd_store, req_cmd_amo),
-      Vec(M_XRD, req_union_mask, req_union_atomic)),
-    Bool(true))
-
-  io.dmem.acquire.bits := Acquire(
+  acquire.bits := Acquire(
     is_builtin_type = Bool(true),
-    a_type = req_type,
-    client_xact_id = io.vmu.vpaq.bits.tag,
-    addr_block = io.vmu.vpaq.bits.addr(params(PAddrBits)-1, tlBlockAddrOffset),
-    addr_beat = io.vmu.vpaq.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits) &
-      Fill(tlBeatAddrBits, !req_cmd_pf),
-    data = req_data,
-    union = req_union)
+    a_type = acq_type,
+    client_xact_id = abox.bits.meta,
+    addr_block = abox.bits.addr(paddrBits-1, tlBlockAddrOffset),
+    addr_beat = abox.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits) &
+      Fill(tlBeatAddrBits, !fn_pf),
+    data = sbox.bits.data,
+    union = acq_union)
 
-  val grant_has_data = io.dmem.grant.bits.payload.hasData()
-  val grant_requires_ack = io.dmem.grant.bits.payload.requiresAck()
+  val grant_has_data = grant.bits.payload.hasData()
+  val grant_needs_ack = grant.bits.payload.requiresAck()
 
-  io.vmu.vldq.bits.tag := io.dmem.grant.bits.payload.client_xact_id
-  io.vmu.vldq.bits.data := io.dmem.grant.bits.payload.data
-  io.vmu.vldq.valid := io.dmem.grant.valid && grant_has_data
+  lbox.bits.tag := grant.bits.payload.client_xact_id
+  lbox.bits.data := grant.bits.payload.data
+  lbox.valid := grant.valid && grant_has_data
 
   val finishq = Module(new Queue(new FinishEntry, 2))
 
-  io.dmem.grant.ready := (!grant_has_data || io.vmu.vldq.ready) &&
-    (!grant_requires_ack || finishq.io.enq.ready)
+  grant.ready := (!grant_has_data || lbox.ready) &&
+    (!grant_needs_ack || finishq.io.enq.ready)
 
-  finishq.io.enq.valid := io.dmem.grant.valid && grant_requires_ack
-  finishq.io.enq.bits.xid := io.dmem.grant.bits.payload.manager_xact_id
-  finishq.io.enq.bits.dst := io.dmem.grant.bits.header.src
+  finishq.io.enq.valid := grant_needs_ack && grant.valid && (!grant_has_data || lbox.ready)
+  finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
+  finishq.io.enq.bits.dst := grant.bits.header.src
 
-  io.dmem.finish.valid := finishq.io.deq.valid
-  finishq.io.deq.ready := io.dmem.finish.ready
-  io.dmem.finish.bits.payload.manager_xact_id := finishq.io.deq.bits.xid
-  io.dmem.finish.bits.header.dst := finishq.io.deq.bits.dst
+  finishq.io.deq.ready := finish.ready
+  finish.valid := finishq.io.deq.valid
+  finish.bits.payload.manager_xact_id := finishq.io.deq.bits.xid
+  finish.bits.header.dst := finishq.io.deq.bits.dst
 }

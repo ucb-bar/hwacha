@@ -49,9 +49,16 @@ class VAU2Fn extends Bundle
   val op = Bits(width = SZ_VAU2_OP)
 }
 
-class VMULaneFn extends VMUFn
+class VMUFn extends Bundle
 {
+  val op = Bits(width = SZ_VMU_OP)
+  val mt = Bits(width = MT_SZ)
   val float = Bool()
+
+  def utmemop(dummy: Int = 0) = !vmu_op_tvec(op)
+  def lreq(dummy: Int = 0) = (op === VM_VLD) || (op === VM_ULD) || amoreq()
+  def sreq(dummy: Int = 0) = (op === VM_VST) || (op === VM_UST)
+  def amoreq(dummy: Int = 0) = isAMO(vmu_op_mcmd(op))
 }
 
 
@@ -94,7 +101,7 @@ class DecodedInstruction extends Bundle
     val vau0 = new VAU0Fn
     val vau1 = new VAU1Fn
     val vau2 = new VAU2Fn
-    val vmu = new VMULaneFn
+    val vmu = new VMUFn
   }
   val reg = new DecodedRegister
   val imm = new DecodedImmediate
@@ -257,23 +264,23 @@ class VAU2Op extends LaneOp
 
 class VGUOp extends LaneOp
 {
-  val fn = new VMULaneFn
+  val fn = new VMUFn
   val base = Bits(width = SZ_DATA)
 }
 
 class VCUOp extends LaneOp
 {
-  val fn = new VMULaneFn
+  val fn = new VMUFn
 }
 
 class VLUOp extends LaneOp
 {
-  val fn = new VMULaneFn
+  val fn = new VMUFn
 }
 
 class VSUOp extends LaneOp
 {
-  val fn = new VMULaneFn
+  val fn = new VMUFn
 }
 
 
@@ -281,11 +288,10 @@ class VSUOp extends LaneOp
 // deck types
 //-------------------------------------------------------------------------\\
 
-class DeckOp extends Bundle
+class DeckOp extends VMUOpCmd
 {
-  val vlen = UInt(width = SZ_VLEN)
   val utidx = UInt(width = SZ_VLEN)
-  val fn = new VMULaneFn
+  val float = Bool()
   val reg = new DecodedRegister
 }
 
@@ -300,8 +306,9 @@ class BWQEntry extends HwachaBundle
   val data = Bits(width = SZ_DATA)
 }
 
-class BWQInternalEntry extends BWQEntry
+class BWQInternalEntry extends HwachaBundle
 {
-  val tag = UInt(width = /*log2Up(nvlreq)*/ SZ_VLEN - log2Up(nbanks))
-  override def clone = new BWQInternalEntry().asInstanceOf[this.type]
+  // Lower eidx bits are evident from the bank ID and therefore omitted
+  val tag = UInt(width = SZ_VLEN - log2Up(nbanks))
+  val data = Bits(width = SZ_DATA)
 }
