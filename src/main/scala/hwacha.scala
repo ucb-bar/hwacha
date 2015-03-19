@@ -22,7 +22,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nptlb = params(HwachaNPTLB)  
 
   val nreg_total = nbanks * nreg_per_bank
-  val confvru = false
+  val confvru = true
   val confprec = false
 
   // pipeline latencies
