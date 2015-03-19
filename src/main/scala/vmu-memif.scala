@@ -133,7 +133,7 @@ class VMUTileLink extends VMUModule {
   grant.ready := (!grant_has_data || lbox.ready) &&
     (!grant_needs_ack || finishq.io.enq.ready)
 
-  finishq.io.enq.valid := grant_needs_ack && grant.valid
+  finishq.io.enq.valid := grant_needs_ack && grant.valid && (!grant_has_data || lbox.ready)
   finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
   finishq.io.enq.bits.dst := grant.bits.header.src
 
