@@ -61,6 +61,7 @@ class VXU extends HwachaModule
   deck.io.lla <> seq.io.lla
   deck.io.sla <> seq.io.sla
   deck.io.brqs <> lane.io.brqs
+  deck.io.xcpt <> io.xcpt
 
   io.vmu <> issue.io.vmu
   io.vmu <> seq.io.vmu

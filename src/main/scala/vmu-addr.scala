@@ -78,7 +78,7 @@ class ABox0 extends VMUModule {
   val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
   io.tbox.vpn.valid := addr_valid //&& io.vpaq.ready
   io.vpaq.valid := addr_valid && tlb_ready && !xcpt
-  io.vvaq.ready := busy && op.fn.indexed && tlb_ready && io.vpaq.ready
+  io.vvaq.ready := busy && op.fn.indexed && tlb_ready && io.vpaq.ready && !stall
 
   switch (state) {
     is (s_idle) {

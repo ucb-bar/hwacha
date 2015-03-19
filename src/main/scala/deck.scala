@@ -19,6 +19,7 @@ class Deck(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) 
     val bwqs = Vec.fill(nbanks){new BWQIO}
 
     val vmu = new VMUIO
+    val xcpt = new XCPTIO().flip
   }
 
   val vlu = Module(new VLU)
@@ -46,6 +47,7 @@ class Deck(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) 
   vsu.io.la <> io.sla
   vsu.io.brqs <> io.brqs
   vsu.io.vsdq <> io.vmu.vsdq
+  vsu.io.xcpt <> io.xcpt
 }
 
 class VLU extends VMUModule {
@@ -87,13 +89,19 @@ class VLU extends VMUModule {
     }
   }
 
-  val op_signext = !mt.unsigned
+  val repacker = Module(new LoadRepacker)
+  repacker.io.enq <> io.vldq
+  repacker.io.en := mt.b
+  repacker.io.init := io.op.fire()
+  val vldq = repacker.io.deq
 
   //--------------------------------------------------------------------\\
   // floating-point recoding
   //--------------------------------------------------------------------\\
 
-  private def unpack(w: Int, i: Int) = io.vldq.bits.data(((i+1)*w)-1, i*w)
+  val op_signext = !mt.unsigned
+
+  private def unpack(w: Int, i: Int) = vldq.bits.data(((i+1)*w)-1, i*w)
   private def prefix(n: Bits, w: Int) = Cat(op_signext & n(w-1), n)
   private def extend(n: Bits, w: Int, recoded: Boolean) = {
     val m = if (recoded) n else prefix(n, w)
@@ -120,8 +128,7 @@ class VLU extends VMUModule {
   //--------------------------------------------------------------------\\
 
   private val lgbank = log2Up(nbanks)
-  val vldq = io.vldq
-  val meta = io.vldq.bits.meta
+  val meta = vldq.bits.meta
 
   val bank_start = meta.eidx(lgbank-1,0)
   val bank_eidx = meta.eidx(SZ_VLEN-1, lgbank)
@@ -212,6 +219,74 @@ object EnableDecoder {
   }
 }
 
+
+class LoadRepacker extends VMUModule {
+  val io = new Bundle {
+    val enq = new VLDQIO().flip
+    val deq = new VLDQIO
+
+    val init = Bool(INPUT)
+    val en = Bool(INPUT)
+  }
+
+  val meta = io.enq.bits.meta
+
+  val ecnt_head = SInt(nbanks) - meta.eskip.zext
+  val ecnt_tail = meta.ecnt.zext - ecnt_head
+  val has_head = (ecnt_head > SInt(0))
+  val has_tail = (ecnt_tail > SInt(0))
+
+  val shift = Bool()
+  val dequeue = Bool()
+  shift := Bool(false)
+  dequeue := Bool(true)
+
+  io.deq.valid := io.enq.valid
+  io.enq.ready := io.deq.ready && dequeue
+
+  val fire = io.deq.fire()
+  io.deq.bits.meta := meta
+  io.deq.bits.data := Mux(shift,
+    io.enq.bits.data(tlDataBits-1, nbanks*8),
+    io.enq.bits.data)
+
+  val s1 :: s2 :: Nil = Enum(UInt(), 2)
+  val state = Reg(UInt())
+
+  when (io.init) {
+    state := s1
+  }
+
+  when (io.en) {
+    switch (state) {
+      is (s1) {
+        when (has_tail) {
+          when (has_head) { /* two beats */
+            io.deq.bits.meta.ecnt := ecnt_head
+            dequeue := Bool(false)
+            when (fire) {
+              state := s2
+            }
+          } .otherwise { /* one beat, shifted */
+            io.deq.bits.meta.eskip := meta.eskip - UInt(nbanks)
+            shift := Bool(true)
+          }
+        }
+      }
+
+      is (s2) {
+        io.deq.bits.meta.ecnt := ecnt_tail
+        io.deq.bits.meta.eidx := meta.eidx + ecnt_head
+        io.deq.bits.meta.eskip := UInt(0)
+        shift := Bool(true)
+        when (fire) {
+          state := s1
+        }
+      }
+    }
+  }
+}
+
 class VSU extends VMUModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -221,6 +296,8 @@ class VSU extends VMUModule {
     val la = new LookAheadPortIO(log2Down(nvsdq)+1).flip
 
     val vsdq = new VSDQIO
+
+    val xcpt = new XCPTIO().flip
   }
 
   private val lgbank = log2Up(nbanks)
@@ -235,6 +312,7 @@ class VSU extends VMUModule {
   val ecnt_max = Cat(mt.b || mt.h, mt.w, mt.d, Bits(0,1)) // FIXME: parameterize
   val vlen_next = op.vlen.zext - ecnt_max.zext
   val last = (vlen_next <= UInt(0))
+  val last_under_xcpt = last || io.xcpt.prop.vmu.stall
   val ecnt = Mux(last, op.vlen(lgbank,0), ecnt_max)
 
   val out_ready = io.vsdq.ready || beat_mid
@@ -296,7 +374,7 @@ class VSU extends VMUModule {
   }
 
   val brqs_valid_all = brqs_valid.reduce(_&&_)
-  io.vsdq.valid := brqs_valid_all && !beat_mid && (state === s_busy)
+  io.vsdq.valid := brqs_valid_all && (!beat_mid || last_under_xcpt) && (state === s_busy)
 
   next := out_ready && brqs_valid_all
 
@@ -326,11 +404,13 @@ class VSU extends VMUModule {
   val data_b = brq_data_b
 
   val data_b_hold = Reg(Vec.fill(data_b.size)(Bits()))
-  when (beat_mid) {
+  when (beat_mid && brqs_valid_all) {
     data_b_hold := data_b
   }
 
+  // Bypass hold register if final beat is odd
+  val data_b_head = Mux(last_under_xcpt && beat_mid, data_b, data_b_hold)
   io.vsdq.bits := Mux1H(mt_seq,
-    Seq(data_b_hold ++ data_b, data_h, data_w, data_d).map(i => Cat(i.reverse)))
+    Seq(data_b_head ++ data_b, data_h, data_w, data_d).map(i => Cat(i.reverse)))
 
 }
