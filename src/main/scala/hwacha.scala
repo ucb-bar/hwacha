@@ -11,6 +11,7 @@ case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaScalarDataBits extends Field[Int]
+case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters

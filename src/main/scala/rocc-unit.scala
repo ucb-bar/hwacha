@@ -95,8 +95,6 @@ class RoCC extends HwachaModule
   io.rocc.dmem.acquire.valid := Bool(false)
   io.rocc.dmem.grant.ready := Bool(true)
   io.rocc.dmem.finish.valid := Bool(false)
-  io.rocc.dmem.probe.ready := Bool(false)
-  io.rocc.dmem.release.valid := Bool(false)
   io.rocc.dptw.req.valid := Bool(false)
   io.rocc.pptw.req.valid := Bool(false)
 
