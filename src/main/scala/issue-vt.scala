@@ -389,9 +389,9 @@ class IssueVT extends HwachaModule
   val illegal_vr = vr_val && (vr >= io.cfg.nfregs && vr_fp || vr >= io.cfg.nxregs && !vr_fp)
 
   val irq_common = io.vf.active && io.imem.resp.valid
-  io.irq.issue.ma_inst := Bool(false) // FIXME: catch misaligned VF and JALR addresses before they go to the I$
+  io.irq.issue.ma_inst := io.vf.fire && (io.vf.pc & UInt(3)).orR
   io.irq.issue.fault_inst := irq_common && io.imem.resp.bits.xcpt_if
   io.irq.issue.illegal := irq_common && !(vfu_val || decode_stop)
   io.irq.issue.illegal_regid := irq_common && (illegal_vd || illegal_vt || illegal_vs || illegal_vr)
-  io.irq.issue.aux := io.imem.resp.bits.pc
+  io.irq.issue.aux := Mux(io.vf.fire, io.vf.pc, io.imem.resp.bits.pc)
 }
