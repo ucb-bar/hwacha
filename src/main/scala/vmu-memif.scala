@@ -15,12 +15,6 @@ class VMUMemIO extends VMUBundle {
   val lbox = Decoupled(new VMULoadData).flip
 }
 
-class FinishEntry extends Bundle {
-  val xid = Bits(width = params(TLManagerXactIdBits))
-  val dst = UInt(width = log2Up(params(LNEndpoints)))
-}
-
-
 class MBox extends VMUModule {
   val io = new Bundle {
     val in = new VMUMemInternalIO().flip
@@ -80,7 +74,6 @@ class VMUTileLink extends VMUModule {
 
   private val acquire = io.dmem.acquire
   private val grant = io.dmem.grant
-  private val finish = io.dmem.finish
 
   val fn = abox.bits.fn
   val fn_load = (fn === M_XRD)
@@ -121,24 +114,8 @@ class VMUTileLink extends VMUModule {
     data = sbox.bits.data,
     union = acq_union)
 
-  val grant_has_data = grant.bits.payload.hasData()
-  val grant_needs_ack = grant.bits.payload.requiresAck()
-
-  lbox.bits.tag := grant.bits.payload.client_xact_id
-  lbox.bits.data := grant.bits.payload.data
-  lbox.valid := grant.valid && grant_has_data
-
-  val finishq = Module(new Queue(new FinishEntry, 2))
-
-  grant.ready := (!grant_has_data || lbox.ready) &&
-    (!grant_needs_ack || finishq.io.enq.ready)
-
-  finishq.io.enq.valid := grant_needs_ack && grant.valid && (!grant_has_data || lbox.ready)
-  finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
-  finishq.io.enq.bits.dst := grant.bits.header.src
-
-  finishq.io.deq.ready := finish.ready
-  finish.valid := finishq.io.deq.valid
-  finish.bits.payload.manager_xact_id := finishq.io.deq.bits.xid
-  finish.bits.header.dst := finishq.io.deq.bits.dst
+  lbox.bits.tag := grant.bits.client_xact_id
+  lbox.bits.data := grant.bits.data
+  lbox.valid := grant.valid && grant.bits.hasData()
+  grant.ready := (!grant.bits.hasData() || lbox.ready)
 }
