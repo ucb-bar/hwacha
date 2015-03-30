@@ -30,6 +30,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val imul_stages = 3
   val fma_stages = 3
   val fconv_stages = 3
+  val fcmp_stages = 1
 
   val second_fma_pipe = true
   val second_fconv_pipe = false

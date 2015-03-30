@@ -16,6 +16,7 @@ object Constants extends
   VIDUConstants with
   VFMUConstants with
   VFDUConstants with
+  VFCUConstants with
   VFVUConstants with
   VMUConstants
 
@@ -189,7 +190,7 @@ trait DecodeConstants
 
 trait VIUConstants
 {
-  val SZ_VIU_OP = 5
+  val SZ_VIU_OP = 4
 
   val I_X    = UInt.DC(SZ_VIU_OP)
   val I_ADD  = UInt(0, SZ_VIU_OP)
@@ -208,11 +209,6 @@ trait VIUConstants
   val I_FSJ  = UInt(13, SZ_VIU_OP)
   val I_FSJN = UInt(14, SZ_VIU_OP)
   val I_FSJX = UInt(15, SZ_VIU_OP)
-  val I_FEQ  = UInt(16, SZ_VIU_OP) // this should be moved to its own functional unit
-  val I_FLT  = UInt(17, SZ_VIU_OP)
-  val I_FLE  = UInt(18, SZ_VIU_OP)
-  val I_FMIN = UInt(19, SZ_VIU_OP)
-  val I_FMAX = UInt(20, SZ_VIU_OP)
 }
 
 trait VIMUConstants
@@ -260,6 +256,19 @@ trait VFDUConstants
   val FD_X    = UInt.DC(SZ_VFDU_OP)
   val FD_DIV  = UInt(0, SZ_VFDU_OP)
   val FD_SQRT = UInt(1, SZ_VFDU_OP)
+}
+
+trait VFCUConstants
+{
+  val SZ_VFCU_OP = 3
+
+  val FC_X     = UInt.DC(SZ_VFCU_OP)
+  val FC_CEQ   = UInt(0, SZ_VFCU_OP)
+  val FC_CLT   = UInt(1, SZ_VFCU_OP)
+  val FC_CLE   = UInt(2, SZ_VFCU_OP)
+  val FC_MIN   = UInt(3, SZ_VFCU_OP)
+  val FC_MAX   = UInt(4, SZ_VFCU_OP)
+  val FC_CLASS = UInt(5, SZ_VFCU_OP)
 }
 
 trait VFVUConstants
