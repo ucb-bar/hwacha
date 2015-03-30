@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import rocket.ALU._
 import uncore.constants.MemoryOpConstants._
 
 object VTDecodeTable

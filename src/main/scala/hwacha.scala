@@ -6,7 +6,6 @@ import Constants._
 import rocket.NTLBEntries
 
 case object HwachaNBanks extends Field[Int]
-case object HwachaNRegPerBank extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
@@ -18,7 +17,7 @@ abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters {
   val nbanks = params(HwachaNBanks)
-  val nreg_per_bank = params(HwachaNRegPerBank)
+  val nreg_per_bank = params(HwachaNSRAMRFEntries)
   val ndtlb = params(HwachaNDTLB)  
   val nptlb = params(HwachaNPTLB)  
 
@@ -96,11 +95,14 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   import Commands._
 
   val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
-  //val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
-  //val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
+  val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
+  val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
   val rocc = Module(new RoCC)
   val scalar = Module(new Scalar)
+  val vxu = Module(new VXU)
+  val vmu = Module(new VMU)
+  val memif = Module(new VMUTileLink)
 
   rocc.io.rocc <> io
   rocc.io.pending_memop := scalar.io.pending_memop
@@ -113,19 +115,28 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   // Connect supporting Hwacha memory modules to external ports
   io.imem <> icache.io.mem
   io.iptw <> icache.io.ptw
-  //io.dptw <> dtlb.io.ptw
+  io.dptw <> dtlb.io.ptw
+  io.pptw <> ptlb.io.ptw
 
   //fake vmu
   scalar.io.vmu.loadData.valid := Bool(false)
   scalar.io.vmu.storeAck := Bool(false)
 
-  /*
+  vmu.io.lane <> vxu.io.vmu
 
-  // Connect VU to D$
-  io.mem <> vu.io.dmem
-  */
+  vmu.io.evac.vaq.valid := Bool(false)
+  vmu.io.evac.vsdq.valid := Bool(false)
 
-  // Connect VU to DTLB
-  //vu.io.vtlb <> dtlb.io
+  vmu.io.pf.vaq.valid := Bool(false)
 
+  vmu.io.xcpt.prop.vmu.stall := Bool(false)
+  vmu.io.xcpt.prop.vmu.drain := Bool(false)
+  vmu.io.xcpt.prop.top.stall := Bool(false)
+
+  dtlb.io <> vmu.io.vtlb
+  ptlb.io <> vmu.io.vpftlb
+
+  memif.io.vmu <> vmu.io.memif 
+  io.dmem <> memif.io.dmem
+  io.mem.req.valid := Bool(false)
 }

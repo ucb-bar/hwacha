@@ -16,6 +16,7 @@ class ScalarDpath extends HwachaModule
     val ctrl = new CtrlDpathIO().flip
 
     val vmu = new ScalarMemIO
+    val seqop = new SequencerOpIO
 
     val imem = new rocket.CPUFrontendIO
 
@@ -144,4 +145,8 @@ class ScalarDpath extends HwachaModule
     io.respq.value.valid := Bool(true)
     io.respq.value.bits := wb_reg_wdata
   }
+
+  // fake VU hookup: start from register to avoid critical path issues
+  io.seqop.valid := ex_reg_inst(0)
+  io.seqop.bits.inst := ex_reg_inst
 }

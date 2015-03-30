@@ -35,6 +35,8 @@ class Scalar extends HwachaModule
     val vmu = new ScalarMemIO
 
     val imem = new rocket.CPUFrontendIO
+
+    val seqop = new SequencerOpIO
     
     val vf_active = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
@@ -61,4 +63,5 @@ class Scalar extends HwachaModule
   io.pending_seq <> ctrl.io.pending_seq
   io.pending_memop <> ctrl.io.pending_memop
 
+  io.seqop <> dpath.io.seqop
 }

@@ -91,15 +91,6 @@ class RoCC extends HwachaModule
   io.respq.value.ready := Bool(true)
   io.rocc.resp.bits.data := io.respq.value.bits
 
-  //tie down unused rocc ports for now
-  io.rocc.dmem.acquire.valid := Bool(false)
-  io.rocc.dmem.grant.ready := Bool(true)
-  io.rocc.dmem.finish.valid := Bool(false)
-  io.rocc.dptw.req.valid := Bool(false)
-  io.rocc.pptw.req.valid := Bool(false)
-
-  io.rocc.mem.req.valid := Bool(false)
-
   // Cofiguration state
   val cfg_maxvl = Reg(init=UInt(32, log2Up(nreg_total)+1))
   val cfg_vl    = Reg(init=UInt(0, log2Up(nreg_total)+1))

@@ -12,7 +12,11 @@ object Constants extends
   AIWConstants with
   DecodeConstants with
   VIUConstants with
-  VAU0Constants with
+  VIMUConstants with
+  VIDUConstants with
+  VFMUConstants with
+  VFDUConstants with
+  VFCUConstants with
   VMUConstants
 
 trait MachineConstants
@@ -22,25 +26,17 @@ trait MachineConstants
   val SZ_REGCNT = 6
 
   val SZ_ADDR = 64
-  val SZ_DATA = 66
+  val SZ_DATA = 128
 
-  val SZ_XD = 64
-  val SZ_XW = 32
-  val SZ_XH = 16
-  val SZ_XB = 8
+  val SZ_D = 64
+  val SZ_W = 32
+  val SZ_H = 16
+  val SZ_B = 8
 
-  val N_XD = SZ_DATA / SZ_XD
-  val N_XW = SZ_DATA / SZ_XW
-  val N_XH = SZ_DATA / SZ_XH
-  val N_XB = SZ_DATA / SZ_XB
-
-  val SZ_FPD = SZ_XD + 1
-  val SZ_FPS = SZ_XW + 1
-  val SZ_FPH = SZ_XH
-
-  val N_FPD = SZ_DATA / SZ_FPD
-  val N_FPS = SZ_DATA / SZ_FPS
-  val N_FPH = SZ_DATA / SZ_FPH
+  val N_D = SZ_DATA / SZ_D
+  val N_W = SZ_DATA / SZ_W
+  val N_H = SZ_DATA / SZ_H
+  val N_B = SZ_DATA / SZ_B
 }
 
 trait HwachaDecodeConstants
@@ -190,42 +186,96 @@ trait VIUConstants
 {
   val SZ_VIU_OP = 5
 
-  val FN_X    = Bits("b????")
-  val FN_ADD  = Bits(0)
-  val FN_SL   = Bits(1)
-  val FN_XOR  = Bits(4)
-  val FN_OR   = Bits(6)
-  val FN_AND  = Bits(7)
-  val FN_SR   = Bits(5)
-  val FN_SEQ  = Bits(8)
-  val FN_SNE  = Bits(9)
-  val FN_SUB  = Bits(10)
-  val FN_SRA  = Bits(11)
-  val FN_SLT  = Bits(12)
-  val FN_SGE  = Bits(13)
-  val FN_SLTU = Bits(14)
-  val FN_SGEU = Bits(15)
-
-  val FN_DIV  = FN_XOR
-  val FN_DIVU = FN_SR
-  val FN_REM  = FN_OR
-  val FN_REMU = FN_AND
-
-  val FN_MUL    = FN_ADD
-  val FN_MULH   = FN_SL
-  val FN_MULHSU = FN_SLT
-  val FN_MULHU  = FN_SLTU
+  val I_X    = UInt.DC(SZ_VIU_OP)
+  val I_ADD  = UInt(0, SZ_VIU_OP)
+  val I_SLL  = UInt(1, SZ_VIU_OP)
+  val I_SLT  = UInt(2, SZ_VIU_OP)
+  val I_SLTU = UInt(3, SZ_VIU_OP)
+  val I_XOR  = UInt(4, SZ_VIU_OP)
+  val I_SRL  = UInt(5, SZ_VIU_OP)
+  val I_SRA  = UInt(6, SZ_VIU_OP)
+  val I_OR   = UInt(7, SZ_VIU_OP)
+  val I_AND  = UInt(8, SZ_VIU_OP)
+  val I_SUB  = UInt(9, SZ_VIU_OP)
+  val I_IDX  = UInt(10, SZ_VIU_OP)
+  val I_MOV1 = UInt(11, SZ_VIU_OP)
+  val I_MOV2 = UInt(12, SZ_VIU_OP)
+  val I_FSJ  = UInt(13, SZ_VIU_OP)
+  val I_FSJN = UInt(14, SZ_VIU_OP)
+  val I_FSJX = UInt(15, SZ_VIU_OP)
+  val I_FEQ  = UInt(16, SZ_VIU_OP) // this should be moved to its own functional unit
+  val I_FLT  = UInt(17, SZ_VIU_OP)
+  val I_FLE  = UInt(18, SZ_VIU_OP)
+  val I_FMIN = UInt(19, SZ_VIU_OP)
+  val I_FMAX = UInt(20, SZ_VIU_OP)
 }
 
-trait VAU0Constants extends DecodeConstants
+trait VIMUConstants
 {
-  val SZ_VAU0_OP = 2
+  val SZ_VIMU_OP = 2
 
-  val A0_X    = UInt.DC(SZ_VAU0_OP)
-  val A0_M    = UInt(0, SZ_VAU0_OP)
-  val A0_MH   = UInt(1, SZ_VAU0_OP)
-  val A0_MHSU = UInt(2, SZ_VAU0_OP)
-  val A0_MHU  = UInt(3, SZ_VAU0_OP)
+  val IM_X    = UInt.DC(SZ_VIMU_OP)
+  val IM_M    = UInt(0, SZ_VIMU_OP)
+  val IM_MH   = UInt(1, SZ_VIMU_OP)
+  val IM_MHSU = UInt(2, SZ_VIMU_OP)
+  val IM_MHU  = UInt(3, SZ_VIMU_OP)
+}
+
+trait VIDUConstants
+{
+  val SZ_VIDU_OP = 2
+
+  val ID_X    = UInt.DC(SZ_VIDU_OP)
+  val ID_DIV  = UInt(0, SZ_VIDU_OP)
+  val ID_DIVU = UInt(1, SZ_VIDU_OP)
+  val ID_REM  = UInt(2, SZ_VIDU_OP)
+  val ID_REMU = UInt(3, SZ_VIDU_OP)
+}
+
+trait VFMUConstants
+{
+  val SZ_VFMU_OP = 3
+
+  val FM_X     = UInt.DC(SZ_VFMU_OP)
+  val FM_ADD   = UInt(0, SZ_VFMU_OP)
+  val FM_SUB   = UInt(1, SZ_VFMU_OP)
+  val FM_MUL   = UInt(2, SZ_VFMU_OP)
+  val FM_MADD  = UInt(4, SZ_VFMU_OP)
+  val FM_MSUB  = UInt(5, SZ_VFMU_OP)
+  val FM_NMSUB = UInt(6, SZ_VFMU_OP)
+  val FM_NMADD = UInt(7, SZ_VFMU_OP)
+
+  val IS_FM_OP_MA = (x: Bits) => x(2)
+}
+
+trait VFDUConstants
+{
+  val SZ_VFDU_OP = 1
+
+  val FD_X    = UInt.DC(SZ_VFDU_OP)
+  val FD_DIV  = UInt(0, SZ_VFDU_OP)
+  val FD_SQRT = UInt(1, SZ_VFDU_OP)
+}
+
+trait VFCUConstants
+{
+  val SZ_VFCU_OP = 4
+
+  val FC_X     = UInt.DC(SZ_VFCU_OP)
+  val FC_CLTF  = UInt(0, SZ_VFCU_OP)
+  val FC_CLUTF = UInt(1, SZ_VFCU_OP)
+  val FC_CWTF  = UInt(2, SZ_VFCU_OP)
+  val FC_CWUTF = UInt(3, SZ_VFCU_OP)
+  val FC_CFTL  = UInt(4, SZ_VFCU_OP)
+  val FC_CFTLU = UInt(5, SZ_VFCU_OP)
+  val FC_CFTW  = UInt(6, SZ_VFCU_OP)
+  val FC_CFTWU = UInt(7, SZ_VFCU_OP)
+  val FC_CDTS  = UInt(8, SZ_VFCU_OP)
+  val FC_CDTH  = UInt(9, SZ_VFCU_OP)
+  val FC_CSTD  = UInt(10, SZ_VFCU_OP)
+  val FC_CSTH  = UInt(11, SZ_VFCU_OP)
+  val FC_CHTD  = UInt(12, SZ_VFCU_OP)
+  val FC_CHTS  = UInt(13, SZ_VFCU_OP)
 }
 
 trait VMUConstants extends LaneConstants

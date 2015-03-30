@@ -3,69 +3,64 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import scala.collection.mutable.ArrayBuffer
 import scala.math._
 
-object Compaction extends Compaction
+object Packing
 {
-  def repack_float_d(n: Bits*) = Cat(Bits(1,1), n(0))
-  def repack_float_s(n: Bits*) = Cat(n(1)(32), n(0)(32), n(1)(31,0), n(0)(31,0))
-  def repack_float_h(n: Bits*) = Cat(Bits("b11",2), n(3), n(2), n(1), n(0))
+  def splat_d(n: Bits) = Fill(SZ_D/SZ_D, n.toUInt)
+  def splat_w(n: Bits) = Fill(SZ_D/SZ_W, n.toUInt)
+  def splat_h(n: Bits) = Fill(SZ_D/SZ_H, n.toUInt)
+  def splat_b(n: Bits) = Fill(SZ_D/SZ_B, n.toUInt)
 
-  def pack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (Bits(1,1) ## n(64,0))
-    case _ => Bits(0, 66)
-  }
-  def pack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits(1,1), n(32), Bits("hFFFFFFFF",32), n(31,0))
-    case 1 => Cat(n(32), Bits(1,1), n(31,0), Bits("hFFFFFFFF",32))
-    case _ => Bits(0)
-  }
-  def pack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => Cat(Bits("h3FFFFFFFFFFFF",50), n(15,0))
-    case 1 => Cat(Bits("h3FFFFFFFF",34), n(15,0), Bits("hFFFF",16))
-    case 2 => Cat(Bits("h3FFFF",18), n(15,0), Bits("hFFFFFFFF",32))
-    case 3 => Cat(Bits("b11",2), n(15,0), Bits("hFFFFFFFFFFFF",48))
-    case _ => Bits(0)
+  def _expand(n: Bits, s: Bits, width: Int) = {
+    Cat(Fill(SZ_D - width, s.toUInt), n)
   }
 
-  def unpack_float_d(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64,0))
-    case _ => Bits(0)
-  }
-  def unpack_float_s(n: Bits, i: Int): Bits = i match {
-    case 0 => (n(64) ## n(31,0))
-    case 1 => (n(65) ## n(63,32))
-    case _ => Bits(0)
-  }
-  def unpack_float_h(n: Bits, i: Int): Bits = i match {
-    case 0 => n(15,0)
-    case 1 => n(31,16)
-    case 2 => n(47,32)
-    case 3 => n(63,48)
-    case _ => Bits(0)
+  def expand_d(n: Bits) = n
+  def expand_w(n: Bits) = _expand(n, n(SZ_W-1), SZ_W)
+  def expand_h(n: Bits) = _expand(n, n(SZ_H-1), SZ_H)
+  def expand_b(n: Bits) = _expand(n, n(SZ_B-1), SZ_B)
+  def expand_float_d(n: Bits) = n
+  def expand_float_s(n: Bits) = _expand(n, Bits(1), SZ_W)
+  def expand_float_h(n: Bits) = _expand(n, Bits(1), SZ_H)
+
+  def _repack(n: Seq[Bits], len: Int) = {
+    require(n.length == len)
+    Vec(n).toBits
   }
 
-  def expand_mask(m: Bits) = Cat(
-    m(3) & m(2),
-    m(1) & m(0),
-    Fill(16, m(3)),
-    Fill(16, m(2)),
-    Fill(16, m(1)),
-    Fill(16, m(0)))
+  def repack_d(n: Seq[Bits]) = _repack(n, SZ_D/SZ_D)
+  def repack_w(n: Seq[Bits]) = _repack(n, SZ_D/SZ_W)
+  def repack_h(n: Seq[Bits]) = _repack(n, SZ_D/SZ_H)
+  def repack_b(n: Seq[Bits]) = _repack(n, SZ_D/SZ_B)
+
+  def _unpack(n: Bits, idx: Int, width: Int, limit: Int) = {
+    require((idx+1)*width <= limit)
+    n((idx+1)*width-1, idx*width)
+  }
+
+  def unpack_d(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_D)
+  def unpack_w(n: Bits, idx: Int) = _unpack(n, idx, SZ_W, SZ_D)
+  def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_H, SZ_D)
+  def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_B, SZ_D)
+
+  def repack_slice(n: Seq[Bits]) = _repack(n, SZ_DATA/SZ_D)
+  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_DATA)
 }
 
-trait Compaction
+object DataGating
 {
-  def repack_float_d(n: Bits*): Bits
-  def repack_float_s(n: Bits*): Bits
-  def repack_float_h(n: Bits*): Bits
-  def pack_float_d(n: Bits, i: Int): Bits
-  def pack_float_s(n: Bits, i: Int): Bits
-  def pack_float_h(n: Bits, i: Int): Bits
-  def unpack_float_d(n: Bits, i: Int): Bits
-  def unpack_float_s(n: Bits, i: Int): Bits
-  def unpack_float_h(n: Bits, i: Int): Bits
+  def dgate(valid: Bool, b: Bits) = Fill(b.getWidth, valid) & b
+}
+
+object HardFloatHelper
+{
+  def recode_dp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 52, 12)
+  def recode_sp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 23, 9)
+  def recode_hp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 10, 6)
+  def ieee_dp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 52, 12)
+  def ieee_sp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 23, 9)
+  def ieee_hp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 10, 6)
 }
 
 abstract trait UsesPtrIncr extends UsesHwachaParameters
