@@ -34,7 +34,7 @@ class ScalarUnit extends HwachaModule
 
     val vmu = new ScalarMemIO
 
-    val imem = new rocket.CPUFrontendIO
+    val imem = new FrontendIO
 
     val seqop = new SequencerOpIO
     

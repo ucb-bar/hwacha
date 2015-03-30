@@ -105,11 +105,20 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
 
-  //COLIN FIXME: call out specific parts
-  rocc.io.rocc <> io
+  // Connect RoccUnit to top level IO
+  rocc.io.rocc.cmd <> io.cmd
+  rocc.io.rocc.resp <> io.resp
+  rocc.io.rocc.busy <> io.busy
+  rocc.io.rocc.s <> io.s
+  rocc.io.rocc.interrupt <> io.interrupt
+  rocc.io.rocc.exception <> io.exception
+
+  //Connect RoccUnit to ScalarUnit
   rocc.io.pending_memop := scalar.io.pending_memop
+  rocc.io.pending_seq := scalar.io.pending_seq
   rocc.io.vf_active := scalar.io.vf_active
-  rocc.io <> scalar.io
+  rocc.io.respq <> scalar.io.respq
+  rocc.io.cmdq <> scalar.io.cmdq
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
