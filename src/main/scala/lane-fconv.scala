@@ -17,7 +17,7 @@ class LaneFConvSlice extends HwachaModule
 {
   val io = new Bundle {
     val req = Valid(new Bundle {
-      val fn = new VFCUFn
+      val fn = new VFVUFn
       val in = Bits(INPUT, SZ_D)
     }).flip
     val resp = Valid(new LaneFConvResult)
@@ -28,23 +28,23 @@ class LaneFConvSlice extends HwachaModule
 
   val op_int2float = MuxCase(
     Bits(0), Array(
-      fn.op_is(FC_CLTF)  -> hardfloat.consts.type_int64,
-      fn.op_is(FC_CLUTF) -> hardfloat.consts.type_uint64,
-      fn.op_is(FC_CWTF)  -> hardfloat.consts.type_int32,
-      fn.op_is(FC_CWUTF) -> hardfloat.consts.type_uint32
+      fn.op_is(FV_CLTF)  -> hardfloat.consts.type_int64,
+      fn.op_is(FV_CLUTF) -> hardfloat.consts.type_uint64,
+      fn.op_is(FV_CWTF)  -> hardfloat.consts.type_int32,
+      fn.op_is(FV_CWUTF) -> hardfloat.consts.type_uint32
     ))
 
   val op_float2int = MuxCase(
     Bits(0), Array(
-      fn.op_is(FC_CFTL)  -> hardfloat.consts.type_int64,
-      fn.op_is(FC_CFTLU) -> hardfloat.consts.type_uint64,
-      fn.op_is(FC_CFTW)  -> hardfloat.consts.type_int32,
-      fn.op_is(FC_CFTWU) -> hardfloat.consts.type_uint32
+      fn.op_is(FV_CFTL)  -> hardfloat.consts.type_int64,
+      fn.op_is(FV_CFTLU) -> hardfloat.consts.type_uint64,
+      fn.op_is(FV_CFTW)  -> hardfloat.consts.type_int32,
+      fn.op_is(FV_CFTWU) -> hardfloat.consts.type_uint32
     ))
 
-  val val_int2float = fn.op_is(FC_CLTF,FC_CLUTF,FC_CWTF,FC_CWUTF)
-  val val_float2int32 = fn.op_is(FC_CFTL,FC_CFTLU)
-  val val_float2int64 = fn.op_is(FC_CFTW,FC_CFTWU)
+  val val_int2float = fn.op_is(FV_CLTF,FV_CLUTF,FV_CWTF,FV_CWUTF)
+  val val_float2int32 = fn.op_is(FV_CFTL,FV_CFTLU)
+  val val_float2int64 = fn.op_is(FV_CFTW,FV_CFTWU)
   val val_float2int = val_float2int32 || val_float2int64
 
   val wdp = (52, 12)
@@ -80,12 +80,12 @@ class LaneFConvSlice extends HwachaModule
     }
 
   val results_float2float =
-    List((FC_CSTD, recode_sp _, unpack_w _, ieee_dp _, expand_float_d _, wsp, wdp),
-         (FC_CHTD, recode_hp _, unpack_h _, ieee_dp _, expand_float_d _, whp, wdp),
-         (FC_CDTS, recode_dp _, unpack_d _, ieee_sp _, expand_float_s _, wdp, wsp),
-         (FC_CHTS, recode_hp _, unpack_h _, ieee_sp _, expand_float_s _, whp, wsp),
-         (FC_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp),
-         (FC_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp)) map {
+    List((FV_CSTD, recode_sp _, unpack_w _, ieee_dp _, expand_float_d _, wsp, wdp),
+         (FV_CHTD, recode_hp _, unpack_h _, ieee_dp _, expand_float_d _, whp, wdp),
+         (FV_CDTS, recode_dp _, unpack_d _, ieee_sp _, expand_float_s _, wdp, wsp),
+         (FV_CHTS, recode_hp _, unpack_h _, ieee_sp _, expand_float_s _, whp, wsp),
+         (FV_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp),
+         (FV_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp)) map {
       case (op, recode, unpack, ieee, expand, (sigs, exps), (sigd, expd)) => {
         val valid = fn.op_is(op)
         val input = recode(dgate(valid, unpack(in, 0)))
@@ -96,7 +96,7 @@ class LaneFConvSlice extends HwachaModule
     }
 
   val outs =
-    List((FC_CSTD, FC_CHTD), (FC_CDTS, FC_CHTS), (FC_CDTH, FC_CSTH)).zipWithIndex.map {
+    List((FV_CSTD, FV_CHTD), (FV_CDTS, FV_CHTS), (FV_CDTH, FV_CSTH)).zipWithIndex.map {
       case ((op0, op1), i) =>
         MuxCase(Bits(0), Array(
           val_int2float -> results_int2float(i)._1,
@@ -107,7 +107,7 @@ class LaneFConvSlice extends HwachaModule
     }
 
   val excs =
-    List((FC_CSTD, FC_CHTD), (FC_CDTS, FC_CHTS), (FC_CDTH, FC_CSTH)).zipWithIndex.map {
+    List((FV_CSTD, FV_CHTD), (FV_CDTS, FV_CHTS), (FV_CDTH, FV_CSTH)).zipWithIndex.map {
       case ((op0, op1), i) =>
         MuxCase(Bits(0), Array(
           val_int2float -> results_int2float(i)._2,

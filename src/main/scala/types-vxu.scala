@@ -58,7 +58,7 @@ class VFXUFn(sz_op: Int) extends Bundle
 
 class VFMUFn extends VFXUFn(SZ_VFMU_OP)
 class VFDUFn extends VFXUFn(SZ_VFDU_OP)
-class VFCUFn extends VFXUFn(SZ_VFCU_OP)
+class VFVUFn extends VFXUFn(SZ_VFVU_OP)
 
 class VQUFn extends Bundle
 {
@@ -165,9 +165,9 @@ class VFDUOp extends LaneDecoupledOp
   val fn = new VFDUFn
 }
 
-class VFCUOp extends LaneOp
+class VFVUOp extends LaneOp
 {
-  val fn = new VFCUFn
+  val fn = new VFVUFn
 }
 
 class VQUOp extends LaneOp
@@ -209,7 +209,7 @@ class VFXUAck extends Bundle with HwachaLaneParameters
 
 class VFMUAck extends VFXUAck
 class VFDUAck extends VFXUAck
-class VFCUAck extends VFXUAck
+class VFVUAck extends VFXUAck
 
 
 //-------------------------------------------------------------------------\\

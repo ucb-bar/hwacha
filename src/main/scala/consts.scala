@@ -16,7 +16,7 @@ object Constants extends
   VIDUConstants with
   VFMUConstants with
   VFDUConstants with
-  VFCUConstants with
+  VFVUConstants with
   VMUConstants
 
 trait MachineConstants
@@ -257,25 +257,25 @@ trait VFDUConstants
   val FD_SQRT = UInt(1, SZ_VFDU_OP)
 }
 
-trait VFCUConstants
+trait VFVUConstants
 {
-  val SZ_VFCU_OP = 4
+  val SZ_VFVU_OP = 4
 
-  val FC_X     = UInt.DC(SZ_VFCU_OP)
-  val FC_CLTF  = UInt(0, SZ_VFCU_OP)
-  val FC_CLUTF = UInt(1, SZ_VFCU_OP)
-  val FC_CWTF  = UInt(2, SZ_VFCU_OP)
-  val FC_CWUTF = UInt(3, SZ_VFCU_OP)
-  val FC_CFTL  = UInt(4, SZ_VFCU_OP)
-  val FC_CFTLU = UInt(5, SZ_VFCU_OP)
-  val FC_CFTW  = UInt(6, SZ_VFCU_OP)
-  val FC_CFTWU = UInt(7, SZ_VFCU_OP)
-  val FC_CDTS  = UInt(8, SZ_VFCU_OP)
-  val FC_CDTH  = UInt(9, SZ_VFCU_OP)
-  val FC_CSTD  = UInt(10, SZ_VFCU_OP)
-  val FC_CSTH  = UInt(11, SZ_VFCU_OP)
-  val FC_CHTD  = UInt(12, SZ_VFCU_OP)
-  val FC_CHTS  = UInt(13, SZ_VFCU_OP)
+  val FV_X     = UInt.DC(SZ_VFVU_OP)
+  val FV_CLTF  = UInt(0, SZ_VFVU_OP)
+  val FV_CLUTF = UInt(1, SZ_VFVU_OP)
+  val FV_CWTF  = UInt(2, SZ_VFVU_OP)
+  val FV_CWUTF = UInt(3, SZ_VFVU_OP)
+  val FV_CFTL  = UInt(4, SZ_VFVU_OP)
+  val FV_CFTLU = UInt(5, SZ_VFVU_OP)
+  val FV_CFTW  = UInt(6, SZ_VFVU_OP)
+  val FV_CFTWU = UInt(7, SZ_VFVU_OP)
+  val FV_CDTS  = UInt(8, SZ_VFVU_OP)
+  val FV_CDTH  = UInt(9, SZ_VFVU_OP)
+  val FV_CSTD  = UInt(10, SZ_VFVU_OP)
+  val FV_CSTH  = UInt(11, SZ_VFVU_OP)
+  val FV_CHTD  = UInt(12, SZ_VFVU_OP)
+  val FV_CHTS  = UInt(13, SZ_VFVU_OP)
 }
 
 trait VMUConstants extends LaneConstants

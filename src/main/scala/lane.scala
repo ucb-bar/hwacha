@@ -33,7 +33,7 @@ class LaneOpIO extends HwachaBundle
   val vfmu0 = Valid(new VFMUOp)
   val vfmu1 = Valid(new VFMUOp)
   val vfdu = Decoupled(new VFDUOp)
-  val vfcu = Valid(new VFCUOp)
+  val vfvu = Valid(new VFVUOp)
 }
 
 class LaneAckIO extends HwachaBundle
@@ -46,7 +46,7 @@ class LaneAckIO extends HwachaBundle
   val vfmu0 = Valid(new VFMUAck)
   val vfmu1 = Valid(new VFMUAck)
   val vfdu = Valid(new VFDUAck)
-  val vfcu = Valid(new VFCUAck)
+  val vfvu = Valid(new VFVUAck)
 }
 
 class Lane extends HwachaModule with HwachaLaneParameters
@@ -117,8 +117,8 @@ class Lane extends HwachaModule with HwachaLaneParameters
     imuls += imul.io.resp
 
     val fconv = Module(new LaneFConvSlice)
-    fconv.io.req.valid := io.op.vfcu.valid && io.op.vfcu.bits.pred(i)
-    fconv.io.req.bits.fn := io.op.vfcu.bits.fn
+    fconv.io.req.valid := io.op.vfvu.valid && io.op.vfvu.bits.pred(i)
+    fconv.io.req.bits.fn := io.op.vfvu.bits.fn
     fconv.io.req.bits.in := unpack_slice(rdata(2), i)
     fconvs += fconv.io.resp
 
@@ -152,14 +152,14 @@ class Lane extends HwachaModule with HwachaLaneParameters
   io.ack.vimu.valid := imuls.map(_.valid).reduce(_|_)
   io.ack.vfmu0.valid := fma0s.map(_.valid).reduce(_|_)
   io.ack.vfmu1.valid := fma1s.map(_.valid).reduce(_|_)
-  io.ack.vfcu.valid := fconvs.map(_.valid).reduce(_|_)
+  io.ack.vfvu.valid := fconvs.map(_.valid).reduce(_|_)
 
   io.ack.vqu.bits.pred := io.op.vqu.bits.pred
   io.ack.vgu.bits.pred := io.op.vgu.bits.pred
   io.ack.vimu.bits.pred := Vec(imuls.map(_.valid)).toBits
   io.ack.vfmu0.bits.pred := Vec(fma0s.map(_.valid)).toBits
   io.ack.vfmu1.bits.pred := Vec(fma1s.map(_.valid)).toBits
-  io.ack.vfcu.bits.pred := Vec(fconvs.map(_.valid)).toBits
+  io.ack.vfvu.bits.pred := Vec(fconvs.map(_.valid)).toBits
 
   io.ack.vidu <> du.io.idiv.ack
   io.ack.vfdu <> du.io.fdiv.ack
