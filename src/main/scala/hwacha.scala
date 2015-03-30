@@ -128,6 +128,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   scalar.io.vmu.loadData.valid := Bool(false)
   scalar.io.vmu.storeAck := Bool(false)
 
+  vxu.io.seqop <> scalar.io.seqop
+
   vmu.io.lane <> vxu.io.vmu
 
   vmu.io.evac.vaq.valid := Bool(false)
