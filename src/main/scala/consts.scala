@@ -170,6 +170,11 @@ trait DecodeConstants
   val A2_RS2  = UInt(2, 2)
   val A2_IMM  = UInt(3, 2)
 
+  val NBYP = 2
+  val SZ_BYP = log2Up(NBYP)
+  val BYP_0   = 0
+  val BYP_EX  = 1
+
   val DW_X  = X
   val DW_32 = N
   val DW_64 = Y

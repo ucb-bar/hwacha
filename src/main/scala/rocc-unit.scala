@@ -70,7 +70,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   )
 }
 
-class RoCC extends HwachaModule 
+class RoCCUnit extends HwachaModule 
 {
   import Commands._
   import HwachaDecodeTable._
@@ -191,8 +191,6 @@ class RoCC extends HwachaModule
   // Calculate the vf address
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
   val imm_addr = (io.rocc.cmd.bits.rs1 + vf_immediate).toUInt
-  debug(vf_immediate)
-  debug(imm_addr)
 
   // Hookup ready port of RoCC cmd queue
   //COLIN FIXME: we use the exception flag to set a sticky bit that causes to always be ready after exceptions
@@ -231,8 +229,6 @@ class RoCC extends HwachaModule
   io.cmdq.cmd <> cmdq.io.deq.cmd
   
   // Hookup cmdq.imm
-  debug(sel_imm)
-  debug(imm_vlen)
   cmdq_enq.imm.bits := MuxLookup(sel_imm, imm_vlen, Array(
     IMM_VLEN -> imm_vlen,
     IMM_RS1  -> io.rocc.cmd.bits.rs1,
@@ -260,9 +256,12 @@ class RoCC extends HwachaModule
   cmdqcnt.cmd.io.inc := io.cmdq.cmd.ready && cmdq.io.deq.cmd.valid
   cmdqcnt.imm.io.dec := cmdq.io.enq.imm.ready && cmdq_enq.imm.valid
   cmdqcnt.imm.io.inc := io.cmdq.imm.ready && cmdq.io.deq.imm.valid
+  cmdqcnt.rd.io.dec := cmdq.io.enq.rd.ready && cmdq_enq.rd.valid
+  cmdqcnt.rd.io.inc := io.cmdq.rd.ready && cmdq.io.deq.rd.valid
 
   cmdqcnt.cmd.io.qcnt := UInt(confvcmdq.ncmd - nbanks)
   cmdqcnt.imm.io.qcnt := UInt(confvcmdq.nimm - nbanks)
+  cmdqcnt.rd.io.qcnt := UInt(confvcmdq.nrd - nbanks)
 
   //COLIN FIXME: update keepcfg
   keepcfg :=

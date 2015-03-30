@@ -94,23 +94,28 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   import HwachaDecodeTable._
   import Commands._
 
-  val icache = Module(new rocket.Frontend, {case CacheName => "HwI"})
+  val icache = Module(new HwachaFrontend, {case CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
   val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
-  val rocc = Module(new RoCC)
-  val scalar = Module(new Scalar)
+  val rocc = Module(new RoCCUnit)
+  val scalar = Module(new ScalarUnit)
   val vxu = Module(new VXU)
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
 
+  //COLIN FIXME: call out specific parts
   rocc.io.rocc <> io
   rocc.io.pending_memop := scalar.io.pending_memop
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io <> scalar.io
 
   // Connect Scalar to I$
-  icache.io.cpu <> scalar.io.imem
+  icache.io.vxu <> scalar.io.imem
+
+  //Tie icache vru port to unused
+  icache.io.vru.req.valid := Bool(false)
+  icache.io.vru.resp.ready := Bool(false)
 
   // Connect supporting Hwacha memory modules to external ports
   io.imem <> icache.io.mem

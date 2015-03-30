@@ -178,14 +178,21 @@ class IntCtrlSigs extends Bundle
 class CtrlDpathIO extends Bundle
 {
   val inst    = Bits(INPUT, 64)
+  val ex_inst    = Bits(INPUT, 64)
+  val wb_inst    = Bits(INPUT, 64)
   val killd   = Bool(OUTPUT)
-  val ren     = Vec.fill(4)(Bool(OUTPUT))
+  val ren     = Vec.fill(3)(Bool(OUTPUT))
   val ex_ctrl = new IntCtrlSigs().asOutput()
+  val ex_valid = Bool(OUTPUT)
   val wb_ctrl = new IntCtrlSigs().asOutput()
+  val wb_valid = Bool(OUTPUT)
   val wb_wen   = Bool(OUTPUT)
+  val bypass = Vec.fill(3)(Bool(OUTPUT))
+  val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
   val mem_pending_reg = UInt(OUTPUT)
   val swrite  = Valid(new Write().asOutput())
   val awrite  = Valid(new Write().asOutput())
+  val wb_vf_active = Bool(OUTPUT)
 }
 
 class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
@@ -199,7 +206,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
     val vmu = new ScalarMemIO
 
-    val imem = new rocket.CPUFrontendIO
+    val imem = new FrontendIO
 
     val vf_active = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
@@ -231,8 +238,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val mem_pending = load_pending || store_pending//scalar memop in flight
 
   val vf_active     = Reg(init=Bool(false))
+  val ex_vf_active  = Reg(init=Bool(false))
+  val wb_vf_active  = Reg(init=Bool(false))
   val vf_pc         = Reg(UInt())
-  vf_pc := io.imem.resp.bits.pc
 
   val pending_seq   = Reg(init=Bool(false))
   val pending_memop = Reg(init=Bool(false))
@@ -259,9 +267,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.cmdq.rd.ready  := !vf_active && (decode_vmss || decode_vmsa)
 
   //default values
-  io.imem.req.valid := Bool(false)
-  io.imem.req.bits.pc := UInt(0,44)
-  io.imem.btb_update.valid := Bool(false)
+  io.imem.req.valid := vf_active
+  io.imem.req.bits.pc := vf_pc
+  io.imem.req.bits.npc := vf_pc + UInt(8)
+  io.imem.req.bits.nnpc := vf_pc + UInt(2*8)
   io.imem.invalidate := Bool(false)
   io.imem.resp.ready := vf_active
 
@@ -269,6 +278,11 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, VTDecodeTable.table)
   val ex_ctrl = Reg(new IntCtrlSigs)
   val wb_ctrl = Reg(new IntCtrlSigs)
+  io.dpath.ex_ctrl := ex_ctrl
+  io.dpath.wb_ctrl := wb_ctrl
+
+  val ex_reg_valid = Reg(Bool())
+  val wb_reg_valid = Reg(Bool())
 
   val ctrl_killd = Bool()
   val ctrl_killx = Bool()
@@ -285,44 +299,84 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when(fire(vf_active,decode_vf))
   {
     vf_active := Bool(true)
-    io.imem.req.valid := Bool(true)
-    io.imem.req.bits.pc := io.cmdq.imm.bits
+    vf_pc := io.cmdq.imm.bits
   }
   when(id_ctrl.decode_stop && vf_active)
   {
     vf_active := Bool(false)
   }
-  val ex_vf_active = Reg(Bool())
-  val wb_vf_active = Reg(Bool())
+  io.dpath.wb_vf_active    := wb_vf_active
 
   val vd_val :: vd_scalar :: vd_sp :: vd_dyn :: Nil = parse_rinfo(id_ctrl.vdi)
   val vr_val :: vr_scalar :: vr_sp :: vr_dyn :: Nil = parse_rinfo(id_ctrl.vri)
   val vs_val :: vs_scalar :: vs_sp :: vs_dyn :: Nil = parse_rinfo(id_ctrl.vsi)
   val vt_val :: vt_scalar :: vt_sp :: vt_dyn :: Nil = parse_rinfo(id_ctrl.vti)
+  io.dpath.ren(0) := vr_val && vr_scalar
+  io.dpath.ren(1) := vs_val && vs_scalar
+  io.dpath.ren(2) := vt_val && vt_scalar
 
-  val id_scalar_dest = id_ctrl.decode_scalar || vd_scalar || (vd_dyn && io.dpath.inst(OPC_VD))
-  val id_scalar_src1 = id_ctrl.decode_scalar || vr_scalar || (vr_dyn && io.dpath.inst(OPC_VS1))
-  val id_scalar_src2 = id_ctrl.decode_scalar || vs_scalar || (vs_dyn && io.dpath.inst(OPC_VS2))
-  val id_scalar_src3 = id_ctrl.decode_scalar || vt_scalar || (vt_dyn && io.dpath.inst(OPC_VS3))
+  val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
+
+  val wb_vd_val :: wb_vd_scalar :: wb_vd_sp :: wb_vd_dyn :: Nil = parse_rinfo(wb_ctrl.vdi)
+
+  val id_scalar_dest = id_ctrl.decode_scalar || (vd_val && vd_scalar) || (vd_dyn && io.dpath.inst(OPC_VD))
+  val id_scalar_src1 = id_ctrl.decode_scalar || (vr_val && vr_scalar) || (vr_dyn && io.dpath.inst(OPC_VS1))
+  val id_scalar_src2 = id_ctrl.decode_scalar || (vs_val && vs_scalar) || (vs_dyn && io.dpath.inst(OPC_VS2))
+  val id_scalar_src3 = id_ctrl.decode_scalar || (vt_val && vt_scalar) || (vt_dyn && io.dpath.inst(OPC_VS3))
+
+  //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
+  val ex_scalar_dest = ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && io.dpath.ex_inst(OPC_VD))
+
+  val wb_scalar_dest = wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && io.dpath.wb_inst(OPC_VD))
 
   val id_waddr = io.dpath.inst(23,16)
   val id_raddrs1 = io.dpath.inst(31,24)
   val id_raddrs2 = io.dpath.inst(40,33)
   val id_raddrs3 = io.dpath.inst(48,41)
 
+  val ex_waddr   = io.dpath.ex_inst(23,16)
+
+  val wb_waddr   = io.dpath.wb_inst(23,16)
+
   //COLIN FIXME: do we have any scalar instructions with no destination?
-  val ex_scalar_dest = Reg(Bool())
-  val wb_scalar_dest = Reg(Bool())
   val id_scalar_inst = id_scalar_dest &&
                        (id_scalar_src1 && vr_val)
                        (id_scalar_src2 && vs_val)
                        (id_scalar_src3 && vt_val)
   //assuming all scalar instructions have a dest
 
+  val bypassDst = Array(id_raddrs1, id_raddrs2, id_raddrs3)
+  val bypassSrc = Array.fill(NBYP)((Bool(true), UInt(0)))
+  bypassSrc(BYP_EX) = (ex_reg_valid && ex_scalar_dest, ex_waddr)
+
+  val doBypass = bypassDst.map(d => bypassSrc.map(s => s._1 && s._2 === d))
+  for (i <- 0 until io.dpath.bypass.size) {
+    io.dpath.bypass(i) := doBypass(i).reduce(_||_)
+    io.dpath.bypass_src(i) := PriorityEncoder(doBypass(i))
+  }
+
   val id_ctrl_wen_not0 = vd_val && vd_scalar && vd_sp && id_waddr != UInt(0)
   val id_ctrl_rens1_not0 = vr_val && vr_scalar && vr_sp && id_raddrs1 != UInt(0)
   val id_ctrl_rens2_not0 = vs_val && vs_scalar && vs_sp && id_raddrs2 != UInt(0)
   val id_ctrl_rens3_not0 = vt_val && vt_scalar && vt_sp && id_raddrs3 != UInt(0)
+
+  // stall for RAW/WAW hazards on loads, AMOs, and mul/div in execute stage.
+  val ex_cannot_bypass = ex_ctrl.vmu_val
+  val data_hazard_ex = ex_scalar_dest &&
+    (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
+     id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
+     id_ctrl_wen_not0   && id_waddr  === ex_waddr)
+
+  val id_ex_hazard = ex_reg_valid && (data_hazard_ex && ex_cannot_bypass)
+
+  val wb_set_sboard = wb_ctrl.vmu_val 
+  // stall for RAW/WAW hazards on load/AMO misses and mul/div in writeback.
+  val data_hazard_wb = wb_scalar_dest &&
+     (id_ctrl_rens1_not0 && id_raddrs1 === wb_waddr ||
+      id_ctrl_rens2_not0 && id_raddrs2 === wb_waddr ||
+      id_ctrl_wen_not0   && id_waddr  === wb_waddr)
+  val id_wb_hazard = wb_reg_valid && (data_hazard_wb && wb_set_sboard)
+
   //Stall second load/store on decode
   val id_second_mem = id_ctrl.vmu_val && mem_pending
   //stall on RAW/WAW hazards on loads until data returns
@@ -331,7 +385,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val load_hazard = load_pending && (
                    id_ctrl_rens1_not0 && sboard.read(id_raddrs1) ||
                    id_ctrl_rens2_not0 && sboard.read(id_raddrs2) ||
-                   id_ctrl_rens2_not0 && sboard.read(id_raddrs3) ||
+                   id_ctrl_rens3_not0 && sboard.read(id_raddrs3) ||
                    id_ctrl_wen_not0 && sboard.read(id_waddr) )
   //stall on WAW hazards on stores until translation succeeds
   val store_hazard = store_pending && (
@@ -343,39 +397,49 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_sboard_hazard = 
                    (id_ctrl_rens1_not0 && sboard.readBypassed(id_raddrs1) ||
                    id_ctrl_rens2_not0 && sboard.readBypassed(id_raddrs2) ||
-                   id_ctrl_rens3_not0 && sboard.readBypassed(id_raddrs3) ||
                    id_ctrl_rens1_not0 && sboard.readBypassed(id_waddr))
+
+  sboard.set(wb_set_sboard && io.dpath.wb_wen, wb_waddr)
+
   //Only one outstanding scalar load/store
   assert(!(io.vmu.loadData.valid && io.vmu.storeAck), "only one scalar store/load should be active")
   //on loadData.valid or store_ack we clear the sboard for its addr
   val clear_mem = io.vmu.loadData.valid || io.vmu.storeAck 
   sboard.clear(clear_mem, mem_pending_reg)
  
-  ctrl_killd := !io.imem.resp.valid || id_sboard_hazard || 
-                id_second_mem || load_hazard | store_hazard
- 
+  val ctrl_stalld = id_ex_hazard || id_wb_hazard || 
+                    id_sboard_hazard || id_second_mem || load_hazard || store_hazard
+
+  io.dpath.killd := !vf_active || ctrl_stalld
+
   //excute
+  ctrl_killd := !vf_active || !io.imem.resp.valid || ctrl_stalld 
+  ex_reg_valid := !ctrl_killd
+  io.dpath.ex_valid := ex_reg_valid
+
   when (!ctrl_killd) {
+    vf_pc := vf_pc + UInt(8)
     ex_ctrl := id_ctrl
-    ex_scalar_dest := id_scalar_dest
-    ex_vf_active := vf_active
     when(id_ctrl.vmu_val) { mem_pending_reg := id_waddr }
   }
+  when (!ctrl_stalld) { ex_vf_active := vf_active }
+
   //memory
   io.vmu.op.valid := ex_ctrl.vmu_val
   io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_cmd
   io.vmu.op.bits.fn.mt := ex_ctrl.vmu_type
  
-
-
   //writeback
+  ctrl_killx := !ex_reg_valid
+  wb_reg_valid := !ctrl_killx
+  io.dpath.wb_valid := wb_reg_valid
+
   when (!ctrl_killx) {
     wb_ctrl := ex_ctrl
-    wb_scalar_dest := ex_scalar_dest
-    wb_vf_active := ex_vf_active
   }
+  when (!ctrl_stalld) { wb_vf_active := ex_vf_active }
   assert(!(io.vmu.loadData.valid && wb_scalar_dest), "load result and scalar wb conflict")
-  io.dpath.wb_wen := wb_vf_active && (io.vmu.loadData.valid || wb_scalar_dest)
+  io.dpath.wb_wen := wb_vf_active && wb_reg_valid && (io.vmu.loadData.valid || wb_scalar_dest)
   /*
   
   //COLIN FIXME: only recode when sending to shared rocket fpu

@@ -25,7 +25,7 @@ class ScalarMemIO extends Bundle
   val loadData = Valid(Bits(width = params(HwachaScalarDataBits))).flip
 }
 
-class Scalar extends HwachaModule
+class ScalarUnit extends HwachaModule
 {
   val io = new Bundle {
     val cmdq = new CMDQIO().flip

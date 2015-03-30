@@ -18,7 +18,7 @@ class ScalarDpath extends HwachaModule
     val vmu = new ScalarMemIO
     val seqop = new SequencerOpIO
 
-    val imem = new rocket.CPUFrontendIO
+    val imem = new FrontendIO
 
     val respq = new RESPQIO()
   }
@@ -28,13 +28,16 @@ class ScalarDpath extends HwachaModule
   val ex_reg_pc = Reg(UInt())
   val ex_reg_inst = Reg(Bits())
   val ex_reg_kill = Reg(Bool())
-  val ex_reg_srs = Vec.fill(4)(Reg(Bits()))
+  val ex_reg_srs_bypass = Vec.fill(3)(Reg(Bool()))
+  val ex_reg_srs_lsb = Vec.fill(3)(Reg(Bits()))
+  val ex_reg_srs_msb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_ars = Vec.fill(2)(Reg(Bits()))
 
   // writeback definitions
   val wb_reg_pc = Reg(UInt())
   val wb_reg_inst = Reg(Bits())
   val wb_reg_wdata = Reg(Bits())
+  val wb_reg_kill = Reg(Bool())
   val wb_wdata = Bits()
 
   class SRegFile {
@@ -65,9 +68,9 @@ class ScalarDpath extends HwachaModule
   val id_inst = io.imem.resp.bits.data(0).toBits; require(params(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc
   //register reads
-  val id_sraddr = Vec(id_inst(31,24), id_inst(40,33), id_inst(48,41), id_inst(23,16))
+  val id_sraddr = Vec(id_inst(31,24), id_inst(40,33), id_inst(48,41))
   val id_araddr = Vec(id_inst(28,24), id_inst(37,33))
-  val id_sreads = id_sraddr.map(srf.read(_) )
+  val id_sreads = id_sraddr.map(srf.read _ )
   val id_areads = id_araddr.map(arf(_))
 
   // immediate generation
@@ -80,6 +83,8 @@ class ScalarDpath extends HwachaModule
   }
 
   io.ctrl.inst := id_inst
+  io.ctrl.ex_inst := ex_reg_inst
+  io.ctrl.wb_inst := wb_reg_inst
 
   //execute stage
   ex_reg_kill := io.ctrl.killd
@@ -87,10 +92,15 @@ class ScalarDpath extends HwachaModule
   {
     ex_reg_pc := id_pc
     ex_reg_inst := id_inst
-    for( i <- 0 until id_sreads.size){
-      when(io.ctrl.ren(i)){
-        ex_reg_srs(i) := id_sreads(i)
+    ex_reg_srs_bypass := io.ctrl.bypass
+    for (i <- 0 until id_sreads.size) {
+      when (io.ctrl.ren(i)) {
+        ex_reg_srs_lsb(i) := id_sreads(i)(SZ_BYP-1,0)
+        when (!io.ctrl.bypass(i)) {
+          ex_reg_srs_msb(i) := id_sreads(i) >> UInt(SZ_BYP)
+        }
       }
+      when (io.ctrl.bypass(i)) { ex_reg_srs_lsb(i) := io.ctrl.bypass_src(i) }
     }
     for( i <- 0 until id_areads.size){
       when(io.ctrl.ren(i)){
@@ -99,12 +109,19 @@ class ScalarDpath extends HwachaModule
     }
   }
 
+  val bypass = Vec.fill(NBYP)(Bits())
+  bypass(BYP_0) := Bits(0)
+  bypass(BYP_EX) := wb_reg_wdata
+
+  val ex_srs = for (i <- 0 until id_sreads.size)
+    yield Mux(ex_reg_srs_bypass(i), bypass(ex_reg_srs_lsb(i)), Cat(ex_reg_srs_msb(i), ex_reg_srs_lsb(i)))
+
   val ex_imm = imm(io.ctrl.ex_ctrl.sel_imm, ex_reg_inst)
   val ex_op1 = MuxLookup(io.ctrl.ex_ctrl.sel_alu1, SInt(0), Seq(
-    A1_RS1 -> ex_reg_srs(0).toSInt,
+    A1_RS1 -> ex_srs(0).toSInt,
     A1_PC -> ex_reg_pc.toSInt))
   val ex_op2 = MuxLookup(io.ctrl.ex_ctrl.sel_alu2, SInt(0), Seq(
-    A2_RS2 -> ex_reg_srs(1).toSInt,
+    A2_RS2 -> ex_srs(1).toSInt,
     A2_IMM -> ex_imm))
 
   val alu = Module(new rocket.ALU)
@@ -116,7 +133,7 @@ class ScalarDpath extends HwachaModule
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
   io.vmu.op.bits.addr := alu.io.out
   //COLIN FIXME: we need to have store data come from a different reg
-  io.vmu.op.bits.data := ex_reg_srs(3)
+  io.vmu.op.bits.data := ex_srs(0)
 
   //Writeback stage
   when(!ex_reg_kill) {
@@ -149,4 +166,25 @@ class ScalarDpath extends HwachaModule
   // fake VU hookup: start from register to avoid critical path issues
   io.seqop.valid := ex_reg_inst(0)
   io.seqop.bits.inst := ex_reg_inst
+
+  when(io.ctrl.swrite.valid) {
+    printf("H: SW[r%d=%x][%d]\n",
+         io.ctrl.swrite.bits.rd, io.ctrl.swrite.bits.imm, io.ctrl.swrite.valid)
+  }
+  when(io.ctrl.awrite.valid) {
+    printf("H: AW[r%d=%x][%d]\n",
+         io.ctrl.awrite.bits.rd, io.ctrl.awrite.bits.imm, io.ctrl.awrite.valid)
+  }
+  when(io.ctrl.wb_vf_active) {
+    printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
+         io.ctrl.wb_valid, wb_reg_pc, 
+         Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_wdata, io.ctrl.wb_wen,
+         wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vri === RA,
+                                 Reg(next=Reg(next=ex_reg_ars(0))),
+                                 Reg(next=Reg(next=ex_srs(0)))),
+         wb_reg_inst(40,33), Mux(io.ctrl.wb_ctrl.vsi === RA,
+                                 Reg(next=Reg(next=ex_reg_ars(1))),
+                                 Reg(next=Reg(next=ex_srs(1)))),
+         wb_reg_inst, wb_reg_inst)
+  }
 }
