@@ -11,6 +11,7 @@ case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaScalarDataBits extends Field[Int]
 case object HwachaNScalarRegs extends Field[Int]
+case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
@@ -23,6 +24,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nptlb = params(HwachaNPTLB)  
 
   val nsregs = params(HwachaNScalarRegs)
+  val local_sfpu = params(HwachaLocalScalarFPU)
 
   val nreg_total = nbanks * nreg_per_bank
   val confvru = true
@@ -107,7 +109,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   val vxu = Module(new VXU)
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
-  val sfpu = Module(new ScalarFPU)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -125,7 +126,14 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   rocc.io.cmdq <> scalar.io.cmdq
 
   //Connect ScalarUnit to Rocket's FPU
-  scalar.io.fpu <> sfpu.io
+  if(local_sfpu){
+    val sfpu = Module(new ScalarFPU)
+    scalar.io.fpu <> sfpu.io
+  }else{
+    scalar.io.fpu.req.ready := Bool(false)
+    scalar.io.fpu.resp.valid := Bool(false)
+  }
+
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem

@@ -186,6 +186,7 @@ class CtrlDpathIO extends HwachaBundle
   val wb_inst    = Bits(INPUT, 64)
   val killd   = Bool(OUTPUT)
   val ren     = Vec.fill(3)(Bool(OUTPUT))
+  val ex_scalar_dest = Bool(OUTPUT)
   val ex_ctrl = new IntCtrlSigs().asOutput()
   val ex_valid = Bool(OUTPUT)
   val ex_waddr = Bits(INPUT, log2Up(nsregs))
@@ -337,6 +338,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
   val ex_scalar_dest = !ex_ctrl.fpu_val && (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && io.dpath.ex_inst(OPC_VD)))
+  io.dpath.ex_scalar_dest := Bool(true)
+  when(ex_vf_active) { io.dpath.ex_scalar_dest := ex_scalar_dest }
 
   val wb_scalar_dest = !wb_ctrl.fpu_val && (wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && io.dpath.wb_inst(OPC_VD)))
 
