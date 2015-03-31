@@ -164,8 +164,8 @@ class ScalarDpath extends HwachaModule
   }
 
   // fake VU hookup: start from register to avoid critical path issues
-  io.seqop.valid := ex_reg_inst(0)
-  io.seqop.bits.inst := ex_reg_inst
+  io.seqop.valid := !io.ctrl.killd
+  io.seqop.bits.inst := Cat(id_inst(31,0), id_inst(63,32))
 
   when(io.ctrl.swrite.valid) {
     printf("H: SW[r%d=%x][%d]\n",

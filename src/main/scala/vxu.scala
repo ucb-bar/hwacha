@@ -48,26 +48,29 @@ class VXU extends HwachaModule
   deck.io.cfg.xfsplit := io.seqop.bits.inst
 
   deck.io.op.valid := io.seqop.valid
+  deck.io.op.bits.fn := io.seqop.bits.inst
+  deck.io.op.bits.mt := io.seqop.bits.inst
+  deck.io.op.bits.vlen := io.seqop.bits.inst
   deck.io.op.bits.utidx := io.seqop.bits.inst
-  deck.io.op.bits.float := io.seqop.valid
-  deck.io.op.bits.reg.vs.zero := io.seqop.valid
-  deck.io.op.bits.reg.vs.float := io.seqop.valid
+  deck.io.op.bits.float := io.seqop.bits.inst(13)
+  deck.io.op.bits.reg.vs.zero := io.seqop.bits.inst(13)
+  deck.io.op.bits.reg.vs.float := io.seqop.bits.inst(13)
   deck.io.op.bits.reg.vs.id := io.seqop.bits.inst
-  deck.io.op.bits.reg.vt.zero := io.seqop.valid
-  deck.io.op.bits.reg.vt.float := io.seqop.valid
+  deck.io.op.bits.reg.vt.zero := io.seqop.bits.inst(13)
+  deck.io.op.bits.reg.vt.float := io.seqop.bits.inst(13)
   deck.io.op.bits.reg.vt.id := io.seqop.bits.inst
-  deck.io.op.bits.reg.vr.zero := io.seqop.valid
-  deck.io.op.bits.reg.vr.float := io.seqop.valid
+  deck.io.op.bits.reg.vr.zero := io.seqop.bits.inst(13)
+  deck.io.op.bits.reg.vr.float := io.seqop.bits.inst(13)
   deck.io.op.bits.reg.vr.id := io.seqop.bits.inst
-  deck.io.op.bits.reg.vd.zero := io.seqop.valid
-  deck.io.op.bits.reg.vd.float := io.seqop.valid
+  deck.io.op.bits.reg.vd.zero := io.seqop.bits.inst(13)
+  deck.io.op.bits.reg.vd.float := io.seqop.bits.inst(13)
   deck.io.op.bits.reg.vd.id := io.seqop.bits.inst
 
   deck.io.lla.cnt := io.seqop.bits.inst
-  deck.io.lla.reserve := io.seqop.valid
+  deck.io.lla.reserve := io.seqop.bits.inst(13)
 
   deck.io.sla.cnt := io.seqop.bits.inst
-  deck.io.sla.reserve := io.seqop.valid
+  deck.io.sla.reserve := io.seqop.bits.inst(13)
 
   deck.io.xcpt.prop.vmu.stall := Bool(false)
 }

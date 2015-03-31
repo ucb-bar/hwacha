@@ -23,7 +23,7 @@ class Sequencer extends HwachaModule with HwachaLaneParameters
     io.laneop.bank(i).sram.write.valid := io.seqop.valid
     io.laneop.bank(i).sram.write.bits.pred := io.seqop.bits.inst
     io.laneop.bank(i).sram.write.bits.addr := io.seqop.bits.inst
-    io.laneop.bank(i).sram.write.bits.selg := io.seqop.valid
+    io.laneop.bank(i).sram.write.bits.selg := io.seqop.bits.inst(7)
     io.laneop.bank(i).sram.write.bits.wsel := io.seqop.bits.inst
 
     for (j <- 0 until nFFRPorts) {
@@ -35,7 +35,7 @@ class Sequencer extends HwachaModule with HwachaLaneParameters
     io.laneop.bank(i).ff.write.valid := io.seqop.valid
     io.laneop.bank(i).ff.write.bits.pred := io.seqop.bits.inst
     io.laneop.bank(i).ff.write.bits.addr := io.seqop.bits.inst
-    io.laneop.bank(i).ff.write.bits.selg := io.seqop.valid
+    io.laneop.bank(i).ff.write.bits.selg := io.seqop.bits.inst(7)
     io.laneop.bank(i).ff.write.bits.wsel := io.seqop.bits.inst
 
     io.laneop.bank(i).opl.valid := io.seqop.valid
@@ -48,8 +48,8 @@ class Sequencer extends HwachaModule with HwachaLaneParameters
 
     io.laneop.bank(i).brq.valid := io.seqop.valid
     io.laneop.bank(i).brq.bits.pred := io.seqop.bits.inst
-    io.laneop.bank(i).brq.bits.selff := io.seqop.valid
-    io.laneop.bank(i).brq.bits.zero := io.seqop.valid
+    io.laneop.bank(i).brq.bits.selff := io.seqop.bits.inst(7)
+    io.laneop.bank(i).brq.bits.zero := io.seqop.bits.inst(7)
 
     io.laneop.bank(i).viu.valid := io.seqop.valid
     io.laneop.bank(i).viu.bits.pred := io.seqop.bits.inst
@@ -72,6 +72,9 @@ class Sequencer extends HwachaModule with HwachaLaneParameters
   io.laneop.vidu.valid := io.seqop.valid
   io.laneop.vidu.bits.pred := io.seqop.bits.inst
   io.laneop.vidu.bits.fn := new VIDUFn().fromBits(io.seqop.bits.inst)
+  io.laneop.vidu.bits.bank := io.seqop.bits.inst
+  io.laneop.vidu.bits.addr := io.seqop.bits.inst
+  io.laneop.vidu.bits.selff := io.seqop.bits.inst(8)
 
   io.laneop.vfmu0.valid := io.seqop.valid
   io.laneop.vfmu0.bits.pred := io.seqop.bits.inst
@@ -84,6 +87,9 @@ class Sequencer extends HwachaModule with HwachaLaneParameters
   io.laneop.vfdu.valid := io.seqop.valid
   io.laneop.vfdu.bits.pred := io.seqop.bits.inst
   io.laneop.vfdu.bits.fn := new VFDUFn().fromBits(io.seqop.bits.inst)
+  io.laneop.vfdu.bits.bank := io.seqop.bits.inst
+  io.laneop.vfdu.bits.addr := io.seqop.bits.inst
+  io.laneop.vfdu.bits.selff := io.seqop.bits.inst(8)
 
   io.laneop.vfcu.valid := io.seqop.valid
   io.laneop.vfcu.bits.pred := io.seqop.bits.inst
