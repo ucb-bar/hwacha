@@ -104,30 +104,32 @@ class LaneFDivSlice extends HwachaModule with HwachaLaneParameters
   outtagq.io.enq.bits := intagq.io.deq.bits
 
   // output
-  val result_valid = div.io.outValid_div || div.io.outValid_sqrt
-  val result_out = RegEnable(div.io.out, result_valid).toUInt
-  val result_exc = RegEnable(div.io.exceptionFlags, result_valid)
+  val s0_result_valid = div.io.outValid_div || div.io.outValid_sqrt
 
   // stage output+1
+  val s1_result_valid = Reg(next=s0_result_valid)
+  val s1_result_out = RegEnable(div.io.out, s0_result_valid).toUInt
+  val s1_result_exc = RegEnable(div.io.exceptionFlags, s0_result_valid)
+
   val rq = Module(new Queue(new LaneFDivResult, nDecoupledUnitWBQueue))
 
-  val result_dp = ieee_dp(result_out)
-  val result_sp = hardfloat.recodedFloatNToRecodedFloatM(result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 23, 9)
-  val result_hp = hardfloat.recodedFloatNToRecodedFloatM(result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 10, 6)
+  val s1_result_dp = ieee_dp(s1_result_out)
+  val s1_result_sp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 23, 9)
+  val s1_result_hp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 10, 6)
 
-  val out = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), result_dp,
-            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(result_sp._1)),
-                                                   expand_float_h(ieee_hp(result_hp._1))))
-  val exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), Bits(0),
-            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), result_sp._2, result_hp._2))
+  val s1_out = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), s1_result_dp,
+            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp._1)),
+                                                   expand_float_h(ieee_hp(s1_result_hp._1))))
+  val s1_exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), Bits(0),
+            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp._2, s1_result_hp._2))
 
-  rq.io.enq.valid := result_valid
-  outtagq.io.deq.ready := result_valid
+  rq.io.enq.valid := s1_result_valid
+  outtagq.io.deq.ready := s1_result_valid
 
-  rq.io.enq.bits.out := out
-  rq.io.enq.bits.exc := exc | outtagq.io.deq.bits.exc
+  rq.io.enq.bits.out := s1_out
+  rq.io.enq.bits.exc := s1_result_exc | s1_exc | outtagq.io.deq.bits.exc
 
-  assert(!result_valid || rq.io.enq.ready, "result queue should always be ready when a result is about to enqueue")
+  assert(!s1_result_valid || rq.io.enq.ready, "result queue should always be ready when a result is about to enqueue")
   assert(!io.req.fire() || rq.io.enq.ready, "result queue should always be ready when a request fires")
 
   io.resp <> rq.io.deq
