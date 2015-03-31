@@ -179,7 +179,7 @@ class IntCtrlSigs extends Bundle
   }
 }
 
-class CtrlDpathIO extends Bundle
+class CtrlDpathIO extends HwachaBundle
 {
   val inst    = Bits(INPUT, 64)
   val ex_inst    = Bits(INPUT, 64)
@@ -188,10 +188,10 @@ class CtrlDpathIO extends Bundle
   val ren     = Vec.fill(3)(Bool(OUTPUT))
   val ex_ctrl = new IntCtrlSigs().asOutput()
   val ex_valid = Bool(OUTPUT)
-  val ex_waddr = Bits(INPUT, log2Up(256))
+  val ex_waddr = Bits(INPUT, log2Up(nsregs))
   val wb_ctrl = new IntCtrlSigs().asOutput()
   val wb_valid = Bool(OUTPUT)
-  val wb_waddr = Bits(INPUT, log2Up(256))
+  val wb_waddr = Bits(INPUT, log2Up(nsregs))
   val wb_wen   = Bool(OUTPUT)
   val retire   = Bool(OUTPUT)
   val bypass = Vec.fill(3)(Bool(OUTPUT))
@@ -244,7 +244,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
       when (ens) { r := _next }
     }
   }
-  val sboard = new Scoreboard(256)
+  val sboard = new Scoreboard(nsregs)
   val pending_mem = Reg(init=Bool(false))//scalar memop in flight
 
   val vf_active     = Reg(init=Bool(false))

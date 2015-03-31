@@ -10,6 +10,7 @@ case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaScalarDataBits extends Field[Int]
+case object HwachaNScalarRegs extends Field[Int]
 case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
@@ -20,6 +21,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nreg_per_bank = params(HwachaNSRAMRFEntries)
   val ndtlb = params(HwachaNDTLB)  
   val nptlb = params(HwachaNPTLB)  
+
+  val nsregs = params(HwachaNScalarRegs)
 
   val nreg_total = nbanks * nreg_per_bank
   val confvru = true

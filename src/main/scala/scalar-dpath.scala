@@ -38,9 +38,9 @@ class ScalarDpath extends HwachaModule
   val ex_reg_srs_msb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_ars = Vec.fill(2)(Reg(Bits()))
 
-  val pending_mem_reg = Reg(UInt(width=log2Up(256)))
+  val pending_mem_reg = Reg(UInt(width=log2Up(nsregs)))
   val pending_fpu = Reg(init=Bool(false))
-  val pending_fpu_reg = Reg(UInt(width=log2Up(256)))
+  val pending_fpu_reg = Reg(UInt(width=log2Up(nsregs)))
   val pending_fpu_typ = Reg(init=Bits(width=SZ_PREC))//only used in dpath
   io.ctrl.pending_mem_reg := pending_mem_reg
   io.ctrl.pending_fpu_reg := pending_fpu_reg
@@ -54,7 +54,7 @@ class ScalarDpath extends HwachaModule
   val wb_wdata = Bits()
 
   class SRegFile {
-    private val rf = Mem(UInt(width = 64), 255)
+    private val rf = Mem(UInt(width = 64), nsregs-1)
     private val reads = collection.mutable.ArrayBuffer[(UInt,UInt)]()
     private var canRead = true
     def read(addr: UInt) = {
