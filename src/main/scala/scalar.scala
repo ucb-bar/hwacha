@@ -32,6 +32,10 @@ class ScalarUnit extends HwachaModule
 
     val respq = new RESPQIO()
 
+    val fpu = new Bundle {
+      val req = Decoupled(new FPInput())
+      val resp = Decoupled(new FPResult()).flip
+    }
     val vmu = new ScalarMemIO
 
     val imem = new FrontendIO
@@ -47,6 +51,17 @@ class ScalarUnit extends HwachaModule
   val dpath = Module(new ScalarDpath)
 
   ctrl.io.dpath <> dpath.io.ctrl
+
+  //hook up fpu
+  dpath.io.fpu.resp.ready <> io.fpu.resp.ready
+  dpath.io.fpu.resp.valid <> io.fpu.resp.valid
+  dpath.io.fpu.req.bits <> io.fpu.req.bits
+  dpath.io.fpu.resp.bits <> io.fpu.resp.bits
+
+  ctrl.io.fpu.req.bits <> io.fpu.req.bits
+  ctrl.io.fpu.req.ready <> io.fpu.req.ready
+  ctrl.io.fpu.req.valid <> io.fpu.req.valid
+  ctrl.io.fpu.resp.valid <> io.fpu.resp.valid
 
   io.respq <> dpath.io.respq
 

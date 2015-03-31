@@ -104,6 +104,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   val vxu = Module(new VXU)
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
+  val sfpu = Module(new ScalarFPU)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -119,6 +120,9 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.respq <> scalar.io.respq
   rocc.io.cmdq <> scalar.io.cmdq
+
+  //Connect ScalarUnit to Rocket's FPU
+  scalar.io.fpu <> sfpu.io
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem

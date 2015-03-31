@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import HardFloatHelper._
 
 class Write extends Bundle
 {
@@ -14,6 +15,10 @@ class ScalarDpath extends HwachaModule
 {
   val io = new Bundle {
     val ctrl = new CtrlDpathIO().flip
+    val fpu = new Bundle {
+      val req = Decoupled(new FPInput())
+      val resp = Decoupled(new FPResult()).flip
+    }
 
     val vmu = new ScalarMemIO
     val seqop = new SequencerOpIO
@@ -32,6 +37,14 @@ class ScalarDpath extends HwachaModule
   val ex_reg_srs_lsb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_srs_msb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_ars = Vec.fill(2)(Reg(Bits()))
+
+  val pending_mem_reg = Reg(UInt(width=log2Up(256)))
+  val pending_fpu = Reg(init=Bool(false))
+  val pending_fpu_reg = Reg(UInt(width=log2Up(256)))
+  val pending_fpu_typ = Reg(init=Bits(width=SZ_PREC))//only used in dpath
+  io.ctrl.pending_mem_reg := pending_mem_reg
+  io.ctrl.pending_fpu_reg := pending_fpu_reg
+  io.ctrl.pending_fpu := pending_fpu
 
   // writeback definitions
   val wb_reg_pc = Reg(UInt())
@@ -83,6 +96,8 @@ class ScalarDpath extends HwachaModule
   }
 
   io.ctrl.inst := id_inst
+  io.ctrl.ex_waddr := ex_reg_inst(23,16)
+  io.ctrl.wb_waddr := wb_reg_inst(23,16)
   io.ctrl.ex_inst := ex_reg_inst
   io.ctrl.wb_inst := wb_reg_inst
 
@@ -130,10 +145,46 @@ class ScalarDpath extends HwachaModule
   alu.io.in2 := ex_op2.toUInt
   alu.io.in1 := ex_op1
 
+  //fpu ex
+  //io.fpu.req.bits.rm := ex_reg_inst(52,50)
+  io.fpu.req.bits.rm := Bits(0)
+  io.fpu.req.bits.typ := ex_reg_inst(54,54)
+  io.fpu.req.bits.in1 := 
+     Mux(io.fpu.req.bits.typ === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(ex_srs(0))), recode_dp(ex_srs(0)))
+  io.fpu.req.bits.in2 := 
+     Mux(io.fpu.req.bits.typ === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(ex_srs(1))), recode_dp(ex_srs(1)))
+  io.fpu.req.bits.in3 := 
+     Mux(io.fpu.req.bits.typ === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(ex_srs(2))), recode_dp(ex_srs(2)))
+
+  when(io.ctrl.fire_fpu) { 
+    pending_fpu := Bool(true)
+    pending_fpu_typ := io.fpu.req.bits.typ
+    pending_fpu_reg := io.ctrl.ex_waddr
+  }
+  when(io.fpu.resp.fire()){
+    pending_fpu := Bool(false)
+  }
+
+  //fpu resp
+  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
+  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
+  val unrec_fpu_resp = Mux(pending_fpu_typ === UInt(0),
+               Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
+
+  //give fixed priority to mem -> fpu -> alu
+  io.fpu.resp.ready := Bool(true)
+  when(io.vmu.loadData.valid) { io.fpu.resp.ready := Bool(false) }
+
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
   io.vmu.op.bits.addr := alu.io.out
-  //COLIN FIXME: we need to have store data come from a different reg
-  io.vmu.op.bits.data := ex_srs(0)
+  io.vmu.op.bits.data := ex_srs(1)
+
+  when(io.vmu.op.fire()) {
+    pending_mem_reg := io.ctrl.ex_waddr
+  }
 
   //Writeback stage
   when(!ex_reg_kill) {
@@ -145,8 +196,12 @@ class ScalarDpath extends HwachaModule
   assert(!(io.ctrl.wb_wen && io.ctrl.swrite.valid), "Cannot write vmss and scalar dest")
   assert(!(io.ctrl.wb_wen && io.ctrl.awrite.valid), "Cannot write vmsa and scalar dest")
 
-  val wb_waddr = Mux(io.vmu.loadData.valid, io.ctrl.mem_pending_reg, wb_reg_inst(23,16))
-  wb_wdata := wb_reg_wdata
+  val wb_waddr = Mux(io.vmu.loadData.valid, pending_mem_reg,
+                 Mux(io.fpu.resp.valid, pending_fpu_reg,
+                 wb_reg_inst(23,16)))
+  wb_wdata := Mux(io.vmu.loadData.valid, io.vmu.loadData.bits,
+              Mux(io.fpu.resp.valid, unrec_fpu_resp,
+              wb_reg_wdata))
   when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
 
   when(io.ctrl.swrite.valid) { srf.write(io.ctrl.swrite.bits.rd, io.ctrl.swrite.bits.imm) }
@@ -177,7 +232,7 @@ class ScalarDpath extends HwachaModule
   }
   when(io.ctrl.wb_vf_active) {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
-         io.ctrl.wb_valid, wb_reg_pc, 
+         io.ctrl.retire, wb_reg_pc, 
          Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_wdata, io.ctrl.wb_wen,
          wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vri === RA,
                                  Reg(next=Reg(next=ex_reg_ars(0))),
