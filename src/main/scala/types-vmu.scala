@@ -81,7 +81,7 @@ class VPAQEntry extends VMUBundle {
   val ecnt = UInt(width = SZ_VLEN) 
 }
 
-trait VMUMetadataBase extends VMUParameters {
+trait VMUMetadataBase extends VMUBundle {
   val ecnt = UInt(width = tlByteAddrBits)
   val eskip = UInt(width = tlByteAddrBits)
 }
@@ -94,18 +94,14 @@ trait VMUMetadataStore extends VMUMetadataBase {
   val offset = UInt(width = tlByteAddrBits)
 }
 
-class VMULoadMetaEntry extends VMUBundle with VMUMetadataLoad
-class VMUStoreMetaEntry extends VMUBundle with VMUMetadataStore
-class VMUMetaUnion extends VMUBundle
-  with VMUMetadataLoad with VMUMetadataStore
+class VMULoadMetaEntry extends VMUMetadataLoad
+class VMUStoreMetaEntry extends VMUMetadataStore
+class VMUMetaUnion extends VMUMetadataLoad with VMUMetadataStore
 
-class VMUMemOp[T <: Data](gen: T) extends VMUBundle {
+trait VMUMemOp extends VMUBundle {
   val fn = Bits(width = M_SZ)
   val mt = Bits(width = MT_SZ)
   val addr = UInt(width = paddrBits)
-  val meta = gen.clone
-
-  override def clone: this.type = new VMUMemOp(gen).asInstanceOf[this.type]
 }
 
 class MetaReadIO[T <: Data](gen: T) extends VMUBundle {

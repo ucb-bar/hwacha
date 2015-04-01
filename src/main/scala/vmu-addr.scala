@@ -4,7 +4,10 @@ import Chisel._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
-class VMUMemOpIO extends DecoupledIO(new VMUMemOp(new VMUMetaUnion))
+class VMUAddr extends VMUMemOp {
+  val meta = new VMUMetaUnion
+}
+class VMUAddrIO extends DecoupledIO(new VMUAddr)
 
 class VVAQ extends VMUModule {
   val io = new Bundle {
@@ -74,11 +77,18 @@ class ABox0 extends VMUModule {
     stall_hold := Bool(true)
   }
 
-  val addr_valid = busy && (!op.fn.indexed || io.vvaq.valid) && !stall
+  val addr_valid = !op.fn.indexed || io.vvaq.valid
   val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
-  io.tbox.vpn.valid := addr_valid //&& io.vpaq.ready
-  io.vpaq.valid := addr_valid && tlb_ready && !xcpt
-  io.vvaq.ready := busy && op.fn.indexed && tlb_ready && io.vpaq.ready && !stall
+
+  val en = busy && !stall
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(addr_valid, tlb_ready, io.vpaq.ready)
+    (rvs.filter(_ != exclude) ++ include).reduce(_ && _) && en
+  }
+
+  io.vvaq.ready := fire(addr_valid, op.fn.indexed)
+  io.tbox.vpn.valid := fire(tlb_ready)
+  io.vpaq.valid := fire(io.vpaq.ready, !xcpt)
 
   switch (state) {
     is (s_idle) {
@@ -113,7 +123,7 @@ class ABox0 extends VMUModule {
   val tlb_finish = tlb_ready && io.tbox.vpn.valid
   val addr_misaligned = mt.tail.zipWithIndex.map(i =>
       i._1 && (addr(i._2, 0) != UInt(0))).reduce(_||_) &&
-      addr_valid
+      addr_valid && en
 
   io.irq.vmu.ma_ld := addr_misaligned && fn_ld
   io.irq.vmu.ma_st := addr_misaligned && fn_st
@@ -203,7 +213,7 @@ class ABox1 extends VMUModule {
     val la = new LookAheadPortIO(palaBits).flip
 
     val vpaq = Decoupled(UInt(width = paddrBits)).flip
-    val mbox = new VMUMemOpIO
+    val mbox = new VMUAddrIO
   }
 
   val op = io.issue.op
@@ -299,7 +309,7 @@ class VPFQ extends VMUModule {
     val tbox = new TLBQueryIO
 
     val enq = new VVAPFQIO().flip
-    val deq = new VMUMemOpIO
+    val deq = new VMUAddrIO
   }
 
   private def vpn(x: UInt) = x(vaddrBits-1, pgIdxBits)
@@ -330,9 +340,9 @@ class ABox2 extends VMUModule {
     val irq = new IRQIO
     val tbox = new TLBQueryIO
 
-    val abox1 = new VMUMemOpIO().flip
+    val abox1 = new VMUAddrIO().flip
     val evac = Decoupled(UInt(width = maxAddrBits)).flip
-    val mbox = new VMUMemOpIO
+    val mbox = new VMUAddrIO
   }
 
   private def vpn(x: UInt) = x(vaddrBits-1, pgIdxBits)
@@ -388,7 +398,7 @@ class ABox extends VMUModule {
     val lane = new VAQLaneIO().flip
     val evac = new VVAQIO().flip
     val pf = new VVAPFQIO().flip
-    val mbox = new VMUMemOpIO
+    val mbox = new VMUAddrIO
   }
 
   val vvaq = Module(new VVAQ)
