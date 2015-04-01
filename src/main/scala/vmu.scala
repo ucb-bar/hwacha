@@ -138,7 +138,6 @@ class TLBIO extends Bundle
 }
 
 class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
-
   val io = new Bundle {
     val lane = new VMUIO().flip
     val evac = new Bundle {
@@ -185,8 +184,8 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
 
   lbox.io.lane <> io.lane.vldq
 
-  mbox.io.in.abox <> abox.io.mbox
-  mbox.io.in.sbox <> sbox.io.mbox
-  mbox.io.in.lbox <> lbox.io.mbox
-  io.memif <> mbox.io.out
+  mbox.io.inner.abox <> abox.io.mbox
+  mbox.io.inner.sbox <> sbox.io.mbox
+  mbox.io.inner.lbox <> lbox.io.mbox
+  io.memif <> mbox.io.outer
 }

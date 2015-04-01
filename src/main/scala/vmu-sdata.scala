@@ -3,8 +3,10 @@ package hwacha
 import Chisel._
 
 class VMUStoreIO extends Bundle {
-  val meta = Decoupled(new VMUStoreMetaEntry).flip
-  val store = Decoupled(new VMUStoreData)
+  val valid = Bool(OUTPUT)
+  val ready = Bool(INPUT)
+  val meta = new VMUStoreMetaEntry().asOutput
+  val store = new VMUStoreData().asInput
 }
 
 class SBox extends VMUModule {
@@ -14,11 +16,11 @@ class SBox extends VMUModule {
 
     val lane = new VSDQIO().flip
     val evac = new VSDQIO().flip
-    val mbox = new VMUStoreIO
+    val mbox = new VMUStoreIO().flip
   }
 
   val op = io.issue.op
-  val meta = io.mbox.meta.bits
+  val meta = io.mbox.meta
   val packed = op.unit && !op.fn.indexed
   private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
 
@@ -40,7 +42,8 @@ class SBox extends VMUModule {
   val index_real = index & Fill(tlByteAddrBits, index_mask)
   val index_step = Cat(mt.reverse)
   val index_next = index_real + index_step
-  when (io.mbox.store.fire()) {
+  val mbox_fire = io.mbox.valid && io.mbox.ready
+  when (mbox_fire) {
     index := index_next
   }
 
@@ -71,17 +74,16 @@ class SBox extends VMUModule {
   val data_valid = vsdq.io.deq.valid || (packed && truncate && !drain)
   val dequeue = Mux(packed, !truncate, (index_next === UInt(0)) || meta.last) || drain
 
-  vsdq.io.deq.ready := io.mbox.store.ready && io.mbox.meta.valid && dequeue
-  io.mbox.meta.ready := io.mbox.store.ready && data_valid
-  io.mbox.store.valid := io.mbox.meta.valid && data_valid
+  vsdq.io.deq.ready := io.mbox.valid && dequeue
+  io.mbox.ready := data_valid
 
-  io.mbox.store.bits.data := Cat(funnel.io.out.reverse)
-  io.mbox.store.bits.mask := mask
+  io.mbox.store.data := Cat(funnel.io.out.reverse)
+  io.mbox.store.mask := mask
 
   val busy = Reg(init = Bool(false))
   when (io.issue.fire) {
     busy := Bool(true)
-  } .elsewhen(io.mbox.meta.fire() && meta.last) {
+  } .elsewhen(mbox_fire && meta.last) {
     busy := Bool(false)
   }
   io.issue.busy := busy
