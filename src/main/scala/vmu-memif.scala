@@ -8,10 +8,15 @@ class VMUMemReq extends VMUMemOp {
   val store = new VMUStoreData
 }
 
+class VMUMemResp extends VMULoadData {
+  val store = Bool()
+}
+
 class VMUMemIO extends VMUBundle {
   val req = Decoupled(new VMUMemReq)
-  val resp = Decoupled(new VMULoadData).flip
+  val resp = Decoupled(new VMUMemResp).flip
 }
+
 
 class FinishEntry extends Bundle {
   val xid = Bits(width = params(TLManagerXactIdBits))
@@ -24,6 +29,7 @@ class MBox extends VMUModule {
       val abox = new VMUAddrIO().flip
       val sbox = new VMUStoreIO
       val lbox = new VMULoadIO
+      val sret = Valid(UInt(width = sretBits))
     }
     val outer = new VMUMemIO
   }
@@ -71,7 +77,14 @@ class MBox extends VMUModule {
   req.bits.addr := abox.bits.addr
   req.bits.tag := Mux(lbox_en, lbox.meta.tag, sbox.meta.ecnt) // FIXME
   req.bits.store := sbox.store
-  resp <> lbox.load
+
+  // Response demux
+  resp.ready := resp.bits.store || lbox.load.ready
+  lbox.load.valid := resp.valid && !resp.bits.store
+  lbox.load.bits.data := resp.bits.data
+  lbox.load.bits.tag := resp.bits.tag
+  io.inner.sret.valid := resp.valid && resp.bits.store
+  io.inner.sret.bits := Mux(resp.bits.tag === UInt(0), UInt(tlDataBytes), resp.bits.tag)
 }
 
 class VMUTileLink extends VMUModule {
@@ -125,11 +138,15 @@ class VMUTileLink extends VMUModule {
 
   val finishq = Module(new Queue(new FinishEntry, 2))
 
-  val grant_has_data = grant.bits.payload.hasData()
-  val grant_needs_ack = grant.bits.payload.requiresAck()
+  val grant_type_load = grant.bits.payload.hasData()
+  val grant_type_store =
+    grant.bits.payload.isBuiltInType() &&
+    grant.bits.payload.is(uncore.Grant.putAckType)
+  val resp_en = grant_type_load || grant_type_store
+  val finish_en = grant.bits.payload.requiresAck()
 
-  val resp_ready = !grant_has_data || resp.ready
-  val finishq_ready = !grant_needs_ack || finishq.io.enq.ready
+  val resp_ready = !resp_en || resp.ready
+  val finishq_ready = !finish_en || finishq.io.enq.ready
 
   private def fire_grant(exclude: Bool, include: Bool*) = {
     val rvs = Seq(grant.valid, resp_ready, finishq_ready)
@@ -138,11 +155,12 @@ class VMUTileLink extends VMUModule {
 
   grant.ready := fire_grant(grant.valid)
 
-  resp.valid := fire_grant(resp_ready, grant_has_data)
+  resp.valid := fire_grant(resp_ready, resp_en)
   resp.bits.tag := grant.bits.payload.client_xact_id
   resp.bits.data := grant.bits.payload.data
+  resp.bits.store := grant_type_store
 
-  finishq.io.enq.valid := fire_grant(finishq_ready, grant_needs_ack)
+  finishq.io.enq.valid := fire_grant(finishq_ready, finish_en)
   finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
   finishq.io.enq.bits.dst := grant.bits.header.src
 

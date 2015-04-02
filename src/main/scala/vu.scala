@@ -127,10 +127,8 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   //mrt.io.sreq.evac := evac.io.vaq.fire()
   mrt.io.sreq.evac := evac.io.vaq.valid && vmu.io.evac.vaq.ready
   mrt.io.lret <> vxu.io.lret
-  mrt.io.sret.count := io.dmem.grant.bits.payload.client_xact_id
-  mrt.io.sret.update := io.dmem.grant.fire() &&
-    io.dmem.grant.bits.payload.isBuiltInType() &&
-    io.dmem.grant.bits.payload.is(uncore.Grant.putAckType)
+  mrt.io.sret.count := vmu.io.sret.bits
+  mrt.io.sret.update := vmu.io.sret.valid
 
   io.keepcfg :=
     vcmdq.io.deq.cmd.valid ||

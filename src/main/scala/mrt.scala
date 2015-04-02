@@ -35,7 +35,7 @@ class MRT extends HwachaModule with VMUParameters
   lcnt.io.dec.update := Bool(false)
 
   scnt.io.la <> io.sreq.vxu
-  scnt.io.inc.cnt := Mux(io.sret.count === UInt(0), UInt(tlDataBytes), io.sret.count) // FIXME
+  scnt.io.inc.cnt := io.sret.count
   scnt.io.inc.update := io.sret.update
   scnt.io.dec.cnt := UInt(1)
   scnt.io.dec.update := io.sreq.evac
