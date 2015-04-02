@@ -148,12 +148,9 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 
-  //fake vmu
-  scalar.io.vmu.loadData.valid := Bool(false)
-  scalar.io.vmu.storeAck := Bool(false)
-
   vxu.io.seqop <> scalar.io.seqop
 
+  vmu.io.scalar <> scalar.io.vmu
   vmu.io.lane <> vxu.io.vmu
 
   vmu.io.evac.vaq.valid := Bool(false)

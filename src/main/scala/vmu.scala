@@ -151,6 +151,8 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
     val memif = new VMUMemIO
     val sret = Valid(UInt(width = sretBits))
 
+    val scalar = new ScalarMemIO().flip
+
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
@@ -165,6 +167,9 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
 
+  val smu = Module(new SMU)
+  val arb = Module(new VMUMemArb(2))
+
   ibox.io.op <> io.lane.issue
 
   abox.io.issue <> ibox.io.abox
@@ -175,6 +180,8 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   abox.io.pf <> io.pf.vaq
 
   tbox.io.abox <> abox.io.tbox
+  tbox.io.smu.core <> smu.io.tbox
+  tbox.io.smu.active <> smu.io.active
   tbox.io.vtlb <> io.vtlb
   tbox.io.vpftlb <> io.vpftlb
   tbox.io.xcpt <> io.xcpt
@@ -190,5 +197,11 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   mbox.io.inner.sbox <> sbox.io.mbox
   mbox.io.inner.lbox <> lbox.io.mbox
   mbox.io.inner.sret <> io.sret
-  io.memif <> mbox.io.outer
+
+  smu.io.inner <> io.scalar
+
+  arb.io.sel := smu.io.active
+  arb.io.inner(0) <> mbox.io.outer
+  arb.io.inner(1) <> smu.io.outer
+  io.memif <> arb.io.outer
 }

@@ -141,6 +141,11 @@ class TBoxQueryIO extends Bundle {
 class TBox extends VMUModule {
   val io = new Bundle {
     val abox = new TBoxQueryIO().flip
+    val smu = new Bundle {
+      val core = new TLBQueryIO().flip
+      val active = Bool(INPUT)
+    }
+
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 
@@ -163,11 +168,12 @@ class TBox extends VMUModule {
   }
 
   val drain = io.xcpt.prop.vmu.drain
+  val scalar = io.smu.active
 
   // Bi-directional arbiter
   val arb = new TLBQueryIO().asDirectionless()
-  private val arb_io = Seq(io.abox.lane, io.abox.evac)
-  private val arb_sel = Seq(!drain, drain)
+  private val arb_io = Seq(io.smu.core, io.abox.lane, io.abox.evac)
+  private val arb_sel = Seq(scalar, !scalar && !drain, !scalar && drain)
 
   arb.vpn.valid := Mux1H(arb_sel, arb_io.map(_.vpn.valid))
   arb.vpn.bits := Mux1H(arb_sel, arb_io.map(_.vpn.bits))

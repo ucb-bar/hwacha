@@ -87,6 +87,28 @@ class MBox extends VMUModule {
   io.inner.sret.bits := Mux(resp.bits.tag === UInt(0), UInt(tlDataBytes), resp.bits.tag)
 }
 
+class VMUMemArb(n: Int) extends VMUModule {
+  private val lgn = log2Up(n)
+  val io = new Bundle {
+    val inner = Vec.fill(n)(new VMUMemIO).flip
+    val outer = new VMUMemIO
+    val sel = UInt(INPUT, lgn)
+  }
+
+  val sel = UIntToOH(io.sel, n)
+  val sel_seq = (0 until n).map(sel(_))
+
+  io.outer.req.valid := Mux1H(sel_seq, io.inner.map(_.req.valid))
+  io.outer.req.bits := Mux1H(sel_seq, io.inner.map(_.req.bits))
+  io.outer.resp.ready := Mux1H(sel_seq, io.inner.map(_.resp.ready))
+
+  io.inner.zip(sel_seq).foreach { case (port, en) =>
+    port.req.ready := io.outer.req.ready && en
+    port.resp.valid := io.outer.resp.valid && en
+    port.resp.bits := io.outer.resp.bits
+  }
+}
+
 class VMUTileLink extends VMUModule {
   val io = new Bundle {
     val vmu = new VMUMemIO().flip
