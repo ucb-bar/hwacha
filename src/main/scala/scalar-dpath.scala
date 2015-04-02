@@ -176,7 +176,7 @@ class ScalarDpath extends HwachaModule
 
   //give fixed priority to mem -> fpu -> alu
   io.fpu.resp.ready := Bool(true)
-  when(io.vmu.loadData.valid) { io.fpu.resp.ready := Bool(false) }
+  when(io.vmu.resp.valid) { io.fpu.resp.ready := Bool(false) }
 
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
   io.vmu.op.bits.addr := alu.io.out
@@ -196,10 +196,10 @@ class ScalarDpath extends HwachaModule
   assert(!(io.ctrl.wb_wen && io.ctrl.swrite.valid), "Cannot write vmss and scalar dest")
   assert(!(io.ctrl.wb_wen && io.ctrl.awrite.valid), "Cannot write vmsa and scalar dest")
 
-  val wb_waddr = Mux(io.vmu.loadData.valid, pending_mem_reg,
+  val wb_waddr = Mux(io.vmu.resp.valid, pending_mem_reg,
                  Mux(io.fpu.resp.valid, pending_fpu_reg,
                  wb_reg_inst(23,16)))
-  wb_wdata := Mux(io.vmu.loadData.valid, io.vmu.loadData.bits,
+  wb_wdata := Mux(io.vmu.resp.valid, io.vmu.resp.bits,
               Mux(io.fpu.resp.valid, unrec_fpu_resp,
               wb_reg_wdata))
   when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }

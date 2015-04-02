@@ -5,26 +5,6 @@ import Node._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
-class ScalarMemOp extends Bundle
-{
-  val fn = new Bundle 
-  {
-    val cmd = Bits(width = M_SZ)
-    val mt = Bits(width = MT_SZ)
-  }
-
-  val addr = Bits(width = params(HwachaScalarDataBits))
-  val data = Bits(width = params(HwachaScalarDataBits))
-}
-
-class ScalarMemIO extends Bundle
-{
-  val op = Valid(new ScalarMemOp)
-  val tlbSuccess = Bool(INPUT)
-  val storeAck = Bool(INPUT)
-  val loadData = Valid(Bits(width = params(HwachaScalarDataBits))).flip
-}
-
 class ScalarUnit extends HwachaModule
 {
   val io = new Bundle {

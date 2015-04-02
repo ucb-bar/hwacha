@@ -25,6 +25,7 @@ trait VMUParameters extends UsesHwachaParameters {
   val palaBits = log2Down(palaMax) + 1
   val valaMax = confvmu.nvvaq
   val valaBits = log2Down(valaMax) + 1
+  val sretBits = log2Down(tlDataBytes) + 1
 
   val tlDataHalves = tlDataBits >> 4
   val tlDataWords = tlDataBits >> 5
@@ -138,7 +139,6 @@ class TLBIO extends Bundle
 }
 
 class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
-
   val io = new Bundle {
     val lane = new VMUIO().flip
     val evac = new Bundle {
@@ -149,6 +149,9 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
       val vaq = new VVAPFQIO().flip
     }
     val memif = new VMUMemIO
+    val sret = Valid(UInt(width = sretBits))
+
+    val scalar = new ScalarMemIO().flip
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -164,6 +167,9 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
 
+  val smu = Module(new SMU)
+  val arb = Module(new VMUMemArb(2))
+
   ibox.io.op <> io.lane.issue
 
   abox.io.issue <> ibox.io.abox
@@ -174,6 +180,8 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   abox.io.pf <> io.pf.vaq
 
   tbox.io.abox <> abox.io.tbox
+  tbox.io.smu.core <> smu.io.tbox
+  tbox.io.smu.active <> smu.io.active
   tbox.io.vtlb <> io.vtlb
   tbox.io.vpftlb <> io.vpftlb
   tbox.io.xcpt <> io.xcpt
@@ -185,8 +193,15 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
 
   lbox.io.lane <> io.lane.vldq
 
-  mbox.io.in.abox <> abox.io.mbox
-  mbox.io.in.sbox <> sbox.io.mbox
-  mbox.io.in.lbox <> lbox.io.mbox
-  io.memif <> mbox.io.out
+  mbox.io.inner.abox <> abox.io.mbox
+  mbox.io.inner.sbox <> sbox.io.mbox
+  mbox.io.inner.lbox <> lbox.io.mbox
+  mbox.io.inner.sret <> io.sret
+
+  smu.io.inner <> io.scalar
+
+  arb.io.sel := smu.io.active
+  arb.io.inner(0) <> mbox.io.outer
+  arb.io.inner(1) <> smu.io.outer
+  io.memif <> arb.io.outer
 }

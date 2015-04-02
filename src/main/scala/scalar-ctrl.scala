@@ -413,11 +413,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   sboard.set(wb_set_sboard && io.dpath.wb_wen, wb_waddr)
 
-  //Only one outstanding scalar load/store
-  assert(!(io.vmu.loadData.valid && io.vmu.storeAck), "only one scalar store/load should be active")
-  //on loadData.valid or store_ack we clear the sboard for its addr
+  //on vmu resp valid we clear the sboard for its addr
   //on fpu resp valid we clear the sboard for its addr
-  val clear_mem = io.vmu.loadData.valid || io.vmu.storeAck 
+  val clear_mem = io.vmu.resp.valid
   val clear_fpu = io.fpu.resp.valid
   val sboard_clear_addr = Mux(clear_mem, io.dpath.pending_mem_reg, io.dpath.pending_fpu_reg)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
@@ -442,7 +440,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val replay_ex_structural = ex_ctrl.vmu_val && pending_mem ||
                              ex_ctrl.fpu_val && !io.fpu.req.ready
   //if either the vmu or fpu needs to writeback we need to replay
-  val vmu_kill_ex = ex_reg_valid && ex_scalar_dest && io.vmu.loadData.valid
+  val vmu_kill_ex = ex_reg_valid && ex_scalar_dest && io.vmu.resp.valid
   val fpu_kill_ex = ex_reg_valid && ex_scalar_dest && io.fpu.resp.valid
   val replay_ex = ex_reg_valid && (replay_ex_structural || vmu_kill_ex || fpu_kill_ex)
 
@@ -479,10 +477,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
   when (!ctrl_stalld && !io.imem.resp.valid) { wb_vf_active := ex_vf_active }
 
-  assert(!(io.vmu.loadData.valid && wb_scalar_dest), "load result and scalar wb conflict")
+  assert(!(io.vmu.resp.valid && wb_scalar_dest), "load result and scalar wb conflict")
 
   io.dpath.retire := wb_reg_valid && !replay_wb
-  io.dpath.wb_wen := wb_vf_active && wb_reg_valid && (io.vmu.loadData.valid || io.fpu.resp.valid || wb_scalar_dest)
+  io.dpath.wb_wen := wb_vf_active && wb_reg_valid && (io.vmu.resp.valid || io.fpu.resp.valid || wb_scalar_dest)
   /*
   
   //COLIN FIXME: only recode when sending to shared rocket fpu
