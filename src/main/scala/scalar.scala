@@ -33,8 +33,8 @@ class ScalarUnit extends HwachaModule
     val respq = new RESPQIO()
 
     val fpu = new Bundle {
-      val req = Decoupled(new FPInput())
-      val resp = Decoupled(new FPResult()).flip
+      val req = Decoupled(new rocket.FPInput())
+      val resp = Decoupled(new rocket.FPResult()).flip
     }
     val vmu = new ScalarMemIO
 

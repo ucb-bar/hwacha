@@ -16,8 +16,8 @@ class ScalarDpath extends HwachaModule
   val io = new Bundle {
     val ctrl = new CtrlDpathIO().flip
     val fpu = new Bundle {
-      val req = Decoupled(new FPInput())
-      val resp = Decoupled(new FPResult()).flip
+      val req = Decoupled(new rocket.FPInput())
+      val resp = Decoupled(new rocket.FPResult()).flip
     }
 
     val vmu = new ScalarMemIO
@@ -220,7 +220,7 @@ class ScalarDpath extends HwachaModule
 
   // fake VU hookup: start from register to avoid critical path issues
   io.seqop.valid := !io.ctrl.ex_scalar_dest
-  io.seqop.bits.inst := Cat(id_inst(31,0), id_inst(63,32))
+  io.seqop.bits.inst := Cat(ex_reg_inst(31,0), ex_reg_inst(63,32))
 
   when(io.ctrl.swrite.valid) {
     printf("H: SW[r%d=%x][%d]\n",

@@ -104,7 +104,7 @@ object VTDecodeTable
     VFNMADD_D -> List(RX,RX,RX,RX,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  Y,FNMADD_D ,N,     N,  M_X,   MT_X, N),
     VFNMSUB_D -> List(RX,RX,RX,RX,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  Y,FNMSUB_D ,N,     N,  M_X,   MT_X, N),
 
-    VSTOP->      List(R_,R_,R_,R_,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  N,FX,       N,     N,  M_X,   MT_X, Y)
+    VSTOP->      List(R_,R_,R_,R_,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  N,FX,       Y,     N,  M_X,   MT_X, Y)
     /*
     VMUL->       List(RX,RX,RX,R_,IMM_X,F,I_X,   F),
     VMULH->      List(RX,RX,RX,R_,IMM_X,F,I_X,   F),
@@ -215,8 +215,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
     val dpath = new CtrlDpathIO
     val fpu = new Bundle {
-      val req = Decoupled(new FPInput())
-      val resp = Decoupled(new FPResult()).flip
+      val req = Decoupled(new rocket.FPInput())
+      val resp = Decoupled(new rocket.FPResult()).flip
     }
 
     val vmu = new ScalarMemIO
@@ -337,9 +337,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_scalar_src3 = id_ctrl.decode_scalar || (vt_val && vt_scalar) || (vt_dyn && io.dpath.inst(OPC_VS3))
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
-  val ex_scalar_dest = !ex_ctrl.fpu_val && (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && io.dpath.ex_inst(OPC_VD)))
+  val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && io.dpath.ex_inst(OPC_VD)))
   io.dpath.ex_scalar_dest := Bool(true)
-  when(ex_vf_active) { io.dpath.ex_scalar_dest := ex_scalar_dest }
+  when(ex_vf_active && !ctrl_killx) { io.dpath.ex_scalar_dest := ex_scalar_dest }
 
   val wb_scalar_dest = !wb_ctrl.fpu_val && (wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && io.dpath.wb_inst(OPC_VD)))
 
@@ -436,7 +436,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     vf_pc := vf_pc + UInt(8)
     ex_ctrl := id_ctrl
   }
-  when (!ctrl_stalld) { ex_vf_active := vf_active }
+  when (!ctrl_stalld && !io.imem.resp.valid) { ex_vf_active := vf_active }
 
   // replay inst in ex stage
   val replay_ex_structural = ex_ctrl.vmu_val && pending_mem ||
@@ -447,20 +447,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val replay_ex = ex_reg_valid && (replay_ex_structural || vmu_kill_ex || fpu_kill_ex)
 
   //fpu
-  val fpu_fn = new FPUFn().fromBits(ex_ctrl.fpu_fn)
-  io.fpu.req.bits.cmd     := fpu_fn.cmd     
-  io.fpu.req.bits.ldst    := fpu_fn.ldst    
-  io.fpu.req.bits.wen     := fpu_fn.wen     
-  io.fpu.req.bits.ren1    := fpu_fn.ren1    
-  io.fpu.req.bits.ren2    := fpu_fn.ren2    
-  io.fpu.req.bits.ren3    := fpu_fn.ren3    
-  io.fpu.req.bits.swap23  := fpu_fn.swap23  
-  io.fpu.req.bits.single  := fpu_fn.single  
-  io.fpu.req.bits.fromint := fpu_fn.fromint 
-  io.fpu.req.bits.toint   := fpu_fn.toint   
-  io.fpu.req.bits.fastpipe:= fpu_fn.fastpipe
-  io.fpu.req.bits.fma     := fpu_fn.fma     
-  io.fpu.req.bits.round   := fpu_fn.round   
+  val fpu_fn = new rocket.FPUCtrlSigs().fromBits(ex_ctrl.fpu_fn)
+  io.fpu.req.bits := fpu_fn
   io.fpu.req.valid := ex_reg_valid && ex_ctrl.fpu_val
   io.dpath.fire_fpu := Bool(false)
   when(io.fpu.req.fire()){
@@ -489,7 +477,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_killx) {
     wb_ctrl := ex_ctrl
   }
-  when (!ctrl_stalld) { wb_vf_active := ex_vf_active }
+  when (!ctrl_stalld && !io.imem.resp.valid) { wb_vf_active := ex_vf_active }
 
   assert(!(io.vmu.loadData.valid && wb_scalar_dest), "load result and scalar wb conflict")
 

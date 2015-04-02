@@ -129,11 +129,11 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   if(local_sfpu){
     val sfpu = Module(new ScalarFPU)
     scalar.io.fpu <> sfpu.io
+    io.fpu_req.valid := Bool(false)
   }else{
-    scalar.io.fpu.req.ready := Bool(false)
-    scalar.io.fpu.resp.valid := Bool(false)
+    scalar.io.fpu.req <> io.fpu_req
+    scalar.io.fpu.resp <> io.fpu_resp
   }
-
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem

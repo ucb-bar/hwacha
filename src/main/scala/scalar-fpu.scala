@@ -50,7 +50,7 @@ object ScalarFPUDecode
   val FMAX_S   = Cat(FCMD_MINMAX, N,Y,Y,Y,N,N,Y,N,N,Y,N,N)
   val FMIN_D   = Cat(FCMD_MINMAX, N,Y,Y,Y,N,N,N,N,N,Y,N,N)
   val FMAX_D   = Cat(FCMD_MINMAX, N,Y,Y,Y,N,N,N,N,N,Y,N,N)
-  val FADD_S   = Cat(Bits("b00000"),    N,Y,Y,Y,N,Y,Y,N,N,N,Y,Y)
+  val FADD_S   = Cat(FCMD_ADD,    N,Y,Y,Y,N,Y,Y,N,N,N,Y,Y)
   val FSUB_S   = Cat(FCMD_SUB,    N,Y,Y,Y,N,Y,Y,N,N,N,Y,Y)
   val FMUL_S   = Cat(FCMD_MUL,    N,Y,Y,Y,N,N,Y,N,N,N,Y,Y)
   val FADD_D   = Cat(FCMD_ADD,    N,Y,Y,Y,N,Y,N,N,N,N,Y,Y)
@@ -66,41 +66,11 @@ object ScalarFPUDecode
   val FNMSUB_D = Cat(FCMD_NMSUB,  N,Y,Y,Y,Y,N,N,N,N,N,Y,Y)
 }
 
-class FPResult extends Bundle
-{
-  val data = Bits(width = 65)
-  val exc = Bits(width = 5)
-}
-
-class FPUFn extends Bundle {
-  val cmd = Bits(width = FCMD_WIDTH)
-  val ldst = Bool()
-  val wen = Bool()
-  val ren1 = Bool()
-  val ren2 = Bool()
-  val ren3 = Bool()
-  val swap23 = Bool()
-  val single = Bool()
-  val fromint = Bool()
-  val toint = Bool()
-  val fastpipe = Bool()
-  val fma = Bool()
-  val round = Bool()
-}
-
-class FPInput extends FPUFn {
-  val rm = Bits(width = 3)
-  val typ = Bits(width = SZ_PREC)
-  val in1 = Bits(width = 65)
-  val in2 = Bits(width = 65)
-  val in3 = Bits(width = 65)
-}
-
 class ScalarFPU extends HwachaModule
 {
   val io = new Bundle {
-    val req = Decoupled(new FPInput()).flip
-    val resp = Decoupled(new FPResult())
+    val req = Decoupled(new rocket.FPInput()).flip
+    val resp = Decoupled(new rocket.FPResult())
   }
   //buffer for simple back-pressure model
   val resp_reg = Reg(Bits())
@@ -111,7 +81,7 @@ class ScalarFPU extends HwachaModule
   val wb_ctrl = RegEnable(io.req.bits, io.req.valid)
   val wb_reg_valid = Reg(next=io.req.valid, init=Bool(false))
 
-  val req = new FPInput
+  val req = new rocket.FPInput
   req := io.req.bits
   req.in2 := Mux(io.req.bits.swap23, io.req.bits.in3, io.req.bits.in2)
   req.in3 := Mux(io.req.bits.swap23, io.req.bits.in2, io.req.bits.in3)
@@ -143,17 +113,17 @@ class ScalarFPU extends HwachaModule
 
   // No writeback arbitration since ScalarUnit can't put backpressure on us
   // writeback arbitration
-  case class Pipe(p: Module, lat: Int, cond: (FPInput) => Bool, wdata: Bits, wexc: Bits)
+  case class Pipe(p: Module, lat: Int, cond: (rocket.FPInput) => Bool, wdata: Bits, wexc: Bits)
   val pipes = List(
-  Pipe(fpmu, fpmu.latency, (c: FPInput) => c.fastpipe, fpmu.io.out.bits.data, fpmu.io.out.bits.exc),
-  Pipe(ifpu, ifpu.latency, (c: FPInput) => c.fromint, ifpu.io.out.bits.data, ifpu.io.out.bits.exc),
-  Pipe(sfma, sfma.latency, (c: FPInput) => c.fma && (c.single), Cat(SInt(-1, 32), sfma.io.out.bits.data), sfma.io.out.bits.exc),
-  Pipe(dfma, dfma.latency, (c: FPInput) => c.fma && !(c.single), dfma.io.out.bits.data, dfma.io.out.bits.exc))
-  def latencyMask(c: FPInput, offset: Int) = {
+  Pipe(fpmu, fpmu.latency, (c: rocket.FPInput) => c.fastpipe, fpmu.io.out.bits.data, fpmu.io.out.bits.exc),
+  Pipe(ifpu, ifpu.latency, (c: rocket.FPInput) => c.fromint, ifpu.io.out.bits.data, ifpu.io.out.bits.exc),
+  Pipe(sfma, sfma.latency, (c: rocket.FPInput) => c.fma && (c.single), Cat(SInt(-1, 32), sfma.io.out.bits.data), sfma.io.out.bits.exc),
+  Pipe(dfma, dfma.latency, (c: rocket.FPInput) => c.fma && !(c.single), dfma.io.out.bits.data, dfma.io.out.bits.exc))
+  def latencyMask(c: rocket.FPInput, offset: Int) = {
     require(pipes.forall(_.lat >= offset))
     pipes.map(p => Mux(p.cond(c), UInt(1 << p.lat-offset), UInt(0))).reduce(_|_)
   }
-  def pipeid(c: FPInput) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), UInt(p._2), UInt(0))).reduce(_|_)
+  def pipeid(c: rocket.FPInput) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), UInt(p._2), UInt(0))).reduce(_|_)
   val maxLatency = pipes.map(_.lat).max
   val wbLatencyMask = latencyMask(wb_ctrl, 2)
 
@@ -192,25 +162,4 @@ class ScalarFPU extends HwachaModule
     resp_reg_val := Bool(false)
   }
   io.resp.valid := wen(0) || fpiu.io.out.valid || resp_reg_val
-
-  /*
-  val wb_toint_valid = wb_reg_valid && wb_ctrl.toint
-  val wb_toint_exc = RegEnable(fpiu.io.out.bits.exc, mem_ctrl.toint)
-  io.dpath.fcsr_flags.valid := wb_toint_valid || wen(0)
-  io.dpath.fcsr_flags.bits :=
-    Mux(wb_toint_valid, wb_toint_exc, UInt(0)) |
-    Mux(wen(0), wexc, UInt(0))
-
-  val fp_inflight = wb_reg_valid && wb_ctrl.toint || wen.orR
-  val units_busy = Bool(false) //mem_reg_valid && mem_ctrl.fma && Reg(next=Mux(ex_ctrl.single, io.sfma.valid, io.dfma.valid))
-  io.ctrl.fcsr_rdy := !fp_inflight
-  io.ctrl.nack_mem := units_busy || write_port_busy
-  io.ctrl.dec <> fp_decoder.io.sigs
-  def useScoreboard(f: ((Pipe, Int)) => Bool) = pipes.zipWithIndex.filter(_._1.lat > 3).map(x => f(x)).fold(Bool(false))(_||_)
-  io.ctrl.sboard_set := wb_reg_valid && Reg(next=useScoreboard(_._1.cond(mem_ctrl)))
-  io.ctrl.sboard_clr := wen(0) && useScoreboard(x => wsrc === UInt(x._2))
-  io.ctrl.sboard_clra := waddr
-  // we don't currently support round-max-magnitude (rm=4)
-  io.ctrl.illegal_rm := ex_rm(2) && ex_ctrl.round
-  */
 }
