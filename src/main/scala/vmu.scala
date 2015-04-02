@@ -25,6 +25,7 @@ trait VMUParameters extends UsesHwachaParameters {
   val palaBits = log2Down(palaMax) + 1
   val valaMax = confvmu.nvvaq
   val valaBits = log2Down(valaMax) + 1
+  val sretBits = log2Down(tlDataBytes) + 1
 
   val tlDataHalves = tlDataBits >> 4
   val tlDataWords = tlDataBits >> 5
@@ -148,6 +149,7 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
       val vaq = new VVAPFQIO().flip
     }
     val memif = new VMUMemIO
+    val sret = Valid(UInt(width = sretBits))
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
@@ -187,5 +189,6 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   mbox.io.inner.abox <> abox.io.mbox
   mbox.io.inner.sbox <> sbox.io.mbox
   mbox.io.inner.lbox <> lbox.io.mbox
+  mbox.io.inner.sret <> io.sret
   io.memif <> mbox.io.outer
 }
