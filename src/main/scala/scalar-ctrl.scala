@@ -50,8 +50,8 @@ object VTDecodeTable
     VSRLIW->     List(RS,RS,R_,R_,IMM_I,Y,FN_SR  ,DW_32 ,A1_RS1 ,A2_IMM,N,FX,       Y,     N,  M_X,   MT_X, N),
     VSRAIW->     List(RS,RS,R_,R_,IMM_I,Y,FN_SRA ,DW_32 ,A1_RS1 ,A2_IMM,N,FX,       Y,     N,  M_X,   MT_X, N),
 
-    VSSSEGD ->   List(RS,RS,RS,R_,IMM_X,Y,FN_ADD, DW_XPR,A1_RS1, A2_RS2,N,FX,       Y,     Y,  M_XWR, MT_D, N),
-    VLSSEGD ->   List(RS,RS,RS,R_,IMM_X,Y,FN_ADD, DW_XPR,A1_RS1, A2_RS2,N,FX,       Y,     Y,  M_XRD, MT_D, N),
+    VSSSEGD ->   List(R_,RS,RS,R_,IMM_X,Y,FN_ADD, DW_XPR,A1_RS1, A2_ZERO,N,FX,       Y,     Y,  M_XWR, MT_D, N),
+    VLSSEGD ->   List(RS,RS,R_,R_,IMM_X,Y,FN_ADD, DW_XPR,A1_RS1, A2_ZERO,N,FX,       Y,     Y,  M_XRD, MT_D, N),
 
     VFCVT_S_W -> List(RX,RX,R_,R_,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  Y,FCVT_S_W ,N,     N,  M_X,   MT_X, N),
     VFCVT_S_WU-> List(RX,RX,R_,R_,IMM_X,N,FN_X,   DW_X,  A1_X,   A2_X,  Y,FCVT_S_WU,N,     N,  M_X,   MT_X, N),
@@ -197,6 +197,7 @@ class CtrlDpathIO extends HwachaBundle
   val retire   = Bool(OUTPUT)
   val bypass = Vec.fill(3)(Bool(OUTPUT))
   val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
+  val fire_vmu = Bool(OUTPUT)
   val pending_mem_reg = UInt(INPUT)
   val fire_fpu = Bool(OUTPUT)
   val pending_fpu = Bool(INPUT)
@@ -323,9 +324,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vr_val :: vr_scalar :: vr_sp :: vr_dyn :: Nil = parse_rinfo(id_ctrl.vri)
   val vs_val :: vs_scalar :: vs_sp :: vs_dyn :: Nil = parse_rinfo(id_ctrl.vsi)
   val vt_val :: vt_scalar :: vt_sp :: vt_dyn :: Nil = parse_rinfo(id_ctrl.vti)
-  io.dpath.ren(0) := vr_val && vr_scalar
-  io.dpath.ren(1) := vs_val && vs_scalar
-  io.dpath.ren(2) := vt_val && vt_scalar
+  io.dpath.ren(0) := vr_val && (vr_scalar || (vr_dyn && io.dpath.inst(OPC_VS1)))
+  io.dpath.ren(1) := vs_val && (vs_scalar || (vs_dyn && io.dpath.inst(OPC_VS2)))
+  io.dpath.ren(2) := vt_val && (vt_scalar || (vt_dyn && io.dpath.inst(OPC_VS3)))
 
   val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
 
@@ -457,7 +458,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vmu.op.valid := ex_reg_valid && ex_ctrl.vmu_val
   io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_cmd
   io.vmu.op.bits.fn.mt := ex_ctrl.vmu_type
+  io.dpath.fire_vmu := Bool(false)
   when(io.vmu.op.fire()){
+    io.dpath.fire_vmu := Bool(true)
     pending_mem := Bool(true)
   }
   when(clear_mem){
@@ -477,10 +480,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
   when (!ctrl_stalld && !io.imem.resp.valid) { wb_vf_active := ex_vf_active }
 
-  assert(!(io.vmu.resp.valid && wb_scalar_dest), "load result and scalar wb conflict")
+  assert(!(io.vmu.resp.valid && wb_scalar_dest && wb_reg_valid), "load result and scalar wb conflict")
 
   io.dpath.retire := wb_reg_valid && !replay_wb
-  io.dpath.wb_wen := wb_vf_active && wb_reg_valid && (io.vmu.resp.valid || io.fpu.resp.valid || wb_scalar_dest)
+  io.dpath.wb_wen := wb_vf_active && (wb_reg_valid && wb_scalar_dest) || io.vmu.resp.valid || io.fpu.resp.valid
   /*
   
   //COLIN FIXME: only recode when sending to shared rocket fpu

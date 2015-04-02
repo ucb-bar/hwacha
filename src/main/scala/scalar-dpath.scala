@@ -136,6 +136,7 @@ class ScalarDpath extends HwachaModule
     A1_RS1 -> ex_srs(0).toSInt,
     A1_PC -> ex_reg_pc.toSInt))
   val ex_op2 = MuxLookup(io.ctrl.ex_ctrl.sel_alu2, SInt(0), Seq(
+    A2_ZERO -> SInt(0),
     A2_RS2 -> ex_srs(1).toSInt,
     A2_IMM -> ex_imm))
 
@@ -182,7 +183,7 @@ class ScalarDpath extends HwachaModule
   io.vmu.op.bits.addr := alu.io.out
   io.vmu.op.bits.data := ex_srs(1)
 
-  when(io.vmu.op.fire()) {
+  when(io.ctrl.fire_vmu) {
     pending_mem_reg := io.ctrl.ex_waddr
   }
 

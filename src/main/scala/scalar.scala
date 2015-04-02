@@ -46,8 +46,11 @@ class ScalarUnit extends HwachaModule
   io.respq <> dpath.io.respq
 
   //connect scalar vmu port
-  io.vmu <> dpath.io.vmu
-  io.vmu <> ctrl.io.vmu
+  io.vmu.op.bits <> dpath.io.vmu.op.bits
+  io.vmu.resp <> dpath.io.vmu.resp
+  io.vmu.op.bits.fn <> ctrl.io.vmu.op.bits.fn
+  io.vmu.op.valid := ctrl.io.vmu.op.valid
+  ctrl.io.vmu.resp.valid := io.vmu.resp.valid
 
   io.imem <> dpath.io.imem
   io.imem <> ctrl.io.imem

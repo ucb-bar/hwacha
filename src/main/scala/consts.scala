@@ -133,11 +133,11 @@ trait DecodeConstants
   val MI = Bits("b11", 2)
 
   val R_ = Bits("b???0", 4)
-  val RA = Bits("b0001", 4)
-  val RS = Bits("b0101", 4)
-  val RV = Bits("b0011", 4)
-  val RP = Bits("b0111", 4)
-  val RX = Bits("b1111", 4)
+  val RA = Bits("b0011", 4)
+  val RS = Bits("b0111", 4)
+  val RV = Bits("b0001", 4)
+  val RP = Bits("b0101", 4)
+  val RX = Bits("b1101", 4)
   def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
 
   val SZ_I = 2

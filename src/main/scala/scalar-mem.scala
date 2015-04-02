@@ -93,7 +93,7 @@ class SMU extends VMUModule {
     is (s_idle) {
       io.active := Bool(false)
       when (io.inner.op.valid) {
-        op := io.inner.op
+        op := io.inner.op.bits
         state := s_req
       }
     }
