@@ -147,10 +147,6 @@ class TBox extends VMUModule {
     val xcpt = new XCPTIO().flip
   }
 
-  val lane = io.abox.lane
-  val evac = io.abox.evac
-  val pf = io.abox.pf
-
   private def translate(tlb: TLBIO, query: TLBQueryIO) {
     tlb.req.valid := query.vpn.valid
     tlb.req.bits.asid := UInt(0)
@@ -167,23 +163,25 @@ class TBox extends VMUModule {
   }
 
   val drain = io.xcpt.prop.vmu.drain
-  val q = new TLBQueryIO().asDirectionless()
-  q.vpn.valid := Mux(drain, evac.vpn.valid, lane.vpn.valid)
-  q.vpn.bits := Mux(drain, evac.vpn.bits, lane.vpn.bits)
-  q.store := Mux(drain, evac.store, lane.store)
-  translate(io.vtlb, q)
 
-  lane.ppn := q.ppn
-  lane.miss := q.miss
-  lane.xcpt := q.xcpt
-  evac.ppn := q.ppn
-  evac.miss := q.miss
-  evac.xcpt := q.xcpt
+  // Bi-directional arbiter
+  val arb = new TLBQueryIO().asDirectionless()
+  private val arb_io = Seq(io.abox.lane, io.abox.evac)
+  private val arb_sel = Seq(!drain, drain)
 
-  lane.vpn.ready := io.vtlb.req.ready && !drain
-  evac.vpn.ready := io.vtlb.req.ready && drain
+  arb.vpn.valid := Mux1H(arb_sel, arb_io.map(_.vpn.valid))
+  arb.vpn.bits := Mux1H(arb_sel, arb_io.map(_.vpn.bits))
+  arb.store := Mux1H(arb_sel, arb_io.map(_.store))
 
-  translate(io.vpftlb, pf)
+  translate(io.vtlb, arb)
+  arb_io.zip(arb_sel).foreach { case (port, sel) =>
+    port.ppn := arb.ppn
+    port.miss := arb.miss
+    port.xcpt := arb.xcpt
+    port.vpn.ready := io.vtlb.req.ready && sel
+  }
+
+  translate(io.vpftlb, io.abox.pf)
 }
 
 class VPAQ extends VMUModule {
