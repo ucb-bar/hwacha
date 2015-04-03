@@ -72,6 +72,73 @@ class VMUFn extends Bundle
   val op = Bits(width = SZ_VMU_OP)
 }
 
+
+//-------------------------------------------------------------------------\\
+// decoded information types
+//-------------------------------------------------------------------------\\
+
+class RegInfo extends Bundle
+{
+  val scalar = Bool()
+  val id = UInt(width = 8)
+}
+
+class DecodedRegisters extends Bundle
+{
+  val vs1 = new RegInfo
+  val vs2 = new RegInfo
+  val vs3 = new RegInfo
+  val vd = new RegInfo
+}
+
+class ScalarRegisters extends Bundle
+{
+  val ss1 = Bits(width = SZ_D)
+  val ss2 = Bits(width = SZ_D)
+  val ss3 = Bits(width = SZ_D)
+}
+
+class DecodedInstruction extends Bundle
+{
+  val fn = new Bundle {
+    val viu = new VIUFn
+    val vimu = new VIMUFn
+    val vidu = new VIDUFn
+    val vfmu = new VFMUFn
+    val vfdu = new VFDUFn
+    val vfcu = new VFCUFn
+    val vfvu = new VFVUFn
+    val vmu = new VMUFn
+  }
+  val reg = new DecodedRegisters
+  val sreg = new ScalarRegisters
+}
+
+
+//-------------------------------------------------------------------------\\
+// issue op
+//-------------------------------------------------------------------------\\
+
+class IssueOp extends DecodedInstruction
+{
+  val vlen = UInt(width = SZ_VLEN)
+  val active = new Bundle {
+    val vint = Bool()
+    val vimul = Bool()
+    val vidiv = Bool()
+    val vfma = Bool()
+    val vfdiv = Bool()
+    val vfcmp = Bool()
+    val vfonv = Bool()
+    val vamo = Bool()
+    val vldx = Bool()
+    val vstx = Bool()
+    val vld = Bool()
+    val vst = Bool()
+  }
+}
+
+
 //-------------------------------------------------------------------------\\
 // sequencer op
 //-------------------------------------------------------------------------\\

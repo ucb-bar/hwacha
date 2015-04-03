@@ -132,10 +132,10 @@ class ScalarDpath extends HwachaModule
     yield Mux(ex_reg_srs_bypass(i), bypass(ex_reg_srs_lsb(i)), Cat(ex_reg_srs_msb(i), ex_reg_srs_lsb(i)))
 
   val ex_imm = imm(io.ctrl.ex_ctrl.sel_imm, ex_reg_inst)
-  val ex_op1 = MuxLookup(io.ctrl.ex_ctrl.sel_alu1, SInt(0), Seq(
+  val ex_op1 = MuxLookup(io.ctrl.ex_ctrl.alu_sel1, SInt(0), Seq(
     A1_RS1 -> ex_srs(0).toSInt,
     A1_PC -> ex_reg_pc.toSInt))
-  val ex_op2 = MuxLookup(io.ctrl.ex_ctrl.sel_alu2, SInt(0), Seq(
+  val ex_op2 = MuxLookup(io.ctrl.ex_ctrl.alu_sel2, SInt(0), Seq(
     A2_ZERO -> SInt(0),
     A2_RS2 -> ex_srs(1).toSInt,
     A2_IMM -> ex_imm))
@@ -235,10 +235,10 @@ class ScalarDpath extends HwachaModule
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
          io.ctrl.retire, wb_reg_pc, 
          Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_wdata, io.ctrl.wb_wen,
-         wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vri === RA,
+         wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vs1i === RA,
                                  Reg(next=Reg(next=ex_reg_ars(0))),
                                  Reg(next=Reg(next=ex_srs(0)))),
-         wb_reg_inst(40,33), Mux(io.ctrl.wb_ctrl.vsi === RA,
+         wb_reg_inst(40,33), Mux(io.ctrl.wb_ctrl.vs2i === RA,
                                  Reg(next=Reg(next=ex_reg_ars(1))),
                                  Reg(next=Reg(next=ex_srs(1)))),
          wb_reg_inst, wb_reg_inst)

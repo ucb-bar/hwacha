@@ -9,11 +9,11 @@ import ScalarFPUDecode._
 
 class CtrlDpathIO extends HwachaBundle
 {
-  val inst    = Bits(INPUT, 64)
-  val ex_inst    = Bits(INPUT, 64)
-  val wb_inst    = Bits(INPUT, 64)
-  val killd   = Bool(OUTPUT)
-  val ren     = Vec.fill(3)(Bool(OUTPUT))
+  val inst = Bits(INPUT, 64)
+  val ex_inst = Bits(INPUT, 64)
+  val wb_inst = Bits(INPUT, 64)
+  val killd = Bool(OUTPUT)
+  val ren = Vec.fill(3)(Bool(OUTPUT))
   val ex_scalar_dest = Bool(OUTPUT)
   val ex_ctrl = new IntCtrlSigs().asOutput()
   val ex_valid = Bool(OUTPUT)
@@ -21,8 +21,8 @@ class CtrlDpathIO extends HwachaBundle
   val wb_ctrl = new IntCtrlSigs().asOutput()
   val wb_valid = Bool(OUTPUT)
   val wb_waddr = Bits(INPUT, log2Up(nsregs))
-  val wb_wen   = Bool(OUTPUT)
-  val retire   = Bool(OUTPUT)
+  val wb_wen = Bool(OUTPUT)
+  val retire = Bool(OUTPUT)
   val bypass = Vec.fill(3)(Bool(OUTPUT))
   val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
   val fire_vmu = Bool(OUTPUT)
@@ -30,8 +30,8 @@ class CtrlDpathIO extends HwachaBundle
   val fire_fpu = Bool(OUTPUT)
   val pending_fpu = Bool(INPUT)
   val pending_fpu_reg = UInt(INPUT)
-  val swrite  = Valid(new Write().asOutput())
-  val awrite  = Valid(new Write().asOutput())
+  val swrite = Valid(new Write().asOutput())
+  val awrite = Valid(new Write().asOutput())
   val wb_vf_active = Bool(OUTPUT)
 }
 
@@ -51,6 +51,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     val vmu = new ScalarMemIO
 
     val imem = new FrontendIO
+
+    val issue = new IssueOpIO
 
     val vf_active = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
@@ -115,7 +117,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.imem.resp.ready := vf_active
 
   //decode
-  val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, HwachaVFDecodeTable.table)
+  val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
+  val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, decode_table)
   val ex_ctrl = Reg(new IntCtrlSigs)
   val wb_ctrl = Reg(new IntCtrlSigs)
   io.dpath.ex_ctrl := ex_ctrl
@@ -148,22 +151,22 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
   io.dpath.wb_vf_active    := wb_vf_active
 
-  val vd_val :: vd_scalar :: vd_sp :: vd_dyn :: Nil = parse_rinfo(id_ctrl.vdi)
-  val vr_val :: vr_scalar :: vr_sp :: vr_dyn :: Nil = parse_rinfo(id_ctrl.vri)
-  val vs_val :: vs_scalar :: vs_sp :: vs_dyn :: Nil = parse_rinfo(id_ctrl.vsi)
-  val vt_val :: vt_scalar :: vt_sp :: vt_dyn :: Nil = parse_rinfo(id_ctrl.vti)
-  io.dpath.ren(0) := vr_val && (vr_scalar || (vr_dyn && !io.dpath.inst(OPC_VS1)))
-  io.dpath.ren(1) := vs_val && (vs_scalar || (vs_dyn && !io.dpath.inst(OPC_VS2)))
-  io.dpath.ren(2) := vt_val && (vt_scalar || (vt_dyn && !io.dpath.inst(OPC_VS3)))
+  val vd_val  :: vd_scalar  :: vd_sp  :: vd_dyn  :: Nil = parse_rinfo(id_ctrl.vdi)
+  val vs1_val :: vs1_scalar :: vs1_sp :: vs1_dyn :: Nil = parse_rinfo(id_ctrl.vs1i)
+  val vs2_val :: vs2_scalar :: vs2_sp :: vs2_dyn :: Nil = parse_rinfo(id_ctrl.vs2i)
+  val vs3_val :: vs3_scalar :: vs3_sp :: vs3_dyn :: Nil = parse_rinfo(id_ctrl.vs3i)
+  io.dpath.ren(0) := vs1_val && (vs1_scalar || (vs1_dyn && !io.dpath.inst(OPC_VS1)))
+  io.dpath.ren(1) := vs2_val && (vs2_scalar || (vs2_dyn && !io.dpath.inst(OPC_VS2)))
+  io.dpath.ren(2) := vs3_val && (vs3_scalar || (vs3_dyn && !io.dpath.inst(OPC_VS3)))
 
   val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
 
   val wb_vd_val :: wb_vd_scalar :: wb_vd_sp :: wb_vd_dyn :: Nil = parse_rinfo(wb_ctrl.vdi)
 
   val id_scalar_dest = !id_ctrl.fpu_val && (id_ctrl.decode_scalar || (vd_val && vd_scalar) || (vd_dyn && !io.dpath.inst(OPC_VD)))
-  val id_scalar_src1 = id_ctrl.decode_scalar || (vr_val && vr_scalar) || (vr_dyn && !io.dpath.inst(OPC_VS1))
-  val id_scalar_src2 = id_ctrl.decode_scalar || (vs_val && vs_scalar) || (vs_dyn && !io.dpath.inst(OPC_VS2))
-  val id_scalar_src3 = id_ctrl.decode_scalar || (vt_val && vt_scalar) || (vt_dyn && !io.dpath.inst(OPC_VS3))
+  val id_scalar_src1 = id_ctrl.decode_scalar || (vs1_val && vs1_scalar) || (vs1_dyn && !io.dpath.inst(OPC_VS1))
+  val id_scalar_src2 = id_ctrl.decode_scalar || (vs2_val && vs2_scalar) || (vs2_dyn && !io.dpath.inst(OPC_VS2))
+  val id_scalar_src3 = id_ctrl.decode_scalar || (vs3_val && vs3_scalar) || (vs3_dyn && !io.dpath.inst(OPC_VS3))
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
   val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && !io.dpath.ex_inst(OPC_VD)))
@@ -183,9 +186,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   //COLIN FIXME: do we have any scalar instructions with no destination?
   val id_scalar_inst = id_scalar_dest &&
-                       (id_scalar_src1 && vr_val)
-                       (id_scalar_src2 && vs_val)
-                       (id_scalar_src3 && vt_val)
+                       (id_scalar_src1 && vs1_val)
+                       (id_scalar_src2 && vs2_val)
+                       (id_scalar_src3 && vs3_val)
   //assuming all scalar instructions have a dest
 
   val bypassDst = Array(id_raddrs1, id_raddrs2, id_raddrs3)
@@ -199,12 +202,12 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   val id_ctrl_wen_not0 = vd_val && vd_scalar && vd_sp && id_waddr != UInt(0)
-  val id_ctrl_rens1_not0 = vr_val && vr_scalar && vr_sp && id_raddrs1 != UInt(0)
-  val id_ctrl_rens2_not0 = vs_val && vs_scalar && vs_sp && id_raddrs2 != UInt(0)
-  val id_ctrl_rens3_not0 = vt_val && vt_scalar && vt_sp && id_raddrs3 != UInt(0)
+  val id_ctrl_rens1_not0 = vs1_val && vs1_scalar && vs1_sp && id_raddrs1 != UInt(0)
+  val id_ctrl_rens2_not0 = vs2_val && vs2_scalar && vs2_sp && id_raddrs2 != UInt(0)
+  val id_ctrl_rens3_not0 = vs3_val && vs3_scalar && vs3_sp && id_raddrs3 != UInt(0)
 
   // stall for RAW/WAW hazards on loads, AMOs, and mul/div in execute stage.
-  val ex_cannot_bypass = ex_ctrl.vmu_val
+  val ex_cannot_bypass = ex_ctrl.mem_val
   val data_hazard_ex = ex_scalar_dest &&
     (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
@@ -212,7 +215,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val id_ex_hazard = ex_reg_valid && (data_hazard_ex && ex_cannot_bypass)
 
-  val wb_set_sboard = wb_ctrl.vmu_val || wb_ctrl.fpu_val
+  val wb_set_sboard = wb_ctrl.mem_val || wb_ctrl.fpu_val
   // stall for RAW/WAW hazards on load/AMO misses and mul/div in writeback.
   val data_hazard_wb = wb_scalar_dest &&
      (id_ctrl_rens1_not0 && id_raddrs1 === wb_waddr ||
@@ -221,7 +224,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_wb_hazard = wb_reg_valid && (data_hazard_wb && wb_set_sboard)
 
   //Stall second load/store on decode
-  val id_second_mem = id_ctrl.vmu_val && pending_mem
+  val id_second_mem = id_ctrl.mem_val && pending_mem
   //Stall second fpu on decode
   val fpu_hazard = id_ctrl.fpu_val && io.dpath.pending_fpu
 
@@ -266,7 +269,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_stalld && !io.imem.resp.valid) { ex_vf_active := vf_active }
 
   // replay inst in ex stage
-  val replay_ex_structural = ex_ctrl.vmu_val && pending_mem ||
+  val replay_ex_structural = ex_ctrl.mem_val && pending_mem ||
                              ex_ctrl.fpu_val && !io.fpu.req.ready
   //if either the vmu or fpu needs to writeback we need to replay
   val vmu_kill_ex = ex_reg_valid && ex_scalar_dest && io.vmu.resp.valid
@@ -283,9 +286,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   //memory
-  io.vmu.op.valid := ex_reg_valid && ex_ctrl.vmu_val
-  io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_cmd
-  io.vmu.op.bits.fn.mt := ex_ctrl.vmu_type
+  io.vmu.op.valid := ex_reg_valid && ex_ctrl.mem_val
+  io.vmu.op.bits.fn.cmd := ex_ctrl.mem_cmd
+  io.vmu.op.bits.fn.mt := ex_ctrl.mem_type
   io.dpath.fire_vmu := Bool(false)
   when(io.vmu.op.fire()){
     io.dpath.fire_vmu := Bool(true)

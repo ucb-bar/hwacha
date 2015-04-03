@@ -31,6 +31,7 @@ class BankALUSlice extends Module
   val sub = MuxCase(
     Bits(0, 1), Array(
       s1_fn.op_is(I_ADD) -> Bits(0, 1),
+      s1_fn.op_is(I_ADDU) -> Bits(0, 1),
       s1_fn.op_is(I_SUB) -> Bits(1, 1)
     ))
 
@@ -74,9 +75,8 @@ class BankALUSlice extends Module
   val s1_result64 = MuxCase(
     Bits(0, SZ_D), Array(
       s1_fn.op_is(I_IDX) -> s1_eidx,
-      s1_fn.op_is(I_MOV1) -> s1_in0,
-      s1_fn.op_is(I_MOV2) -> s1_in1,
-      s1_fn.op_is(I_ADD,I_SUB) -> adder_out,
+      s1_fn.op_is(I_MOV0) -> s1_in0,
+      s1_fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       s1_fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
       s1_fn.op_is(I_SLT,I_SLTU) -> comp,
       s1_fn.op_is(I_AND) -> (s1_in0 & s1_in1),

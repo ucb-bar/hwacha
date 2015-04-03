@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 
+class IssueOpIO extends DecoupledIO(new IssueOp)
 class SequencerOpIO extends ValidIO(new SequencerOp)
 
 class Sequencer extends HwachaModule with LaneParameters
