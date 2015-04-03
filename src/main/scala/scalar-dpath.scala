@@ -21,7 +21,7 @@ class ScalarDpath extends HwachaModule
     }
 
     val vmu = new ScalarMemIO
-    val seqop = new SequencerOpIO
+    val vxu = new VXUIssueOpIO
 
     val imem = new FrontendIO
 
@@ -219,9 +219,11 @@ class ScalarDpath extends HwachaModule
     io.respq.value.bits := wb_reg_wdata
   }
 
-  // fake VU hookup: start from register to avoid critical path issues
-  io.seqop.valid := !io.ctrl.ex_scalar_dest
-  io.seqop.bits.inst := Cat(ex_reg_inst(31,0), ex_reg_inst(63,32))
+  // to VXU
+  io.vxu.bits.sreg.ss1 := id_sreads(0)
+  io.vxu.bits.sreg.ss2 := id_sreads(1)
+  io.vxu.bits.sreg.ss3 := id_sreads(2)
+  io.vxu.bits.inst := id_inst
 
   when(io.ctrl.swrite.valid) {
     printf("H: SW[r%d=%x][%d]\n",

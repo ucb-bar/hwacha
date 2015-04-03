@@ -148,7 +148,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 
-  vxu.io.seqop <> scalar.io.seqop
+  vxu.io.issue <> scalar.io.vxu
 
   vmu.io.scalar <> scalar.io.vmu
   vmu.io.lane <> vxu.io.vmu

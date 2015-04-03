@@ -20,7 +20,7 @@ class ScalarUnit extends HwachaModule
 
     val imem = new FrontendIO
 
-    val seqop = new SequencerOpIO
+    val vxu = new VXUIssueOpIO
     
     val vf_active = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
@@ -61,5 +61,6 @@ class ScalarUnit extends HwachaModule
   io.pending_seq <> ctrl.io.pending_seq
   io.pending_memop <> ctrl.io.pending_memop
 
-  io.seqop <> dpath.io.seqop
+  io.vxu <> ctrl.io.vxu
+  io.vxu <> dpath.io.vxu
 }

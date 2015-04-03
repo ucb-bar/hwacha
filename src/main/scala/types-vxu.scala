@@ -11,16 +11,12 @@ import uncore.constants.MemoryOpConstants._
 
 class VIUFn extends Bundle
 {
-  val t0 = Bits(width = SZ_BMUXSEL)
-  val t1 = Bits(width = SZ_BMUXSEL)
   val dw = Bits(width = SZ_DW)
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
-  def rtype(dummy: Int = 0) = t0 === ML
-  def itype(dummy: Int = 0) = t0 === MR
-  def rs1(dummy: Int = 0) = rtype() || itype()
-  def rs2(dummy: Int = 0) = rtype()
+  def dgate(valid: Bool) = this.clone.fromBits(
+    List(dw, fp, op).map(DataGating.dgate(valid, _)).reverse.reduceLeft(Cat(_, _)))
 
   def dw_is(_dw: UInt) = dw === _dw
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
@@ -113,6 +109,7 @@ class DecodedInstruction extends Bundle
   }
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
+  val inst = Bits(width = 64)
 }
 
 
@@ -130,7 +127,7 @@ class IssueOp extends DecodedInstruction
     val vfma = Bool()
     val vfdiv = Bool()
     val vfcmp = Bool()
-    val vfonv = Bool()
+    val vfconv = Bool()
     val vamo = Bool()
     val vldx = Bool()
     val vstx = Bool()

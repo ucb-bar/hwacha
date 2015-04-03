@@ -52,7 +52,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
     val imem = new FrontendIO
 
-    val issue = new IssueOpIO
+    val vxu = new VXUIssueOpIO
 
     val vf_active = Bool(OUTPUT)
     val pending_seq = Bool(OUTPUT)
@@ -163,10 +163,15 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val wb_vd_val :: wb_vd_scalar :: wb_vd_sp :: wb_vd_dyn :: Nil = parse_rinfo(wb_ctrl.vdi)
 
-  val id_scalar_dest = !id_ctrl.fpu_val && (id_ctrl.decode_scalar || (vd_val && vd_scalar) || (vd_dyn && !io.dpath.inst(OPC_VD)))
-  val id_scalar_src1 = id_ctrl.decode_scalar || (vs1_val && vs1_scalar) || (vs1_dyn && !io.dpath.inst(OPC_VS1))
-  val id_scalar_src2 = id_ctrl.decode_scalar || (vs2_val && vs2_scalar) || (vs2_dyn && !io.dpath.inst(OPC_VS2))
-  val id_scalar_src3 = id_ctrl.decode_scalar || (vs3_val && vs3_scalar) || (vs3_dyn && !io.dpath.inst(OPC_VS3))
+  val id_scalar_dest = vd_val && (id_ctrl.decode_scalar || vd_scalar || vd_dyn && !io.dpath.inst(OPC_VD))
+  val id_scalar_src1 = vs1_val && (id_ctrl.decode_scalar || vs1_scalar || vs1_dyn && !io.dpath.inst(OPC_VS1))
+  val id_scalar_src2 = vs2_val && (id_ctrl.decode_scalar || vs2_scalar || vs2_dyn && !io.dpath.inst(OPC_VS2))
+  val id_scalar_src3 = vs3_val && (id_ctrl.decode_scalar || vs3_scalar || vs3_dyn && !io.dpath.inst(OPC_VS3))
+
+  val id_val = io.imem.resp.valid && id_ctrl.ival
+  val id_scalar_inst =
+    (!vd_val || id_scalar_dest) &&
+    (!vs1_val || id_scalar_src1) && (!vs2_val || id_scalar_src2) && (!vs3_val || id_scalar_src3)
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
   val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && !io.dpath.ex_inst(OPC_VD)))
@@ -183,13 +188,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val ex_waddr   = io.dpath.ex_waddr
 
   val wb_waddr   = io.dpath.wb_waddr
-
-  //COLIN FIXME: do we have any scalar instructions with no destination?
-  val id_scalar_inst = id_scalar_dest &&
-                       (id_scalar_src1 && vs1_val)
-                       (id_scalar_src2 && vs2_val)
-                       (id_scalar_src3 && vs3_val)
-  //assuming all scalar instructions have a dest
 
   val bypassDst = Array(id_raddrs1, id_raddrs2, id_raddrs3)
   val bypassSrc = Array.fill(NBYP)((Bool(true), UInt(0)))
@@ -252,10 +250,65 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val sboard_clear_addr = Mux(clear_mem, io.dpath.pending_mem_reg, io.dpath.pending_fpu_reg)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
  
-  val ctrl_stalld = id_ex_hazard || id_wb_hazard || 
-                    id_sboard_hazard || id_second_mem || mem_hazard || fpu_hazard
+  // YUNSUP: Hook these up with the decoupled VMU port
+  val vmu_valid = Bool()
+  val vmu_ready = Bool(true)
+
+  val enq_vxu = id_val && !id_scalar_inst
+  val enq_vmu = id_val && id_ctrl.vmu_val
+
+  val mask_vxu_ready = !enq_vxu || io.vxu.ready
+  val mask_vmu_ready = !enq_vmu || vmu_ready
+
+  val ctrl_stalld_common =
+    id_ex_hazard || id_wb_hazard || 
+    id_sboard_hazard || id_second_mem || mem_hazard || fpu_hazard
+
+  def fire_decode(exclude: Bool, include: Bool*) = {
+    val rvs = List(ctrl_stalld_common, mask_vxu_ready, mask_vmu_ready)
+    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+  }
+
+  val ctrl_stalld = fire_decode(null)
 
   io.dpath.killd := !vf_active || ctrl_stalld
+
+  // FIXME: need to take Rocket's rounding mode for dynamic RM
+  val rm = io.dpath.inst(52, 50)
+
+  // to VXU
+  io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
+  io.vxu.bits.active.vint := id_ctrl.viu_val
+  io.vxu.bits.active.vimul := id_ctrl.vimu_val
+  io.vxu.bits.active.vidiv := id_ctrl.vidu_val
+  io.vxu.bits.active.vfma := id_ctrl.vfmu_val
+  io.vxu.bits.active.vfdiv := id_ctrl.vfdu_val
+  io.vxu.bits.active.vfcmp := id_ctrl.vfcu_val
+  io.vxu.bits.active.vfconv := id_ctrl.vfvu_val
+  io.vxu.bits.active.vamo := id_ctrl.vmu_val && isAMO(id_ctrl.vmu_cmd)
+  io.vxu.bits.active.vldx := id_ctrl.vmu_val && is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XRD
+  io.vxu.bits.active.vstx := id_ctrl.vmu_val && is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XWR
+  io.vxu.bits.active.vld := id_ctrl.vmu_val && !is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XRD
+  io.vxu.bits.active.vst := id_ctrl.vmu_val && !is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XWR
+  io.vxu.bits.fn.viu := new VIUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.fpu_fp, id_ctrl.viu_fn))
+  io.vxu.bits.fn.vimu := new VIMUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.vimu_fn))
+  io.vxu.bits.fn.vidu := new VIDUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.vidu_fn))
+  io.vxu.bits.fn.vfmu := new VFMUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfmu_fn))
+  io.vxu.bits.fn.vfdu := new VFDUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfdu_fn))
+  io.vxu.bits.fn.vfcu := new VFCUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfcu_fn))
+  io.vxu.bits.fn.vfvu := new VFVUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfvu_fn))
+  io.vxu.bits.fn.vmu := new VMUFn().fromBits(Cat(id_ctrl.vmu_mode,id_ctrl.vmu_cmd))
+  io.vxu.bits.reg.vs1.scalar := id_scalar_src1
+  io.vxu.bits.reg.vs2.scalar := id_scalar_src2
+  io.vxu.bits.reg.vs3.scalar := id_scalar_src3
+  io.vxu.bits.reg.vd.scalar := id_scalar_dest
+  io.vxu.bits.reg.vs1.id := id_raddrs1
+  io.vxu.bits.reg.vs2.id := id_raddrs2
+  io.vxu.bits.reg.vs3.id := id_raddrs3
+  io.vxu.bits.reg.vd.id := id_waddr
+
+  // to VMU
+  vmu_valid := fire_decode(mask_vmu_ready, enq_vmu)
 
   //excute
   ctrl_killd := !vf_active || !io.imem.resp.valid || ctrl_stalld 
@@ -287,7 +340,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   //memory
   io.vmu.op.valid := ex_reg_valid && ex_ctrl.vmu_val
-  io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_fn
+  io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_cmd
   io.vmu.op.bits.fn.mt := ex_ctrl.vmu_mt
   io.dpath.fire_vmu := Bool(false)
   when(io.vmu.op.fire()){

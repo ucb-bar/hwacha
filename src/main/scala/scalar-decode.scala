@@ -12,6 +12,7 @@ class IntCtrlSigs extends Bundle
 {
   val ival = Bool()
   val decode_scalar = Bool()
+  val decode_stop = Bool()
   val vdi = Bits(width = RX.getWidth)
   val vs1i = Bits(width = RX.getWidth)
   val vs2i = Bits(width = RX.getWidth)
@@ -26,9 +27,8 @@ class IntCtrlSigs extends Bundle
   val fpu_fn = Bits(width = FX.getWidth)
   val vmu_val = Bool()
   val vmu_mode = Bits(width = MM_X.getWidth)
-  val vmu_fn = Bits(width = M_X.getWidth)
+  val vmu_cmd = Bits(width = M_X.getWidth)
   val vmu_mt = Bits(width = MT_X.getWidth)
-  val decode_stop = Bool()
   val viu_val = Bool()
   val viu_fn = Bits(width = I_X.getWidth)
   val vimu_val = Bool()
@@ -50,7 +50,7 @@ class IntCtrlSigs extends Bundle
         vdi, vs1i, vs2i, vs3i, sel_imm,
         alu_fn, alu_dw, alu_sel1, alu_sel2,
         fpu_val, fpu_fp, fpu_fn,
-        vmu_val, vmu_mode, vmu_fn, vmu_mt,
+        vmu_val, vmu_mode, vmu_cmd, vmu_mt,
         viu_val, viu_fn,
         vimu_val, vimu_fn,
         vidu_val, vidu_fn,
@@ -77,7 +77,7 @@ object ScalarDecode extends VFDecodeTable
 {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
-  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  fn        mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
+  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
   //                 | | | |  |  |  |  |     |       |      |       |       | |   |         | |     |         |     | |      | |       | |       | |        | |       | |        | |
     VSSSEGD   ->List(Y,Y,N,R_,RS,RS,R_,IMM_X,FN_ADD, DW_XPR,A1_RS1, A2_ZERO,N,FP_,FX,       Y,MM_S, M_XWR,    MT_D, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
     VLSSEGD   ->List(Y,Y,N,RS,RS,R_,R_,IMM_X,FN_ADD, DW_XPR,A1_RS1, A2_ZERO,N,FP_,FX,       Y,MM_S, M_XRD,    MT_D, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
@@ -104,7 +104,7 @@ object VectorMemoryDecode extends VFDecodeTable
 {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
-  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  fn        mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
+  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
   //                 | | | |  |  |  |  |     |       |      |       |       | |   |         | |     |         |     | |      | |       | |       | |        | |       | |        | |
     VLSEGB    ->List(Y,N,N,RV,RA,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,FX,       Y,MM_VS,M_XRD,    MT_B, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
     VLSEGH    ->List(Y,N,N,RV,RA,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,FX,       Y,MM_VS,M_XRD,    MT_H, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
@@ -166,7 +166,7 @@ object VectorArithmeticDecode extends VFDecodeTable
 {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
-  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  fn        mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
+  //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
   //                 | | | |  |  |  |  |     |       |      |       |       | |   |         | |     |         |     | |      | |       | |       | |        | |       | |        | |
     VEIDX     ->List(Y,N,N,RV,R_,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,FX,       N,MM_X, M_X,      MT_X, Y,I_IDX, N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
     VADD      ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_ADD, DW_X,  A1_RS1, A2_RS2, N,FP_,FX,       N,MM_X, M_X,      MT_X, Y,I_ADD, N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
