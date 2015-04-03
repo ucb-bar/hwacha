@@ -27,7 +27,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val local_sfpu = params(HwachaLocalScalarFPU)
 
   val nreg_total = nbanks * nreg_per_bank
-  val confvru = true
+  val confvru = false
   val confprec = false
 
   // pipeline latencies
