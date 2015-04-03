@@ -143,10 +143,6 @@ class TLBIO extends Bundle
 class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val io = new Bundle {
     val lane = new VMUIO().flip
-    val evac = new Bundle {
-      val vaq = new VVAQIO().flip
-      val vsdq = new VSDQIO().flip
-    }
     val pf = new Bundle {
       val vaq = new VVAPFQIO().flip
     }
@@ -178,7 +174,6 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   abox.io.xcpt <> io.xcpt
   abox.io.irq <> io.irq
   abox.io.lane <> io.lane.vaq
-  abox.io.evac <> io.evac.vaq
   abox.io.pf <> io.pf.vaq
 
   tbox.io.abox <> abox.io.tbox
@@ -186,12 +181,9 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   tbox.io.smu.active <> smu.io.active
   tbox.io.vtlb <> io.vtlb
   tbox.io.vpftlb <> io.vpftlb
-  tbox.io.xcpt <> io.xcpt
 
   sbox.io.issue <> ibox.io.sbox
-  sbox.io.xcpt <> io.xcpt
   sbox.io.lane <> io.lane.vsdq
-  sbox.io.evac <> io.evac.vsdq
 
   lbox.io.lane <> io.lane.vldq
 

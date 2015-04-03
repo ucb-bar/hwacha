@@ -134,7 +134,6 @@ class ABox0 extends VMUModule {
 
 class TBoxQueryIO extends Bundle {
   val lane = new TLBQueryIO
-  val evac = new TLBQueryIO
   val pf = new TLBQueryIO
 }
 
@@ -148,8 +147,6 @@ class TBox extends VMUModule {
 
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
-
-    val xcpt = new XCPTIO().flip
   }
 
   private def translate(tlb: TLBIO, query: TLBQueryIO) {
@@ -167,13 +164,12 @@ class TBox extends VMUModule {
     query.xcpt.st := tlb.resp.xcpt_st
   }
 
-  val drain = io.xcpt.prop.vmu.drain
   val scalar = io.smu.active
 
   // Bi-directional arbiter
   val arb = new TLBQueryIO().asDirectionless()
-  private val arb_io = Seq(io.smu.core, io.abox.lane, io.abox.evac)
-  private val arb_sel = Seq(scalar, !scalar && !drain, !scalar && drain)
+  private val arb_io = Seq(io.smu.core, io.abox.lane)
+  private val arb_sel = Seq(scalar, !scalar)
 
   arb.vpn.valid := Mux1H(arb_sel, arb_io.map(_.vpn.valid))
   arb.vpn.bits := Mux1H(arb_sel, arb_io.map(_.vpn.bits))
@@ -338,49 +334,6 @@ class VPFQ extends VMUModule {
   io.deq.bits.meta := (new VMUMetaUnion).fromBits(Bits(0))
 }
 
-class ABox2 extends VMUModule {
-  val io = new Bundle {
-    val xcpt = new XCPTIO().flip
-    val irq = new IRQIO
-    val tbox = new TLBQueryIO
-
-    val abox1 = new VMUAddrIO().flip
-    val evac = Decoupled(UInt(width = maxAddrBits)).flip
-    val mbox = new VMUAddrIO
-  }
-
-  private def vpn(x: UInt) = x(vaddrBits-1, pgIdxBits)
-  private def pgidx(x: UInt) = x(pgIdxBits-1, 0)
-
-  val op = io.mbox.bits.clone.asDirectionless()
-  op.fn := M_XWR
-  op.mt := MT_D
-  op.addr := Cat(io.tbox.ppn, pgidx(io.evac.bits))
-  op.meta.eidx := UInt(0)
-  op.meta.ecnt := UInt(1)
-  op.meta.eskip := op.addr(tlByteAddrBits-1,3)
-  op.meta.offset := op.addr(tlByteAddrBits-1,0)
-  op.meta.first := Bool(false)
-  op.meta.last := Bool(false)
-
-  val drain = io.xcpt.prop.vmu.drain
-  val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
-  io.mbox.bits := Mux(drain, op, io.abox1.bits)
-  io.mbox.valid := Mux(drain, io.evac.valid && tlb_ready, io.abox1.valid)
-  io.evac.ready := drain && io.mbox.ready && tlb_ready
-  io.abox1.ready := !drain && io.mbox.ready
-
-  io.tbox.vpn.bits := vpn(io.evac.bits)
-  io.tbox.vpn.valid := drain && io.evac.valid //&& io.mbox.ready
-  io.tbox.store := Bool(true)
-
-  io.irq.vmu.ma_ld := Bool(false)
-  io.irq.vmu.ma_st := (io.evac.bits(2, 0) != UInt(0))
-  io.irq.vmu.faulted_ld := Bool(false)
-  io.irq.vmu.faulted_st := io.tbox.vpn.fire() && !io.tbox.miss && io.tbox.xcpt.st
-  io.irq.vmu.aux := op.addr
-}
-
 object VMUIRQIO {
   def apply(out: IRQIO, in: Iterable[IRQIO]) {
     out.vmu.ma_ld := in.map(_.vmu.ma_ld).reduce(_||_)
@@ -400,7 +353,6 @@ class ABox extends VMUModule {
     val tbox = new TBoxQueryIO
 
     val lane = new VAQLaneIO().flip
-    val evac = new VVAQIO().flip
     val pf = new VVAPFQIO().flip
     val mbox = new VMUAddrIO
   }
@@ -409,7 +361,6 @@ class ABox extends VMUModule {
   val vpaq = Module(new VPAQ)
   val abox0 = Module(new ABox0)
   val abox1 = Module(new ABox1)
-  val abox2 = Module(new ABox2)
 
   vvaq.io.enq <> io.lane.q
   vvaq.io.la <> io.lane.vala
@@ -428,11 +379,6 @@ class ABox extends VMUModule {
   abox1.io.xcpt <> io.xcpt
   abox1.io.la <> io.lane.pala
 
-  abox2.io.abox1 <> abox1.io.mbox
-  abox2.io.evac <> io.evac
-  abox2.io.tbox <> io.tbox.evac
-  abox2.io.xcpt <> io.xcpt
-
   val mboxq = Module(new Queue(io.mbox.bits.clone.asDirectionless(), 2))
   if (confvru) {
     val vpfq = Module(new VPFQ)
@@ -441,15 +387,15 @@ class ABox extends VMUModule {
     vpfq.io.tbox <> io.tbox.pf
 
     val arb = Module(new RRArbiter(io.mbox.bits.clone.asDirectionless(), 2))
-    arb.io.in(0) <> abox2.io.mbox
+    arb.io.in(0) <> abox1.io.mbox
     arb.io.in(1) <> vpfq.io.deq
     mboxq.io.enq <> arb.io.out
   } else {
-    mboxq.io.enq <> abox2.io.mbox
+    mboxq.io.enq <> abox1.io.mbox
     io.pf.ready := Bool(false)
     io.tbox.pf.vpn.valid := Bool(false)
   }
   io.mbox <> mboxq.io.deq
 
-  VMUIRQIO(io.irq, Seq(abox0.io.irq, abox2.io.irq))
+  io.irq <> abox0.io.irq
 }

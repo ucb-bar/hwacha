@@ -153,9 +153,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   vmu.io.scalar <> scalar.io.vmu
   vmu.io.lane <> vxu.io.vmu
 
-  vmu.io.evac.vaq.valid := Bool(false)
-  vmu.io.evac.vsdq.valid := Bool(false)
-
   vmu.io.pf.vaq.valid := Bool(false)
 
   vmu.io.xcpt.prop.vmu.stall := Bool(false)
