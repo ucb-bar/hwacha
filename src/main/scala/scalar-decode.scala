@@ -9,7 +9,7 @@ import ScalarFPUDecode._
 
 class IntCtrlSigs extends Bundle
 {
-  val valid = Bool()
+  val ival = Bool()
   val vdi = Bits(width = RX.getWidth)
   val vri = Bits(width = RX.getWidth)
   val vsi = Bits(width = RX.getWidth)
@@ -29,7 +29,7 @@ class IntCtrlSigs extends Bundle
 
   def decode(inst: UInt, table: Iterable[(UInt, List[UInt])]) = {
     val decoder = rocket.DecodeLogic(inst, HwachaVFDecodeTable.default, table)
-    Vec(valid, vdi, vri, vsi, vti, sel_imm, decode_scalar, alu_fn, alu_dw, sel_alu1,
+    Vec(ival, vdi, vri, vsi, vti, sel_imm, decode_scalar, alu_fn, alu_dw, sel_alu1,
         sel_alu2, fpu_val, fpu_fn, vmu_val, vmu_cmd, vmu_type, decode_stop) := decoder
     this
   }

@@ -152,25 +152,25 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vr_val :: vr_scalar :: vr_sp :: vr_dyn :: Nil = parse_rinfo(id_ctrl.vri)
   val vs_val :: vs_scalar :: vs_sp :: vs_dyn :: Nil = parse_rinfo(id_ctrl.vsi)
   val vt_val :: vt_scalar :: vt_sp :: vt_dyn :: Nil = parse_rinfo(id_ctrl.vti)
-  io.dpath.ren(0) := vr_val && (vr_scalar || (vr_dyn && io.dpath.inst(OPC_VS1)))
-  io.dpath.ren(1) := vs_val && (vs_scalar || (vs_dyn && io.dpath.inst(OPC_VS2)))
-  io.dpath.ren(2) := vt_val && (vt_scalar || (vt_dyn && io.dpath.inst(OPC_VS3)))
+  io.dpath.ren(0) := vr_val && (vr_scalar || (vr_dyn && !io.dpath.inst(OPC_VS1)))
+  io.dpath.ren(1) := vs_val && (vs_scalar || (vs_dyn && !io.dpath.inst(OPC_VS2)))
+  io.dpath.ren(2) := vt_val && (vt_scalar || (vt_dyn && !io.dpath.inst(OPC_VS3)))
 
   val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
 
   val wb_vd_val :: wb_vd_scalar :: wb_vd_sp :: wb_vd_dyn :: Nil = parse_rinfo(wb_ctrl.vdi)
 
-  val id_scalar_dest = !id_ctrl.fpu_val && (id_ctrl.decode_scalar || (vd_val && vd_scalar) || (vd_dyn && io.dpath.inst(OPC_VD)))
-  val id_scalar_src1 = id_ctrl.decode_scalar || (vr_val && vr_scalar) || (vr_dyn && io.dpath.inst(OPC_VS1))
-  val id_scalar_src2 = id_ctrl.decode_scalar || (vs_val && vs_scalar) || (vs_dyn && io.dpath.inst(OPC_VS2))
-  val id_scalar_src3 = id_ctrl.decode_scalar || (vt_val && vt_scalar) || (vt_dyn && io.dpath.inst(OPC_VS3))
+  val id_scalar_dest = !id_ctrl.fpu_val && (id_ctrl.decode_scalar || (vd_val && vd_scalar) || (vd_dyn && !io.dpath.inst(OPC_VD)))
+  val id_scalar_src1 = id_ctrl.decode_scalar || (vr_val && vr_scalar) || (vr_dyn && !io.dpath.inst(OPC_VS1))
+  val id_scalar_src2 = id_ctrl.decode_scalar || (vs_val && vs_scalar) || (vs_dyn && !io.dpath.inst(OPC_VS2))
+  val id_scalar_src3 = id_ctrl.decode_scalar || (vt_val && vt_scalar) || (vt_dyn && !io.dpath.inst(OPC_VS3))
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
-  val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && io.dpath.ex_inst(OPC_VD)))
+  val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && !io.dpath.ex_inst(OPC_VD)))
   io.dpath.ex_scalar_dest := Bool(true)
   when(ex_vf_active && !ctrl_killx) { io.dpath.ex_scalar_dest := ex_scalar_dest }
 
-  val wb_scalar_dest = !wb_ctrl.fpu_val && (wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && io.dpath.wb_inst(OPC_VD)))
+  val wb_scalar_dest = !wb_ctrl.fpu_val && (wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && !io.dpath.wb_inst(OPC_VD)))
 
   val id_waddr = io.dpath.inst(23,16)
   val id_raddrs1 = io.dpath.inst(31,24)
