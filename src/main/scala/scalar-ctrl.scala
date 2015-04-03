@@ -207,7 +207,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_ctrl_rens3_not0 = vs3_val && vs3_scalar && vs3_sp && id_raddrs3 != UInt(0)
 
   // stall for RAW/WAW hazards on loads, AMOs, and mul/div in execute stage.
-  val ex_cannot_bypass = ex_ctrl.mem_val
+  val ex_cannot_bypass = ex_ctrl.vmu_val
   val data_hazard_ex = ex_scalar_dest &&
     (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
@@ -215,7 +215,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val id_ex_hazard = ex_reg_valid && (data_hazard_ex && ex_cannot_bypass)
 
-  val wb_set_sboard = wb_ctrl.mem_val || wb_ctrl.fpu_val
+  val wb_set_sboard = wb_ctrl.vmu_val || wb_ctrl.fpu_val
   // stall for RAW/WAW hazards on load/AMO misses and mul/div in writeback.
   val data_hazard_wb = wb_scalar_dest &&
      (id_ctrl_rens1_not0 && id_raddrs1 === wb_waddr ||
@@ -224,7 +224,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_wb_hazard = wb_reg_valid && (data_hazard_wb && wb_set_sboard)
 
   //Stall second load/store on decode
-  val id_second_mem = id_ctrl.mem_val && pending_mem
+  val id_second_mem = id_ctrl.vmu_val && pending_mem
   //Stall second fpu on decode
   val fpu_hazard = id_ctrl.fpu_val && io.dpath.pending_fpu
 
@@ -269,7 +269,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_stalld && !io.imem.resp.valid) { ex_vf_active := vf_active }
 
   // replay inst in ex stage
-  val replay_ex_structural = ex_ctrl.mem_val && pending_mem ||
+  val replay_ex_structural = ex_ctrl.vmu_val && pending_mem ||
                              ex_ctrl.fpu_val && !io.fpu.req.ready
   //if either the vmu or fpu needs to writeback we need to replay
   val vmu_kill_ex = ex_reg_valid && ex_scalar_dest && io.vmu.resp.valid
@@ -286,9 +286,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   //memory
-  io.vmu.op.valid := ex_reg_valid && ex_ctrl.mem_val
-  io.vmu.op.bits.fn.cmd := ex_ctrl.mem_cmd
-  io.vmu.op.bits.fn.mt := ex_ctrl.mem_type
+  io.vmu.op.valid := ex_reg_valid && ex_ctrl.vmu_val
+  io.vmu.op.bits.fn.cmd := ex_ctrl.vmu_fn
+  io.vmu.op.bits.fn.mt := ex_ctrl.vmu_mt
   io.dpath.fire_vmu := Bool(false)
   when(io.vmu.op.fire()){
     io.dpath.fire_vmu := Bool(true)

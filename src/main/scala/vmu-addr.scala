@@ -47,7 +47,7 @@ class ABox0 extends VMUModule {
 
   val first = Reg(Bool())
   val ecnt_pg = Mux1H(mt, (0 until mt.size).map(i => UInt(pgSzBytes >> i)))
-  val ecnt_max = Mux(op.unit && !op.fn.indexed,
+  val ecnt_max = Mux(op.unit && !op.mode.indexed,
     ecnt_pg - (ecnt_off & Fill(first, pgIdxBits)), UInt(1))
 
   val count = Reg(UInt(width = SZ_VLEN))
@@ -57,7 +57,7 @@ class ABox0 extends VMUModule {
 
   val stride = Mux(op.unit, UInt(pgSzBytes), op.addr.stride)
   val addr_gen = Reg(UInt())
-  val addr = Mux(op.fn.indexed, io.vvaq.bits, addr_gen)
+  val addr = Mux(op.mode.indexed, io.vvaq.bits, addr_gen)
   io.tbox.vpn.bits := addr(vaddrBits-1, pgIdxBits)
   io.vpaq.bits.addr := Cat(io.tbox.ppn, pgidx(addr))
   io.vpaq.bits.ecnt := ecnt
@@ -77,7 +77,7 @@ class ABox0 extends VMUModule {
     stall_hold := Bool(true)
   }
 
-  val addr_valid = !op.fn.indexed || io.vvaq.valid
+  val addr_valid = !op.mode.indexed || io.vvaq.valid
   val tlb_ready = io.tbox.vpn.ready && !io.tbox.miss
 
   val en = busy && !stall
@@ -86,7 +86,7 @@ class ABox0 extends VMUModule {
     (rvs.filter(_ != exclude) ++ include).reduce(_ && _) && en
   }
 
-  io.vvaq.ready := fire(addr_valid, op.fn.indexed)
+  io.vvaq.ready := fire(addr_valid, op.mode.indexed)
   io.tbox.vpn.valid := fire(tlb_ready)
   io.vpaq.valid := fire(io.vpaq.ready, !xcpt)
 
@@ -95,7 +95,7 @@ class ABox0 extends VMUModule {
       when (io.issue.fire) {
         state := s_busy
         count := op.cmd.vlen
-        when (!op.fn.indexed) {
+        when (!op.mode.indexed) {
           addr_gen := op.addr.base
         }
         first := Bool(true)
@@ -104,7 +104,7 @@ class ABox0 extends VMUModule {
 
     is (s_busy) {
       when (io.vpaq.fire()) {
-        when (!op.fn.indexed) {
+        when (!op.mode.indexed) {
           addr_gen := addr_gen + stride
         }
         count := count_next
@@ -218,7 +218,7 @@ class ABox1 extends VMUModule {
 
   val op = io.issue.op
   private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
-  val packed = op.unit && !op.fn.indexed
+  val packed = op.unit && !op.mode.indexed
 
   val count = Reg(UInt(width = SZ_VLEN))
   val first = Reg(Bool())

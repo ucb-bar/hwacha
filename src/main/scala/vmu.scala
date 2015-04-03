@@ -48,11 +48,14 @@ class VMUIO extends Bundle {
 }
 
 class VMUDecodedOp extends Bundle {
+  val mode = new Bundle {
+    val indexed = Bool()
+    val scalar = Bool()
+  }
   val fn = new Bundle {
     val load = Bool()
     val store = Bool()
     val amo = Bool()
-    val indexed = Bool()
   }
   val mt = new DecodedMemType
   val unit = Bool()
@@ -67,11 +70,11 @@ object VMUDecodedOp {
     op.cmd := cmd
     op.addr := addr
 
-    val mcmd = vmu_op_mcmd(cmd.fn)
-    op.fn.load := (mcmd === M_XRD)
-    op.fn.store := (mcmd === M_XWR)
-    op.fn.amo := isAMO(mcmd)
-    op.fn.indexed := !vmu_op_tvec(cmd.fn)
+    op.mode.indexed := is_indexed(cmd.mode)
+    op.mode.scalar := is_scalar(cmd.mode)
+    op.fn.load := (cmd.fn === M_XRD)
+    op.fn.store := (cmd.fn === M_XWR)
+    op.fn.amo := isAMO(cmd.fn)
     op.mt := DecodedMemType(cmd.mt)
 
     op.unit :=
@@ -108,7 +111,7 @@ class IBox extends VMUModule {
   }
 
   val valid = cmdq.io.deq.valid &&
-    (op.fn.indexed || addrq.io.deq.valid)
+    (op.mode.indexed || addrq.io.deq.valid)
   cmdq.io.deq.ready := Bool(false)
   addrq.io.deq.ready := Bool(false)
 
@@ -128,7 +131,7 @@ class IBox extends VMUModule {
       when (!backends.map(_.busy).reduce(_||_)) {
         state := s_idle
         cmdq.io.deq.ready := Bool(true)
-        addrq.io.deq.ready := !op.fn.indexed
+        addrq.io.deq.ready := !op.mode.indexed
       }
     }
   }

@@ -9,7 +9,8 @@ abstract class VMUModule(clock: Clock = null, _reset: Bool = null)
 abstract class VMUBundle extends HwachaBundle with VMUParameters
 
 class VMUOpCmd extends Bundle {
-  val fn = Bits(width = SZ_VMU_OP)
+  val mode = Bits(width = SZ_VMU_MODE)
+  val fn = Bits(width = M_SZ)
   val mt = Bits(width = MT_SZ)
   val vlen = UInt(width = SZ_VLEN)
 }

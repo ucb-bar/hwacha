@@ -18,7 +18,7 @@ class SBox extends VMUModule {
 
   val op = io.issue.op
   val meta = io.mbox.meta
-  val packed = op.unit && !op.fn.indexed
+  val packed = op.unit && !op.mode.indexed
   private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
 
   val vsdq = Module(new Queue(Bits(width = tlDataBits), confvmu.nvsdq))

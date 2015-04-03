@@ -69,7 +69,8 @@ class VQUFn extends Bundle
 
 class VMUFn extends Bundle
 {
-  val op = Bits(width = SZ_VMU_OP)
+  val mode = Bits(width = SZ_VMU_MODE)
+  val op = Bits(width = M_SZ)
 }
 
 
