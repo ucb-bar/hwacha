@@ -10,8 +10,6 @@ class ScalarUnit extends HwachaModule
   val io = new Bundle {
     val cmdq = new CMDQIO().flip
 
-    val respq = new RESPQIO()
-
     val fpu = new Bundle {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
@@ -42,8 +40,6 @@ class ScalarUnit extends HwachaModule
   ctrl.io.fpu.req.ready <> io.fpu.req.ready
   ctrl.io.fpu.req.valid <> io.fpu.req.valid
   ctrl.io.fpu.resp.valid <> io.fpu.resp.valid
-
-  io.respq <> dpath.io.respq
 
   //connect scalar vmu port
   io.vmu.op.bits <> dpath.io.vmu.op.bits

@@ -19,14 +19,24 @@ abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters {
   val nbanks = params(HwachaNBanks)
-  val nreg_per_bank = params(HwachaNSRAMRFEntries)
-  val ndtlb = params(HwachaNDTLB)  
-  val nptlb = params(HwachaNPTLB)  
+
+  val nbdepth = params(HwachaNSRAMRFEntries)
+  val szbdepth = log2Up(nbdepth)
+  val nbregs = nbdepth * (SZ_DATA / SZ_D)
+  val szbregs = log2Up(nbregs)
+
+  val nregs = nbanks * nbregs
+  val szregs = log2Up(nregs)
+  val szvlen = szregs
+
+  val nvregs = 256
+  val szvregs = log2Up(nvregs)
 
   val nsregs = params(HwachaNScalarRegs)
   val local_sfpu = params(HwachaLocalScalarFPU)
 
-  val nreg_total = nbanks * nreg_per_bank
+  val ndtlb = params(HwachaNDTLB)
+  val nptlb = params(HwachaNPTLB)
   val confvru = false
   val confprec = false
 
@@ -122,7 +132,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   rocc.io.pending_memop := scalar.io.pending_memop
   rocc.io.pending_seq := scalar.io.pending_seq
   rocc.io.vf_active := scalar.io.vf_active
-  rocc.io.respq <> scalar.io.respq
   rocc.io.cmdq <> scalar.io.cmdq
 
   //Connect ScalarUnit to Rocket's FPU

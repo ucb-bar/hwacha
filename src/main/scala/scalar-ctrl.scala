@@ -265,11 +265,11 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     id_sboard_hazard || id_second_mem || mem_hazard || fpu_hazard
 
   def fire_decode(exclude: Bool, include: Bool*) = {
-    val rvs = List(ctrl_stalld_common, mask_vxu_ready, mask_vmu_ready)
+    val rvs = List(!ctrl_stalld_common, mask_vxu_ready, mask_vmu_ready)
     (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
   }
 
-  val ctrl_stalld = fire_decode(null)
+  val ctrl_stalld = !fire_decode(null)
 
   io.dpath.killd := !vf_active || ctrl_stalld
 

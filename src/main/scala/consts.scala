@@ -309,42 +309,12 @@ object Commands extends Commands
 trait Commands
 {
   // command bits for the vector command queue
-  val CMD_X = Bits("b????_????",8)
+  val CMD_X = Bits("b???",3)
 
-  val CMD_VSETCFG = Bits("b00_0000_00",8)
-  val CMD_VSETVL =  Bits("b00_0000_10",8)
-  val CMD_VF =      Bits("b00_0000_11",8)
-  val CMD_VFT =     Bits("b00_0001_11",8)
-
-  val CMD_LDWB = Bits("b00_010_000",8)
-  val CMD_STAC = Bits("b00_010_001",8)
-
-  val CMD_VMSA =  Bits("b01_000_000",8)
-  val CMD_VMSS =  Bits("b01_001_000",8)
-
-  val CMD_VLD =  Bits("b1_00_0_0_0_11",8)
-  val CMD_VLW =  Bits("b1_00_0_0_0_10",8)
-  val CMD_VLWU = Bits("b1_00_0_0_1_10",8)
-  val CMD_VLH =  Bits("b1_00_0_0_0_01",8)
-  val CMD_VLHU = Bits("b1_00_0_0_1_01",8)
-  val CMD_VLB =  Bits("b1_00_0_0_0_00",8)
-  val CMD_VLBU = Bits("b1_00_0_0_1_00",8)
-  val CMD_VSD =  Bits("b1_00_1_0_0_11",8)
-  val CMD_VSW =  Bits("b1_00_1_0_0_10",8)
-  val CMD_VSH =  Bits("b1_00_1_0_0_01",8)
-  val CMD_VSB =  Bits("b1_00_1_0_0_00",8)
-
-  val CMD_VLSTD =  Bits("b1_01_0_0_0_11",8)
-  val CMD_VLSTW =  Bits("b1_01_0_0_0_10",8)
-  val CMD_VLSTWU = Bits("b1_01_0_0_1_10",8)
-  val CMD_VLSTH =  Bits("b1_01_0_0_0_01",8)
-  val CMD_VLSTHU = Bits("b1_01_0_0_1_01",8)
-  val CMD_VLSTB =  Bits("b1_01_0_0_0_00",8)
-  val CMD_VLSTBU = Bits("b1_01_0_0_1_00",8)
-  val CMD_VSSTD =  Bits("b1_01_1_0_0_11",8)
-  val CMD_VSSTW =  Bits("b1_01_1_0_0_10",8)
-  val CMD_VSSTH =  Bits("b1_01_1_0_0_01",8)
-  val CMD_VSSTB =  Bits("b1_01_1_0_0_00",8)
-
-  def is_cmd_pfw(cmd: Bits) = cmd(4)
+  val CMD_VSETCFG = Bits("b000",3)
+  val CMD_VSETVL  = Bits("b001",3)
+  val CMD_VF      = Bits("b010",3)
+  val CMD_VFT     = Bits("b011",3)
+  val CMD_VMSA    = Bits("b100",3)
+  val CMD_VMSS    = Bits("b101",3)
 }

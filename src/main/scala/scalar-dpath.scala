@@ -24,8 +24,6 @@ class ScalarDpath extends HwachaModule
     val vxu = new VXUIssueOpIO
 
     val imem = new FrontendIO
-
-    val respq = new RESPQIO()
   }
 
 
@@ -74,9 +72,6 @@ class ScalarDpath extends HwachaModule
   }
   val srf = new SRegFile //doesn't have vs0
   val arf = Mem(UInt(width = 64), 32)
-
-  io.respq.value.valid := Bool(false)
-  io.respq.value.bits  := UInt(0)
 
   val id_inst = io.imem.resp.bits.data(0).toBits; require(params(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc
@@ -208,16 +203,6 @@ class ScalarDpath extends HwachaModule
   when(io.ctrl.swrite.valid) { srf.write(io.ctrl.swrite.bits.rd, io.ctrl.swrite.bits.imm) }
 
   when(io.ctrl.awrite.valid) { arf(io.ctrl.awrite.bits.rd) := io.ctrl.awrite.bits.imm }
-
-  //hookup result to rocc resp
-  when(io.ctrl.swrite.valid) { 
-    io.respq.value.valid := Bool(true)
-    io.respq.value.bits := wb_reg_wdata
-  }
-  when(io.ctrl.awrite.valid) { 
-    io.respq.value.valid := Bool(true)
-    io.respq.value.bits := wb_reg_wdata
-  }
 
   // to VXU
   io.vxu.bits.sreg.ss1 := id_sreads(0)
