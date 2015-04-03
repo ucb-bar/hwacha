@@ -23,7 +23,7 @@ class LaneIDivResult extends Bundle
   val out = Bits(width = SZ_D)
 }
 
-class LaneIDivSlice extends HwachaModule with HwachaLaneParameters
+class LaneIDivSlice extends HwachaModule with LaneParameters
 {
   val io = new LaneIDivIO().flip
 

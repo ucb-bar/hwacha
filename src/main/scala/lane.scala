@@ -12,7 +12,7 @@ case object HwachaNFFRFReadPorts extends Field[Int]
 case object HwachaNOperandLatches extends Field[Int]
 case object HwachaWriteSelects extends Field[Int]
 
-abstract trait HwachaLaneParameters extends UsesParameters
+abstract trait LaneParameters extends UsesParameters
 {
   val nSRAM = params(HwachaNSRAMRFEntries)
   val nFF = params(HwachaNFFRFEntries)
@@ -51,7 +51,7 @@ class LaneAckIO extends HwachaBundle
   val vfvu = Valid(new VFVUAck)
 }
 
-class Lane extends HwachaModule with HwachaLaneParameters
+class Lane extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val op = new LaneOpIO().flip

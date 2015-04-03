@@ -29,7 +29,7 @@ class LaneFDivTag extends Bundle
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class LaneFDivSlice extends HwachaModule with HwachaLaneParameters
+class LaneFDivSlice extends HwachaModule with LaneParameters
 {
   val io = new LaneFDivIO().flip
 

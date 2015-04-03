@@ -8,7 +8,7 @@ class BRQLookAheadIO extends HwachaBundle with LookAheadIO {
   val mask = Bits(OUTPUT, nbanks)
 }
 
-class VSU extends HwachaModule with HwachaLaneParameters with VMUParameters {
+class VSU extends HwachaModule with LaneParameters with VMUParameters {
   val io = new Bundle {
     val op = Decoupled(new DCCMemOp).flip
     val xcpt = new XCPTIO().flip

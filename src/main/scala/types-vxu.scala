@@ -85,7 +85,7 @@ class SequencerOp extends Bundle
 // bank, lane op
 //-------------------------------------------------------------------------\\
 
-class LaneOp extends HwachaBundle with HwachaLaneParameters
+class LaneOp extends HwachaBundle with LaneParameters
 {
   val pred = Bits(width = nSlices)
 }
@@ -186,17 +186,17 @@ class VGUOp extends LaneOp
   val fn = new VMUFn
 }
 
-class BankReadEntry extends Bundle with HwachaLaneParameters
+class BankReadEntry extends Bundle with LaneParameters
 {
   val d = Bits(width = SZ_DATA)
 }
 
-class BankWriteEntry extends Bundle with HwachaLaneParameters
+class BankWriteEntry extends Bundle with LaneParameters
 {
   val d = Bits(width = SZ_DATA)
 }
 
-class VIXUAck extends Bundle with HwachaLaneParameters
+class VIXUAck extends Bundle with LaneParameters
 {
   val pred = Bits(width = nSlices)
 }
@@ -207,7 +207,7 @@ class VIDUAck extends VIXUAck
 class VGUAck extends VIXUAck
 class VQUAck extends VIXUAck
 
-class VFXUAck extends Bundle with HwachaLaneParameters
+class VFXUAck extends Bundle with LaneParameters
 {
   val pred = Bits(width = nSlices)
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
@@ -243,7 +243,7 @@ class BRQEntry extends Bundle
   val data = Bits(width = SZ_DATA)
 }
 
-class BWQEntry extends Bundle with HwachaLaneParameters
+class BWQEntry extends Bundle with LaneParameters
 {
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))

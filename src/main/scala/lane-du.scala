@@ -11,7 +11,7 @@ class LaneDecoupledUnitsTag extends LaneDecoupledOp
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
-class LaneDecoupledUnits extends HwachaModule with HwachaLaneParameters
+class LaneDecoupledUnits extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val in0q = Decoupled(Bits(width = SZ_DATA)).flip

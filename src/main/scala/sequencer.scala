@@ -5,7 +5,7 @@ import Node._
 
 class SequencerOpIO extends ValidIO(new SequencerOp)
 
-class Sequencer extends HwachaModule with HwachaLaneParameters
+class Sequencer extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val seqop = new SequencerOpIO().flip

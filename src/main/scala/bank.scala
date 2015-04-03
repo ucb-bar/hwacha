@@ -6,7 +6,7 @@ import Constants._
 import Packing._
 import scala.collection.mutable.ArrayBuffer
 
-class BankOpIO extends Bundle with HwachaLaneParameters
+class BankOpIO extends Bundle with LaneParameters
 {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadOp)
@@ -24,7 +24,7 @@ class BankOpIO extends Bundle with HwachaLaneParameters
 class BRQIO extends DecoupledIO(new BRQEntry)
 class BWQIO extends DecoupledIO(new BWQEntry)
 
-class BankRWIO extends Bundle with HwachaLaneParameters
+class BankRWIO extends Bundle with LaneParameters
 {
   val rdata = Vec.fill(nOPL){new BankReadEntry().asOutput}
   val wdata = Vec.fill(nWSel){new BankWriteEntry().asInput}
@@ -36,7 +36,7 @@ class BankRWIO extends Bundle with HwachaLaneParameters
   }
 }
 
-class Bank extends HwachaModule with HwachaLaneParameters
+class Bank extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val op = new BankOpIO().flip

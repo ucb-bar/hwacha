@@ -5,14 +5,14 @@ import Node._
 import Constants._
 import DataGating._
 
-class RFWritePort extends Bundle with HwachaLaneParameters
+class RFWritePort extends Bundle with LaneParameters
 {
   val addr = UInt(width = log2Up(nSRAM))
   val data = Bits(width = SZ_DATA)
   val mask = Bits(width = SZ_DATA/8)
 }
 
-class BankRegfile extends HwachaModule with HwachaLaneParameters
+class BankRegfile extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val op = new BankOpIO().flip
