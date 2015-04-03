@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import uncore.constants.MemoryOpConstants._
 
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
@@ -70,7 +71,6 @@ class VMUFn extends Bundle
 {
   val op = Bits(width = SZ_VMU_OP)
 }
-
 
 //-------------------------------------------------------------------------\\
 // sequencer op
@@ -143,7 +143,7 @@ class BRQOp extends LaneOp
 class VIUOp extends LaneOp
 {
   val fn = new VIUFn
-  val eidx = Bits(width = SZ_VLEN)
+  val eidx = UInt(width = SZ_VLEN)
 }
 
 class VIMUOp extends LaneOp
@@ -220,8 +220,23 @@ class VFVUAck extends VFXUAck
 
 
 //-------------------------------------------------------------------------\\
-// deck types
+// decoupled cluster (dcc) types
 //-------------------------------------------------------------------------\\
+
+abstract class DCCOp extends Bundle
+{
+  val vlen = UInt(width = SZ_VLEN)
+}
+
+class DCCMemFn extends VMUFn
+{
+  val mt = Bits(width = MT_SZ)
+}
+
+class DCCMemOp extends DCCOp
+{
+  val fn = new DCCMemFn
+}
 
 class BRQEntry extends Bundle
 {

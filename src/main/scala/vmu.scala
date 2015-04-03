@@ -31,6 +31,8 @@ trait VMUParameters extends UsesHwachaParameters {
   val tlDataWords = tlDataBits >> 5
   val tlDataDoubles = tlDataBits >> 6
   require((tlDataBits & (SZ_D-1)) == 0)
+
+  val nPredSet = tlDataBits // TODO: rename
 }
 
 class VMUOpIO extends Bundle {

@@ -23,37 +23,6 @@ class DecodedRegister extends Bundle
   val vd = new RegInfo
 }
 
-
-//-------------------------------------------------------------------------\\
-// deck types
-//-------------------------------------------------------------------------\\
-
-class DeckOp extends VMUOpCmd
-{
-  val utidx = UInt(width = SZ_VLEN)
-  val float = Bool()
-  val reg = new DecodedRegister
-}
-
-class BWQInternalEntry extends HwachaBundle
-{
-  // Lower eidx bits are evident from the bank ID and therefore omitted
-  val tag = UInt(width = SZ_VLEN - log2Up(nbanks))
-  val data = Bits(width = SZ_DATA)
-}
-
-class HwachaConfigIO extends Bundle
-{
-  val prec = Bits(OUTPUT, SZ_PREC)
-  val bactive = Bits(OUTPUT, SZ_BANK)
-  val bcnt = UInt(OUTPUT, SZ_BCNT)
-  val nxregs = UInt(OUTPUT, SZ_REGCNT)
-  val nfregs = UInt(OUTPUT, SZ_REGCNT)
-  val xstride = UInt(OUTPUT, SZ_REGLEN)
-  val fstride = UInt(OUTPUT, SZ_REGLEN)
-  val xfsplit = UInt(OUTPUT, SZ_BREGLEN)
-}
-
 object Compaction extends Compaction
 {
   def repack_float_d(n: Bits*) = Cat(Bits(1,1), n(0))

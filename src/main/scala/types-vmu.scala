@@ -55,8 +55,8 @@ class VVAQIO extends DecoupledIO(new VVAQEntry)
 
 class VAQLaneIO extends VMUBundle {
   val q = new VVAQIO
-  val vala = new LookAheadPortIO(valaBits)
-  val pala = new LookAheadPortIO(palaBits)
+  val vala = new CounterLookAheadIO(valaBits)
+  val pala = new CounterLookAheadIO(palaBits)
 }
 
 class VVAPFQEntry extends VMUBundle {

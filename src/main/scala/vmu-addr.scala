@@ -13,7 +13,7 @@ class VVAQ extends VMUModule {
   val io = new Bundle {
     val enq = Decoupled(UInt(width = maxAddrBits)).flip
     val deq = Decoupled(UInt(width = maxAddrBits))
-    val la = new LookAheadPortIO(valaBits).flip
+    val la = new CounterLookAheadIO(valaBits).flip
   }
 
   val q = Module(new Queue(io.enq.bits.clone, confvmu.nvvaq))
@@ -194,7 +194,7 @@ class VPAQ extends VMUModule {
   val io = new Bundle {
     val enq = Decoupled(new VPAQEntry).flip
     val deq = Decoupled(enq.bits.addr.clone)
-    val la = new LookAheadPortIO(palaBits).flip
+    val la = new CounterLookAheadIO(palaBits).flip
   }
 
   val q = Module(new Queue(io.enq.bits.addr.clone, confvmu.nvpaq))
@@ -214,7 +214,7 @@ class ABox1 extends VMUModule {
   val io = new Bundle {
     val issue = new VMUIssueOpIO().flip
     val xcpt = new XCPTIO().flip
-    val la = new LookAheadPortIO(palaBits).flip
+    val la = new CounterLookAheadIO(palaBits).flip
 
     val vpaq = Decoupled(UInt(width = paddrBits)).flip
     val mbox = new VMUAddrIO

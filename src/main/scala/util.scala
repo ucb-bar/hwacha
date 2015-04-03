@@ -147,14 +147,18 @@ class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends M
   io.empty := count === UInt(0)
 }
 
-class LookAheadPortIO(sz: Int) extends Bundle
+trait LookAheadIO extends Bundle
 {
-  val cnt = UInt(OUTPUT, sz)
   val reserve = Bool(OUTPUT)
   val available = Bool(INPUT)
 }
 
-class CounterPortIO(sz: Int) extends Bundle
+class CounterLookAheadIO(sz: Int) extends LookAheadIO
+{
+  val cnt = UInt(OUTPUT, sz)
+}
+
+class CounterUpdateIO(sz: Int) extends Bundle
 {
   val cnt = UInt(OUTPUT, sz)
   val update = Bool(OUTPUT)
@@ -164,9 +168,9 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) e
 {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
-    val la = new LookAheadPortIO(sz).flip
-    val inc = new CounterPortIO(sz).flip
-    val dec = new CounterPortIO(sz).flip
+    val la = new CounterLookAheadIO(sz).flip
+    val inc = new CounterUpdateIO(sz).flip
+    val dec = new CounterUpdateIO(sz).flip
     val full = Bool(OUTPUT)
     val empty = Bool(OUTPUT)
   }
