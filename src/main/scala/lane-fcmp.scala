@@ -27,14 +27,6 @@ class LaneFCmpSlice extends HwachaModule
   val in0 = dgate(io.req.valid, io.req.bits.in0)
   val in1 = dgate(io.req.valid, io.req.bits.in1)
 
-  val FC_X     = UInt.DC(SZ_VFCU_OP)
-  val FC_CEQ   = UInt(0, SZ_VFCU_OP)
-  val FC_CLT   = UInt(1, SZ_VFCU_OP)
-  val FC_CLE   = UInt(2, SZ_VFCU_OP)
-  val FC_MIN   = UInt(3, SZ_VFCU_OP)
-  val FC_MAX   = UInt(4, SZ_VFCU_OP)
-  val FC_CLASS = UInt(5, SZ_VFCU_OP)
-
   val wdp = (52, 12)
   val wsp = (23, 9)
   val whp = (10, 6)
