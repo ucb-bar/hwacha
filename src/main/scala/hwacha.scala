@@ -161,7 +161,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   vxu.io.issue <> scalar.io.vxu
 
-  vmu.io.scalar <> scalar.io.vmu
   vmu.io.lane <> vxu.io.vmu
 
   vmu.io.pf.vaq.valid := Bool(false)
@@ -170,8 +169,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   vmu.io.xcpt.prop.vmu.drain := Bool(false)
   vmu.io.xcpt.prop.top.stall := Bool(false)
 
-  dtlb.io <> vmu.io.vtlb
-  ptlb.io <> vmu.io.vpftlb
+  dtlb.io <> vmu.io.dtlb
+  ptlb.io <> vmu.io.ptlb
 
   memif.io.vmu <> vmu.io.memif 
   io.dmem <> memif.io.dmem

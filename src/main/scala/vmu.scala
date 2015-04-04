@@ -13,7 +13,7 @@ trait VMUParameters extends UsesHwachaParameters {
   val pgSzBytes = 1 << pgIdxBits
   val vpnBits = params(VPNBits)
   val ppnBits = params(PPNBits)
-  val maxAddrBits = math.max(vaddrBits, paddrBits)
+  val maxAddrBits = math.max(vaddrBits, paddrBits) + 1
 
   val tlBlockAddrBits = params(TLBlockAddrBits)
   val tlBeatAddrBits = log2Up(params(TLDataBeats))
@@ -35,51 +35,53 @@ trait VMUParameters extends UsesHwachaParameters {
   val nPredSet = tlDataBits // TODO: rename
 }
 
-class VMUOpIO extends Bundle {
-  val cmd = Decoupled(new VMUOpCmd)
-  val addr = Decoupled(new VMUOpAddr)
-}
-
 class VMUIO extends Bundle {
-  val issue = new VMUOpIO
+  val op = Decoupled(new VMUOp)
   val vaq = new VAQLaneIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
 }
 
-class VMUDecodedOp extends Bundle {
+class VMUDecodedOp extends VMUOpBase {
   val mode = new Bundle {
     val indexed = Bool()
     val scalar = Bool()
   }
-  val fn = new Bundle {
+  val cmd = new Bundle {
     val load = Bool()
     val store = Bool()
     val amo = Bool()
   }
   val mt = new DecodedMemType
-  val unit = Bool()
 
-  val cmd = new VMUOpCmd
-  val addr = new VMUOpAddr
+  val aux = new Bundle {
+    val v = new VMUAuxVector
+    val s = new VMUAuxScalar
+  }
+
+  val unit = Bool()
 }
 
 object VMUDecodedOp {
-  def apply(cmd: VMUOpCmd, addr: VMUOpAddr): VMUDecodedOp = {
+  def apply(src: VMUOp): VMUDecodedOp = {
     val op = new VMUDecodedOp
-    op.cmd := cmd
-    op.addr := addr
+    op.fn := src.fn
+    op.vlen := src.vlen
+    op.base := src.base
 
-    op.mode.indexed := is_indexed(cmd.mode)
-    op.mode.scalar := is_scalar(cmd.mode)
-    op.fn.load := (cmd.fn === M_XRD)
-    op.fn.store := (cmd.fn === M_XWR)
-    op.fn.amo := isAMO(cmd.fn)
-    op.mt := DecodedMemType(cmd.mt)
+    op.mode.indexed := is_indexed(op.fn.mode)
+    op.mode.scalar := is_scalar(op.fn.mode)
+    op.cmd.load := (op.fn.cmd === M_XRD)
+    op.cmd.store := (op.fn.cmd === M_XWR)
+    op.cmd.amo := isAMO(op.fn.cmd)
+    op.mt := DecodedMemType(op.fn.mt)
+
+    op.aux.v := src.aux.vector()
+    op.aux.s := src.aux.scalar()
 
     op.unit :=
       Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d).zipWithIndex.map(i =>
-        i._1 && (addr.stride === UInt(1 << i._2))).reduce(_||_)
+        i._1 && (op.aux.v.stride === UInt(1 << i._2))).reduce(_||_)
     op
   }
 }
@@ -92,55 +94,47 @@ class VMUIssueOpIO extends Bundle {
 
 class IBox extends VMUModule {
   val io = new Bundle {
-    val op = new VMUOpIO().flip
+    val op = Decoupled(new VMUOp).flip
     val abox = new VMUIssueOpIO
     val sbox = new VMUIssueOpIO
+    val smu = new VMUIssueOpIO
   }
 
-  val cmdq = Module(new Queue(new VMUOpCmd, confvmu.ncmdq))
-  val addrq = Module(new Queue(new VMUOpAddr, confvmu.naddrq))
+  val issueq = Module(new Queue(new VMUOp, confvmu.ncmdq))
+  issueq.io.enq <> io.op
 
-  cmdq.io.enq <> io.op.cmd
-  addrq.io.enq <> io.op.addr
-
-  val op = VMUDecodedOp(cmdq.io.deq.bits, addrq.io.deq.bits)
-  private val backends = Seq(io.abox, io.sbox)
+  val op = VMUDecodedOp(issueq.io.deq.bits)
+  private val backends = Seq(io.abox, io.sbox, io.smu)
   for (box <- backends) {
     box.op := op
     box.fire := Bool(false)
   }
 
-  val valid = cmdq.io.deq.valid &&
-    (op.mode.indexed || addrq.io.deq.valid)
-  cmdq.io.deq.ready := Bool(false)
-  addrq.io.deq.ready := Bool(false)
+  issueq.io.deq.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      when (valid) {
+      when (issueq.io.deq.valid) {
         state := s_busy
-        io.abox.fire := Bool(true)
-        io.sbox.fire := op.fn.store || op.fn.amo
+        when (op.mode.scalar) { // FIXME: Check transactions in transit
+          io.smu.fire := Bool(true)
+        } .otherwise {
+          io.abox.fire := Bool(true)
+          io.sbox.fire := op.cmd.store || op.cmd.amo
+        }
       }
     }
 
     is (s_busy) {
       when (!backends.map(_.busy).reduce(_||_)) {
         state := s_idle
-        cmdq.io.deq.ready := Bool(true)
-        addrq.io.deq.ready := !op.mode.indexed
+        issueq.io.deq.ready := Bool(true)
       }
     }
   }
-}
-
-class TLBIO extends Bundle
-{
-  val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBRespNoHitIndex().flip // we don't use hit_idx
 }
 
 class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
@@ -152,10 +146,10 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
     val memif = new VMUMemIO
     val sret = Valid(UInt(width = sretBits))
 
-    val scalar = new ScalarMemIO().flip
+    val scalar = new ScalarMemIO
 
-    val vtlb = new TLBIO
-    val vpftlb = new TLBIO
+    val dtlb = new TLBIO
+    val ptlb = new TLBIO
 
     val irq = new IRQIO
     val xcpt = new XCPTIO().flip
@@ -163,7 +157,7 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
 
   val ibox = Module(new IBox)
   val abox = Module(new ABox)
-  val tbox = Module(new TBox)
+  val tbox = Module(new TBox(2))
   val sbox = Module(new SBox)
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
@@ -171,19 +165,20 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val smu = Module(new SMU)
   val arb = Module(new VMUMemArb(2))
 
-  ibox.io.op <> io.lane.issue
+  ibox.io.op <> io.lane.op
+  val sel = ibox.io.smu.op.mode.scalar
 
   abox.io.issue <> ibox.io.abox
   abox.io.xcpt <> io.xcpt
-  abox.io.irq <> io.irq
   abox.io.lane <> io.lane.vaq
   abox.io.pf <> io.pf.vaq
 
-  tbox.io.abox <> abox.io.tbox
-  tbox.io.smu.core <> smu.io.tbox
-  tbox.io.smu.active <> smu.io.active
-  tbox.io.vtlb <> io.vtlb
-  tbox.io.vpftlb <> io.vpftlb
+  tbox.io.inner(0) <> abox.io.tlb.lane
+  tbox.io.inner(1) <> smu.io.tlb
+  tbox.io.sel := sel
+
+  io.dtlb <> tbox.io.outer
+  io.ptlb <> abox.io.tlb.pf
 
   sbox.io.issue <> ibox.io.sbox
   sbox.io.lane <> io.lane.vsdq
@@ -195,10 +190,19 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   mbox.io.inner.lbox <> lbox.io.mbox
   mbox.io.inner.sret <> io.sret
 
-  smu.io.inner <> io.scalar
+  smu.io.issue <> ibox.io.smu
+  smu.io.xcpt <> io.xcpt
+  smu.io.scalar <> io.scalar
 
-  arb.io.sel := smu.io.active
   arb.io.inner(0) <> mbox.io.outer
   arb.io.inner(1) <> smu.io.outer
+  arb.io.sel := sel
   io.memif <> arb.io.outer
+
+  val irqs = Seq(abox.io.irq, smu.io.irq)
+  io.irq.vmu.ma_ld := irqs.map(_.vmu.ma_ld).reduce(_ || _)
+  io.irq.vmu.ma_st := irqs.map(_.vmu.ma_st).reduce(_ || _)
+  io.irq.vmu.faulted_ld := irqs.map(_.vmu.faulted_ld).reduce(_ || _)
+  io.irq.vmu.faulted_st := irqs.map(_.vmu.faulted_st).reduce(_ || _)
+  io.irq.vmu.aux := Vec(irqs.map(_.vmu.aux))(sel)
 }

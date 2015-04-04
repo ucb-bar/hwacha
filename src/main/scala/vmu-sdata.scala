@@ -39,7 +39,7 @@ class SBox extends VMUModule {
     index := index_next
   }
 
-  val offset_base = op.addr.base(tlByteAddrBits-1,0)
+  val offset_base = op.base(tlByteAddrBits-1,0)
   val offset = Mux(packed, offset_base, meta.offset)
 
   val funnel = Module(new FunnelShifter(Bits(width = 8), tlDataBytes))

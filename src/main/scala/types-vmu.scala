@@ -8,16 +8,55 @@ abstract class VMUModule(clock: Clock = null, _reset: Bool = null)
   extends HwachaModule(clock, _reset) with VMUParameters
 abstract class VMUBundle extends HwachaBundle with VMUParameters
 
-class VMUOpCmd extends Bundle {
+class VMUFn extends Bundle {
   val mode = Bits(width = SZ_VMU_MODE)
-  val fn = Bits(width = M_SZ)
+  val cmd = Bits(width = M_SZ)
   val mt = Bits(width = MT_SZ)
-  val vlen = UInt(width = SZ_VLEN)
 }
 
-class VMUOpAddr extends Bundle {
-  val base = UInt(width = SZ_ADDR)
+class VMUAuxVector extends Bundle {
   val stride = UInt(width = SZ_VSTRIDE)
+}
+
+object VMUAuxVector {
+  def apply(stride: UInt) = {
+    val aux = new VMUAuxVector
+    aux.stride := stride
+    aux
+  }
+}
+
+class VMUAuxScalar extends Bundle {
+  val data = Bits(width = params(HwachaScalarDataBits))
+  val id = UInt(width = log2Up(params(HwachaNScalarRegs)))
+}
+
+object VMUAuxScalar {
+  def apply(data: Bits, id: UInt) = {
+    val aux = new VMUAuxScalar
+    aux.data := data
+    aux.id := id
+    aux
+  }
+}
+
+class VMUAux extends Bundle {
+  val union = Bits(width = math.max(
+    new VMUAuxVector().toBits.getWidth,
+    new VMUAuxScalar().toBits.getWidth))
+
+  def vector(dummy: Int = 0) = new VMUAuxVector().fromBits(this.union)
+  def scalar(dummy: Int = 0) = new VMUAuxScalar().fromBits(this.union)
+}
+
+abstract class VMUOpBase extends VMUBundle {
+  val fn = new VMUFn
+  val vlen = UInt(width = SZ_VLEN)
+  val base = UInt(width = maxAddrBits)
+}
+
+class VMUOp extends VMUOpBase {
+  val aux = new VMUAux
 }
 
 class DecodedMemType extends Bundle {
@@ -66,16 +105,6 @@ class VVAPFQEntry extends VMUBundle {
 }
 class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 
-class TLBQueryIO extends VMUBundle {
-  val vpn = Decoupled(UInt(width = vpnBits))
-  val ppn = UInt(INPUT, ppnBits)
-  val store = Bool(OUTPUT)
-  val miss = Bool(INPUT)
-  val xcpt = new Bundle {
-    val ld = Bool(INPUT)
-    val st = Bool(INPUT)
-  }
-}
 
 class VPAQEntry extends VMUBundle {
   val addr = UInt(width = paddrBits)
@@ -100,7 +129,7 @@ class VMUStoreMetaEntry extends VMUMetadataStore
 class VMUMetaUnion extends VMUMetadataLoad with VMUMetadataStore
 
 trait VMUMemOp extends VMUBundle {
-  val fn = Bits(width = M_SZ)
+  val cmd = Bits(width = M_SZ)
   val mt = Bits(width = MT_SZ)
   val addr = UInt(width = paddrBits)
 }

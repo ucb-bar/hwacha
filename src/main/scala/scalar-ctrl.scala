@@ -51,7 +51,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
       val resp = Decoupled(new rocket.FPResult()).flip
     }
 
-    val vmu = new ScalarMemIO
+    val vmu = new DeprecatedScalarMemIO // FIXME
 
     val imem = new FrontendIO
 

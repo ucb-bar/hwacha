@@ -63,13 +63,6 @@ class VQUFn extends Bundle
   val latch = Bits(width = 2)
 }
 
-class VMUFn extends Bundle
-{
-  val mode = Bits(width = SZ_VMU_MODE)
-  val cmd = Bits(width = M_SZ)
-  val mt = Bits(width = MT_SZ)
-}
-
 
 //-------------------------------------------------------------------------\\
 // decoded information types

@@ -14,7 +14,7 @@ class ScalarUnit extends HwachaModule
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val vmu = new ScalarMemIO
+    val vmu = new DeprecatedScalarMemIO // FIXME
 
     val imem = new FrontendIO
 

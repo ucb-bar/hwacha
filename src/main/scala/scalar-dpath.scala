@@ -22,7 +22,7 @@ class ScalarDpath extends HwachaModule
       val resp = Decoupled(new rocket.FPResult()).flip
     }
 
-    val vmu = new ScalarMemIO
+    val vmu = new DeprecatedScalarMemIO // FIXME
     val vxu = new VXUIssueOpIO
 
     val imem = new FrontendIO

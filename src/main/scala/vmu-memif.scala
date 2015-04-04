@@ -40,13 +40,13 @@ class MBox extends VMUModule {
   private val req = io.outer.req
   private val resp = io.outer.resp
 
-  val fn = abox.bits.fn
-  val fn_load = (fn === M_XRD)
-  val fn_store = (fn === M_XWR)
-  val fn_amo = isAMO(fn)
+  val cmd = abox.bits.cmd
+  val cmd_load = (cmd === M_XRD)
+  val cmd_store = (cmd === M_XWR)
+  val cmd_amo = isAMO(cmd)
 
-  val lbox_en = fn_load || fn_amo
-  val sbox_en = fn_store || fn_amo
+  val lbox_en = cmd_load || cmd_amo
+  val sbox_en = cmd_store || cmd_amo
   val sbox_ready = !sbox_en || sbox.ready
   val lbox_ready = !lbox_en || lbox.meta.ready
 
@@ -72,7 +72,7 @@ class MBox extends VMUModule {
   sbox.meta.first := abox.bits.meta.first
   sbox.meta.last := abox.bits.meta.last
 
-  req.bits.fn := abox.bits.fn
+  req.bits.cmd := abox.bits.cmd
   req.bits.mt := abox.bits.mt
   req.bits.addr := abox.bits.addr
   req.bits.tag := Mux(lbox_en, lbox.meta.tag, sbox.meta.ecnt) // FIXME
@@ -102,10 +102,10 @@ class VMUMemArb(n: Int) extends VMUModule {
   io.outer.req.bits := Mux1H(sel_seq, io.inner.map(_.req.bits))
   io.outer.resp.ready := Mux1H(sel_seq, io.inner.map(_.resp.ready))
 
-  io.inner.zip(sel_seq).foreach { case (port, en) =>
-    port.req.ready := io.outer.req.ready && en
-    port.resp.valid := io.outer.resp.valid && en
-    port.resp.bits := io.outer.resp.bits
+  io.inner.zip(sel_seq).foreach { case (inner, en) =>
+    inner.req.ready := io.outer.req.ready && en
+    inner.resp.valid := io.outer.resp.valid && en
+    inner.resp.bits := io.outer.resp.bits
   }
 }
 
@@ -124,28 +124,28 @@ class VMUTileLink extends VMUModule {
   private val grant = io.dmem.grant
   private val finish = io.dmem.finish
 
-  val fn = req.bits.fn
-  val fn_load = (fn === M_XRD)
-  val fn_store = (fn === M_XWR)
-  val fn_amo = isAMO(fn)
-  val fn_pf = isPrefetch(fn)
+  val cmd = req.bits.cmd
+  val cmd_load = (cmd === M_XRD)
+  val cmd_store = (cmd === M_XWR)
+  val cmd_amo = isAMO(cmd)
+  val cmd_pf = isPrefetch(cmd)
 
-  assert(!req.valid || fn_load || fn_store || fn_amo || fn_pf,
+  assert(!req.valid || cmd_load || cmd_store || cmd_amo || cmd_pf,
     "Unknown memory command")
 
-  val acq_get = fn_load || fn_amo
-  val acq_put = fn_store || fn_amo
+  val acq_get = cmd_load || cmd_amo
+  val acq_put = cmd_store || cmd_amo
 
   req.ready := acquire.ready
   acquire.valid := req.valid
 
-  val acq_type = Mux1H(Seq(fn_load, fn_store, fn_amo, fn_pf),
+  val acq_type = Mux1H(Seq(cmd_load, cmd_store, cmd_amo, cmd_pf),
     Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
 
   val acq_shift = req.bits.addr(tlByteAddrBits-1, 0)
-  val acq_union_amo = Cat(acq_shift, req.bits.mt, req.bits.fn)
-  val acq_union = Cat(Mux1H(Seq(fn_load || fn_pf, fn_store, fn_amo),
-    Seq(req.bits.fn, req.bits.store.mask, acq_union_amo)), Bool(true))
+  val acq_union_amo = Cat(acq_shift, req.bits.mt, req.bits.cmd)
+  val acq_union = Cat(Mux1H(Seq(cmd_load || cmd_pf, cmd_store, cmd_amo),
+    Seq(req.bits.cmd, req.bits.store.mask, acq_union_amo)), Bool(true))
 
   acquire.bits := Acquire(
     is_builtin_type = Bool(true),
@@ -153,7 +153,7 @@ class VMUTileLink extends VMUModule {
     client_xact_id = req.bits.tag,
     addr_block = req.bits.addr(paddrBits-1, tlBlockAddrOffset),
     addr_beat = req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits) &
-      Fill(tlBeatAddrBits, !fn_pf),
+      Fill(tlBeatAddrBits, !cmd_pf),
     data = req.bits.store.data,
     union = acq_union)
 
