@@ -12,14 +12,28 @@ class VXU extends HwachaModule
     val vmu = new VMUIO
   }
 
-  val ibox = Module(new Issue)
   val seq = Module(new Sequencer)
   val lane = Module(new Lane)
   val dcc = Module(new DecoupledCluster)
 
-  ibox.io.issue <> io.issue
+  val enq_dcc = io.issue.bits.enq_dcc()
+  val mask_dcc_ready = !enq_dcc || dcc.io.op.ready
 
-  seq.io.op <> ibox.io.seq
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Array(
+      io.issue.valid,
+      seq.io.op.ready, mask_dcc_ready)
+    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+  }
+
+  io.issue.ready := fire(io.issue.valid)
+  seq.io.op.valid := fire(seq.io.op.ready)
+  dcc.io.op.valid := fire(mask_dcc_ready, enq_dcc)
+
+  seq.io.op.bits := io.issue.bits
+  dcc.io.op.bits.vlen := io.issue.bits.vlen
+  dcc.io.op.bits.fn := io.issue.bits.fn.vmu
+
   seq.io.ack <> lane.io.ack
 
   lane.io.op <> seq.io.lane
@@ -31,8 +45,6 @@ class VXU extends HwachaModule
   io.vmu <> dcc.io.mem.vmu
 
   // FIXME
-  dcc.io.op <> ibox.io.dcc
-
   dcc.io.mem.spred.valid := Bool(false)
   dcc.io.mem.sla.reserve := Bool(false)
   dcc.io.xcpt.prop.vmu.stall := Bool(false)

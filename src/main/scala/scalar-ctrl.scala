@@ -293,6 +293,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
+  io.vxu.bits.vlen := vl
   io.vxu.bits.active.vint := id_ctrl.viu_val
   io.vxu.bits.active.vimul := id_ctrl.vimu_val
   io.vxu.bits.active.vidiv := id_ctrl.vidu_val
@@ -312,7 +313,11 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.fn.vfdu := new VFDUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfdu_fn))
   io.vxu.bits.fn.vfcu := new VFCUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfcu_fn))
   io.vxu.bits.fn.vfvu := new VFVUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfvu_fn))
-  io.vxu.bits.fn.vmu := new VMUFn().fromBits(Cat(id_ctrl.vmu_mode,id_ctrl.vmu_cmd))
+  io.vxu.bits.fn.vmu := new VMUFn().fromBits(Cat(id_ctrl.vmu_mode, id_ctrl.vmu_cmd, id_ctrl.vmu_mt))
+  io.vxu.bits.reg.vs1.valid := vs1_val
+  io.vxu.bits.reg.vs2.valid := vs2_val
+  io.vxu.bits.reg.vs3.valid := vs3_val
+  io.vxu.bits.reg.vd.valid := vd_val
   io.vxu.bits.reg.vs1.scalar := id_scalar_src1
   io.vxu.bits.reg.vs2.scalar := id_scalar_src2
   io.vxu.bits.reg.vs3.scalar := id_scalar_src3

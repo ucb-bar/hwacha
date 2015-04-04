@@ -66,7 +66,8 @@ class VQUFn extends Bundle
 class VMUFn extends Bundle
 {
   val mode = Bits(width = SZ_VMU_MODE)
-  val op = Bits(width = M_SZ)
+  val cmd = Bits(width = M_SZ)
+  val mt = Bits(width = MT_SZ)
 }
 
 
@@ -76,6 +77,7 @@ class VMUFn extends Bundle
 
 class RegInfo extends Bundle
 {
+  val valid = Bool()
   val scalar = Bool()
   val id = UInt(width = 8)
 }
@@ -134,6 +136,11 @@ class IssueOp extends DecodedInstruction
     val vld = Bool()
     val vst = Bool()
   }
+
+  def enq_dcc(dummy: Int = 0) =
+    active.vamo ||
+    active.vldx || active.vstx ||
+    active.vld || active.vst
 }
 
 
@@ -293,14 +300,9 @@ abstract class DCCOp extends Bundle
   val vlen = UInt(width = SZ_VLEN)
 }
 
-class DCCMemFn extends VMUFn
-{
-  val mt = Bits(width = MT_SZ)
-}
-
 class DCCMemOp extends DCCOp
 {
-  val fn = new DCCMemFn
+  val fn = new VMUFn
 }
 
 class BRQEntry extends Bundle

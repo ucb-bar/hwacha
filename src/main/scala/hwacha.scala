@@ -35,6 +35,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nsregs = params(HwachaNScalarRegs)
   val local_sfpu = params(HwachaLocalScalarFPU)
 
+  val nseq = 8
+
   val ndtlb = params(HwachaNDTLB)
   val nptlb = params(HwachaNPTLB)
   val confvru = false
