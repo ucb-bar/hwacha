@@ -170,7 +170,7 @@ class ScalarDpath extends HwachaModule
 
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
                                  // data        waddr
-  io.vmu.bits.aux := VMUAuxScalar(id_sreads(1),id_inst(23,16))
+  io.vmu.bits.aux.union := VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits
   io.vmu.bits.base := id_sreads(0)
 
   //Writeback stage
