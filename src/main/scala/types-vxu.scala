@@ -68,14 +68,14 @@ class VQUFn extends Bundle
 // decoded information types
 //-------------------------------------------------------------------------\\
 
-class RegInfo extends Bundle
+class RegInfo extends HwachaBundle
 {
   val valid = Bool()
   val scalar = Bool()
-  val id = UInt(width = 8)
+  val id = UInt(width = szvregs)
 }
 
-class DecodedRegisters extends Bundle
+class DecodedRegisters extends HwachaBundle
 {
   val vs1 = new RegInfo
   val vs2 = new RegInfo
@@ -83,14 +83,14 @@ class DecodedRegisters extends Bundle
   val vd = new RegInfo
 }
 
-class ScalarRegisters extends Bundle
+class ScalarRegisters extends HwachaBundle
 {
   val ss1 = Bits(width = SZ_D)
   val ss2 = Bits(width = SZ_D)
   val ss3 = Bits(width = SZ_D)
 }
 
-class DecodedInstruction extends Bundle
+class DecodedInstruction extends HwachaBundle
 {
   val fn = new Bundle {
     val viu = new VIUFn
@@ -101,10 +101,10 @@ class DecodedInstruction extends Bundle
     val vfcu = new VFCUFn
     val vfvu = new VFVUFn
     val vmu = new VMUFn
+    val vqu = new VQUFn
   }
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
-  val inst = Bits(width = 64)
 }
 
 
@@ -141,10 +141,31 @@ class IssueOp extends DecodedInstruction
 // sequencer op
 //-------------------------------------------------------------------------\\
 
-class SequencerOp extends Bundle
+class VFU extends Bundle
 {
-  val inst = Bits(width = 64)
+  val viu = Bool()
+  val vimu = Bool()
+  val vidu = Bool()
+  val vfmu = Bool()
+  val vfdu = Bool()
+  val vfcu = Bool()
+  val vfvu = Bool()
+  val vgu = Bool()
+  val vcu = Bool()
+  val vlu = Bool()
+  val vsu = Bool()
+  val vqu = Bool()
 }
+
+class SequencerEntry extends DecodedInstruction
+{
+  val active = new VFU
+  val base = new DecodedRegisters
+  val raw = Vec.fill(nseq){Bool()}
+  val war = Vec.fill(nseq){Bool()}
+  val waw = Vec.fill(nseq){Bool()}
+}
+
 
 //-------------------------------------------------------------------------\\
 // bank, lane op

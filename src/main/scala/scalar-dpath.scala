@@ -203,7 +203,6 @@ class ScalarDpath extends HwachaModule
   io.vxu.bits.sreg.ss1 := id_sreads(0)
   io.vxu.bits.sreg.ss2 := id_sreads(1)
   io.vxu.bits.sreg.ss3 := id_sreads(2)
-  io.vxu.bits.inst := id_inst
 
   when(swrite_valid) {
     printf("H: SW[r%d=%x][%d]\n",
