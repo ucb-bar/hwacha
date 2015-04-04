@@ -101,7 +101,7 @@ class DecodedInstruction extends HwachaBundle
     val vfcu = new VFCUFn
     val vfvu = new VFVUFn
     val vmu = new VMUFn
-    val vqu = new VQUFn
+    val vqu = new VQUFn // only used in the sequencer
   }
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters

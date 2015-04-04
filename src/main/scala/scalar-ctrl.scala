@@ -317,26 +317,27 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
   io.vxu.bits.vlen := vl
-  io.vxu.bits.active.vint := id_ctrl.viu_val
-  io.vxu.bits.active.vimul := id_ctrl.vimu_val
-  io.vxu.bits.active.vidiv := id_ctrl.vidu_val
-  io.vxu.bits.active.vfma := id_ctrl.vfmu_val
-  io.vxu.bits.active.vfdiv := id_ctrl.vfdu_val
-  io.vxu.bits.active.vfcmp := id_ctrl.vfcu_val
-  io.vxu.bits.active.vfconv := id_ctrl.vfvu_val
-  io.vxu.bits.active.vamo := id_ctrl.vmu_val && isAMO(id_ctrl.vmu_cmd)
-  io.vxu.bits.active.vldx := id_ctrl.vmu_val && is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XRD
-  io.vxu.bits.active.vstx := id_ctrl.vmu_val && is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XWR
-  io.vxu.bits.active.vld := id_ctrl.vmu_val && !is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XRD
-  io.vxu.bits.active.vst := id_ctrl.vmu_val && !is_indexed(id_ctrl.vmu_mode) && id_ctrl.vmu_cmd === M_XWR
-  io.vxu.bits.fn.viu := new VIUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.fpu_fp, id_ctrl.viu_fn))
-  io.vxu.bits.fn.vimu := new VIMUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.vimu_fn))
-  io.vxu.bits.fn.vidu := new VIDUFn().fromBits(Cat(id_ctrl.alu_dw, id_ctrl.vidu_fn))
-  io.vxu.bits.fn.vfmu := new VFMUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfmu_fn))
-  io.vxu.bits.fn.vfdu := new VFDUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfdu_fn))
-  io.vxu.bits.fn.vfcu := new VFCUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfcu_fn))
-  io.vxu.bits.fn.vfvu := new VFVUFn().fromBits(Cat(id_ctrl.fpu_fp, rm, id_ctrl.vfvu_fn))
-  io.vxu.bits.fn.vmu := new VMUFn().fromBits(Cat(id_ctrl.vmu_mode, id_ctrl.vmu_cmd, id_ctrl.vmu_mt))
+  io.vxu.bits.active.vint := id_ctrl.active_vint()
+  io.vxu.bits.active.vimul := id_ctrl.active_vimul()
+  io.vxu.bits.active.vidiv := id_ctrl.active_vidiv()
+  io.vxu.bits.active.vfma := id_ctrl.active_vfma()
+  io.vxu.bits.active.vfdiv := id_ctrl.active_vfdiv()
+  io.vxu.bits.active.vfcmp := id_ctrl.active_vfcmp()
+  io.vxu.bits.active.vfconv := id_ctrl.active_vfconv()
+  io.vxu.bits.active.vamo := id_ctrl.active_vamo()
+  io.vxu.bits.active.vldx := id_ctrl.active_vldx()
+  io.vxu.bits.active.vstx := id_ctrl.active_vstx()
+  io.vxu.bits.active.vld := id_ctrl.active_vld()
+  io.vxu.bits.active.vst := id_ctrl.active_vst()
+  io.vxu.bits.fn.viu := id_ctrl.fn_viu()
+  io.vxu.bits.fn.vimu := id_ctrl.fn_vimu()
+  io.vxu.bits.fn.vidu := id_ctrl.fn_vidu()
+  io.vxu.bits.fn.vfmu := id_ctrl.fn_vfmu(rm)
+  io.vxu.bits.fn.vfdu := id_ctrl.fn_vfdu(rm)
+  io.vxu.bits.fn.vfcu := id_ctrl.fn_vfcu(rm)
+  io.vxu.bits.fn.vfvu := id_ctrl.fn_vfvu(rm)
+  io.vxu.bits.fn.vmu := id_ctrl.fn_vmu()
+  io.vxu.bits.fn.vqu := id_ctrl.fn_vqu()
   io.vxu.bits.reg.vs1.valid := vs1_val
   io.vxu.bits.reg.vs2.valid := vs2_val
   io.vxu.bits.reg.vs3.valid := vs3_val

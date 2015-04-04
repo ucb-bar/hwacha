@@ -60,6 +60,29 @@ class IntCtrlSigs extends Bundle
         vfvu_val, vfvu_fn) := decoder
     this
   }
+
+  def active_vint(d: Int = 0) = viu_val
+  def active_vimul(d: Int = 0) = vimu_val
+  def active_vidiv(d: Int = 0) = vidu_val
+  def active_vfma(d: Int = 0) = vfmu_val
+  def active_vfdiv(d: Int = 0) = vfdu_val
+  def active_vfcmp(d: Int = 0) = vfcu_val
+  def active_vfconv(d: Int = 0) = vfvu_val
+  def active_vamo(d: Int = 0) = vmu_val && isAMO(vmu_cmd)
+  def active_vldx(d: Int = 0) = vmu_val && is_indexed(vmu_mode) && vmu_cmd === M_XRD
+  def active_vstx(d: Int = 0) = vmu_val && is_indexed(vmu_mode) && vmu_cmd === M_XWR
+  def active_vld(d: Int = 0) = vmu_val && !is_indexed(vmu_mode) && vmu_cmd === M_XRD
+  def active_vst(d: Int = 0) = vmu_val && !is_indexed(vmu_mode) && vmu_cmd === M_XWR
+
+  def fn_viu(d: Int = 0) = new VIUFn().fromBits(Cat(alu_dw, fpu_fp, viu_fn))
+  def fn_vimu(d: Int = 0) = new VIMUFn().fromBits(Cat(alu_dw, vimu_fn))
+  def fn_vidu(d: Int = 0) = new VIDUFn().fromBits(Cat(alu_dw, vidu_fn))
+  def fn_vfmu(rm: Bits) = new VFMUFn().fromBits(Cat(fpu_fp, rm, vfmu_fn))
+  def fn_vfdu(rm: Bits) = new VFDUFn().fromBits(Cat(fpu_fp, rm, vfdu_fn))
+  def fn_vfcu(rm: Bits) = new VFCUFn().fromBits(Cat(fpu_fp, rm, vfcu_fn))
+  def fn_vfvu(rm: Bits) = new VFVUFn().fromBits(Cat(fpu_fp, rm, vfvu_fn))
+  def fn_vmu(d: Int = 0) = new VMUFn().fromBits(Cat(vmu_mode, vmu_cmd, vmu_mt))
+  def fn_vqu(d: Int = 0) = new VQUFn().fromBits(Mux(vfdu_val && vfdu_fn === FD_SQRT, Bits("b10"), Bits("b11")))
 }
 
 abstract trait VFDecodeTable
