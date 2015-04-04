@@ -100,6 +100,7 @@ class Lane extends HwachaModule with LaneParameters
 
   io.vmu.vaq.q.valid := io.op.vgu.valid
   io.vmu.vaq.q.bits := rdata(5)
+  io.vmu.vaq.pala.reserve := Bool(false)
 
   assert(!io.vmu.vaq.q.valid || io.vmu.vaq.q.ready, "check vaq counter logic")
 

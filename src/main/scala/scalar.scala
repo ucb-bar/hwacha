@@ -53,6 +53,7 @@ class ScalarUnit extends HwachaModule
 
   //connects cmdq and pending_*
   io.cmdq <> ctrl.io.cmdq
+  io.cmdq <> dpath.io.cmdq
   io.vf_active <> ctrl.io.vf_active
   io.pending_seq <> ctrl.io.pending_seq
   io.pending_memop <> ctrl.io.pending_memop

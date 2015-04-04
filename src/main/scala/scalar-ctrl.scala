@@ -12,8 +12,11 @@ class CtrlDpathIO extends HwachaBundle
   val inst = Bits(INPUT, 64)
   val ex_inst = Bits(INPUT, 64)
   val wb_inst = Bits(INPUT, 64)
+  val killf = Bool(OUTPUT)
+  val fire_vf = Bool(OUTPUT)
   val killd = Bool(OUTPUT)
-  val ren = Vec.fill(3)(Bool(OUTPUT))
+  val sren = Vec.fill(3)(Bool(OUTPUT))
+  val aren = Vec.fill(3)(Bool(OUTPUT))
   val ex_scalar_dest = Bool(OUTPUT)
   val ex_ctrl = new IntCtrlSigs().asOutput()
   val ex_valid = Bool(OUTPUT)
@@ -30,8 +33,8 @@ class CtrlDpathIO extends HwachaBundle
   val fire_fpu = Bool(OUTPUT)
   val pending_fpu = Bool(INPUT)
   val pending_fpu_reg = UInt(INPUT)
-  val swrite = Valid(new Write().asOutput())
-  val awrite = Valid(new Write().asOutput())
+  val swrite = Bool(OUTPUT)
+  val awrite = Bool(OUTPUT)
   val wb_vf_active = Bool(OUTPUT)
 }
 
@@ -82,37 +85,39 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vf_active     = Reg(init=Bool(false))
   val ex_vf_active  = Reg(init=Bool(false))
   val wb_vf_active  = Reg(init=Bool(false))
-  val vf_pc         = Reg(UInt())
+  val vl            = Reg(init=UInt(0, szvlen+1))
+  val vregs         = Reg(init=UInt(32, szvregs+1))
+  val pregs         = Reg(init=UInt(0, 5))
 
   val pending_seq   = Reg(init=Bool(false))
   val pending_memop = Reg(init=Bool(false))
 
-  io.vf_active    := vf_active
+  io.vf_active     := vf_active
   io.pending_seq   := pending_seq
   io.pending_memop := pending_memop
 
-  val decode_vmss = io.cmdq.cmd.valid && io.cmdq.cmd.bits === CMD_VMSS
-  val decode_vmsa = io.cmdq.cmd.valid && io.cmdq.cmd.bits === CMD_VMSA
-  val decode_vf   = io.cmdq.cmd.valid && io.cmdq.cmd.bits === CMD_VF
-  val decode_vft  = io.cmdq.cmd.valid && io.cmdq.cmd.bits === CMD_VFT
+  val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
+  val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
+  val decode_vf      = io.cmdq.cmd.bits === CMD_VF
+  val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
+  val decode_vsetvl  = io.cmdq.cmd.bits === CMD_VSETVL
+  val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
 
-  io.dpath.swrite.valid    := decode_vmss && io.cmdq.rd.valid
-  io.dpath.swrite.bits.rd  := io.cmdq.rd.bits
-  io.dpath.swrite.bits.imm := io.cmdq.imm.bits
+  val deq_imm = decode_vmss || decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
+  val deq_rd  = decode_vmss || decode_vmsa 
 
-  io.dpath.awrite.valid    := decode_vmsa && io.cmdq.rd.valid
-  io.dpath.awrite.bits.rd  := io.cmdq.rd.bits
-  io.dpath.awrite.bits.imm := io.cmdq.imm.bits
+  val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
+  val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
 
-  io.cmdq.cmd.ready := !vf_active 
-  io.cmdq.imm.ready := !vf_active
-  io.cmdq.rd.ready  := !vf_active && (decode_vmss || decode_vmsa)
+  io.dpath.swrite := fire(null,decode_vmss) 
+  io.dpath.awrite := fire(null,decode_vmsa) 
+
+  io.cmdq.cmd.ready := fire(io.cmdq.cmd.valid)
+  io.cmdq.imm.ready := fire(mask_imm_valid, deq_imm)
+  io.cmdq.rd.ready  := fire(mask_rd_valid, deq_rd)
 
   //default values
   io.imem.req.valid := vf_active
-  io.imem.req.bits.pc := vf_pc
-  io.imem.req.bits.npc := vf_pc + UInt(8)
-  io.imem.req.bits.nnpc := vf_pc + UInt(2*8)
   io.imem.invalidate := Bool(false)
   io.imem.resp.ready := vf_active
 
@@ -134,19 +139,25 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Array(
-      vf_active,
-      io.cmdq.cmd.valid, io.cmdq.imm.valid)
+      !vf_active, io.cmdq.cmd.valid,
+      mask_imm_valid, mask_rd_valid)
     rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
   }
 
-  //start and stop vf block and i$ fetching
-  when(fire(vf_active,decode_vf))
-  {
-    vf_active := Bool(true)
-    vf_pc := io.cmdq.imm.bits
+  when(fire(null,decode_vsetcfg)) {
+    vl    := io.cmdq.imm.bits(vl.getWidth, 0)
+    vregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth, vl.getWidth+1)
+    pregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth+pregs.getWidth, vl.getWidth+vregs.getWidth+1)
   }
-  when(id_ctrl.decode_stop && vf_active)
-  {
+  when(fire(null,decode_vsetvl)) {
+    vl    := io.cmdq.imm.bits(vl.getWidth, 0)
+  }
+  io.dpath.fire_vf := Bool(false)
+  when(fire(null,decode_vf)) {
+    vf_active := Bool(true)
+    io.dpath.fire_vf := Bool(true)
+  }
+  when(id_ctrl.decode_stop && vf_active) {
     vf_active := Bool(false)
   }
   io.dpath.wb_vf_active    := wb_vf_active
@@ -155,9 +166,15 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vs1_val :: vs1_scalar :: vs1_sp :: vs1_dyn :: Nil = parse_rinfo(id_ctrl.vs1i)
   val vs2_val :: vs2_scalar :: vs2_sp :: vs2_dyn :: Nil = parse_rinfo(id_ctrl.vs2i)
   val vs3_val :: vs3_scalar :: vs3_sp :: vs3_dyn :: Nil = parse_rinfo(id_ctrl.vs3i)
-  io.dpath.ren(0) := vs1_val && (vs1_scalar || (vs1_dyn && !io.dpath.inst(OPC_VS1)))
-  io.dpath.ren(1) := vs2_val && (vs2_scalar || (vs2_dyn && !io.dpath.inst(OPC_VS2)))
-  io.dpath.ren(2) := vs3_val && (vs3_scalar || (vs3_dyn && !io.dpath.inst(OPC_VS3)))
+  val ren1 = vs1_val && (vs1_scalar || (vs1_dyn && !io.dpath.inst(OPC_VS1)))
+  val ren2 = vs2_val && (vs2_scalar || (vs2_dyn && !io.dpath.inst(OPC_VS2)))
+  val ren3 = vs3_val && (vs3_scalar || (vs3_dyn && !io.dpath.inst(OPC_VS3)))
+  io.dpath.sren(0) := ren1 && vs1_sp
+  io.dpath.sren(1) := ren2 && vs2_sp
+  io.dpath.sren(2) := ren3 && vs3_sp
+  io.dpath.aren(0) := ren1 && !vs1_sp
+  io.dpath.aren(1) := ren2 && !vs2_sp
+  io.dpath.aren(2) := ren3 && !vs3_sp
 
   val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
 
@@ -271,8 +288,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ctrl_stalld = !fire_decode(null)
 
-  io.dpath.killd := !vf_active || ctrl_stalld
-
   // FIXME: need to take Rocket's rounding mode for dynamic RM
   val rm = io.dpath.inst(52, 50)
 
@@ -314,9 +329,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   ctrl_killd := !vf_active || !io.imem.resp.valid || ctrl_stalld 
   ex_reg_valid := !ctrl_killd
   io.dpath.ex_valid := ex_reg_valid
+  io.dpath.killd := !vf_active || ctrl_stalld
+  io.dpath.killf := !vf_active || !io.imem.resp.valid || ctrl_stalld
 
   when (!ctrl_killd) {
-    vf_pc := vf_pc + UInt(8)
     ex_ctrl := id_ctrl
   }
   when (!ctrl_stalld && !io.imem.resp.valid) { ex_vf_active := vf_active }

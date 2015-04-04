@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import DataGating._
 import HardFloatHelper._
 
 class Write extends Bundle
@@ -14,6 +15,7 @@ class Write extends Bundle
 class ScalarDpath extends HwachaModule
 {
   val io = new Bundle {
+    val cmdq = new CMDQIO().flip
     val ctrl = new CtrlDpathIO().flip
     val fpu = new Bundle {
       val req = Decoupled(new rocket.FPInput())
@@ -73,11 +75,23 @@ class ScalarDpath extends HwachaModule
   val srf = new SRegFile //doesn't have vs0
   val arf = Mem(UInt(width = 64), 32)
 
+  //fetch 
+  val vf_pc         = Reg(UInt())
+  when(io.ctrl.fire_vf) {
+    vf_pc := io.cmdq.imm.bits
+  }
+  when(!io.ctrl.killf){
+    vf_pc := vf_pc + UInt(8)
+  }
+  io.imem.req.bits.pc := vf_pc
+  io.imem.req.bits.npc := vf_pc + UInt(8)
+  io.imem.req.bits.nnpc := vf_pc + UInt(2*8)
+
   val id_inst = io.imem.resp.bits.data(0).toBits; require(params(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc
   //register reads
-  val id_sraddr = Vec(id_inst(31,24), id_inst(40,33), id_inst(48,41))
-  val id_araddr = Vec(id_inst(28,24), id_inst(37,33))
+  val id_sraddr = Vec(dgate(io.ctrl.sren(0),id_inst(31,24)), dgate(io.ctrl.sren(1),id_inst(40,33)), dgate(io.ctrl.sren(2),id_inst(48,41)))
+  val id_araddr = Vec(dgate(io.ctrl.aren(0),id_inst(28,24)), dgate(io.ctrl.aren(1),id_inst(37,33)))
   val id_sreads = id_sraddr.map(srf.read _ )
   val id_areads = id_araddr.map(arf(_))
 
@@ -104,7 +118,7 @@ class ScalarDpath extends HwachaModule
     ex_reg_inst := id_inst
     ex_reg_srs_bypass := io.ctrl.bypass
     for (i <- 0 until id_sreads.size) {
-      when (io.ctrl.ren(i)) {
+      when (io.ctrl.sren(i)) {
         ex_reg_srs_lsb(i) := id_sreads(i)(SZ_BYP-1,0)
         when (!io.ctrl.bypass(i)) {
           ex_reg_srs_msb(i) := id_sreads(i) >> UInt(SZ_BYP)
@@ -113,7 +127,7 @@ class ScalarDpath extends HwachaModule
       when (io.ctrl.bypass(i)) { ex_reg_srs_lsb(i) := io.ctrl.bypass_src(i) }
     }
     for( i <- 0 until id_areads.size){
-      when(io.ctrl.ren(i)){
+      when(io.ctrl.aren(i)){
         ex_reg_ars(i) := id_areads(i)
       }
     }
@@ -189,8 +203,13 @@ class ScalarDpath extends HwachaModule
     wb_reg_wdata := alu.io.out
   }
 
-  assert(!(io.ctrl.wb_wen && io.ctrl.swrite.valid), "Cannot write vmss and scalar dest")
-  assert(!(io.ctrl.wb_wen && io.ctrl.awrite.valid), "Cannot write vmsa and scalar dest")
+  val awrite_valid = io.ctrl.awrite
+  val swrite_valid = io.ctrl.swrite
+  val aswrite_rd   = io.cmdq.rd.bits
+  val aswrite_imm  = io.cmdq.imm.bits
+
+  assert(!(io.ctrl.wb_wen && swrite_valid), "Cannot write vmss and scalar dest")
+  assert(!(io.ctrl.wb_wen && awrite_valid), "Cannot write vmsa and scalar dest")
 
   val wb_waddr = Mux(io.vmu.resp.valid, pending_mem_reg,
                  Mux(io.fpu.resp.valid, pending_fpu_reg,
@@ -200,9 +219,8 @@ class ScalarDpath extends HwachaModule
               wb_reg_wdata))
   when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
 
-  when(io.ctrl.swrite.valid) { srf.write(io.ctrl.swrite.bits.rd, io.ctrl.swrite.bits.imm) }
-
-  when(io.ctrl.awrite.valid) { arf(io.ctrl.awrite.bits.rd) := io.ctrl.awrite.bits.imm }
+  when(swrite_valid) { srf.write(aswrite_rd, aswrite_imm) }
+  when(awrite_valid) { arf(aswrite_rd) := aswrite_imm }
 
   // to VXU
   io.vxu.bits.sreg.ss1 := id_sreads(0)
@@ -210,13 +228,13 @@ class ScalarDpath extends HwachaModule
   io.vxu.bits.sreg.ss3 := id_sreads(2)
   io.vxu.bits.inst := id_inst
 
-  when(io.ctrl.swrite.valid) {
+  when(swrite_valid) {
     printf("H: SW[r%d=%x][%d]\n",
-         io.ctrl.swrite.bits.rd, io.ctrl.swrite.bits.imm, io.ctrl.swrite.valid)
+         aswrite_rd, aswrite_imm, swrite_valid)
   }
-  when(io.ctrl.awrite.valid) {
+  when(awrite_valid) {
     printf("H: AW[r%d=%x][%d]\n",
-         io.ctrl.awrite.bits.rd, io.ctrl.awrite.bits.imm, io.ctrl.awrite.valid)
+         aswrite_rd, aswrite_imm, awrite_valid)
   }
   when(io.ctrl.wb_vf_active) {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
