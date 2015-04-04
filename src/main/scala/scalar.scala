@@ -14,7 +14,8 @@ class ScalarUnit extends HwachaModule
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val vmu = new DeprecatedScalarMemIO // FIXME
+    val vmu = Decoupled(new VMUOp)
+    val dmem = new ScalarMemIO().flip
 
     val imem = new FrontendIO
 
@@ -42,11 +43,16 @@ class ScalarUnit extends HwachaModule
   ctrl.io.fpu.resp.valid <> io.fpu.resp.valid
 
   //connect scalar vmu port
-  io.vmu.op.bits <> dpath.io.vmu.op.bits
-  io.vmu.resp <> dpath.io.vmu.resp
-  io.vmu.op.bits.fn <> ctrl.io.vmu.op.bits.fn
-  io.vmu.op.valid := ctrl.io.vmu.op.valid
-  ctrl.io.vmu.resp.valid := io.vmu.resp.valid
+  io.vmu.bits.aux <> dpath.io.vmu.bits.aux
+  io.vmu.bits.base <> dpath.io.vmu.bits.base
+  io.dmem <> dpath.io.dmem
+
+  io.vmu.bits.fn <> ctrl.io.vmu.bits.fn
+  io.vmu.bits.vlen <> ctrl.io.vmu.bits.vlen
+  io.vmu.valid := ctrl.io.vmu.valid
+  ctrl.io.vmu.ready := io.vmu.ready
+  ctrl.io.dmem.valid := io.dmem.valid
+  io.dmem.ready := ctrl.io.dmem.ready
 
   io.imem <> dpath.io.imem
   io.imem <> ctrl.io.imem

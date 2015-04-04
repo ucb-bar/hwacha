@@ -149,6 +149,9 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
 
+  vmu.io.scalar <> scalar.io.dmem
+  vmu.io.lane.op <> scalar.io.vmu
+
   //Tie icache vru port to unused
   icache.io.vru.req.valid := Bool(false)
   icache.io.vru.resp.ready := Bool(false)

@@ -22,7 +22,8 @@ class ScalarDpath extends HwachaModule
       val resp = Decoupled(new rocket.FPResult()).flip
     }
 
-    val vmu = new DeprecatedScalarMemIO // FIXME
+    val vmu = Decoupled(new VMUOp)
+    val dmem = new ScalarMemIO().flip
     val vxu = new VXUIssueOpIO
 
     val imem = new FrontendIO
@@ -37,14 +38,6 @@ class ScalarDpath extends HwachaModule
   val ex_reg_srs_lsb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_srs_msb = Vec.fill(3)(Reg(Bits()))
   val ex_reg_ars = Vec.fill(2)(Reg(Bits()))
-
-  val pending_mem_reg = Reg(UInt(width=log2Up(nsregs)))
-  val pending_fpu = Reg(init=Bool(false))
-  val pending_fpu_reg = Reg(UInt(width=log2Up(nsregs)))
-  val pending_fpu_typ = Reg(init=Bits(width=SZ_PREC))//only used in dpath
-  io.ctrl.pending_mem_reg := pending_mem_reg
-  io.ctrl.pending_fpu_reg := pending_fpu_reg
-  io.ctrl.pending_fpu := pending_fpu
 
   // writeback definitions
   val wb_reg_pc = Reg(UInt())
@@ -158,43 +151,27 @@ class ScalarDpath extends HwachaModule
   //fpu ex
   //io.fpu.req.bits.rm := ex_reg_inst(52,50)
   io.fpu.req.bits.rm := Bits(0)
-  io.fpu.req.bits.typ := ex_reg_inst(54,54)
+  io.fpu.req.bits.typ := id_inst(54,53)
   io.fpu.req.bits.in1 := 
      Mux(io.fpu.req.bits.typ === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(ex_srs(0))), recode_dp(ex_srs(0)))
+     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0)))
   io.fpu.req.bits.in2 := 
      Mux(io.fpu.req.bits.typ === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(ex_srs(1))), recode_dp(ex_srs(1)))
+     Cat(SInt(-1,32),recode_sp(id_sreads(1))), recode_dp(id_sreads(1)))
   io.fpu.req.bits.in3 := 
      Mux(io.fpu.req.bits.typ === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(ex_srs(2))), recode_dp(ex_srs(2)))
-
-  when(io.ctrl.fire_fpu) { 
-    pending_fpu := Bool(true)
-    pending_fpu_typ := io.fpu.req.bits.typ
-    pending_fpu_reg := io.ctrl.ex_waddr
-  }
-  when(io.fpu.resp.fire()){
-    pending_fpu := Bool(false)
-  }
+     Cat(SInt(-1,32),recode_sp(id_sreads(2))), recode_dp(id_sreads(2)))
 
   //fpu resp
   val unrec_s = ieee_sp(io.fpu.resp.bits.data)
   val unrec_d = ieee_dp(io.fpu.resp.bits.data)
-  val unrec_fpu_resp = Mux(pending_fpu_typ === UInt(0),
+  val unrec_fpu_resp = Mux(io.ctrl.pending_fpu_typ === UInt(0),
                Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
 
-  //give fixed priority to mem -> fpu -> alu
-  io.fpu.resp.ready := Bool(true)
-  when(io.vmu.resp.valid) { io.fpu.resp.ready := Bool(false) }
-
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
-  io.vmu.op.bits.addr := alu.io.out
-  io.vmu.op.bits.data := ex_srs(1)
-
-  when(io.ctrl.fire_vmu) {
-    pending_mem_reg := io.ctrl.ex_waddr
-  }
+                                 // data        waddr
+  io.vmu.bits.aux := VMUAuxScalar(id_sreads(1),id_inst(23,16))
+  io.vmu.bits.base := id_sreads(0)
 
   //Writeback stage
   when(!ex_reg_kill) {
@@ -211,10 +188,10 @@ class ScalarDpath extends HwachaModule
   assert(!(io.ctrl.wb_wen && swrite_valid), "Cannot write vmss and scalar dest")
   assert(!(io.ctrl.wb_wen && awrite_valid), "Cannot write vmsa and scalar dest")
 
-  val wb_waddr = Mux(io.vmu.resp.valid, pending_mem_reg,
-                 Mux(io.fpu.resp.valid, pending_fpu_reg,
+  val wb_waddr = Mux(io.dmem.valid, io.ctrl.pending_mem_reg,
+                 Mux(io.fpu.resp.valid, io.ctrl.pending_fpu_reg,
                  wb_reg_inst(23,16)))
-  wb_wdata := Mux(io.vmu.resp.valid, io.vmu.resp.bits,
+  wb_wdata := Mux(io.dmem.valid, io.dmem.bits.data,
               Mux(io.fpu.resp.valid, unrec_fpu_resp,
               wb_reg_wdata))
   when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }

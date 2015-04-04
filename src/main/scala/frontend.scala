@@ -74,8 +74,8 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   //or the s1_req has the data
   val req_same_block = !icmiss && ((s1_pc & Bits(rowBytes)) === (req_pc & Bits(rowBytes)))
   ///Colin FIXME: is there a case where the line buffers will be overwritten before we read it?
-  val s0_same_block = vxu_same_block || vru_same_block | req_same_block
-
+  val s0_same_block = (req_type && vxu_same_block) || 
+                      (!req_type && vru_same_block) //|| req_same_block
 
   val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
                          io.vru.resp.valid && !io.vru.resp.ready)
