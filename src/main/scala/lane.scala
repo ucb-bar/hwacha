@@ -58,7 +58,7 @@ class Lane extends HwachaModule with LaneParameters
     val ack = new LaneAckIO
     val brqs = Vec.fill(nbanks){new BRQIO}
     val bwqs = Vec.fill(nbanks){new BWQIO().flip}
-    val vmu = new VMUIO
+    val vmu = new LaneMemIO
   }
 
   val banksrw = new ArrayBuffer[BankRWIO]
@@ -98,11 +98,12 @@ class Lane extends HwachaModule with LaneParameters
   du.io.idiv.op <> io.op.vidu
   du.io.fdiv.op <> io.op.vfdu
 
-  io.vmu.vaq.q.valid := io.op.vgu.valid
-  io.vmu.vaq.q.bits := rdata(5)
-  io.vmu.vaq.pala.reserve := Bool(false)
+  io.vmu.vaq.valid := io.op.vgu.valid
+  io.vmu.vaq.bits.addr := rdata(5)
+  io.vmu.la.pala.reserve := Bool(false) // FIXME
+  io.vmu.la.vala.reserve := Bool(false) // FIXME
 
-  assert(!io.vmu.vaq.q.valid || io.vmu.vaq.q.ready, "check vaq counter logic")
+  assert(!io.vmu.vaq.valid || io.vmu.vaq.ready, "check vaq counter logic")
 
   for (i <- 0 until nSlices) {
     val fma0 = Module(new LaneFMASlice)

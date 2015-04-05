@@ -35,11 +35,15 @@ trait VMUParameters extends UsesHwachaParameters {
   val nPredSet = tlDataBits // TODO: rename
 }
 
-class VMUIO extends Bundle {
-  val op = Decoupled(new VMUOp)
-  val vaq = new VAQLaneIO
+class LaneMemIO extends Bundle {
+  val vaq = new VVAQIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
+  val la = new VMULookAheadIO
+}
+
+class PrefetchMemIO extends Bundle {
+  val vaq = new VVAPFQIO
 }
 
 class VMUDecodedOp extends VMUOpBase {
@@ -139,14 +143,14 @@ class IBox extends VMUModule {
 
 class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val io = new Bundle {
-    val lane = new VMUIO().flip
-    val pf = new Bundle {
-      val vaq = new VVAPFQIO().flip
-    }
+    val op = Decoupled(new VMUOp).flip
+
+    val lane = new LaneMemIO().flip
+    val scalar = new ScalarMemIO
+    val pf = new PrefetchMemIO().flip
+
     val memif = new VMUMemIO
     val sret = Valid(UInt(width = sretBits))
-
-    val scalar = new ScalarMemIO
 
     val dtlb = new TLBIO
     val ptlb = new TLBIO
@@ -165,13 +169,14 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val smu = Module(new SMU)
   val arb = Module(new VMUMemArb(2))
 
-  ibox.io.op <> io.lane.op
+  ibox.io.op <> io.op
   val sel = ibox.io.smu.op.mode.scalar
 
   abox.io.issue <> ibox.io.abox
   abox.io.xcpt <> io.xcpt
   abox.io.lane <> io.lane.vaq
   abox.io.pf <> io.pf.vaq
+  abox.io.la <> io.lane.la
 
   tbox.io.inner(0) <> abox.io.tlb.lane
   tbox.io.inner(1) <> smu.io.tlb

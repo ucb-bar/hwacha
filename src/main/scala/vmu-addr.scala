@@ -11,8 +11,8 @@ class VMUAddrIO extends DecoupledIO(new VMUAddr)
 
 class VVAQ extends VMUModule {
   val io = new Bundle {
-    val enq = Decoupled(UInt(width = maxAddrBits)).flip
-    val deq = Decoupled(UInt(width = maxAddrBits))
+    val enq = new VVAQIO().flip
+    val deq = new VVAQIO
     val la = new CounterLookAheadIO(valaBits).flip
   }
 
@@ -72,8 +72,8 @@ class ABox0 extends VMUModule {
     val irq = new IRQIO
 
     val tlb = new TLBIO
-    val vvaq = Decoupled(UInt(width = maxAddrBits)).flip
-    val vpaq = Decoupled(new VPAQEntry)
+    val vvaq = new VVAQIO().flip
+    val vpaq = new VPAQIO
   }
 
   val op = io.issue.op
@@ -95,7 +95,7 @@ class ABox0 extends VMUModule {
 
   val stride = Mux(op.unit, UInt(pgSzBytes), op.aux.v.stride)
   val addr_gen = Reg(UInt())
-  val addr = Mux(op.mode.indexed, io.vvaq.bits, addr_gen)
+  val addr = Mux(op.mode.indexed, io.vvaq.bits.addr, addr_gen)
   val addr_valid = !op.mode.indexed || io.vvaq.valid
 
   val (tlb_ready, xcpt) = io.tlb.query(op, addr, io.irq)
@@ -177,8 +177,8 @@ class TBox(n: Int) extends VMUModule {
 
 class VPAQ extends VMUModule {
   val io = new Bundle {
-    val enq = Decoupled(new VPAQEntry).flip
-    val deq = Decoupled(enq.bits.addr.clone)
+    val enq = new VPAQIO().flip
+    val deq = Decoupled(UInt(width = paddrBits))
     val la = new CounterLookAheadIO(palaBits).flip
   }
 
@@ -308,7 +308,7 @@ class VPFQ extends VMUModule {
   vvapfq.io.enq <> io.enq
 
   val tlb_ready = io.tlb.query(
-    vpn(vvapfq.io.deq.bits.addr), vvapfq.io.deq.bits.write)
+    vpn(vvapfq.io.deq.bits.addr), vvapfq.io.deq.bits.store)
 
   val en = !io.xcpt.prop.vmu.stall
   private def fire(exclude: Bool, include: Bool*) = {
@@ -321,7 +321,7 @@ class VPFQ extends VMUModule {
   io.deq.valid := fire(io.deq.ready,
     !(io.tlb.resp.xcpt_ld && io.tlb.resp.xcpt_st))
 
-  io.deq.bits.cmd := Mux(vvapfq.io.deq.bits.write, M_PFW, M_PFR)
+  io.deq.bits.cmd := Mux(vvapfq.io.deq.bits.store, M_PFW, M_PFR)
   io.deq.bits.mt := Bits(0)
   io.deq.bits.addr := Cat(io.tlb.resp.ppn, pgidx(vvapfq.io.deq.bits.addr))
   io.deq.bits.meta := (new VMUMetaUnion).fromBits(Bits(0))
@@ -338,8 +338,10 @@ class ABox extends VMUModule {
       val pf = new TLBIO
     }
 
-    val lane = new VAQLaneIO().flip
+    val lane = new VVAQIO().flip
     val pf = new VVAPFQIO().flip
+    val la = new VMULookAheadIO().flip
+
     val mbox = new VMUAddrIO
   }
 
@@ -348,8 +350,8 @@ class ABox extends VMUModule {
   val abox0 = Module(new ABox0)
   val abox1 = Module(new ABox1)
 
-  vvaq.io.enq <> io.lane.q
-  vvaq.io.la <> io.lane.vala
+  vvaq.io.enq <> io.lane
+  vvaq.io.la <> io.la.vala
 
   abox0.io.vvaq <> vvaq.io.deq
   abox0.io.issue.op := io.issue.op
@@ -358,12 +360,12 @@ class ABox extends VMUModule {
   abox0.io.tlb <> io.tlb.lane
 
   vpaq.io.enq <> abox0.io.vpaq
-  vpaq.io.la <> io.lane.pala
+  vpaq.io.la <> io.la.pala
 
   abox1.io.vpaq <> vpaq.io.deq
   abox1.io.issue <> io.issue
   abox1.io.xcpt <> io.xcpt
-  abox1.io.la <> io.lane.pala
+  abox1.io.la <> io.la.pala
 
   val mboxq = Module(new Queue(io.mbox.bits.clone.asDirectionless(), 2))
   if (confvru) {

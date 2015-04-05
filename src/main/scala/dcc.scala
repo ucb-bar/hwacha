@@ -14,7 +14,7 @@ class DecoupledCluster extends HwachaModule with VMUParameters {
 
       val spred = Decoupled(Bits(width = nPredSet)).flip
       val sla = new BRQLookAheadIO().flip
-      val vmu = new VMUIO
+      val vmu = new LaneMemIO
     }
     val xcpt = new XCPTIO().flip
   }

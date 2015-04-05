@@ -9,7 +9,7 @@ class VXU extends HwachaModule
 {
   val io = new Bundle {
     val issue = new VXUIssueOpIO().flip
-    val vmu = new VMUIO
+    val vmu = new LaneMemIO
   }
 
   val seq = Module(new Sequencer)

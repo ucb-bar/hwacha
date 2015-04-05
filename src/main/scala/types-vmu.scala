@@ -90,25 +90,25 @@ object DecodedMemType {
   }
 }
 
-class VVAQEntry extends UInt with VMUParameters { setWidth(maxAddrBits) }
+class VVAQEntry extends VMUBundle {
+  val addr = UInt(width = maxAddrBits)
+}
 class VVAQIO extends DecoupledIO(new VVAQEntry)
 
-class VAQLaneIO extends VMUBundle {
-  val q = new VVAQIO
-  val vala = new CounterLookAheadIO(valaBits)
-  val pala = new CounterLookAheadIO(palaBits)
-}
-
-class VVAPFQEntry extends VMUBundle {
-  val addr = UInt(width = maxAddrBits)
-  val write = Bool()
+class VVAPFQEntry extends VVAQEntry {
+  val store = Bool()
 }
 class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
-
 
 class VPAQEntry extends VMUBundle {
   val addr = UInt(width = paddrBits)
   val ecnt = UInt(width = SZ_VLEN) 
+}
+class VPAQIO extends DecoupledIO(new VPAQEntry)
+
+class VMULookAheadIO extends VMUBundle {
+  val vala = new CounterLookAheadIO(valaBits)
+  val pala = new CounterLookAheadIO(palaBits)
 }
 
 trait VMUMetadataBase extends VMUBundle {
