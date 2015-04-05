@@ -157,13 +157,15 @@ class VFU extends Bundle
   val vqu = Bool()
 }
 
-class SequencerEntry extends DecodedInstruction
+class SequencerEntry extends DecodedInstruction with SeqParameters
 {
   val active = new VFU
   val base = new DecodedRegisters
   val raw = Vec.fill(nseq){Bool()}
   val war = Vec.fill(nseq){Bool()}
   val waw = Vec.fill(nseq){Bool()}
+  val rports = UInt(width = szRPorts)
+  val wport = UInt(width = szWPortLatency)
 }
 
 
