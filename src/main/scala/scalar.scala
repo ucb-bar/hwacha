@@ -52,6 +52,7 @@ class ScalarUnit extends HwachaModule
   io.vmu.valid := ctrl.io.vmu.valid
   ctrl.io.vmu.ready := io.vmu.ready
   ctrl.io.dmem.valid := io.dmem.valid
+  ctrl.io.dmem.bits.id := io.dmem.bits.id
   io.dmem.ready := ctrl.io.dmem.ready
 
   io.imem <> dpath.io.imem
