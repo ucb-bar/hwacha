@@ -81,6 +81,12 @@ class Sequencer extends HwachaModule with LaneParameters
       (a.vamo) && (empty >= UInt(4))
     }
 
+    def set_entry(n: UInt) = {
+      valid(n) := Bool(true)
+      vlen(n) := io.op.bits.vlen
+      update_hazard(n) := Bool(true)
+    }
+
     def clear_entry(n: UInt) = {
       valid(n) := Bool(false)
       e(n).active := e(0).active.clone().fromBits(Bits(0))
@@ -198,12 +204,6 @@ class Sequencer extends HwachaModule with LaneParameters
       }
     }
 
-    def set_entry(n: UInt) = {
-      valid(n) := Bool(true)
-      vlen(n) := io.op.bits.vlen
-      update_hazard(n) := Bool(true)
-    }
-
     def set_vfu(n: UInt, afn: SequencerEntry=>Bool, fn: DecodedInstruction=>Bundle) = {
       afn(e(n)) := Bool(true)
       fn(e(n)) := fn(io.op.bits)
@@ -281,39 +281,32 @@ class Sequencer extends HwachaModule with LaneParameters
       set_entry(t0); set_viu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
       set_tail(t1)
     }
-
     def issue_vimul = {
       set_entry(t0); set_vimu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
       set_tail(t1)
     }
-
     def issue_vidiv = {
       set_entry(t0); set_vqu(t0); set_vs1(t0); set_vs2(t0)
       set_entry(t1); set_vidu(t1); set_vd(t1)
       set_tail(t2)
     }
-
     def issue_vfma = {
       set_entry(t0); set_vfmu(t0); set_vs1(t0); set_vs2(t0); set_vs3(t0); set_vd(t0)
       set_tail(t1)
     }
-
     def issue_vfdiv = {
       set_entry(t0); set_vqu(t0); set_vs1(t0); set_vs2(t0)
       set_entry(t1); set_vfdu(t1); set_vd(t1)
       set_tail(t2)
     }
-
     def issue_vfcmp = {
       set_entry(t0); set_vfcu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
       set_tail(t1)
     }
-
     def issue_vfconv = {
       set_entry(t0); set_vfvu(t0); set_vs1(t0); set_vd(t0)
       set_tail(t1)
     }
-
     def issue_vamo = {
       set_entry(t0); set_vgu(t0); set_vs1(t0)
       set_entry(t1); set_vcu(t1);
@@ -321,27 +314,23 @@ class Sequencer extends HwachaModule with LaneParameters
       set_entry(t3); set_vlu(t3); set_vd(t3)
       set_tail(t4)
     }
-
     def issue_vldx = {
       set_entry(t0); set_vgu(t0); set_vs2(t0)
       set_entry(t1); set_vcu(t1)
       set_entry(t2); set_vlu(t2); set_vd(t2)
       set_tail(t3)
     }
-
     def issue_vstx = {
       set_entry(t0); set_vgu(t0); set_vs2(t0)
       set_entry(t1); set_vcu(t1)
       set_entry(t2); set_vsu(t2); set_vd_as_vs1(t2); set_raw_hazard(t2, t1)
       set_tail(t3)
     }
-
     def issue_vld = {
       set_entry(t0); set_vcu(t0)
       set_entry(t1); set_vlu(t1); set_vd(t1)
       set_tail(t2)
     }
-
     def issue_vst = {
       set_entry(t0); set_vcu(t0)
       set_entry(t1); set_vsu(t1); set_vd_as_vs1(t1); set_raw_hazard(t1, t0)
