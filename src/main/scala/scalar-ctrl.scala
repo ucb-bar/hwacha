@@ -16,7 +16,7 @@ class CtrlDpathIO extends HwachaBundle
   val fire_vf = Bool(OUTPUT)
   val killd = Bool(OUTPUT)
   val sren = Vec.fill(3)(Bool(OUTPUT))
-  val aren = Vec.fill(3)(Bool(OUTPUT))
+  val aren = Vec.fill(2)(Bool(OUTPUT))
   val ex_scalar_dest = Bool(OUTPUT)
   val ex_ctrl = new IntCtrlSigs().asOutput()
   val ex_valid = Bool(OUTPUT)
@@ -28,7 +28,6 @@ class CtrlDpathIO extends HwachaBundle
   val retire = Bool(OUTPUT)
   val bypass = Vec.fill(3)(Bool(OUTPUT))
   val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
-  val pending_mem_reg = UInt(OUTPUT,log2Up(nsregs))
   val pending_fpu_reg = UInt(OUTPUT,log2Up(nsregs))
   val pending_fpu_typ = UInt(OUTPUT,SZ_PREC)
   val swrite = Bool(OUTPUT)
@@ -79,8 +78,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     }
   }
   val sboard = new Scoreboard(nsregs)
-  val pending_mem = Reg(init=Bool(false))
-  val pending_mem_reg = Reg(init=UInt(width=log2Up(nsregs)))
   val pending_fpu = Reg(init=Bool(false))
   val pending_fpu_reg = Reg(init=UInt(width=log2Up(nsregs)))
   val pending_fpu_typ = Reg(init=Bits(width=SZ_PREC))
@@ -177,7 +174,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.dpath.sren(2) := ren3 && vs3_sp
   io.dpath.aren(0) := ren1 && !vs1_sp
   io.dpath.aren(1) := ren2 && !vs2_sp
-  io.dpath.aren(2) := ren3 && !vs3_sp
 
   val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
 
@@ -235,10 +231,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val id_set_sboard = io.fpu.req.fire() || (id_scalar_dest && io.vmu.fire())
 
-  //COLIN FIXME: new vmu has decoupled port and add decoupled to fpu port
-  //Stall memory op on backpressure from vmu
-  val id_second_mem = id_ctrl.vmu_val && !io.vmu.ready
-
   //stall on RAW/WAW hazards on loads/fpu until data returns
   //stall on WAW hazards on stores until translation succeeds
   val id_sboard_hazard = 
@@ -254,24 +246,19 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   //on fpu resp valid we clear the sboard for its addr
   val clear_mem = io.dmem.valid
   val clear_fpu = io.fpu.resp.valid
-  val sboard_clear_addr = Mux(clear_mem, pending_mem_reg, pending_fpu_reg)
+  val sboard_clear_addr = Mux(clear_mem, io.dmem.bits.id, pending_fpu_reg)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
  
-  // YUNSUP: Hook these up with the decoupled VMU port
-  val vmu_valid = Bool()
-  val vmu_ready = Bool(true)
-
   val enq_fpu = id_val && id_ctrl.fpu_val
   val enq_vxu = id_val && !id_scalar_inst
   val enq_vmu = id_val && id_ctrl.vmu_val
 
   val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
   val mask_vxu_ready = !enq_vxu || io.vxu.ready
-  val mask_vmu_ready = !enq_vmu || vmu_ready
+  val mask_vmu_ready = !enq_vmu || io.vmu.ready
 
   val ctrl_stalld_common =
-    id_ex_hazard || id_sboard_hazard || 
-    id_second_mem || !vf_active
+    !vf_active || id_ex_hazard || id_sboard_hazard
 
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = List(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
@@ -297,22 +284,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when(io.fpu.resp.fire()){
     pending_fpu := Bool(false)
   }
-
-  // to scalar VMU
-  io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
-  io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
-  io.vmu.bits.fn.mt := id_ctrl.vmu_mt
-  io.vmu.bits.fn.mode := MM_S
-  io.vmu.bits.vlen := UInt(1)
-  io.dpath.pending_mem_reg := pending_mem_reg
-  when(io.vmu.fire() && id_scalar_inst){
-    pending_mem := Bool(true)
-    pending_mem_reg := id_waddr
-  }
-  when(clear_mem){
-    pending_mem := Bool(false)
-  }
-
 
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
@@ -352,7 +323,11 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.reg.vd.id := id_waddr
 
   // to VMU
-  vmu_valid := fire_decode(mask_vmu_ready, enq_vmu)
+  io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
+  io.vmu.bits.fn.mode := id_ctrl.vmu_mode
+  io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
+  io.vmu.bits.fn.mt := id_ctrl.vmu_mt
+  io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vl)
 
   //excute
   ctrl_killd := !vf_active || !io.imem.resp.valid || ctrl_stalld 
@@ -375,9 +350,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val ctrl_stallx = ex_reg_valid && (vmu_stall_ex || fpu_stall_ex)
 
   //give fixed priority to mem -> fpu -> alu
-  io.fpu.resp.ready := Bool(true)
   io.dmem.ready := Bool(true)
-  when(io.dmem.valid) { io.fpu.resp.ready := Bool(false) }
+  io.fpu.resp.ready := !io.dmem.valid
  
   //writeback
   ctrl_killx := ctrl_stallx || !ex_reg_valid

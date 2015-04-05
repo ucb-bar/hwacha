@@ -69,7 +69,7 @@ class ScalarDpath extends HwachaModule
   val arf = Mem(UInt(width = 64), 32)
 
   //fetch 
-  val vf_pc         = Reg(UInt())
+  val vf_pc = Reg(UInt())
   when(io.ctrl.fire_vf) {
     vf_pc := io.cmdq.imm.bits
   }
@@ -119,8 +119,8 @@ class ScalarDpath extends HwachaModule
       }
       when (io.ctrl.bypass(i)) { ex_reg_srs_lsb(i) := io.ctrl.bypass_src(i) }
     }
-    for( i <- 0 until id_areads.size){
-      when(io.ctrl.aren(i)){
+    for (i <- 0 until id_areads.size) {
+      when (io.ctrl.aren(i)) {
         ex_reg_ars(i) := id_areads(i)
       }
     }
@@ -170,8 +170,11 @@ class ScalarDpath extends HwachaModule
 
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
                                  // data        waddr
-  io.vmu.bits.aux.union := VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits
-  io.vmu.bits.base := id_sreads(0)
+  io.vmu.bits.base :=
+    Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
+  io.vmu.bits.aux.union :=
+    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
+                         VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits)
 
   //Writeback stage
   when(!ex_reg_kill) {
@@ -188,7 +191,7 @@ class ScalarDpath extends HwachaModule
   assert(!(io.ctrl.wb_wen && swrite_valid), "Cannot write vmss and scalar dest")
   assert(!(io.ctrl.wb_wen && awrite_valid), "Cannot write vmsa and scalar dest")
 
-  val wb_waddr = Mux(io.dmem.valid, io.ctrl.pending_mem_reg,
+  val wb_waddr = Mux(io.dmem.valid, io.dmem.bits.id,
                  Mux(io.fpu.resp.valid, io.ctrl.pending_fpu_reg,
                  wb_reg_inst(23,16)))
   wb_wdata := Mux(io.dmem.valid, io.dmem.bits.data,
