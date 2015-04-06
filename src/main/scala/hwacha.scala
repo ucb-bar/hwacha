@@ -15,7 +15,7 @@ case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends UsesParameters {
+abstract trait UsesHwachaParameters extends uncore.TileLinkParameters {
   val nbanks = params(HwachaNBanks)
   val nreg_per_bank = params(HwachaNRegPerBank)
   val ndtlb = params(HwachaNDTLB)  
@@ -84,7 +84,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nvsdq = nbrq * nbanks
 
   // D$ tag requirement for hwacha
-  require(params(uncore.TLClientXactIdBits) >= confvmu.sz_tag)
+  require(tlClientXactIdBits >= confvmu.sz_tag)
 
 }
 

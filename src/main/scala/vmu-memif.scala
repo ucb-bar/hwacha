@@ -17,12 +17,6 @@ class VMUMemIO extends VMUBundle {
   val resp = Decoupled(new VMUMemResp).flip
 }
 
-
-class FinishEntry extends Bundle {
-  val xid = Bits(width = params(TLManagerXactIdBits))
-  val dst = UInt(width = log2Up(params(LNEndpoints)))
-}
-
 class MBox extends VMUModule {
   val io = new Bundle {
     val inner = new Bundle {
@@ -100,7 +94,6 @@ class VMUTileLink extends VMUModule {
 
   private val acquire = io.dmem.acquire
   private val grant = io.dmem.grant
-  private val finish = io.dmem.finish
 
   val fn = req.bits.fn
   val fn_load = (fn === M_XRD)
@@ -135,37 +128,13 @@ class VMUTileLink extends VMUModule {
     data = req.bits.store.data,
     union = acq_union)
 
-
-  val finishq = Module(new Queue(new FinishEntry, 2))
-
-  val grant_type_load = grant.bits.payload.hasData()
-  val grant_type_store =
-    grant.bits.payload.isBuiltInType() &&
-    grant.bits.payload.is(uncore.Grant.putAckType)
+  val grant_type_load = grant.bits.hasData()
+  val grant_type_store = grant.bits.isBuiltInType(uncore.Grant.putAckType)
   val resp_en = grant_type_load || grant_type_store
-  val finish_en = grant.bits.payload.requiresAck()
 
-  val resp_ready = !resp_en || resp.ready
-  val finishq_ready = !finish_en || finishq.io.enq.ready
-
-  private def fire_grant(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(grant.valid, resp_ready, finishq_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
-  }
-
-  grant.ready := fire_grant(grant.valid)
-
-  resp.valid := fire_grant(resp_ready, resp_en)
-  resp.bits.tag := grant.bits.payload.client_xact_id
-  resp.bits.data := grant.bits.payload.data
+  grant.ready := !resp_en || resp.ready
+  resp.valid := grant.valid && resp_en
+  resp.bits.tag := grant.bits.client_xact_id
+  resp.bits.data := grant.bits.data
   resp.bits.store := grant_type_store
-
-  finishq.io.enq.valid := fire_grant(finishq_ready, finish_en)
-  finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
-  finishq.io.enq.bits.dst := grant.bits.header.src
-
-  finishq.io.deq.ready := finish.ready
-  finish.valid := finishq.io.deq.valid
-  finish.bits.payload.manager_xact_id := finishq.io.deq.bits.xid
-  finish.bits.header.dst := finishq.io.deq.bits.dst
 }
