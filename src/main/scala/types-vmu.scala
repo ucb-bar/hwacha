@@ -131,8 +131,8 @@ class VPAQEntry extends VMUBundle {
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
 class VMULookAheadIO extends VMUBundle {
-  val vala = new CounterLookAheadIO(valaBits)
-  val pala = new CounterLookAheadIO(palaBits)
+  val vala = new CounterLookAheadIO
+  val pala = new CounterLookAheadIO
 }
 
 trait VMUMetadataBase extends VMUBundle {

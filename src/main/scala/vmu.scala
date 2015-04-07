@@ -21,10 +21,6 @@ trait VMUParameters extends UsesHwachaParameters {
   val tlDataBytes = tlDataBits >> 3
   val tlByteAddrBits = log2Up(tlDataBytes)
 
-  val palaMax = 1 << (SZ_VLEN-1)
-  val palaBits = log2Down(palaMax) + 1
-  val valaMax = confvmu.nvvaq
-  val valaBits = log2Down(valaMax) + 1
   val sretBits = log2Down(tlDataBytes) + 1
 
   val tlDataHalves = tlDataBits >> 4

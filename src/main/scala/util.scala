@@ -153,9 +153,9 @@ trait LookAheadIO extends Bundle
   val available = Bool(INPUT)
 }
 
-class CounterLookAheadIO(sz: Int) extends LookAheadIO
+class CounterLookAheadIO extends LookAheadIO with LaneParameters
 {
-  val cnt = UInt(OUTPUT, sz)
+  val cnt = UInt(OUTPUT, lookAheadBits)
 }
 
 class CounterUpdateIO(sz: Int) extends Bundle
@@ -164,28 +164,22 @@ class CounterUpdateIO(sz: Int) extends Bundle
   val update = Bool(OUTPUT)
 }
 
-class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
+class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)
+  extends Module(_reset = resetSignal) with LaneParameters
 {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
-    val la = new CounterLookAheadIO(sz).flip
     val inc = new CounterUpdateIO(sz).flip
-    val dec = new CounterUpdateIO(sz).flip
-    val full = Bool(OUTPUT)
-    val empty = Bool(OUTPUT)
+    val dec = new CounterLookAheadIO().flip
   }
 
   val count = Reg(init = UInt(reset_cnt, sz))
+  io.dec.available := (count >= io.dec.cnt)
 
   val add = (io.inc.cnt & Fill(sz, io.inc.update))
-  val sub = (io.dec.cnt & Fill(sz, io.dec.update)) | (io.la.cnt & Fill(sz, io.la.reserve))
-  assert(!(io.la.reserve && io.dec.update), "simultaneous reserve and decrement")
+  val sub = (io.dec.cnt & Fill(sz, io.dec.reserve))
 
   count := count + add - sub
-
-  io.la.available := count >= io.la.cnt
-  io.full := count === UInt(max_cnt)
-  io.empty := count === UInt(0)
 }
 
 class AIWUpdateBufferEntry(DATA_SIZE: Int, ADDR_SIZE: Int) extends Bundle 

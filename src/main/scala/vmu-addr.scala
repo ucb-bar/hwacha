@@ -9,22 +9,22 @@ class VMUAddr extends VMUMemOp {
 }
 class VMUAddrIO extends DecoupledIO(new VMUAddr)
 
-class VVAQ extends VMUModule {
+class VVAQ extends VMUModule with LaneParameters {
   val io = new Bundle {
     val enq = new VVAQIO().flip
     val deq = new VVAQIO
-    val la = new CounterLookAheadIO(valaBits).flip
+    val la = new CounterLookAheadIO().flip
   }
 
   val q = Module(new Queue(io.enq.bits.clone, confvmu.nvvaq))
   q.io.enq <> io.enq
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(valaMax, valaMax))
-  lacntr.io.la <> io.la
+  val lacntr = Module(new LookAheadCounter(confvmu.nvvaq, confvmu.nvvaq))
   lacntr.io.inc.cnt := UInt(1)
   lacntr.io.inc.update := io.deq.fire()
-  lacntr.io.dec.update := Bool(false)
+  lacntr.io.dec <> io.la
+  require(confvmu.nvvaq >= lookAheadMax)
 }
 
 class TLBIO extends VMUBundle {
@@ -175,11 +175,11 @@ class TBox(n: Int) extends VMUModule {
   }
 }
 
-class VPAQ extends VMUModule {
+class VPAQ extends VMUModule with LaneParameters {
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = Decoupled(UInt(width = paddrBits))
-    val la = new CounterLookAheadIO(palaBits).flip
+    val la = new CounterLookAheadIO().flip
   }
 
   val q = Module(new Queue(io.enq.bits.addr.clone, confvmu.nvpaq))
@@ -188,18 +188,18 @@ class VPAQ extends VMUModule {
   io.enq.ready := q.io.enq.ready
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(0, palaMax))
-  lacntr.io.la <> io.la
+  val lacntr = Module(new LookAheadCounter(0, confvmu.nvpaq))
   lacntr.io.inc.cnt := io.enq.bits.ecnt
   lacntr.io.inc.update := io.enq.fire()
-  lacntr.io.dec.update := Bool(false)
+  lacntr.io.dec <> io.la
+  require(confvmu.nvpaq >= lookAheadMax)
 }
 
 class ABox1 extends VMUModule {
   val io = new Bundle {
     val issue = new VMUIssueOpIO().flip
     val xcpt = new XCPTIO().flip
-    val la = new CounterLookAheadIO(palaBits).flip
+    val la = new CounterLookAheadIO().flip
 
     val vpaq = Decoupled(UInt(width = paddrBits)).flip
     val mbox = new VMUAddrIO
@@ -229,7 +229,7 @@ class ABox1 extends VMUModule {
   val dequeue = !packed || (subblock_next === UInt(0)) || last
 
   // Track number of elements permitted to depart
-  val valve = Reg(init = UInt(0, palaBits))
+  val valve = Reg(init = UInt(0, confvmu.nvpaq))
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
   val valve_sub = Mux(io.mbox.fire(), io.mbox.bits.meta.ecnt, UInt(0))
   valve := valve + valve_add - valve_sub

@@ -20,6 +20,9 @@ abstract trait LaneParameters extends UsesParameters
   val nOPL = params(HwachaNOperandLatches)
   val nWSel = params(HwachaWriteSelects)
   val nSlices = SZ_DATA/SZ_D
+  val nBatch = params(HwachaNBanks) * nSlices
+  val lookAheadMax = nBatch << 1
+  val lookAheadBits = log2Down(lookAheadMax) + 1
   val nDecoupledUnitWBQueue = 4
 }
 
