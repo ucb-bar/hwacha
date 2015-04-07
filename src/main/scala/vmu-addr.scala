@@ -94,8 +94,10 @@ class ABox0 extends VMUModule {
   val ecnt = Mux(count_next(SZ_VLEN), count, ecnt_max)
 
   val stride = Mux(op.unit, UInt(pgSzBytes), op.aux.v.stride)
-  val addr_gen = Reg(UInt())
-  val addr = Mux(op.mode.indexed, io.vvaq.bits.addr, addr_gen)
+  val accum = Reg(UInt())
+  val addr_addend = Mux(op.mode.indexed, io.vvaq.bits.addr, stride)
+  val addr_sum = accum + addr_addend
+  val addr = Mux(op.mode.indexed, addr_sum, accum)
   val addr_valid = !op.mode.indexed || io.vvaq.valid
 
   val (tlb_ready, xcpt) = io.tlb.query(op, addr, io.irq)
@@ -130,9 +132,7 @@ class ABox0 extends VMUModule {
       when (io.issue.fire) {
         state := s_busy
         count := op.vlen
-        when (!op.mode.indexed) {
-          addr_gen := op.base
-        }
+        accum := op.base
         first := Bool(true)
       }
     }
@@ -140,7 +140,7 @@ class ABox0 extends VMUModule {
     is (s_busy) {
       when (io.vpaq.fire()) {
         when (!op.mode.indexed) {
-          addr_gen := addr_gen + stride
+          accum := addr_sum
         }
         count := count_next
         when (count_last) {
