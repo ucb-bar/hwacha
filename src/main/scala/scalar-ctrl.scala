@@ -78,6 +78,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     }
   }
   val sboard = new Scoreboard(nsregs)
+  val sboard_not_empty = (0 until nsregs).map(i => sboard.read(UInt(i))).reduce(_||_)
   val pending_fpu = Reg(init=Bool(false))
   val pending_fpu_reg = Reg(init=UInt(width=log2Up(nsregs)))
   val pending_fpu_typ = Reg(init=Bits(width=SZ_PREC))
@@ -116,11 +117,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.cmdq.imm.ready := fire(mask_imm_valid, deq_imm)
   io.cmdq.rd.ready  := fire(mask_rd_valid, deq_rd)
 
-  //default values
-  io.imem.req.valid := vf_active
-  io.imem.invalidate := Bool(false)
-  io.imem.resp.ready := vf_active
-
   //decode
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, decode_table)
@@ -156,9 +152,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when(fire(null,decode_vf)) {
     vf_active := Bool(true)
     io.dpath.fire_vf := Bool(true)
-  }
-  when(id_ctrl.decode_stop && vf_active) {
-    vf_active := Bool(false)
   }
   io.dpath.wb_vf_active    := wb_vf_active
 
@@ -258,7 +251,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val mask_vmu_ready = !enq_vmu || io.vmu.ready
 
   val ctrl_stalld_common =
-    !vf_active || id_ex_hazard || id_sboard_hazard
+    !vf_active || id_ex_hazard || id_sboard_hazard ||
+    (pending_fpu && id_ctrl.decode_stop) //stall stop on outstanding fpu/mem
 
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
@@ -266,6 +260,17 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   val ctrl_stalld = !fire_decode(null)
+
+  //fetch
+  io.imem.req.valid := vf_active
+  io.imem.invalidate := Bool(false)
+  io.imem.resp.ready := !ctrl_stalld
+
+  val id_vf_active = vf_active && !fire_decode(null,id_ctrl.decode_stop)
+
+  when(fire_decode(null,id_ctrl.decode_stop)) {
+    vf_active := Bool(false)
+  }
 
   // FIXME: need to take Rocket's rounding mode for dynamic RM
   val rm = io.dpath.inst(52, 50)
@@ -332,16 +337,18 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vl)
 
   //excute
-  ctrl_killd := !vf_active || !io.imem.resp.valid || ctrl_stalld 
+  ctrl_killd := !io.imem.resp.valid || ctrl_stalld 
   ex_reg_valid := !ctrl_killd
   io.dpath.ex_valid := ex_reg_valid
-  io.dpath.killd := !vf_active || ctrl_stalld
-  io.dpath.killf := !vf_active || !io.imem.resp.valid || ctrl_stalld
+  io.dpath.killd := ctrl_stalld
+  io.dpath.killf := !io.imem.resp.valid || ctrl_stalld || id_ctrl.decode_stop
 
   when (!ctrl_killd) {
     ex_ctrl := id_ctrl
   }
-  when (!io.imem.resp.valid) { ex_vf_active := vf_active }
+  when(!ctrl_killd || id_ctrl.decode_stop) {
+    ex_vf_active := vf_active
+  }
 
   // stall inst in ex stage
   //if either the vmu or fpu needs to writeback we need to stall
@@ -363,8 +370,11 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_killx) {
     wb_ctrl := ex_ctrl
   }
-  when (!io.imem.resp.valid) { wb_vf_active := ex_vf_active }
+  when(!ctrl_killx || ex_ctrl.decode_stop) {
+    wb_vf_active := ex_vf_active
+  }
 
+  assert(!(!vf_active && sboard_not_empty), "vf should not end with non empty scoreboard")
   assert(!(io.dmem.valid && wb_scalar_dest && wb_reg_valid), "load result and scalar wb conflict")
 
   io.dpath.retire := wb_reg_valid

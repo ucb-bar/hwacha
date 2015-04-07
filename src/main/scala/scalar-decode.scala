@@ -233,8 +233,8 @@ object VectorArithmeticDecode extends VFDecodeTable
     VFSUB_D   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FSUB_D,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   Y,FM_SUB,  N,FD_X,   N,FC_X,    N,FV_X),
     VFMUL_D   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FMUL_D,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   Y,FM_MUL,  N,FD_X,   N,FC_X,    N,FV_X),
     // FIXME START
-    VFDIV_D   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FX,       N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_DIV, N,FC_X,    N,FV_X),
-    VFSQRT_D  ->List(Y,N,N,RX,RX,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FX,       N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_SQRT,N,FC_X,    N,FV_X),
+    VFDIV_D   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FDIV_D,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_DIV, N,FC_X,    N,FV_X),
+    VFSQRT_D  ->List(Y,N,N,RX,RX,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FSQRT_D,  N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_SQRT,N,FC_X,    N,FV_X),
     // FIXME END
     VFSGNJ_D  ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FSGNJ_D,  N,MM_X, M_X,      MT_X, Y,I_FSJ, N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
     VFSGNJN_D ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,FSGNJN_D, N,MM_X, M_X,      MT_X, Y,I_FSJN,N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
@@ -255,8 +255,8 @@ object VectorArithmeticDecode extends VFDecodeTable
     VFSUB_S   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FSUB_S,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   Y,FM_SUB,  N,FD_X,   N,FC_X,    N,FV_X),
     VFMUL_S   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FMUL_S,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   Y,FM_MUL,  N,FD_X,   N,FC_X,    N,FV_X),
     // FIXME START
-    VFDIV_S   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FX,       N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_DIV, N,FC_X,    N,FV_X),
-    VFSQRT_S  ->List(Y,N,N,RX,RX,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FX,       N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_SQRT,N,FC_X,    N,FV_X),
+    VFDIV_S   ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FDIV_S,   N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_DIV, N,FC_X,    N,FV_X),
+    VFSQRT_S  ->List(Y,N,N,RX,RX,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FSQRT_S,  N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    Y,FD_SQRT,N,FC_X,    N,FV_X),
     // FIXME END
     VFSGNJ_S  ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FSGNJ_S,  N,MM_X, M_X,      MT_X, Y,I_FSJ, N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
     VFSGNJN_S ->List(Y,N,N,RX,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPS,FSGNJN_S, N,MM_X, M_X,      MT_X, Y,I_FSJN,N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X),
