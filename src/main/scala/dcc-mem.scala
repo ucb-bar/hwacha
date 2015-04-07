@@ -153,8 +153,8 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
   val vsdq_ready = !vsdq_en || io.vsdq.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = brqs_valid ++: Seq(io.pred.valid, vsdq_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    val rvs = brqs_valid ++ Seq(io.pred.valid, vsdq_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
   next := fire(null)
 

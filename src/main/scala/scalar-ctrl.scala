@@ -138,10 +138,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val ctrl_killm = Bool()
 
   def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Array(
+    val rvs = Seq(
       !vf_active, io.cmdq.cmd.valid,
       mask_imm_valid, mask_rd_valid)
-    rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   when(fire(null,decode_vsetcfg)) {
@@ -261,8 +261,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     !vf_active || id_ex_hazard || id_sboard_hazard
 
   def fire_decode(exclude: Bool, include: Bool*) = {
-    val rvs = List(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   val ctrl_stalld = !fire_decode(null)

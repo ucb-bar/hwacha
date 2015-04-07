@@ -20,10 +20,10 @@ class VXU extends HwachaModule
   val mask_dcc_ready = !enq_dcc || dcc.io.op.ready
 
   def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Array(
+    val rvs = Seq(
       io.issue.valid,
       seq.io.op.ready, mask_dcc_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   io.issue.ready := fire(io.issue.valid)

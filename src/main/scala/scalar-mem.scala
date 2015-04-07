@@ -36,7 +36,7 @@ class SMU extends VMUModule {
   val en = !io.xcpt.prop.vmu.stall
   private def fire_req(exclude: Bool, include: Bool*) = {
     val rvs = Seq(tlb_ready, req.ready)
-    (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _) && en
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _) && en
   }
 
   req.bits.cmd := op.fn.cmd

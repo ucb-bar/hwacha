@@ -52,7 +52,7 @@ class MBox extends VMUModule {
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(abox.valid, sbox_ready, lbox_ready, req.ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   abox.ready := fire(abox.valid)
@@ -172,7 +172,7 @@ class VMUTileLink extends VMUModule {
 
   private def fire_grant(exclude: Bool, include: Bool*) = {
     val rvs = Seq(grant.valid, resp_ready, finishq_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   grant.ready := fire_grant(grant.valid)

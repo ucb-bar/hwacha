@@ -118,7 +118,7 @@ class ABox0 extends VMUModule {
   val en = busy && !stall
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(addr_valid, tlb_ready, io.vpaq.ready)
-    (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _) && en
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _) && en
   }
 
   io.vvaq.ready := fire(addr_valid, op.mode.indexed)
@@ -313,7 +313,7 @@ class VPFQ extends VMUModule {
   val en = !io.xcpt.prop.vmu.stall
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(vvapfq.io.deq.valid, tlb_ready, io.deq.ready)
-    (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _) && en
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _) && en
   }
 
   vvapfq.io.deq.ready := fire(vvapfq.io.deq.valid)

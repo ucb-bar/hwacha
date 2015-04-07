@@ -44,17 +44,17 @@ class LaneDecoupledUnits extends HwachaModule with LaneParameters
     !enq_fdivs_req(i) || fdiv.req.ready }
 
   def fire_idiv(exclude: Bool, include: Bool*) = {
-    val rvs = List(
+    val rvs = Seq(
       io.idiv.op.valid, io.in0q.valid, io.in1q.valid,
-      tagq.io.enq.ready) ++: mask_idivs_req_ready
-    rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
+      tagq.io.enq.ready) ++ mask_idivs_req_ready
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   def fire_fdiv(exclude: Bool, include: Bool*) = {
-    val rvs = List(
+    val rvs = Seq(
       io.fdiv.op.valid, mask_in0q_valid, io.in1q.valid,
-      tagq.io.enq.ready) ++: mask_fdivs_req_ready
-    rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
+      tagq.io.enq.ready) ++ mask_fdivs_req_ready
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   io.idiv.op.ready := fire_idiv(io.idiv.op.valid)
@@ -96,8 +96,8 @@ class LaneDecoupledUnits extends HwachaModule with LaneParameters
   val mask_bwqs_ready = io.bwqs.zipWithIndex.map { case (bwq, i) => !enq_bwqs(i) || bwq.ready }
 
   def fire_bwq(exclude: Bool, include: Bool*) = {
-    val rvs = List(tagq.io.deq.valid) ++: mask_idivs_resp_valid ++: mask_fdivs_resp_valid ++: mask_bwqs_ready
-    rvs.filter(_ != exclude).reduce(_&&_) && (Bool(true) :: include.toList).reduce(_&&_)
+    val rvs = tagq.io.deq.valid +: (mask_idivs_resp_valid ++ mask_fdivs_resp_valid ++ mask_bwqs_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   tagq.io.deq.ready := fire_bwq(tagq.io.deq.valid)

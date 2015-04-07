@@ -117,11 +117,11 @@ class RoCCUnit extends HwachaModule
   val mask_resp_ready = !enq_resp || respq.io.enq.ready
 
   def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Array(
+    val rvs = Seq(
       !stall, mask_vcfg,
       io.rocc.cmd.valid,
       mask_cmd_ready, mask_imm_ready, mask_rd_ready, mask_cnt_ready, mask_resp_ready)
-    (rvs.filter(_ != exclude) ++ include).reduce(_ && _)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   // Logic to handle vector length calculation
