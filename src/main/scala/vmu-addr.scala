@@ -42,17 +42,17 @@ class TLBIO extends VMUBundle {
   }
 
   def query(op: VMUDecodedOp, addr: UInt, irq: IRQIO): (Bool, Bool) = {
-    val ld = op.cmd.load || op.cmd.amo
-    val st = op.cmd.store || op.cmd.amo
-
-    val tlb_ready = this.query(addr(vaddrBits, pgIdxBits), st)
+    val tlb_ready = this.query(addr(vaddrBits, pgIdxBits), op.cmd.write)
     val tlb_finish = tlb_ready && this.req.valid
 
     val addr_ma = Seq(op.mt.h, op.mt.w, op.mt.d).zipWithIndex.map(x =>
         x._1 && (addr(x._2, 0) != UInt(0))).reduce(_ || _) // misalignment
 
-    val xcpts = Seq(addr_ma && ld, addr_ma && st,
-      this.resp.xcpt_ld && ld, this.resp.xcpt_st && st)
+    val xcpts = Seq(
+      addr_ma && op.cmd.read,
+      addr_ma && op.cmd.write,
+      this.resp.xcpt_ld && op.cmd.read,
+      this.resp.xcpt_st && op.cmd.write)
     val irqs = Seq(irq.vmu.ma_ld, irq.vmu.ma_st,
       irq.vmu.faulted_ld, irq.vmu.faulted_st)
 

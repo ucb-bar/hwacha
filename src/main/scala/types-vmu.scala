@@ -59,6 +59,30 @@ class VMUOp extends VMUOpBase {
   val aux = new VMUAux
 }
 
+class DecodedMemCommand extends Bundle {
+  val load = Bool()
+  val store = Bool()
+  val amo = Bool()
+  val pf = Bool()
+
+  val read = Bool()
+  val write = Bool()
+}
+
+object DecodedMemCommand {
+  def apply[T <: Bits](cmd: T): DecodedMemCommand = {
+    val res = new DecodedMemCommand
+    res.load := (cmd === M_XRD)
+    res.store := (cmd === M_XWR)
+    res.amo := isAMO(cmd)
+    res.pf := isPrefetch(cmd)
+
+    res.read := (res.load || res.amo)
+    res.write := (res.store || res.amo)
+    res
+  }
+}
+
 class DecodedMemType extends Bundle {
   val b = Bool() // byte
   val h = Bool() // halfword

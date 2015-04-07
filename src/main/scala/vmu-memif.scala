@@ -40,15 +40,9 @@ class MBox extends VMUModule {
   private val req = io.outer.req
   private val resp = io.outer.resp
 
-  val cmd = abox.bits.cmd
-  val cmd_load = (cmd === M_XRD)
-  val cmd_store = (cmd === M_XWR)
-  val cmd_amo = isAMO(cmd)
-
-  val lbox_en = cmd_load || cmd_amo
-  val sbox_en = cmd_store || cmd_amo
-  val sbox_ready = !sbox_en || sbox.ready
-  val lbox_ready = !lbox_en || lbox.meta.ready
+  val cmd = DecodedMemCommand(abox.bits.cmd)
+  val sbox_ready = !cmd.write || sbox.ready
+  val lbox_ready = !cmd.read || lbox.meta.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(abox.valid, sbox_ready, lbox_ready, req.ready)
@@ -56,8 +50,8 @@ class MBox extends VMUModule {
   }
 
   abox.ready := fire(abox.valid)
-  sbox.valid := fire(sbox_ready, sbox_en)
-  lbox.meta.valid := fire(lbox_ready, lbox_en)
+  sbox.valid := fire(sbox_ready, cmd.write)
+  lbox.meta.valid := fire(lbox_ready, cmd.read)
   req.valid := fire(req.ready)
 
   // Load metadata
@@ -75,7 +69,8 @@ class MBox extends VMUModule {
   req.bits.cmd := abox.bits.cmd
   req.bits.mt := abox.bits.mt
   req.bits.addr := abox.bits.addr
-  req.bits.tag := Mux(lbox_en, lbox.meta.tag, sbox.meta.ecnt) // FIXME
+  req.bits.tag := Mux(cmd.read, lbox.meta.tag, sbox.meta.ecnt)
+  require(tlByteAddrBits <= tagBits)
   req.bits.store := sbox.store
 
   // Response demux
@@ -124,27 +119,19 @@ class VMUTileLink extends VMUModule {
   private val grant = io.dmem.grant
   private val finish = io.dmem.finish
 
-  val cmd = req.bits.cmd
-  val cmd_load = (cmd === M_XRD)
-  val cmd_store = (cmd === M_XWR)
-  val cmd_amo = isAMO(cmd)
-  val cmd_pf = isPrefetch(cmd)
-
-  assert(!req.valid || cmd_load || cmd_store || cmd_amo || cmd_pf,
+  val cmd = DecodedMemCommand(req.bits.cmd)
+  assert(!req.valid || cmd.load || cmd.store || cmd.amo || cmd.pf,
     "Unknown memory command")
-
-  val acq_get = cmd_load || cmd_amo
-  val acq_put = cmd_store || cmd_amo
 
   req.ready := acquire.ready
   acquire.valid := req.valid
 
-  val acq_type = Mux1H(Seq(cmd_load, cmd_store, cmd_amo, cmd_pf),
+  val acq_type = Mux1H(Seq(cmd.load, cmd.store, cmd.amo, cmd.pf),
     Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
 
   val acq_shift = req.bits.addr(tlByteAddrBits-1, 0)
   val acq_union_amo = Cat(acq_shift, req.bits.mt, req.bits.cmd)
-  val acq_union = Cat(Mux1H(Seq(cmd_load || cmd_pf, cmd_store, cmd_amo),
+  val acq_union = Cat(Mux1H(Seq(cmd.load || cmd.pf, cmd.store, cmd.amo),
     Seq(req.bits.cmd, req.bits.store.mask, acq_union_amo)), Bool(true))
 
   acquire.bits := Acquire(
@@ -153,7 +140,7 @@ class VMUTileLink extends VMUModule {
     client_xact_id = req.bits.tag,
     addr_block = req.bits.addr(paddrBits-1, tlBlockAddrOffset),
     addr_beat = req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits) &
-      Fill(tlBeatAddrBits, !cmd_pf),
+      Fill(tlBeatAddrBits, !cmd.pf),
     data = req.bits.store.data,
     union = acq_union)
 

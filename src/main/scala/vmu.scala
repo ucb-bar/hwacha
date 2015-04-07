@@ -51,11 +51,7 @@ class VMUDecodedOp extends VMUOpBase {
     val indexed = Bool()
     val scalar = Bool()
   }
-  val cmd = new Bundle {
-    val load = Bool()
-    val store = Bool()
-    val amo = Bool()
-  }
+  val cmd = new DecodedMemCommand
   val mt = new DecodedMemType
 
   val aux = new Bundle {
@@ -75,9 +71,7 @@ object VMUDecodedOp {
 
     op.mode.indexed := is_indexed(op.fn.mode)
     op.mode.scalar := is_scalar(op.fn.mode)
-    op.cmd.load := (op.fn.cmd === M_XRD)
-    op.cmd.store := (op.fn.cmd === M_XWR)
-    op.cmd.amo := isAMO(op.fn.cmd)
+    op.cmd := DecodedMemCommand(op.fn.cmd)
     op.mt := DecodedMemType(op.fn.mt)
 
     op.aux.v := src.aux.vector()

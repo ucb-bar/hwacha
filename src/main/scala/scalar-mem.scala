@@ -92,17 +92,3 @@ class SMU extends VMUModule {
     }
   }
 }
-
-// TODO: Remove
-
-class DeprecatedScalarMemOp extends Bundle {
-  val fn = new VMUFn
-  val addr = Bits(width = params(HwachaScalarDataBits))
-  val data = Bits(width = params(HwachaScalarDataBits))
-}
-
-class DeprecatedScalarMemIO extends Bundle {
-  val op = Valid(new DeprecatedScalarMemOp)
-  val xcpt = Bool(INPUT)
-  val resp = Decoupled(Bits(width = params(HwachaScalarDataBits))).flip
-} 
