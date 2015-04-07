@@ -300,15 +300,17 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.active.vstx := id_ctrl.active_vstx()
   io.vxu.bits.active.vld := id_ctrl.active_vld()
   io.vxu.bits.active.vst := id_ctrl.active_vst()
-  io.vxu.bits.fn.viu := id_ctrl.fn_viu()
-  io.vxu.bits.fn.vimu := id_ctrl.fn_vimu()
-  io.vxu.bits.fn.vidu := id_ctrl.fn_vidu()
-  io.vxu.bits.fn.vfmu := id_ctrl.fn_vfmu(rm)
-  io.vxu.bits.fn.vfdu := id_ctrl.fn_vfdu(rm)
-  io.vxu.bits.fn.vfcu := id_ctrl.fn_vfcu(rm)
-  io.vxu.bits.fn.vfvu := id_ctrl.fn_vfvu(rm)
-  io.vxu.bits.fn.vmu := id_ctrl.fn_vmu()
-  io.vxu.bits.fn.vqu := id_ctrl.fn_vqu()
+  io.vxu.bits.fn.union :=
+    MuxCase(Bits(0), Array(
+      id_ctrl.viu_val  -> id_ctrl.fn_viu().toBits,
+      id_ctrl.vimu_val -> id_ctrl.fn_vimu().toBits,
+      id_ctrl.vidu_val -> id_ctrl.fn_vidu().toBits,
+      id_ctrl.vfmu_val -> id_ctrl.fn_vfmu(rm).toBits,
+      id_ctrl.vfdu_val -> id_ctrl.fn_vfdu(rm).toBits,
+      id_ctrl.vfcu_val -> id_ctrl.fn_vfcu(rm).toBits,
+      id_ctrl.vfvu_val -> id_ctrl.fn_vfvu(rm).toBits,
+      id_ctrl.vmu_val  -> id_ctrl.fn_vmu().toBits
+    ))
   io.vxu.bits.reg.vs1.valid := vs1_val
   io.vxu.bits.reg.vs2.valid := vs2_val
   io.vxu.bits.reg.vs3.valid := vs3_val

@@ -2,6 +2,7 @@ package hwacha
 
 import Chisel._
 import Node._
+import Constants._
 
 abstract trait SeqParameters extends UsesHwachaParameters
 {
@@ -50,10 +51,15 @@ class Sequencer extends HwachaModule with LaneParameters
     val t3 = tail + UInt(3)
     val t4 = tail + UInt(4)
 
+    // clock gate ports and bypass ports
     val update_head = Bool()
     val update_tail = Bool()
     val next_head = UInt(width = log2Up(nseq))
     val next_tail = UInt(width = log2Up(nseq))
+
+    val update_first = Bool()
+    val next_valid = Vec.fill(nseq){Bool()}
+    val next_active = Vec.fill(nseq){new VFU}
 
     val update_haz = Vec.fill(nseq){Bool()}
     val next_raw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
@@ -64,25 +70,6 @@ class Sequencer extends HwachaModule with LaneParameters
     def count = Cat(full && head === tail, tail - head)
     def empty = UInt(nseq) - count
 
-    def set_head(n: UInt) = {
-      update_head := Bool(true)
-      next_head := n
-    }
-    def set_tail(n: UInt) = {
-      update_tail := Bool(true)
-      next_tail := n
-    }
-    def update_counter = {
-      when (update_head) { head := next_head }
-      when (update_tail) { tail := next_tail }
-      when (update_head && !update_tail) {
-        full := Bool(false)
-      }
-      when (update_tail) {
-        full := next_head === next_tail
-      }
-    }
-
     def ready = {
       val a = io.op.bits.active
       (a.vint || a.vimul || a.vfma || a.vfcmp || a.vfconv) && (empty >= UInt(1)) ||
@@ -91,15 +78,80 @@ class Sequencer extends HwachaModule with LaneParameters
       (a.vamo) && (empty >= UInt(4))
     }
 
-    def set_entry(n: UInt) = {
+    def set_head(n: UInt) = {
+      update_head := Bool(true)
+      next_head := n
+    }
+    def set_tail(n: UInt) = {
+      update_tail := Bool(true)
+      next_tail := n
+    }
+
+    def set_valid(n: UInt) = {
       valid(n) := Bool(true)
+      next_valid(n) := Bool(true)
+    }
+    def clear_valid(n: UInt) = {
+      valid(n) := Bool(false)
+      next_valid(n) := Bool(false)
+    }
+
+    def set_active(n: UInt, afn: VFU=>Bool, fn: IssueOp=>Bits) = {
+      afn(e(n).active) := Bool(true)
+      afn(next_active(n)) := Bool(true)
+      e(n).fn.union := fn(io.op.bits)
+    }
+    def clear_all_active(n: UInt) = {
+      e(n).active := e(0).active.clone().fromBits(Bits(0))
+      // don't need to update the bypass port,
+      // since the find_first doesn't depend on it
+    }
+
+    def find_first(afn: VFU=>Bool) = {
+      val internal = Vec.fill(2*nseq){Bool()}
+      for (i <- 0 until nseq) {
+        internal(i+nseq) := next_valid(i) && afn(next_active(i))
+        // we can use head here (opposed to next_head)
+        // because next_valid is bypassed
+        internal(i) := internal(i+nseq) && (UInt(i) >= head)
+      }
+      val priority_oh = PriorityEncoderOH(internal).toBits
+      priority_oh(2*nseq-1, nseq) | priority_oh(nseq-1, 0)
+    }
+
+    val vidu_ff = find_first((a: VFU) => a.vidu)
+    val vfdu_ff = find_first((a: VFU) => a.vfdu)
+    val vgu_ff = find_first((a: VFU) => a.vgu)
+    val vcu_ff = find_first((a: VFU) => a.vcu)
+    val vlu_ff = find_first((a: VFU) => a.vlu)
+    val vsu_ff = find_first((a: VFU) => a.vsu)
+    val vqu_ff = find_first((a: VFU) => a.vqu)
+
+    def set_first = {
+      val ff = vidu_ff | vfdu_ff | vgu_ff | vcu_ff | vlu_ff | vsu_ff | vqu_ff
+      for (i <- 0 until nseq) {
+        e(i).first := ff(i)
+      }
+    }
+    def set_update_first = {
+      update_first := Bool(true)
+    }
+
+    def set_entry(n: UInt) = {
+      set_valid(n)
       vlen(n) := io.op.bits.vlen
       update_haz(n) := Bool(true)
     }
-
     def clear_entry(n: UInt) = {
-      valid(n) := Bool(false)
-      e(n).active := e(0).active.clone().fromBits(Bits(0))
+      clear_valid(n)
+      clear_all_active(n)
+      when (e(n).active.vidu) { set_update_first }
+      when (e(n).active.vfdu) { set_update_first }
+      when (e(n).active.vgu) { set_update_first }
+      when (e(n).active.vcu) { set_update_first }
+      when (e(n).active.vlu) { set_update_first }
+      when (e(n).active.vsu) { set_update_first }
+      when (e(n).active.vqu) { set_update_first }
       e(n).reg.vs1.valid := Bool(false)
       e(n).reg.vs2.valid := Bool(false)
       e(n).reg.vs3.valid := Bool(false)
@@ -134,18 +186,35 @@ class Sequencer extends HwachaModule with LaneParameters
     }
 
     def header = {
+      update_head := Bool(false)
+      update_tail := Bool(false)
+      next_head := head
+      next_tail := tail
+
+      update_first := Bool(false)
+
       for (i <- 0 until nseq) {
+        next_valid(i) := valid(i)
+        next_active(i) := e(i).active
+
         update_haz(i) := Bool(false)
-        for  (j <- 0 until nseq) {
+        for (j <- 0 until nseq) {
           next_raw(i)(j) := e(i).raw(j)
           next_war(i)(j) := e(i).war(j)
           next_waw(i)(j) := e(i).waw(j)
         }
       }
-      update_head := Bool(false)
-      update_tail := Bool(false)
-      next_head := head
-      next_tail := tail
+    }
+
+    def update_counter = {
+      when (update_head) { head := next_head }
+      when (update_tail) { tail := next_tail }
+      when (update_head && !update_tail) {
+        full := Bool(false)
+      }
+      when (update_tail) {
+        full := next_head === next_tail
+      }
     }
 
     def footer = {
@@ -155,6 +224,10 @@ class Sequencer extends HwachaModule with LaneParameters
       }
 
       update_counter
+
+      when (update_first) {
+        set_first
+      }
 
       for (i <- 0 until nseq) {
         when (update_haz(i)) {
@@ -231,32 +304,24 @@ class Sequencer extends HwachaModule with LaneParameters
     def set_war_hazs_vd(n: UInt) = set_war_hazs(n)
     def set_waw_hazs_vd(n: UInt) = set_waw_hazs(n)
 
-    def set_vfu(n: UInt, afn: SequencerEntry=>Bool, fn: DecodedInstruction=>Bundle) = {
-      afn(e(n)) := Bool(true)
-      fn(e(n)) := fn(io.op.bits)
+    val fn_identity = (d: IssueOp) => d.fn.union
+    val fn_vqu = (d: IssueOp) => {
+      assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
+      Mux(d.active.vfdiv && d.fn.vfdu().op_is(FD_SQRT), Bits("b10"), Bits("b11"))
     }
-    def set_viu(n: UInt)  = set_vfu(n, (e: SequencerEntry) => e.active.viu, (d: DecodedInstruction) => d.fn.viu)
-    def set_vimu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vimu, (d: DecodedInstruction) => d.fn.vimu)
-    def set_vidu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vidu, (d: DecodedInstruction) => d.fn.vidu)
-    def set_vfmu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vfmu, (d: DecodedInstruction) => d.fn.vfmu)
-    def set_vfdu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vfdu, (d: DecodedInstruction) => d.fn.vfdu)
-    def set_vfcu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vfcu, (d: DecodedInstruction) => d.fn.vfcu)
-    def set_vfvu(n: UInt) = set_vfu(n, (e: SequencerEntry) => e.active.vfvu, (d: DecodedInstruction) => d.fn.vfvu)
 
-    def set_vmu(n: UInt, afn: SequencerEntry=>Bool) = {
-      afn(e(n)) := Bool(true)
-      e(n).fn.vmu := io.op.bits.fn.vmu
-    }
-    def set_vgu(n: UInt) = set_vmu(n, (e: SequencerEntry) => e.active.vgu)
-    def set_vcu(n: UInt) = set_vmu(n, (e: SequencerEntry) => e.active.vcu)
-    def set_vlu(n: UInt) = set_vmu(n, (e: SequencerEntry) => e.active.vlu)
-    def set_vsu(n: UInt) = set_vmu(n, (e: SequencerEntry) => e.active.vsu)
-
-    def set_vqu(n: UInt) = {
-      assert(io.op.bits.active.vidiv || io.op.bits.active.vfdiv, "vqu should only be issued for idiv/fdiv")
-      e(n).active.vqu := Bool(true)
-      e(n).fn.vqu := io.op.bits.fn.vqu
-    }
+    def set_viu(n: UInt) = set_active(n, (a: VFU) => a.viu, fn_identity)
+    def set_vimu(n: UInt) = set_active(n, (a: VFU) => a.vimu, fn_identity)
+    def set_vidu(n: UInt) = { set_active(n, (a: VFU) => a.vidu, fn_identity); set_update_first }
+    def set_vfmu(n: UInt) = set_active(n, (a: VFU) => a.vfmu, fn_identity)
+    def set_vfdu(n: UInt) = { set_active(n, (a: VFU) => a.vfdu, fn_identity); set_update_first }
+    def set_vfcu(n: UInt) = set_active(n, (a: VFU) => a.vfcu, fn_identity)
+    def set_vfvu(n: UInt) = set_active(n, (a: VFU) => a.vfvu, fn_identity)
+    def set_vgu(n: UInt) = { set_active(n, (a: VFU) => a.vgu, fn_identity); set_update_first }
+    def set_vcu(n: UInt) = { set_active(n, (a: VFU) => a.vcu, fn_identity); set_update_first }
+    def set_vlu(n: UInt) = { set_active(n, (a: VFU) => a.vlu, fn_identity); set_update_first }
+    def set_vsu(n: UInt) = { set_active(n, (a: VFU) => a.vsu, fn_identity); set_update_first }
+    def set_vqu(n: UInt) = { set_active(n, (a: VFU) => a.vqu, fn_vqu); set_update_first }
 
     def set_vs(n: UInt, vsfn: DecodedRegisters=>RegInfo, ssfn: ScalarRegisters=>Bits) = {
       when (vsfn(io.op.bits.reg).valid) {

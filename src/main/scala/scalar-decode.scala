@@ -82,7 +82,6 @@ class IntCtrlSigs extends Bundle
   def fn_vfcu(rm: Bits) = new VFCUFn().fromBits(Cat(fpu_fp, rm, vfcu_fn))
   def fn_vfvu(rm: Bits) = new VFVUFn().fromBits(Cat(fpu_fp, rm, vfvu_fn))
   def fn_vmu(d: Int = 0) = new VMUFn().fromBits(Cat(vmu_mode, vmu_cmd, vmu_mt))
-  def fn_vqu(d: Int = 0) = new VQUFn().fromBits(Mux(vfdu_val && vfdu_fn === FD_SQRT, Bits("b10"), Bits("b11")))
 }
 
 abstract trait VFDecodeTable

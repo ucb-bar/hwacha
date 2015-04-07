@@ -63,6 +63,31 @@ class VQUFn extends Bundle
   val latch = Bits(width = 2)
 }
 
+class VFn extends Bundle
+{
+  val union = Bits(width = List(
+    new VIUFn().toBits.getWidth,
+    new VIMUFn().toBits.getWidth,
+    new VIDUFn().toBits.getWidth,
+    new VFMUFn().toBits.getWidth,
+    new VFDUFn().toBits.getWidth,
+    new VFCUFn().toBits.getWidth,
+    new VFVUFn().toBits.getWidth,
+    new VMUFn().toBits.getWidth,
+    new VQUFn().toBits.getWidth).reduceLeft((x, y) => if (x > y) x else y)
+  )
+
+  def viu(d: Int = 0) = new VIUFn().fromBits(this.union)
+  def vimu(d: Int = 0) = new VIMUFn().fromBits(this.union)
+  def vidu(d: Int = 0) = new VIDUFn().fromBits(this.union)
+  def vfmu(d: Int = 0) = new VFMUFn().fromBits(this.union)
+  def vfdu(d: Int = 0) = new VFDUFn().fromBits(this.union)
+  def vfcu(d: Int = 0) = new VFCUFn().fromBits(this.union)
+  def vfvu(d: Int = 0) = new VFVUFn().fromBits(this.union)
+  def vmu(d: Int = 0) = new VMUFn().fromBits(this.union)
+  def vqu(d: Int = 0) = new VQUFn().fromBits(this.union)
+}
+
 
 //-------------------------------------------------------------------------\\
 // decoded information types
@@ -92,17 +117,7 @@ class ScalarRegisters extends HwachaBundle
 
 class DecodedInstruction extends HwachaBundle
 {
-  val fn = new Bundle {
-    val viu = new VIUFn
-    val vimu = new VIMUFn
-    val vidu = new VIDUFn
-    val vfmu = new VFMUFn
-    val vfdu = new VFDUFn
-    val vfcu = new VFCUFn
-    val vfvu = new VFVUFn
-    val vmu = new VMUFn
-    val vqu = new VQUFn // only used in the sequencer
-  }
+  val fn = new VFn // union
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
 }
@@ -160,6 +175,7 @@ class VFU extends Bundle
 class SequencerEntry extends DecodedInstruction with SeqParameters
 {
   val active = new VFU
+  val first = Bool()
   val base = new DecodedRegisters
   val raw = Vec.fill(nseq){Bool()}
   val war = Vec.fill(nseq){Bool()}
