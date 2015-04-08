@@ -92,6 +92,7 @@ class IBox extends VMUModule {
     val abox = new VMUIssueOpIO
     val sbox = new VMUIssueOpIO
     val smu = new VMUIssueOpIO
+    val quiescent = Bool(INPUT)
   }
 
   val issueq = Module(new Queue(new VMUOp, confvmu.ncmdq))
@@ -113,7 +114,7 @@ class IBox extends VMUModule {
     is (s_idle) {
       when (issueq.io.deq.valid) {
         state := s_busy
-        when (op.mode.scalar) { // FIXME: Check transactions in transit
+        when (op.mode.scalar) {
           io.smu.fire := Bool(true)
         } .otherwise {
           io.abox.fire := Bool(true)
@@ -123,7 +124,7 @@ class IBox extends VMUModule {
     }
 
     is (s_busy) {
-      when (!backends.map(_.busy).reduce(_||_)) {
+      when (!backends.map(_.busy).reduce(_||_) && io.quiescent) {
         state := s_idle
         issueq.io.deq.ready := Bool(true)
       }
@@ -158,6 +159,7 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
 
   val smu = Module(new SMU)
   val arb = Module(new VMUMemArb(2))
+  val mon = Module(new VMUMemMonitor)
 
   ibox.io.op <> io.op
   val sel = ibox.io.smu.op.mode.scalar
@@ -193,6 +195,10 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   arb.io.inner(1) <> smu.io.outer
   arb.io.sel := sel
   io.memif <> arb.io.outer
+
+  mon.io.req := io.memif.req.fire()
+  mon.io.resp := io.memif.resp.fire()
+  ibox.io.quiescent := mon.io.quiescent
 
   val irqs = Seq(abox.io.irq, smu.io.irq)
   io.irq.vmu.ma_ld := irqs.map(_.vmu.ma_ld).reduce(_ || _)

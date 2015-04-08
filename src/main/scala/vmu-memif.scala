@@ -104,6 +104,18 @@ class VMUMemArb(n: Int) extends VMUModule {
   }
 }
 
+class VMUMemMonitor extends VMUModule {
+  val io = new Bundle {
+    val req = Bool(INPUT)
+    val resp = Bool(INPUT)
+    val quiescent = Bool(OUTPUT)
+  }
+
+  val count = Reg(init = UInt(0, math.max(nvlreq, nvsreq)))
+  count := count + io.req.toUInt - io.resp.toUInt
+  io.quiescent := (count === UInt(0))
+}
+
 class VMUTileLink extends VMUModule {
   val io = new Bundle {
     val vmu = new VMUMemIO().flip
