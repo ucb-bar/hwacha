@@ -5,6 +5,13 @@ import Node._
 import Constants._
 import Commands._
 
+class HwachaConfigIO extends HwachaBundle
+{
+  val vregs = UInt(OUTPUT, szvregs+1)
+  val pregs = UInt(OUTPUT, szpregs+1)
+  val vstride = UInt(OUTPUT, SZ_REGLEN)
+}
+
 class CMDQIO extends Bundle
 {
   val cmd = Decoupled(Bits (width = CMD_X.getWidth))
@@ -66,6 +73,8 @@ class RoCCUnit extends HwachaModule
     val pending_seq = Bool(INPUT)
     val pending_memop = Bool(INPUT)
 
+    val cfg = new HwachaConfigIO
+
     val cmdq = new CMDQIO
   }
 
@@ -73,8 +82,11 @@ class RoCCUnit extends HwachaModule
   val cfg_maxvl = Reg(init=UInt(64, szvlen+1))
   val cfg_vl = Reg(init=UInt(0, szvlen+1))
   val cfg_vregs = Reg(init=UInt(32, szvregs+1))
-  val cfg_pregs = Reg(init=UInt(0, 5))
+  val cfg_pregs = Reg(init=UInt(0, szpregs+1))
   val cfg_vstride = Reg(init=UInt(32, SZ_REGLEN))
+  io.cfg.vregs := cfg_vregs
+  io.cfg.pregs := cfg_pregs
+  io.cfg.vstride := cfg_vstride
 
   // Decode
   val raw_inst = io.rocc.cmd.bits.inst.toBits

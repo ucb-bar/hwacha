@@ -31,6 +31,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val nvregs = 256
   val szvregs = log2Up(nvregs)
+  val npregs = 16
+  val szpregs = log2Up(npregs)
 
   val nsregs = params(HwachaNScalarRegs)
   val local_sfpu = params(HwachaLocalScalarFPU)
