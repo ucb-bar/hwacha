@@ -29,7 +29,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val debug = new Bundle {
       val valid = Vec.fill(nseq){Bool(OUTPUT)}
       val vlen = Vec.fill(nseq){UInt(width=szvlen)}.asOutput
-      val e = Vec.fill(nseq){new SequencerEntry}.asOutput
+      val e = Vec.fill(nseq){new SeqEntry}.asOutput
       val head = UInt(OUTPUT, log2Up(nseq))
       val tail = UInt(OUTPUT, log2Up(nseq))
       val full = Bool(OUTPUT)
@@ -46,7 +46,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 
     val valid = Vec.fill(nseq){Reg(init=Bool(false))}
     val vlen = Vec.fill(nseq){Reg(UInt(width=szvlen))}
-    val e = Vec.fill(nseq){Reg(new SequencerEntry)}
+    val e = Vec.fill(nseq){Reg(new SeqEntry)}
 
     val wport_valid = Vec.fill(maxWPortLatency){Reg(init=Bool(false))}
     val wport = Vec.fill(maxWPortLatency){Reg(UInt(width=szvregs))}
@@ -71,20 +71,15 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val next_head = UInt(width = log2Up(nseq))
     val next_tail = UInt(width = log2Up(nseq))
 
-    val update_vlen = Vec.fill(nseq){Bool()}
-    val update_vcu = Bool()
-    val update_vlu = Bool()
-    val update_vidu = Bool()
-    val update_vfdu = Bool()
-
-    val update_first = Bool()
-    val next_valid = Vec.fill(nseq){Bool()}
-    val next_active = Vec.fill(nseq){new VFU}
-
     val update_haz = Vec.fill(nseq){Bool()}
     val next_raw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
     val next_war = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
     val next_waw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
+
+    val vidu_ready = Bool()
+    val vfdu_ready = Bool()
+    val vcu_ready = Bool()
+    val vlu_ready = Bool()
 
     ///////////////////////////////////////////////////////////////////////////
     // header
@@ -95,19 +90,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       next_head := head
       next_tail := tail
 
-      update_vcu := Bool(false)
-      update_vlu := Bool(false)
-      update_vidu := Bool(false)
-      update_vfdu := Bool(false)
-
-      update_first := Bool(false)
-
       for (i <- 0 until nseq) {
-        update_vlen(i) := Bool(false)
-
-        next_valid(i) := valid(i)
-        next_active(i) := e(i).active
-
         update_haz(i) := Bool(false)
         for (j <- 0 until nseq) {
           next_raw(i)(j) := e(i).raw(j)
@@ -115,6 +98,11 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
           next_waw(i)(j) := e(i).waw(j)
         }
       }
+
+      vidu_ready := Bool(false)
+      vfdu_ready := Bool(false)
+      vcu_ready := Bool(false)
+      vlu_ready := Bool(false)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -142,52 +130,17 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 
     def set_valid(n: UInt) = {
       valid(n) := Bool(true)
-      next_valid(n) := Bool(true)
     }
     def clear_valid(n: UInt) = {
       valid(n) := Bool(false)
-      next_valid(n) := Bool(false)
     }
 
     def set_active(n: UInt, afn: VFU=>Bool, fn: IssueOp=>Bits) = {
       afn(e(n).active) := Bool(true)
-      afn(next_active(n)) := Bool(true)
       e(n).fn.union := fn(io.op.bits)
     }
     def clear_all_active(n: UInt) = {
       e(n).active := e(0).active.clone().fromBits(Bits(0))
-      // don't need to update the bypass port,
-      // since the find_first doesn't depend on it
-    }
-
-    def find_first(afn: VFU=>Bool) = {
-      val internal = Vec.fill(2*nseq){Bool()}
-      for (i <- 0 until nseq) {
-        internal(i+nseq) := next_valid(i) && afn(next_active(i))
-        // we can use head here (opposed to next_head)
-        // because next_valid is bypassed
-        internal(i) := internal(i+nseq) && (UInt(i) >= head)
-      }
-      val priority_oh = PriorityEncoderOH(internal).toBits
-      priority_oh(2*nseq-1, nseq) | priority_oh(nseq-1, 0)
-    }
-
-    val vidu_ff = find_first((a: VFU) => a.vidu)
-    val vfdu_ff = find_first((a: VFU) => a.vfdu)
-    val vgu_ff = find_first((a: VFU) => a.vgu)
-    val vcu_ff = find_first((a: VFU) => a.vcu)
-    val vlu_ff = find_first((a: VFU) => a.vlu)
-    val vsu_ff = find_first((a: VFU) => a.vsu)
-    val vqu_ff = find_first((a: VFU) => a.vqu)
-
-    def set_first = {
-      val ff = vidu_ff | vfdu_ff | vgu_ff | vcu_ff | vlu_ff | vsu_ff | vqu_ff
-      for (i <- 0 until nseq) {
-        e(i).first := ff(i)
-      }
-    }
-    def set_update_first = {
-      update_first := Bool(true)
     }
 
     def set_entry(n: UInt) = {
@@ -198,13 +151,6 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     def clear_entry(n: UInt) = {
       clear_valid(n)
       clear_all_active(n)
-      when (e(n).active.vidu) { set_update_first }
-      when (e(n).active.vfdu) { set_update_first }
-      when (e(n).active.vgu) { set_update_first }
-      when (e(n).active.vcu) { set_update_first }
-      when (e(n).active.vlu) { set_update_first }
-      when (e(n).active.vsu) { set_update_first }
-      when (e(n).active.vqu) { set_update_first }
       e(n).reg.vs1.valid := Bool(false)
       e(n).reg.vs2.valid := Bool(false)
       e(n).reg.vs3.valid := Bool(false)
@@ -313,16 +259,16 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 
     def set_viu(n: UInt) = set_active(n, (a: VFU) => a.viu, fn_identity)
     def set_vimu(n: UInt) = set_active(n, (a: VFU) => a.vimu, fn_identity)
-    def set_vidu(n: UInt) = { set_active(n, (a: VFU) => a.vidu, fn_identity); set_update_first }
+    def set_vidu(n: UInt) = set_active(n, (a: VFU) => a.vidu, fn_identity)
     def set_vfmu(n: UInt) = set_active(n, (a: VFU) => a.vfmu, fn_identity)
-    def set_vfdu(n: UInt) = { set_active(n, (a: VFU) => a.vfdu, fn_identity); set_update_first }
+    def set_vfdu(n: UInt) = set_active(n, (a: VFU) => a.vfdu, fn_identity)
     def set_vfcu(n: UInt) = set_active(n, (a: VFU) => a.vfcu, fn_identity)
     def set_vfvu(n: UInt) = set_active(n, (a: VFU) => a.vfvu, fn_identity)
-    def set_vgu(n: UInt) = { set_active(n, (a: VFU) => a.vgu, fn_identity); set_update_first }
-    def set_vcu(n: UInt) = { set_active(n, (a: VFU) => a.vcu, fn_identity); set_update_first }
-    def set_vlu(n: UInt) = { set_active(n, (a: VFU) => a.vlu, fn_identity); set_update_first }
-    def set_vsu(n: UInt) = { set_active(n, (a: VFU) => a.vsu, fn_identity); set_update_first }
-    def set_vqu(n: UInt) = { set_active(n, (a: VFU) => a.vqu, fn_vqu); set_update_first }
+    def set_vgu(n: UInt) = set_active(n, (a: VFU) => a.vgu, fn_identity)
+    def set_vcu(n: UInt) = set_active(n, (a: VFU) => a.vcu, fn_identity)
+    def set_vlu(n: UInt) = set_active(n, (a: VFU) => a.vlu, fn_identity)
+    def set_vsu(n: UInt) = set_active(n, (a: VFU) => a.vsu, fn_identity)
+    def set_vqu(n: UInt) = set_active(n, (a: VFU) => a.vqu, fn_vqu)
 
     def set_vs(n: UInt, vsfn: DecodedRegisters=>RegInfo, ssfn: ScalarRegisters=>Bits) = {
       when (vsfn(io.op.bits.reg).valid) {
@@ -518,66 +464,79 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     ///////////////////////////////////////////////////////////////////////////
     // schedule
 
-    val vcu_afn = (e: SequencerEntry) => e.active.vcu && e.first
-    val vlu_afn = (e: SequencerEntry) => e.active.vlu && e.first
-    val vidu_afn = (e: SequencerEntry) => e.active.vidu && e.first
-    val vfdu_afn = (e: SequencerEntry) => e.active.vfdu && e.first
+    def find_first(afn: VFU=>Bool) = {
+      val internal = Vec.fill(2*nseq){Bool()}
+      for (i <- 0 until nseq) {
+        internal(i+nseq) := valid(i) && afn(e(i).active)
+        internal(i) := internal(i+nseq) && (UInt(i) >= head)
+      }
+      val priority_oh = PriorityEncoderOH(internal)
+      val out = Vec.fill(nseq){Bool()}
+      for (i <- 0 until nseq) {
+        out(i) := priority_oh(i) | priority_oh(i+nseq)
+      }
+      out
+    }
 
-    def fire_vcu(n: Int) = vcu_afn(e(n)) && update_vcu
-    def fire_vlu(n: Int) = vlu_afn(e(n)) && update_vlu
-    def fire_vidu(n: Int) = vidu_afn(e(n)) && update_vidu
-    def fire_vfdu(n: Int) = vfdu_afn(e(n)) && update_vfdu
+    val vidu_sched = find_first((a: VFU) => a.vidu)
+    val vfdu_sched = find_first((a: VFU) => a.vfdu)
+    val vgu_sched = find_first((a: VFU) => a.vgu)
+    val vcu_sched = find_first((a: VFU) => a.vcu)
+    val vlu_sched = find_first((a: VFU) => a.vlu)
+    val vsu_sched = find_first((a: VFU) => a.vsu)
+    val vqu_sched = find_first((a: VFU) => a.vqu)
 
-    def strip(vl: UInt, vmu: Bool, fn: Bits) = {
+    def fire_vidu(n: Int) = vidu_sched(n) && vidu_ready
+    def fire_vfdu(n: Int) = vfdu_sched(n) && vfdu_ready
+    def fire_vcu(n: Int) = vcu_sched(n) && vcu_ready
+    def fire_vlu(n: Int) = vlu_sched(n) && vlu_ready
+    def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n)
+
+    def active_vmu(n: Int) = e(n).active.vgu || e(n).active.vcu || e(n).active.vlu || e(n).active.vsu
+
+    def stripfn(vl: UInt, vmu: Bool, fn: Bits) = {
       val vmu_fn = new VMUFn().fromBits(fn)
       val max_strip = Mux(vmu && vmu_fn.mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
       Mux(vl > max_strip, max_strip, vl)
     }
 
-    def valfn(afn: SequencerEntry=>Bool) =
-      valid.zip(vlen).zip(e).map({ case ((v, vl), e) => v && vl.orR && afn(e) }).reduce(_ || _)
+    def valfn(sched: Vec[Bool]) = sched.reduce(_ || _)
 
-    def vlenfn(afn: SequencerEntry=>Bool) =
-      valid.zip(vlen).zip(e).map({ case ((v, vl), e) => dgate(v && afn(e), vl) }).reduce(_ | _)
+    def vlenfn(sched: Vec[Bool]) =
+      sched.zip(vlen).map({ case (s, vl) => dgate(s, vl) }).reduce(_ | _)
 
-    def readfn(afn: SequencerEntry=>Bool, rfn: SequencerEntry=>Bits) =
-      valid.zip(e).map({ case (v, e) => dgate(v && afn(e), rfn(e)) }).reduce(_ | _)
+    def readfn(sched: Vec[Bool], rfn: SeqEntry=>Bits) =
+      sched.zip(e).map({ case (s, e) => dgate(s, rfn(e)) }).reduce(_ | _)
 
-    val vcu_val = valfn(vcu_afn)
-    val vcu_vlen = vlenfn(vcu_afn)
-    val vcu_strip = strip(vcu_vlen, Bool(true), readfn(vcu_afn, (e: SequencerEntry) => e.fn.union))
-    def vcu_ready(f: Bool) = {
-      update_vcu := f
-    }
+    val vcu_val = valfn(vcu_sched)
+    val vcu_vlen = vlenfn(vcu_sched)
+    val vcu_strip = stripfn(vcu_vlen, Bool(true), readfn(vcu_sched, (e: SeqEntry) => e.fn.union))
 
-    val vlu_val = valfn(vlu_afn)
-    val vlu_vlen = vlenfn(vlu_afn)
-    val vlu_strip = strip(vlu_vlen, Bool(true), readfn(vlu_afn, (e: SequencerEntry) => e.fn.union))
-    def vlu_ready(f: Bool) = {
-      update_vlu := f
-    }
+    val vlu_val = valfn(vlu_sched)
+    val vlu_vlen = vlenfn(vlu_sched)
+    val vlu_strip = stripfn(vlu_vlen, Bool(true), readfn(vlu_sched, (e: SeqEntry) => e.fn.union))
 
     ///////////////////////////////////////////////////////////////////////////
     // footer
 
     def footer = {
+      val retire = Vec.fill(nseq){Bool()}
+
       for (i <- 0 until nseq) {
-        val vmu_val = e(i).active.vgu || e(i).active.vcu || e(i).active.vlu || e(i).active.vsu
-        when (valid(i) && (fire_vcu(i) || fire_vlu(i) || fire_vidu(i) || fire_vfdu(i))) {
-          vlen(i) := vlen(i) - strip(vlen(i), vmu_val, e(i).fn.union)
+        retire(i) := Bool(false)
+        when (valid(i) && fire(i)) {
+          val strip = stripfn(vlen(i), active_vmu(i), e(i).fn.union)
+          retire(i) := vlen(i) === strip
+          vlen(i) := vlen(i) - strip
         }
       }
 
-      when (valid(head) && vlen(head) === UInt(0)) {
+      when (valid(head) && retire(head)) {
         retire_entry(head)
         set_head(h1)
       }
 
       update_counter
-
-      when (update_first) {
-        set_first
-      }
 
       for (i <- 0 until nseq) {
         when (update_haz(i)) {
@@ -628,11 +587,11 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 
   io.vmu.la.pala.cnt := seq.vcu_strip
   io.vmu.la.pala.reserve := seq.vcu_val && io.vmu.la.pala.available
-  seq.vcu_ready(io.vmu.la.pala.available)
+  seq.vcu_ready := io.vmu.la.pala.available
 
   io.lla.cnt := seq.vlu_strip
   io.lla.reserve := seq.vlu_val && io.lla.available
-  seq.vlu_ready(io.lla.available)
+  seq.vlu_ready := io.lla.available
 
   io.sla.reserve := Bool(false)
 
