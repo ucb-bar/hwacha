@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import uncore.constants.MemoryOpConstants._
 import DataGating._
 import HardFloatHelper._
 
@@ -169,12 +170,23 @@ class ScalarDpath extends HwachaModule
                Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
 
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
+  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0,SZ_VSTRIDE),Seq(
+                      MT_B->  UInt(1,SZ_VSTRIDE),
+                      MT_BU-> UInt(1,SZ_VSTRIDE),
+                      MT_H->  UInt(2,SZ_VSTRIDE),
+                      MT_HU-> UInt(2,SZ_VSTRIDE),
+                      MT_W->  UInt(4,SZ_VSTRIDE),
+                      MT_WU-> UInt(4,SZ_VSTRIDE),
+                      MT_D->  UInt(8,SZ_VSTRIDE) 
+                    ))
                                  // data        waddr
   io.vmu.bits.base :=
     Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
   io.vmu.bits.aux.union :=
     Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
-                         VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits)
+                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VS, 
+                           VMUAuxVector(addr_stride).toBits,
+                           VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits))
 
   //Writeback stage
   when(!ex_reg_kill) {

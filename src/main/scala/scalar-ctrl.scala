@@ -15,6 +15,7 @@ class CtrlDpathIO extends HwachaBundle
   val killf = Bool(OUTPUT)
   val fire_vf = Bool(OUTPUT)
   val killd = Bool(OUTPUT)
+  val id_ctrl = new IntCtrlSigs().asOutput()
   val sren = Vec.fill(3)(Bool(OUTPUT))
   val aren = Vec.fill(2)(Bool(OUTPUT))
   val ex_scalar_dest = Bool(OUTPUT)
@@ -122,6 +123,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, decode_table)
   val ex_ctrl = Reg(new IntCtrlSigs)
   val wb_ctrl = Reg(new IntCtrlSigs)
+  io.dpath.id_ctrl := id_ctrl
   io.dpath.ex_ctrl := ex_ctrl
   io.dpath.wb_ctrl := wb_ctrl
 
@@ -140,16 +142,16 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  when(fire(null,decode_vsetcfg)) {
+  when (fire(null,decode_vsetcfg)) {
     vl    := io.cmdq.imm.bits(vl.getWidth, 0)
     vregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth, vl.getWidth+1)
     pregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth+pregs.getWidth, vl.getWidth+vregs.getWidth+1)
   }
-  when(fire(null,decode_vsetvl)) {
+  when (fire(null,decode_vsetvl)) {
     vl    := io.cmdq.imm.bits(vl.getWidth, 0)
   }
   io.dpath.fire_vf := Bool(false)
-  when(fire(null,decode_vf)) {
+  when (fire(null,decode_vf)) {
     vf_active := Bool(true)
     io.dpath.fire_vf := Bool(true)
   }
