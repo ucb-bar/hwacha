@@ -207,3 +207,281 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
   io.vsdq.bits := Mux1H(mtsel,
     Seq(data_b_head ++ data_b, data_h, data_w, data_d).map(x => Cat(x.reverse)))
 }
+
+class VLUEntry extends HwachaBundle with LaneParameters {
+  val eidx = UInt(width = SZ_VLEN - log2Up(nBatch))
+  val data = Bits(width = SZ_DATA)
+  val mask = Bits(width = nSlices)
+}
+
+class VLU extends HwachaModule with LaneParameters with VMUParameters {
+  val io = new Bundle {
+    val op = Decoupled(new DCCMemOp).flip
+
+    val vldq = new VLDQIO().flip
+    val bwqs = Vec.fill(nbanks)(new BWQIO)
+    val la = new CounterLookAheadIO().flip
+  }
+
+  //--------------------------------------------------------------------\\
+  // control
+  //--------------------------------------------------------------------\\
+
+  val vlen = Reg(UInt(width = SZ_VLEN))
+  val eidx = Reg(UInt(width = SZ_VLEN))
+  val eidx_next = eidx + io.la.cnt
+
+  val mt_hold = Reg(Bits(width = MT_SZ))
+  val mt = DecodedMemType(mt_hold)
+  val mt_sel = Seq(mt.d, mt.w, mt.h, mt.b)
+
+  io.op.ready := Bool(false)
+
+  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
+  val state = Reg(init = s_idle)
+
+  switch (state) {
+    is (s_idle) {
+      io.op.ready := Bool(true)
+      when (io.op.valid) {
+        state := s_busy
+        eidx := UInt(0)
+        vlen := io.op.bits.vlen
+        mt_hold := io.op.bits.fn.mt
+      }
+    }
+
+    is (s_busy) {
+      when (io.la.reserve) {
+        eidx := eidx_next
+        when (eidx_next === vlen) {
+          state := s_idle
+        }
+      }
+    }
+  }
+
+
+  val inter = Module(new VLUInterposer)
+  inter.io.enq <> io.vldq
+  inter.io.en := mt.b
+  inter.io.init := io.op.fire()
+
+  val vldq = inter.io.deq
+  val meta = vldq.bits.meta
+
+  //--------------------------------------------------------------------\\
+  // permutation network
+  //--------------------------------------------------------------------\\
+
+  private val lgbanks = log2Up(nbanks)
+  private val lgslices = log2Up(nSlices)
+  private val lgbatch = log2Up(nBatch)
+
+  val eidx_slice = meta.eidx(lgslices-1, 0)
+  val eidx_batch = meta.eidx(lgbatch-1, 0)
+  val eidx_bank = meta.eidx(lgbatch-1, lgslices)
+  val eidx_reg = meta.eidx(SZ_VLEN-1, lgbatch)
+  val eidx_reg_next = eidx_reg + UInt(1)
+
+  require(nSlices == 2)
+
+  val data_rotamt = eidx_batch - meta.eskip
+  val mask_rotamt = eidx_batch
+
+  private def rotate[T <: Data](gen: T, in: Iterable[T], sel: UInt) = {
+    val rot = Module(new Rotator(gen, in.size, nBatch))
+    val out = Vec.fill(nBatch)(gen.clone)
+    rot.io.sel := sel
+    rot.io.in := in
+    out := rot.io.out
+    out
+  }
+
+  val mt_signed = !mt.unsigned
+  private def extend(in: Bits, sz: Int): Bits =
+    if (sz < SZ_D) Cat(Fill(SZ_D-sz, in(sz-1) && mt_signed), in) else in
+
+  private def rotate_data(sz: Int) = {
+    val elts = (0 until tlDataBits by sz).map(i => vldq.bits.data(i+sz-1, i))
+    val in = if (elts.size > nBatch) elts.take(nBatch) else elts
+    val out = rotate(Bits(), in, data_rotamt)
+    Vec(out.map(extend(_, sz)))
+  }
+
+  val data_d = rotate_data(SZ_D)
+  val data_w = rotate_data(SZ_W)
+  val data_h = rotate_data(SZ_H)
+  val data_b = rotate_data(SZ_B)
+
+  val data = Mux1H(mt_sel, Seq(data_d, data_w, data_h, data_b))
+
+  //--------------------------------------------------------------------\\
+  // masking / overflow
+  //--------------------------------------------------------------------\\
+
+  val tick = Reg(Bool())
+  val tock = !tick
+
+  val mask_root = EnableDecoder(meta.ecnt, nBatch)
+
+  assert(!vldq.valid || (meta.ecnt <= UInt(nBatch)), "ecnt exceeds limit")
+  val slice_unaligned = (eidx_slice != UInt(0)) && tick
+  val slice_overflow = mask_root.last && slice_unaligned
+
+  val tock_next = vldq.valid && slice_overflow && (state === s_busy)
+  tick := !tock_next
+
+  val mask_head = tick
+  val mask_tail = !slice_unaligned
+  val mask_beat = mask_root.init.map(_ && mask_head) :+ (mask_root.last && mask_tail)
+  val mask = rotate(Bool(), mask_beat, eidx_batch)
+
+  //--------------------------------------------------------------------\\
+  // bank write queues
+  //--------------------------------------------------------------------\\
+
+  private def merge[T <: Data](in: Seq[T]): Seq[Bits] =
+    in.grouped(nSlices).map(xs => Cat(xs.reverse)).toSeq
+
+  val bwqs_data = merge(data)
+  val bwqs_mask = merge(mask)
+  val bwqs_en = bwqs_mask.map(_.orR)
+
+  val wb_update = Vec.fill(nbanks)(Bits(width = nvlreq))
+
+  val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
+    val bwq = Module(new Queue(new VLUEntry, nbwq))
+
+    val eidx_advance = (UInt(i) < eidx_bank) || tock
+    bwq.io.enq.bits.eidx := Mux(eidx_advance, eidx_reg_next, eidx_reg)
+    bwq.io.enq.bits.data := bwqs_data(i)
+    bwq.io.enq.bits.mask := bwqs_mask(i)
+
+    val wb_eidx = Cat(bwq.io.deq.bits.eidx, UInt(i, lgbanks), UInt(0, lgslices))
+    val wb_shift = wb_eidx - eidx
+    val wb_mask = bwq.io.deq.bits.mask & Fill(nSlices, bwq.io.deq.fire())
+    wb_update(i) := wb_mask << wb_shift
+
+    deq.valid := bwq.io.deq.valid
+    bwq.io.deq.ready := deq.ready
+
+    deq.bits.addr := UInt(0) // FIXME
+    deq.bits.data := bwq.io.deq.bits.data
+    deq.bits.mask := FillInterleaved(SZ_D, bwq.io.deq.bits.mask)
+    bwq.io.enq
+  }
+
+  val bwqs_ready = bwqs.zip(bwqs_en).map { case (bwq, en) => !en || bwq.ready }
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = vldq.valid +: bwqs_ready
+    (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _)
+  }
+
+  val vldq_en = !slice_overflow
+  vldq.ready := fire(vldq.valid, vldq_en)
+  bwqs.zip(bwqs_ready.zip(bwqs_en)).foreach { case (bwq, (ready, en)) =>
+    bwq.valid := fire(ready, en)
+  }
+
+  //--------------------------------------------------------------------\\
+  // writeback status
+  //--------------------------------------------------------------------\\
+
+  val wb_status = Reg(Bits(width = nvlreq))
+  val wb_next = wb_status | wb_update.reduce(_ | _)
+  val wb_retire_cnt = (io.la.cnt >> UInt(lgbatch)) &
+    Fill(lookAheadMax - lgbatch, io.la.reserve)
+  val wb_retire = Cat(wb_retire_cnt, UInt(0, lgbatch))
+
+  wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state != s_idle)
+
+  private def priority(in: Iterable[(Bool, UInt)]): (Bool, UInt) = {
+    if (in.size > 1) {
+      val cnt = in.foldLeft(UInt(0)) { case (cnt0, (sel, cnt1)) =>
+        Mux(sel, cnt1, cnt0)
+      }
+      val sel = in.map(_._1).reduce(_ || _)
+      (sel, cnt)
+    } else in.head
+  }
+
+  private def priority_tree(in: Iterable[(Bool, UInt)]): Iterable[(Bool, UInt)] = {
+    val stage = in.grouped(2).map(xs => priority(xs)).toSeq
+    if (stage.size > 1) priority_tree(stage) else stage
+  }
+
+  // Limited leading-ones count
+  val wb_locnt_init = (0 until lookAheadMax).map(i => (wb_status(i), UInt(i+1)))
+  val wb_locnt_tree = priority_tree(wb_locnt_init).head
+  val wb_locnt = Mux(wb_locnt_tree._1, wb_locnt_tree._2, UInt(0))
+  io.la.available := (wb_locnt >= io.la.cnt)
+}
+
+class VLUInterposer extends VMUModule with LaneParameters {
+  val io = new Bundle {
+    val enq = new VLDQIO().flip
+    val deq = new VLDQIO
+
+    val init = Bool(INPUT)
+    val en = Bool(INPUT)
+  }
+
+  val meta = io.enq.bits.meta
+
+  val ecnt_head = SInt(nBatch) - meta.eskip.zext
+  val ecnt_tail = meta.ecnt.zext - ecnt_head
+  val has_head = (ecnt_head > SInt(0))
+  val has_tail = (ecnt_tail > SInt(0))
+
+  val shift = Bool()
+  val dequeue = Bool()
+  shift := Bool(false)
+  dequeue := Bool(true)
+
+  io.deq.valid := io.enq.valid
+  io.enq.ready := io.deq.ready && dequeue
+
+  val fire = io.deq.fire()
+  io.deq.bits.meta := meta
+  io.deq.bits.data := Mux(shift,
+    io.enq.bits.data(tlDataBits-1, nBatch*8),
+    io.enq.bits.data)
+
+  val s1 :: s2 :: Nil = Enum(UInt(), 2)
+  val state = Reg(UInt())
+
+  when (io.init) {
+    state := s1
+  }
+
+  when (io.en) {
+    switch (state) {
+      is (s1) {
+        when (has_tail) {
+          when (has_head) { /* two beats */
+            io.deq.bits.meta.ecnt := ecnt_head
+            dequeue := Bool(false)
+            when (fire) {
+              state := s2
+            }
+          } .otherwise { /* one beat, shifted */
+            io.deq.bits.meta.eskip := meta.eskip - UInt(nBatch)
+            shift := Bool(true)
+          }
+        }
+      }
+
+      is (s2) {
+        io.deq.bits.meta.ecnt := ecnt_tail
+        io.deq.bits.meta.eidx := meta.eidx + ecnt_head
+        io.deq.bits.meta.eskip := UInt(0)
+        shift := Bool(true)
+        when (fire) {
+          state := s1
+        }
+      }
+    }
+  }
+}

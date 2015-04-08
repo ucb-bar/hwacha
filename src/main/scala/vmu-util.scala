@@ -59,3 +59,11 @@ class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends M
   io.out := barrel
 }
 
+object EnableDecoder {
+  def apply[T <: Data](in: T, n: Int) = {
+    val out = Vec.fill(n)(Bool())
+    val sel = (n until 0 by -1).map(i => (in === Bits(i)))
+    out := Vec((0 until n).map(i => sel.take(sel.size - i).reduce(_||_)))
+    out
+  }
+}
