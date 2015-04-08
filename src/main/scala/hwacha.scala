@@ -69,9 +69,9 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
 
   val confvcmdq = new {
-    val ncmd = 19
-    val nimm = 19
-    val nrd = 19
+    val ncmd = 16
+    val nimm = 16
+    val nrd = 16
     val ncnt = nbanks
   }
 
