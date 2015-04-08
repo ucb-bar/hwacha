@@ -54,7 +54,9 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   //since we have no fine-grained invalidation we assume the line buffer is up-to-date unless we recieve an invalidate
 
   val req_val = io.vxu.req.valid || io.vru.req.valid;
-  val req_pc = Mux(req_val && !prev_icmiss && !icmiss,
+  val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
+                         io.vru.resp.valid && !io.vru.resp.ready)
+  val req_pc = Mux(req_val && !prev_icmiss && !icmiss && !stall,
                Mux(io.vxu.req.valid, io.vxu.req.bits.nnpc, io.vru.req.bits.nnpc),
                Mux(req_val && !icmiss,
                Mux(io.vxu.req.valid, io.vxu.req.bits.npc, io.vru.req.bits.npc),
@@ -77,8 +79,6 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val s0_same_block = (req_type && vxu_same_block) || 
                       (!req_type && vru_same_block) //|| req_same_block
 
-  val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
-                         io.vru.resp.valid && !io.vru.resp.ready)
 
   when(!stall) {
     s1_same_block := s0_same_block && !tlb.io.resp.miss && req_val

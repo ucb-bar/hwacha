@@ -91,11 +91,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vregs         = Reg(init=UInt(32, szvregs+1))
   val pregs         = Reg(init=UInt(0, 5))
 
-  val pending_seq   = Reg(init=Bool(false))
   val pending_memop = Reg(init=Bool(false))
 
   io.vf_active     := vf_active
-  io.pending_seq   := pending_seq
   io.pending_memop := pending_memop
 
   val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
@@ -348,7 +346,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_killd) {
     ex_ctrl := id_ctrl
   }
-  when(!ctrl_killd || id_ctrl.decode_stop) {
+  when(!ctrl_killd || ex_ctrl.decode_stop) {
     ex_vf_active := vf_active
   }
 
@@ -372,7 +370,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (!ctrl_killx) {
     wb_ctrl := ex_ctrl
   }
-  when(!ctrl_killx || ex_ctrl.decode_stop) {
+  when(!ctrl_killx || wb_ctrl.decode_stop) {
     wb_vf_active := ex_vf_active
   }
 
