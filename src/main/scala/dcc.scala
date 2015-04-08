@@ -8,6 +8,7 @@ class DecoupledClusterIO extends DecoupledIO(new DCCMemOp)
 class DecoupledCluster extends HwachaModule with VMUParameters {
   val io = new Bundle {
     val op = new DecoupledClusterIO().flip
+    val cfg = new HwachaConfigIO().flip
     val mem = new Bundle {
       val brqs = Vec.fill(nbanks)(new BRQIO).flip
       val bwqs = Vec.fill(nbanks)(new BWQIO)
@@ -31,6 +32,7 @@ class DecoupledCluster extends HwachaModule with VMUParameters {
   vlu.io.bwqs <> io.mem.bwqs
   vlu.io.la <> io.mem.lla
   vlu.io.vldq <> io.mem.vmu.vldq
+  vlu.io.cfg <> io.cfg
 
   vsu.io.op.valid := io.op.valid && cmd.write
   vsu.io.op.bits := io.op.bits

@@ -221,6 +221,8 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
     val vldq = new VLDQIO().flip
     val bwqs = Vec.fill(nbanks)(new BWQIO)
     val la = new CounterLookAheadIO().flip
+
+    val cfg = new HwachaConfigIO().flip
   }
 
   //--------------------------------------------------------------------\\
@@ -235,6 +237,8 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   val mt = DecodedMemType(mt_hold)
   val mt_sel = Seq(mt.d, mt.w, mt.h, mt.b)
 
+  val vd = Reg(UInt(width = szvregs))
+
   io.op.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
@@ -248,6 +252,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
         eidx := UInt(0)
         vlen := io.op.bits.vlen
         mt_hold := io.op.bits.fn.mt
+        vd := io.op.bits.vd.id
       }
     }
 
@@ -261,6 +266,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
     }
   }
 
+  assert(!io.op.valid || io.op.bits.vd.valid, "invalid vd in VLU")
 
   val inter = Module(new VLUInterposer)
   inter.io.enq <> io.vldq
@@ -366,9 +372,11 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready
 
-    deq.bits.addr := UInt(0) // FIXME
+    deq.bits.selff := Bool(false) // FIXME
+    deq.bits.addr := vd + (bwq.io.deq.bits.eidx * io.cfg.vstride)
     deq.bits.data := bwq.io.deq.bits.data
     deq.bits.mask := FillInterleaved(SZ_D, bwq.io.deq.bits.mask)
+
     bwq.io.enq
   }
 

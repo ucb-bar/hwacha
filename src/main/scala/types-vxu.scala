@@ -327,7 +327,7 @@ class VFVUAck extends VFXUAck
 // decoupled cluster (dcc) types
 //-------------------------------------------------------------------------\\
 
-abstract class DCCOp extends Bundle
+abstract class DCCOp extends HwachaBundle
 {
   val vlen = UInt(width = SZ_VLEN)
 }
@@ -335,6 +335,7 @@ abstract class DCCOp extends Bundle
 class DCCMemOp extends DCCOp
 {
   val fn = new VMUFn
+  val vd = new RegInfo
 }
 
 class BRQEntry extends Bundle

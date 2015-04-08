@@ -9,6 +9,7 @@ class VXU extends HwachaModule
 {
   val io = new Bundle {
     val issue = new VXUIssueOpIO().flip
+    val cfg = new HwachaConfigIO().flip
     val vmu = new LaneMemIO
   }
 
@@ -33,6 +34,7 @@ class VXU extends HwachaModule
   seq.io.op.bits := io.issue.bits
   dcc.io.op.bits.vlen := io.issue.bits.vlen
   dcc.io.op.bits.fn := io.issue.bits.fn.vmu()
+  dcc.io.op.bits.vd := io.issue.bits.reg.vd
 
   seq.io.ack <> lane.io.ack
 
@@ -43,6 +45,8 @@ class VXU extends HwachaModule
 
   io.vmu <> lane.io.vmu
   io.vmu <> dcc.io.mem.vmu
+
+  dcc.io.cfg <> io.cfg
 
   // FIXME
   dcc.io.mem.spred.valid := Bool(false)
