@@ -11,6 +11,7 @@ class VXU extends HwachaModule
     val issue = new VXUIssueOpIO().flip
     val cfg = new HwachaConfigIO().flip
     val vmu = new LaneMemIO
+    val pending_seq = Bool(OUTPUT)
   }
 
   val seq = Module(new Sequencer)
@@ -40,16 +41,20 @@ class VXU extends HwachaModule
 
   lane.io.op <> seq.io.lane
 
+  dcc.io.mem.lla <> seq.io.lla
+  dcc.io.mem.sla <> seq.io.sla
+
   lane.io.brqs <> dcc.io.mem.brqs
   lane.io.bwqs <> dcc.io.mem.bwqs
 
+  io.vmu <> seq.io.vmu
   io.vmu <> lane.io.vmu
   io.vmu <> dcc.io.mem.vmu
 
   dcc.io.cfg <> io.cfg
+  io.pending_seq := seq.io.pending
 
   // FIXME
   dcc.io.mem.spred.valid := Bool(false)
-  dcc.io.mem.sla.reserve := Bool(false)
   dcc.io.xcpt.prop.vmu.stall := Bool(false)
 }

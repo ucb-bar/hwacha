@@ -212,7 +212,7 @@ class RoCCUnit extends HwachaModule
   // Busy signal for fencing
   val busy =
     cmdq.io.deq.cmd.valid ||
-    io.vf_active || io.pending_memop
+    io.vf_active || io.pending_seq || io.pending_memop
 
   io.rocc.busy := busy
 

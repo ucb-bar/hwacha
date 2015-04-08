@@ -3,6 +3,8 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
+import DataGating._
+import uncore.constants.MemoryOpConstants._
 
 abstract trait SeqParameters extends UsesHwachaParameters
 {
@@ -18,8 +20,12 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 {
   val io = new Bundle {
     val op = new VXUIssueOpIO().flip
+    val vmu = new LaneMemIO
+    val lla = new CounterLookAheadIO
+    val sla = new BRQLookAheadIO
     val lane = new LaneOpIO
     val ack = new LaneAckIO().flip
+    val pending = Bool(OUTPUT)
     val debug = new Bundle {
       val valid = Vec.fill(nseq){Bool(OUTPUT)}
       val vlen = Vec.fill(nseq){UInt(width=szvlen)}.asOutput
@@ -65,6 +71,12 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val next_head = UInt(width = log2Up(nseq))
     val next_tail = UInt(width = log2Up(nseq))
 
+    val update_vlen = Vec.fill(nseq){Bool()}
+    val update_vcu = Bool()
+    val update_vlu = Bool()
+    val update_vidu = Bool()
+    val update_vfdu = Bool()
+
     val update_first = Bool()
     val next_valid = Vec.fill(nseq){Bool()}
     val next_active = Vec.fill(nseq){new VFU}
@@ -75,10 +87,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val next_waw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
 
     ///////////////////////////////////////////////////////////////////////////
-    // helpers
-
-    def count = Cat(full && head === tail, tail - head)
-    def empty = UInt(nseq) - count
+    // header
 
     def header = {
       update_head := Bool(false)
@@ -86,9 +95,16 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       next_head := head
       next_tail := tail
 
+      update_vcu := Bool(false)
+      update_vlu := Bool(false)
+      update_vidu := Bool(false)
+      update_vfdu := Bool(false)
+
       update_first := Bool(false)
 
       for (i <- 0 until nseq) {
+        update_vlen(i) := Bool(false)
+
         next_valid(i) := valid(i)
         next_active(i) := e(i).active
 
@@ -100,6 +116,12 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
         }
       }
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // helpers
+
+    val count = Cat(full && head === tail, tail - head)
+    val empty = UInt(nseq) - count
 
     def ready = {
       val a = io.op.bits.active
@@ -493,7 +515,59 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     ///////////////////////////////////////////////////////////////////////////
     // strucutral hazard checking
 
+    ///////////////////////////////////////////////////////////////////////////
+    // schedule
+
+    val vcu_afn = (e: SequencerEntry) => e.active.vcu && e.first
+    val vlu_afn = (e: SequencerEntry) => e.active.vlu && e.first
+    val vidu_afn = (e: SequencerEntry) => e.active.vidu && e.first
+    val vfdu_afn = (e: SequencerEntry) => e.active.vfdu && e.first
+
+    def fire_vcu(n: Int) = vcu_afn(e(n)) && update_vcu
+    def fire_vlu(n: Int) = vlu_afn(e(n)) && update_vlu
+    def fire_vidu(n: Int) = vidu_afn(e(n)) && update_vidu
+    def fire_vfdu(n: Int) = vfdu_afn(e(n)) && update_vfdu
+
+    def strip(vl: UInt, vmu: Bool, fn: Bits) = {
+      val vmu_fn = new VMUFn().fromBits(fn)
+      val max_strip = Mux(vmu && vmu_fn.mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
+      Mux(vl > max_strip, max_strip, vl)
+    }
+
+    def valfn(afn: SequencerEntry=>Bool) =
+      valid.zip(vlen).zip(e).map({ case ((v, vl), e) => v && vl.orR && afn(e) }).reduce(_ || _)
+
+    def vlenfn(afn: SequencerEntry=>Bool) =
+      valid.zip(vlen).zip(e).map({ case ((v, vl), e) => dgate(v && afn(e), vl) }).reduce(_ | _)
+
+    def readfn(afn: SequencerEntry=>Bool, rfn: SequencerEntry=>Bits) =
+      valid.zip(e).map({ case (v, e) => dgate(v && afn(e), rfn(e)) }).reduce(_ | _)
+
+    val vcu_val = valfn(vcu_afn)
+    val vcu_vlen = vlenfn(vcu_afn)
+    val vcu_strip = strip(vcu_vlen, Bool(true), readfn(vcu_afn, (e: SequencerEntry) => e.fn.union))
+    def vcu_ready(f: Bool) = {
+      update_vcu := f
+    }
+
+    val vlu_val = valfn(vlu_afn)
+    val vlu_vlen = vlenfn(vlu_afn)
+    val vlu_strip = strip(vlu_vlen, Bool(true), readfn(vlu_afn, (e: SequencerEntry) => e.fn.union))
+    def vlu_ready(f: Bool) = {
+      update_vlu := f
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // footer
+
     def footer = {
+      for (i <- 0 until nseq) {
+        val vmu_val = e(i).active.vgu || e(i).active.vcu || e(i).active.vlu || e(i).active.vsu
+        when (valid(i) && (fire_vcu(i) || fire_vlu(i) || fire_vidu(i) || fire_vfdu(i))) {
+          vlen(i) := vlen(i) - strip(vlen(i), vmu_val, e(i).fn.union)
+        }
+      }
+
       when (valid(head) && vlen(head) === UInt(0)) {
         retire_entry(head)
         set_head(h1)
@@ -549,6 +623,20 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     when (io.op.bits.active.vld) { seq.issue_vld }
     when (io.op.bits.active.vst) { seq.issue_vst }
   }
+
+  io.vmu.la.vala.reserve := Bool(false) // FIXME
+
+  io.vmu.la.pala.cnt := seq.vcu_strip
+  io.vmu.la.pala.reserve := seq.vcu_val && io.vmu.la.pala.available
+  seq.vcu_ready(io.vmu.la.pala.available)
+
+  io.lla.cnt := seq.vlu_strip
+  io.lla.reserve := seq.vlu_val && io.lla.available
+  seq.vlu_ready(io.lla.available)
+
+  io.sla.reserve := Bool(false)
+
+  io.pending := seq.valid.reduce(_ || _)
 
   // TODO: this is here to make sure things get vlenantiated
   

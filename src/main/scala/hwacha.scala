@@ -134,7 +134,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
 
   //Connect RoccUnit to ScalarUnit
   rocc.io.pending_memop := scalar.io.pending_memop
-  rocc.io.pending_seq := scalar.io.pending_seq
+  rocc.io.pending_seq := vxu.io.pending_seq
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
 
