@@ -16,14 +16,16 @@ abstract trait SeqParameters extends UsesHwachaParameters
   val szWPortLatency = log2Up(maxWPortLatency)
 }
 
+class SequencerIO extends ValidIO(new SequencerOp)
+
 class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 {
   val io = new Bundle {
     val op = new VXUIssueOpIO().flip
+    val seq = new SequencerIO
     val vmu = new LaneMemIO
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
-    val lane = new LaneOpIO
     val ack = new LaneAckIO().flip
     val pending = Bool(OUTPUT)
     val debug = new Bundle {
@@ -147,10 +149,10 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       set_valid(n)
       vlen(n) := io.op.bits.vlen
       update_haz(n) := Bool(true)
+      e(n).age := UInt(0)
     }
     def clear_entry(n: UInt) = {
       clear_valid(n)
-      clear_all_active(n)
       e(n).reg.vs1.valid := Bool(false)
       e(n).reg.vs2.valid := Bool(false)
       e(n).reg.vs3.valid := Bool(false)
@@ -458,16 +460,22 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     ///////////////////////////////////////////////////////////////////////////
     // bank hazard checking
 
+    val bhazard =
+      (0 until nseq).map { r => Bool(false) }
+
     ///////////////////////////////////////////////////////////////////////////
     // strucutral hazard checking
+
+    val shazard =
+      (0 until nseq).map { r => Bool(false) }
 
     ///////////////////////////////////////////////////////////////////////////
     // schedule
 
-    def find_first(afn: VFU=>Bool) = {
+    def find_first(fn: Int=>Bool) = {
       val internal = Vec.fill(2*nseq){Bool()}
       for (i <- 0 until nseq) {
-        internal(i+nseq) := valid(i) && afn(e(i).active)
+        internal(i+nseq) := valid(i) && fn(i)
         internal(i) := internal(i+nseq) && (UInt(i) >= head)
       }
       val priority_oh = PriorityEncoderOH(internal)
@@ -478,25 +486,39 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       out
     }
 
-    val vidu_sched = find_first((a: VFU) => a.vidu)
-    val vfdu_sched = find_first((a: VFU) => a.vfdu)
-    val vgu_sched = find_first((a: VFU) => a.vgu)
-    val vcu_sched = find_first((a: VFU) => a.vcu)
-    val vlu_sched = find_first((a: VFU) => a.vlu)
-    val vsu_sched = find_first((a: VFU) => a.vsu)
-    val vqu_sched = find_first((a: VFU) => a.vqu)
+    def nohazards(i: Int) = !dhazard(i) && !bhazard(i) && !shazard(i)
+
+    val vidu_sched = find_first((i: Int) => e(i).active.vidu && nohazards(i))
+    val vfdu_sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
+    val vcu_sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
+    val vlu_sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
+    val exp_sched = {
+      val vgu_first = find_first((i: Int) => e(i).active.vgu)
+      val vsu_first = find_first((i: Int) => e(i).active.vsu)
+      val vqu_first = find_first((i: Int) => e(i).active.vqu)
+      val consider = (i: Int) => nohazards(i) && (
+        e(i).active.viu || e(i).active.vimu ||
+        e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
+        e(i).active.vgu && vgu_first(i) ||
+        e(i).active.vsu && vsu_first(i) ||
+        e(i).active.vqu && vqu_first(i))
+      val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
+      val second_sched = find_first((i: Int) => consider(i))
+      val sel = first_sched.reduce(_ || _)
+      Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
+    }
 
     def fire_vidu(n: Int) = vidu_sched(n) && vidu_ready
     def fire_vfdu(n: Int) = vfdu_sched(n) && vfdu_ready
     def fire_vcu(n: Int) = vcu_sched(n) && vcu_ready
     def fire_vlu(n: Int) = vlu_sched(n) && vlu_ready
-    def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n)
+    def fire_exp(n: Int) = exp_sched(n)
+    def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n) || fire_exp(n)
 
     def active_vmu(n: Int) = e(n).active.vgu || e(n).active.vcu || e(n).active.vlu || e(n).active.vsu
 
-    def stripfn(vl: UInt, vmu: Bool, fn: Bits) = {
-      val vmu_fn = new VMUFn().fromBits(fn)
-      val max_strip = Mux(vmu && vmu_fn.mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
+    def stripfn(vl: UInt, vmu: Bool, fn: VFn) = {
+      val max_strip = Mux(vmu && fn.vmu().mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
       Mux(vl > max_strip, max_strip, vl)
     }
 
@@ -505,16 +527,42 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     def vlenfn(sched: Vec[Bool]) =
       sched.zip(vlen).map({ case (s, vl) => dgate(s, vl) }).reduce(_ | _)
 
-    def readfn(sched: Vec[Bool], rfn: SeqEntry=>Bits) =
-      sched.zip(e).map({ case (s, e) => dgate(s, rfn(e)) }).reduce(_ | _)
+    def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
+      rfn(e(0)).clone.fromBits(sched.zip(e).map({ case (s, e) => dgate(s, rfn(e).toBits) }).reduce(_ | _))
+
+    val vidu_val = valfn(vidu_sched)
+    val vidu_vlen = vlenfn(vidu_sched)
+    val vidu_fn = readfn(vidu_sched, (e: SeqEntry) => e.fn)
+    val vidu_strip = stripfn(vidu_vlen, Bool(false), vidu_fn)
+
+    val vfdu_val = valfn(vfdu_sched)
+    val vfdu_vlen = vlenfn(vfdu_sched)
+    val vfdu_fn = readfn(vfdu_sched, (e: SeqEntry) => e.fn)
+    val vfdu_strip = stripfn(vfdu_vlen, Bool(false), vfdu_fn)
 
     val vcu_val = valfn(vcu_sched)
     val vcu_vlen = vlenfn(vcu_sched)
-    val vcu_strip = stripfn(vcu_vlen, Bool(true), readfn(vcu_sched, (e: SeqEntry) => e.fn.union))
+    val vcu_fn = readfn(vcu_sched, (e: SeqEntry) => e.fn)
+    val vcu_strip = stripfn(vcu_vlen, Bool(true), vcu_fn)
 
     val vlu_val = valfn(vlu_sched)
     val vlu_vlen = vlenfn(vlu_sched)
-    val vlu_strip = stripfn(vlu_vlen, Bool(true), readfn(vlu_sched, (e: SeqEntry) => e.fn.union))
+    val vlu_fn = readfn(vlu_sched, (e: SeqEntry) => e.fn)
+    val vlu_strip = stripfn(vlu_vlen, Bool(true), vlu_fn)
+
+    val exp_val = valfn(exp_sched)
+    val exp_vlen = vlenfn(exp_sched)
+    val exp_seq = {
+      val out = new SequencerOp
+      out.fn := readfn(exp_sched, (e: SeqEntry) => e.fn)
+      out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
+      out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
+      out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
+      out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
+      out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
+      out.strip := stripfn(exp_vlen, Bool(false), out.fn)
+      out
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // footer
@@ -523,15 +571,24 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       val retire = Vec.fill(nseq){Bool()}
 
       for (i <- 0 until nseq) {
-        retire(i) := Bool(false)
-        when (valid(i) && fire(i)) {
-          val strip = stripfn(vlen(i), active_vmu(i), e(i).fn.union)
-          retire(i) := vlen(i) === strip
-          vlen(i) := vlen(i) - strip
+        val strip = stripfn(vlen(i), active_vmu(i), e(i).fn)
+        when (valid(i)) {
+          when (fire(i)) {
+            vlen(i) := vlen(i) - strip
+            when (vlen(i) === strip) {
+              clear_all_active(UInt(i))
+            }
+          }
+          when (e(i).age.orR) {
+            e(i).age := e(i).age - UInt(1)
+          }
+          when (fire_exp(i)) {
+            e(i).age := UInt(nbanks-1)
+          }
         }
       }
 
-      when (valid(head) && retire(head)) {
+      when (valid(head) && vlen(head) === UInt(0)) {
         retire_entry(head)
         set_head(h1)
       }
@@ -557,6 +614,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       when (reset) {
         for (i <- 0 until nseq) {
           clear_entry(UInt(i))
+          clear_all_active(UInt(i))
         }
       }
     }
@@ -583,6 +641,9 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     when (io.op.bits.active.vst) { seq.issue_vst }
   }
 
+  io.seq.valid := seq.exp_val
+  io.seq.bits := seq.exp_seq
+
   io.vmu.la.vala.reserve := Bool(false) // FIXME
 
   io.vmu.la.pala.cnt := seq.vcu_strip
@@ -596,95 +657,6 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
   io.sla.reserve := Bool(false)
 
   io.pending := seq.valid.reduce(_ || _)
-
-  // TODO: this is here to make sure things get vlenantiated
-  
-  //val temp_valid = io.op.valid
-  val temp_valid = Bool(false)
-
-  for (i <- 0 until nbanks) {
-    io.lane.bank(i).sram.read.valid := temp_valid
-    io.lane.bank(i).sram.read.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).sram.read.bits.addr := io.op.bits.vlen
-
-    io.lane.bank(i).sram.write.valid := temp_valid
-    io.lane.bank(i).sram.write.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).sram.write.bits.addr := io.op.bits.vlen
-    io.lane.bank(i).sram.write.bits.selg := io.op.bits.vlen(7)
-    io.lane.bank(i).sram.write.bits.wsel := io.op.bits.vlen
-
-    for (j <- 0 until nFFRPorts) {
-      io.lane.bank(i).ff.read(j).valid := temp_valid
-      io.lane.bank(i).ff.read(j).bits.pred := io.op.bits.vlen
-      io.lane.bank(i).ff.read(j).bits.addr := io.op.bits.vlen
-    }
-
-    io.lane.bank(i).ff.write.valid := temp_valid
-    io.lane.bank(i).ff.write.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).ff.write.bits.addr := io.op.bits.vlen
-    io.lane.bank(i).ff.write.bits.selg := io.op.bits.vlen(7)
-    io.lane.bank(i).ff.write.bits.wsel := io.op.bits.vlen
-
-    io.lane.bank(i).opl.valid := temp_valid
-    io.lane.bank(i).opl.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).opl.bits.global.latch := io.op.bits.vlen
-    io.lane.bank(i).opl.bits.global.selff := io.op.bits.vlen
-    io.lane.bank(i).opl.bits.global.en := io.op.bits.vlen
-    io.lane.bank(i).opl.bits.local.latch := io.op.bits.vlen
-    io.lane.bank(i).opl.bits.local.selff := io.op.bits.vlen
-
-    io.lane.bank(i).brq.valid := temp_valid
-    io.lane.bank(i).brq.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).brq.bits.selff := io.op.bits.vlen(7)
-    io.lane.bank(i).brq.bits.zero := io.op.bits.vlen(7)
-
-    io.lane.bank(i).viu.valid := temp_valid
-    io.lane.bank(i).viu.bits.pred := io.op.bits.vlen
-    io.lane.bank(i).viu.bits.fn := new VIUFn().fromBits(io.op.bits.vlen)
-    io.lane.bank(i).viu.bits.eidx := io.op.bits.vlen
-  }
-
-  io.lane.vqu.valid := temp_valid
-  io.lane.vqu.bits.pred := io.op.bits.vlen
-  io.lane.vqu.bits.fn := new VQUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vgu.valid := temp_valid
-  io.lane.vgu.bits.pred := io.op.bits.vlen
-  io.lane.vgu.bits.fn := new VMUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vimu.valid := temp_valid
-  io.lane.vimu.bits.pred := io.op.bits.vlen
-  io.lane.vimu.bits.fn := new VIMUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vidu.valid := temp_valid
-  io.lane.vidu.bits.pred := io.op.bits.vlen
-  io.lane.vidu.bits.fn := new VIDUFn().fromBits(io.op.bits.vlen)
-  io.lane.vidu.bits.bank := io.op.bits.vlen
-  io.lane.vidu.bits.addr := io.op.bits.vlen
-  io.lane.vidu.bits.selff := io.op.bits.vlen(8)
-
-  io.lane.vfmu0.valid := temp_valid
-  io.lane.vfmu0.bits.pred := io.op.bits.vlen
-  io.lane.vfmu0.bits.fn := new VFMUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vfmu1.valid := temp_valid
-  io.lane.vfmu1.bits.pred := io.op.bits.vlen
-  io.lane.vfmu1.bits.fn := new VFMUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vfdu.valid := temp_valid
-  io.lane.vfdu.bits.pred := io.op.bits.vlen
-  io.lane.vfdu.bits.fn := new VFDUFn().fromBits(io.op.bits.vlen)
-  io.lane.vfdu.bits.bank := io.op.bits.vlen
-  io.lane.vfdu.bits.addr := io.op.bits.vlen
-  io.lane.vfdu.bits.selff := io.op.bits.vlen(8)
-
-  io.lane.vfcu.valid := temp_valid
-  io.lane.vfcu.bits.pred := io.op.bits.vlen
-  io.lane.vfcu.bits.fn := new VFCUFn().fromBits(io.op.bits.vlen)
-
-  io.lane.vfvu.valid := temp_valid
-  io.lane.vfvu.bits.pred := io.op.bits.vlen
-  io.lane.vfvu.bits.fn := new VFVUFn().fromBits(io.op.bits.vlen)
 
   seq.footer
 }

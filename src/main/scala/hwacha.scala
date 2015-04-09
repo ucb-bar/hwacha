@@ -19,6 +19,7 @@ abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters {
   val nbanks = params(HwachaNBanks)
+  val szbanks = log2Up(nbanks)
 
   val nbdepth = params(HwachaNSRAMRFEntries)
   val szbdepth = log2Up(nbdepth)

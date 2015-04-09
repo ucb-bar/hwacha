@@ -181,6 +181,15 @@ class SeqEntry extends DecodedInstruction with SeqParameters
   val waw = Vec.fill(nseq){Bool()}
   val rports = UInt(width = szRPorts)
   val wport = UInt(width = szWPortLatency)
+  val age = UInt(width = szbanks)
+}
+
+class SequencerOp extends DecodedInstruction with SeqParameters with LaneParameters
+{
+  val active = new VFU
+  val rports = UInt(width = szRPorts)
+  val wport = UInt(width = szWPortLatency)
+  val strip = UInt(width = lookAheadBits)
 }
 
 

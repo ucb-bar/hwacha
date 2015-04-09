@@ -15,6 +15,7 @@ class VXU extends HwachaModule
   }
 
   val seq = Module(new Sequencer)
+  val exp = Module(new Expander)
   val lane = Module(new Lane)
   val dcc = Module(new DecoupledCluster)
 
@@ -39,7 +40,8 @@ class VXU extends HwachaModule
 
   seq.io.ack <> lane.io.ack
 
-  lane.io.op <> seq.io.lane
+  exp.io.seq <> seq.io.seq
+  lane.io.op <> exp.io.lane
 
   dcc.io.mem.lla <> seq.io.lla
   dcc.io.mem.sla <> seq.io.sla
