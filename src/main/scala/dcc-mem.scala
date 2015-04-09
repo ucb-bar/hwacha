@@ -403,7 +403,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
     Fill(lookAheadMax - lgbatch, io.la.reserve)
   val wb_retire = Cat(wb_retire_cnt, UInt(0, lgbatch))
 
-  wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state != s_idle)
+  wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state === s_busy)
 
   private def priority(in: Iterable[(Bool, UInt)]): (Bool, UInt) = {
     if (in.size > 1) {
@@ -424,7 +424,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   val wb_locnt_init = (0 until lookAheadMax).map(i => (wb_status(i), UInt(i+1)))
   val wb_locnt_tree = priority_tree(wb_locnt_init).head
   val wb_locnt = Mux(wb_locnt_tree._1, wb_locnt_tree._2, UInt(0))
-  io.la.available := (wb_locnt >= io.la.cnt)
+  io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
 }
 
 class VLUInterposer extends VMUModule with LaneParameters {
