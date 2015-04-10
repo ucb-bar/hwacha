@@ -28,7 +28,7 @@ trait VMUParameters extends UsesHwachaParameters {
   val tlDataDoubles = tlDataBits >> 6
   require((tlDataBits & (SZ_D-1)) == 0)
 
-  val nPredSet = tlDataBits // TODO: rename
+  val nPredSet = tlDataBytes // TODO: rename
 }
 
 class LaneMemIO extends Bundle {

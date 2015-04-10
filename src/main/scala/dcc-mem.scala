@@ -22,7 +22,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
 
   private val lgbank = log2Up(nbanks)
   private val nTotalSlices = nSlices * nbanks
-  private val sz_beat = math.max(1, nPredSet / nSlices) * lgbank
+  private val sz_beat = math.max(1, nPredSet / nSlices) + lgbank
 
   val mt_fn = Reg(Bits(width = MT_SZ))
   val mt = DecodedMemType(mt_fn)
@@ -52,6 +52,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
         state := s_busy
         vlen := io.op.bits.vlen
         mt_fn := io.op.bits.fn.mt
+        beat := UInt(0)
       }
     }
 
@@ -205,7 +206,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
   // Bypass hold register if final beat is odd
   val data_b_head = Mux(last && beat_mid, data_b, data_b_hold)
   io.vsdq.bits := Mux1H(mtsel,
-    Seq(data_b_head ++ data_b, data_h, data_w, data_d).map(x => Cat(x.reverse)))
+    Seq(data_d, data_w, data_h, data_b_head ++ data_b).map(x => Cat(x.reverse)))
 }
 
 class VLUEntry extends HwachaBundle with LaneParameters {
