@@ -9,16 +9,17 @@ import scala.collection.mutable.ArrayBuffer
 class BankOpIO extends Bundle with LaneParameters
 {
   val sram = new Bundle {
-    val read = Valid(new SRAMRFReadOp)
-    val write = Valid(new SRAMRFWriteOp)
+    val read = Valid(new SRAMRFReadMicroOp)
+    val write = Valid(new SRAMRFWriteMicroOp)
   }
   val ff = new Bundle {
-    val read = Vec.fill(nFFRPorts){Valid(new FFRFReadOp)}
-    val write = Valid(new FFRFWriteOp)
+    val read = Vec.fill(nFFRPorts){Valid(new FFRFReadMicroOp)}
+    val write = Valid(new FFRFWriteMicroOp)
   }
-  val opl = Valid(new OPLOp)
-  val brq = Valid(new BRQOp)
-  val viu = Valid(new VIUOp)
+  val opl = Valid(new OPLMicroOp)
+  val xbar = Valid(new XBarMicroOp)
+  val viu = Valid(new VIUMicroOp)
+  val vsu = Valid(new VSUMicroOp)
 }
 
 class BRQIO extends DecoupledIO(new BRQEntry)

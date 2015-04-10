@@ -6,7 +6,7 @@ import Constants._
 import Packing._
 import DataGating._
 
-class LaneDecoupledUnitsTag extends LaneDecoupledOp
+class MicroDecoupledUnitsTag extends MicroDecoupledOp
 {
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
@@ -32,7 +32,7 @@ class LaneDecoupledUnits extends HwachaModule with LaneParameters
     val bwqs = Vec.fill(nbanks){new BWQIO}
   }
 
-  val tagq = Module(new Queue(new LaneDecoupledUnitsTag, nDecoupledUnitWBQueue))
+  val tagq = Module(new Queue(new MicroDecoupledUnitsTag, nDecoupledUnitWBQueue))
 
   val deq_in0q = io.fdiv.op.bits.fn.op_is(FD_DIV)
   val mask_in0q_valid = !deq_in0q || io.in0q.valid

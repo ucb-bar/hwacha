@@ -38,6 +38,7 @@ class VXU extends HwachaModule
   dcc.io.op.bits.fn := io.issue.bits.fn.vmu()
   dcc.io.op.bits.vd := io.issue.bits.reg.vd
 
+  seq.io.ticker <> exp.io.ticker
   seq.io.ack <> lane.io.ack
 
   exp.io.seq <> seq.io.seq

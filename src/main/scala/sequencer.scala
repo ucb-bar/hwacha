@@ -9,8 +9,8 @@ import uncore.constants.MemoryOpConstants._
 abstract trait SeqParameters extends UsesHwachaParameters
 {
   val nRPorts = 3
-  val szRPorts = log2Up(nRPorts)
-  val maxWPortLatency = nRPorts +
+  val szRPorts = log2Down(nRPorts) + 1
+  val maxWPortLatency = nRPorts + 1 +
     List(int_stages, imul_stages, fma_stages,
          fconv_stages, fcmp_stages).reduceLeft((x, y) => if (x > y) x else y)
   val szWPortLatency = log2Up(maxWPortLatency)
@@ -24,6 +24,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val op = new VXUIssueOpIO().flip
     val seq = new SequencerIO
     val vmu = new LaneMemIO
+    val ticker = new TickerIO().flip
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
     val ack = new LaneAckIO().flip
@@ -49,9 +50,6 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val valid = Vec.fill(nseq){Reg(init=Bool(false))}
     val vlen = Vec.fill(nseq){Reg(UInt(width=szvlen))}
     val e = Vec.fill(nseq){Reg(new SeqEntry)}
-
-    val wport_valid = Vec.fill(maxWPortLatency){Reg(init=Bool(false))}
-    val wport = Vec.fill(maxWPortLatency){Reg(UInt(width=szvregs))}
 
     val full = Reg(init = Bool(false))
     val head = Reg(init = UInt(0, log2Up(nseq)))
@@ -330,7 +328,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     def set_rport_vs2(n: UInt) = set_ports(n, nrport_vs2, UInt(0))
     def set_rport_vd(n: UInt) = set_ports(n, nrport_vd, UInt(0))
     def set_rports(n: UInt) = set_ports(n, nrports, UInt(0))
-    def set_rwports(n: UInt, latency: Int) = set_ports(n, nrports, nrports + UInt(latency))
+    def set_rwports(n: UInt, latency: Int) = set_ports(n, nrports, nrports + UInt(latency+1))
 
     ///////////////////////////////////////////////////////////////////////////
     // issue -> sequencer
@@ -430,8 +428,8 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     def wport_matrix(fn: DecodedRegisters=>RegInfo) =
       Vec((0 until nseq).map { r =>
         Vec((0 until maxWPortLatency).map { l =>
-          wport_valid(l) && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
-          wport(l) === fn(e(r).reg).id }) })
+          io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
+          io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) })
     val wport_vs1_matrix = wport_matrix(reg_vs1)
     val wport_vs2_matrix = wport_matrix(reg_vs2)
     val wport_vs3_matrix = wport_matrix(reg_vs3)
@@ -492,15 +490,15 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val vfdu_sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
     val vcu_sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
     val vlu_sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
+    val vgu_first = find_first((i: Int) => e(i).active.vgu)
+    val vsu_first = find_first((i: Int) => e(i).active.vsu)
+    val vqu_first = find_first((i: Int) => e(i).active.vqu)
     val exp_sched = {
-      val vgu_first = find_first((i: Int) => e(i).active.vgu)
-      val vsu_first = find_first((i: Int) => e(i).active.vsu)
-      val vqu_first = find_first((i: Int) => e(i).active.vqu)
       val consider = (i: Int) => nohazards(i) && (
         e(i).active.viu || e(i).active.vimu ||
         e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
         e(i).active.vgu && vgu_first(i) ||
-        e(i).active.vsu && vsu_first(i) ||
+        e(i).active.vsu && vsu_first(i) && io.sla.available ||
         e(i).active.vqu && vqu_first(i))
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
@@ -549,6 +547,10 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val vlu_vlen = vlenfn(vlu_sched)
     val vlu_fn = readfn(vlu_sched, (e: SeqEntry) => e.fn)
     val vlu_strip = stripfn(vlu_vlen, Bool(true), vlu_fn)
+
+    val vsu_vlen = vlenfn(vsu_first)
+    val vsu_fn = readfn(vsu_first, (e: SeqEntry) => e.fn)
+    val vsu_strip = stripfn(vsu_vlen, Bool(true), vsu_fn)
 
     val exp_val = valfn(exp_sched)
     val exp_vlen = vlenfn(exp_sched)
@@ -654,7 +656,17 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
   io.lla.reserve := seq.vlu_val && io.lla.available
   seq.vlu_ready := io.lla.available
 
-  io.sla.reserve := Bool(false)
+  io.sla.reserve := seq.exp_val && seq.exp_seq.active.vsu
+  io.sla.mask :=
+    MuxLookup(seq.vsu_strip, Bits(0), Seq(
+      UInt(1) -> Bits("b0001"),
+      UInt(2) -> Bits("b0001"),
+      UInt(3) -> Bits("b0011"),
+      UInt(4) -> Bits("b0011"),
+      UInt(5) -> Bits("b0111"),
+      UInt(6) -> Bits("b0111"),
+      UInt(7) -> Bits("b1111"),
+      UInt(8) -> Bits("b1111")))
 
   io.pending := seq.valid.reduce(_ || _)
 

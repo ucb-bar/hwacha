@@ -99,12 +99,11 @@ class BankRegfile extends HwachaModule with LaneParameters
   }
 
   // BRQ
-  io.global.brq.valid := io.op.brq.valid
+  io.global.brq.valid := io.op.vsu.valid
   io.global.brq.bits.data :=
-    Mux(io.op.brq.bits.zero, Bits(0),
-      Mux(io.op.brq.bits.selff, ff_rdata(nFFRPorts-1), sram_rdata))
+    Mux(io.op.vsu.bits.selff, ff_rdata(nFFRPorts-1), sram_rdata)
 
-  assert(!io.op.brq.valid || io.global.brq.ready, "brq enabled when not ready; check brq counters")
+  assert(!io.op.vsu.valid || io.global.brq.ready, "brq enabled when not ready; check brq counters")
 
   // BWQ
   io.global.bwq.mem.ready :=
@@ -123,7 +122,7 @@ class BankRegfile extends HwachaModule with LaneParameters
         Mux(io.op.opl.bits.global.selff(i), ff_rdata(i % nFFRPorts), sram_rdata),
         FillInterleaved(SZ_D, io.op.opl.bits.pred))
     }
-    io.global.rdata(i).d := dgate(io.op.opl.bits.global.en(i), opl(i))
+    io.global.rdata(i).d := dgate(io.op.xbar.bits.en(i), opl(i))
   }
   (0 until 2).map { i =>
     when (io.op.opl.valid && io.op.opl.bits.local.latch(i)) {

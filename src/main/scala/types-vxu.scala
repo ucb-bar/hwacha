@@ -194,109 +194,155 @@ class SequencerOp extends DecodedInstruction with SeqParameters with LaneParamet
 
 
 //-------------------------------------------------------------------------\\
-// bank, lane op
+// lane, micro op
 //-------------------------------------------------------------------------\\
 
-class LaneOp extends HwachaBundle with LaneParameters
-{
-  val pred = Bits(width = nSlices)
-}
-
-class LaneDecoupledOp extends LaneOp
-{
-  val bank = UInt(width = log2Up(nbanks))
-  val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val selff = Bool() // select ff if true
-}
-
-class SRAMRFReadOp extends LaneOp
+class SRAMRFReadOp extends HwachaBundle with LaneParameters
 {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class SRAMRFWriteOp extends LaneOp
+class SRAMRFWriteOp extends HwachaBundle with LaneParameters
 {
   val addr = UInt(width = log2Up(nSRAM))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class FFRFReadOp extends LaneOp
+class FFRFReadOp extends HwachaBundle with LaneParameters
 {
   val addr = UInt(width = log2Up(nFF))
 }
 
-class FFRFWriteOp extends LaneOp
+class FFRFWriteOp extends HwachaBundle with LaneParameters
 {
   val addr = UInt(width = log2Up(nFF))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class OPLOp extends LaneOp
+class OPLOp extends HwachaBundle with LaneParameters
 {
   val global = new Bundle {
-    val latch = Bits(width = nOPL)
-    val selff = Bits(width = nOPL)
-    val en = Bits(width = nOPL)
+    val latch = Vec.fill(nOPL){Bool()}
+    val selff = Vec.fill(nOPL){Bool()}
   }
   val local = new Bundle {
-    val latch = Bits(width = 2)
-    val selff = Bits(width = 2)
+    val latch = Vec.fill(2){Bool()}
+    val selff = Vec.fill(2){Bool()}
   }
 }
 
-class BRQOp extends LaneOp
+class XBarOp extends HwachaBundle with LaneParameters
 {
-  val selff = Bool() // select ff if true
-  val zero = Bool()
+  val en = Vec.fill(nOPL){Bool()}
 }
 
-class VIUOp extends LaneOp
+class VIUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VIUFn
   val eidx = UInt(width = SZ_VLEN)
 }
 
-class VIMUOp extends LaneOp
+class VIMUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VIMUFn
 }
 
-class VIDUOp extends LaneDecoupledOp
-{
-  val fn = new VIDUFn
-}
-
-class VFMUOp extends LaneOp
+class VFMUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VFMUFn
 }
 
-class VFDUOp extends LaneDecoupledOp
-{
-  val fn = new VFDUFn
-}
-
-class VFCUOp extends LaneOp
+class VFCUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VFCUFn
 }
 
-class VFVUOp extends LaneOp
+class VFVUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VFVUFn
 }
 
-class VQUOp extends LaneOp
+class VQUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VQUFn
 }
 
-class VGUOp extends LaneOp
+class VGUOp extends HwachaBundle with LaneParameters
 {
   val fn = new VMUFn
 }
+
+class VSUOp extends HwachaBundle with LaneParameters
+{
+  val selff = Bool() // select ff if true
+}
+
+//-------------------------------------------------------------------------\\
+// lane op
+//-------------------------------------------------------------------------\\
+
+trait LaneOp extends HwachaBundle with LaneParameters
+{
+  val strip = UInt(width = lookAheadBits)
+}
+
+class SRAMRFReadLaneOp extends SRAMRFReadOp with LaneOp
+class SRAMRFWriteLaneOp extends SRAMRFWriteOp with LaneOp
+class FFRFReadLaneOp extends FFRFReadOp with LaneOp
+class FFRFWriteLaneOp extends FFRFWriteOp with LaneOp
+class OPLLaneOp extends OPLOp with LaneOp
+class XBarLaneOp extends XBarOp with LaneOp
+class VIULaneOp extends VIUOp with LaneOp
+class VIMULaneOp extends VIMUOp with LaneOp
+class VFMULaneOp extends VFMUOp with LaneOp
+class VFCULaneOp extends VFCUOp with LaneOp
+class VFVULaneOp extends VFVUOp with LaneOp
+class VQULaneOp extends VQUOp with LaneOp
+class VGULaneOp extends VGUOp with LaneOp
+class VSULaneOp extends VSUOp with LaneOp
+
+class SRAMRFReadExpEntry extends SRAMRFReadLaneOp
+{
+  val global = new Bundle {
+    val valid = Bool()
+    val id = UInt(width = log2Up(nOPL))
+  }
+  val local = new Bundle {
+    val valid = Bool()
+    val id = UInt(width = 1)
+  }
+}
+class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp
+
+//-------------------------------------------------------------------------\\
+// micro op
+//-------------------------------------------------------------------------\\
+
+trait MicroOp extends HwachaBundle with LaneParameters
+{
+  val pred = Bits(width = nSlices)
+}
+
+class SRAMRFReadMicroOp extends SRAMRFReadOp with MicroOp
+class SRAMRFWriteMicroOp extends SRAMRFWriteOp with MicroOp
+class FFRFReadMicroOp extends FFRFReadOp with MicroOp
+class FFRFWriteMicroOp extends FFRFWriteOp with MicroOp
+class OPLMicroOp extends OPLOp with MicroOp
+class XBarMicroOp extends XBarOp with MicroOp
+class VIUMicroOp extends VIUOp with MicroOp
+class VIMUMicroOp extends VIMUOp with MicroOp
+class VFMUMicroOp extends VFMUOp with MicroOp
+class VFCUMicroOp extends VFCUOp with MicroOp
+class VFVUMicroOp extends VFVUOp with MicroOp
+class VQUMicroOp extends VQUOp with MicroOp
+class VGUMicroOp extends VGUOp with MicroOp
+class VSUMicroOp extends VSUOp with MicroOp
+
+//-------------------------------------------------------------------------\\
+// xbar
+//-------------------------------------------------------------------------\\
 
 class BankReadEntry extends Bundle with LaneParameters
 {
@@ -307,6 +353,10 @@ class BankWriteEntry extends Bundle with LaneParameters
 {
   val d = Bits(width = SZ_DATA)
 }
+
+//-------------------------------------------------------------------------\\
+// bank acks
+//-------------------------------------------------------------------------\\
 
 class VIXUAck extends Bundle with LaneParameters
 {
@@ -360,4 +410,21 @@ class BWQEntry extends Bundle with LaneParameters
 
   def saddr(dummy: Int = 0) = addr(log2Up(nSRAM)-1, 0)
   def faddr(dummy: Int = 0) = addr(log2Up(nFF)-1, 0)
+}
+
+class MicroDecoupledOp extends MicroOp
+{
+  val bank = UInt(width = log2Up(nbanks))
+  val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
+  val selff = Bool() // select ff if true
+}
+
+class VIDUOp extends MicroDecoupledOp
+{
+  val fn = new VIDUFn
+}
+
+class VFDUOp extends MicroDecoupledOp
+{
+  val fn = new VFDUFn
 }
