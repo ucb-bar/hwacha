@@ -141,7 +141,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
     slacntr.io.inc.update := brq.io.deq.fire()
     slacntr.io.dec.cnt := UInt(1)
     slacntr.io.dec.reserve := io.la.reserve && en
-    (brq.io.deq, slacntr.io.dec.available && en)
+    (brq.io.deq, !en || slacntr.io.dec.available)
   }
   io.la.available := brqs.map(_._2).reduce(_ && _)
   val brqs_deq = Vec(brqs.map(_._1))
