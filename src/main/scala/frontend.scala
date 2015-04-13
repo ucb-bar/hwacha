@@ -29,16 +29,27 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val icache = Module(new rocket.ICache)
   val tlb = Module(new rocket.TLB)
 
+  // COLIN FIXME: v[x|r]u* signals look bad and are prone to errors, collating to array my be useful?
+  val vxu_s1_pc_ = Reg(UInt())
+  val vxu_s1_pc = vxu_s1_pc_ & SInt(-2) // discard LSB of PC (throughout the pipeline)
+  val vru_s1_pc_ = Reg(UInt())
+  val vru_s1_pc = vru_s1_pc_ & SInt(-2) // discard LSB of PC (throughout the pipeline)
   val s1_pc_ = Reg(UInt())
   val s1_pc = s1_pc_ & SInt(-2) // discard LSB of PC (throughout the pipeline)
   val s1_same_block = Reg(Bool())
   val s1_valid = Reg(init=Bool(false))
+  val vxu_s1_valid = Reg(init=Bool(false))
+  val vru_s1_valid = Reg(init=Bool(false))
   val s1_type = Reg(Bool())
 
+  val vxu_s2_pc = Reg(init=UInt(0x100))
+  val vru_s2_pc = Reg(init=UInt(0x100))
   val s2_pc = Reg(init=UInt(0x100))
   val s2_xcpt_if = Reg(init=Bool(false))
   val s2_same_block = Reg(Bool())
   val s2_valid = Reg(init=Bool(false))
+  val vxu_s2_valid = Reg(init=Bool(false))
+  val vru_s2_valid = Reg(init=Bool(false))
   val s2_type = Reg(Bool())
 
   val vxu_line_val = Reg(init=Bool(false))
@@ -48,52 +59,111 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val vxu_line_pc = Reg(UInt())
   val vru_line_pc = Reg(UInt())
 
-  val icmiss = !s2_same_block && !icache.io.resp.valid
-  val prev_icmiss = Reg(next=icmiss)
+  val icmiss = s2_valid && !icache.io.resp.valid
+  val vxu_icmiss = icmiss && s2_type
+  val vru_icmiss = icmiss && !s2_type
+  val prev_vxu_icmiss = Reg(next=vxu_icmiss)
+  val prev_vru_icmiss = Reg(next=vru_icmiss)
   //avoid firing the icache if we have the same line in our buffer? (opt: either buffer)
-  //since we have no fine-grained invalidation we assume the line buffer is up-to-date unless we recieve an invalidate
 
-  val req_val = io.vxu.req.valid || io.vru.req.valid;
+  val req_val = io.vxu.req.valid || io.vru.req.valid
+  val p_req_val = Reg(next=req_val)
+  val pp_req_val = Reg(next=p_req_val)
   val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
                          io.vru.resp.valid && !io.vru.resp.ready)
-  val req_pc = Mux(req_val && !prev_icmiss && !icmiss && !stall,
-               Mux(io.vxu.req.valid, io.vxu.req.bits.nnpc, io.vru.req.bits.nnpc),
-               Mux(req_val && !icmiss,
-               Mux(io.vxu.req.valid, io.vxu.req.bits.npc, io.vru.req.bits.npc),
-               Mux(io.vxu.req.valid, io.vxu.req.bits.pc, io.vru.req.bits.pc)))
-  val req_type = io.vxu.req.valid //1===vxu_req 
+  val vxu_req_pc = Mux(pp_req_val && p_req_val && req_val && !prev_vxu_icmiss && !vxu_icmiss && !stall,
+                     io.vxu.req.bits.nnpc,
+                     Mux(p_req_val && req_val && !vxu_icmiss, io.vxu.req.bits.npc, io.vxu.req.bits.pc))
+  val vru_req_pc = Mux(pp_req_val && p_req_val && req_val && !prev_vru_icmiss && !vru_icmiss && !stall,
+                     io.vru.req.bits.nnpc,
+                     Mux(p_req_val && req_val && !vru_icmiss, io.vru.req.bits.npc, io.vru.req.bits.pc))
 
-  //line buffer has the pc and won't be overwritten
-  val vxu_same_block = vxu_line_val && 
-                     ((vxu_line_pc & Bits(rowBytes)) === (req_pc & Bits(rowBytes))) &&
-                     (!s1_type || !s1_valid || s1_same_block)
-                     (!s2_type || !s2_valid || s2_same_block)
+  val vxu_line_rowbyte = vxu_line_pc & SInt(-rowBytes)
+  val vru_line_rowbyte = vru_line_pc & SInt(-rowBytes)
+  val vxu_req_pc_rowbyte = vxu_req_pc & SInt(-rowBytes)
+  val vru_req_pc_rowbyte = vru_req_pc & SInt(-rowBytes)
+  val s1_pc_rowbyte = s1_pc & SInt(-rowBytes)
+  val vxu_s1_pc_rowbyte = vxu_s1_pc & SInt(-rowBytes)
+  val vru_s1_pc_rowbyte = vru_s1_pc & SInt(-rowBytes)
+  val s2_pc_rowbyte = s2_pc & SInt(-rowBytes)
+
+
+  val vxu_s0_n_match = s1_type && s1_valid &&
+                     (vxu_req_pc_rowbyte === s1_pc_rowbyte)
+  val vxu_s1_n_match = s2_type && s2_valid && !vxu_icmiss && 
+                     (vxu_s1_pc_rowbyte === s2_pc_rowbyte)
+  //next next req matches
+  val vxu_s0_inval_nn_match = s1_type && s1_valid && (vxu_req_pc_rowbyte != s1_pc_rowbyte)
+  val vxu_s0_nn_match = s2_type && s2_valid && !vxu_icmiss && 
+                          (vxu_req_pc_rowbyte === s2_pc_rowbyte) &&
+                          !vxu_s0_inval_nn_match
+  //line buffer matches
+  val vxu_s0_inval_nnn_match = s2_type && s2_valid && (vxu_req_pc_rowbyte != s2_pc_rowbyte)
+  val vxu_s0_nnn_match = vxu_line_val && 
+                          (vxu_req_pc_rowbyte === vxu_line_rowbyte) &&
+                          !vxu_s0_inval_nn_match && !vxu_s0_inval_nnn_match
+
+  val vxu_s1_nn_match = Reg(init=Bool(false))
+  val vxu_s1_nnn_match = Reg(init=Bool(false))
+  val vxu_s2_same_block = Reg(init=Bool(false))
+  //overall match
+  val vxu_s0_same_block = vxu_s0_n_match || vxu_s0_nn_match || vxu_s0_nnn_match
+  val vxu_s1_same_block = vxu_s1_n_match || vxu_s1_nn_match || vxu_s1_nnn_match
+
+  //next req matches
+  val vru_s0_n_match = !s1_type && s1_valid &&
+                     (vru_req_pc_rowbyte === s1_pc_rowbyte)
+  val vru_s1_n_match = !s2_type && s2_valid && !vru_icmiss && 
+                     (vru_s1_pc_rowbyte === s2_pc_rowbyte)
+  //next next req matches
+  val vru_s0_inval_nn_match = !s1_type && s1_valid && (vru_req_pc_rowbyte != s1_pc_rowbyte)
+  val vru_s0_nn_match = !s2_type && s2_valid && !vru_icmiss && 
+                          (vru_req_pc_rowbyte === s2_pc_rowbyte) &&
+                          !vru_s0_inval_nn_match
+  //line buffer matches
+  val vru_s0_inval_nnn_match = !s2_type && s2_valid && (vru_req_pc_rowbyte != s2_pc_rowbyte)
+  val vru_s0_nnn_match = vru_line_val && 
+                          (vru_req_pc_rowbyte === vru_line_rowbyte) &&
+                          !vru_s0_inval_nn_match && !vru_s0_inval_nnn_match
+
+  val vru_s1_nn_match = Reg(init=Bool(false))
+  val vru_s1_nnn_match = Reg(init=Bool(false))
+  val vru_s2_same_block = Reg(init=Bool(false))
+  //overall match
+  val vru_s0_same_block = vru_s0_n_match || vru_s0_nn_match || vru_s0_nnn_match
+  val vru_s1_same_block = vru_s1_n_match || vru_s1_nn_match || vru_s1_nnn_match
               
-   val vru_same_block = vru_line_val && 
-                      ((vru_line_pc & Bits(rowBytes)) === (req_pc & Bits(rowBytes))) &&
-                      (s1_type || !s1_valid || s1_same_block)
-                      (s2_type || !s2_valid || s2_same_block)
-  //or the s1_req has the data
-  val req_same_block = !icmiss && ((s1_pc & Bits(rowBytes)) === (req_pc & Bits(rowBytes)))
-  ///Colin FIXME: is there a case where the line buffers will be overwritten before we read it?
-  val s0_same_block = (req_type && vxu_same_block) || 
-                      (!req_type && vru_same_block) //|| req_same_block
-
+  //arbitrate between vxu and vru
+  val req_pc   = Mux(io.vxu.req.valid && !vxu_s0_same_block, vxu_req_pc, vru_req_pc)
+  val req_type = io.vxu.req.valid && !vxu_s0_same_block
+  val vxu_make_req = req_type && io.vxu.req.valid && !vxu_s0_same_block
+  val vru_make_req = !req_type && io.vru.req.valid && !vru_s0_same_block
 
   when(!stall) {
-    s1_same_block := s0_same_block && !tlb.io.resp.miss && req_val
-    s2_same_block := s1_same_block
-    s2_valid := s1_valid && (!icmiss || s1_same_block)
+    vxu_s2_same_block := vxu_s1_same_block
+    vru_s2_same_block := vru_s1_same_block
+    s2_valid := s1_valid
+    vxu_s2_valid := vxu_s1_valid
+    vru_s2_valid := vru_s1_valid
     s2_type := s1_type
-    //Colin FIXME: we don't predicate this on a non-cache miss anymore
     s2_pc := s1_pc
+    vxu_s2_pc := vxu_s1_pc
+    vru_s2_pc := vru_s1_pc
     s2_xcpt_if := tlb.io.resp.xcpt_if
   }
   s1_valid := Bool(false)
   when(req_val){
     s1_pc_ := req_pc
-    s1_valid := Bool(true)
+    vxu_s1_pc_ := vxu_req_pc
+    vru_s1_pc_ := vru_req_pc
+    s1_valid := vxu_make_req || vru_make_req
+    vxu_s1_valid := io.vxu.req.valid
+    vru_s1_valid := io.vru.req.valid
     s1_type := req_type
+    vxu_s1_nn_match := vxu_s0_nn_match
+    vru_s1_nn_match := vru_s0_nn_match
+    vxu_s1_nnn_match := vxu_s0_nnn_match
+    vru_s1_nnn_match := vru_s0_nnn_match
   }
 
   tlb.io.ptw <> io.ptw
@@ -105,36 +175,39 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   tlb.io.req.bits.store := Bool(false)
 
   icache.io.mem <> io.mem
-  icache.io.req.valid := !stall && !s0_same_block && req_val
+  icache.io.req.valid := !stall && (vxu_make_req || vru_make_req)
   icache.io.req.bits.idx := req_pc
   icache.io.invalidate := io.vxu.invalidate//only vxu invalidates
   icache.io.req.bits.ppn := tlb.io.resp.ppn
-  //Colin FIXME: are we required to kill req on miss?
   icache.io.req.bits.kill := tlb.io.resp.miss || io.ptw.invalidate
-  icache.io.resp.ready := !stall && !s1_same_block
+  icache.io.resp.ready := !stall && ((s1_type && vxu_s1_valid && !vxu_s1_same_block) ||
+                                     (!s1_type && vru_s1_valid && !vru_s1_same_block))
 
   val resp_valid = s2_valid && (s2_xcpt_if || icache.io.resp.valid)
-  io.vxu.resp.valid := s2_type && resp_valid
-  io.vru.resp.valid := !s2_type && resp_valid
-  io.vxu.resp.bits.pc := s2_pc & SInt(-coreInstBytes) // discard PC LSBs
-  io.vru.resp.bits.pc := s2_pc & SInt(-coreInstBytes) // discard PC LSBs
+  io.vxu.resp.valid := vxu_s2_valid && ((s2_type && resp_valid) || vxu_s2_same_block)
+  io.vru.resp.valid := vru_s2_valid && ((!s2_type && resp_valid) || vru_s2_same_block)
+  io.vxu.resp.bits.pc := vxu_s2_pc & SInt(-coreInstBytes) // discard PC LSBs
+  io.vru.resp.bits.pc := vru_s2_pc & SInt(-coreInstBytes) // discard PC LSBs
 
   when(s2_valid && icache.io.resp.valid) {
     when(s2_type){
-      vxu_line := icache.io.resp.bits.datablock
-      vxu_line_val := Bool(true)
-      vxu_line_pc := s2_pc
+      when(!vxu_s2_same_block){
+        vxu_line := icache.io.resp.bits.datablock
+        vxu_line_val := Bool(true)
+        vxu_line_pc := vxu_s2_pc
+      }
     }.otherwise {
-      vru_line := icache.io.resp.bits.datablock
-      vru_line_val := Bool(true)
-      vru_line_pc := s2_pc
+      when(!vru_s2_same_block){
+        vru_line := icache.io.resp.bits.datablock
+        vru_line_val := Bool(true)
+        vru_line_pc := vru_s2_pc
+      }
     }
   }
-  //Colin FIXME: this looks ugly
-  val vxu_datablock = Mux(s2_same_block, vxu_line, icache.io.resp.bits.datablock)
-  val vru_datablock = Mux(s2_same_block, vru_line, icache.io.resp.bits.datablock)
-  val vxu_fetch_data = vxu_datablock >> (s2_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
-  val vru_fetch_data = vru_datablock >> (s2_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
+  val vxu_datablock = Mux(vxu_s2_same_block, vxu_line, icache.io.resp.bits.datablock)
+  val vru_datablock = Mux(vru_s2_same_block, vru_line, icache.io.resp.bits.datablock)
+  val vxu_fetch_data = vxu_datablock >> (vxu_s2_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
+  val vru_fetch_data = vru_datablock >> (vru_s2_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
   for (i <- 0 until coreFetchWidth) {
     io.vxu.resp.bits.data(i) := vxu_fetch_data(i*coreInstBits+coreInstBits-1, i*coreInstBits)
     io.vru.resp.bits.data(i) := vru_fetch_data(i*coreInstBits+coreInstBits-1, i*coreInstBits)

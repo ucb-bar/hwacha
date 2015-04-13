@@ -157,9 +157,10 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   vmu.io.scalar <> scalar.io.dmem
   vmu.io.op <> scalar.io.vmu
 
-  //Tie icache vru port to unused
-  icache.io.vru.req.valid := Bool(false)
-  icache.io.vru.resp.ready := Bool(false)
+  //fake delayed vru_request port (delay vxu req's 2 cycles)
+  val vru_req = ShiftRegister(scalar.io.imem.req,2)
+  icache.io.vru.req := vru_req
+  icache.io.vru.resp.ready := Bool(true)
 
   // Connect supporting Hwacha memory modules to external ports
   io.imem <> icache.io.mem
