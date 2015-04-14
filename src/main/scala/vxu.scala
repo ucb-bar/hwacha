@@ -8,8 +8,8 @@ class VXUIssueOpIO extends DecoupledIO(new IssueOp)
 class VXU extends HwachaModule
 {
   val io = new Bundle {
-    val issue = new VXUIssueOpIO().flip
     val cfg = new HwachaConfigIO().flip
+    val issue = new VXUIssueOpIO().flip
     val vmu = new LaneMemIO
     val pending_seq = Bool(OUTPUT)
   }
