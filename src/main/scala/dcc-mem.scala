@@ -10,7 +10,7 @@ class BRQLookAheadIO extends HwachaBundle with LookAheadIO {
 
 class VSU extends HwachaModule with LaneParameters with VMUParameters {
   val io = new Bundle {
-    val op = Decoupled(new DCCMemOp).flip
+    val op = Decoupled(new DCCOp).flip
     val xcpt = new XCPTIO().flip
 
     val pred = Decoupled(Bits(width = nPredSet)).flip
@@ -19,6 +19,10 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
 
     val vsdq = new VSDQIO
   }
+
+  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.io.enq <> io.op
+  val op = opq.io.deq
 
   private val lgbank = log2Up(nbanks)
   private val nTotalSlices = nSlices * nbanks
@@ -40,18 +44,18 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
   val last = (vlen_next <= SInt(0))
   val next = Bool()
 
-  io.op.ready := Bool(false)
+  op.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
-      when (io.op.valid) {
+      op.ready := Bool(true)
+      when (op.valid) {
         state := s_busy
-        vlen := io.op.bits.vlen
-        mt_fn := io.op.bits.fn.mt
+        vlen := op.bits.vlen
+        mt_fn := op.bits.fn.vmu().mt
         beat := UInt(0)
       }
     }
@@ -217,7 +221,7 @@ class VLUEntry extends HwachaBundle with LaneParameters {
 
 class VLU extends HwachaModule with LaneParameters with VMUParameters {
   val io = new Bundle {
-    val op = Decoupled(new DCCMemOp).flip
+    val op = Decoupled(new DCCOp).flip
 
     val vldq = new VLDQIO().flip
     val bwqs = Vec.fill(nbanks)(new BWQIO)
@@ -225,6 +229,10 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
 
     val cfg = new HwachaConfigIO().flip
   }
+
+  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.io.enq <> io.op
+  val op = opq.io.deq
 
   //--------------------------------------------------------------------\\
   // control
@@ -240,20 +248,20 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
 
   val vd = Reg(UInt(width = szvregs))
 
-  io.op.ready := Bool(false)
+  op.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
-      when (io.op.valid) {
+      op.ready := Bool(true)
+      when (op.valid) {
         state := s_busy
         eidx := UInt(0)
-        vlen := io.op.bits.vlen
-        mt_hold := io.op.bits.fn.mt
-        vd := io.op.bits.vd.id
+        vlen := op.bits.vlen
+        mt_hold := op.bits.fn.vmu().mt
+        vd := op.bits.vd.id
       }
     }
 
@@ -267,12 +275,12 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
     }
   }
 
-  assert(!io.op.valid || io.op.bits.vd.valid, "invalid vd in VLU")
+  assert(!op.valid || op.bits.vd.valid, "invalid vd in VLU")
 
   val inter = Module(new VLUInterposer)
   inter.io.enq <> io.vldq
   inter.io.en := mt.b
-  inter.io.init := io.op.fire()
+  inter.io.init := op.fire()
 
   val vldq = inter.io.deq
   val meta = vldq.bits.meta

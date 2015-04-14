@@ -25,9 +25,16 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val seq = new SequencerIO
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
+
+    val dqla = new CounterLookAheadIO
+    val dila = new CounterLookAheadIO
+    val dfla = new CounterLookAheadIO
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
-    val ack = new LaneAckIO().flip
+
+    val lack = new LaneAckIO().flip
+    val dack = new DCCAckIO().flip
+
     val pending = Bool(OUTPUT)
     val debug = new Bundle {
       val valid = Vec.fill(nseq){Bool(OUTPUT)}
@@ -499,7 +506,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
         e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
         e(i).active.vgu && vgu_first(i) ||
         e(i).active.vsu && vsu_first(i) && io.sla.available ||
-        e(i).active.vqu && vqu_first(i))
+        e(i).active.vqu && vqu_first(i) && io.dqla.available)
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
@@ -645,6 +652,17 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
 
   io.seq.valid := seq.exp_val
   io.seq.bits := seq.exp_seq
+
+  io.dqla.cnt := seq.exp_seq.strip
+  io.dqla.reserve := seq.exp_val && seq.exp_seq.active.vqu
+
+  io.dila.cnt := seq.vidu_strip
+  io.dila.reserve := seq.vidu_val && io.dila.available
+  seq.vidu_ready := io.dila.available
+
+  io.dfla.cnt := seq.vfdu_strip
+  io.dfla.reserve := seq.vfdu_val && io.dfla.available
+  seq.vfdu_ready := io.dfla.available
 
   io.vmu.la.vala.reserve := Bool(false) // FIXME
 

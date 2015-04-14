@@ -6,12 +6,12 @@ import Constants._
 import Packing._
 import DataGating._
 
-class LaneIMulResult extends Bundle
+class IMulResult extends Bundle
 {
   val out = Bits(width = SZ_D)
 }
 
-class LaneIMulSlice extends HwachaModule
+class IMulSlice extends HwachaModule
 {
   val io = new Bundle {
     val req = Valid(new Bundle {
@@ -19,7 +19,7 @@ class LaneIMulSlice extends HwachaModule
       val in0 = Bits(INPUT, SZ_D)
       val in1 = Bits(INPUT, SZ_D)
     }).flip
-    val resp = Valid(new LaneIMulResult)
+    val resp = Valid(new IMulResult)
   }
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
@@ -44,7 +44,7 @@ class LaneIMulSlice extends HwachaModule
 
   val mul_result = lhs.toSInt * rhs.toSInt //TODO:130 bits
 
-  val result = new LaneIMulResult
+  val result = new IMulResult
   result.out := MuxCase(
     Bits(0), Array(
       fn.is(DW64, IM_M)    -> mul_result(63,0),

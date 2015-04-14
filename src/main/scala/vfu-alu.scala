@@ -5,12 +5,12 @@ import Node._
 import Constants._
 import Packing._
 
-class BankALUResult extends Bundle
+class ALUResult extends Bundle
 {
   val out = Bits(width = SZ_D)
 }
 
-class BankALUSlice extends Module
+class ALUSlice extends Module
 {
   val io = new Bundle() {
     val req = Valid(new Bundle {
@@ -19,7 +19,7 @@ class BankALUSlice extends Module
       val in0 = Bits(INPUT, SZ_D)
       val in1 = Bits(INPUT, SZ_D)
     }).flip
-    val resp = Valid(new BankALUResult)
+    val resp = Valid(new ALUResult)
   }
 
   val s1_valid = Reg(next=io.req.valid)
@@ -92,7 +92,7 @@ class BankALUSlice extends Module
       s1_fn.dw_is(DW32) -> expand_w(s1_result64(31,0))
     ))
 
-  val result = new BankALUResult
+  val result = new ALUResult
   result.out := s1_result
 
   io.resp := Pipe(s1_valid, result, 1)

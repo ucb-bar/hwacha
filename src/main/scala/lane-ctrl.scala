@@ -147,18 +147,4 @@ class LaneCtrl extends HwachaModule with LaneParameters
   io.uop.vfvu.valid := vfvu.valid
   io.uop.vfvu.bits.fn := vfvu.bits.fn
   io.uop.vfvu.bits.pred := vfvu.pred
-
-  io.uop.vidu.valid := Bool(false)
-  //io.uop.vidu.bits.pred := io.seq.bits.strip
-  //io.uop.vidu.bits.fn := io.seq.bits.fn.vidu()
-  //io.uop.vidu.bits.bank := io.seq.bits.strip
-  //io.uop.vidu.bits.addr := io.seq.bits.strip
-  //io.uop.vidu.bits.selff := io.seq.bits.strip(0)
-
-  io.uop.vfdu.valid := Bool(false)
-  //io.uop.vfdu.bits.pred := io.seq.bits.strip
-  //io.uop.vfdu.bits.fn := io.seq.bits.fn.vfdu()
-  //io.uop.vfdu.bits.bank := io.seq.bits.strip
-  //io.uop.vfdu.bits.addr := io.seq.bits.strip
-  //io.uop.vfdu.bits.selff := io.seq.bits.strip(0)
 }

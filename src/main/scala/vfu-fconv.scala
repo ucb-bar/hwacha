@@ -7,20 +7,20 @@ import Packing._
 import DataGating._
 import HardFloatHelper._
 
-class LaneFConvResult extends Bundle
+class FConvResult extends Bundle
 {
   val out = Bits(OUTPUT, SZ_D)
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class LaneFConvSlice extends HwachaModule
+class FConvSlice extends HwachaModule
 {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VFVUFn
       val in = Bits(INPUT, SZ_D)
     }).flip
-    val resp = Valid(new LaneFConvResult)
+    val resp = Valid(new FConvResult)
   }
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
@@ -118,7 +118,7 @@ class LaneFConvSlice extends HwachaModule
     }
 
   val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
-  val result = new LaneFConvResult
+  val result = new FConvResult
   result.out := Mux1H(fpmatch, outs)
   result.exc := Mux1H(fpmatch, excs)
 

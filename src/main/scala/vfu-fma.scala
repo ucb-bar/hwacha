@@ -8,13 +8,13 @@ import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
 
-class LaneFMAResult extends Bundle
+class FMAResult extends Bundle
 {
   val out = Bits(OUTPUT, SZ_D)
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class LaneFMASlice extends HwachaModule
+class FMASlice extends HwachaModule
 {
   val io = new Bundle {
     val req = Valid(new Bundle {
@@ -23,7 +23,7 @@ class LaneFMASlice extends HwachaModule
       val in1 = Bits(INPUT, SZ_D)
       val in2 = Bits(INPUT, SZ_D)
     }).flip
-    val resp = Valid(new LaneFMAResult)
+    val resp = Valid(new FMAResult)
   }
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
@@ -80,7 +80,7 @@ class LaneFMASlice extends HwachaModule
     }
 
   val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
-  val result = new LaneFMAResult
+  val result = new FMAResult
   result.out := Mux1H(fpmatch, results.map { _._1 })
   result.exc := Mux1H(fpmatch, results.map { _._2 })
 

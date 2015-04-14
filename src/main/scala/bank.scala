@@ -50,9 +50,9 @@ class Bank extends HwachaModule with LaneParameters
   rf.io.op <> io.op
   rf.io.global <> io.rw
 
-  val outs = new ArrayBuffer[ValidIO[BankALUResult]]
+  val outs = new ArrayBuffer[ValidIO[ALUResult]]
   for (i <- 0 until nSlices) {
-    val alu = Module(new BankALUSlice)
+    val alu = Module(new ALUSlice)
 
     alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i)
     alu.io.req.bits.fn := io.op.viu.bits.fn

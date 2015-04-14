@@ -7,31 +7,31 @@ import Packing._
 import DataGating._
 import HardFloatHelper._
 
-class LaneFDivIO extends Bundle
+class FDivIO extends Bundle
 {
   val req = Decoupled(new Bundle {
     val fn = new VFDUFn
     val in0 = Bits(width = SZ_D)
     val in1 = Bits(width = SZ_D)
   })
-  val resp = Decoupled(new LaneFDivResult).flip
+  val resp = Decoupled(new FDivResult).flip
 }
 
-class LaneFDivResult extends Bundle
+class FDivResult extends Bundle
 {
   val out = Bits(width = SZ_D)
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class LaneFDivTag extends Bundle
+class FDivTag extends Bundle
 {
   val fn = new VFDUFn
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class LaneFDivSlice extends HwachaModule with LaneParameters
+class FDivSlice extends HwachaModule with LaneParameters
 {
-  val io = new LaneFDivIO().flip
+  val io = new FDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
 
@@ -52,7 +52,7 @@ class LaneFDivSlice extends HwachaModule with LaneParameters
 
   val in0q = Module(new Queue(Bits(width = 65), 2))
   val in1q = Module(new Queue(Bits(width = 65), 2))
-  val intagq = Module(new Queue(new LaneFDivTag, 2))
+  val intagq = Module(new Queue(new FDivTag, 2))
 
   val s0_op_div = io.req.bits.fn.op_is(FD_DIV)
 
@@ -70,7 +70,7 @@ class LaneFDivSlice extends HwachaModule with LaneParameters
 
   // stage1
   val div = Module(new hardfloat.divSqrtRecodedFloat64)
-  val outtagq = Module(new Queue(new LaneFDivTag, nDecoupledUnitWBQueue))
+  val outtagq = Module(new Queue(new FDivTag, nDecoupledUnitWBQueue))
 
   val s1_op_div = intagq.io.deq.bits.fn.op_is(FD_DIV)
   val mask_in0q_valid = !s1_op_div || in0q.io.deq.valid
@@ -111,7 +111,7 @@ class LaneFDivSlice extends HwachaModule with LaneParameters
   val s1_result_out = RegEnable(div.io.out, s0_result_valid).toUInt
   val s1_result_exc = RegEnable(div.io.exceptionFlags, s0_result_valid)
 
-  val rq = Module(new Queue(new LaneFDivResult, nDecoupledUnitWBQueue))
+  val rq = Module(new Queue(new FDivResult, nDecoupledUnitWBQueue))
 
   val s1_result_dp = ieee_dp(s1_result_out)
   val s1_result_sp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 23, 9)

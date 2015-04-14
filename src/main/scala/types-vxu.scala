@@ -127,28 +127,31 @@ class DecodedInstruction extends HwachaBundle
 // issue op
 //-------------------------------------------------------------------------\\
 
+class IssueType extends Bundle
+{
+  val vint = Bool()
+  val vimul = Bool()
+  val vidiv = Bool()
+  val vfma = Bool()
+  val vfdiv = Bool()
+  val vfcmp = Bool()
+  val vfconv = Bool()
+  val vamo = Bool()
+  val vldx = Bool()
+  val vstx = Bool()
+  val vld = Bool()
+  val vst = Bool()
+
+  def enq_vdu(dummy: Int = 0) = vidiv || vfdiv
+  def enq_vlu(dummy: Int = 0) = vamo || vldx || vld
+  def enq_vsu(dummy: Int = 0) = vamo || vstx || vst
+  def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vlu() || enq_vsu()
+}
+
 class IssueOp extends DecodedInstruction
 {
   val vlen = UInt(width = SZ_VLEN)
-  val active = new Bundle {
-    val vint = Bool()
-    val vimul = Bool()
-    val vidiv = Bool()
-    val vfma = Bool()
-    val vfdiv = Bool()
-    val vfcmp = Bool()
-    val vfconv = Bool()
-    val vamo = Bool()
-    val vldx = Bool()
-    val vstx = Bool()
-    val vld = Bool()
-    val vst = Bool()
-  }
-
-  def enq_dcc(dummy: Int = 0) =
-    active.vamo ||
-    active.vldx || active.vstx ||
-    active.vld || active.vst
+  val active = new IssueType
 }
 
 
@@ -385,15 +388,17 @@ class VFVUAck extends VFXUAck
 // decoupled cluster (dcc) types
 //-------------------------------------------------------------------------\\
 
-abstract class DCCOp extends HwachaBundle
+class DCCOp extends HwachaBundle
 {
   val vlen = UInt(width = SZ_VLEN)
+  val active = new IssueType
+  val fn = new VFn
+  val vd = new RegInfo
 }
 
-class DCCMemOp extends DCCOp
+class LRQEntry extends Bundle
 {
-  val fn = new VMUFn
-  val vd = new RegInfo
+  val data = Bits(width = SZ_DATA)
 }
 
 class BRQEntry extends Bundle
@@ -410,21 +415,4 @@ class BWQEntry extends Bundle with LaneParameters
 
   def saddr(dummy: Int = 0) = addr(log2Up(nSRAM)-1, 0)
   def faddr(dummy: Int = 0) = addr(log2Up(nFF)-1, 0)
-}
-
-class MicroDecoupledOp extends MicroOp
-{
-  val bank = UInt(width = log2Up(nbanks))
-  val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val selff = Bool() // select ff if true
-}
-
-class VIDUOp extends MicroDecoupledOp
-{
-  val fn = new VIDUFn
-}
-
-class VFDUOp extends MicroDecoupledOp
-{
-  val fn = new VFDUFn
 }

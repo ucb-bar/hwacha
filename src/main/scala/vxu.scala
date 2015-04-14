@@ -19,7 +19,9 @@ class VXU extends HwachaModule
   val lane = Module(new Lane)
   val dcc = Module(new DecoupledCluster)
 
-  val enq_dcc = io.issue.bits.enq_dcc()
+  dcc.io.cfg <> io.cfg
+
+  val enq_dcc = io.issue.bits.active.enq_dcc()
   val mask_dcc_ready = !enq_dcc || dcc.io.op.ready
 
   def fire(exclude: Bool, include: Bool*) = {
@@ -35,29 +37,35 @@ class VXU extends HwachaModule
 
   seq.io.op.bits := io.issue.bits
   dcc.io.op.bits.vlen := io.issue.bits.vlen
-  dcc.io.op.bits.fn := io.issue.bits.fn.vmu()
+  dcc.io.op.bits.active := io.issue.bits.active
+  dcc.io.op.bits.fn := io.issue.bits.fn
   dcc.io.op.bits.vd := io.issue.bits.reg.vd
 
   seq.io.ticker <> exp.io.ticker
-  seq.io.ack <> lane.io.ack
+  seq.io.lack <> lane.io.ack
+  seq.io.dack <> dcc.io.ack
 
   exp.io.seq <> seq.io.seq
   lane.io.op <> exp.io.lane
 
-  dcc.io.mem.lla <> seq.io.lla
-  dcc.io.mem.sla <> seq.io.sla
+  dcc.io.dqla <> seq.io.dqla
+  dcc.io.dila <> seq.io.dila
+  dcc.io.dfla <> seq.io.dfla
+  dcc.io.lla <> seq.io.lla
+  dcc.io.sla <> seq.io.sla
 
-  lane.io.brqs <> dcc.io.mem.brqs
-  lane.io.bwqs <> dcc.io.mem.bwqs
+  dcc.io.lrqs <> lane.io.lrqs
+  dcc.io.brqs <> lane.io.brqs
+  lane.io.bwqs <> dcc.io.bwqs
 
   io.vmu <> seq.io.vmu
   io.vmu <> lane.io.vmu
-  io.vmu <> dcc.io.mem.vmu
+  io.vmu <> dcc.io.vmu
 
-  dcc.io.cfg <> io.cfg
   io.pending_seq := seq.io.pending
 
   // FIXME
-  dcc.io.mem.spred.valid := Bool(false)
+  dcc.io.spred.valid := Bool(true)
+  dcc.io.spred.bits := SInt(-1)
   dcc.io.xcpt.prop.vmu.stall := Bool(false)
 }

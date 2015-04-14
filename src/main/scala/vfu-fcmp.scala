@@ -7,12 +7,12 @@ import Packing._
 import DataGating._
 import HardFloatHelper._
 
-class LaneFCmpResult extends Bundle
+class FCmpResult extends Bundle
 {
   val out = Bits(OUTPUT, SZ_D)
 }
 
-class LaneFCmpSlice extends HwachaModule
+class FCmpSlice extends HwachaModule
 {
   val io = new Bundle {
     val req = Valid(new Bundle {
@@ -20,7 +20,7 @@ class LaneFCmpSlice extends HwachaModule
       val in0 = Bits(INPUT, SZ_D)
       val in1 = Bits(INPUT, SZ_D)
     }).flip
-    val resp = Valid(new LaneFCmpResult)
+    val resp = Valid(new FCmpResult)
   }
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
@@ -87,7 +87,7 @@ class LaneFCmpSlice extends HwachaModule
     }
 
   val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
-  val result = new LaneFCmpResult
+  val result = new FCmpResult
   result.out := Mux1H(fpmatch, results)
 
   io.resp := Pipe(io.req.valid, result, fcmp_stages)

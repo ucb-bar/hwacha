@@ -21,6 +21,7 @@ abstract trait LaneParameters extends UsesParameters
   val nWSel = params(HwachaWriteSelects)
   val nSlices = SZ_DATA/SZ_D
   val nBatch = params(HwachaNBanks) * nSlices
+  val nLRQOperands = 2
   val lookAheadMax = nBatch << 1
   val lookAheadBits = log2Down(lookAheadMax) + 1
   val nDecoupledUnitWBQueue = 4
@@ -55,10 +56,8 @@ class MicroOpIO extends HwachaBundle
   val vqu = Valid(new VQUMicroOp)
   val vgu = Valid(new VGUMicroOp)
   val vimu = Valid(new VIMUMicroOp)
-  val vidu = Decoupled(new VIDUOp)
   val vfmu0 = Valid(new VFMUMicroOp)
   val vfmu1 = Valid(new VFMUMicroOp)
-  val vfdu = Decoupled(new VFDUOp)
   val vfcu = Valid(new VFCUMicroOp)
   val vfvu = Valid(new VFVUMicroOp)
 }
@@ -69,32 +68,35 @@ class LaneAckIO extends HwachaBundle
   val vqu = Valid(new VQUAck)
   val vgu = Valid(new VGUAck)
   val vimu = Valid(new VIMUAck)
-  val vidu = Valid(new VIDUAck)
   val vfmu0 = Valid(new VFMUAck)
   val vfmu1 = Valid(new VFMUAck)
-  val vfdu = Valid(new VFDUAck)
   val vfcu = Valid(new VFCUAck)
   val vfvu = Valid(new VFVUAck)
 }
+
+class LRQIO extends DecoupledIO(new LRQEntry)
 
 class Lane extends HwachaModule with LaneParameters
 {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO
+    val lrqs = Vec.fill(nLRQOperands){new LRQIO}
     val brqs = Vec.fill(nbanks){new BRQIO}
-    val bwqs = Vec.fill(nbanks){new BWQIO().flip}
+    val bwqs = new Bundle {
+      val mem = Vec.fill(nbanks){new BWQIO}.flip
+      val fu = Vec.fill(nbanks){new BWQIO}.flip
+    }
     val vmu = new LaneMemIO
   }
 
   val ctrl = Module(new LaneCtrl)
   val banksrw = new ArrayBuffer[BankRWIO]
-  val imuls = new ArrayBuffer[ValidIO[LaneIMulResult]]
-  val fma0s = new ArrayBuffer[ValidIO[LaneFMAResult]]
-  val fma1s = new ArrayBuffer[ValidIO[LaneFMAResult]]
-  val fcmps = new ArrayBuffer[ValidIO[LaneFCmpResult]]
-  val fconvs = new ArrayBuffer[ValidIO[LaneFConvResult]]
-  val du = Module(new LaneDecoupledUnits)
+  val imuls = new ArrayBuffer[ValidIO[IMulResult]]
+  val fma0s = new ArrayBuffer[ValidIO[FMAResult]]
+  val fma1s = new ArrayBuffer[ValidIO[FMAResult]]
+  val fcmps = new ArrayBuffer[ValidIO[FCmpResult]]
+  val fconvs = new ArrayBuffer[ValidIO[FConvResult]]
 
   ctrl.io.op <> io.op
 
@@ -105,27 +107,21 @@ class Lane extends HwachaModule with LaneParameters
     bank.io.op <> ctrl.io.uop.bank(i)
     banksrw += bank.io.rw
     io.brqs(i) <> bank.io.rw.brq
-    bank.io.rw.bwq.mem <> io.bwqs(i)
-    bank.io.rw.bwq.fu <> du.io.bwqs(i)
+    bank.io.rw.bwq.mem <> io.bwqs.mem(i)
+    bank.io.rw.bwq.fu <> io.bwqs.fu(i)
   }
 
   val rdata = (0 until nOPL).map { o => banksrw.map(_.rdata(o).d).reduce(_|_) }
 
-  val in0q = Module(new Queue(Bits(width = SZ_DATA), nbanks+2))
-  val in1q = Module(new Queue(Bits(width = SZ_DATA), nbanks+2))
+  require(nLRQOperands == 2)
 
-  in0q.io.enq.valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(0)
-  in0q.io.enq.bits := rdata(3)
-  in1q.io.enq.valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(1)
-  in1q.io.enq.bits := rdata(4)
+  io.lrqs(0).valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(0)
+  io.lrqs(0).bits.data := rdata(3)
+  io.lrqs(1).valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(1)
+  io.lrqs(1).bits.data := rdata(4)
 
-  assert(!in0q.io.enq.valid || in0q.io.enq.ready, "check in0q counter logic")
-  assert(!in1q.io.enq.valid || in1q.io.enq.ready, "check in1q counter logic")
-
-  du.io.in0q <> in0q.io.deq
-  du.io.in1q <> in1q.io.deq
-  du.io.idiv.op <> ctrl.io.uop.vidu
-  du.io.fdiv.op <> ctrl.io.uop.vfdu
+  assert(!io.lrqs(0).valid || io.lrqs(0).ready, "check lrqs(0) counter logic")
+  assert(!io.lrqs(1).valid || io.lrqs(1).ready, "check lrqs(1) counter logic")
 
   io.vmu.vaq.valid := ctrl.io.uop.vgu.valid
   io.vmu.vaq.bits.addr := rdata(5)
@@ -133,7 +129,7 @@ class Lane extends HwachaModule with LaneParameters
   assert(!io.vmu.vaq.valid || io.vmu.vaq.ready, "check vaq counter logic")
 
   for (i <- 0 until nSlices) {
-    val fma0 = Module(new LaneFMASlice)
+    val fma0 = Module(new FMASlice)
     fma0.io.req.valid := ctrl.io.uop.vfmu0.valid && ctrl.io.uop.vfmu0.bits.pred(i)
     fma0.io.req.bits.fn := ctrl.io.uop.vfmu0.bits.fn
     fma0.io.req.bits.in0 := unpack_slice(rdata(0), i)
@@ -141,20 +137,20 @@ class Lane extends HwachaModule with LaneParameters
     fma0.io.req.bits.in2 := unpack_slice(rdata(2), i)
     fma0s += fma0.io.resp
 
-    val imul = Module(new LaneIMulSlice)
+    val imul = Module(new IMulSlice)
     imul.io.req.valid := ctrl.io.uop.vimu.valid && ctrl.io.uop.vimu.bits.pred(i)
     imul.io.req.bits.fn := ctrl.io.uop.vimu.bits.fn
     imul.io.req.bits.in0 := unpack_slice(rdata(0), i)
     imul.io.req.bits.in1 := unpack_slice(rdata(1), i)
     imuls += imul.io.resp
 
-    val fconv = Module(new LaneFConvSlice)
+    val fconv = Module(new FConvSlice)
     fconv.io.req.valid := ctrl.io.uop.vfvu.valid && ctrl.io.uop.vfvu.bits.pred(i)
     fconv.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
     fconv.io.req.bits.in := unpack_slice(rdata(2), i)
     fconvs += fconv.io.resp
 
-    val fma1 = Module(new LaneFMASlice)
+    val fma1 = Module(new FMASlice)
     fma1.io.req.valid := ctrl.io.uop.vfmu1.valid && ctrl.io.uop.vfmu1.bits.pred(i)
     fma1.io.req.bits.fn := ctrl.io.uop.vfmu1.bits.fn
     fma1.io.req.bits.in0 := unpack_slice(rdata(3), i)
@@ -162,18 +158,12 @@ class Lane extends HwachaModule with LaneParameters
     fma1.io.req.bits.in2 := unpack_slice(rdata(5), i)
     fma1s += fma1.io.resp
 
-    val fcmp = Module(new LaneFCmpSlice)
+    val fcmp = Module(new FCmpSlice)
     fcmp.io.req.valid := ctrl.io.uop.vfcu.valid && ctrl.io.uop.vfcu.bits.pred(i)
     fcmp.io.req.bits.fn := ctrl.io.uop.vfcu.bits.fn
     fcmp.io.req.bits.in0 := unpack_slice(rdata(3), i)
     fcmp.io.req.bits.in1 := unpack_slice(rdata(4), i)
     fcmps += fcmp.io.resp
-
-    val idiv = Module(new LaneIDivSlice)
-    idiv.io <> du.io.idiv.fus(i)
-
-    val fdiv = Module(new LaneFDivSlice)
-    fdiv.io <> du.io.fdiv.fus(i)
   }
 
   val wdata = List(
@@ -202,7 +192,4 @@ class Lane extends HwachaModule with LaneParameters
   io.ack.vfmu1.bits.pred := Vec(fma1s.map(_.valid)).toBits
   io.ack.vfcu.bits.pred := Vec(fcmps.map(_.valid)).toBits
   io.ack.vfvu.bits.pred := Vec(fconvs.map(_.valid)).toBits
-
-  io.ack.vidu <> du.io.idiv.ack
-  io.ack.vfdu <> du.io.fdiv.ack
 }

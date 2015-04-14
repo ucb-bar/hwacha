@@ -40,6 +40,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val nseq = 8
 
+  val nDCCOpQ = 2
+
   val ndtlb = params(HwachaNDTLB)
   val nptlb = params(HwachaNPTLB)
   val confvru = false
