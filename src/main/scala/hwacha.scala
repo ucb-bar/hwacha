@@ -48,7 +48,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val confprec = false
 
   // pipeline latencies
-  val int_stages = 2
+  val int_stages = 1
   val imul_stages = 3
   val fma_stages = 3
   val fconv_stages = 3
