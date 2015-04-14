@@ -7,11 +7,10 @@ import Constants._
 
 class FrontendReq extends rocket.CoreBundle {
   val pc = UInt(width = vaddrBits+1)
-  val npc = UInt(width = vaddrBits+1)
-  val nnpc = UInt(width = vaddrBits+1)
 }
 
 class FrontendIO extends Bundle {
+  val active = Bool(OUTPUT)
   val req = Valid(new FrontendReq)
   val resp = Decoupled(new rocket.FrontendResp).flip
   val invalidate = Bool(OUTPUT)
@@ -62,26 +61,16 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val icmiss = s2_valid && !icache.io.resp.valid
   val vxu_icmiss = icmiss && s2_type
   val vru_icmiss = icmiss && !s2_type
-  val prev_vxu_icmiss = Reg(next=vxu_icmiss)
-  val prev_vru_icmiss = Reg(next=vru_icmiss)
-  //avoid firing the icache if we have the same line in our buffer? (opt: either buffer)
 
-  val req_val = io.vxu.req.valid || io.vru.req.valid
-  val p_req_val = Reg(next=req_val)
-  val pp_req_val = Reg(next=p_req_val)
-  val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
-                         io.vru.resp.valid && !io.vru.resp.ready)
-  val vxu_req_pc = Mux(pp_req_val && p_req_val && req_val && !prev_vxu_icmiss && !vxu_icmiss && !stall,
-                     io.vxu.req.bits.nnpc,
-                     Mux(p_req_val && req_val && !vxu_icmiss, io.vxu.req.bits.npc, io.vxu.req.bits.pc))
-  val vru_req_pc = Mux(pp_req_val && p_req_val && req_val && !prev_vru_icmiss && !vru_icmiss && !stall,
-                     io.vru.req.bits.nnpc,
-                     Mux(p_req_val && req_val && !vru_icmiss, io.vru.req.bits.npc, io.vru.req.bits.pc))
+  //avoid firing the icache if we have the same line in a line buffer or further down the pipeline
+  val vxu_req_pc = Mux(vxu_icmiss, vxu_s2_pc, 
+                       Mux(io.vxu.req.valid, io.vxu.req.bits.pc, 
+                       Mux(!vxu_s1_valid,vxu_s1_pc,vxu_s1_pc+UInt(8))))
+
+  val vxu_req_pc_rowbyte = vxu_req_pc & SInt(-rowBytes)
 
   val vxu_line_rowbyte = vxu_line_pc & SInt(-rowBytes)
   val vru_line_rowbyte = vru_line_pc & SInt(-rowBytes)
-  val vxu_req_pc_rowbyte = vxu_req_pc & SInt(-rowBytes)
-  val vru_req_pc_rowbyte = vru_req_pc & SInt(-rowBytes)
   val s1_pc_rowbyte = s1_pc & SInt(-rowBytes)
   val vxu_s1_pc_rowbyte = vxu_s1_pc & SInt(-rowBytes)
   val vru_s1_pc_rowbyte = vru_s1_pc & SInt(-rowBytes)
@@ -110,6 +99,12 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val vxu_s0_same_block = vxu_s0_n_match || vxu_s0_nn_match || vxu_s0_nnn_match
   val vxu_s1_same_block = vxu_s1_n_match || vxu_s1_nn_match || vxu_s1_nnn_match
 
+  val vru_req_pc = Mux(vru_icmiss, vru_s2_pc, 
+                       Mux(io.vru.req.valid, io.vru.req.bits.pc,
+                       Mux(!vru_s1_valid, vru_s1_pc,
+                           vru_s1_pc+UInt(8))))
+
+  val vru_req_pc_rowbyte = vru_req_pc & SInt(-rowBytes)
   //next req matches
   val vru_s0_n_match = !s1_type && s1_valid &&
                      (vru_req_pc_rowbyte === s1_pc_rowbyte)
@@ -134,36 +129,52 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   val vru_s1_same_block = vru_s1_n_match || vru_s1_nn_match || vru_s1_nnn_match
               
   //arbitrate between vxu and vru
-  val req_pc   = Mux(io.vxu.req.valid && !vxu_s0_same_block, vxu_req_pc, vru_req_pc)
-  val req_type = io.vxu.req.valid && !vxu_s0_same_block
-  val vxu_make_req = req_type && io.vxu.req.valid && !vxu_s0_same_block
-  val vru_make_req = !req_type && io.vru.req.valid && !vru_s0_same_block
+  val vxu_active = io.vxu.active
+  val vru_active = io.vru.active
+  val redirect = io.vxu.req.valid || io.vru.req.valid
+  val req_val = redirect || (vxu_active && !vxu_s0_same_block) || (vru_active && !vru_s0_same_block)
+  val req_pc   = Mux(!vxu_s0_same_block, vxu_req_pc, vru_req_pc)
+  val req_type = !vxu_s0_same_block
+  val vxu_make_req = req_type && (!vxu_s0_same_block && vxu_active)
+  val vru_make_req = !req_type && (!vru_s0_same_block && vru_active)
 
-  when(!stall) {
+  val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
+                         io.vru.resp.valid && !io.vru.resp.ready)
+
+  val valid_req = (s1_type && vxu_s1_valid && !vxu_s1_same_block) ||
+                    (!s1_type && vru_s1_valid && !vru_s1_same_block)
+
+
+  when (!stall) {
+    //stage 1
+    vxu_s1_pc_ := vxu_req_pc
+    vru_s1_pc_ := vru_req_pc
+    s1_pc_ := req_pc
+    s1_valid := vxu_make_req || vru_make_req
+    vxu_s1_valid := vxu_active &&  (req_type && !vxu_s0_same_block || vxu_s0_same_block)
+    vru_s1_valid := vru_active && (!req_type && !vru_s0_same_block || vru_s0_same_block)
+    s1_type := req_type
+    vxu_s1_nn_match := vxu_s0_nn_match
+    vru_s1_nn_match := vru_s0_nn_match
+    vxu_s1_nnn_match := vxu_s0_nnn_match
+    vru_s1_nnn_match := vru_s0_nnn_match
+    //stage 2
     vxu_s2_same_block := vxu_s1_same_block
     vru_s2_same_block := vru_s1_same_block
     s2_valid := s1_valid
     vxu_s2_valid := vxu_s1_valid
     vru_s2_valid := vru_s1_valid
     s2_type := s1_type
-    s2_pc := s1_pc
-    vxu_s2_pc := vxu_s1_pc
-    vru_s2_pc := vru_s1_pc
-    s2_xcpt_if := tlb.io.resp.xcpt_if
-  }
-  s1_valid := Bool(false)
-  when(req_val){
-    s1_pc_ := req_pc
-    vxu_s1_pc_ := vxu_req_pc
-    vru_s1_pc_ := vru_req_pc
-    s1_valid := vxu_make_req || vru_make_req
-    vxu_s1_valid := io.vxu.req.valid
-    vru_s1_valid := io.vru.req.valid
-    s1_type := req_type
-    vxu_s1_nn_match := vxu_s0_nn_match
-    vru_s1_nn_match := vru_s0_nn_match
-    vxu_s1_nnn_match := vxu_s0_nnn_match
-    vru_s1_nnn_match := vru_s0_nnn_match
+    when (!icmiss) {
+      s2_pc := s1_pc
+      s2_xcpt_if := tlb.io.resp.xcpt_if
+    }
+    when (!vxu_icmiss) {
+      vxu_s2_pc := vxu_s1_pc
+    }
+    when (!vru_icmiss) {
+      vru_s2_pc := vru_s1_pc
+    }
   }
 
   tlb.io.ptw <> io.ptw
@@ -180,8 +191,7 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
   icache.io.invalidate := io.vxu.invalidate//only vxu invalidates
   icache.io.req.bits.ppn := tlb.io.resp.ppn
   icache.io.req.bits.kill := tlb.io.resp.miss || io.ptw.invalidate
-  icache.io.resp.ready := !stall && ((s1_type && vxu_s1_valid && !vxu_s1_same_block) ||
-                                     (!s1_type && vru_s1_valid && !vru_s1_same_block))
+  icache.io.resp.ready := !stall && valid_req
 
   val resp_valid = s2_valid && (s2_xcpt_if || icache.io.resp.valid)
   io.vxu.resp.valid := vxu_s2_valid && ((s2_type && resp_valid) || vxu_s2_same_block)

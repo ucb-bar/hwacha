@@ -158,8 +158,10 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   vmu.io.op <> scalar.io.vmu
 
   //fake delayed vru_request port (delay vxu req's 2 cycles)
-  val vru_req = ShiftRegister(scalar.io.imem.req,2)
+  val delay = 4
+  val vru_req = ShiftRegister(scalar.io.imem.req,delay)
   icache.io.vru.req := vru_req
+  icache.io.vru.active := ShiftRegister(scalar.io.imem.active,delay)
   icache.io.vru.resp.ready := Bool(true)
 
   // Connect supporting Hwacha memory modules to external ports

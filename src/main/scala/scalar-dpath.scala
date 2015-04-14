@@ -77,9 +77,7 @@ class ScalarDpath extends HwachaModule
   when(!io.ctrl.killf){
     vf_pc := vf_pc + UInt(8)
   }
-  io.imem.req.bits.pc := vf_pc
-  io.imem.req.bits.npc := vf_pc + UInt(8)
-  io.imem.req.bits.nnpc := vf_pc + UInt(2*8)
+  io.imem.req.bits.pc := io.cmdq.imm.bits
 
   val id_inst = io.imem.resp.bits.data(0).toBits; require(params(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc

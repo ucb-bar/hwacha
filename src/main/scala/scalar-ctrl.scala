@@ -262,7 +262,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val ctrl_stalld = !fire_decode(null)
 
   //fetch
-  io.imem.req.valid := vf_active
+  io.imem.req.valid := fire(null,decode_vf)
+  io.imem.active := vf_active || fire(null,decode_vf)
   io.imem.invalidate := Bool(false)
   io.imem.resp.ready := !ctrl_stalld
 
