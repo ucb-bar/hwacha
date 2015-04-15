@@ -209,19 +209,19 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_ctrl_rens2_not0 = vs2_val && vs2_scalar && vs2_sp && id_raddrs2 != UInt(0)
   val id_ctrl_rens3_not0 = vs3_val && vs3_scalar && vs3_sp && id_raddrs3 != UInt(0)
 
-  // stall for RAW/WAW hazards on memory/fpu
-  val ex_cannot_bypass = (ex_ctrl.vmu_val || ex_ctrl.fpu_val)
+  // stall for RAW/WAW hazards on non scalar integer pipes
+  val ex_can_bypass = ex_ctrl.decode_scalar || ex_ctrl.viu_val
   val data_hazard_ex = ex_scalar_dest &&
     (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
      id_ctrl_wen_not0   && id_waddr  === ex_waddr)
 
-  val id_ex_hazard = ex_reg_valid && (data_hazard_ex && ex_cannot_bypass)
+  val id_ex_hazard = ex_reg_valid && (data_hazard_ex && !ex_can_bypass)
 
   val id_set_sboard = io.fpu.req.fire() || (id_scalar_dest && io.vmu.fire())
 
-  //stall on RAW/WAW hazards on loads/fpu until data returns
-  //stall on WAW hazards on stores until translation succeeds
+  // stall on RAW/WAW hazards on loads/fpu until data returns
+  // stall on WAW hazards on stores until translation succeeds
   val id_sboard_hazard = 
                    (id_ctrl_rens1_not0 && sboard.read(id_raddrs1) ||
                    id_ctrl_rens2_not0 && sboard.read(id_raddrs2) ||
