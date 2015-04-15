@@ -49,11 +49,6 @@ trait HwachaDecodeConstants {
   val RESP_CFG   = Bits(3,3)
   val RESP_VL    = Bits(4,3)
 
-  val SZ_PREC = 2
-  val PREC_DOUBLE = Bits("b00", SZ_PREC)
-  val PREC_SINGLE = Bits("b01", SZ_PREC)
-  val PREC_HALF   = Bits("b10", SZ_PREC)
-
 }
 
 trait DecodeConstants {
