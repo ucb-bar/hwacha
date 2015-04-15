@@ -59,7 +59,9 @@ class Expander extends HwachaModule with SeqParameters with LaneParameters
         Mux(rport_valid(1), UInt(2), UInt(1)),
         Mux(rport_valid(1), UInt(1), UInt(0)))))
 
-    val op_idx = io.seq.bits.rports + UInt(1, szRPorts+1)
+    val op0_idx = io.seq.bits.rports
+    val op1_idx = io.seq.bits.rports + UInt(1, szRPorts+1)
+    val op_idx = Mux(io.seq.bits.active.vsu, op0_idx, op1_idx)
 
     def mark_opl(n: UInt, idx: Int) = {
       tick_sram_read.s(n).bits.global.valid := Bool(false)
@@ -167,17 +169,17 @@ class Expander extends HwachaModule with SeqParameters with LaneParameters
 
     def mark_viu = {
       when (io.seq.bits.active.viu) {
-        tick_viu.s(op_idx).valid := Bool(true)
-        tick_viu.s(op_idx).bits.fn := io.seq.bits.fn.viu()
-        tick_viu.s(op_idx).bits.strip := io.seq.bits.strip
+        tick_viu.s(op1_idx).valid := Bool(true)
+        tick_viu.s(op1_idx).bits.fn := io.seq.bits.fn.viu()
+        tick_viu.s(op1_idx).bits.strip := io.seq.bits.strip
       }
     }
 
     def mark_vsu = {
       when (io.seq.bits.active.vsu) {
-        tick_vsu.s(op_idx).valid := Bool(true)
-        tick_vsu.s(op_idx).bits.selff := Bool(false)
-        tick_vsu.s(op_idx).bits.strip := io.seq.bits.strip
+        tick_vsu.s(op0_idx).valid := Bool(true)
+        tick_vsu.s(op0_idx).bits.selff := Bool(false)
+        tick_vsu.s(op0_idx).bits.strip := io.seq.bits.strip
       }
     }
   }
