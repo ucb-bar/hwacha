@@ -55,7 +55,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     val vxu = new VXUIssueOpIO
 
     val vf_active = Bool(OUTPUT)
-    val pending_seq = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
   }
 

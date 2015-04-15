@@ -21,7 +21,6 @@ class ScalarUnit extends HwachaModule {
     val vxu = new VXUIssueOpIO
     
     val vf_active = Bool(OUTPUT)
-    val pending_seq = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
   }
 
@@ -61,7 +60,6 @@ class ScalarUnit extends HwachaModule {
   io.cmdq <> ctrl.io.cmdq
   io.cmdq <> dpath.io.cmdq
   io.vf_active <> ctrl.io.vf_active
-  io.pending_seq <> ctrl.io.pending_seq
   io.pending_memop <> ctrl.io.pending_memop
 
   io.vxu <> ctrl.io.vxu
