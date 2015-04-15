@@ -149,6 +149,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   vxu.io.cfg <> rocc.io.cfg
 
   vxu.io.issue <> scalar.io.vxu
+  vxu.io.pending_seq <> scalar.io.pending_seq
 
   vmu.io.lane <> vxu.io.vmu
 

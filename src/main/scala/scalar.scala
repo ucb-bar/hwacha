@@ -20,6 +20,7 @@ class ScalarUnit extends HwachaModule {
     
     val vf_active = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
+    val pending_seq = Bool(INPUT)
   }
 
   val ctrl  = Module(new ScalarCtrl)
@@ -59,6 +60,7 @@ class ScalarUnit extends HwachaModule {
   io.cmdq <> dpath.io.cmdq
   io.vf_active <> ctrl.io.vf_active
   io.pending_memop <> ctrl.io.pending_memop
+  io.pending_seq <> ctrl.io.pending_seq
 
   io.vxu <> ctrl.io.vxu
   io.vxu <> dpath.io.vxu

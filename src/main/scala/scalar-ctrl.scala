@@ -56,6 +56,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
     val vf_active = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
+    val pending_seq = Bool(INPUT)
   }
 
   class Scoreboard(n: Int) {
@@ -209,12 +210,14 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_ctrl_rens2_not0 = vs2_val && vs2_scalar && vs2_sp && id_raddrs2 != UInt(0)
   val id_ctrl_rens3_not0 = vs3_val && vs3_scalar && vs3_sp && id_raddrs3 != UInt(0)
 
-  // stall for RAW/WAW hazards on non scalar integer pipes
+  // stall for RAW hazards on non scalar integer pipes
+  // only scalar integer ops can be bypassed but
+  // scalar loads and sign injections set this but are tracked in scoreboard
   val ex_can_bypass = ex_ctrl.decode_scalar || ex_ctrl.viu_val
   val data_hazard_ex = ex_scalar_dest &&
     (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
-     id_ctrl_wen_not0   && id_waddr  === ex_waddr)
+     id_ctrl_rens3_not0 && id_raddrs3 === ex_waddr)
 
   val id_ex_hazard = ex_reg_valid && (data_hazard_ex && !ex_can_bypass)
 
@@ -248,7 +251,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    (pending_fpu && id_ctrl.decode_stop) //stall stop on outstanding fpu/mem
+    (pending_fpu && id_ctrl.decode_stop) || //stall stop on outstanding fpu/mem
+    io.pending_seq
 
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
@@ -332,6 +336,12 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
   io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vl)
+  when (io.vmu.valid && id_scalar_inst) {
+    pending_memop := Bool(true)
+  }
+  when (clear_mem) {
+    pending_memop := Bool(false)
+  }
 
   //excute
   ctrl_killd := !io.imem.resp.valid || ctrl_stalld 
