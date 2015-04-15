@@ -6,10 +6,6 @@ import uncore.constants.MemoryOpConstants._
 
 object Constants extends
   MachineConstants with
-  PrecConstants with
-  VectorCommandQueueConstants with
-  LaneConstants with
-  AIWConstants with
   DecodeConstants with
   VIUConstants with
   VIMUConstants with
@@ -21,22 +17,10 @@ object Constants extends
   VMUConstants
 
 trait MachineConstants {
-  val SZ_VLEN = 12
-  val SZ_REGLEN = 6
-  val SZ_REGCNT = 6
-
-  val SZ_ADDR = 64
-  val SZ_DATA = 128
-
   val SZ_D = 64
   val SZ_W = 32
   val SZ_H = 16
   val SZ_B = 8
-
-  val N_D = SZ_DATA / SZ_D
-  val N_W = SZ_DATA / SZ_W
-  val N_H = SZ_DATA / SZ_H
-  val N_B = SZ_DATA / SZ_B
 }
 
 trait HwachaDecodeConstants {
@@ -70,49 +54,6 @@ trait HwachaDecodeConstants {
   val PREC_SINGLE = Bits("b01", SZ_PREC)
   val PREC_HALF   = Bits("b10", SZ_PREC)
 
-}
-
-trait VectorCommandQueueConstants {
-  val SZ_VCMD = 18
-  val SZ_IMM = 64
-  val SZ_VSTRIDE = 64
-}
-
-trait PrecConstants {
-  val SZ_PREC = 2
-  val SZ_BUF_PREC = 3
-
-  val PREC_DOUBLE = Bits("b00", SZ_PREC)
-  val PREC_SINGLE = Bits("b01", SZ_PREC)
-  val PREC_HALF = Bits("b10", SZ_PREC)
-}
-
-trait LaneConstants {
-  val SZ_BANK = 8
-  val SZ_LGBANK = 3
-  val SZ_LGBANK1 = 4
-  val SZ_BPTR = SZ_LGBANK
-  val SZ_BPTR1 = SZ_LGBANK+1
-  val SZ_BPTR2 = SZ_LGBANK+2
-  val SZ_BCNT = SZ_LGBANK+1
-  val SZ_BREGLEN = 8
-  val SZ_BOPL = 3
-  val SZ_BRPORT = 12 // 2 imul, 3 fma0, 3 fma1, 1 fconv0, 1 fconv1, 1 vgu, 1 vsu
-  val SZ_BWPORT = 3
-}
-
-trait AIWConstants {
-  val AIW_CMD_DEPTH = 8
-  val AIW_IMM1_DEPTH = 8
-  val AIW_IMM2_DEPTH = 8
-  val AIW_CNT_DEPTH = 8
-  val AIW_NUMCNT_DEPTH = AIW_CMD_DEPTH
-
-  val SZ_AIW_CMD = log2Up(AIW_CMD_DEPTH)
-  val SZ_AIW_IMM1 = log2Up(AIW_IMM1_DEPTH)
-  val SZ_AIW_IMM2E = log2Up(AIW_IMM2_DEPTH)
-  val SZ_AIW_CNT = log2Up(AIW_IMM2_DEPTH)
-  val SZ_AIW_NUMCNT = log2Up(AIW_NUMCNT_DEPTH)
 }
 
 trait DecodeConstants {

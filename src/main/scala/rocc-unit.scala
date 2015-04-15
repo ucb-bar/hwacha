@@ -5,17 +5,15 @@ import Node._
 import Constants._
 import Commands._
 
-class HwachaConfigIO extends HwachaBundle {
-  val vregs = UInt(OUTPUT, szvregs+1)
-  val pregs = UInt(OUTPUT, szpregs+1)
-  val vstride = UInt(OUTPUT, SZ_REGLEN)
+class HwachaConfigIO extends HwachaBundle with LaneParameters {
+  val vstride = UInt(OUTPUT, bRFAddr)
 }
 
-class CMDQIO extends Bundle {
+class CMDQIO extends HwachaBundle {
   val cmd = Decoupled(Bits(width = CMD_X.getWidth))
-  val imm = Decoupled(Bits(width = SZ_D))
-  val rd  = Decoupled(Bits(width = SZ_REGCNT))
-  val cnt = Decoupled(Bits(width = SZ_VLEN))
+  val imm = Decoupled(Bits(width = regLen))
+  val rd  = Decoupled(Bits(width = bSDest))
+  val cnt = Decoupled(Bits(width = bVLen))
 }
 
 class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
@@ -58,7 +56,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants {
   )
 }
 
-class RoCCUnit extends HwachaModule {
+class RoCCUnit extends HwachaModule with LaneParameters {
   import HwachaDecodeTable._
 
   val io = new Bundle {
@@ -74,14 +72,11 @@ class RoCCUnit extends HwachaModule {
   }
 
   // Cofiguration state
-  val cfg_maxvl = Reg(init=UInt(64, szvlen+1))
-  val cfg_vl = Reg(init=UInt(0, szvlen+1))
-  val cfg_vregs = Reg(init=UInt(32, szvregs+1))
-  val cfg_pregs = Reg(init=UInt(0, szpregs+1))
-  val cfg_vstride = Reg(init=UInt(32, SZ_REGLEN))
-  io.cfg.vregs := cfg_vregs
-  io.cfg.pregs := cfg_pregs
-  io.cfg.vstride := cfg_vstride
+  val cfg_maxvl = Reg(init=UInt(64, bVLen))
+  val cfg_vl = Reg(init=UInt(0, bVLen))
+  val cfg_vregs = Reg(init=UInt(32, bVRegs))
+  val cfg_pregs = Reg(init=UInt(0, bPRegs))
+  io.cfg.vstride := cfg_vregs
 
   // Decode
   val raw_inst = io.rocc.cmd.bits.inst.toBits
@@ -132,17 +127,17 @@ class RoCCUnit extends HwachaModule {
   }
 
   // Logic to handle vector length calculation
-  val nvpr = (io.rocc.cmd.bits.rs1(szbdepth,0) + inst_i_imm(szbdepth,0))(szbdepth, 0)
-  val nppr = (io.rocc.cmd.bits.rs1(szbdepth+6,szbdepth+1) + inst_i_imm(11,szbdepth+1))(4, 0)
+  val nvpr = (io.rocc.cmd.bits.rs1(bVRegs-1, 0) + inst_i_imm(bVRegs-1, 0))(bVRegs-1, 0)
+  val nppr = (io.rocc.cmd.bits.rs1(bVRegs+bPRegs-1, bVRegs) + inst_i_imm(11, bVRegs))(bPRegs-1, 0)
 
   // vector length lookup
-  val rom_allocation_units = (0 to nvregs).toArray.map(n => (UInt(n),
-    UInt(if (n < 2) (nbregs) else (nbregs / n), width = szbregs+1)
+  val rom_allocation_units = (0 to nVRegs).toArray.map(n => (UInt(n),
+    UInt(if (n < 2) (nSRAM) else (nSRAM / n), width = log2Down(nSRAM)+1)
   ))
 
   val elems_per_bank = Lookup(nvpr, rom_allocation_units.last._2, rom_allocation_units)
-  val new_maxvl = elems_per_bank * UInt(nbanks)
-  val new_vl = Mux(io.rocc.cmd.bits.rs1 < cfg_maxvl, io.rocc.cmd.bits.rs1, cfg_maxvl)(szvlen-1, 0)
+  val new_maxvl = elems_per_bank * UInt(nBanks)
+  val new_vl = Mux(io.rocc.cmd.bits.rs1 < cfg_maxvl, io.rocc.cmd.bits.rs1, cfg_maxvl)(bVLen-1, 0)
 
   when (fire(null, decode_vcfg)) {
     cfg_maxvl := new_maxvl

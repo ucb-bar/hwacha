@@ -7,9 +7,9 @@ import uncore.constants.MemoryOpConstants._
 import DataGating._
 import HardFloatHelper._
 
-class Write extends Bundle {
-  val rd  = Bits(width = 8)
-  val imm = Bits(width = SZ_ADDR)
+class Write extends HwachaBundle {
+  val rd  = Bits(width = bSDest)
+  val imm = Bits(width = regLen)
 }
 
 class ScalarDpath extends HwachaModule {
@@ -46,7 +46,7 @@ class ScalarDpath extends HwachaModule {
   val wb_wdata = Bits()
 
   class SRegFile {
-    private val rf = Mem(UInt(width = 64), nsregs-1)
+    private val rf = Mem(UInt(width = regLen), nSRegs-1)
     private val reads = collection.mutable.ArrayBuffer[(UInt,UInt)]()
     private var canRead = true
     def read(addr: UInt) = {
@@ -165,16 +165,16 @@ class ScalarDpath extends HwachaModule {
                Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
 
   //Memory requests - COLIN FIXME: check for criticla path (need reg?)
-  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0,SZ_VSTRIDE),Seq(
-                      MT_B->  UInt(1,SZ_VSTRIDE),
-                      MT_BU-> UInt(1,SZ_VSTRIDE),
-                      MT_H->  UInt(2,SZ_VSTRIDE),
-                      MT_HU-> UInt(2,SZ_VSTRIDE),
-                      MT_W->  UInt(4,SZ_VSTRIDE),
-                      MT_WU-> UInt(4,SZ_VSTRIDE),
-                      MT_D->  UInt(8,SZ_VSTRIDE) 
+  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
+                      MT_B->  UInt(1),
+                      MT_BU-> UInt(1),
+                      MT_H->  UInt(2),
+                      MT_HU-> UInt(2),
+                      MT_W->  UInt(4),
+                      MT_WU-> UInt(4),
+                      MT_D->  UInt(8) 
                     ))
-                                 // data        waddr
+
   io.vmu.bits.base :=
     Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
   io.vmu.bits.aux.union :=

@@ -18,7 +18,6 @@ class SMU extends VMUModule {
     val outer = new VMUMemIO
   }
 
-  private val scalarDataBits = params(HwachaScalarDataBits)
   private def pgidx(x: UInt) = x(pgIdxBits-1, 0)
 
   private val op = io.issue.op
@@ -48,13 +47,13 @@ class SMU extends VMUModule {
 
   val resp_data = resp.bits.data >> Cat(shift, Bits(0,3))
   val resp_mask = FillInterleaved(SZ_B, mask)
-  val resp_extend = Fill(scalarDataBits-SZ_B, !op.mt.unsigned &&
+  val resp_extend = Fill(regLen-SZ_B, !op.mt.unsigned &&
     Mux1H(mt, Seq(SZ_B, SZ_H, SZ_W, SZ_D).map(i => resp_data(i-1))))
 
   io.scalar.valid := Bool(false)
   io.scalar.bits.id := op.aux.s.id
   io.scalar.bits.data := Cat(
-    (resp_data(scalarDataBits-1, SZ_B) & resp_mask) |
+    (resp_data(regLen-1, SZ_B) & resp_mask) |
     (resp_extend & ~resp_mask),
     resp_data(SZ_B-1, 0))
 

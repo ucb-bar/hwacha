@@ -14,8 +14,8 @@ class VMUFn extends Bundle {
   val mt = Bits(width = MT_SZ)
 }
 
-class VMUAuxVector extends Bundle {
-  val stride = UInt(width = SZ_VSTRIDE)
+class VMUAuxVector extends HwachaBundle {
+  val stride = UInt(width = regLen)
 }
 
 object VMUAuxVector {
@@ -26,9 +26,9 @@ object VMUAuxVector {
   }
 }
 
-class VMUAuxScalar extends Bundle {
-  val data = Bits(width = params(HwachaScalarDataBits))
-  val id = UInt(width = log2Up(params(HwachaNScalarRegs)))
+class VMUAuxScalar extends HwachaBundle {
+  val data = Bits(width = regLen)
+  val id = UInt(width = log2Up(nSRegs))
 }
 
 object VMUAuxScalar {
@@ -51,7 +51,7 @@ class VMUAux extends Bundle {
 
 abstract class VMUOpBase extends VMUBundle {
   val fn = new VMUFn
-  val vlen = UInt(width = SZ_VLEN)
+  val vlen = UInt(width = bVLen)
   val base = UInt(width = maxAddrBits)
 }
 
@@ -126,7 +126,7 @@ class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 
 class VPAQEntry extends VMUBundle {
   val addr = UInt(width = paddrBits)
-  val ecnt = UInt(width = SZ_VLEN) 
+  val ecnt = UInt(width = bVLen) 
 }
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
@@ -140,7 +140,7 @@ trait VMUMetadataBase extends VMUBundle {
   val eskip = UInt(width = tlByteAddrBits)
 }
 trait VMUMetadataLoad extends VMUMetadataBase {
-  val eidx = UInt(width = SZ_VLEN)
+  val eidx = UInt(width = bVLen)
 }
 trait VMUMetadataStore extends VMUMetadataBase {
   val first = Bool()

@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import uncore._
-import Constants._
 
 class FrontendReq extends rocket.CoreBundle {
   val pc = UInt(width = vaddrBits+1)

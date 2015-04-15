@@ -1,23 +1,26 @@
 package hwacha
 
 import Chisel._
-import Constants._
+
+abstract trait DCCParameters extends UsesHwachaParameters {
+  val nDCCOpQ = 2
+}
 
 class DCCAckIO extends HwachaBundle {
   val vidu = Valid(new VIDUAck)
   val vfdu = Valid(new VFDUAck)
 }
 
-class DecoupledCluster extends HwachaModule with LaneParameters with VMUParameters {
+class DecoupledCluster extends VXUModule with VMUParameters {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
     val ack = new DCCAckIO
     val lrqs = Vec.fill(nLRQOperands){new LRQIO}.flip
-    val brqs = Vec.fill(nbanks)(new BRQIO).flip
+    val brqs = Vec.fill(nBanks)(new BRQIO).flip
     val bwqs = new Bundle {
-      val mem = Vec.fill(nbanks)(new BWQIO)
-      val fu = Vec.fill(nbanks)(new BWQIO)
+      val mem = Vec.fill(nBanks)(new BWQIO)
+      val fu = Vec.fill(nBanks)(new BWQIO)
     }
     val dqla = new CounterLookAheadIO().flip
     val dila = new CounterLookAheadIO().flip

@@ -21,7 +21,7 @@ class IDivResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class IDivSlice extends HwachaModule with LaneParameters {
+class IDivSlice extends VXUModule {
   val io = new IDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))

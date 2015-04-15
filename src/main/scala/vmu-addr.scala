@@ -9,7 +9,7 @@ class VMUAddr extends VMUMemOp {
 }
 class VMUAddrIO extends DecoupledIO(new VMUAddr)
 
-class VVAQ extends VMUModule with LaneParameters {
+class VVAQ extends VMUModule with SeqParameters {
   val io = new Bundle {
     val enq = new VVAQIO().flip
     val deq = new VVAQIO
@@ -24,7 +24,7 @@ class VVAQ extends VMUModule with LaneParameters {
   lacntr.io.inc.cnt := UInt(1)
   lacntr.io.inc.update := io.deq.fire()
   lacntr.io.dec <> io.la
-  require(confvmu.nvvaq >= lookAheadMax)
+  require(confvmu.nvvaq >= maxLookAhead)
 }
 
 class TLBIO extends VMUBundle {
@@ -88,10 +88,10 @@ class ABox0 extends VMUModule {
   val ecnt_max = Mux(op.unit && !op.mode.indexed,
     ecnt_pg - (ecnt_off & Fill(first, pgIdxBits)), UInt(1))
 
-  val count = Reg(UInt(width = SZ_VLEN))
+  val count = Reg(UInt(width = bVLen))
   val count_next = count.zext - ecnt_max.zext
   val count_last = (count_next <= SInt(0))
-  val ecnt = Mux(count_next(SZ_VLEN), count, ecnt_max)
+  val ecnt = Mux(count_next(bVLen), count, ecnt_max)
 
   val stride = Mux(op.unit, UInt(pgSzBytes), op.aux.v.stride)
   val accum = Reg(UInt())
@@ -175,7 +175,7 @@ class TBox(n: Int) extends VMUModule {
   }
 }
 
-class VPAQ extends VMUModule with LaneParameters {
+class VPAQ extends VMUModule with SeqParameters {
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = Decoupled(UInt(width = paddrBits))
@@ -192,7 +192,7 @@ class VPAQ extends VMUModule with LaneParameters {
   lacntr.io.inc.cnt := io.enq.bits.ecnt
   lacntr.io.inc.update := io.enq.fire()
   lacntr.io.dec <> io.la
-  require(confvmu.nvpaq >= lookAheadMax)
+  require(confvmu.nvpaq >= maxLookAhead)
 }
 
 class ABox1 extends VMUModule {
@@ -209,7 +209,7 @@ class ABox1 extends VMUModule {
   private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
   val packed = op.unit && !op.mode.indexed
 
-  val count = Reg(UInt(width = SZ_VLEN))
+  val count = Reg(UInt(width = bVLen))
   val first = Reg(Bool())
 
   // Byte offset of first element

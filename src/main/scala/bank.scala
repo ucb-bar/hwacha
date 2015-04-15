@@ -2,11 +2,9 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
-import Packing._
 import scala.collection.mutable.ArrayBuffer
 
-class BankOpIO extends Bundle with LaneParameters {
+class BankOpIO extends VXUBundle {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadMicroOp)
     val write = Valid(new SRAMRFWriteMicroOp)
@@ -28,7 +26,7 @@ class BankOpIO extends Bundle with LaneParameters {
 class BRQIO extends DecoupledIO(new BRQEntry)
 class BWQIO extends DecoupledIO(new BWQEntry)
 
-class BankRWIO extends Bundle with LaneParameters {
+class BankRWIO extends VXUBundle {
   val rdata = Vec.fill(nGOPL){new BankReadEntry().asOutput}
   val wdata = Vec.fill(nWSel){new BankWriteEntry().asInput}
 
@@ -39,7 +37,7 @@ class BankRWIO extends Bundle with LaneParameters {
   }
 }
 
-class Bank extends HwachaModule with LaneParameters {
+class Bank extends VXUModule with Packing {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val ack = Valid(new VIUAck)

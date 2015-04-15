@@ -4,17 +4,17 @@ import Chisel._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
-class BRQLookAheadIO extends HwachaBundle with LookAheadIO {
-  val mask = Bits(OUTPUT, nbanks)
+class BRQLookAheadIO extends VXUBundle with LookAheadIO {
+  val mask = Bits(OUTPUT, nBanks)
 }
 
-class VSU extends HwachaModule with LaneParameters with VMUParameters {
+class VSU extends VXUModule with VMUParameters {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
     val xcpt = new XCPTIO().flip
 
     val pred = Decoupled(Bits(width = nPredSet)).flip
-    val brqs = Vec.fill(nbanks)(new BRQIO).flip
+    val brqs = Vec.fill(nBanks)(new BRQIO).flip
     val la = new BRQLookAheadIO().flip
 
     val vsdq = new VSDQIO
@@ -24,8 +24,8 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
   opq.io.enq <> io.op
   val op = opq.io.deq
 
-  private val lgbank = log2Up(nbanks)
-  private val nTotalSlices = nSlices * nbanks
+  private val lgbank = log2Up(nBanks)
+  private val nTotalSlices = nSlices * nBanks
   private val sz_beat = math.max(1, nPredSet / nSlices) + lgbank
 
   val mt_fn = Reg(Bits(width = MT_SZ))
@@ -38,7 +38,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
     // Maximum number of elements per beat
     math.min(tlDataBits / sz, nTotalSlices))
 
-  val vlen = Reg(UInt(width = SZ_VLEN))
+  val vlen = Reg(UInt(width = bVLen))
   val ecnt = Mux1H(mtsel, beat_cnt.map(i => UInt(i)))
   val vlen_next = vlen.zext - ecnt.zext
   val last = (vlen_next <= SInt(0))
@@ -81,7 +81,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
     // m: number of complete subblocks per BRQ entry
     val brqDataBits = sz * nSlices
     if (tlDataBits >= brqDataBits) {
-      val n = math.min(nbanks, tlDataBits / brqDataBits)
+      val n = math.min(nBanks, tlDataBits / brqDataBits)
       require(isPow2(n))
       (n, 1)
     } else {
@@ -90,9 +90,9 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
       (1, m)
     }
   }
-  val brqs_mask = (0 until nbanks).map(i =>
+  val brqs_mask = (0 until nBanks).map(i =>
     Mux1H(mtsel, brqs_cnt.map { case (n, m) =>
-      if (n == nbanks) Bool(true) else {
+      if (n == nBanks) Bool(true) else {
         val lgn = log2Ceil(n)
         val lgm = log2Ceil(m)
         (beat(lgbank-lgn-1+lgm, lgm) === UInt(i >> lgn))
@@ -181,7 +181,7 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
 
   private def repack(sz_elt: Int, sz_reg: Int) = {
     require((sz_elt <= sz_reg) && (tlDataBits % sz_elt == 0))
-    val elts = for (g <- (0 until SZ_DATA by sz_reg).grouped(nSlices);
+    val elts = for (g <- (0 until wBank by sz_reg).grouped(nSlices);
       q <- brqs_deq; i <- g.iterator) yield q.bits.data(i+sz_elt-1, i)
     val sets = elts.grouped(tlDataBits / sz_elt).map(Vec(_)).toIterable
     if (sets.size > 1) Vec(sets)(beat) else sets.head
@@ -213,18 +213,18 @@ class VSU extends HwachaModule with LaneParameters with VMUParameters {
     Seq(data_d, data_w, data_h, data_b_head ++ data_b).map(x => Cat(x.reverse)))
 }
 
-class VLUEntry extends HwachaBundle with LaneParameters {
-  val eidx = UInt(width = SZ_VLEN - log2Up(nBatch))
-  val data = Bits(width = SZ_DATA)
+class VLUEntry extends VXUBundle {
+  val eidx = UInt(width = bVLen - log2Up(nBatch))
+  val data = Bits(width = wBank)
   val mask = Bits(width = nSlices)
 }
 
-class VLU extends HwachaModule with LaneParameters with VMUParameters {
+class VLU extends VXUModule with VMUParameters {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
 
     val vldq = new VLDQIO().flip
-    val bwqs = Vec.fill(nbanks)(new BWQIO)
+    val bwqs = Vec.fill(nBanks)(new BWQIO)
     val la = new CounterLookAheadIO().flip
 
     val cfg = new HwachaConfigIO().flip
@@ -238,15 +238,15 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   // control
   //--------------------------------------------------------------------\\
 
-  val vlen = Reg(UInt(width = SZ_VLEN))
-  val eidx = Reg(UInt(width = SZ_VLEN))
+  val vlen = Reg(UInt(width = bVLen))
+  val eidx = Reg(UInt(width = bVLen))
   val eidx_next = eidx + io.la.cnt
 
   val mt_hold = Reg(Bits(width = MT_SZ))
   val mt = DecodedMemType(mt_hold)
   val mt_sel = Seq(mt.d, mt.w, mt.h, mt.b)
 
-  val vd = Reg(UInt(width = szvregs))
+  val vd = Reg(UInt(width = bRFAddr))
 
   op.ready := Bool(false)
 
@@ -289,14 +289,14 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   // permutation network
   //--------------------------------------------------------------------\\
 
-  private val lgbanks = log2Up(nbanks)
+  private val lgbanks = log2Up(nBanks)
   private val lgslices = log2Up(nSlices)
   private val lgbatch = log2Up(nBatch)
 
   val eidx_slice = meta.eidx(lgslices-1, 0)
   val eidx_batch = meta.eidx(lgbatch-1, 0)
   val eidx_bank = meta.eidx(lgbatch-1, lgslices)
-  val eidx_reg = meta.eidx(SZ_VLEN-1, lgbatch)
+  val eidx_reg = meta.eidx(bVLen-1, lgbatch)
   val eidx_reg_next = eidx_reg + UInt(1)
 
   require(nSlices == 2)
@@ -363,7 +363,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   val bwqs_mask = merge(mask)
   val bwqs_en = bwqs_mask.map(_.orR)
 
-  val wb_update = Vec.fill(nbanks)(Bits(width = nvlreq))
+  val wb_update = Vec.fill(nBanks)(Bits(width = nvlreq))
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nbwq))
@@ -409,7 +409,7 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   val wb_status = Reg(Bits(width = nvlreq))
   val wb_next = wb_status | wb_update.reduce(_ | _)
   val wb_retire_cnt = (io.la.cnt >> UInt(lgbatch)) &
-    Fill(lookAheadMax - lgbatch, io.la.reserve)
+    Fill(maxLookAhead - lgbatch, io.la.reserve)
   val wb_retire = Cat(wb_retire_cnt, UInt(0, lgbatch))
 
   wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state === s_busy)
@@ -430,13 +430,13 @@ class VLU extends HwachaModule with LaneParameters with VMUParameters {
   }
 
   // Limited leading-ones count
-  val wb_locnt_init = (0 until lookAheadMax).map(i => (wb_status(i), UInt(i+1)))
+  val wb_locnt_init = (0 until maxLookAhead).map(i => (wb_status(i), UInt(i+1)))
   val wb_locnt_tree = priority_tree(wb_locnt_init).head
   val wb_locnt = Mux(wb_locnt_tree._1, wb_locnt_tree._2, UInt(0))
   io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
 }
 
-class VLUInterposer extends VMUModule with LaneParameters {
+class VLUInterposer extends VXUModule with VMUParameters {
   val io = new Bundle {
     val enq = new VLDQIO().flip
     val deq = new VLDQIO

@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Packing._
 import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
@@ -13,13 +12,13 @@ class FMAResult extends Bundle {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class FMASlice extends HwachaModule {
+class FMASlice extends VXUModule with Packing {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VFMUFn
-      val in0 = Bits(INPUT, SZ_D)
-      val in1 = Bits(INPUT, SZ_D)
-      val in2 = Bits(INPUT, SZ_D)
+      val in0 = Bits(width = SZ_D)
+      val in1 = Bits(width = SZ_D)
+      val in2 = Bits(width = SZ_D)
     }).flip
     val resp = Valid(new FMAResult)
   }
@@ -82,5 +81,5 @@ class FMASlice extends HwachaModule {
   result.out := Mux1H(fpmatch, results.map { _._1 })
   result.exc := Mux1H(fpmatch, results.map { _._2 })
 
-  io.resp := Pipe(io.req.valid, result, fma_stages)
+  io.resp := Pipe(io.req.valid, result, stagesFMA)
 }

@@ -2,10 +2,10 @@ package hwacha
 
 import Chisel._
 
-class LaneMRTIO extends Bundle with LaneParameters {
+class LaneMRTIO extends Bundle with SeqParameters {
   val lreq = new CounterLookAheadIO
   val sreq = new CounterLookAheadIO
-  val lret = new CounterUpdateIO(lookAheadBits)
+  val lret = new CounterUpdateIO(bLookAhead)
 }
 
 class MRTIO extends LaneMRTIO with VMUParameters {

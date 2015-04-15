@@ -3,19 +3,18 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Packing._
 import DataGating._
 
 class IMulResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class IMulSlice extends HwachaModule {
+class IMulSlice extends VXUModule {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VIMUFn
-      val in0 = Bits(INPUT, SZ_D)
-      val in1 = Bits(INPUT, SZ_D)
+      val in0 = Bits(width = SZ_D)
+      val in1 = Bits(width = SZ_D)
     }).flip
     val resp = Valid(new IMulResult)
   }
@@ -55,5 +54,5 @@ class IMulSlice extends HwachaModule {
       fn.is(DW32, IM_MHSU) -> Cat(Fill(32, mul_result(63)), mul_result(63,32))
     ))
 
-  io.resp := Pipe(io.req.valid, result, imul_stages)
+  io.resp := Pipe(io.req.valid, result, stagesIMul)
 }

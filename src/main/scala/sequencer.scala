@@ -6,19 +6,25 @@ import Constants._
 import DataGating._
 import uncore.constants.MemoryOpConstants._
 
-abstract trait SeqParameters extends UsesHwachaParameters {
+abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
+  val nSeq = 8
   val nRPorts = 3
-  val szRPorts = log2Down(nRPorts) + 1
+  val bRPorts = log2Down(nRPorts) + 1
   val maxWPortLatency = nRPorts + 1 +
-    List(int_stages, imul_stages, fma_stages,
-         fconv_stages, fcmp_stages).reduceLeft((x, y) => if (x > y) x else y)
-  val szWPortLatency = log2Up(maxWPortLatency)
+    List(stagesALU, stagesIMul, stagesFMA,
+         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
+  val bWPortLatency = log2Down(maxWPortLatency) + 1
+  val maxStrip = nBanks * (wBank / SZ_B)
+  val bStrip = log2Down(maxStrip) + 1
+  val maxLookAhead = wBank / SZ_B
+  val bLookAhead = log2Down(maxLookAhead) + 1
 }
 
 class SequencerIO extends ValidIO(new SequencerOp)
 
-class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
+class Sequencer extends VXUModule {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
     val op = new VXUIssueOpIO().flip
     val seq = new SequencerIO
     val vmu = new LaneMemIO
@@ -37,29 +43,29 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
 
     val pending = Bool(OUTPUT)
     val debug = new Bundle {
-      val valid = Vec.fill(nseq){Bool(OUTPUT)}
-      val vlen = Vec.fill(nseq){UInt(width=szvlen)}.asOutput
-      val e = Vec.fill(nseq){new SeqEntry}.asOutput
-      val head = UInt(OUTPUT, log2Up(nseq))
-      val tail = UInt(OUTPUT, log2Up(nseq))
+      val valid = Vec.fill(nSeq){Bool(OUTPUT)}
+      val vlen = Vec.fill(nSeq){UInt(width=bVLen)}.asOutput
+      val e = Vec.fill(nSeq){new SeqEntry}.asOutput
+      val head = UInt(OUTPUT, log2Up(nSeq))
+      val tail = UInt(OUTPUT, log2Up(nSeq))
       val full = Bool(OUTPUT)
-      val dhazard = Vec.fill(nseq){Bool(OUTPUT)}
+      val dhazard = Vec.fill(nSeq){Bool(OUTPUT)}
     }
   }
 
   class BuildSequencer {
-    require(isPow2(nseq))
+    require(isPow2(nSeq))
 
     ///////////////////////////////////////////////////////////////////////////
     // state
 
-    val valid = Vec.fill(nseq){Reg(init=Bool(false))}
-    val vlen = Vec.fill(nseq){Reg(UInt(width=szvlen))}
-    val e = Vec.fill(nseq){Reg(new SeqEntry)}
+    val valid = Vec.fill(nSeq){Reg(init=Bool(false))}
+    val vlen = Vec.fill(nSeq){Reg(UInt(width=bVLen))}
+    val e = Vec.fill(nSeq){Reg(new SeqEntry)}
 
     val full = Reg(init = Bool(false))
-    val head = Reg(init = UInt(0, log2Up(nseq)))
-    val tail = Reg(init = UInt(0, log2Up(nseq)))
+    val head = Reg(init = UInt(0, log2Up(nSeq)))
+    val tail = Reg(init = UInt(0, log2Up(nSeq)))
 
     ///////////////////////////////////////////////////////////////////////////
     // wires
@@ -74,13 +80,13 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     // clock gate ports and bypass ports
     val update_head = Bool()
     val update_tail = Bool()
-    val next_head = UInt(width = log2Up(nseq))
-    val next_tail = UInt(width = log2Up(nseq))
+    val next_head = UInt(width = log2Up(nSeq))
+    val next_tail = UInt(width = log2Up(nSeq))
 
-    val update_haz = Vec.fill(nseq){Bool()}
-    val next_raw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
-    val next_war = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
-    val next_waw = Vec.fill(nseq){Vec.fill(nseq){Bool()}}
+    val update_haz = Vec.fill(nSeq){Bool()}
+    val next_raw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
+    val next_war = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
+    val next_waw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
 
     val vidu_ready = Bool()
     val vfdu_ready = Bool()
@@ -96,9 +102,9 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
       next_head := head
       next_tail := tail
 
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         update_haz(i) := Bool(false)
-        for (j <- 0 until nseq) {
+        for (j <- 0 until nSeq) {
           next_raw(i)(j) := e(i).raw(j)
           next_war(i)(j) := e(i).war(j)
           next_waw(i)(j) := e(i).waw(j)
@@ -115,7 +121,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     // helpers
 
     val count = Cat(full && head === tail, tail - head)
-    val empty = UInt(nseq) - count
+    val empty = UInt(nSeq) - count
 
     def ready = {
       val a = io.op.bits.active
@@ -173,7 +179,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
       e(n).base.vs2.scalar := Bool(false)
       e(n).base.vs3.scalar := Bool(false)
       e(n).base.vd.scalar := Bool(false)
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         e(n).raw(i) := Bool(false)
         e(n).war(i) := Bool(false)
         e(n).waw(i) := Bool(false)
@@ -182,7 +188,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
 
     def retire_entry(n: UInt) = {
       clear_entry(n)
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         update_haz(UInt(i)) := Bool(true)
         clear_raw_haz(UInt(i), n)
         clear_war_haz(UInt(i), n)
@@ -217,7 +223,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     def clear_waw_haz(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
 
     def issue_base_eq(ifn: DecodedRegisters=>RegInfo, sfn: DecodedRegisters=>RegInfo) =
-      Vec((0 until nseq).map{ i =>
+      Vec((0 until nSeq).map{ i =>
         valid(i) && sfn(e(i).base).valid && !sfn(e(i).base).scalar &&
         ifn(io.op.bits.reg).valid && !ifn(io.op.bits.reg).scalar &&
         sfn(e(i).base).id === ifn(io.op.bits.reg).id })
@@ -230,21 +236,21 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
 
     def set_raw_hazs(n: UInt, eq: Vec[Bool]) = {
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         when (eq(i)) {
           set_raw_haz(n, UInt(i))
         }
       }
     }
     def set_war_hazs(n: UInt) = {
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         when (ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
           set_war_haz(n, UInt(i))
         }
       }
     }
     def set_waw_hazs(n: UInt) = {
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         when (ivd_evd_eq(i)) {
           set_waw_haz(n, UInt(i))
         }
@@ -341,12 +347,12 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
 
     def issue_vint = {
       set_entry(t0); set_viu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, int_stages)
+                      set_rwports(t0, stagesALU)
       set_tail(t1)
     }
     def issue_vimul = {
       set_entry(t0); set_vimu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, imul_stages)
+                      set_rwports(t0, stagesIMul)
       set_tail(t1)
     }
     def issue_vidiv = {
@@ -358,7 +364,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     }
     def issue_vfma = {
       set_entry(t0); set_vfmu(t0); set_vs1(t0); set_vs2(t0); set_vs3(t0); set_vd(t0)
-                      set_rwports(t0, fma_stages)
+                      set_rwports(t0, stagesFMA)
       set_tail(t1)
     }
     def issue_vfdiv = {
@@ -370,12 +376,12 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     }
     def issue_vfcmp = {
       set_entry(t0); set_vfcu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, fcmp_stages)
+                      set_rwports(t0, stagesFCmp)
       set_tail(t1)
     }
     def issue_vfconv = {
       set_entry(t0); set_vfvu(t0); set_vs1(t0); set_vd(t0)
-                      set_rwports(t0, fconv_stages)
+                      set_rwports(t0, stagesFConv)
       set_tail(t1)
     }
     def issue_vamo = {
@@ -426,13 +432,13 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     // data hazard checking
 
     val vlen_matrix =
-      Vec((0 until nseq).map { r =>
-        Vec((0 until nseq).map { c =>
+      Vec((0 until nSeq).map { r =>
+        Vec((0 until nSeq).map { c =>
           if (r != c) vlen(UInt(r)) > vlen(UInt(c))
           else Bool(false) }) })
 
     def wport_matrix(fn: DecodedRegisters=>RegInfo) =
-      Vec((0 until nseq).map { r =>
+      Vec((0 until nSeq).map { r =>
         Vec((0 until maxWPortLatency).map { l =>
           io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
           io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) })
@@ -445,47 +451,47 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
       Vec(row.zipWithIndex.map { case (r, i) => r && UInt(i) > level })
 
     val dhazard_raw =
-      (0 until nseq).map { r =>
+      (0 until nSeq).map { r =>
         (e(r).raw.toBits & ~vlen_matrix(r).toBits).orR ||
         wport_vs1_matrix(r).toBits.orR ||
         wport_vs2_matrix(r).toBits.orR ||
         wport_vs3_matrix(r).toBits.orR }
     val dhazard_war =
-      (0 until nseq).map { r =>
+      (0 until nSeq).map { r =>
         (e(r).war.toBits & ~vlen_matrix(r).toBits).orR }
     val dhazard_waw =
-      (0 until nseq).map { r =>
+      (0 until nSeq).map { r =>
         (e(r).waw.toBits & ~vlen_matrix(r).toBits).orR ||
         wport_lookup(wport_vd_matrix(r), e(r).wport).toBits.orR }
     val dhazard =
-      (0 until nseq).map { r =>
+      (0 until nSeq).map { r =>
         dhazard_raw(r) || dhazard_war(r) || dhazard_waw(r) }
 
     ///////////////////////////////////////////////////////////////////////////
     // bank hazard checking
 
     val bhazard =
-      (0 until nseq).map { r => Bool(false) }
+      (0 until nSeq).map { r => Bool(false) }
 
     ///////////////////////////////////////////////////////////////////////////
     // strucutral hazard checking
 
     val shazard =
-      (0 until nseq).map { r => Bool(false) }
+      (0 until nSeq).map { r => Bool(false) }
 
     ///////////////////////////////////////////////////////////////////////////
     // schedule
 
     def find_first(fn: Int=>Bool) = {
-      val internal = Vec.fill(2*nseq){Bool()}
-      for (i <- 0 until nseq) {
-        internal(i+nseq) := valid(i) && fn(i)
-        internal(i) := internal(i+nseq) && (UInt(i) >= head)
+      val internal = Vec.fill(2*nSeq){Bool()}
+      for (i <- 0 until nSeq) {
+        internal(i+nSeq) := valid(i) && fn(i)
+        internal(i) := internal(i+nSeq) && (UInt(i) >= head)
       }
       val priority_oh = PriorityEncoderOH(internal)
-      val out = Vec.fill(nseq){Bool()}
-      for (i <- 0 until nseq) {
-        out(i) := priority_oh(i) | priority_oh(i+nseq)
+      val out = Vec.fill(nSeq){Bool()}
+      for (i <- 0 until nSeq) {
+        out(i) := priority_oh(i) | priority_oh(i+nSeq)
       }
       out
     }
@@ -575,9 +581,9 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
     // footer
 
     def footer = {
-      val retire = Vec.fill(nseq){Bool()}
+      val retire = Vec.fill(nSeq){Bool()}
 
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         val strip = stripfn(vlen(i), e(i).active.vcu, e(i).fn)
         when (valid(i)) {
           when (fire(i)) {
@@ -590,7 +596,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
             e(i).age := e(i).age - UInt(1)
           }
           when (fire_exp(i)) {
-            e(i).age := UInt(nbanks-1)
+            e(i).age := UInt(nBanks-1)
           }
         }
       }
@@ -602,7 +608,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
 
       update_counter
 
-      for (i <- 0 until nseq) {
+      for (i <- 0 until nSeq) {
         when (update_haz(i)) {
           e(i).raw := next_raw(i)
           e(i).war := next_war(i)
@@ -619,7 +625,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
       io.debug.dhazard := dhazard
 
       when (reset) {
-        for (i <- 0 until nseq) {
+        for (i <- 0 until nSeq) {
           clear_entry(UInt(i))
           clear_all_active(UInt(i))
         }

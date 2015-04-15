@@ -5,7 +5,7 @@ import Node._
 import Constants._
 import scala.math._
 
-object Packing {
+abstract trait Packing extends LaneParameters {
   def splat_d(n: Bits) = Fill(SZ_D/SZ_D, n.toUInt)
   def splat_w(n: Bits) = Fill(SZ_D/SZ_W, n.toUInt)
   def splat_h(n: Bits) = Fill(SZ_D/SZ_H, n.toUInt)
@@ -43,8 +43,8 @@ object Packing {
   def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_H, SZ_D)
   def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_B, SZ_D)
 
-  def repack_slice(n: Seq[Bits]) = _repack(n, SZ_DATA/SZ_D)
-  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_DATA)
+  def repack_slice(n: Seq[Bits]) = _repack(n, wBank/SZ_D)
+  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, wBank)
 }
 
 object DataGating {
@@ -109,8 +109,8 @@ trait LookAheadIO extends Bundle {
   val available = Bool(INPUT)
 }
 
-class CounterLookAheadIO extends LookAheadIO with LaneParameters {
-  val cnt = UInt(OUTPUT, lookAheadBits)
+class CounterLookAheadIO extends LookAheadIO with SeqParameters {
+  val cnt = UInt(OUTPUT, bLookAhead)
 }
 
 class CounterUpdateIO(sz: Int) extends Bundle {

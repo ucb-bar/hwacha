@@ -2,9 +2,8 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
 
-class XCPTIO extends Bundle {
+class XCPTIO extends HwachaBundle {
   val prop = new Bundle {
     val vu = new Bundle {
       val busy = Bool(OUTPUT)
@@ -35,7 +34,7 @@ class XCPTIO extends Bundle {
 
     val evac = new Bundle {
       val start = Bool(OUTPUT)
-      val addr = UInt(OUTPUT, SZ_ADDR)
+      val addr = UInt(OUTPUT, regLen)
     }
   }
   val report = new Bundle {
@@ -53,12 +52,12 @@ class XCPTIO extends Bundle {
   }
 }
 
-class XCPT extends Module {
-  val io = new Bundle {
+class XCPT extends HwachaModule {
+  val io = new HwachaBundle {
     val rocc = new Bundle {
       val exception = Bool(INPUT)
       val evac = Bool(INPUT)
-      val evac_addr = UInt(INPUT, SZ_ADDR)
+      val evac_addr = UInt(INPUT, regLen)
       val hold = Bool(INPUT)
       val kill = Bool(INPUT)
     }
@@ -85,7 +84,7 @@ class XCPT extends Module {
   val HOLD = Bits(5, 3)
 
   val state = Reg(init = NORMAL)
-  val addr = Reg(init = UInt(0, SZ_ADDR))
+  val addr = Reg(init = UInt(0, regLen))
   val evac = Reg(init = Bool(false))
   val kill = Reg(init = Bool(false))
 

@@ -2,8 +2,6 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
-import uncore.constants.MemoryOpConstants._
 
 class ScalarUnit extends HwachaModule {
   val io = new Bundle {

@@ -2,16 +2,15 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
 import DataGating._
 
-class RFWritePort extends Bundle with LaneParameters {
+class RFWritePort extends VXUBundle {
   val addr = UInt(width = log2Up(nSRAM))
-  val data = Bits(width = SZ_DATA)
-  val mask = Bits(width = SZ_DATA/8)
+  val data = Bits(width = wBank)
+  val mask = Bits(width = wBank/8)
 }
 
-class BankRegfile extends HwachaModule with LaneParameters {
+class BankRegfile extends VXUModule {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val global = new BankRWIO
@@ -21,9 +20,9 @@ class BankRegfile extends HwachaModule with LaneParameters {
     }
   }
 
-  val sram_rf = Mem(Bits(width = SZ_DATA), nSRAM, seqRead = true)
-  val ff_rf = Mem(Bits(width = SZ_DATA), nFF)
-  val opl = Mem(Bits(width = SZ_DATA), nGOPL+nLOPL)
+  val sram_rf = Mem(Bits(width = wBank), nSRAM, seqRead = true)
+  val ff_rf = Mem(Bits(width = wBank), nFF)
+  val opl = Mem(Bits(width = wBank), nGOPL+nLOPL)
 
   // SRAM RF read port
   val sram_raddr = Reg(Bits())
@@ -40,7 +39,7 @@ class BankRegfile extends HwachaModule with LaneParameters {
       MuxLookup(io.op.sram.write.bits.wsel, Bits(0), (0 until nWSel).map {
         i => UInt(i) -> io.global.wdata(i).d }),
       io.local.wdata.d)
-  sram_warb.io.in(0).bits.mask := FillInterleaved(SZ_D/8, io.op.sram.write.bits.pred)
+  sram_warb.io.in(0).bits.mask := FillInterleaved(regLen/8, io.op.sram.write.bits.pred)
   assert(!io.op.sram.write.valid || sram_warb.io.in(0).ready, "this sram write port should always be ready")
 
   sram_warb.io.in(1).valid := io.global.bwq.mem.valid && !io.global.bwq.mem.bits.selff
@@ -75,7 +74,7 @@ class BankRegfile extends HwachaModule with LaneParameters {
       MuxLookup(io.op.ff.write.bits.wsel, Bits(0), (0 until nWSel).map {
         i => UInt(i) -> io.global.wdata(i).d }),
       io.local.wdata.d)
-  ff_warb.io.in(0).bits.mask := FillInterleaved(SZ_D/8, io.op.ff.write.bits.pred)
+  ff_warb.io.in(0).bits.mask := FillInterleaved(regLen/8, io.op.ff.write.bits.pred)
   assert(!io.op.ff.write.valid || ff_warb.io.in(0).ready, "this ff write port should always be ready")
 
   ff_warb.io.in(1).valid := io.global.bwq.mem.valid && io.global.bwq.mem.bits.selff
@@ -118,7 +117,7 @@ class BankRegfile extends HwachaModule with LaneParameters {
       opl.write(
         UInt(i),
         Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(SZ_D, io.op.opl.global(i).bits.pred))
+        FillInterleaved(regLen, io.op.opl.global(i).bits.pred))
     }
     io.global.rdata(i).d := dgate(io.op.xbar(i).valid, opl(i))
   }
@@ -127,7 +126,7 @@ class BankRegfile extends HwachaModule with LaneParameters {
       opl.write(
         UInt(nGOPL+i),
         Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(SZ_D, io.op.opl.local(i).bits.pred))
+        FillInterleaved(regLen, io.op.opl.local(i).bits.pred))
     }
     io.local.rdata(i).d := opl(nGOPL+i)
   }

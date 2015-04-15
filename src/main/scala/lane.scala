@@ -2,32 +2,50 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
-import Packing._
 import scala.collection.mutable.ArrayBuffer
 
+case object HwachaBankWidth extends Field[Int]
+case object HwachaNBanks extends Field[Int]
 case object HwachaNSRAMRFEntries extends Field[Int]
 case object HwachaNFFRFEntries extends Field[Int]
 case object HwachaNFFRFReadPorts extends Field[Int]
 case object HwachaNOperandLatches extends Field[Int]
 case object HwachaWriteSelects extends Field[Int]
+case object HwachaStagesALU extends Field[Int]
+case object HwachaStagesIMul extends Field[Int]
+case object HwachaStagesFMA extends Field[Int]
+case object HwachaStagesFConv extends Field[Int]
+case object HwachaStagesFCmp extends Field[Int]
 
-abstract trait LaneParameters extends UsesParameters {
+abstract trait LaneParameters extends UsesHwachaParameters {
+  val wBank = params(HwachaBankWidth)
+  val nBanks = params(HwachaNBanks)
   val nSRAM = params(HwachaNSRAMRFEntries)
   val nFF = params(HwachaNFFRFEntries)
+  val bRFAddr = math.max(log2Up(nSRAM), log2Up(nFF))
+
+  val nSlices = wBank / params(HwachaRegLen)
+  val nBankSRAMRegs = nSRAM * nSlices
+  val nLaneSRAMRegs = nBanks * nBankSRAMRegs
+  val nBatch = nBanks * nSlices
+
   val nFFRPorts = params(HwachaNFFRFReadPorts)
   val nGOPL = params(HwachaNOperandLatches)
   val nLOPL = 2
   val nWSel = params(HwachaWriteSelects)
-  val nSlices = SZ_DATA/SZ_D
-  val nBatch = params(HwachaNBanks) * nSlices
   val nLRQOperands = 2
-  val lookAheadMax = nBatch << 1
-  val lookAheadBits = log2Down(lookAheadMax) + 1
   val nDecoupledUnitWBQueue = 4
+
+  val stagesALU = params(HwachaStagesALU)
+  val stagesIMul = params(HwachaStagesIMul)
+  val stagesFMA = params(HwachaStagesFMA)
+  val stagesFConv = params(HwachaStagesFConv)
+  val stagesFCmp = params(HwachaStagesFCmp)
+
+  require(nVRegs <= nSRAM)
 }
 
-class LaneOpIO extends HwachaBundle with LaneParameters {
+class LaneOpIO extends VXUBundle {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadLaneOp)
     val write = Valid(new SRAMRFWriteLaneOp)
@@ -56,8 +74,8 @@ class LaneOpIO extends HwachaBundle with LaneParameters {
   val vsu = Valid(new VSULaneOp)
 }
 
-class MicroOpIO extends HwachaBundle with LaneParameters {
-  val bank = Vec.fill(nbanks){new BankOpIO()}
+class MicroOpIO extends VXUBundle {
+  val bank = Vec.fill(nBanks){new BankOpIO()}
   val sreg = Vec.fill(nGOPL){Valid(new SRegMicroOp)}
   val vqu = Valid(new VQUMicroOp)
   val vgu = Valid(new VGUMicroOp)
@@ -68,8 +86,8 @@ class MicroOpIO extends HwachaBundle with LaneParameters {
   val vfvu = Valid(new VFVUMicroOp)
 }
 
-class LaneAckIO extends HwachaBundle {
-  val viu = Vec.fill(nbanks){Valid(new VIUAck)}
+class LaneAckIO extends VXUBundle {
+  val viu = Vec.fill(nBanks){Valid(new VIUAck)}
   val vqu = Valid(new VQUAck)
   val vgu = Valid(new VGUAck)
   val vimu = Valid(new VIMUAck)
@@ -81,15 +99,15 @@ class LaneAckIO extends HwachaBundle {
 
 class LRQIO extends DecoupledIO(new LRQEntry)
 
-class Lane extends HwachaModule with LaneParameters {
+class Lane extends VXUModule with Packing {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO
     val lrqs = Vec.fill(nLRQOperands){new LRQIO}
-    val brqs = Vec.fill(nbanks){new BRQIO}
+    val brqs = Vec.fill(nBanks){new BRQIO}
     val bwqs = new Bundle {
-      val mem = Vec.fill(nbanks){new BWQIO}.flip
-      val fu = Vec.fill(nbanks){new BWQIO}.flip
+      val mem = Vec.fill(nBanks){new BWQIO}.flip
+      val fu = Vec.fill(nBanks){new BWQIO}.flip
     }
     val vmu = new LaneMemIO
   }
@@ -104,7 +122,7 @@ class Lane extends HwachaModule with LaneParameters {
 
   ctrl.io.op <> io.op
 
-  for (i <- 0 until nbanks) {
+  for (i <- 0 until nBanks) {
     val bank = Module(new Bank)
 
     // TODO: this needs to be sequenced

@@ -5,12 +5,15 @@ import uncore._
 import Constants._
 import rocket.NTLBEntries
 
-case object HwachaNBanks extends Field[Int]
+case object HwachaNAddressRegs extends Field[Int]
+case object HwachaNScalarRegs extends Field[Int]
+case object HwachaNVectorRegs extends Field[Int]
+case object HwachaNPredRegs extends Field[Int]
+case object HwachaMaxVLen extends Field[Int]
+case object HwachaRegLen extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
-case object HwachaScalarDataBits extends Field[Int]
-case object HwachaNScalarRegs extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
 
@@ -18,53 +21,42 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Mo
 abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters {
-  val nbanks = params(HwachaNBanks)
-  val szbanks = log2Up(nbanks)
+  val nARegs = params(HwachaNAddressRegs)
+  val nSRegs = params(HwachaNScalarRegs)
+  val nVRegs = params(HwachaNVectorRegs)
+  val nPRegs = params(HwachaNPredRegs)
 
-  val nbdepth = params(HwachaNSRAMRFEntries)
-  val szbdepth = log2Up(nbdepth)
-  val nbregs = nbdepth * (SZ_DATA / SZ_D)
-  val szbregs = log2Up(nbregs)
+  val bSDest = math.max(log2Up(nARegs), log2Up(nSRegs))
 
-  val nregs = nbanks * nbregs
-  val szregs = log2Up(nregs)
-  val szvlen = szregs
+  val bVRegs = log2Down(nVRegs) + 1
+  val bPRegs = log2Down(nPRegs) + 1
 
-  val nvregs = 256
-  val szvregs = log2Up(nvregs)
-  val npregs = 16
-  val szpregs = log2Up(npregs)
+  val regLen = params(HwachaRegLen)
 
-  val nsregs = params(HwachaNScalarRegs)
+  require(SZ_D == regLen)
+
+  val maxVLen = params(HwachaMaxVLen)
+  val bVLen = log2Down(maxVLen) + 1
+
   val local_sfpu = params(HwachaLocalScalarFPU)
-
-  val nseq = 8
-
-  val nDCCOpQ = 2
 
   val ndtlb = params(HwachaNDTLB)
   val nptlb = params(HwachaNPTLB)
   val confvru = false
   val confprec = false
 
-  // pipeline latencies
-  val int_stages = 1
-  val imul_stages = 3
-  val fma_stages = 3
-  val fconv_stages = 3
-  val fcmp_stages = 1
-
+  val _nBanks = params(HwachaNBanks) // FIXME
 
   val confvcmdq = new {
     val ncmd = 16
     val nimm = 16
     val nrd = 16
-    val ncnt = nbanks
+    val ncnt = _nBanks
   }
 
-  require(confvcmdq.ncmd >= nbanks)
-  require(confvcmdq.nimm >= nbanks)
-  require(confvcmdq.nrd >= nbanks)
+  require(confvcmdq.ncmd >= _nBanks)
+  require(confvcmdq.nimm >= _nBanks)
+  require(confvcmdq.nrd >= _nBanks)
 
   val nbrq = 2
   val nbwq = 2
@@ -89,7 +81,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val nvsreq = 128
   val nvlreq = 128
-  val nvsdq = nbrq * nbanks
+  val nvsdq = nbrq * _nBanks
 
   // D$ tag requirement for hwacha
   require(params(rocket.CoreDCacheReqTagBits) >= confvmu.sz_tag)

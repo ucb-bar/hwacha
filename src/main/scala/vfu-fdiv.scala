@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Packing._
 import DataGating._
 import HardFloatHelper._
 
@@ -26,7 +25,7 @@ class FDivTag extends Bundle {
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class FDivSlice extends HwachaModule with LaneParameters {
+class FDivSlice extends VXUModule with Packing {
   val io = new FDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))

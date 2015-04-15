@@ -3,18 +3,17 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Packing._
 import DataGating._
 
-class VDUTag extends HwachaBundle with LaneParameters {
-  val bank = UInt(width = log2Up(nbanks))
+class VDUTag extends VXUBundle {
+  val bank = UInt(width = log2Up(nBanks))
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
   val pred = Bits(width = nSlices)
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
-class VDU extends HwachaModule with LaneParameters {
+class VDU extends VXUModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
@@ -23,7 +22,7 @@ class VDU extends HwachaModule with LaneParameters {
     val ila = new CounterLookAheadIO().flip // idiv output entries
     val fla = new CounterLookAheadIO().flip // fdiv output entries
     val lrqs = Vec.fill(nLRQOperands){new LRQIO}.flip
-    val bwqs = Vec.fill(nbanks){new BWQIO}
+    val bwqs = Vec.fill(nBanks){new BWQIO}
   }
 
   val ctrl = Module(new VDUCtrl)
@@ -34,11 +33,11 @@ class VDU extends HwachaModule with LaneParameters {
   ctrl.io.cfg <> io.cfg
 
   for (i <- 0 until nLRQOperands) {
-    val lrq = Module(new Queue(new LRQEntry, nbanks+2))
+    val lrq = Module(new Queue(new LRQEntry, nBanks+2))
     lrq.io.enq <> io.lrqs(i)
     ctrl.io.lrqs(i) <> lrq.io.deq
 
-    val cntr = Module(new LookAheadCounter(nbanks+2, nbanks+2))
+    val cntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
     cntr.io.inc.cnt := UInt(1)
     cntr.io.inc.update := lrq.io.deq.fire()
     cntr.io.dec <> io.qla(i)
@@ -56,7 +55,7 @@ class VDU extends HwachaModule with LaneParameters {
   io.bwqs <> ctrl.io.bwqs
 }
 
-class VDUCtrl extends HwachaModule with LaneParameters {
+class VDUCtrl extends VXUModule with Packing {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
@@ -74,7 +73,7 @@ class VDUCtrl extends HwachaModule with LaneParameters {
       val ack = Valid(new VFDUAck)
     }
 
-    val bwqs = Vec.fill(nbanks){new BWQIO}
+    val bwqs = Vec.fill(nBanks){new BWQIO}
   }
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
@@ -83,7 +82,7 @@ class VDUCtrl extends HwachaModule with LaneParameters {
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
-  val bank = Reg(UInt(width = szbanks))
+  val bank = Reg(UInt(width = log2Up(nBanks)))
 
   val fire = Bool()
   val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen)
@@ -107,7 +106,7 @@ class VDUCtrl extends HwachaModule with LaneParameters {
       when (fire) {
         op.vlen := vlen_next 
         bank := bank + UInt(1)
-        when (bank === UInt(nbanks-1)) {
+        when (bank === UInt(nBanks-1)) {
           op.vd.id := op.vd.id + io.cfg.vstride
         }
         when (vlen_next === UInt(0)) {
@@ -178,7 +177,7 @@ class VDUCtrl extends HwachaModule with LaneParameters {
   val mask_fdivs_resp_valid = io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     !deq_fdivs_resp(i) || fdiv.resp.valid }
 
-  val enq_bwqs = (0 until nbanks).map { tagq.io.deq.bits.bank === UInt(_) }
+  val enq_bwqs = (0 until nBanks).map { tagq.io.deq.bits.bank === UInt(_) }
   val mask_bwqs_ready = io.bwqs.zipWithIndex.map { case (bwq, i) => !enq_bwqs(i) || bwq.ready }
 
   def fire_bwq(exclude: Bool, include: Bool*) = {
@@ -199,7 +198,7 @@ class VDUCtrl extends HwachaModule with LaneParameters {
     bwq.bits.addr := tagq.io.deq.bits.addr
     bwq.bits.data := Mux(tagq.io.deq.bits.fusel.toBool, repack_slice(io.idiv.fus.map(_.resp.bits.out)),
                                                         repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
-    bwq.bits.mask := FillInterleaved(SZ_D/8, tagq.io.deq.bits.pred)
+    bwq.bits.mask := FillInterleaved(regLen/8, tagq.io.deq.bits.pred)
   }
 
   io.idiv.ack.valid := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
@@ -209,12 +208,12 @@ class VDUCtrl extends HwachaModule with LaneParameters {
   io.fdiv.ack.bits.exc := io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     dgate(tagq.io.deq.bits.pred(i), fdiv.resp.bits.exc) } reduce(_|_)
 
-  val icntr = Module(new LookAheadCounter(0, lookAheadMax))
+  val icntr = Module(new LookAheadCounter(0, maxLookAhead))
   icntr.io.inc.cnt := UInt(1)
   icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
   icntr.io.dec <> io.ila
 
-  val fcntr = Module(new LookAheadCounter(0, lookAheadMax))
+  val fcntr = Module(new LookAheadCounter(0, maxLookAhead))
   fcntr.io.inc.cnt := UInt(1)
   fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.toBool)
   fcntr.io.dec <> io.fla

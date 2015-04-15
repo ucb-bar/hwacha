@@ -5,11 +5,16 @@ import Node._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
+abstract class VXUModule(clock: Clock = null, _reset: Bool = null)
+  extends HwachaModule(clock, _reset) with SeqParameters with LaneParameters with DCCParameters
+abstract class VXUBundle
+  extends HwachaBundle with SeqParameters with LaneParameters with DCCParameters
+
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
 //-------------------------------------------------------------------------\\
 
-class VIUFn extends Bundle {
+class VIUFn extends VXUBundle {
   val dw = Bits(width = SZ_DW)
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
@@ -22,7 +27,7 @@ class VIUFn extends Bundle {
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
 }
 
-class VIXUFn(sz_op: Int) extends Bundle {
+class VIXUFn(sz_op: Int) extends VXUBundle {
   val dw = UInt(width = SZ_DW)
   val op = UInt(width = sz_op)
 
@@ -38,7 +43,7 @@ class VIXUFn(sz_op: Int) extends Bundle {
 class VIMUFn extends VIXUFn(SZ_VIMU_OP)
 class VIDUFn extends VIXUFn(SZ_VIDU_OP)
 
-class VFXUFn(sz_op: Int) extends Bundle {
+class VFXUFn(sz_op: Int) extends VXUBundle {
   val fp = UInt(width = SZ_FP)
   val rm = UInt(width = rocket.FPConstants.RM_SZ)
   val op = UInt(width = sz_op)
@@ -55,11 +60,11 @@ class VFDUFn extends VFXUFn(SZ_VFDU_OP)
 class VFCUFn extends VFXUFn(SZ_VFCU_OP)
 class VFVUFn extends VFXUFn(SZ_VFVU_OP)
 
-class VQUFn extends Bundle {
+class VQUFn extends VXUBundle {
   val latch = Bits(width = 2)
 }
 
-class VFn extends Bundle {
+class VFn extends VXUBundle {
   val union = Bits(width = List(
     new VIUFn().toBits.getWidth,
     new VIMUFn().toBits.getWidth,
@@ -88,26 +93,26 @@ class VFn extends Bundle {
 // decoded information types
 //-------------------------------------------------------------------------\\
 
-class RegInfo extends HwachaBundle {
+class RegInfo extends VXUBundle {
   val valid = Bool()
   val scalar = Bool()
-  val id = UInt(width = szvregs)
+  val id = UInt(width = bRFAddr)
 }
 
-class DecodedRegisters extends HwachaBundle {
+class DecodedRegisters extends VXUBundle {
   val vs1 = new RegInfo
   val vs2 = new RegInfo
   val vs3 = new RegInfo
   val vd = new RegInfo
 }
 
-class ScalarRegisters extends HwachaBundle {
-  val ss1 = Bits(width = SZ_D)
-  val ss2 = Bits(width = SZ_D)
-  val ss3 = Bits(width = SZ_D)
+class ScalarRegisters extends VXUBundle {
+  val ss1 = Bits(width = regLen)
+  val ss2 = Bits(width = regLen)
+  val ss3 = Bits(width = regLen)
 }
 
-class DecodedInstruction extends HwachaBundle {
+class DecodedInstruction extends VXUBundle {
   val fn = new VFn // union
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
@@ -118,7 +123,7 @@ class DecodedInstruction extends HwachaBundle {
 // issue op
 //-------------------------------------------------------------------------\\
 
-class IssueType extends Bundle {
+class IssueType extends VXUBundle {
   val vint = Bool()
   val vimul = Bool()
   val vidiv = Bool()
@@ -139,7 +144,7 @@ class IssueType extends Bundle {
 }
 
 class IssueOp extends DecodedInstruction {
-  val vlen = UInt(width = SZ_VLEN)
+  val vlen = UInt(width = bVLen)
   val active = new IssueType
 }
 
@@ -148,7 +153,7 @@ class IssueOp extends DecodedInstruction {
 // sequencer op
 //-------------------------------------------------------------------------\\
 
-class VFU extends Bundle {
+class VFU extends VXUBundle {
   val viu = Bool()
   val vimu = Bool()
   val vidu = Bool()
@@ -163,22 +168,22 @@ class VFU extends Bundle {
   val vqu = Bool()
 }
 
-class SeqEntry extends DecodedInstruction with SeqParameters {
+class SeqEntry extends DecodedInstruction {
   val active = new VFU
   val base = new DecodedRegisters
-  val raw = Vec.fill(nseq){Bool()}
-  val war = Vec.fill(nseq){Bool()}
-  val waw = Vec.fill(nseq){Bool()}
-  val rports = UInt(width = szRPorts)
-  val wport = UInt(width = szWPortLatency)
-  val age = UInt(width = szbanks)
+  val raw = Vec.fill(nSeq){Bool()}
+  val war = Vec.fill(nSeq){Bool()}
+  val waw = Vec.fill(nSeq){Bool()}
+  val rports = UInt(width = bRPorts)
+  val wport = UInt(width = bWPortLatency)
+  val age = UInt(width = log2Up(nBanks))
 }
 
-class SequencerOp extends DecodedInstruction with SeqParameters with LaneParameters {
+class SequencerOp extends DecodedInstruction {
   val active = new VFU
-  val rports = UInt(width = szRPorts)
-  val wport = UInt(width = szWPortLatency)
-  val strip = UInt(width = lookAheadBits)
+  val rports = UInt(width = bRPorts)
+  val wport = UInt(width = bWPortLatency)
+  val strip = UInt(width = bStrip)
 }
 
 
@@ -186,66 +191,66 @@ class SequencerOp extends DecodedInstruction with SeqParameters with LaneParamet
 // lane, micro op
 //-------------------------------------------------------------------------\\
 
-class SRAMRFReadOp extends HwachaBundle with LaneParameters {
+class SRAMRFReadOp extends VXUBundle {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class SRAMRFWriteOp extends HwachaBundle with LaneParameters {
+class SRAMRFWriteOp extends VXUBundle {
   val addr = UInt(width = log2Up(nSRAM))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class FFRFReadOp extends HwachaBundle with LaneParameters {
+class FFRFReadOp extends VXUBundle {
   val addr = UInt(width = log2Up(nFF))
 }
 
-class FFRFWriteOp extends HwachaBundle with LaneParameters {
+class FFRFWriteOp extends VXUBundle {
   val addr = UInt(width = log2Up(nFF))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class OPLOp extends HwachaBundle with LaneParameters {
+class OPLOp extends VXUBundle {
   val selff = Bool()
 }
 
-class SRegOp extends HwachaBundle with LaneParameters {
-  val operand = Bits(width = SZ_D)
+class SRegOp extends VXUBundle {
+  val operand = Bits(width = regLen)
 }
 
-class XBarOp extends HwachaBundle with LaneParameters
+class XBarOp extends VXUBundle
 
-class VIUOp extends HwachaBundle with LaneParameters {
+class VIUOp extends VXUBundle {
   val fn = new VIUFn
-  val eidx = UInt(width = SZ_VLEN)
+  val eidx = UInt(width = bVLen)
 }
 
-class VIMUOp extends HwachaBundle with LaneParameters {
+class VIMUOp extends VXUBundle {
   val fn = new VIMUFn
 }
 
-class VFMUOp extends HwachaBundle with LaneParameters {
+class VFMUOp extends VXUBundle {
   val fn = new VFMUFn
 }
 
-class VFCUOp extends HwachaBundle with LaneParameters {
+class VFCUOp extends VXUBundle {
   val fn = new VFCUFn
 }
 
-class VFVUOp extends HwachaBundle with LaneParameters {
+class VFVUOp extends VXUBundle {
   val fn = new VFVUFn
 }
 
-class VQUOp extends HwachaBundle with LaneParameters {
+class VQUOp extends VXUBundle {
   val fn = new VQUFn
 }
 
-class VGUOp extends HwachaBundle with LaneParameters {
+class VGUOp extends VXUBundle {
   val fn = new VMUFn
 }
 
-class VSUOp extends HwachaBundle with LaneParameters {
+class VSUOp extends VXUBundle {
   val selff = Bool() // select ff if true
 }
 
@@ -253,8 +258,8 @@ class VSUOp extends HwachaBundle with LaneParameters {
 // lane op
 //-------------------------------------------------------------------------\\
 
-trait LaneOp extends HwachaBundle with LaneParameters {
-  val strip = UInt(width = lookAheadBits)
+trait LaneOp extends VXUBundle {
+  val strip = UInt(width = bStrip)
 }
 
 class SRAMRFReadLaneOp extends SRAMRFReadOp with LaneOp
@@ -274,11 +279,11 @@ class VGULaneOp extends VGUOp with LaneOp
 class VSULaneOp extends VSUOp with LaneOp
 
 class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
-  val global = new Bundle {
+  val global = new VXUBundle {
     val valid = Bool()
     val id = UInt(width = log2Up(nGOPL))
   }
-  val local = new Bundle {
+  val local = new VXUBundle {
     val valid = Bool()
     val id = UInt(width = 1)
   }
@@ -289,7 +294,7 @@ class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp
 // micro op
 //-------------------------------------------------------------------------\\
 
-trait MicroOp extends HwachaBundle with LaneParameters {
+trait MicroOp extends VXUBundle {
   val pred = Bits(width = nSlices)
 }
 
@@ -313,19 +318,19 @@ class VSUMicroOp extends VSUOp with MicroOp
 // xbar
 //-------------------------------------------------------------------------\\
 
-class BankReadEntry extends Bundle with LaneParameters {
-  val d = Bits(width = SZ_DATA)
+class BankReadEntry extends VXUBundle {
+  val d = Bits(width = wBank)
 }
 
-class BankWriteEntry extends Bundle with LaneParameters {
-  val d = Bits(width = SZ_DATA)
+class BankWriteEntry extends VXUBundle {
+  val d = Bits(width = wBank)
 }
 
 //-------------------------------------------------------------------------\\
 // bank acks
 //-------------------------------------------------------------------------\\
 
-class VIXUAck extends Bundle with LaneParameters {
+class VIXUAck extends VXUBundle {
   val pred = Bits(width = nSlices)
 }
 
@@ -335,7 +340,7 @@ class VIDUAck extends VIXUAck
 class VGUAck extends VIXUAck
 class VQUAck extends VIXUAck
 
-class VFXUAck extends Bundle with LaneParameters {
+class VFXUAck extends VXUBundle {
   val pred = Bits(width = nSlices)
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
@@ -350,26 +355,26 @@ class VFVUAck extends VFXUAck
 // decoupled cluster (dcc) types
 //-------------------------------------------------------------------------\\
 
-class DCCOp extends HwachaBundle {
-  val vlen = UInt(width = SZ_VLEN)
+class DCCOp extends VXUBundle {
+  val vlen = UInt(width = bVLen)
   val active = new IssueType
   val fn = new VFn
   val vd = new RegInfo
 }
 
-class LRQEntry extends Bundle {
-  val data = Bits(width = SZ_DATA)
+class LRQEntry extends VXUBundle {
+  val data = Bits(width = wBank)
 }
 
-class BRQEntry extends Bundle {
-  val data = Bits(width = SZ_DATA)
+class BRQEntry extends VXUBundle {
+  val data = Bits(width = wBank)
 }
 
-class BWQEntry extends Bundle with LaneParameters {
+class BWQEntry extends VXUBundle {
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val data = Bits(width = SZ_DATA)
-  val mask = Bits(width = SZ_DATA/8)
+  val data = Bits(width = wBank)
+  val mask = Bits(width = wBank/8)
 
   def saddr(dummy: Int = 0) = addr(log2Up(nSRAM)-1, 0)
   def faddr(dummy: Int = 0) = addr(log2Up(nFF)-1, 0)

@@ -19,6 +19,7 @@ class VXU extends HwachaModule {
   val lane = Module(new Lane)
   val dcc = Module(new DecoupledCluster)
 
+  seq.io.cfg <> io.cfg
   dcc.io.cfg <> io.cfg
 
   val enq_dcc = io.issue.bits.active.enq_dcc()

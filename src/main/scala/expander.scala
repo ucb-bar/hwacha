@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import Node._
 
-class TickerIO extends Bundle with SeqParameters {
+class TickerIO extends VXUBundle {
   val sram = new Bundle {
     val read = Vec.fill(nRPorts){Valid(new SRAMRFReadLaneOp)}
     val write = Vec.fill(maxWPortLatency){Valid(new SRAMRFWriteLaneOp)}
@@ -11,7 +11,7 @@ class TickerIO extends Bundle with SeqParameters {
   val vsu = Vec.fill(nRPorts+2){Valid(new VSULaneOp)}
 }
 
-class Expander extends HwachaModule with SeqParameters with LaneParameters {
+class Expander extends VXUModule {
   val io = new Bundle {
     val seq = new SequencerIO().flip
     val lane = new LaneOpIO
@@ -57,7 +57,7 @@ class Expander extends HwachaModule with SeqParameters with LaneParameters {
         Mux(rport_valid(1), UInt(1), UInt(0)))))
 
     val op0_idx = io.seq.bits.rports
-    val op1_idx = io.seq.bits.rports + UInt(1, szRPorts+1)
+    val op1_idx = io.seq.bits.rports + UInt(1, bRPorts+1)
     val op_idx = Mux(io.seq.bits.active.vsu, op0_idx, op1_idx)
 
     def mark_opl(n: UInt, idx: Int) = {

@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import Node._
 import Constants._
-import Packing._
 import DataGating._
 import HardFloatHelper._
 
@@ -12,11 +11,11 @@ class FConvResult extends Bundle {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class FConvSlice extends HwachaModule {
+class FConvSlice extends VXUModule with Packing {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VFVUFn
-      val in = Bits(INPUT, SZ_D)
+      val in = Bits(width = SZ_D)
     }).flip
     val resp = Valid(new FConvResult)
   }
@@ -120,5 +119,5 @@ class FConvSlice extends HwachaModule {
   result.out := Mux1H(fpmatch, outs)
   result.exc := Mux1H(fpmatch, excs)
 
-  io.resp := Pipe(io.req.valid, result, fconv_stages)
+  io.resp := Pipe(io.req.valid, result, stagesFConv)
 }

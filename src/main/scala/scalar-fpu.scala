@@ -6,10 +6,6 @@ import Constants._
 import rocket.FPConstants._
 
 object ScalarFPUDecode {
-  val H = PREC_HALF
-  val S = PREC_SINGLE
-  val D = PREC_DOUBLE
-
   val FX       = Cat(FCMD_X,      X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X)
   val FCVT_S_W = Cat(FCMD_CVT_FI, N,Y,N,N,N,X,X,Y,Y,N,N,N,N,N,Y,Y)
   val FCVT_S_WU= Cat(FCMD_CVT_FI, N,Y,N,N,N,X,X,Y,Y,N,N,N,N,N,Y,Y)

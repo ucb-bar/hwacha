@@ -2,7 +2,6 @@ package hwacha
 
 import Chisel._
 import Node._
-import Constants._
 
 class IRQIO extends Bundle {
   val top = new Bundle {
