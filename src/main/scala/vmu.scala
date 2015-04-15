@@ -141,7 +141,7 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
     val pf = new PrefetchMemIO().flip
 
     val memif = new VMUMemIO
-    val sret = Valid(UInt(width = sretBits))
+    val sret = new CounterUpdateIO(sretBits)
 
     val dtlb = new TLBIO
     val ptlb = new TLBIO

@@ -11,6 +11,7 @@ class VXU extends HwachaModule
     val cfg = new HwachaConfigIO().flip
     val issue = new VXUIssueOpIO().flip
     val vmu = new LaneMemIO
+    val mrt = new LaneMRTIO
     val pending_seq = Bool(OUTPUT)
   }
 
@@ -63,6 +64,11 @@ class VXU extends HwachaModule
   io.vmu <> dcc.io.vmu
 
   io.pending_seq := seq.io.pending
+
+  io.mrt.lreq <> seq.io.lreq
+  io.mrt.sreq <> seq.io.sreq
+  io.mrt.lret.cnt := dcc.io.lla.cnt
+  io.mrt.lret.update := dcc.io.lla.reserve
 
   // FIXME
   dcc.io.spred.valid := Bool(true)

@@ -29,7 +29,7 @@ class MBox extends VMUModule {
       val abox = new VMUAddrIO().flip
       val sbox = new VMUStoreIO
       val lbox = new VMULoadIO
-      val sret = Valid(UInt(width = sretBits))
+      val sret = new CounterUpdateIO(sretBits)
     }
     val outer = new VMUMemIO
   }
@@ -78,8 +78,9 @@ class MBox extends VMUModule {
   lbox.load.valid := resp.valid && !resp.bits.store
   lbox.load.bits.data := resp.bits.data
   lbox.load.bits.tag := resp.bits.tag
-  io.inner.sret.valid := resp.valid && resp.bits.store
-  io.inner.sret.bits := Mux(resp.bits.tag === UInt(0), UInt(tlDataBytes), resp.bits.tag)
+
+  io.inner.sret.update := resp.valid && resp.bits.store
+  io.inner.sret.cnt := Mux(resp.bits.tag === UInt(0), UInt(tlDataBytes), resp.bits.tag)
 }
 
 class VMUMemArb(n: Int) extends VMUModule {

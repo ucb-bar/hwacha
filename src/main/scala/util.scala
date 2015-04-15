@@ -136,6 +136,7 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)
   val io = new Bundle {
     val inc = new CounterUpdateIO(sz).flip
     val dec = new CounterLookAheadIO().flip
+    val full = Bool(OUTPUT)
   }
 
   val count = Reg(init = UInt(reset_cnt, sz))
@@ -143,6 +144,7 @@ class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)
 
   val add = (io.inc.cnt & Fill(sz, io.inc.update))
   val sub = (io.dec.cnt & Fill(sz, io.dec.reserve))
-
   count := count + add - sub
+
+  io.full := (count === UInt(max_cnt))
 }

@@ -31,6 +31,8 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val dfla = new CounterLookAheadIO
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
+    val lreq = new CounterLookAheadIO
+    val sreq = new CounterLookAheadIO
 
     val lack = new LaneAckIO().flip
     val dack = new DCCAckIO().flip

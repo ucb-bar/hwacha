@@ -126,6 +126,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   val vxu = Module(new VXU)
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
+  val mrt = Module(new MemTracker)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -136,7 +137,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   rocc.io.rocc.exception <> io.exception
 
   //Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := scalar.io.pending_memop
+  rocc.io.pending_memop := mrt.io.pending_memop || scalar.io.pending_memop
   rocc.io.pending_seq := vxu.io.pending_seq
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
@@ -188,4 +189,9 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters
   memif.io.vmu <> vmu.io.memif 
   io.dmem <> memif.io.dmem
   io.mem.req.valid := Bool(false)
+
+  mrt.io.lreq <> vxu.io.mrt.lreq
+  mrt.io.lret <> vxu.io.mrt.lret
+  mrt.io.sreq <> vxu.io.mrt.sreq
+  mrt.io.sret <> vmu.io.sret
 }
