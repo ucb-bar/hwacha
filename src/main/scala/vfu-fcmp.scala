@@ -7,13 +7,11 @@ import Packing._
 import DataGating._
 import HardFloatHelper._
 
-class FCmpResult extends Bundle
-{
+class FCmpResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
 }
 
-class FCmpSlice extends HwachaModule
-{
+class FCmpSlice extends HwachaModule {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VFCUFn

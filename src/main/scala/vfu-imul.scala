@@ -6,13 +6,11 @@ import Constants._
 import Packing._
 import DataGating._
 
-class IMulResult extends Bundle
-{
+class IMulResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class IMulSlice extends HwachaModule
-{
+class IMulSlice extends HwachaModule {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VIMUFn

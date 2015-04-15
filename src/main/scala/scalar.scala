@@ -5,8 +5,7 @@ import Node._
 import Constants._
 import uncore.constants.MemoryOpConstants._
 
-class ScalarUnit extends HwachaModule
-{
+class ScalarUnit extends HwachaModule {
   val io = new Bundle {
     val cmdq = new CMDQIO().flip
 

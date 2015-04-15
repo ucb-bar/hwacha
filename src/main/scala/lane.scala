@@ -12,8 +12,7 @@ case object HwachaNFFRFReadPorts extends Field[Int]
 case object HwachaNOperandLatches extends Field[Int]
 case object HwachaWriteSelects extends Field[Int]
 
-abstract trait LaneParameters extends UsesParameters
-{
+abstract trait LaneParameters extends UsesParameters {
   val nSRAM = params(HwachaNSRAMRFEntries)
   val nFF = params(HwachaNFFRFEntries)
   val nFFRPorts = params(HwachaNFFRFReadPorts)
@@ -28,8 +27,7 @@ abstract trait LaneParameters extends UsesParameters
   val nDecoupledUnitWBQueue = 4
 }
 
-class LaneOpIO extends HwachaBundle with LaneParameters
-{
+class LaneOpIO extends HwachaBundle with LaneParameters {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadLaneOp)
     val write = Valid(new SRAMRFWriteLaneOp)
@@ -58,8 +56,7 @@ class LaneOpIO extends HwachaBundle with LaneParameters
   val vsu = Valid(new VSULaneOp)
 }
 
-class MicroOpIO extends HwachaBundle with LaneParameters
-{
+class MicroOpIO extends HwachaBundle with LaneParameters {
   val bank = Vec.fill(nbanks){new BankOpIO()}
   val sreg = Vec.fill(nGOPL){Valid(new SRegMicroOp)}
   val vqu = Valid(new VQUMicroOp)
@@ -71,8 +68,7 @@ class MicroOpIO extends HwachaBundle with LaneParameters
   val vfvu = Valid(new VFVUMicroOp)
 }
 
-class LaneAckIO extends HwachaBundle
-{
+class LaneAckIO extends HwachaBundle {
   val viu = Vec.fill(nbanks){Valid(new VIUAck)}
   val vqu = Valid(new VQUAck)
   val vgu = Valid(new VGUAck)
@@ -85,8 +81,7 @@ class LaneAckIO extends HwachaBundle
 
 class LRQIO extends DecoupledIO(new LRQEntry)
 
-class Lane extends HwachaModule with LaneParameters
-{
+class Lane extends HwachaModule with LaneParameters {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO

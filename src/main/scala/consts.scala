@@ -20,8 +20,7 @@ object Constants extends
   VFVUConstants with
   VMUConstants
 
-trait MachineConstants
-{
+trait MachineConstants {
   val SZ_VLEN = 12
   val SZ_REGLEN = 6
   val SZ_REGCNT = 6
@@ -40,8 +39,7 @@ trait MachineConstants
   val N_B = SZ_DATA / SZ_B
 }
 
-trait HwachaDecodeConstants
-{
+trait HwachaDecodeConstants {
   val Y = Bool(true)
   val N = Bool(false)
   val X = Bits("b?", 1)
@@ -74,15 +72,13 @@ trait HwachaDecodeConstants
 
 }
 
-trait VectorCommandQueueConstants
-{
+trait VectorCommandQueueConstants {
   val SZ_VCMD = 18
   val SZ_IMM = 64
   val SZ_VSTRIDE = 64
 }
 
-trait PrecConstants
-{
+trait PrecConstants {
   val SZ_PREC = 2
   val SZ_BUF_PREC = 3
 
@@ -91,8 +87,7 @@ trait PrecConstants
   val PREC_HALF = Bits("b10", SZ_PREC)
 }
 
-trait LaneConstants
-{
+trait LaneConstants {
   val SZ_BANK = 8
   val SZ_LGBANK = 3
   val SZ_LGBANK1 = 4
@@ -106,8 +101,7 @@ trait LaneConstants
   val SZ_BWPORT = 3
 }
 
-trait AIWConstants
-{
+trait AIWConstants {
   val AIW_CMD_DEPTH = 8
   val AIW_IMM1_DEPTH = 8
   val AIW_IMM2_DEPTH = 8
@@ -121,8 +115,7 @@ trait AIWConstants
   val SZ_AIW_NUMCNT = log2Up(AIW_NUMCNT_DEPTH)
 }
 
-trait DecodeConstants
-{
+trait DecodeConstants {
   val Y = Bool(true)
   val N = Bool(false)
   val X = Bits("b?", 1)
@@ -188,8 +181,7 @@ trait DecodeConstants
   val OPC_VS3 = UInt(60)
 }
 
-trait VIUConstants
-{
+trait VIUConstants {
   val SZ_VIU_OP = 4
 
   val I_X    = UInt.DC(SZ_VIU_OP)
@@ -211,8 +203,7 @@ trait VIUConstants
   val I_FSJX = UInt(15, SZ_VIU_OP)
 }
 
-trait VIMUConstants
-{
+trait VIMUConstants {
   val SZ_VIMU_OP = 2
 
   val IM_X    = UInt.DC(SZ_VIMU_OP)
@@ -222,8 +213,7 @@ trait VIMUConstants
   val IM_MHU  = UInt(3, SZ_VIMU_OP)
 }
 
-trait VIDUConstants
-{
+trait VIDUConstants {
   val SZ_VIDU_OP = 2
 
   val ID_X    = UInt.DC(SZ_VIDU_OP)
@@ -233,8 +223,7 @@ trait VIDUConstants
   val ID_REMU = UInt(3, SZ_VIDU_OP)
 }
 
-trait VFMUConstants
-{
+trait VFMUConstants {
   val SZ_VFMU_OP = 3
 
   val FM_X     = UInt.DC(SZ_VFMU_OP)
@@ -249,8 +238,7 @@ trait VFMUConstants
   val IS_FM_OP_MA = (x: Bits) => x(2)
 }
 
-trait VFDUConstants
-{
+trait VFDUConstants {
   val SZ_VFDU_OP = 1
 
   val FD_X    = UInt.DC(SZ_VFDU_OP)
@@ -258,8 +246,7 @@ trait VFDUConstants
   val FD_SQRT = UInt(1, SZ_VFDU_OP)
 }
 
-trait VFCUConstants
-{
+trait VFCUConstants {
   val SZ_VFCU_OP = 3
 
   val FC_X     = UInt.DC(SZ_VFCU_OP)
@@ -271,8 +258,7 @@ trait VFCUConstants
   val FC_CLASS = UInt(5, SZ_VFCU_OP)
 }
 
-trait VFVUConstants
-{
+trait VFVUConstants {
   val SZ_VFVU_OP = 4
 
   val FV_X     = UInt.DC(SZ_VFVU_OP)
@@ -292,8 +278,7 @@ trait VFVUConstants
   val FV_CHTS  = UInt(13, SZ_VFVU_OP)
 }
 
-trait VMUConstants
-{
+trait VMUConstants {
   val SZ_VMU_MODE = 2
 
   val MM_X  = UInt.DC(SZ_VMU_MODE)
@@ -306,8 +291,7 @@ trait VMUConstants
 }
 
 object Commands extends Commands
-trait Commands
-{
+trait Commands {
   // command bits for the vector command queue
   val CMD_X = Bits("b???",3)
 

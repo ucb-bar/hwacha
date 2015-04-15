@@ -7,14 +7,12 @@ import uncore.constants.MemoryOpConstants._
 import DataGating._
 import HardFloatHelper._
 
-class Write extends Bundle
-{
+class Write extends Bundle {
   val rd  = Bits(width = 8)
   val imm = Bits(width = SZ_ADDR)
 }
 
-class ScalarDpath extends HwachaModule
-{
+class ScalarDpath extends HwachaModule {
   val io = new Bundle {
     val cmdq = new CMDQIO().flip
     val ctrl = new CtrlDpathIO().flip
@@ -104,8 +102,7 @@ class ScalarDpath extends HwachaModule
 
   //execute stage
   ex_reg_kill := io.ctrl.killd
-  when(!io.ctrl.killd)
-  {
+  when(!io.ctrl.killd) {
     ex_reg_pc := id_pc
     ex_reg_inst := id_inst
     ex_reg_srs_bypass := io.ctrl.bypass

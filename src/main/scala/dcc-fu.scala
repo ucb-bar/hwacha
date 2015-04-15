@@ -6,8 +6,7 @@ import Constants._
 import Packing._
 import DataGating._
 
-class VDUTag extends HwachaBundle with LaneParameters
-{
+class VDUTag extends HwachaBundle with LaneParameters {
   val bank = UInt(width = log2Up(nbanks))
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
@@ -15,8 +14,7 @@ class VDUTag extends HwachaBundle with LaneParameters
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
-class VDU extends HwachaModule with LaneParameters
-{
+class VDU extends HwachaModule with LaneParameters {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
@@ -58,8 +56,7 @@ class VDU extends HwachaModule with LaneParameters
   io.bwqs <> ctrl.io.bwqs
 }
 
-class VDUCtrl extends HwachaModule with LaneParameters
-{
+class VDUCtrl extends HwachaModule with LaneParameters {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip

@@ -11,16 +11,14 @@ class TickerIO extends Bundle with SeqParameters {
   val vsu = Vec.fill(nRPorts+2){Valid(new VSULaneOp)}
 }
 
-class Expander extends HwachaModule with SeqParameters with LaneParameters
-{
+class Expander extends HwachaModule with SeqParameters with LaneParameters {
   val io = new Bundle {
     val seq = new SequencerIO().flip
     val lane = new LaneOpIO
     val ticker = new TickerIO
   }
 
-  class Ticker[T <: Data](gen: T, n: Int)
-  {
+  class Ticker[T <: Data](gen: T, n: Int) {
     val s = Vec.fill(n){Reg(Valid(gen.clone).asDirectionless)}
 
     (0 until n).reverse.foreach(i => ({
@@ -39,8 +37,7 @@ class Expander extends HwachaModule with SeqParameters with LaneParameters
     def ondeck = s(0)
   }
 
-  class BuildExpander
-  {
+  class BuildExpander {
     val tick_sram_read = new Ticker(new SRAMRFReadExpEntry, nRPorts)
     val tick_sram_write = new Ticker(new SRAMRFWriteExpEntry, maxWPortLatency)
     val tick_sreg = IndexedSeq.fill(nGOPL+nLOPL){new Ticker(new SRegLaneOp, nRPorts+2)}

@@ -5,8 +5,7 @@ import Node._
 import Constants._
 import rocket.FPConstants._
 
-object ScalarFPUDecode
-{ 
+object ScalarFPUDecode {
   val H = PREC_HALF
   val S = PREC_SINGLE
   val D = PREC_DOUBLE
@@ -68,8 +67,7 @@ object ScalarFPUDecode
   val FSQRT_D  = Cat(FCMD_SQRT,   N,Y,Y,N,N,Y,X,N,N,N,N,N,N,Y,Y,Y)
 }
 
-class ScalarFPU extends HwachaModule
-{
+class ScalarFPU extends HwachaModule {
   val io = new Bundle {
     val req = Decoupled(new rocket.FPInput()).flip
     val resp = Decoupled(new rocket.FPResult())

@@ -4,8 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class IRQIO extends Bundle
-{
+class IRQIO extends Bundle {
   val top = new Bundle {
     val illegal_cfg = Bool(OUTPUT)
     val illegal_inst = Bool(OUTPUT)
@@ -29,8 +28,7 @@ class IRQIO extends Bundle
   }
 }
 
-class IRQ extends Module
-{
+class IRQ extends Module {
   val io = new Bundle {
     val vu = new IRQIO().flip
     val rocc = new Bundle {

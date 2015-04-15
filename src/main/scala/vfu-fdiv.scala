@@ -7,8 +7,7 @@ import Packing._
 import DataGating._
 import HardFloatHelper._
 
-class FDivIO extends Bundle
-{
+class FDivIO extends Bundle {
   val req = Decoupled(new Bundle {
     val fn = new VFDUFn
     val in0 = Bits(width = SZ_D)
@@ -17,20 +16,17 @@ class FDivIO extends Bundle
   val resp = Decoupled(new FDivResult).flip
 }
 
-class FDivResult extends Bundle
-{
+class FDivResult extends Bundle {
   val out = Bits(width = SZ_D)
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class FDivTag extends Bundle
-{
+class FDivTag extends Bundle {
   val fn = new VFDUFn
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class FDivSlice extends HwachaModule with LaneParameters
-{
+class FDivSlice extends HwachaModule with LaneParameters {
   val io = new FDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))

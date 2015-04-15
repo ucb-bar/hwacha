@@ -8,8 +8,7 @@ import rocket.ALU._
 import uncore.constants.MemoryOpConstants._
 import ScalarFPUDecode._
 
-class IntCtrlSigs extends Bundle
-{
+class IntCtrlSigs extends Bundle {
   val ival = Bool()
   val decode_scalar = Bool()
   val decode_stop = Bool()
@@ -84,8 +83,7 @@ class IntCtrlSigs extends Bundle
   def fn_vmu(d: Int = 0) = new VMUFn().fromBits(Cat(vmu_mode, vmu_cmd, vmu_mt))
 }
 
-abstract trait VFDecodeTable
-{
+abstract trait VFDecodeTable {
 
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
   //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
@@ -95,8 +93,7 @@ abstract trait VFDecodeTable
   val table: Array[(UInt, List[UInt])]
 }
 
-object ScalarDecode extends VFDecodeTable
-{
+object ScalarDecode extends VFDecodeTable {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
   //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
@@ -122,8 +119,7 @@ object ScalarDecode extends VFDecodeTable
     VSTOP     ->List(Y,Y,Y,R_,R_,R_,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,FX,       N,MM_X, M_X,      MT_X, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X))
 }
 
-object VectorMemoryDecode extends VFDecodeTable
-{
+object VectorMemoryDecode extends VFDecodeTable {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
   //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn
@@ -184,8 +180,7 @@ object VectorMemoryDecode extends VFDecodeTable
     VAMOMAXU_D->List(Y,N,N,RV,RX,RX,R_,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,FX,       Y,MM_VX,M_XA_MAXU,MT_D, N,I_X,   N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X))
 }
 
-object VectorArithmeticDecode extends VFDecodeTable
-{
+object VectorArithmeticDecode extends VFDecodeTable {
   val table = Array(
   //             scalar? stop?                                              fpu?            vmu?                    viu?     vimu?     vidu?     vfmu?      vfdu?     vfcu?      vfvu?
   //              val? | | d  s1 s2 s3 imm   alufn   dw     sel1    sel2    | fp  fn        | mode  cmd       mt    | fn     | fn      | fn      | fn       | fn      | fn       | fn

@@ -16,8 +16,7 @@ class FrontendIO extends Bundle {
   val invalidate = Bool(OUTPUT)
 }
 
-class HwachaFrontend extends HwachaModule with rocket.FrontendParameters
-{
+class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
   val io = new Bundle {
     val vxu = new FrontendIO().flip
     val vru = new FrontendIO().flip

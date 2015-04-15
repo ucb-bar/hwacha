@@ -3,15 +3,13 @@ package hwacha
 import Chisel._
 import Node._
 
-class LaneCtrl extends HwachaModule with LaneParameters
-{
+class LaneCtrl extends HwachaModule with LaneParameters {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val uop = new MicroOpIO
   }
 
-  class Systolic[T <: LaneOp](in: ValidIO[T])
-  {
+  class Systolic[T <: LaneOp](in: ValidIO[T]) {
     val in_overflow = in.bits.strip > UInt(nSlices)
     val in_next_valid = in.valid && in_overflow
     val in_pred = Vec((0 until nSlices).map(UInt(_) < in.bits.strip)).toBits
@@ -45,8 +43,7 @@ class LaneCtrl extends HwachaModule with LaneParameters
   io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
   io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu))
 
-  class Shared[T <: LaneOp](in: ValidIO[T])
-  {
+  class Shared[T <: LaneOp](in: ValidIO[T]) {
     val reg_valid = Reg(Bool())
     val reg_bits = Reg(in.bits.clone)
 

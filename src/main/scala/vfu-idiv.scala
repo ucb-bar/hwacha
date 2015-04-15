@@ -8,8 +8,7 @@ case object FastMulDiv extends Field[Boolean]
 
 object RocketConstants extends rocket.constants.ScalarOpConstants
 
-class IDivIO extends Bundle
-{
+class IDivIO extends Bundle {
   val req = Decoupled(new Bundle {
     val fn = new VIDUFn
     val in0 = Bits(width = SZ_D)
@@ -18,13 +17,11 @@ class IDivIO extends Bundle
   val resp = Decoupled(new IDivResult).flip
 }
 
-class IDivResult extends Bundle
-{
+class IDivResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class IDivSlice extends HwachaModule with LaneParameters
-{
+class IDivSlice extends HwachaModule with LaneParameters {
   val io = new IDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))

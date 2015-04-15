@@ -5,8 +5,7 @@ import Node._
 import Constants._
 import scala.math._
 
-object Packing
-{
+object Packing {
   def splat_d(n: Bits) = Fill(SZ_D/SZ_D, n.toUInt)
   def splat_w(n: Bits) = Fill(SZ_D/SZ_W, n.toUInt)
   def splat_h(n: Bits) = Fill(SZ_D/SZ_H, n.toUInt)
@@ -48,13 +47,11 @@ object Packing
   def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_DATA)
 }
 
-object DataGating
-{
+object DataGating {
   def dgate(valid: Bool, b: Bits) = Fill(b.getWidth, valid) & b
 }
 
-object HardFloatHelper
-{
+object HardFloatHelper {
   def recode_dp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 52, 12)
   def recode_sp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 23, 9)
   def recode_hp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 10, 6)
@@ -63,10 +60,8 @@ object HardFloatHelper
   def ieee_hp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 10, 6)
 }
 
-class MaskStall[T <: Data](data: => T) extends Module
-{
-  val io = new Bundle()
-  {
+class MaskStall[T <: Data](data: => T) extends Module {
+  val io = new Bundle {
     val input = Decoupled(data).flip
     val output = Decoupled(data)
     val stall = Bool(INPUT)
@@ -77,10 +72,8 @@ class MaskStall[T <: Data](data: => T) extends Module
   io.input.ready := io.output.ready && !io.stall
 }
 
-object MaskStall
-{
-  def apply[T <: Data](deq: DecoupledIO[T], stall: Bool) =
-  {
+object MaskStall {
+  def apply[T <: Data](deq: DecoupledIO[T], stall: Bool) = {
     val ms = Module(new MaskStall(deq.bits.clone))
     ms.io.input <> deq
     ms.io.stall := stall
@@ -88,8 +81,7 @@ object MaskStall
   }
 }
 
-class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal)
-{
+class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal) {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val inc = Bool(INPUT)
@@ -112,26 +104,21 @@ class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends M
   io.empty := count === UInt(0)
 }
 
-trait LookAheadIO extends Bundle
-{
+trait LookAheadIO extends Bundle {
   val reserve = Bool(OUTPUT)
   val available = Bool(INPUT)
 }
 
-class CounterLookAheadIO extends LookAheadIO with LaneParameters
-{
+class CounterLookAheadIO extends LookAheadIO with LaneParameters {
   val cnt = UInt(OUTPUT, lookAheadBits)
 }
 
-class CounterUpdateIO(sz: Int) extends Bundle
-{
+class CounterUpdateIO(sz: Int) extends Bundle {
   val cnt = UInt(OUTPUT, sz)
   val update = Bool(OUTPUT)
 }
 
-class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)
-  extends Module(_reset = resetSignal) with LaneParameters
-{
+class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal) with LaneParameters {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val inc = new CounterUpdateIO(sz).flip

@@ -6,8 +6,7 @@ import Constants._
 import DataGating._
 import uncore.constants.MemoryOpConstants._
 
-abstract trait SeqParameters extends UsesHwachaParameters
-{
+abstract trait SeqParameters extends UsesHwachaParameters {
   val nRPorts = 3
   val szRPorts = log2Down(nRPorts) + 1
   val maxWPortLatency = nRPorts + 1 +
@@ -18,8 +17,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
 
 class SequencerIO extends ValidIO(new SequencerOp)
 
-class Sequencer extends HwachaModule with SeqParameters with LaneParameters
-{
+class Sequencer extends HwachaModule with SeqParameters with LaneParameters {
   val io = new Bundle {
     val op = new VXUIssueOpIO().flip
     val seq = new SequencerIO
@@ -49,8 +47,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     }
   }
 
-  class BuildSequencer
-  {
+  class BuildSequencer {
     require(isPow2(nseq))
 
     ///////////////////////////////////////////////////////////////////////////

@@ -112,8 +112,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
 }
 
-class Hwacha extends rocket.RoCC with UsesHwachaParameters
-{
+class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   import HwachaDecodeTable._
   import Commands._
 

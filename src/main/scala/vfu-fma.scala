@@ -8,14 +8,12 @@ import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
 
-class FMAResult extends Bundle
-{
+class FMAResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class FMASlice extends HwachaModule
-{
+class FMASlice extends HwachaModule {
   val io = new Bundle {
     val req = Valid(new Bundle {
       val fn = new VFMUFn

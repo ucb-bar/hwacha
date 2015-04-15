@@ -7,8 +7,7 @@ import rocket.ALU._
 import uncore.constants.MemoryOpConstants._
 import ScalarFPUDecode._
 
-class CtrlDpathIO extends HwachaBundle
-{
+class CtrlDpathIO extends HwachaBundle {
   val inst = Bits(INPUT, 64)
   val ex_inst = Bits(INPUT, 64)
   val wb_inst = Bits(INPUT, 64)
@@ -36,8 +35,7 @@ class CtrlDpathIO extends HwachaBundle
   val wb_vf_active = Bool(OUTPUT)
 }
 
-class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
-{
+class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
   import Commands._
 
   val io = new Bundle {
@@ -61,8 +59,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     val pending_memop = Bool(OUTPUT)
   }
 
-  class Scoreboard(n: Int)
-  {
+  class Scoreboard(n: Int) {
     def set(en: Bool, addr: UInt): Unit = update(en, _next | mask(en, addr))
     def clear(en: Bool, addr: UInt): Unit = update(en, _next & ~mask(en, addr))
     def read(addr: UInt): Bool = r(addr)

@@ -4,8 +4,7 @@ import Chisel._
 import Node._
 import Constants._
 
-class XCPTIO extends Bundle
-{
+class XCPTIO extends Bundle {
   val prop = new Bundle {
     val vu = new Bundle {
       val busy = Bool(OUTPUT)
@@ -54,8 +53,7 @@ class XCPTIO extends Bundle
   }
 }
 
-class XCPT extends Module 
-{
+class XCPT extends Module {
   val io = new Bundle {
     val rocc = new Bundle {
       val exception = Bool(INPUT)
@@ -114,7 +112,7 @@ class XCPT extends Module
   switch (state) {
 
     is (NORMAL) {
-      when (io.rocc.exception)  {
+      when (io.rocc.exception) {
         hold_top := Bool(true)
         hold_vu := Bool(true)
         hold_tlb := Bool(true)
@@ -189,7 +187,7 @@ class XCPT extends Module
     }
 
     is (HOLD) {
-      when (!io.rocc.hold)  {
+      when (!io.rocc.hold) {
         hold_vu := Bool(false)
         hold_tlb := Bool(false)
 

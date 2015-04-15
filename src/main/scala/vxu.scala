@@ -5,8 +5,7 @@ import Node._
 
 class VXUIssueOpIO extends DecoupledIO(new IssueOp)
 
-class VXU extends HwachaModule
-{
+class VXU extends HwachaModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new VXUIssueOpIO().flip

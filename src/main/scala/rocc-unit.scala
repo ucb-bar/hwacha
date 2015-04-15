@@ -5,23 +5,20 @@ import Node._
 import Constants._
 import Commands._
 
-class HwachaConfigIO extends HwachaBundle
-{
+class HwachaConfigIO extends HwachaBundle {
   val vregs = UInt(OUTPUT, szvregs+1)
   val pregs = UInt(OUTPUT, szpregs+1)
   val vstride = UInt(OUTPUT, SZ_REGLEN)
 }
 
-class CMDQIO extends Bundle
-{
-  val cmd = Decoupled(Bits (width = CMD_X.getWidth))
+class CMDQIO extends Bundle {
+  val cmd = Decoupled(Bits(width = CMD_X.getWidth))
   val imm = Decoupled(Bits(width = SZ_D))
   val rd  = Decoupled(Bits(width = SZ_REGCNT))
-  val cnt = Decoupled(new HwachaCnt)
+  val cnt = Decoupled(Bits(width = SZ_VLEN))
 }
 
-class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
-{
+class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
   val io = new Bundle {
     val enq = new CMDQIO().flip
     val deq = new CMDQIO()
@@ -33,8 +30,7 @@ class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
   io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
 }
 
-object HwachaDecodeTable extends HwachaDecodeConstants
-{
+object HwachaDecodeTable extends HwachaDecodeConstants {
   import HwachaInstructions._
                 // * means special case decode code below     checkvl?             
                 //     inst_val                               |                         save
@@ -62,8 +58,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants
   )
 }
 
-class RoCCUnit extends HwachaModule 
-{
+class RoCCUnit extends HwachaModule {
   import HwachaDecodeTable._
 
   val io = new Bundle {

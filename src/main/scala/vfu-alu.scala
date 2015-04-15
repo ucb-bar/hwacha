@@ -5,13 +5,11 @@ import Node._
 import Constants._
 import Packing._
 
-class ALUResult extends Bundle
-{
+class ALUResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class ALUSlice extends Module
-{
+class ALUSlice extends Module {
   val io = new Bundle() {
     val req = Valid(new Bundle {
       val fn = new VIUFn

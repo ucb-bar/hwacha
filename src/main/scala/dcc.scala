@@ -3,8 +3,7 @@ package hwacha
 import Chisel._
 import Constants._
 
-class DCCAckIO extends HwachaBundle
-{
+class DCCAckIO extends HwachaBundle {
   val vidu = Valid(new VIDUAck)
   val vfdu = Valid(new VFDUAck)
 }
