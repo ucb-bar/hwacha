@@ -522,10 +522,8 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     def fire_exp(n: Int) = exp_sched(n)
     def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n) || fire_exp(n)
 
-    def active_vmu(n: Int) = e(n).active.vgu || e(n).active.vcu || e(n).active.vlu || e(n).active.vsu
-
-    def stripfn(vl: UInt, vmu: Bool, fn: VFn) = {
-      val max_strip = Mux(vmu && fn.vmu().mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
+    def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
+      val max_strip = Mux(vcu && fn.vmu().mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
       Mux(vl > max_strip, max_strip, vl)
     }
 
@@ -550,16 +548,17 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
     val vcu_val = valfn(vcu_sched)
     val vcu_vlen = vlenfn(vcu_sched)
     val vcu_fn = readfn(vcu_sched, (e: SeqEntry) => e.fn)
+    val vcu_mcmd = DecodedMemCommand(vcu_fn.vmu().cmd)
     val vcu_strip = stripfn(vcu_vlen, Bool(true), vcu_fn)
 
     val vlu_val = valfn(vlu_sched)
     val vlu_vlen = vlenfn(vlu_sched)
     val vlu_fn = readfn(vlu_sched, (e: SeqEntry) => e.fn)
-    val vlu_strip = stripfn(vlu_vlen, Bool(true), vlu_fn)
+    val vlu_strip = stripfn(vlu_vlen, Bool(false), vlu_fn)
 
     val vsu_vlen = vlenfn(vsu_first)
     val vsu_fn = readfn(vsu_first, (e: SeqEntry) => e.fn)
-    val vsu_strip = stripfn(vsu_vlen, Bool(true), vsu_fn)
+    val vsu_strip = stripfn(vsu_vlen, Bool(false), vsu_fn)
 
     val exp_val = valfn(exp_sched)
     val exp_vlen = vlenfn(exp_sched)
@@ -582,7 +581,7 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
       val retire = Vec.fill(nseq){Bool()}
 
       for (i <- 0 until nseq) {
-        val strip = stripfn(vlen(i), active_vmu(i), e(i).fn)
+        val strip = stripfn(vlen(i), e(i).active.vcu, e(i).fn)
         when (valid(i)) {
           when (fire(i)) {
             vlen(i) := vlen(i) - strip
@@ -669,8 +668,15 @@ class Sequencer extends HwachaModule with SeqParameters with LaneParameters
   io.vmu.la.vala.reserve := Bool(false) // FIXME
 
   io.vmu.la.pala.cnt := seq.vcu_strip
-  io.vmu.la.pala.reserve := seq.vcu_val && io.vmu.la.pala.available
-  seq.vcu_ready := io.vmu.la.pala.available
+  io.vmu.la.pala.reserve := seq.vcu_val && seq.vcu_ready
+  io.lreq.cnt := seq.vcu_strip
+  io.lreq.reserve := seq.vcu_val && seq.vcu_mcmd.read && seq.vcu_ready
+  io.sreq.cnt := seq.vcu_strip
+  io.sreq.reserve := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
+  seq.vcu_ready :=
+    io.vmu.la.pala.available &&
+    (!seq.vcu_mcmd.read || io.lreq.available) &&
+    (!seq.vcu_mcmd.write || io.sreq.available)
 
   io.lla.cnt := seq.vlu_strip
   io.lla.reserve := seq.vlu_val && io.lla.available

@@ -3,14 +3,14 @@ package hwacha
 import Chisel._
 
 class LaneMRTIO extends Bundle with LaneParameters {
-    val lreq = new CounterLookAheadIO
-    val sreq = new CounterLookAheadIO
-    val lret = new CounterUpdateIO(lookAheadBits)
+  val lreq = new CounterLookAheadIO
+  val sreq = new CounterLookAheadIO
+  val lret = new CounterUpdateIO(lookAheadBits)
 }
 
 class MRTIO extends LaneMRTIO with VMUParameters {
-    val sret = new CounterUpdateIO(sretBits)
-    val pending_memop = Bool(INPUT)
+  val sret = new CounterUpdateIO(sretBits)
+  val pending_memop = Bool(INPUT)
 }
 
 class MemTracker extends HwachaModule {
