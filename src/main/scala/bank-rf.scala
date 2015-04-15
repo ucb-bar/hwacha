@@ -25,7 +25,7 @@ class BankRegfile extends HwachaModule with LaneParameters
 
   val sram_rf = Mem(Bits(width = SZ_DATA), nSRAM, seqRead = true)
   val ff_rf = Mem(Bits(width = SZ_DATA), nFF)
-  val opl = Mem(Bits(width = SZ_DATA), nOPL+2)
+  val opl = Mem(Bits(width = SZ_DATA), nGOPL+nLOPL)
 
   // SRAM RF read port
   val sram_raddr = Reg(Bits())
@@ -115,22 +115,22 @@ class BankRegfile extends HwachaModule with LaneParameters
      io.global.bwq.fu.bits.selff && ff_warb.io.in(2).ready
 
   // Operand Latches
-  (0 until nOPL).map { i =>
-    when (io.op.opl.valid && io.op.opl.bits.global.latch(i)) {
+  (0 until nGOPL).map { i =>
+    when (io.op.opl.global(i).valid) {
       opl.write(
         UInt(i),
-        Mux(io.op.opl.bits.global.selff(i), ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(SZ_D, io.op.opl.bits.pred))
+        Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
+        FillInterleaved(SZ_D, io.op.opl.global(i).bits.pred))
     }
-    io.global.rdata(i).d := dgate(io.op.xbar.bits.en(i), opl(i))
+    io.global.rdata(i).d := dgate(io.op.xbar(i).valid, opl(i))
   }
-  (0 until 2).map { i =>
-    when (io.op.opl.valid && io.op.opl.bits.local.latch(i)) {
+  (0 until nLOPL).map { i =>
+    when (io.op.opl.local(i).valid) {
       opl.write(
-        UInt(nOPL+i),
-        Mux(io.op.opl.bits.local.selff(i), ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(SZ_D, io.op.opl.bits.pred))
+        UInt(nGOPL+i),
+        Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
+        FillInterleaved(SZ_D, io.op.opl.local(i).bits.pred))
     }
-    io.local.rdata(i).d := opl(nOPL+i)
+    io.local.rdata(i).d := opl(nGOPL+i)
   }
 }

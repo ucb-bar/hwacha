@@ -226,20 +226,15 @@ class FFRFWriteOp extends HwachaBundle with LaneParameters
 
 class OPLOp extends HwachaBundle with LaneParameters
 {
-  val global = new Bundle {
-    val latch = Vec.fill(nOPL){Bool()}
-    val selff = Vec.fill(nOPL){Bool()}
-  }
-  val local = new Bundle {
-    val latch = Vec.fill(2){Bool()}
-    val selff = Vec.fill(2){Bool()}
-  }
+  val selff = Bool()
+}
+
+class SRegOp extends HwachaBundle with LaneParameters
+{
+  val operand = Bits(width = SZ_D)
 }
 
 class XBarOp extends HwachaBundle with LaneParameters
-{
-  val en = Vec.fill(nOPL){Bool()}
-}
 
 class VIUOp extends HwachaBundle with LaneParameters
 {
@@ -296,6 +291,7 @@ class SRAMRFWriteLaneOp extends SRAMRFWriteOp with LaneOp
 class FFRFReadLaneOp extends FFRFReadOp with LaneOp
 class FFRFWriteLaneOp extends FFRFWriteOp with LaneOp
 class OPLLaneOp extends OPLOp with LaneOp
+class SRegLaneOp extends SRegOp with LaneOp
 class XBarLaneOp extends XBarOp with LaneOp
 class VIULaneOp extends VIUOp with LaneOp
 class VIMULaneOp extends VIMUOp with LaneOp
@@ -310,7 +306,7 @@ class SRAMRFReadExpEntry extends SRAMRFReadLaneOp
 {
   val global = new Bundle {
     val valid = Bool()
-    val id = UInt(width = log2Up(nOPL))
+    val id = UInt(width = log2Up(nGOPL))
   }
   val local = new Bundle {
     val valid = Bool()
@@ -333,6 +329,7 @@ class SRAMRFWriteMicroOp extends SRAMRFWriteOp with MicroOp
 class FFRFReadMicroOp extends FFRFReadOp with MicroOp
 class FFRFWriteMicroOp extends FFRFWriteOp with MicroOp
 class OPLMicroOp extends OPLOp with MicroOp
+class SRegMicroOp extends SRegOp with MicroOp
 class XBarMicroOp extends XBarOp with MicroOp
 class VIUMicroOp extends VIUOp with MicroOp
 class VIMUMicroOp extends VIMUOp with MicroOp

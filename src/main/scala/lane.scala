@@ -17,7 +17,8 @@ abstract trait LaneParameters extends UsesParameters
   val nSRAM = params(HwachaNSRAMRFEntries)
   val nFF = params(HwachaNFFRFEntries)
   val nFFRPorts = params(HwachaNFFRFReadPorts)
-  val nOPL = params(HwachaNOperandLatches)
+  val nGOPL = params(HwachaNOperandLatches)
+  val nLOPL = 2
   val nWSel = params(HwachaWriteSelects)
   val nSlices = SZ_DATA/SZ_D
   val nBatch = params(HwachaNBanks) * nSlices
@@ -27,18 +28,25 @@ abstract trait LaneParameters extends UsesParameters
   val nDecoupledUnitWBQueue = 4
 }
 
-class LaneOpIO extends HwachaBundle
+class LaneOpIO extends HwachaBundle with LaneParameters
 {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadLaneOp)
     val write = Valid(new SRAMRFWriteLaneOp)
   }
   val ff = new Bundle {
-    val read = Valid(new FFRFReadLaneOp)
+    val read = Vec.fill(nFFRPorts){Valid(new FFRFReadLaneOp)}
     val write = Valid(new FFRFWriteLaneOp)
   }
-  val opl = Valid(new OPLLaneOp)
-  val xbar = Valid(new XBarLaneOp)
+  val opl = new Bundle {
+    val global = Vec.fill(nGOPL){Valid(new OPLLaneOp)}
+    val local = Vec.fill(nLOPL){Valid(new OPLLaneOp)}
+  }
+  val sreg = new Bundle {
+    val global = Vec.fill(nGOPL){Valid(new SRegLaneOp)}
+    val local = Vec.fill(nLOPL){Valid(new SRegLaneOp)}
+  }
+  val xbar = Vec.fill(nGOPL){Valid(new XBarLaneOp)}
   val viu = Valid(new VIULaneOp)
   val vimu = Valid(new VIMULaneOp)
   val vfmu0 = Valid(new VFMULaneOp)
@@ -50,9 +58,10 @@ class LaneOpIO extends HwachaBundle
   val vsu = Valid(new VSULaneOp)
 }
 
-class MicroOpIO extends HwachaBundle
+class MicroOpIO extends HwachaBundle with LaneParameters
 {
   val bank = Vec.fill(nbanks){new BankOpIO()}
+  val sreg = Vec.fill(nGOPL){Valid(new SRegMicroOp)}
   val vqu = Valid(new VQUMicroOp)
   val vgu = Valid(new VGUMicroOp)
   val vimu = Valid(new VIMUMicroOp)
@@ -111,7 +120,9 @@ class Lane extends HwachaModule with LaneParameters
     bank.io.rw.bwq.fu <> io.bwqs.fu(i)
   }
 
-  val rdata = (0 until nOPL).map { o => banksrw.map(_.rdata(o).d).reduce(_|_) }
+  val rdata = (0 until nGOPL).map { o =>
+    Mux(ctrl.io.uop.sreg(o).valid, ctrl.io.uop.sreg(o).bits.operand,
+                                   banksrw.map(_.rdata(o).d).reduce(_|_)) }
 
   require(nLRQOperands == 2)
 

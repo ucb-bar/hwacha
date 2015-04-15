@@ -18,73 +18,32 @@ class LaneCtrl extends HwachaModule with LaneParameters
     val in_popcnt = Mux(in_overflow, UInt(nSlices), in.bits.strip)
 
     val out = Valid(in.bits.clone).asDirectionless
-    out.valid := Reg(next=in_next_valid)
+    out.valid := Reg(next=in_next_valid, init=Bool(false))
     out.bits := RegEnable(in.bits, in_next_valid)
     out.bits.strip := RegEnable(in.bits.strip - in_popcnt, in_next_valid)
-
-    when (reset) {
-      out.valid := Bool(false)
-    }
   }
 
-  var sram_rf_read = io.op.sram.read
-  var sram_rf_write = io.op.sram.write
-  var opl = io.op.opl
-  var xbar = io.op.xbar
-  var viu = io.op.viu
-  var vsu = io.op.vsu
-
-  for (i <- 0 until nbanks) {
-    val sys_sram_rf_read = new Systolic(sram_rf_read)
-    val sys_sram_rf_write = new Systolic(sram_rf_write)
-    val sys_opl = new Systolic(opl)
-    val sys_xbar = new Systolic(xbar)
-    val sys_vsu = new Systolic(vsu)
-    val sys_viu = new Systolic(viu)
-
-    io.uop.bank(i).sram.read.valid := sram_rf_read.valid
-    io.uop.bank(i).sram.read.bits.addr := sram_rf_read.bits.addr
-    io.uop.bank(i).sram.read.bits.pred := sys_sram_rf_read.in_pred
-
-    io.uop.bank(i).sram.write.valid := sram_rf_write.valid
-    io.uop.bank(i).sram.write.bits.addr := sram_rf_write.bits.addr
-    io.uop.bank(i).sram.write.bits.selg := sram_rf_write.bits.selg
-    io.uop.bank(i).sram.write.bits.wsel := sram_rf_write.bits.wsel
-    io.uop.bank(i).sram.write.bits.pred := sys_sram_rf_write.in_pred
-
-    io.uop.bank(i).opl.valid := opl.valid
-    io.uop.bank(i).opl.bits.global.latch := opl.bits.global.latch
-    io.uop.bank(i).opl.bits.global.selff := opl.bits.global.selff
-    io.uop.bank(i).opl.bits.local.latch := opl.bits.local.latch
-    io.uop.bank(i).opl.bits.local.selff := opl.bits.local.selff
-    io.uop.bank(i).opl.bits.pred := sys_opl.in_pred
-
-    io.uop.bank(i).xbar.valid := xbar.valid
-    io.uop.bank(i).xbar.bits.en := xbar.bits.en
-    io.uop.bank(i).xbar.bits.pred := sys_xbar.in_pred
-
-    io.uop.bank(i).viu.valid := viu.valid
-    io.uop.bank(i).viu.bits.fn := viu.bits.fn
-    io.uop.bank(i).viu.bits.eidx := viu.bits.eidx
-    io.uop.bank(i).viu.bits.pred := sys_viu.in_pred
-
-    io.uop.bank(i).vsu.valid := vsu.valid
-    io.uop.bank(i).vsu.bits.selff := vsu.bits.selff
-    io.uop.bank(i).vsu.bits.pred := sys_vsu.in_pred
-
-    sram_rf_read = sys_sram_rf_read.out
-    sram_rf_write = sys_sram_rf_write.out
-    opl = sys_opl.out
-    xbar = sys_xbar.out
-    viu = sys_viu.out
-    vsu = sys_vsu.out
-
-    for (j <- 0 until nFFRPorts) {
-      io.uop.bank(i).ff.read(j).valid := Bool(false)
-    }
-
-    io.uop.bank(i).ff.write.valid := Bool(false)
+  def gen_systolic[T <: LaneOp, S <: MicroOp]
+    (lop: ValidIO[T], uop: ValidIO[S]) = {
+      val sys = new Systolic(lop)
+      uop <> lop
+      uop.bits.pred := sys.in_pred
+      sys.out
   }
+
+  def gen_vec_systolic[T <: LaneOp, S <: MicroOp]
+    (lops: Iterable[ValidIO[T]], uops: Iterable[ValidIO[S]]) = {
+      Vec((lops zip uops) map { case (lop, uop) => gen_systolic(lop, uop) })
+  }
+
+  io.uop.bank.foldLeft(io.op.sram.read)((lop, bio) => gen_systolic(lop, bio.sram.read))
+  io.uop.bank.foldLeft(io.op.sram.write)((lop, bio) => gen_systolic(lop, bio.sram.write))
+  io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global))
+  io.uop.bank.foldLeft(io.op.opl.local)((lops, bio) => gen_vec_systolic(lops, bio.opl.local))
+  io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg))
+  io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar))
+  io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
+  io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu))
 
   class Shared[T <: LaneOp](in: ValidIO[T])
   {
@@ -112,6 +71,7 @@ class LaneCtrl extends HwachaModule with LaneParameters
     }
   }
 
+  val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i)) }
   val vqu = new Shared(io.op.vqu)
   val vgu = new Shared(io.op.vgu)
   val vimu = new Shared(io.op.vimu)
@@ -119,6 +79,12 @@ class LaneCtrl extends HwachaModule with LaneParameters
   val vfmu1 = new Shared(io.op.vfmu1)
   val vfcu = new Shared(io.op.vfcu)
   val vfvu = new Shared(io.op.vfvu)
+
+  io.uop.sreg.zip(sreg).map { case (u, s) =>
+    u.valid := s.valid
+    u.bits.operand := s.bits.operand
+    u.bits.pred := s.pred
+  }
 
   io.uop.vqu.valid := vqu.valid
   io.uop.vqu.bits.fn := vqu.bits.fn

@@ -16,8 +16,12 @@ class BankOpIO extends Bundle with LaneParameters
     val read = Vec.fill(nFFRPorts){Valid(new FFRFReadMicroOp)}
     val write = Valid(new FFRFWriteMicroOp)
   }
-  val opl = Valid(new OPLMicroOp)
-  val xbar = Valid(new XBarMicroOp)
+  val opl = new Bundle {
+    val global = Vec.fill(nGOPL){Valid(new OPLMicroOp)}
+    val local = Vec.fill(nLOPL){Valid(new OPLMicroOp)}
+  }
+  val sreg = Vec.fill(nLOPL){Valid(new SRegMicroOp)}
+  val xbar = Vec.fill(nGOPL){Valid(new XBarMicroOp)}
   val viu = Valid(new VIUMicroOp)
   val vsu = Valid(new VSUMicroOp)
 }
@@ -27,7 +31,7 @@ class BWQIO extends DecoupledIO(new BWQEntry)
 
 class BankRWIO extends Bundle with LaneParameters
 {
-  val rdata = Vec.fill(nOPL){new BankReadEntry().asOutput}
+  val rdata = Vec.fill(nGOPL){new BankReadEntry().asOutput}
   val wdata = Vec.fill(nWSel){new BankWriteEntry().asInput}
 
   val brq = new BRQIO
@@ -58,8 +62,12 @@ class Bank extends HwachaModule with LaneParameters
     alu.io.req.bits.fn := io.op.viu.bits.fn
     alu.io.req.bits.eidx := io.op.viu.bits.eidx
 
-    alu.io.req.bits.in0 := unpack_slice(rf.io.local.rdata(0).d, i)
-    alu.io.req.bits.in1 := unpack_slice(rf.io.local.rdata(1).d, i)
+    alu.io.req.bits.in0 :=
+      Mux(io.op.sreg(0).valid, io.op.sreg(0).bits.operand,
+                               unpack_slice(rf.io.local.rdata(0).d, i))
+    alu.io.req.bits.in1 :=
+      Mux(io.op.sreg(1).valid, io.op.sreg(1).bits.operand,
+                               unpack_slice(rf.io.local.rdata(1).d, i))
 
     outs += alu.io.resp
   }
