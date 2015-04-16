@@ -144,7 +144,7 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
 
 
   when (!stall) {
-    //stage 1
+    // stage 1
     vxu_s1_pc_ := vxu_req_pc
     vru_s1_pc_ := vru_req_pc
     s1_pc_ := req_pc
@@ -156,12 +156,14 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
     vru_s1_nn_match := vru_s0_nn_match
     vxu_s1_nnn_match := vxu_s0_nnn_match
     vru_s1_nnn_match := vru_s0_nnn_match
-    //stage 2
+  }
+  when (!stall) {
+    // stage 2
     vxu_s2_same_block := vxu_s1_same_block
     vru_s2_same_block := vru_s1_same_block
     s2_valid := s1_valid
-    vxu_s2_valid := vxu_s1_valid
-    vru_s2_valid := vru_s1_valid
+    vxu_s2_valid := vxu_s1_valid && !(vxu_s1_pc === vxu_s2_pc && io.vxu.resp.fire())
+    vru_s2_valid := vru_s1_valid && !(vru_s1_pc === vru_s2_pc && io.vru.resp.fire())
     s2_type := s1_type
     when (!icmiss) {
       s2_pc := s1_pc
