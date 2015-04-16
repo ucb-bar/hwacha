@@ -136,8 +136,8 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
   val vxu_make_req = req_type && (!vxu_s0_same_block && vxu_active)
   val vru_make_req = !req_type && (!vru_s0_same_block && vru_active)
 
-  val stall = req_val && (io.vxu.resp.valid && !io.vxu.resp.ready ||
-                         io.vru.resp.valid && !io.vru.resp.ready)
+  val stall = (io.vxu.resp.valid && !io.vxu.resp.ready ||
+               io.vru.resp.valid && !io.vru.resp.ready)
 
   val valid_req = (s1_type && vxu_s1_valid && !vxu_s1_same_block) ||
                     (!s1_type && vru_s1_valid && !vru_s1_same_block)
