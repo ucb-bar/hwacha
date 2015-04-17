@@ -45,7 +45,7 @@ class VU(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
     val vimm2q_user_ready = Bool(OUTPUT)
 
     val imem = new rocket.CPUFrontendIO
-    val dmem = new uncore.HeaderlessUncachedTileLinkIO
+    val dmem = new uncore.ClientUncachedTileLinkIO
     val vtlb = new TLBIO
     val vpftlb = new TLBIO
 

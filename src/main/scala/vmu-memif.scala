@@ -84,7 +84,7 @@ class MBox extends VMUModule {
 class VMUTileLink extends VMUModule {
   val io = new Bundle {
     val vmu = new VMUMemIO().flip
-    val dmem = new HeaderlessUncachedTileLinkIO
+    val dmem = new ClientUncachedTileLinkIO
   }
 
   private val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
