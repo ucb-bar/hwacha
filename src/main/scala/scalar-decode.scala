@@ -1,11 +1,8 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import HwachaElementInstructions._
 import rocket.ALU._
-import uncore.constants.MemoryOpConstants._
 import ScalarFPUDecode._
 
 class IntCtrlSigs extends Bundle {

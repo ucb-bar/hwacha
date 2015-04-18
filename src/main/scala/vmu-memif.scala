@@ -4,7 +4,7 @@ import Chisel._
 import uncore._
 
 class VMUMemReq extends VMUMemOp {
-  val tag = UInt(width = tagBits)
+  val tag = UInt(width = bTag)
   val store = new VMUStoreData
 }
 
@@ -70,7 +70,7 @@ class MBox extends VMUModule {
   req.bits.mt := abox.bits.mt
   req.bits.addr := abox.bits.addr
   req.bits.tag := Mux(cmd.read, lbox.meta.tag, sbox.meta.ecnt)
-  require(tlByteAddrBits <= tagBits)
+  require(tlByteAddrBits <= bTag)
   req.bits.store := sbox.store
 
   // Response demux

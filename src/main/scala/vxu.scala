@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 
 class VXUIssueOpIO extends DecoupledIO(new IssueOp)
 

@@ -21,7 +21,7 @@ class SBox extends VMUModule {
   val packed = op.unit && !op.mode.indexed
   private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
 
-  val vsdq = Module(new Queue(Bits(width = tlDataBits), confvmu.nvsdq))
+  val vsdq = Module(new Queue(Bits(width = tlDataBits), nVSDQ))
   vsdq.io.enq <> io.lane
 
   val hold = Reg(Bits(width = tlDataBits - 8))

@@ -1,7 +1,6 @@
 package hwacha 
 
 import Chisel._
-import Node._
 
 class XCPTIO extends HwachaBundle {
   val prop = new Bundle {

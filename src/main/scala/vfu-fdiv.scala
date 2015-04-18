@@ -1,23 +1,23 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
 import HardFloatHelper._
 
-class FDivIO extends Bundle {
-  val req = Decoupled(new Bundle {
-    val fn = new VFDUFn
-    val in0 = Bits(width = SZ_D)
-    val in1 = Bits(width = SZ_D)
-  })
-  val resp = Decoupled(new FDivResult).flip
+class FDivOperand extends Bundle {
+  val fn = new VFDUFn
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
 }
 
 class FDivResult extends Bundle {
   val out = Bits(width = SZ_D)
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
+}
+
+class FDivIO extends Bundle {
+  val req = Decoupled(new FDivOperand)
+  val resp = Decoupled(new FDivResult).flip
 }
 
 class FDivTag extends Bundle {

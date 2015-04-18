@@ -1,24 +1,24 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 
 case object FastMulDiv extends Field[Boolean]
 
 object RocketConstants extends rocket.constants.ScalarOpConstants
 
-class IDivIO extends Bundle {
-  val req = Decoupled(new Bundle {
-    val fn = new VIDUFn
-    val in0 = Bits(width = SZ_D)
-    val in1 = Bits(width = SZ_D)
-  })
-  val resp = Decoupled(new IDivResult).flip
+class IDivOperand extends Bundle {
+  val fn = new VIDUFn
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
 }
 
 class IDivResult extends Bundle {
   val out = Bits(width = SZ_D)
+}
+
+class IDivIO extends Bundle {
+  val req = Decoupled(new IDivOperand)
+  val resp = Decoupled(new IDivResult).flip
 }
 
 class IDivSlice extends VXUModule {

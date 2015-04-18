@@ -1,8 +1,6 @@
 package hwacha
 
 import Chisel._
-import Constants._
-import uncore.constants.MemoryOpConstants._
 
 class VMUAddr extends VMUMemOp {
   val meta = new VMUMetaUnion
@@ -16,15 +14,15 @@ class VVAQ extends VMUModule with SeqParameters {
     val la = new CounterLookAheadIO().flip
   }
 
-  val q = Module(new Queue(io.enq.bits.clone, confvmu.nvvaq))
+  val q = Module(new Queue(io.enq.bits.clone, nVVAQ))
   q.io.enq <> io.enq
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(confvmu.nvvaq, confvmu.nvvaq))
+  val lacntr = Module(new LookAheadCounter(nVVAQ, nVVAQ))
   lacntr.io.inc.cnt := UInt(1)
   lacntr.io.inc.update := io.deq.fire()
   lacntr.io.dec <> io.la
-  require(confvmu.nvvaq >= maxLookAhead)
+  require(nVVAQ >= maxLookAhead)
 }
 
 class TLBIO extends VMUBundle {
@@ -182,17 +180,16 @@ class VPAQ extends VMUModule with SeqParameters {
     val la = new CounterLookAheadIO().flip
   }
 
-  val q = Module(new Queue(io.enq.bits.addr.clone, confvmu.nvpaq))
+  val q = Module(new Queue(io.enq.bits.addr.clone, nVPAQ))
   q.io.enq.valid := io.enq.valid
   q.io.enq.bits := io.enq.bits.addr
   io.enq.ready := q.io.enq.ready
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(0, confvmu.nvpaq))
+  val lacntr = Module(new LookAheadCounter(0, bVLen))
   lacntr.io.inc.cnt := io.enq.bits.ecnt
   lacntr.io.inc.update := io.enq.fire()
   lacntr.io.dec <> io.la
-  require(confvmu.nvpaq >= maxLookAhead)
 }
 
 class ABox1 extends VMUModule {
@@ -229,7 +226,7 @@ class ABox1 extends VMUModule {
   val dequeue = !packed || (subblock_next === UInt(0)) || last
 
   // Track number of elements permitted to depart
-  val valve = Reg(init = UInt(0, confvmu.nvpaq))
+  val valve = Reg(init = UInt(0, bVLen))
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
   val valve_sub = Mux(io.mbox.fire(), io.mbox.bits.meta.ecnt, UInt(0))
   valve := valve + valve_add - valve_sub
@@ -304,7 +301,7 @@ class VPFQ extends VMUModule {
   private def vpn(x: UInt) = x(vaddrBits, pgIdxBits)
   private def pgidx(x: UInt) = x(pgIdxBits-1, 0)
 
-  val vvapfq = Module(new Queue(io.enq.bits.clone, confvmu.nvvapfq))
+  val vvapfq = Module(new Queue(io.enq.bits.clone, nVPFQ))
   vvapfq.io.enq <> io.enq
 
   val tlb_ready = io.tlb.query(

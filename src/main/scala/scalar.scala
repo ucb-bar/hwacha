@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 
 class ScalarUnit extends HwachaModule {
   val io = new Bundle {

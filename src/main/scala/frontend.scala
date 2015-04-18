@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 import uncore._
 
 class FrontendReq extends rocket.CoreBundle {

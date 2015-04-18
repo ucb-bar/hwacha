@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 
 class TickerIO extends VXUBundle {
   val sram = new Bundle {

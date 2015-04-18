@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 import DataGating._
 
 class RFWritePort extends VXUBundle {

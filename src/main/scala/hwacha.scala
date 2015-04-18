@@ -2,7 +2,6 @@ package hwacha
 
 import Chisel._
 import uncore._
-import Constants._
 import rocket.NTLBEntries
 
 case object HwachaNAddressRegs extends Field[Int]
@@ -15,10 +14,6 @@ case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
-case object HwachaNVectorLoadMetaBufferEntries extends Field[Int]
-
-abstract class HwachaModule(clock: Clock = null, _reset: Bool = null) extends Module(clock, _reset) with UsesHwachaParameters
-abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters {
   val nARegs = params(HwachaNAddressRegs)
@@ -61,32 +56,15 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nbrq = 2
   val nbwq = 2
 
-  val confvmu = new {
-    val ncmdq = 2
-    val naddrq = 2
-
-    val nvvaq = 16
-    val nvpaq = 16
-    val nvsdq = 16
-    val nvldq = 16
-    val nvlmb = 16
-
-    val nvvapfq = 8
-    val nvpapfq = 8
-
-    val sz_tag = log2Up(nvlmb)
-    val sz_addr = math.max(params(PAddrBits), params(VAddrBits))
-    val sz_data = 64
-  }
-
   val nvsreq = 128
   val nvlreq = 128
   val nvsdq = nbrq * _nBanks
-
-  // D$ tag requirement for hwacha
-  require(params(rocket.CoreDCacheReqTagBits) >= confvmu.sz_tag)
-
 }
+
+abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
+  extends Module(clock, _reset) with UsesHwachaParameters
+
+abstract class HwachaBundle extends Bundle with UsesHwachaParameters
 
 class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   import HwachaDecodeTable._

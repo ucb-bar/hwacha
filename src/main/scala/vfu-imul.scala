@@ -1,9 +1,13 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
+
+class IMulOperand extends Bundle {
+  val fn = new VIMUFn
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
+}
 
 class IMulResult extends Bundle {
   val out = Bits(width = SZ_D)
@@ -11,11 +15,7 @@ class IMulResult extends Bundle {
 
 class IMulSlice extends VXUModule {
   val io = new Bundle {
-    val req = Valid(new Bundle {
-      val fn = new VIMUFn
-      val in0 = Bits(width = SZ_D)
-      val in1 = Bits(width = SZ_D)
-    }).flip
+    val req = Valid(new IMulOperand).flip
     val resp = Valid(new IMulResult)
   }
 

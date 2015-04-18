@@ -1,8 +1,13 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
+
+class ALUOperand extends HwachaBundle {
+  val fn = new VIUFn
+  val eidx = Bits(width = bVLen)
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
+}
 
 class ALUResult extends Bundle {
   val out = Bits(width = SZ_D)
@@ -10,12 +15,7 @@ class ALUResult extends Bundle {
 
 class ALUSlice extends HwachaModule with Packing {
   val io = new Bundle {
-    val req = Valid(new HwachaBundle {
-      val fn = new VIUFn
-      val eidx = Bits(width = bVLen)
-      val in0 = Bits(width = SZ_D)
-      val in1 = Bits(width = SZ_D)
-    }).flip
+    val req = Valid(new ALUOperand).flip
     val resp = Valid(new ALUResult)
   }
 

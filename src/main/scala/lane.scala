@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
 import scala.collection.mutable.ArrayBuffer
 
 case object HwachaBankWidth extends Field[Int]

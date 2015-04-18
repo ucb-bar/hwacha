@@ -1,8 +1,6 @@
 package hwacha
 
 import Chisel._
-import Constants._
-import uncore.constants.MemoryOpConstants._
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)
   extends HwachaModule(clock, _reset) with VMUParameters
@@ -160,7 +158,7 @@ trait VMUMemOp extends VMUBundle {
 
 class MetaReadIO[T <: Data](gen: T) extends VMUBundle {
   val valid = Bool(OUTPUT)
-  val tag = UInt(OUTPUT, tagBits)
+  val tag = UInt(OUTPUT, bTag)
   val data = gen.clone.asInput
 }
 
@@ -168,7 +166,7 @@ class MetaWriteIO[T <: Data](gen: T) extends VMUBundle {
   val valid = Bool(OUTPUT)
   val ready = Bool(INPUT)
   val data = gen.clone.asOutput
-  val tag = UInt(INPUT, tagBits)
+  val tag = UInt(INPUT, bTag)
 }
 
 abstract class VMUData extends VMUBundle {
@@ -176,7 +174,7 @@ abstract class VMUData extends VMUBundle {
 }
 
 class VMULoadData extends VMUData {
-  val tag = UInt(width = tagBits)
+  val tag = UInt(width = bTag)
 }
 
 class VMUStoreData extends VMUData {

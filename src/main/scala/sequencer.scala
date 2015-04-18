@@ -1,10 +1,7 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
-import uncore.constants.MemoryOpConstants._
 
 abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val nSeq = 8

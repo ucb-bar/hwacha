@@ -1,10 +1,14 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
 import HardFloatHelper._
+
+class FCmpOperand extends Bundle {
+  val fn = new VFCUFn
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
+}
 
 class FCmpResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
@@ -12,11 +16,7 @@ class FCmpResult extends Bundle {
 
 class FCmpSlice extends VXUModule with Packing {
   val io = new Bundle {
-    val req = Valid(new Bundle {
-      val fn = new VFCUFn
-      val in0 = Bits(width = SZ_D)
-      val in1 = Bits(width = SZ_D)
-    }).flip
+    val req = Valid(new FCmpOperand).flip
     val resp = Valid(new FCmpResult)
   }
 

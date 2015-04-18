@@ -1,11 +1,25 @@
 package hwacha
 
 import Chisel._
-import Constants._
 import uncore._
 
+case object HwachaNVVAQEntries extends Field[Int]
+case object HwachaNVPAQEntries extends Field[Int]
+case object HwachaNVPFQEntries extends Field[Int]
+case object HwachaNVSDQEntries extends Field[Int]
+case object HwachaNVLDQEntries extends Field[Int]
+case object HwachaNVMDBEntries extends Field[Int]
+
 trait VMUParameters extends UsesHwachaParameters {
-  val tagBits = log2Up(params(HwachaNVectorLoadMetaBufferEntries))
+  val nVMUQ = 2
+  val nVVAQ = params(HwachaNVVAQEntries)
+  val nVPAQ = params(HwachaNVPAQEntries)
+  val nVPFQ = params(HwachaNVPFQEntries)
+  val nVSDQ = params(HwachaNVSDQEntries)
+  val nVLDQ = params(HwachaNVLDQEntries)
+
+  val nVMDB = params(HwachaNVMDBEntries)
+  val bTag = log2Up(nVMDB)
 
   val vaddrBits = params(VAddrBits)
   val paddrBits = params(PAddrBits)
@@ -23,9 +37,6 @@ trait VMUParameters extends UsesHwachaParameters {
 
   val sretBits = log2Down(tlDataBytes) + 1
 
-  val tlDataHalves = tlDataBits >> 4
-  val tlDataWords = tlDataBits >> 5
-  val tlDataDoubles = tlDataBits >> 6
   require((tlDataBits & (SZ_D-1)) == 0)
 
   val nPredSet = tlDataBytes // TODO: rename
@@ -58,7 +69,7 @@ class VMUDecodedOp extends VMUOpBase {
   val unit = Bool()
 }
 
-object VMUDecodedOp {
+object VMUDecodedOp extends HwachaConstants {
   def apply(src: VMUOp): VMUDecodedOp = {
     val op = new VMUDecodedOp
     op.fn := src.fn
@@ -95,7 +106,7 @@ class IBox extends VMUModule {
     val quiescent = Bool(INPUT)
   }
 
-  val issueq = Module(new Queue(new VMUOp, confvmu.ncmdq))
+  val issueq = Module(new Queue(new VMUOp, nVMUQ))
   issueq.io.enq <> io.op
 
   val op = VMUDecodedOp(issueq.io.deq.bits)

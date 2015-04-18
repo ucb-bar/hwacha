@@ -1,24 +1,22 @@
 package hwacha
 
 import Chisel._
-import Constants._
 
 class MetadataBuffer extends VMUModule {
   val io = new Bundle {
     val r = new MetaReadIO(new VMULoadMetaEntry).flip
     val w = new MetaWriteIO(new VMULoadMetaEntry).flip
   }
-  private val n = params(HwachaNVectorLoadMetaBufferEntries)
 
-  val valid = Reg(init = Bits(0, n))
-  val data = Mem(io.r.data.clone, n)
+  val valid = Reg(init = Bits(0, nVMDB))
+  val data = Mem(io.r.data.clone, nVMDB)
 
   io.w.tag := PriorityEncoder(~valid)
   io.w.ready := !(valid.toBools.reduce(_&&_))
 
   val wen = io.w.valid && io.w.ready
-  val valid_mask_r = UIntToOH(io.r.tag) & Fill(n, io.r.valid)
-  val valid_mask_w = UIntToOH(io.w.tag) & Fill(n, wen)
+  val valid_mask_r = UIntToOH(io.r.tag) & Fill(nVMDB, io.r.valid)
+  val valid_mask_w = UIntToOH(io.w.tag) & Fill(nVMDB, wen)
 
   valid := (valid & (~valid_mask_r)) | valid_mask_w
   when (wen) {
@@ -38,7 +36,7 @@ class LBox extends VMUModule {
     val lane = new VLDQIO
   }
 
-  val vldq = Module(new Queue(new VLDQEntry, confvmu.nvldq))
+  val vldq = Module(new Queue(new VLDQEntry, nVLDQ))
   val vmdb = Module(new MetadataBuffer)
 
   vldq.io.enq.bits.data := io.mbox.load.bits.data

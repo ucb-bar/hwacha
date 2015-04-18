@@ -1,8 +1,6 @@
 package hwacha 
 
 import Chisel._
-import Node._
-import Constants._
 import rocket.FPConstants._
 
 object ScalarFPUDecode {

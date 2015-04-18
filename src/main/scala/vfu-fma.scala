@@ -1,11 +1,16 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
+
+class FMAOperand extends Bundle {
+  val fn = new VFMUFn
+  val in0 = Bits(width = SZ_D)
+  val in1 = Bits(width = SZ_D)
+  val in2 = Bits(width = SZ_D)
+}
 
 class FMAResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
@@ -14,12 +19,7 @@ class FMAResult extends Bundle {
 
 class FMASlice extends VXUModule with Packing {
   val io = new Bundle {
-    val req = Valid(new Bundle {
-      val fn = new VFMUFn
-      val in0 = Bits(width = SZ_D)
-      val in1 = Bits(width = SZ_D)
-      val in2 = Bits(width = SZ_D)
-    }).flip
+    val req = Valid(new FMAOperand).flip
     val resp = Valid(new FMAResult)
   }
 

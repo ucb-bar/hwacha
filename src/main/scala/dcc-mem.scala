@@ -1,8 +1,6 @@
 package hwacha
 
 import Chisel._
-import Constants._
-import uncore.constants.MemoryOpConstants._
 
 class BRQLookAheadIO extends VXUBundle with LookAheadIO {
   val mask = Bits(OUTPUT, nBanks)

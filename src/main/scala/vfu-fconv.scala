@@ -1,10 +1,13 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
 import DataGating._
 import HardFloatHelper._
+
+class FConvOperand extends Bundle {
+  val fn = new VFVUFn
+  val in = Bits(width = SZ_D)
+}
 
 class FConvResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
@@ -13,10 +16,7 @@ class FConvResult extends Bundle {
 
 class FConvSlice extends VXUModule with Packing {
   val io = new Bundle {
-    val req = Valid(new Bundle {
-      val fn = new VFVUFn
-      val in = Bits(width = SZ_D)
-    }).flip
+    val req = Valid(new FConvOperand).flip
     val resp = Valid(new FConvResult)
   }
 

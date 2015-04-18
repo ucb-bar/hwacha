@@ -1,20 +1,19 @@
 package hwacha
 
 import Chisel._
-import Node._
-import uncore.constants.MemoryOpConstants._
 
-object Constants extends
-  MachineConstants with
-  DecodeConstants with
-  VIUConstants with
-  VIMUConstants with
-  VIDUConstants with
-  VFMUConstants with
-  VFDUConstants with
-  VFCUConstants with
-  VFVUConstants with
-  VMUConstants
+object HwachaConstants extends HwachaConstants
+trait HwachaConstants
+  extends MachineConstants
+  with DecodeConstants
+  with VIUConstants
+  with VIMUConstants
+  with VIDUConstants
+  with VFMUConstants
+  with VFDUConstants
+  with VFCUConstants
+  with VFVUConstants
+  with VMUConstants
 
 trait MachineConstants {
   val SZ_D = 64

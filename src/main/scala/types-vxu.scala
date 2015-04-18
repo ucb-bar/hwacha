@@ -1,9 +1,6 @@
 package hwacha
 
 import Chisel._
-import Node._
-import Constants._
-import uncore.constants.MemoryOpConstants._
 
 abstract class VXUModule(clock: Clock = null, _reset: Bool = null)
   extends HwachaModule(clock, _reset) with SeqParameters with LaneParameters with DCCParameters
