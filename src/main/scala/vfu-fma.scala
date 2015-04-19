@@ -50,7 +50,11 @@ class FMASlice extends VXUModule with Packing {
       fn.op_is(FM_MUL) -> in2
     ))
 
-  val fma_addend = Mux(fn.op_is(FM_MUL), Bits(0, SZ_D), in2)
+  val fma_addend = MuxCase(
+    in2, Array(
+      fn.op_is(FM_ADD, FM_SUB) -> in1,
+      fn.op_is(FM_MUL) -> Bits(0, SZ_D)
+    ))
 
   val results =
     List((SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (52, 12)),

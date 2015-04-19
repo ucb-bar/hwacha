@@ -13,7 +13,7 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val bWPortLatency = log2Down(maxWPortLatency) + 1
   val maxStrip = nBanks * (wBank / SZ_B)
   val bStrip = log2Down(maxStrip) + 1
-  val maxLookAhead = wBank / SZ_B
+  val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
   val bLookAhead = log2Down(maxLookAhead) + 1
 }
 
@@ -35,6 +35,8 @@ class Sequencer extends VXUModule {
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
 
+    val spred = Decoupled(Bits(width=nPredSet))
+
     val lack = new LaneAckIO().flip
     val dack = new DCCAckIO().flip
 
@@ -46,8 +48,33 @@ class Sequencer extends VXUModule {
       val head = UInt(OUTPUT, log2Up(nSeq))
       val tail = UInt(OUTPUT, log2Up(nSeq))
       val full = Bool(OUTPUT)
+      val dhazard_raw_vlen = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_vs2 = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_vs3 = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_war = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_waw = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard = Vec.fill(nSeq){Bool(OUTPUT)}
+      val bhazard = Vec.fill(nSeq){Bool(OUTPUT)}
+      val shazard = Vec.fill(nSeq){Bool(OUTPUT)}
+      val use_mask_sreg_global = Vec.fill(nGOPL){Bits(OUTPUT, maxSRegGlobalTicks+nBanks-1)}
+      val use_mask_xbar = Vec.fill(nGOPL){Bits(OUTPUT, maxXbarTicks+nBanks-1)}
+      val use_mask_vimu = Bits(OUTPUT, maxVIMUTicks+nBanks-1)
+      val use_mask_vfmu = Bits(OUTPUT, maxVFMUTicks+nBanks-1)
+      val use_mask_vfcu = Bits(OUTPUT, maxVFCUTicks+nBanks-1)
+      val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
+      val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
+      val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
+      val consider = Vec.fill(nSeq){Bool(OUTPUT)}
+      val first_sched = Vec.fill(nSeq){Bool(OUTPUT)}
+      val second_sched = Vec.fill(nSeq){Bool(OUTPUT)}
     }
+  }
+
+  def strip_to_bmask(strip: UInt) = {
+    val stripp1 = strip + UInt(1)
+    val in = if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
+    EnableDecoder(in, nBanks).toBits
   }
 
   class BuildSequencer {
@@ -190,17 +217,6 @@ class Sequencer extends VXUModule {
         clear_raw_haz(UInt(i), n)
         clear_war_haz(UInt(i), n)
         clear_waw_haz(UInt(i), n)
-      }
-    }
-
-    def update_counter = {
-      when (update_head) { head := next_head }
-      when (update_tail) { tail := next_tail }
-      when (update_head && !update_tail) {
-        full := Bool(false)
-      }
-      when (update_tail) {
-        full := next_head === next_tail
       }
     }
 
@@ -428,38 +444,38 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // data hazard checking
 
-    val vlen_matrix =
+    val vlen_check_ok =
       Vec((0 until nSeq).map { r =>
         Vec((0 until nSeq).map { c =>
           if (r != c) vlen(UInt(r)) > vlen(UInt(c))
-          else Bool(false) }) })
+          else Bool(true) }) })
 
-    def wport_matrix(fn: DecodedRegisters=>RegInfo) =
-      Vec((0 until nSeq).map { r =>
-        Vec((0 until maxWPortLatency).map { l =>
+    def wmatrix(fn: DecodedRegisters=>RegInfo) =
+      (0 until nSeq) map { r =>
+        Vec((0 until maxWPortLatency) map { l =>
           io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
-          io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) })
-    val wport_vs1_matrix = wport_matrix(reg_vs1)
-    val wport_vs2_matrix = wport_matrix(reg_vs2)
-    val wport_vs3_matrix = wport_matrix(reg_vs3)
-    val wport_vd_matrix = wport_matrix(reg_vd)
+          io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) }
+    val wmatrix_vs1 = wmatrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wmatrix_vs2 = wmatrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wmatrix_vs3 = wmatrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wmatrix_vd = wmatrix(reg_vd)
 
     def wport_lookup(row: Vec[Bool], level: UInt) =
-      Vec(row.zipWithIndex.map { case (r, i) => r && UInt(i) > level })
+      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level }) // FIXME expLatency
 
     val dhazard_raw =
       (0 until nSeq).map { r =>
-        (e(r).raw.toBits & ~vlen_matrix(r).toBits).orR ||
-        wport_vs1_matrix(r).toBits.orR ||
-        wport_vs2_matrix(r).toBits.orR ||
-        wport_vs3_matrix(r).toBits.orR }
+        (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
+        wmatrix_vs1(r).toBits.orR ||
+        wmatrix_vs2(r).toBits.orR ||
+        wmatrix_vs3(r).toBits.orR }
     val dhazard_war =
       (0 until nSeq).map { r =>
-        (e(r).war.toBits & ~vlen_matrix(r).toBits).orR }
+        (e(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
     val dhazard_waw =
       (0 until nSeq).map { r =>
-        (e(r).waw.toBits & ~vlen_matrix(r).toBits).orR ||
-        wport_lookup(wport_vd_matrix(r), e(r).wport).toBits.orR }
+        (e(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
+        wport_lookup(wmatrix_vd(r), e(r).wport).toBits.orR }
     val dhazard =
       (0 until nSeq).map { r =>
         dhazard_raw(r) || dhazard_war(r) || dhazard_waw(r) }
@@ -467,14 +483,59 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // bank hazard checking
 
+    val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
+    val wport_mask = Vec(io.ticker.sram.write.tail map { _.valid })
+
     val bhazard =
-      (0 until nSeq).map { r => Bool(false) }
+      (0 until nSeq) map { r =>
+        e(r).rports.orR && rport_mask.reduce(_ | _) || wport_mask(e(r).wport)
+      }
 
     ///////////////////////////////////////////////////////////////////////////
     // strucutral hazard checking
 
+    def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]]) =
+      (lops zipWithIndex) map { case (lop, i) =>
+        dgate(lop.valid, UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1)) }
+    // shift right is because we are looking one cycle in the future
+    val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
+    val use_mask_xbar = io.ticker.xbar map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
+    val use_mask_vimu = use_mask_lop(io.ticker.vimu).reduce(_ | _) >> UInt(1)
+    val use_mask_vfmu = use_mask_lop(io.ticker.vfmu).reduce(_ | _) >> UInt(1)
+    val use_mask_vfcu = use_mask_lop(io.ticker.vfcu).reduce(_ | _) >> UInt(1)
+    val use_mask_vfvu = use_mask_lop(io.ticker.vfvu).reduce(_ | _) >> UInt(1)
+    val use_mask_vgu = use_mask_lop(io.ticker.vgu).reduce(_ | _) >> UInt(1)
+    val use_mask_vqu = use_mask_lop(io.ticker.vqu).reduce(_ | _) >> UInt(1)
+
     val shazard =
-      (0 until nSeq).map { r => Bool(false) }
+      (0 until nSeq) map { r =>
+        val op_idx = e(r).rports + UInt(1, bRPorts+1)
+        val strip = stripfn(vlen(r), Bool(false), e(r).fn)
+        val ask_mask = UInt(strip_to_bmask(op_idx) << UInt(strip), maxXbarTicks+nBanks-1)
+        def check_shazard(use_mask: Bits) = (use_mask & ask_mask).orR
+        def check_operand(fn: DecodedRegisters=>RegInfo, i: Int) =
+          fn(e(r).reg).valid && (
+            !fn(e(r).reg).scalar && check_shazard(use_mask_xbar(i)) ||
+            fn(e(r).reg).scalar && check_shazard(use_mask_sreg_global(i)))
+        val check_operand_0_1 = check_operand(reg_vs1, 0) || check_operand(reg_vs2, 1)
+        val check_operand_0_1_2 = check_operand_0_1 || check_operand(reg_vs3, 2)
+        val check_operand_2 = check_operand(reg_vs1, 2)
+        val check_operand_3_4 = check_operand(reg_vs1, 3) || check_operand(reg_vs2, 4)
+        val check_operand_3_4_5 = check_operand_3_4 || check_operand(reg_vs3, 5)
+        val check_operand_5 = check_operand(reg_vs1, 5)
+        val shazard_vimu = check_operand_0_1 || check_shazard(use_mask_vimu)
+        val shazard_vfmu = check_operand_0_1_2 || check_shazard(use_mask_vfmu)
+        val shazard_vfcu = check_operand_3_4 || check_shazard(use_mask_vfcu)
+        val shazard_vfvu = check_operand_2 || check_shazard(use_mask_vfvu)
+        val shazard_vgu = check_operand_5 || check_shazard(use_mask_vgu)
+        val shazard_vqu = check_operand_3_4 || check_shazard(use_mask_vqu)
+        val a = e(r).active
+        val out =
+          a.vimu && shazard_vimu ||
+          a.vfmu && shazard_vfmu || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
+          a.vgu && shazard_vgu || a.vqu && shazard_vqu
+        out
+      }
 
     ///////////////////////////////////////////////////////////////////////////
     // schedule
@@ -511,6 +572,9 @@ class Sequencer extends VXUModule {
         e(i).active.vqu && vqu_first(i) && io.dqla.available)
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
+      (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
+      (io.debug.first_sched zip first_sched) foreach { case (io, c) => io := c }
+      (io.debug.second_sched zip second_sched) foreach { case (io, c) => io := c }
       val sel = first_sched.reduce(_ || _)
       Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
     }
@@ -523,7 +587,7 @@ class Sequencer extends VXUModule {
     def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n) || fire_exp(n)
 
     def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
-      val max_strip = Mux(vcu && fn.vmu().mt === MT_B, UInt(nBatch << 1), UInt(nBatch))
+      val max_strip = Mux(vcu, UInt(nBatch << 1), UInt(nBatch))
       Mux(vl > max_strip, max_strip, vl)
     }
 
@@ -577,6 +641,23 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // footer
 
+    def update_reg(i: Int, fn: DecodedRegisters=>RegInfo) = {
+      when (fn(e(i).reg).valid && !fn(e(i).reg).scalar) {
+        fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+      }
+    }
+
+    def update_counter = {
+      when (update_head) { head := next_head }
+      when (update_tail) { tail := next_tail }
+      when (update_head && !update_tail) {
+        full := Bool(false)
+      }
+      when (update_tail) {
+        full := next_head === next_tail
+      }
+    }
+
     def footer = {
       val retire = Vec.fill(nSeq){Bool()}
 
@@ -585,6 +666,10 @@ class Sequencer extends VXUModule {
         when (valid(i)) {
           when (fire(i)) {
             vlen(i) := vlen(i) - strip
+            update_reg(i, reg_vs1)
+            update_reg(i, reg_vs2)
+            update_reg(i, reg_vs3)
+            update_reg(i, reg_vd)
             when (vlen(i) === strip) {
               clear_all_active(UInt(i))
             }
@@ -619,7 +704,23 @@ class Sequencer extends VXUModule {
       io.debug.head := head
       io.debug.tail := tail
       io.debug.full := full
+      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
+      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wmatrix_vs1(r).toBits.orR })
+      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wmatrix_vs2(r).toBits.orR })
+      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wmatrix_vs3(r).toBits.orR })
+      io.debug.dhazard_war := dhazard_war
+      io.debug.dhazard_waw := dhazard_waw
       io.debug.dhazard := dhazard
+      io.debug.bhazard := bhazard
+      io.debug.shazard := shazard
+      io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
+      io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
+      io.debug.use_mask_vimu := use_mask_vimu
+      io.debug.use_mask_vfmu := use_mask_vfmu
+      io.debug.use_mask_vfcu := use_mask_vfcu
+      io.debug.use_mask_vfvu := use_mask_vfvu
+      io.debug.use_mask_vgu := use_mask_vgu
+      io.debug.use_mask_vqu := use_mask_vqu
 
       when (reset) {
         for (i <- 0 until nSeq) {
@@ -673,26 +774,19 @@ class Sequencer extends VXUModule {
   io.lreq.reserve := seq.vcu_val && seq.vcu_mcmd.read && seq.vcu_ready
   io.sreq.cnt := seq.vcu_strip
   io.sreq.reserve := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
+  io.spred.bits := EnableDecoder(seq.vcu_strip, nPredSet).toBits
+  io.spred.valid := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
   seq.vcu_ready :=
     io.vmu.la.pala.available &&
     (!seq.vcu_mcmd.read || io.lreq.available) &&
-    (!seq.vcu_mcmd.write || io.sreq.available)
+    (!seq.vcu_mcmd.write || io.sreq.available && io.spred.ready)
 
   io.lla.cnt := seq.vlu_strip
   io.lla.reserve := seq.vlu_val && io.lla.available
   seq.vlu_ready := io.lla.available
 
   io.sla.reserve := seq.exp_val && seq.exp_seq.active.vsu
-  io.sla.mask :=
-    MuxLookup(seq.vsu_strip, Bits(0), Seq(
-      UInt(1) -> Bits("b0001"),
-      UInt(2) -> Bits("b0001"),
-      UInt(3) -> Bits("b0011"),
-      UInt(4) -> Bits("b0011"),
-      UInt(5) -> Bits("b0111"),
-      UInt(6) -> Bits("b0111"),
-      UInt(7) -> Bits("b1111"),
-      UInt(8) -> Bits("b1111")))
+  io.sla.mask := strip_to_bmask(seq.vsu_strip)
 
   io.pending := seq.valid.reduce(_ || _)
 

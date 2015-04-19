@@ -2,8 +2,10 @@ package hwacha
 
 import Chisel._
 
-abstract trait DCCParameters extends UsesHwachaParameters {
+abstract trait DCCParameters extends UsesHwachaParameters with VMUParameters {
+  val nPredSet = tlDataBytes // TODO: rename
   val nDCCOpQ = 2
+  val nDCCPredQ = 2
 }
 
 class DCCAckIO extends HwachaBundle {

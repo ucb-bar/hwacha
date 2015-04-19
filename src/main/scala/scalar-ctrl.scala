@@ -271,7 +271,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   // FIXME: need to take Rocket's rounding mode for dynamic RM
-  val rm = io.dpath.inst(52, 50)
+  val _rm = io.dpath.inst(52, 50)
+  val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
 
   // to FPU
   val fpu_fn = new rocket.FPUCtrlSigs().fromBits(id_ctrl.fpu_fn)

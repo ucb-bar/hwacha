@@ -38,8 +38,6 @@ trait VMUParameters extends UsesHwachaParameters {
   val sretBits = log2Down(tlDataBytes) + 1
 
   require((tlDataBits & (SZ_D-1)) == 0)
-
-  val nPredSet = tlDataBytes // TODO: rename
 }
 
 class LaneMemIO extends Bundle {

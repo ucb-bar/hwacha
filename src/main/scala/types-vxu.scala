@@ -3,9 +3,9 @@ package hwacha
 import Chisel._
 
 abstract class VXUModule(clock: Clock = null, _reset: Bool = null)
-  extends HwachaModule(clock, _reset) with SeqParameters with LaneParameters with DCCParameters
+  extends HwachaModule(clock, _reset) with SeqParameters with LaneParameters with DCCParameters with ExpParameters
 abstract class VXUBundle
-  extends HwachaBundle with SeqParameters with LaneParameters with DCCParameters
+  extends HwachaBundle with SeqParameters with LaneParameters with DCCParameters with ExpParameters
 
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
@@ -16,8 +16,7 @@ class VIUFn extends VXUBundle {
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
-  def dgate(valid: Bool) = this.clone.fromBits(
-    List(dw, fp, op).map(DataGating.dgate(valid, _)).reverse.reduceLeft(Cat(_, _)))
+  def dgate(valid: Bool) = this.clone.fromBits(DataGating.dgate(valid, this.toBits))
 
   def dw_is(_dw: UInt) = dw === _dw
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
@@ -28,8 +27,7 @@ class VIXUFn(sz_op: Int) extends VXUBundle {
   val dw = UInt(width = SZ_DW)
   val op = UInt(width = sz_op)
 
-  def dgate(valid: Bool) = this.clone.fromBits(
-    List(dw, op).map(DataGating.dgate(valid, _)).reverse.reduceLeft(Cat(_, _)))
+  def dgate(valid: Bool) = this.clone.fromBits(DataGating.dgate(valid, this.toBits))
 
   def dw_is(_dw: UInt) = dw === _dw
   def op_is(ops: UInt*): Bool = op_is(ops.toList)
@@ -45,8 +43,7 @@ class VFXUFn(sz_op: Int) extends VXUBundle {
   val rm = UInt(width = rocket.FPConstants.RM_SZ)
   val op = UInt(width = sz_op)
 
-  def dgate(valid: Bool) = this.clone.fromBits(
-    List(fp, rm, op).map(DataGating.dgate(valid, _)).reverse.reduceLeft(Cat(_, _)))
+  def dgate(valid: Bool) = this.clone.fromBits(DataGating.dgate(valid, this.toBits))
 
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)

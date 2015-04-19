@@ -41,18 +41,19 @@ class VXU extends HwachaModule {
   dcc.io.op.bits.fn := io.issue.bits.fn
   dcc.io.op.bits.vd := io.issue.bits.reg.vd
 
+  exp.io.seq <> seq.io.seq
+  lane.io.op <> exp.io.lane
+
   seq.io.ticker <> exp.io.ticker
   seq.io.lack <> lane.io.ack
   seq.io.dack <> dcc.io.ack
-
-  exp.io.seq <> seq.io.seq
-  lane.io.op <> exp.io.lane
 
   dcc.io.dqla <> seq.io.dqla
   dcc.io.dila <> seq.io.dila
   dcc.io.dfla <> seq.io.dfla
   dcc.io.lla <> seq.io.lla
   dcc.io.sla <> seq.io.sla
+  dcc.io.spred <> seq.io.spred
 
   dcc.io.lrqs <> lane.io.lrqs
   dcc.io.brqs <> lane.io.brqs
@@ -70,7 +71,5 @@ class VXU extends HwachaModule {
   io.mrt.lret.update := dcc.io.lla.reserve
 
   // FIXME
-  dcc.io.spred.valid := Bool(true)
-  dcc.io.spred.bits := SInt(-1)
   dcc.io.xcpt.prop.vmu.stall := Bool(false)
 }

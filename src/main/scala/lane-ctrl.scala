@@ -68,13 +68,13 @@ class LaneCtrl extends VXUModule {
   }
 
   val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i)) }
-  val vqu = new Shared(io.op.vqu)
-  val vgu = new Shared(io.op.vgu)
   val vimu = new Shared(io.op.vimu)
   val vfmu0 = new Shared(io.op.vfmu0)
   val vfmu1 = new Shared(io.op.vfmu1)
   val vfcu = new Shared(io.op.vfcu)
   val vfvu = new Shared(io.op.vfvu)
+  val vgu = new Shared(io.op.vgu)
+  val vqu = new Shared(io.op.vqu)
 
   io.uop.sreg.zip(sreg).map { case (u, s) =>
     u.valid := s.valid
@@ -82,31 +82,17 @@ class LaneCtrl extends VXUModule {
     u.bits.pred := s.pred
   }
 
-  io.uop.vqu.valid := vqu.valid
-  io.uop.vqu.bits.fn := vqu.bits.fn
-  io.uop.vqu.bits.pred := vqu.pred
-
-  io.uop.vgu.valid := vgu.valid
-  io.uop.vgu.bits.fn := vgu.bits.fn
-  io.uop.vgu.bits.pred := vgu.pred
-
-  io.uop.vimu.valid := vimu.valid
-  io.uop.vimu.bits.fn := vimu.bits.fn
-  io.uop.vimu.bits.pred := vimu.pred
-
-  io.uop.vfmu0.valid := vfmu0.valid
-  io.uop.vfmu0.bits.fn := vfmu0.bits.fn
-  io.uop.vfmu0.bits.pred := vfmu0.pred
-
-  io.uop.vfmu1.valid := vfmu1.valid
-  io.uop.vfmu1.bits.fn := vfmu1.bits.fn
-  io.uop.vfmu1.bits.pred := vfmu1.pred
-
-  io.uop.vfcu.valid := vfcu.valid
-  io.uop.vfcu.bits.fn := vfcu.bits.fn
-  io.uop.vfcu.bits.pred := vfcu.pred
-
-  io.uop.vfvu.valid := vfvu.valid
-  io.uop.vfvu.bits.fn := vfvu.bits.fn
-  io.uop.vfvu.bits.pred := vfvu.pred
+  def connect_vfu[T <: LaneOp, S <: MicroOp]
+    (uop: ValidIO[S], s: Shared[T], fn: (S, Shared[T])=>Unit) = {
+      uop.valid := s.valid
+      uop.bits.pred := s.pred
+      fn(uop.bits, s)
+  }
+  connect_vfu(io.uop.vimu, vimu, (u: VIMUMicroOp, s: Shared[VIMULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vfmu0, vfmu0, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vfmu1, vfmu1, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vfcu, vfcu, (u: VFCUMicroOp, s: Shared[VFCULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vfvu, vfvu, (u: VFVUMicroOp, s: Shared[VFVULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vqu, vqu, (u: VQUMicroOp, s: Shared[VQULaneOp]) => u.fn := s.bits.fn)
 }

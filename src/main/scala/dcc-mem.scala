@@ -22,6 +22,10 @@ class VSU extends VXUModule with VMUParameters {
   opq.io.enq <> io.op
   val op = opq.io.deq
 
+  val predq = Module(new Queue(Bits(width=nPredSet), nDCCPredQ))
+  predq.io.enq <> io.pred
+  val pred = predq.io.deq
+
   private val lgbank = log2Up(nBanks)
   private val nTotalSlices = nSlices * nBanks
   private val sz_beat = math.max(1, nPredSet / nSlices) + lgbank
@@ -104,10 +108,10 @@ class VSU extends VXUModule with VMUParameters {
     })
     val pred_index = beat >> pred_shift
     Vec((0 until nPredSet by nTotalSlices).map(i =>
-      io.pred.bits(i+nTotalSlices-1, i)))(pred_index)
+      pred.bits(i+nTotalSlices-1, i)))(pred_index)
   } else {
     require(nTotalSlices % nPredSet == 0)
-    Cat(Seq.fill(nTotalSlices / nPredSet)(io.pred.bits))
+    Cat(Seq.fill(nTotalSlices / nPredSet)(pred.bits))
   }
 
   val pred_split = (0 until nTotalSlices).map(pred_head(_))
@@ -155,7 +159,7 @@ class VSU extends VXUModule with VMUParameters {
   val vsdq_ready = !vsdq_en || io.vsdq.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = brqs_valid ++ Seq(io.pred.valid, vsdq_ready)
+    val rvs = brqs_valid ++ Seq(pred.valid, vsdq_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
   next := fire(null)
@@ -168,7 +172,7 @@ class VSU extends VXUModule with VMUParameters {
     val n = nPredSet / cnt
     if (n > 1) (beat(log2Ceil(n)-1, 0) === UInt(n-1)) else Bool(true)
   }) || last
-  io.pred.ready := fire(io.pred.valid, pred_dequeue)
+  pred.ready := fire(pred.valid, pred_dequeue)
 
   io.vsdq.valid := fire(vsdq_ready, vsdq_en) ||
     (io.xcpt.prop.vmu.stall && mt.b && (pending === UInt(1)) && !beat_mid)
