@@ -483,6 +483,7 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // bank hazard checking
 
+    // tail (shift right by one) because we are looking one cycle in the future
     val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
     val wport_mask = Vec(io.ticker.sram.write.tail map { _.valid })
 
@@ -497,7 +498,7 @@ class Sequencer extends VXUModule {
     def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]]) =
       (lops zipWithIndex) map { case (lop, i) =>
         dgate(lop.valid, UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1)) }
-    // shift right is because we are looking one cycle in the future
+    // shift right by one because we are looking one cycle in the future
     val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
     val use_mask_xbar = io.ticker.xbar map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
     val use_mask_vimu = use_mask_lop(io.ticker.vimu).reduce(_ | _) >> UInt(1)
