@@ -317,7 +317,7 @@ class VLU extends VXUModule with VMUParameters {
 
   val mt_signed = !mt.unsigned
   private def extend(in: Bits, sz: Int): Bits =
-    if (sz < SZ_D) Cat(Fill(SZ_D-sz, in(sz-1) && mt_signed), in) else in
+    if (sz < regLen) Cat(Fill(regLen-sz, in(sz-1) && mt_signed), in) else in
 
   private def rotate_data(sz: Int) = {
     val elts = (0 until tlDataBits by sz).map(i => vldq.bits.data(i+sz-1, i))
@@ -386,7 +386,7 @@ class VLU extends VXUModule with VMUParameters {
     deq.bits.selff := Bool(false) // FIXME
     deq.bits.addr := vd + (bwq.io.deq.bits.eidx * io.cfg.vstride)
     deq.bits.data := bwq.io.deq.bits.data
-    deq.bits.mask := FillInterleaved(SZ_D, bwq.io.deq.bits.mask)
+    deq.bits.mask := FillInterleaved(regLen >> 3, bwq.io.deq.bits.mask)
 
     bwq.io.enq
   }
