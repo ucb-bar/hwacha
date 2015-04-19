@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import uncore._
 
 case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
@@ -10,7 +9,8 @@ case object HwachaNVSDQEntries extends Field[Int]
 case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVMDBEntries extends Field[Int]
 
-trait VMUParameters extends UsesHwachaParameters {
+trait VMUParameters extends UsesHwachaParameters
+  with uncore.TileLinkParameters {
   val nVMUQ = 2
   val nVVAQ = params(HwachaNVVAQEntries)
   val nVPAQ = params(HwachaNVPAQEntries)
@@ -20,20 +20,15 @@ trait VMUParameters extends UsesHwachaParameters {
 
   val nVMDB = params(HwachaNVMDBEntries)
   val bTag = log2Up(nVMDB)
+  require(tlClientXactIdBits >= bTag)
 
-  val vaddrBits = params(VAddrBits)
-  val paddrBits = params(PAddrBits)
-  val pgIdxBits = params(PgIdxBits)
+  val vaddrBits = params(uncore.VAddrBits)
+  val paddrBits = params(uncore.PAddrBits)
+  val pgIdxBits = params(uncore.PgIdxBits)
   val pgSzBytes = 1 << pgIdxBits
-  val vpnBits = params(VPNBits)
-  val ppnBits = params(PPNBits)
+  val vpnBits = params(uncore.VPNBits)
+  val ppnBits = params(uncore.PPNBits)
   val maxAddrBits = math.max(vaddrBits, paddrBits) + 1
-
-  val tlBlockAddrBits = params(TLBlockAddrBits)
-  val tlBeatAddrBits = log2Up(params(TLDataBeats))
-  val tlDataBits = params(TLDataBits)
-  val tlDataBytes = tlDataBits >> 3
-  val tlByteAddrBits = log2Up(tlDataBytes)
 
   val sretBits = log2Down(tlDataBytes) + 1
 

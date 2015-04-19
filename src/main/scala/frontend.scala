@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import uncore._
 
 class FrontendReq extends rocket.CoreBundle {
   val pc = UInt(width = vaddrBits+1)
@@ -19,7 +18,7 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
     val vxu = new FrontendIO().flip
     val vru = new FrontendIO().flip
     val ptw = new rocket.TLBPTWIO()
-    val mem = new HeaderlessUncachedTileLinkIO
+    val mem = new uncore.ClientUncachedTileLinkIO
   }
 
   val icache = Module(new rocket.ICache)

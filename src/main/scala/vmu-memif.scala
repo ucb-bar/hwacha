@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import uncore._
 
 class VMUMemReq extends VMUMemOp {
   val tag = UInt(width = bTag)
@@ -15,12 +14,6 @@ class VMUMemResp extends VMULoadData {
 class VMUMemIO extends VMUBundle {
   val req = Decoupled(new VMUMemReq)
   val resp = Decoupled(new VMUMemResp).flip
-}
-
-
-class FinishEntry extends Bundle {
-  val xid = Bits(width = params(TLManagerXactIdBits))
-  val dst = UInt(width = log2Up(params(LNEndpoints)))
 }
 
 class MBox extends VMUModule {
@@ -118,19 +111,19 @@ class VMUMemMonitor extends VMUModule {
 }
 
 class VMUTileLink extends VMUModule {
+  import uncore._
+
   val io = new Bundle {
     val vmu = new VMUMemIO().flip
-    val dmem = new HeaderlessUncachedTileLinkIO
+    val dmem = new ClientUncachedTileLinkIO
   }
 
   private val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
 
   private val req = io.vmu.req
   private val resp = io.vmu.resp
-
   private val acquire = io.dmem.acquire
   private val grant = io.dmem.grant
-  private val finish = io.dmem.finish
 
   val cmd = DecodedMemCommand(req.bits.cmd)
   assert(!req.valid || cmd.load || cmd.store || cmd.amo || cmd.pf,
@@ -157,37 +150,11 @@ class VMUTileLink extends VMUModule {
     data = req.bits.store.data,
     union = acq_union)
 
+  val resp_en = grant.bits.hasData() || resp.bits.store
+  grant.ready := (!resp_en || resp.ready)
 
-  val finishq = Module(new Queue(new FinishEntry, 2))
-
-  val grant_type_load = grant.bits.payload.hasData()
-  val grant_type_store =
-    grant.bits.payload.isBuiltInType() &&
-    grant.bits.payload.is(uncore.Grant.putAckType)
-  val resp_en = grant_type_load || grant_type_store
-  val finish_en = grant.bits.payload.requiresAck()
-
-  val resp_ready = !resp_en || resp.ready
-  val finishq_ready = !finish_en || finishq.io.enq.ready
-
-  private def fire_grant(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(grant.valid, resp_ready, finishq_ready)
-    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
-  }
-
-  grant.ready := fire_grant(grant.valid)
-
-  resp.valid := fire_grant(resp_ready, resp_en)
-  resp.bits.tag := grant.bits.payload.client_xact_id
-  resp.bits.data := grant.bits.payload.data
-  resp.bits.store := grant_type_store
-
-  finishq.io.enq.valid := fire_grant(finishq_ready, finish_en)
-  finishq.io.enq.bits.xid := grant.bits.payload.manager_xact_id
-  finishq.io.enq.bits.dst := grant.bits.header.src
-
-  finishq.io.deq.ready := finish.ready
-  finish.valid := finishq.io.deq.valid
-  finish.bits.payload.manager_xact_id := finishq.io.deq.bits.xid
-  finish.bits.header.dst := finishq.io.deq.bits.dst
+  resp.valid := grant.valid && resp_en
+  resp.bits.tag := grant.bits.client_xact_id
+  resp.bits.data := grant.bits.data
+  resp.bits.store := grant.bits.isBuiltInType(Grant.putAckType)
 }

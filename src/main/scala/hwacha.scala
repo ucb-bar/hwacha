@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import uncore._
 import rocket.NTLBEntries
 
 case object HwachaNAddressRegs extends Field[Int]
@@ -70,7 +69,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   import HwachaDecodeTable._
   import Commands._
 
-  val icache = Module(new HwachaFrontend, {case CacheName => "HwI"})
+  val icache = Module(new HwachaFrontend, {case uncore.CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
   val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
