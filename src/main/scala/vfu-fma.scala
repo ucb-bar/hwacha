@@ -28,9 +28,6 @@ class FMASlice extends VXUModule with Packing {
   val in1 = dgate(io.req.valid, io.req.bits.in1)
   val in2 = dgate(io.req.valid, io.req.bits.in2)
 
-  // use in0 & in2 for a two operand flop (add,sub,mul)
-  // use in0, in1, & in2 otherwise
-
   val fma_op = MuxCase(
     Bits("b00",2), Array(
       fn.op_is(FM_SUB, FM_MSUB) -> Bits("b01",2),
