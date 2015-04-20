@@ -69,7 +69,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   import HwachaDecodeTable._
   import Commands._
 
-  val icache = Module(new HwachaFrontend, {case uncore.CacheName => "HwI"})
+  val icache = Module(new rocket.Frontend, {case uncore.CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
   val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
@@ -105,17 +105,15 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   }
 
   // Connect Scalar to I$
-  icache.io.vxu <> scalar.io.imem
+  icache.io.cpu.req <> scalar.io.imem.req
+  scalar.io.imem.resp <> icache.io.cpu.resp
+  icache.io.cpu.btb_update.valid := Bool(false)
+  icache.io.cpu.bht_update.valid := Bool(false)
+  icache.io.cpu.ras_update.valid := Bool(false)
+  icache.io.cpu.invalidate := scalar.io.imem.invalidate
 
   vmu.io.scalar <> scalar.io.dmem
   vmu.io.op <> scalar.io.vmu
-
-  //fake delayed vru_request port (delay vxu req's 2 cycles)
-  val delay = 4
-  val vru_req = ShiftRegister(scalar.io.imem.req,delay)
-  icache.io.vru.req := vru_req
-  icache.io.vru.active := ShiftRegister(scalar.io.imem.active,delay)
-  icache.io.vru.resp.ready := Bool(true)
 
   // Connect supporting Hwacha memory modules to external ports
   io.imem <> icache.io.mem
