@@ -106,8 +106,9 @@ class VMUMemMonitor extends VMUModule {
   }
 
   val count = Reg(init = UInt(0, math.max(nvlreq, nvsreq)))
-  count := count + io.req.toUInt - io.resp.toUInt
-  io.quiescent := (count === UInt(0))
+  val count_next = count + io.req.toUInt - io.resp.toUInt
+  count := count_next
+  io.quiescent := (count_next === UInt(0))
 }
 
 class VMUTileLink extends VMUModule {
