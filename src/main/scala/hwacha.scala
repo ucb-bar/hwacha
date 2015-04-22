@@ -69,7 +69,6 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   import HwachaDecodeTable._
   import Commands._
 
-  val icache = Module(new rocket.Frontend, {case uncore.CacheName => "HwI"})
   val dtlb = Module(new rocket.TLB, {case NTLBEntries => ndtlb})
   val ptlb = Module(new rocket.TLB, {case NTLBEntries => nptlb})
 
@@ -95,29 +94,43 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   rocc.io.cmdq <> scalar.io.cmdq
 
   //Connect ScalarUnit to Rocket's FPU
-  if(local_sfpu){
+  if (local_sfpu) {
     val sfpu = Module(new ScalarFPU)
     scalar.io.fpu <> sfpu.io
     io.fpu_req.valid := Bool(false)
-  }else{
+  } else {
     scalar.io.fpu.req <> io.fpu_req
     scalar.io.fpu.resp <> io.fpu_resp
   }
 
   // Connect Scalar to I$
-  icache.io.cpu.req <> scalar.io.imem.req
-  scalar.io.imem.resp <> icache.io.cpu.resp
-  icache.io.cpu.btb_update.valid := Bool(false)
-  icache.io.cpu.bht_update.valid := Bool(false)
-  icache.io.cpu.ras_update.valid := Bool(false)
-  icache.io.cpu.invalidate := scalar.io.imem.invalidate
+  if (confvru) {
+    val icache = Module(new HwachaFrontend, {case uncore.CacheName => "HwI"})
+    icache.io.vxu <> scalar.io.imem
+    //fake delayed vru
+    val delay = 4
+    val vru_req = ShiftRegister(scalar.io.imem.req,delay)
+    icache.io.vru.req := vru_req
+    icache.io.vru.active := ShiftRegister(scalar.io.imem.active, delay)
+    icache.io.vru.resp.ready := Bool(true)
+    io.imem <> icache.io.mem
+    io.iptw <> icache.io.ptw
+  } else {
+    val icache = Module(new rocket.Frontend, {case uncore.CacheName => "HwI"})
+    icache.io.cpu.req <> scalar.io.imem.req
+    scalar.io.imem.resp <> icache.io.cpu.resp
+    icache.io.cpu.btb_update.valid := Bool(false)
+    icache.io.cpu.bht_update.valid := Bool(false)
+    icache.io.cpu.ras_update.valid := Bool(false)
+    icache.io.cpu.invalidate := scalar.io.imem.invalidate
+    io.imem <> icache.io.mem
+    io.iptw <> icache.io.ptw
+  }
 
   vmu.io.scalar <> scalar.io.dmem
   vmu.io.op <> scalar.io.vmu
 
   // Connect supporting Hwacha memory modules to external ports
-  io.imem <> icache.io.mem
-  io.iptw <> icache.io.ptw
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 

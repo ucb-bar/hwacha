@@ -266,7 +266,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val id_vf_active = vf_active && !fire_decode(null,id_ctrl.decode_stop)
 
-  when(fire_decode(null,id_ctrl.decode_stop)) {
+  when(io.imem.resp.fire() && fire_decode(null,id_ctrl.decode_stop)) {
     vf_active := Bool(false)
   }
 
