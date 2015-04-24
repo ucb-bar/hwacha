@@ -186,7 +186,7 @@ class VPAQ extends VMUModule with SeqParameters {
   io.enq.ready := q.io.enq.ready
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(0, bVLen))
+  val lacntr = Module(new LookAheadCounter(0, maxVLen))
   lacntr.io.inc.cnt := io.enq.bits.ecnt
   lacntr.io.inc.update := io.enq.fire()
   lacntr.io.dec <> io.la
