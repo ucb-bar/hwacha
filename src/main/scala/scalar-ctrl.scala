@@ -219,13 +219,13 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   // stall for RAW hazards on non scalar integer pipes
   // only scalar integer ops can be bypassed but
   // scalar loads and sign injections set this but are tracked in scoreboard
-  val ex_can_bypass = ex_ctrl.decode_scalar || ex_ctrl.viu_val
+  val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val
   val data_hazard_ex = ex_scalar_dest &&
     (id_ctrl_rens1_not0 && id_raddrs1 === ex_waddr ||
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
      id_ctrl_rens3_not0 && id_raddrs3 === ex_waddr)
 
-  val id_ex_hazard = ex_reg_valid && (data_hazard_ex && !ex_can_bypass)
+  val id_ex_hazard = !id_can_bypass && ex_reg_valid && data_hazard_ex
 
   val id_set_sboard = io.fpu.req.fire() || (id_scalar_dest && io.vmu.fire())
 
