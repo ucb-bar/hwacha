@@ -43,7 +43,6 @@ class Sequencer extends VXUModule {
     val pending = Bool(OUTPUT)
     val debug = new Bundle {
       val valid = Vec.fill(nSeq){Bool(OUTPUT)}
-      val vlen = Vec.fill(nSeq){UInt(width=bVLen)}.asOutput
       val e = Vec.fill(nSeq){new SeqEntry}.asOutput
       val head = UInt(OUTPUT, log2Up(nSeq))
       val tail = UInt(OUTPUT, log2Up(nSeq))
@@ -84,7 +83,6 @@ class Sequencer extends VXUModule {
     // state
 
     val valid = Vec.fill(nSeq){Reg(init=Bool(false))}
-    val vlen = Vec.fill(nSeq){Reg(UInt(width=bVLen))}
     val e = Vec.fill(nSeq){Reg(new SeqEntry)}
 
     val full = Reg(init = Bool(false))
@@ -181,33 +179,26 @@ class Sequencer extends VXUModule {
 
     def set_entry(n: UInt) = {
       set_valid(n)
-      vlen(n) := io.op.bits.vlen
-      update_haz(n) := Bool(true)
-      e(n).age := UInt(0)
-    }
-    def clear_entry(n: UInt) = {
-      clear_valid(n)
+      e(n).vlen := io.op.bits.vlen
+      e(n).eidx := UInt(0)
       e(n).reg.vs1.valid := Bool(false)
       e(n).reg.vs2.valid := Bool(false)
       e(n).reg.vs3.valid := Bool(false)
       e(n).reg.vd.valid := Bool(false)
-      e(n).reg.vs1.scalar := Bool(false)
-      e(n).reg.vs2.scalar := Bool(false)
-      e(n).reg.vs3.scalar := Bool(false)
-      e(n).reg.vd.scalar := Bool(false)
       e(n).base.vs1.valid := Bool(false)
       e(n).base.vs2.valid := Bool(false)
       e(n).base.vs3.valid := Bool(false)
       e(n).base.vd.valid := Bool(false)
-      e(n).base.vs1.scalar := Bool(false)
-      e(n).base.vs2.scalar := Bool(false)
-      e(n).base.vs3.scalar := Bool(false)
-      e(n).base.vd.scalar := Bool(false)
+      e(n).age := UInt(0)
+      update_haz(n) := Bool(true)
       for (i <- 0 until nSeq) {
-        e(n).raw(i) := Bool(false)
-        e(n).war(i) := Bool(false)
-        e(n).waw(i) := Bool(false)
+        clear_raw_haz(n, UInt(i))
+        clear_war_haz(n, UInt(i))
+        clear_waw_haz(n, UInt(i))
       }
+    }
+    def clear_entry(n: UInt) = {
+      clear_valid(n)
     }
 
     def retire_entry(n: UInt) = {
@@ -447,7 +438,7 @@ class Sequencer extends VXUModule {
     val vlen_check_ok =
       Vec((0 until nSeq).map { r =>
         Vec((0 until nSeq).map { c =>
-          if (r != c) vlen(UInt(r)) > vlen(UInt(c))
+          if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
           else Bool(true) }) })
 
     def wmatrix(fn: DecodedRegisters=>RegInfo) =
@@ -511,7 +502,7 @@ class Sequencer extends VXUModule {
     val shazard =
       (0 until nSeq) map { r =>
         val op_idx = e(r).rports + UInt(1, bRPorts+1)
-        val strip = stripfn(vlen(r), Bool(false), e(r).fn)
+        val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
         val ask_mask = UInt(strip_to_bmask(op_idx) << UInt(strip), maxXbarTicks+nBanks-1)
         def check_shazard(use_mask: Bits) = (use_mask & ask_mask).orR
         def check_operand(fn: DecodedRegisters=>RegInfo, i: Int) =
@@ -594,45 +585,43 @@ class Sequencer extends VXUModule {
 
     def valfn(sched: Vec[Bool]) = sched.reduce(_ || _)
 
-    def vlenfn(sched: Vec[Bool]) =
-      sched.zip(vlen).map({ case (s, vl) => dgate(s, vl) }).reduce(_ | _)
-
     def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
       rfn(e(0)).clone.fromBits(sched.zip(e).map({ case (s, e) => dgate(s, rfn(e).toBits) }).reduce(_ | _))
 
     val vidu_val = valfn(vidu_sched)
-    val vidu_vlen = vlenfn(vidu_sched)
+    val vidu_vlen = readfn(vidu_sched, (e: SeqEntry) => e.vlen)
     val vidu_fn = readfn(vidu_sched, (e: SeqEntry) => e.fn)
     val vidu_strip = stripfn(vidu_vlen, Bool(false), vidu_fn)
 
     val vfdu_val = valfn(vfdu_sched)
-    val vfdu_vlen = vlenfn(vfdu_sched)
+    val vfdu_vlen = readfn(vfdu_sched, (e: SeqEntry) => e.vlen)
     val vfdu_fn = readfn(vfdu_sched, (e: SeqEntry) => e.fn)
     val vfdu_strip = stripfn(vfdu_vlen, Bool(false), vfdu_fn)
 
     val vcu_val = valfn(vcu_sched)
-    val vcu_vlen = vlenfn(vcu_sched)
+    val vcu_vlen = readfn(vcu_sched, (e: SeqEntry) => e.vlen)
     val vcu_fn = readfn(vcu_sched, (e: SeqEntry) => e.fn)
     val vcu_mcmd = DecodedMemCommand(vcu_fn.vmu().cmd)
     val vcu_strip = stripfn(vcu_vlen, Bool(true), vcu_fn)
 
     val vlu_val = valfn(vlu_sched)
-    val vlu_vlen = vlenfn(vlu_sched)
+    val vlu_vlen = readfn(vlu_sched, (e: SeqEntry) => e.vlen)
     val vlu_fn = readfn(vlu_sched, (e: SeqEntry) => e.fn)
     val vlu_strip = stripfn(vlu_vlen, Bool(false), vlu_fn)
 
-    val vsu_vlen = vlenfn(vsu_first)
+    val vsu_vlen = readfn(vsu_first, (e: SeqEntry) => e.vlen)
     val vsu_fn = readfn(vsu_first, (e: SeqEntry) => e.fn)
     val vsu_strip = stripfn(vsu_vlen, Bool(false), vsu_fn)
 
     val exp_val = valfn(exp_sched)
-    val exp_vlen = vlenfn(exp_sched)
+    val exp_vlen = readfn(exp_sched, (e: SeqEntry) => e.vlen)
     val exp_seq = {
       val out = new SequencerOp
       out.fn := readfn(exp_sched, (e: SeqEntry) => e.fn)
       out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
       out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
       out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
+      out.eidx := readfn(exp_sched, (e: SeqEntry) => e.eidx)
       out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
       out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
       out.strip := stripfn(exp_vlen, Bool(false), out.fn)
@@ -663,15 +652,16 @@ class Sequencer extends VXUModule {
       val retire = Vec.fill(nSeq){Bool()}
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(vlen(i), e(i).active.vcu, e(i).fn)
+        val strip = stripfn(e(i).vlen, e(i).active.vcu, e(i).fn)
         when (valid(i)) {
           when (fire(i)) {
-            vlen(i) := vlen(i) - strip
+            e(i).vlen := e(i).vlen - strip
+            e(i).eidx := e(i).eidx + strip
             update_reg(i, reg_vs1)
             update_reg(i, reg_vs2)
             update_reg(i, reg_vs3)
             update_reg(i, reg_vd)
-            when (vlen(i) === strip) {
+            when (e(i).vlen === strip) {
               clear_all_active(UInt(i))
             }
           }
@@ -684,7 +674,7 @@ class Sequencer extends VXUModule {
         }
       }
 
-      when (valid(head) && vlen(head) === UInt(0)) {
+      when (valid(head) && e(head).vlen === UInt(0)) {
         retire_entry(head)
         set_head(h1)
       }
@@ -700,7 +690,6 @@ class Sequencer extends VXUModule {
       }
 
       io.debug.valid := valid
-      io.debug.vlen := vlen
       io.debug.e := e
       io.debug.head := head
       io.debug.tail := tail

@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class ALUOperand extends HwachaBundle {
+class ALUOperand extends VXUBundle {
   val fn = new VIUFn
   val eidx = Bits(width = bVLen)
   val in0 = Bits(width = SZ_D)
@@ -13,7 +13,7 @@ class ALUResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class ALUSlice extends HwachaModule with Packing {
+class ALUSlice(id: Int) extends VXUModule with Packing {
   val io = new Bundle {
     val req = Valid(new ALUOperand).flip
     val resp = Valid(new ALUResult)
@@ -70,7 +70,7 @@ class ALUSlice extends HwachaModule with Packing {
 
   val s0_result64 = MuxCase(
     Bits(0, SZ_D), Array(
-      fn.op_is(I_IDX) -> eidx,
+      fn.op_is(I_IDX) -> (eidx + UInt(id)),
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
@@ -91,5 +91,5 @@ class ALUSlice extends HwachaModule with Packing {
   val result = new ALUResult
   result.out := s0_result
 
-  io.resp := Pipe(io.req.valid, result, 1)
+  io.resp := Pipe(io.req.valid, result, stagesALU)
 }

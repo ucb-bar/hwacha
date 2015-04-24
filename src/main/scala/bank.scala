@@ -36,7 +36,7 @@ class BankRWIO extends VXUBundle {
   }
 }
 
-class Bank extends VXUModule with Packing {
+class Bank(id: Int) extends VXUModule with Packing {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val ack = Valid(new VIUAck)
@@ -50,7 +50,7 @@ class Bank extends VXUModule with Packing {
 
   val outs = new ArrayBuffer[ValidIO[ALUResult]]
   for (i <- 0 until nSlices) {
-    val alu = Module(new ALUSlice)
+    val alu = Module(new ALUSlice(id*nSlices+i))
 
     alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i)
     alu.io.req.bits.fn := io.op.viu.bits.fn

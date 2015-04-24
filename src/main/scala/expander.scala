@@ -253,7 +253,7 @@ class Expander extends VXUModule {
     }
 
     def mark_viu = mark_vfu(tick_viu, (a: VFU) => a.viu, op1_idx,
-      (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu() })
+      (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu(); lop.eidx := io.seq.bits.eidx })
     def mark_vimu = mark_vfu(tick_vimu, (a: VFU) => a.vimu, op1_idx,
       (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu() })
     def mark_vfmu = mark_vfu(tick_vfmu, (a: VFU) => a.vfmu, op1_idx,

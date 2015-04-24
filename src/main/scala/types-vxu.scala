@@ -170,11 +170,14 @@ class SeqEntry extends DecodedInstruction {
   val waw = Vec.fill(nSeq){Bool()}
   val rports = UInt(width = bRPorts)
   val wport = UInt(width = bWPortLatency)
+  val vlen = UInt(width = bVLen)
+  val eidx = UInt(width = bVLen)
   val age = UInt(width = log2Up(nBanks))
 }
 
 class SequencerOp extends DecodedInstruction {
   val active = new VFU
+  val eidx = UInt(width = bVLen)
   val rports = UInt(width = bRPorts)
   val wport = UInt(width = bWPortLatency)
   val strip = UInt(width = bStrip)

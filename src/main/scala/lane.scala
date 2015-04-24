@@ -122,7 +122,7 @@ class Lane extends VXUModule with Packing {
   ctrl.io.op <> io.op
 
   for (i <- 0 until nBanks) {
-    val bank = Module(new Bank)
+    val bank = Module(new Bank(i))
 
     // TODO: this needs to be sequenced
     bank.io.op <> ctrl.io.uop.bank(i)
