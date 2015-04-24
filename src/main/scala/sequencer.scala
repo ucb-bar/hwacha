@@ -27,7 +27,7 @@ class Sequencer extends VXUModule {
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
 
-    val dqla = new CounterLookAheadIO
+    val dqla = Vec.fill(nLRQOperands){new CounterLookAheadIO}
     val dila = new CounterLookAheadIO
     val dfla = new CounterLookAheadIO
     val lla = new CounterLookAheadIO
@@ -561,7 +561,10 @@ class Sequencer extends VXUModule {
         e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
         e(i).active.vgu && vgu_first(i) ||
         e(i).active.vsu && vsu_first(i) && io.sla.available ||
-        e(i).active.vqu && vqu_first(i) && io.dqla.available)
+        e(i).active.vqu && vqu_first(i) && (
+          (!e(i).fn.vqu().latch(0) || io.dqla(0).available) &&
+          (!e(i).fn.vqu().latch(1) || io.dqla(1).available)
+        ))
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
       (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
@@ -612,6 +615,14 @@ class Sequencer extends VXUModule {
     val vsu_vlen = readfn(vsu_first, (e: SeqEntry) => e.vlen)
     val vsu_fn = readfn(vsu_first, (e: SeqEntry) => e.fn)
     val vsu_strip = stripfn(vsu_vlen, Bool(false), vsu_fn)
+
+    val vgu_vlen = readfn(vgu_first, (e: SeqEntry) => e.vlen)
+    val vgu_fn = readfn(vgu_first, (e: SeqEntry) => e.fn)
+    val vgu_strip = stripfn(vgu_vlen, Bool(false), vgu_fn)
+
+    val vqu_vlen = readfn(vqu_first, (e: SeqEntry) => e.vlen)
+    val vqu_fn = readfn(vqu_first, (e: SeqEntry) => e.fn)
+    val vqu_strip = stripfn(vqu_vlen, Bool(false), vqu_fn)
 
     val exp_val = valfn(exp_sched)
     val exp_vlen = readfn(exp_sched, (e: SeqEntry) => e.vlen)
@@ -745,14 +756,17 @@ class Sequencer extends VXUModule {
   io.seq.valid := seq.exp_val
   io.seq.bits := seq.exp_seq
 
-  io.dqla.cnt := seq.exp_seq.strip
-  io.dqla.reserve := seq.exp_val && seq.exp_seq.active.vqu
+  val vqu_cnt = PopCount(strip_to_bmask(seq.vqu_strip))
+  (io.dqla zipWithIndex) map { case (la, i) =>
+    la.cnt := vqu_cnt
+    la.reserve := seq.exp_val && seq.exp_seq.active.vqu && seq.exp_seq.fn.vqu().latch(i)
+  }
 
-  io.dila.cnt := seq.vidu_strip
+  io.dila.cnt := PopCount(strip_to_bmask(seq.vidu_strip))
   io.dila.reserve := seq.vidu_val && io.dila.available
   seq.vidu_ready := io.dila.available
 
-  io.dfla.cnt := seq.vfdu_strip
+  io.dfla.cnt := PopCount(strip_to_bmask(seq.vfdu_strip))
   io.dfla.reserve := seq.vfdu_val && io.dfla.available
   seq.vfdu_ready := io.dfla.available
 

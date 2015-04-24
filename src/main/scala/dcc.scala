@@ -24,7 +24,7 @@ class DecoupledCluster extends VXUModule with VMUParameters {
       val mem = Vec.fill(nBanks)(new BWQIO)
       val fu = Vec.fill(nBanks)(new BWQIO)
     }
-    val dqla = new CounterLookAheadIO().flip
+    val dqla = Vec.fill(nLRQOperands){new CounterLookAheadIO()}.flip
     val dila = new CounterLookAheadIO().flip
     val dfla = new CounterLookAheadIO().flip
     val lla = new CounterLookAheadIO().flip
