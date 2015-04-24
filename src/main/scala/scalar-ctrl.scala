@@ -257,8 +257,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    (pending_fpu && id_ctrl.decode_stop) || //stall stop on outstanding fpu/mem
-    io.pending_seq
+    (pending_fpu && id_ctrl.decode_stop) //stall stop on outstanding fpu/mem
 
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
