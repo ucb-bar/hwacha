@@ -7,7 +7,7 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val nSeq = 8
   val nRPorts = 3
   val bRPorts = log2Down(nRPorts) + 1
-  val maxWPortLatency = nRPorts + 1 +
+  val maxWPortLatency = nRPorts + 2 +
     List(stagesALU, stagesIMul, stagesFMA,
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bWPortLatency = log2Down(maxWPortLatency) + 1
