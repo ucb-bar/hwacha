@@ -149,39 +149,48 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
   io.dpath.wb_vf_active    := wb_vf_active
 
-  val vd_val  :: vd_scalar  :: vd_sp  :: vd_dyn  :: Nil = parse_rinfo(id_ctrl.vdi)
-  val vs1_val :: vs1_scalar :: vs1_sp :: vs1_dyn :: Nil = parse_rinfo(id_ctrl.vs1i)
-  val vs2_val :: vs2_scalar :: vs2_sp :: vs2_dyn :: Nil = parse_rinfo(id_ctrl.vs2i)
-  val vs3_val :: vs3_scalar :: vs3_sp :: vs3_dyn :: Nil = parse_rinfo(id_ctrl.vs3i)
-  val ren1 = vs1_val && (vs1_scalar || (vs1_dyn && !io.dpath.inst(OPC_VS1)))
-  val ren2 = vs2_val && (vs2_scalar || (vs2_dyn && !io.dpath.inst(OPC_VS2)))
-  val ren3 = vs3_val && (vs3_scalar || (vs3_dyn && !io.dpath.inst(OPC_VS3)))
-  io.dpath.sren(0) := ren1 && vs1_sp
-  io.dpath.sren(1) := ren2 && vs2_sp
-  io.dpath.sren(2) := ren3 && vs3_sp
-  io.dpath.aren(0) := ren1 && !vs1_sp
-  io.dpath.aren(1) := ren2 && !vs2_sp
+  val vd_val = id_ctrl.vd_val
+  val vd_type = id_ctrl.vd_type
+  val vs1_val = id_ctrl.vs1_val
+  val vs1_type = id_ctrl.vs1_type
+  val vs2_val = id_ctrl.vs2_val
+  val vs2_type = id_ctrl.vs2_type
+  val vs3_val = id_ctrl.vs3_val
+  val vs3_type = id_ctrl.vs3_type
 
-  val ex_vd_val :: ex_vd_scalar :: ex_vd_sp :: ex_vd_dyn :: Nil = parse_rinfo(ex_ctrl.vdi)
+  val sren1 = vs1_val && vs1_type === REG_SHR
+  val sren2 = vs2_val && vs2_type === REG_SHR
+  val sren3 = vs3_val && vs3_type === REG_SHR
+  val aren1 = vs1_val && vs1_type === REG_ADDR
+  val aren2 = vs2_val && vs2_type === REG_ADDR
+  io.dpath.sren(0) := sren1
+  io.dpath.sren(1) := sren2
+  io.dpath.sren(2) := sren3
+  io.dpath.aren(0) := aren1
+  io.dpath.aren(1) := aren2
 
-  val wb_vd_val :: wb_vd_scalar :: wb_vd_sp :: wb_vd_dyn :: Nil = parse_rinfo(wb_ctrl.vdi)
+  val ex_vd_val = ex_ctrl.vd_val
+  val ex_vd_type = ex_ctrl.vd_type
 
-  val id_scalar_dest = vd_val && (id_ctrl.decode_scalar || vd_scalar || vd_dyn && !io.dpath.inst(OPC_VD))
-  val id_scalar_src1 = vs1_val && (id_ctrl.decode_scalar || vs1_scalar || vs1_dyn && !io.dpath.inst(OPC_VS1))
-  val id_scalar_src2 = vs2_val && (id_ctrl.decode_scalar || vs2_scalar || vs2_dyn && !io.dpath.inst(OPC_VS2))
-  val id_scalar_src3 = vs3_val && (id_ctrl.decode_scalar || vs3_scalar || vs3_dyn && !io.dpath.inst(OPC_VS3))
+  val wb_vd_val = wb_ctrl.vd_val
+  val wb_vd_type = wb_ctrl.vd_type
+
+  val id_scalar_dest = vd_val && (vd_type === REG_SHR || vd_type === REG_ADDR)
+  val id_scalar_src1 = vs1_val && (vs1_type === REG_SHR || vs1_type === REG_ADDR)
+  val id_scalar_src2 = vs2_val && (vs2_type === REG_SHR || vs2_type === REG_ADDR)
+  val id_scalar_src3 = vs3_val && (vs3_type === REG_SHR || vs3_type === REG_ADDR)
 
   val id_val = io.imem.resp.valid && id_ctrl.ival
   val id_scalar_inst =
-    (!vd_val || id_scalar_dest) &&
-    (!vs1_val || id_scalar_src1) && (!vs2_val || id_scalar_src2) && (!vs3_val || id_scalar_src3)
+    (!vd_val || id_scalar_dest) && (!vs1_val || id_scalar_src1) &&
+    (!vs2_val || id_scalar_src2) && (!vs3_val || id_scalar_src3)
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
-  val ex_scalar_dest = (ex_ctrl.decode_scalar || (ex_vd_val && ex_vd_scalar) || (ex_vd_dyn && !io.dpath.ex_inst(OPC_VD)))
+  val ex_scalar_dest = ex_vd_val && (ex_vd_type === REG_SHR || ex_vd_type === REG_ADDR)
   io.dpath.ex_scalar_dest := Bool(true)
   when(ex_vf_active && !ctrl_killx) { io.dpath.ex_scalar_dest := ex_scalar_dest }
 
-  val wb_scalar_dest = !wb_ctrl.fpu_val && (wb_ctrl.decode_scalar || (wb_vd_val && wb_vd_scalar) || (wb_vd_dyn && !io.dpath.wb_inst(OPC_VD)))
+  val wb_scalar_dest = wb_vd_val && (wb_vd_type === REG_SHR || wb_vd_type === REG_ADDR)
 
   val id_waddr = io.dpath.inst(23,16)
   val id_raddrs1 = io.dpath.inst(31,24)
@@ -202,10 +211,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     io.dpath.bypass_src(i) := PriorityEncoder(doBypass(i))
   }
 
-  val id_ctrl_wen_not0 = vd_val && vd_scalar && vd_sp && id_waddr != UInt(0)
-  val id_ctrl_rens1_not0 = vs1_val && vs1_scalar && vs1_sp && id_raddrs1 != UInt(0)
-  val id_ctrl_rens2_not0 = vs2_val && vs2_scalar && vs2_sp && id_raddrs2 != UInt(0)
-  val id_ctrl_rens3_not0 = vs3_val && vs3_scalar && vs3_sp && id_raddrs3 != UInt(0)
+  val id_ctrl_wen_not0 = vd_val && vd_type === REG_SHR & id_waddr != UInt(0)
+  val id_ctrl_rens1_not0 = sren1 && id_raddrs1 != UInt(0)
+  val id_ctrl_rens2_not0 = sren2 && id_raddrs2 != UInt(0)
+  val id_ctrl_rens3_not0 = sren3 && id_raddrs3 != UInt(0)
 
   // stall for RAW hazards on non scalar integer pipes
   // only scalar integer ops can be bypassed but

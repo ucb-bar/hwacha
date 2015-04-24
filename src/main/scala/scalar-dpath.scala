@@ -223,10 +223,10 @@ class ScalarDpath extends HwachaModule {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
          io.ctrl.retire, wb_reg_pc, 
          Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_wdata, io.ctrl.wb_wen,
-         wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vs1i === RA,
+         wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vs1_type === REG_ADDR,
                                  Reg(next=Reg(next=ex_reg_ars(0))),
                                  Reg(next=Reg(next=ex_srs(0)))),
-         wb_reg_inst(40,33), Mux(io.ctrl.wb_ctrl.vs2i === RA,
+         wb_reg_inst(40,33), Mux(io.ctrl.wb_ctrl.vs2_type === REG_ADDR,
                                  Reg(next=Reg(next=ex_reg_ars(1))),
                                  Reg(next=Reg(next=ex_srs(1)))),
          wb_reg_inst, wb_reg_inst)

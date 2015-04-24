@@ -60,13 +60,18 @@ trait DecodeConstants {
   val ML = Bits("b10", 2)
   val MI = Bits("b11", 2)
 
-  val R_ = Bits("b???0", 4)
-  val RA = Bits("b0011", 4)
-  val RS = Bits("b0111", 4)
-  val RV = Bits("b0001", 4)
-  val RP = Bits("b0101", 4)
-  val RX = Bits("b1101", 4)
-  def parse_rinfo(x: Bits) = (0 until x.getWidth).map(x(_).toBool).toList
+  val RX = Bits("b??", 2)
+  val RS = Bits("b00", 2)
+  val RA = Bits("b01", 2)
+  val RP = Bits("b10", 2)
+  val RV = Bits("b11", 2)
+
+  val REG_SHR = Bits(0,2)
+  val REG_ADDR = Bits(1,2)
+  val REG_PRED = Bits(2,2)
+  val REG_VEC = Bits(3,2)
+
+  def reg_type(t: Bits, d: Bool, i: Bool) = Mux(d, Mux(i, REG_VEC, REG_SHR), t)
 
   val SZ_I = 2
   val IMM_X = UInt.DC(SZ_I)
