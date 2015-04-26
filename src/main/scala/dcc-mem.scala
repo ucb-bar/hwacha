@@ -6,6 +6,71 @@ class BRQLookAheadIO extends VXUBundle with LookAheadIO {
   val mask = Bits(OUTPUT, nBanks)
 }
 
+class VGU extends VXUModule with Packing {
+  val io = new Bundle {
+    val op = Decoupled(new DCCOp).flip
+    val la = new CounterLookAheadIO().flip
+    val lrq = new LRQIO().flip
+    val vaq = new VVAQIO
+  }
+
+  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.io.enq <> io.op
+
+  val lrq = Module(new Queue(new LRQEntry, nBanks+2))
+  lrq.io.enq <> io.lrq
+
+  val cntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  cntr.io.inc.cnt := UInt(1)
+  cntr.io.inc.update := lrq.io.deq.fire()
+  cntr.io.dec <> io.la
+
+  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
+  val state = Reg(init = s_idle)
+  val op = Reg(new DCCOp)
+  val slice = Reg(UInt(width = log2Up(nSlices)))
+
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(lrq.io.deq.valid, io.vaq.ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  val vlen_next = op.vlen - UInt(1)
+
+  opq.io.deq.ready := Bool(false)
+
+  switch (state) {
+    is (s_idle) {
+      opq.io.deq.ready := Bool(true)
+      when (opq.io.deq.valid) {
+        state := s_busy
+        op := opq.io.deq.bits
+      }
+    }
+
+    is (s_busy) {
+      when (fire(null)) {
+        op.vlen := vlen_next
+        slice := slice + UInt(1)
+        when (vlen_next === UInt(0)) {
+          state := s_idle
+        }
+      }
+    }
+  }
+
+  val deq_lrq = if (nSlices > 1) slice === UInt(nSlices-1) else Bool(true)
+  val addr =
+    if (nSlices > 1) {
+      MuxLookup(slice, Bits(0), (0 until nSlices) map {
+        i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
+    } else lrq.io.deq.bits.data
+
+  lrq.io.deq.ready := fire(lrq.io.deq.valid, deq_lrq)
+  io.vaq.valid := fire(io.vaq.ready)
+  io.vaq.bits.addr := addr
+}
+
 class VSU extends VXUModule with VMUParameters {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip

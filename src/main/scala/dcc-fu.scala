@@ -16,10 +16,10 @@ class VDU extends VXUModule {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
     val ack = new DCCAckIO
-    val qla = Vec.fill(nLRQOperands){new CounterLookAheadIO}.flip // lrq entries
+    val qla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // lrq entries
     val ila = new CounterLookAheadIO().flip // idiv output entries
     val fla = new CounterLookAheadIO().flip // fdiv output entries
-    val lrqs = Vec.fill(nLRQOperands){new LRQIO}.flip
+    val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
     val bwqs = Vec.fill(nBanks){new BWQIO}
   }
 
@@ -30,7 +30,7 @@ class VDU extends VXUModule {
   ctrl.io.fla <> io.fla
   ctrl.io.cfg <> io.cfg
 
-  for (i <- 0 until nLRQOperands) {
+  for (i <- 0 until nVDUOperands) {
     val lrq = Module(new Queue(new LRQEntry, nBanks+2))
     lrq.io.enq <> io.lrqs(i)
     ctrl.io.lrqs(i) <> lrq.io.deq
@@ -59,7 +59,7 @@ class VDUCtrl extends VXUModule with Packing {
     val op = Decoupled(new DCCOp).flip
     val ila = new CounterLookAheadIO().flip
     val fla = new CounterLookAheadIO().flip
-    val lrqs = Vec.fill(nLRQOperands){new LRQIO}.flip
+    val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
 
     val idiv = new Bundle {
       val fus = Vec.fill(nSlices){new IDivIO}

@@ -27,9 +27,10 @@ class Sequencer extends VXUModule {
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
 
-    val dqla = Vec.fill(nLRQOperands){new CounterLookAheadIO}
+    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}
     val dila = new CounterLookAheadIO
     val dfla = new CounterLookAheadIO
+    val gla = new CounterLookAheadIO
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
     val lreq = new CounterLookAheadIO
@@ -569,7 +570,7 @@ class Sequencer extends VXUModule {
       val consider = (i: Int) => nohazards(i) && (
         e(i).active.viu || e(i).active.vimu ||
         e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
-        e(i).active.vgu && vgu_first(i) && io.vmu.la.vala.available ||
+        e(i).active.vgu && vgu_first(i) && io.gla.available ||
         e(i).active.vsu && vsu_first(i) && io.sla.available ||
         e(i).active.vqu && vqu_first(i) && (
           (!e(i).fn.vqu().latch(0) || io.dqla(0).available) &&
@@ -780,11 +781,11 @@ class Sequencer extends VXUModule {
   io.dfla.reserve := seq.vfdu_val && io.dfla.available
   seq.vfdu_ready := io.dfla.available
 
-  io.vmu.la.vala.cnt := seq.vgu_strip
-  io.vmu.la.vala.reserve := seq.exp_val && seq.exp_seq.active.vgu
+  io.gla.cnt := PopCount(strip_to_bmask(seq.vgu_strip))
+  io.gla.reserve := seq.exp_val && seq.exp_seq.active.vgu
 
-  io.vmu.la.pala.cnt := seq.vcu_strip
-  io.vmu.la.pala.reserve := seq.vcu_val && seq.vcu_ready
+  io.vmu.pala.cnt := seq.vcu_strip
+  io.vmu.pala.reserve := seq.vcu_val && seq.vcu_ready
   io.lreq.cnt := seq.vcu_strip
   io.lreq.reserve := seq.vcu_val && seq.vcu_mcmd.read && seq.vcu_ready
   io.sreq.cnt := seq.vcu_strip
@@ -792,7 +793,7 @@ class Sequencer extends VXUModule {
   io.spred.bits := EnableDecoder(seq.vcu_strip, nPredSet).toBits
   io.spred.valid := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
   seq.vcu_ready :=
-    io.vmu.la.pala.available &&
+    io.vmu.pala.available &&
     (!seq.vcu_mcmd.read || io.lreq.available) &&
     (!seq.vcu_mcmd.write || io.sreq.available && io.spred.ready)
 

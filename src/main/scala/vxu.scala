@@ -51,6 +51,7 @@ class VXU extends HwachaModule {
   dcc.io.dqla <> seq.io.dqla
   dcc.io.dila <> seq.io.dila
   dcc.io.dfla <> seq.io.dfla
+  dcc.io.gla <> seq.io.gla
   dcc.io.lla <> seq.io.lla
   dcc.io.sla <> seq.io.sla
   dcc.io.spred <> seq.io.spred
@@ -60,7 +61,6 @@ class VXU extends HwachaModule {
   lane.io.bwqs <> dcc.io.bwqs
 
   io.vmu <> seq.io.vmu
-  io.vmu <> lane.io.vmu
   io.vmu <> dcc.io.vmu
 
   io.pending_seq := seq.io.pending

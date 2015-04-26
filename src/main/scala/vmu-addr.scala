@@ -11,18 +11,11 @@ class VVAQ extends VMUModule with SeqParameters {
   val io = new Bundle {
     val enq = new VVAQIO().flip
     val deq = new VVAQIO
-    val la = new CounterLookAheadIO().flip
   }
 
   val q = Module(new Queue(io.enq.bits.clone, nVVAQ))
   q.io.enq <> io.enq
   io.deq <> q.io.deq
-
-  val lacntr = Module(new LookAheadCounter(nVVAQ, nVVAQ))
-  lacntr.io.inc.cnt := UInt(1)
-  lacntr.io.inc.update := io.deq.fire()
-  lacntr.io.dec <> io.la
-  require(nVVAQ >= maxLookAhead)
 }
 
 class TLBIO extends VMUBundle {
@@ -337,7 +330,7 @@ class ABox extends VMUModule {
 
     val lane = new VVAQIO().flip
     val pf = new VVAPFQIO().flip
-    val la = new VMULookAheadIO().flip
+    val la = new CounterLookAheadIO().flip
 
     val mbox = new VMUAddrIO
   }
@@ -348,7 +341,6 @@ class ABox extends VMUModule {
   val abox1 = Module(new ABox1)
 
   vvaq.io.enq <> io.lane
-  vvaq.io.la <> io.la.vala
 
   abox0.io.vvaq <> vvaq.io.deq
   abox0.io.issue.op := io.issue.op
@@ -357,12 +349,12 @@ class ABox extends VMUModule {
   abox0.io.tlb <> io.tlb.lane
 
   vpaq.io.enq <> abox0.io.vpaq
-  vpaq.io.la <> io.la.pala
+  vpaq.io.la <> io.la
 
   abox1.io.vpaq <> vpaq.io.deq
   abox1.io.issue <> io.issue
   abox1.io.xcpt <> io.xcpt
-  abox1.io.la <> io.la.pala
+  abox1.io.la <> io.la
 
   val mboxq = Module(new Queue(io.mbox.bits.clone.asDirectionless(), 2))
   if (confvru) {

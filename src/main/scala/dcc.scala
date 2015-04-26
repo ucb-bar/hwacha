@@ -6,6 +6,7 @@ abstract trait DCCParameters extends UsesHwachaParameters with VMUParameters {
   val nPredSet = tlDataBytes // TODO: rename
   val nDCCOpQ = 2
   val nDCCPredQ = 2
+  val nVDUOperands = 2
 }
 
 class DCCAckIO extends HwachaBundle {
@@ -24,9 +25,10 @@ class DecoupledCluster extends VXUModule with VMUParameters {
       val mem = Vec.fill(nBanks)(new BWQIO)
       val fu = Vec.fill(nBanks)(new BWQIO)
     }
-    val dqla = Vec.fill(nLRQOperands){new CounterLookAheadIO()}.flip
+    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO()}.flip
     val dila = new CounterLookAheadIO().flip
     val dfla = new CounterLookAheadIO().flip
+    val gla = new CounterLookAheadIO().flip
     val lla = new CounterLookAheadIO().flip
     val sla = new BRQLookAheadIO().flip
     val spred = Decoupled(Bits(width = nPredSet)).flip
@@ -35,17 +37,19 @@ class DecoupledCluster extends VXUModule with VMUParameters {
   }
 
   val vdu = Module(new VDU)
+  val vgu = Module(new VGU)
   val vlu = Module(new VLU)
   val vsu = Module(new VSU)
 
   val mask_vdu_ready = !io.op.bits.active.enq_vdu() || vdu.io.op.ready
+  val mask_vgu_ready = !io.op.bits.active.enq_vgu() || vgu.io.op.ready
   val mask_vlu_ready = !io.op.bits.active.enq_vlu() || vlu.io.op.ready
   val mask_vsu_ready = !io.op.bits.active.enq_vsu() || vsu.io.op.ready
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       io.op.valid, 
-      mask_vdu_ready, mask_vlu_ready, mask_vsu_ready)
+      mask_vdu_ready, mask_vgu_ready, mask_vlu_ready, mask_vsu_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
   
@@ -57,9 +61,16 @@ class DecoupledCluster extends VXUModule with VMUParameters {
   vdu.io.qla <> io.dqla
   vdu.io.ila <> io.dila
   vdu.io.fla <> io.dfla
-  vdu.io.lrqs <> io.lrqs
+  vdu.io.lrqs(0) <> io.lrqs(0)
+  vdu.io.lrqs(1) <> io.lrqs(1)
   io.ack <> vdu.io.ack
   io.bwqs.fu <> vdu.io.bwqs
+
+  vgu.io.op.valid := fire(mask_vgu_ready, io.op.bits.active.enq_vgu())
+  vgu.io.op.bits := io.op.bits
+  vgu.io.la <> io.gla
+  vgu.io.lrq <> io.lrqs(2)
+  io.vmu.vaq <> vgu.io.vaq
 
   vlu.io.cfg <> io.cfg
   vlu.io.op.valid := fire(mask_vlu_ready, io.op.bits.active.enq_vlu())

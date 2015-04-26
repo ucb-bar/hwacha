@@ -39,7 +39,7 @@ class LaneMemIO extends Bundle {
   val vaq = new VVAQIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
-  val la = new VMULookAheadIO
+  val pala = new CounterLookAheadIO
 }
 
 class PrefetchMemIO extends Bundle {
@@ -172,7 +172,7 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   abox.io.xcpt <> io.xcpt
   abox.io.lane <> io.lane.vaq
   abox.io.pf <> io.pf.vaq
-  abox.io.la <> io.lane.la
+  abox.io.la <> io.lane.pala
 
   tbox.io.inner(0) <> abox.io.tlb.lane
   tbox.io.inner(1) <> smu.io.tlb

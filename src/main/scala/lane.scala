@@ -32,7 +32,7 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val nGOPL = params(HwachaNOperandLatches)
   val nLOPL = 3
   val nWSel = params(HwachaWriteSelects)
-  val nLRQOperands = 2
+  val nLRQOperands = 3
   val nDecoupledUnitWBQueue = 4
 
   val stagesALU = params(HwachaStagesALU)
@@ -108,7 +108,6 @@ class Lane extends VXUModule with Packing {
       val mem = Vec.fill(nBanks){new BWQIO}.flip
       val fu = Vec.fill(nBanks){new BWQIO}.flip
     }
-    val vmu = new LaneMemIO
   }
 
   val ctrl = Module(new LaneCtrl)
@@ -136,20 +135,18 @@ class Lane extends VXUModule with Packing {
     Mux(ctrl.io.uop.sreg(o).valid, ctrl.io.uop.sreg(o).bits.operand,
                                    banksrw.map(_.rdata(o).d).reduce(_|_)) }
 
-  require(nLRQOperands == 2)
+  require(nLRQOperands == 3)
 
   io.lrqs(0).valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(0)
   io.lrqs(0).bits.data := rdata(3)
   io.lrqs(1).valid := ctrl.io.uop.vqu.valid && ctrl.io.uop.vqu.bits.fn.latch(1)
   io.lrqs(1).bits.data := rdata(4)
+  io.lrqs(2).valid := ctrl.io.uop.vgu.valid
+  io.lrqs(2).bits.data := rdata(5)
 
   assert(!io.lrqs(0).valid || io.lrqs(0).ready, "check lrqs(0) counter logic")
   assert(!io.lrqs(1).valid || io.lrqs(1).ready, "check lrqs(1) counter logic")
-
-  io.vmu.vaq.valid := ctrl.io.uop.vgu.valid
-  io.vmu.vaq.bits.addr := rdata(5)
-
-  assert(!io.vmu.vaq.valid || io.vmu.vaq.ready, "check vaq counter logic")
+  assert(!io.lrqs(2).valid || io.lrqs(2).ready, "check lrqs(1) counter logic")
 
   for (i <- 0 until nSlices) {
     val fma0 = Module(new FMASlice)

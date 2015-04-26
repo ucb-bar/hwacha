@@ -132,9 +132,10 @@ class IssueType extends VXUBundle {
   val vst = Bool()
 
   def enq_vdu(dummy: Int = 0) = vidiv || vfdiv
+  def enq_vgu(dummy: Int = 0) = vamo || vldx || vstx
   def enq_vlu(dummy: Int = 0) = vamo || vldx || vld
   def enq_vsu(dummy: Int = 0) = vamo || vstx || vst
-  def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vlu() || enq_vsu()
+  def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vlu() || enq_vsu()
 }
 
 class IssueOp extends DecodedInstruction {
