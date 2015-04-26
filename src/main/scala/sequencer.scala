@@ -270,7 +270,7 @@ class Sequencer extends VXUModule {
     val fn_identity = (d: IssueOp) => d.fn.union
     val fn_vqu = (d: IssueOp) => {
       assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
-      Mux(d.active.vfdiv && d.fn.vfdu().op_is(FD_SQRT), Bits("b10"), Bits("b11"))
+      Cat(d.fn.vfdu().op_is(FD_DIV), Bool(true))
     }
 
     def set_viu(n: UInt) = set_active(n, (a: VFU) => a.viu, fn_identity)

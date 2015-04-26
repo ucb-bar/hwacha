@@ -51,49 +51,42 @@ class FDivSlice extends VXUModule with Packing {
 
   val s0_op_div = io.req.bits.fn.op_is(FD_DIV)
 
-  in0q.io.enq.valid := io.req.valid && s0_op_div
+  in0q.io.enq.valid := io.req.valid
   in0q.io.enq.bits := ins(0)._1
-  in1q.io.enq.valid := io.req.valid
+  in1q.io.enq.valid := io.req.valid && s0_op_div
   in1q.io.enq.bits := ins(1)._1
   intagq.io.enq.valid := io.req.valid
   intagq.io.enq.bits.fn := io.req.bits.fn
-  intagq.io.enq.bits.exc := dgate(s0_op_div, ins(0)._2) | ins(1)._2
+  intagq.io.enq.bits.exc := ins(0)._2 | dgate(s0_op_div, ins(1)._2)
 
   io.req.ready :=
     !qcnt.io.empty && intagq.io.enq.ready &&
-    (!s0_op_div || in0q.io.enq.ready) && in1q.io.enq.ready
+    in0q.io.enq.ready && (!s0_op_div || in1q.io.enq.ready)
 
   // stage1
   val div = Module(new hardfloat.divSqrtRecodedFloat64)
   val outtagq = Module(new Queue(new FDivTag, nDecoupledUnitWBQueue))
 
   val s1_op_div = intagq.io.deq.bits.fn.op_is(FD_DIV)
-  val mask_in0q_valid = !s1_op_div || in0q.io.deq.valid
+  val mask_in1q_valid = !s1_op_div || in1q.io.deq.valid
   val mask_div_ready = s1_op_div && div.io.inReady_div || !s1_op_div && div.io.inReady_sqrt
 
-  div.io.inValid :=
-    mask_in0q_valid && in1q.io.deq.valid &&
-    intagq.io.deq.valid && outtagq.io.enq.ready
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(
+      in0q.io.deq.valid, mask_in1q_valid, intagq.io.deq.valid,
+      mask_div_ready, outtagq.io.enq.ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
 
-  in0q.io.deq.ready :=
-    in1q.io.deq.valid &&
-    mask_div_ready && intagq.io.deq.valid && outtagq.io.enq.ready
-
-  in1q.io.deq.ready :=
-    mask_in0q_valid &&
-    mask_div_ready && intagq.io.deq.valid && outtagq.io.enq.ready
-
-  intagq.io.deq.ready :=
-    mask_in0q_valid && in1q.io.deq.valid &&
-    mask_div_ready && outtagq.io.enq.ready
-
-  outtagq.io.enq.valid :=
-    mask_in0q_valid && in1q.io.deq.valid &&
-    mask_div_ready && intagq.io.deq.valid
+  in0q.io.deq.ready := fire(in0q.io.deq.valid)
+  in1q.io.deq.ready := fire(mask_in1q_valid, s1_op_div)
+  intagq.io.deq.ready := fire(intagq.io.deq.valid)
+  div.io.inValid := fire(mask_div_ready)
+  outtagq.io.enq.valid := fire(outtagq.io.enq.ready)
 
   div.io.sqrtOp := !s1_op_div
   div.io.a := in0q.io.deq.bits
-  div.io.b := in1q.io.deq.bits
+  div.io.b := Mux(s1_op_div, in1q.io.deq.bits, in0q.io.deq.bits)
   div.io.roundingMode := intagq.io.deq.bits.fn.rm
 
   outtagq.io.enq.bits := intagq.io.deq.bits

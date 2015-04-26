@@ -116,8 +116,8 @@ class VDUCtrl extends VXUModule with Packing {
 
   val tagq = Module(new Queue(new VDUTag, nDecoupledUnitWBQueue))
 
-  val deq_lrq0 = op.fn.vfdu().op_is(FD_DIV)
-  val mask_lrq0_valid = !deq_lrq0 || io.lrqs(0).valid
+  val deq_lrq1 = op.fn.vfdu().op_is(FD_DIV)
+  val mask_lrq1_valid = !deq_lrq1 || io.lrqs(1).valid
   val enq_idivs_req = (0 until nSlices).map { pred(_) }
   val enq_fdivs_req = (0 until nSlices).map { pred(_) }
   val mask_idivs_req_ready = io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
@@ -136,14 +136,14 @@ class VDUCtrl extends VXUModule with Packing {
   def fire_fdiv(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       state === s_busy, op.active.vfdiv,
-      mask_lrq0_valid, io.lrqs(1).valid,
+      io.lrqs(0).valid, mask_lrq1_valid,
       tagq.io.enq.ready) ++ mask_fdivs_req_ready
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   fire := fire_idiv(null) || fire_fdiv(null)
-  io.lrqs(0).ready := fire_idiv(io.lrqs(0).valid) || fire_fdiv(mask_lrq0_valid, deq_lrq0)
-  io.lrqs(1).ready := fire_idiv(io.lrqs(1).valid) || fire_fdiv(io.lrqs(1).valid)
+  io.lrqs(0).ready := fire_idiv(io.lrqs(0).valid) || fire_fdiv(io.lrqs(0).valid)
+  io.lrqs(1).ready := fire_idiv(io.lrqs(1).valid) || fire_fdiv(mask_lrq1_valid, deq_lrq1)
   tagq.io.enq.valid := fire_idiv(tagq.io.enq.ready) || fire_fdiv(tagq.io.enq.ready)
   io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
     idiv.req.valid := fire_idiv(mask_idivs_req_ready(i), enq_idivs_req(i)) }
