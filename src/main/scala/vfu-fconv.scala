@@ -40,8 +40,8 @@ class FConvSlice extends VXUModule with Packing {
     ))
 
   val val_int2float = fn.op_is(FV_CLTF,FV_CLUTF,FV_CWTF,FV_CWUTF)
-  val val_float2int32 = fn.op_is(FV_CFTL,FV_CFTLU)
-  val val_float2int64 = fn.op_is(FV_CFTW,FV_CFTWU)
+  val val_float2int32 = fn.op_is(FV_CFTW,FV_CFTWU)
+  val val_float2int64 = fn.op_is(FV_CFTL,FV_CFTLU)
   val val_float2int = val_float2int32 || val_float2int64
 
   val wdp = (52, 12)
