@@ -789,7 +789,7 @@ class Sequencer extends VXUModule {
   io.lreq.cnt := seq.vcu_strip
   io.lreq.reserve := seq.vcu_val && seq.vcu_mcmd.read && seq.vcu_ready
   io.sreq.cnt := seq.vcu_strip
-  io.sreq.reserve := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
+  io.sreq.reserve := seq.vcu_val && seq.vcu_mcmd.store && seq.vcu_ready
   io.spred.bits := EnableDecoder(seq.vcu_strip, nPredSet).toBits
   io.spred.valid := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
   seq.vcu_ready :=
