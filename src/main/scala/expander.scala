@@ -173,7 +173,7 @@ class Expander extends VXUModule {
           e.bits.selg := Bool(true)
           e.bits.wsel := UInt(0)
         }
-        when (io.seq.bits.active.vfcu || io.seq.bits.active.vgu || io.seq.bits.active.vqu) {
+        when (io.seq.bits.active.vfcu) {
           e.bits.selg := Bool(true)
           e.bits.wsel := UInt(1)
         }
