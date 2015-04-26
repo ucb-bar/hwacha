@@ -30,7 +30,7 @@ abstract trait LaneParameters extends UsesHwachaParameters {
 
   val nFFRPorts = params(HwachaNFFRFReadPorts)
   val nGOPL = params(HwachaNOperandLatches)
-  val nLOPL = 2
+  val nLOPL = 3
   val nWSel = params(HwachaWriteSelects)
   val nLRQOperands = 2
   val nDecoupledUnitWBQueue = 4

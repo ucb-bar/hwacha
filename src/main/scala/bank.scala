@@ -48,6 +48,7 @@ class Bank(id: Int) extends VXUModule with Packing {
   rf.io.op <> io.op
   rf.io.global <> io.rw
 
+  // ALU
   val outs = new ArrayBuffer[ValidIO[ALUResult]]
   for (i <- 0 until nSlices) {
     val alu = Module(new ALUSlice(id*nSlices+i))
@@ -67,6 +68,15 @@ class Bank(id: Int) extends VXUModule with Packing {
   }
   rf.io.local.wdata.d := repack_slice(outs.map(_.bits.out))
 
+  // BRQ
+  io.rw.brq.valid := io.op.vsu.valid
+  io.rw.brq.bits.data :=
+    Mux(io.op.sreg(2).valid, splat_slice(io.op.sreg(2).bits.operand),
+                             rf.io.local.rdata(2).d)
+
+  assert(!io.op.vsu.valid || io.rw.brq.ready, "brq enabled when not ready; check brq counters")
+
+  // ACK
   io.ack.valid := outs.map(_.valid).reduce(_|_)
   io.ack.bits.pred := Vec(outs.map(_.valid)).toBits
 }

@@ -218,6 +218,9 @@ class Sequencer extends VXUModule {
     val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
     val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
     val reg_vd  = (reg: DecodedRegisters) => reg.vd
+    val sreg_ss1 = (sreg: ScalarRegisters) => sreg.ss1
+    val sreg_ss2 = (sreg: ScalarRegisters) => sreg.ss2
+    val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
 
     def set_raw_haz(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
     def set_war_haz(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
@@ -286,26 +289,32 @@ class Sequencer extends VXUModule {
     def set_vsu(n: UInt) = set_active(n, (a: VFU) => a.vsu, fn_identity)
     def set_vqu(n: UInt) = set_active(n, (a: VFU) => a.vqu, fn_vqu)
 
-    def set_vs(n: UInt, vsfn: DecodedRegisters=>RegInfo, ssfn: ScalarRegisters=>Bits) = {
-      when (vsfn(io.op.bits.reg).valid) {
-        vsfn(e(n).reg) := vsfn(io.op.bits.reg)
-        vsfn(e(n).base) := vsfn(io.op.bits.reg)
-        when (vsfn(io.op.bits.reg).scalar) {
-          ssfn(e(n).sreg) := ssfn(io.op.bits.sreg)
+    def set_vs(n: UInt,
+      e_vsfn: DecodedRegisters=>RegInfo, op_vsfn: DecodedRegisters=>RegInfo,
+      e_ssfn: ScalarRegisters=>Bits, op_ssfn: ScalarRegisters=>Bits) = {
+        when (op_vsfn(io.op.bits.reg).valid) {
+          e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
+          e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
+          when (op_vsfn(io.op.bits.reg).scalar) {
+            e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
+          }
         }
-      }
     }
     def set_vs1(n: UInt) = {
-      set_vs(n, reg_vs1, (sreg: ScalarRegisters) => sreg.ss1)
+      set_vs(n, reg_vs1, reg_vs1, sreg_ss1, sreg_ss1)
       set_raw_hazs_vs1(n)
     }
     def set_vs2(n: UInt) = {
-      set_vs(n, reg_vs2, (sreg: ScalarRegisters) => sreg.ss2)
+      set_vs(n, reg_vs2, reg_vs2, sreg_ss2, sreg_ss2)
       set_raw_hazs_vs2(n)
     }
     def set_vs3(n: UInt) = {
-      set_vs(n, reg_vs3, (sreg: ScalarRegisters) => sreg.ss3)
+      set_vs(n, reg_vs3, reg_vs3, sreg_ss3, sreg_ss3)
       set_raw_hazs_vs3(n)
+    }
+    def set_vs2_as_vs1(n: UInt) = {
+      set_vs(n, reg_vs1, reg_vs2, sreg_ss1, sreg_ss2)
+      set_raw_hazs_vs2(n)
     }
     def set_vd_as_vs1(n: UInt) = {
       assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "set_vd_as_vs1: vd should always be vector")
@@ -393,14 +402,14 @@ class Sequencer extends VXUModule {
                       set_rport_vs1(t0)
       set_entry(t1); set_vcu(t1)
                       set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
-      set_entry(t2); set_vsu(t2); set_vs2(t2)
+      set_entry(t2); set_vsu(t2); set_vs2_as_vs1(t2)
                       set_rport_vs2(t2); set_raw_haz(t2, t1)
       set_entry(t3); set_vlu(t3); set_vd(t3)
                       set_noports(t3)
       set_tail(t4)
     }
     def issue_vldx = {
-      set_entry(t0); set_vgu(t0); set_vs2(t0)
+      set_entry(t0); set_vgu(t0); set_vs2_as_vs1(t0)
                       set_rport_vs2(t0)
       set_entry(t1); set_vcu(t1)
                       set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
@@ -409,7 +418,7 @@ class Sequencer extends VXUModule {
       set_tail(t3)
     }
     def issue_vstx = {
-      set_entry(t0); set_vgu(t0); set_vs2(t0)
+      set_entry(t0); set_vgu(t0); set_vs2_as_vs1(t0)
                       set_rport_vs2(t0)
       set_entry(t1); set_vcu(t1)
                       set_noports(t1)

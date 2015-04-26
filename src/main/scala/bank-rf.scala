@@ -14,7 +14,7 @@ class BankRegfile extends VXUModule {
     val op = new BankOpIO().flip
     val global = new BankRWIO
     val local = new Bundle {
-      val rdata = Vec.fill(2){new BankReadEntry().asOutput}
+      val rdata = Vec.fill(nLOPL){new BankReadEntry().asOutput}
       val wdata = new BankWriteEntry().asInput
     }
   }
@@ -94,13 +94,6 @@ class BankRegfile extends VXUModule {
       FillInterleaved(8, ff_warb.io.out.bits.mask))
   }
 
-  // BRQ
-  io.global.brq.valid := io.op.vsu.valid
-  io.global.brq.bits.data :=
-    Mux(io.op.vsu.bits.selff, ff_rdata(nFFRPorts-1), sram_rdata)
-
-  assert(!io.op.vsu.valid || io.global.brq.ready, "brq enabled when not ready; check brq counters")
-
   // BWQ
   io.global.bwq.mem.ready :=
     !io.global.bwq.mem.bits.selff && sram_warb.io.in(1).ready ||
@@ -111,7 +104,7 @@ class BankRegfile extends VXUModule {
      io.global.bwq.fu.bits.selff && ff_warb.io.in(2).ready
 
   // Operand Latches
-  (0 until nGOPL).map { i =>
+  (0 until nGOPL) foreach { i =>
     when (io.op.opl.global(i).valid) {
       opl.write(
         UInt(i),
@@ -120,7 +113,7 @@ class BankRegfile extends VXUModule {
     }
     io.global.rdata(i).d := dgate(io.op.xbar(i).valid, opl(i))
   }
-  (0 until nLOPL).map { i =>
+  (0 until nLOPL) foreach { i =>
     when (io.op.opl.local(i).valid) {
       opl.write(
         UInt(nGOPL+i),

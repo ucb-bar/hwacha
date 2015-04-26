@@ -282,7 +282,7 @@ class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
   }
   val local = new VXUBundle {
     val valid = Bool()
-    val id = UInt(width = 1)
+    val id = UInt(width = log2Up(nLOPL))
   }
 }
 class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp

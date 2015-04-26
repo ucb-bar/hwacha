@@ -25,14 +25,14 @@ abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
   val maxVFCUTicks = rpVFCU+2
   val maxVFVUTicks = rpVFVU+2
   val maxVGUTicks = rpVGU+2
-  val maxVSUTicks = rpVSU+1 // +1 because it doesn't go through opl
+  val maxVSUTicks = rpVSU+2
   val maxVQUTicks = rpVQU+2
 }
 
 class TickerIO extends VXUBundle {
   val sram = new Bundle {
-    val read = Vec.fill(maxSRAMReadTicks){Valid(new SRAMRFReadLaneOp)}
-    val write = Vec.fill(maxSRAMWriteTicks){Valid(new SRAMRFWriteLaneOp)}
+    val read = Vec.fill(maxSRAMReadTicks){Valid(new SRAMRFReadExpEntry)}
+    val write = Vec.fill(maxSRAMWriteTicks){Valid(new SRAMRFWriteExpEntry)}
   }
   val sreg = new Bundle {
     val global = Vec.fill(nGOPL){Vec.fill(maxSRegGlobalTicks){Valid(new SRegLaneOp)}}
@@ -102,9 +102,7 @@ class Expander extends VXUModule {
         Mux(rport_valid(1), UInt(2), UInt(1)),
         Mux(rport_valid(1), UInt(1), UInt(0)))))
 
-    val op0_idx = io.seq.bits.rports
-    val op1_idx = io.seq.bits.rports + UInt(1, bRPorts+1)
-    val op_idx = Mux(io.seq.bits.active.vsu, op0_idx, op1_idx)
+    val op_idx = io.seq.bits.rports + UInt(1, bRPorts+1)
 
     def mark_opl(n: UInt, idx: Int) = {
       val e = tick_sram_read.s(n)
@@ -143,6 +141,10 @@ class Expander extends VXUModule {
         when (io.seq.bits.active.vgu) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(5)
+        }
+        when (io.seq.bits.active.vsu) {
+          e.bits.local.valid := Bool(true)
+          e.bits.local.id := UInt(2+idx)
         }
       }
     }
@@ -190,8 +192,8 @@ class Expander extends VXUModule {
     def mark_xbar(i: Int, fn: DecodedRegisters=>RegInfo) = {
       val rinfo = fn(io.seq.bits.reg)
       when (rinfo.valid && !rinfo.scalar) {
-        tick_xbar(i).s(op1_idx).valid := Bool(true)
-        tick_xbar(i).s(op1_idx).bits.strip := io.seq.bits.strip
+        tick_xbar(i).s(op_idx).valid := Bool(true)
+        tick_xbar(i).s(op_idx).bits.strip := io.seq.bits.strip
       }
     }
 
@@ -242,6 +244,10 @@ class Expander extends VXUModule {
         mark_sreg_local(0, reg_vs1, sreg_ss1)
         mark_sreg_local(1, reg_vs2, sreg_ss2)
       }
+
+      when (io.seq.bits.active.vsu) {
+        mark_sreg_local(2, reg_vs1, sreg_ss1)
+      }
     }
 
     def mark_vfu[T <: LaneOp](tick: Ticker[T], afn: VFU=>Bool, idx: UInt, fn: T=>Unit) = {
@@ -252,21 +258,21 @@ class Expander extends VXUModule {
       }
     }
 
-    def mark_viu = mark_vfu(tick_viu, (a: VFU) => a.viu, op1_idx,
+    def mark_viu = mark_vfu(tick_viu, (a: VFU) => a.viu, op_idx,
       (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu(); lop.eidx := io.seq.bits.eidx })
-    def mark_vimu = mark_vfu(tick_vimu, (a: VFU) => a.vimu, op1_idx,
+    def mark_vimu = mark_vfu(tick_vimu, (a: VFU) => a.vimu, op_idx,
       (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu() })
-    def mark_vfmu = mark_vfu(tick_vfmu, (a: VFU) => a.vfmu, op1_idx,
+    def mark_vfmu = mark_vfu(tick_vfmu, (a: VFU) => a.vfmu, op_idx,
       (lop: VFMULaneOp) => { lop.fn := io.seq.bits.fn.vfmu() })
-    def mark_vfcu = mark_vfu(tick_vfcu, (a: VFU) => a.vfcu, op1_idx,
+    def mark_vfcu = mark_vfu(tick_vfcu, (a: VFU) => a.vfcu, op_idx,
       (lop: VFCULaneOp) => { lop.fn := io.seq.bits.fn.vfcu() })
-    def mark_vfvu = mark_vfu(tick_vfvu, (a: VFU) => a.vfvu, op1_idx,
+    def mark_vfvu = mark_vfu(tick_vfvu, (a: VFU) => a.vfvu, op_idx,
       (lop: VFVULaneOp) => { lop.fn := io.seq.bits.fn.vfvu() })
-    def mark_vgu = mark_vfu(tick_vgu, (a: VFU) => a.vgu, op1_idx,
+    def mark_vgu = mark_vfu(tick_vgu, (a: VFU) => a.vgu, op_idx,
       (lop: VGULaneOp) => { lop.fn := io.seq.bits.fn.vmu() })
-    def mark_vsu = mark_vfu(tick_vsu, (a: VFU) => a.vsu, op0_idx,
+    def mark_vsu = mark_vfu(tick_vsu, (a: VFU) => a.vsu, op_idx,
       (lop: VSULaneOp) => { lop.selff := Bool(false) })
-    def mark_vqu = mark_vfu(tick_vqu, (a: VFU) => a.vqu, op1_idx,
+    def mark_vqu = mark_vfu(tick_vqu, (a: VFU) => a.vqu, op_idx,
       (lop: VQULaneOp) => { lop.fn := io.seq.bits.fn.vqu() })
   }
 

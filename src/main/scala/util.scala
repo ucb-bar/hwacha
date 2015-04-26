@@ -41,8 +41,9 @@ abstract trait Packing extends LaneParameters {
   def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_H, SZ_D)
   def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_B, SZ_D)
 
-  def repack_slice(n: Seq[Bits]) = _repack(n, wBank/SZ_D)
-  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, wBank)
+  def splat_slice(n: Bits) = Fill(nSlices, n.toUInt)
+  def repack_slice(n: Seq[Bits]) = _repack(n, nSlices)
+  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, params(HwachaRegLen), wBank)
 }
 
 object DataGating {
