@@ -480,7 +480,8 @@ class Sequencer extends VXUModule {
 
     val bhazard =
       (0 until nSeq) map { r =>
-        e(r).rports.orR && rport_mask.reduce(_ | _) || wport_mask(e(r).wport)
+        e(r).rports.orR && rport_mask.reduce(_ | _) ||
+        e(r).wport.orR && wport_mask(e(r).wport)
       }
 
     ///////////////////////////////////////////////////////////////////////////
