@@ -78,7 +78,7 @@ class FCmpSlice extends VXUModule with Packing {
           equal || less, // FC_CLE
           minmax,        // FC_MIN
           minmax,        // FC_MAX
-          classify._2)   // FC_CLASS
+          classify._1)   // FC_CLASS
         Mux1H(sel, in)
       }
     }
