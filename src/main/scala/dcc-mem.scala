@@ -45,6 +45,7 @@ class VGU extends VXUModule with Packing {
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
+        slice := UInt(0)
       }
     }
 
