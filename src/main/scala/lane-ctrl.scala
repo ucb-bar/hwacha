@@ -69,14 +69,13 @@ class LaneCtrl extends VXUModule {
 
   val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i)) }
   val vimu = new Shared(io.op.vimu)
-  val vfmu0 = new Shared(io.op.vfmu0)
-  val vfmu1 = new Shared(io.op.vfmu1)
+  val vfmu = (0 until nVFMU) map { i => new Shared(io.op.vfmu(i)) }
   val vfcu = new Shared(io.op.vfcu)
   val vfvu = new Shared(io.op.vfvu)
   val vgu = new Shared(io.op.vgu)
   val vqu = new Shared(io.op.vqu)
 
-  io.uop.sreg.zip(sreg).map { case (u, s) =>
+  (io.uop.sreg zip sreg) foreach { case (u, s) =>
     u.valid := s.valid
     u.bits.operand := s.bits.operand
     u.bits.pred := s.pred
@@ -89,8 +88,9 @@ class LaneCtrl extends VXUModule {
       fn(uop.bits, s)
   }
   connect_vfu(io.uop.vimu, vimu, (u: VIMUMicroOp, s: Shared[VIMULaneOp]) => u.fn := s.bits.fn)
-  connect_vfu(io.uop.vfmu0, vfmu0, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
-  connect_vfu(io.uop.vfmu1, vfmu1, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
+  (io.uop.vfmu zip vfmu) foreach { case (uop, shared) =>
+    connect_vfu(uop, shared, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
+  }
   connect_vfu(io.uop.vfcu, vfcu, (u: VFCUMicroOp, s: Shared[VFCULaneOp]) => u.fn := s.bits.fn)
   connect_vfu(io.uop.vfvu, vfvu, (u: VFVUMicroOp, s: Shared[VFVULaneOp]) => u.fn := s.bits.fn)
   connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u.fn := s.bits.fn)

@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import scala.collection.mutable.ArrayBuffer
 
 class BankOpIO extends VXUBundle {
   val sram = new Bundle {
@@ -49,22 +48,18 @@ class Bank(id: Int) extends VXUModule with Packing {
   rf.io.global <> io.rw
 
   // ALU
-  val outs = new ArrayBuffer[ValidIO[ALUResult]]
-  for (i <- 0 until nSlices) {
+  val outs = (0 until nSlices) map { i =>
     val alu = Module(new ALUSlice(id*nSlices+i))
-
     alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i)
     alu.io.req.bits.fn := io.op.viu.bits.fn
     alu.io.req.bits.eidx := io.op.viu.bits.eidx
-
     alu.io.req.bits.in0 :=
       Mux(io.op.sreg(0).valid, io.op.sreg(0).bits.operand,
                                unpack_slice(rf.io.local.rdata(0).d, i))
     alu.io.req.bits.in1 :=
       Mux(io.op.sreg(1).valid, io.op.sreg(1).bits.operand,
                                unpack_slice(rf.io.local.rdata(1).d, i))
-
-    outs += alu.io.resp
+    alu.io.resp
   }
   rf.io.local.wdata.d := repack_slice(outs.map(_.bits.out))
 

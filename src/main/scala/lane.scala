@@ -1,7 +1,6 @@
 package hwacha
 
 import Chisel._
-import scala.collection.mutable.ArrayBuffer
 
 case object HwachaBankWidth extends Field[Int]
 case object HwachaNBanks extends Field[Int]
@@ -34,6 +33,7 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val nWSel = params(HwachaWriteSelects)
   val nLRQOperands = 3
   val nDecoupledUnitWBQueue = 4
+  val nVFMU = 2
 
   val stagesALU = params(HwachaStagesALU)
   val stagesIMul = params(HwachaStagesIMul)
@@ -64,8 +64,7 @@ class LaneOpIO extends VXUBundle {
   val xbar = Vec.fill(nGOPL){Valid(new XBarLaneOp)}
   val viu = Valid(new VIULaneOp)
   val vimu = Valid(new VIMULaneOp)
-  val vfmu0 = Valid(new VFMULaneOp)
-  val vfmu1 = Valid(new VFMULaneOp)
+  val vfmu = Vec.fill(nVFMU){Valid(new VFMULaneOp)}
   val vfcu = Valid(new VFCULaneOp)
   val vfvu = Valid(new VFVULaneOp)
   val vqu = Valid(new VQULaneOp)
@@ -79,8 +78,7 @@ class MicroOpIO extends VXUBundle {
   val vqu = Valid(new VQUMicroOp)
   val vgu = Valid(new VGUMicroOp)
   val vimu = Valid(new VIMUMicroOp)
-  val vfmu0 = Valid(new VFMUMicroOp)
-  val vfmu1 = Valid(new VFMUMicroOp)
+  val vfmu = Vec.fill(nVFMU){Valid(new VFMUMicroOp)}
   val vfcu = Valid(new VFCUMicroOp)
   val vfvu = Valid(new VFVUMicroOp)
 }
@@ -90,8 +88,7 @@ class LaneAckIO extends VXUBundle {
   val vqu = Valid(new VQUAck)
   val vgu = Valid(new VGUAck)
   val vimu = Valid(new VIMUAck)
-  val vfmu0 = Valid(new VFMUAck)
-  val vfmu1 = Valid(new VFMUAck)
+  val vfmu = Vec.fill(nVFMU){Valid(new VFMUAck)}
   val vfcu = Valid(new VFCUAck)
   val vfvu = Valid(new VFVUAck)
 }
@@ -111,24 +108,17 @@ class Lane extends VXUModule with Packing {
   }
 
   val ctrl = Module(new LaneCtrl)
-  val banksrw = new ArrayBuffer[BankRWIO]
-  val imuls = new ArrayBuffer[ValidIO[IMulResult]]
-  val fma0s = new ArrayBuffer[ValidIO[FMAResult]]
-  val fma1s = new ArrayBuffer[ValidIO[FMAResult]]
-  val fcmps = new ArrayBuffer[ValidIO[FCmpResult]]
-  val fconvs = new ArrayBuffer[ValidIO[FConvResult]]
-
   ctrl.io.op <> io.op
 
-  for (i <- 0 until nBanks) {
+  val banksrw = (0 until nBanks) map { i =>
     val bank = Module(new Bank(i))
 
     // TODO: this needs to be sequenced
     bank.io.op <> ctrl.io.uop.bank(i)
-    banksrw += bank.io.rw
     io.brqs(i) <> bank.io.rw.brq
     bank.io.rw.bwq.mem <> io.bwqs.mem(i)
     bank.io.rw.bwq.fu <> io.bwqs.fu(i)
+    bank.io.rw
   }
 
   val rdata = (0 until nGOPL).map { o =>
@@ -148,68 +138,71 @@ class Lane extends VXUModule with Packing {
   assert(!io.lrqs(1).valid || io.lrqs(1).ready, "check lrqs(1) counter logic")
   assert(!io.lrqs(2).valid || io.lrqs(2).ready, "check lrqs(1) counter logic")
 
-  for (i <- 0 until nSlices) {
-    val fma0 = Module(new FMASlice)
-    fma0.io.req.valid := ctrl.io.uop.vfmu0.valid && ctrl.io.uop.vfmu0.bits.pred(i)
-    fma0.io.req.bits.fn := ctrl.io.uop.vfmu0.bits.fn
-    fma0.io.req.bits.in0 := unpack_slice(rdata(0), i)
-    fma0.io.req.bits.in1 := unpack_slice(rdata(1), i)
-    fma0.io.req.bits.in2 := unpack_slice(rdata(2), i)
-    fma0s += fma0.io.resp
-
-    val imul = Module(new IMulSlice)
-    imul.io.req.valid := ctrl.io.uop.vimu.valid && ctrl.io.uop.vimu.bits.pred(i)
-    imul.io.req.bits.fn := ctrl.io.uop.vimu.bits.fn
-    imul.io.req.bits.in0 := unpack_slice(rdata(0), i)
-    imul.io.req.bits.in1 := unpack_slice(rdata(1), i)
-    imuls += imul.io.resp
-
-    val fconv = Module(new FConvSlice)
-    fconv.io.req.valid := ctrl.io.uop.vfvu.valid && ctrl.io.uop.vfvu.bits.pred(i)
-    fconv.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
-    fconv.io.req.bits.in := unpack_slice(rdata(2), i)
-    fconvs += fconv.io.resp
-
-    val fma1 = Module(new FMASlice)
-    fma1.io.req.valid := ctrl.io.uop.vfmu1.valid && ctrl.io.uop.vfmu1.bits.pred(i)
-    fma1.io.req.bits.fn := ctrl.io.uop.vfmu1.bits.fn
-    fma1.io.req.bits.in0 := unpack_slice(rdata(3), i)
-    fma1.io.req.bits.in1 := unpack_slice(rdata(4), i)
-    fma1.io.req.bits.in2 := unpack_slice(rdata(5), i)
-    fma1s += fma1.io.resp
-
-    val fcmp = Module(new FCmpSlice)
-    fcmp.io.req.valid := ctrl.io.uop.vfcu.valid && ctrl.io.uop.vfcu.bits.pred(i)
-    fcmp.io.req.bits.fn := ctrl.io.uop.vfcu.bits.fn
-    fcmp.io.req.bits.in0 := unpack_slice(rdata(3), i)
-    fcmp.io.req.bits.in1 := unpack_slice(rdata(4), i)
-    fcmps += fcmp.io.resp
+  val vfmus = (0 until nVFMU) map { v =>
+    (0 until nSlices) map { i =>
+      val vfmu = Module(new FMASlice)
+      vfmu.io.req.valid := ctrl.io.uop.vfmu(v).valid && ctrl.io.uop.vfmu(v).bits.pred(i)
+      vfmu.io.req.bits.fn := ctrl.io.uop.vfmu(v).bits.fn
+      vfmu.io.req.bits.in0 := unpack_slice(rdata(3*v+0), i)
+      vfmu.io.req.bits.in1 := unpack_slice(rdata(3*v+1), i)
+      vfmu.io.req.bits.in2 := unpack_slice(rdata(3*v+2), i)
+      vfmu.io.resp
+    }
   }
+
+  val vimus = (0 until nSlices) map { i =>
+    val vimu = Module(new IMulSlice)
+    vimu.io.req.valid := ctrl.io.uop.vimu.valid && ctrl.io.uop.vimu.bits.pred(i)
+    vimu.io.req.bits.fn := ctrl.io.uop.vimu.bits.fn
+    vimu.io.req.bits.in0 := unpack_slice(rdata(0), i)
+    vimu.io.req.bits.in1 := unpack_slice(rdata(1), i)
+    vimu.io.resp
+  }
+
+  val vfvus = (0 until nSlices) map { i =>
+    val vfvu = Module(new FConvSlice)
+    vfvu.io.req.valid := ctrl.io.uop.vfvu.valid && ctrl.io.uop.vfvu.bits.pred(i)
+    vfvu.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
+    vfvu.io.req.bits.in := unpack_slice(rdata(2), i)
+    vfvu.io.resp
+  }
+
+  val vfcus = (0 until nSlices) map { i =>
+    val vfcu = Module(new FCmpSlice)
+    vfcu.io.req.valid := ctrl.io.uop.vfcu.valid && ctrl.io.uop.vfcu.bits.pred(i)
+    vfcu.io.req.bits.fn := ctrl.io.uop.vfcu.bits.fn
+    vfcu.io.req.bits.in0 := unpack_slice(rdata(3), i)
+    vfcu.io.req.bits.in1 := unpack_slice(rdata(4), i)
+    vfcu.io.resp
+  }
+
+  require(nVFMU == 2)
 
   val wdata = List(
     MuxCase(Bits(0), Array(
-      fma0s.map(_.valid).reduce(_|_) -> repack_slice(fma0s.map(_.bits.out)),
-      imuls.map(_.valid).reduce(_|_) -> repack_slice(imuls.map(_.bits.out)),
-      fconvs.map(_.valid).reduce(_|_) -> repack_slice(fconvs.map(_.bits.out)))),
+      vfmus(0).map(_.valid).reduce(_|_) -> repack_slice(vfmus(0).map(_.bits.out)),
+      vimus.map(_.valid).reduce(_|_) -> repack_slice(vimus.map(_.bits.out)),
+      vfvus.map(_.valid).reduce(_|_) -> repack_slice(vfvus.map(_.bits.out)))),
     MuxCase(Bits(0), Array(
-      fma1s.map(_.valid).reduce(_|_) -> repack_slice(fma1s.map(_.bits.out)),
-      fcmps.map(_.valid).reduce(_|_) -> repack_slice(fcmps.map(_.bits.out)))))
+      vfmus(1).map(_.valid).reduce(_|_) -> repack_slice(vfmus(1).map(_.bits.out)),
+      vfcus.map(_.valid).reduce(_|_) -> repack_slice(vfcus.map(_.bits.out)))))
 
   banksrw.map { b => b.wdata.zipWithIndex.map { case (bwdata, i) => bwdata.d := wdata(i) }}
 
+  (io.ack.vfmu zip vfmus) foreach { case (ack, vfmu) =>
+    ack.valid := vfmu.map(_.valid).reduce(_|_)
+    ack.bits.pred := Vec(vfmu.map(_.valid)).toBits
+  }
+
   io.ack.vqu.valid := ctrl.io.uop.vqu.valid
   io.ack.vgu.valid := ctrl.io.uop.vgu.valid
-  io.ack.vimu.valid := imuls.map(_.valid).reduce(_|_)
-  io.ack.vfmu0.valid := fma0s.map(_.valid).reduce(_|_)
-  io.ack.vfmu1.valid := fma1s.map(_.valid).reduce(_|_)
-  io.ack.vfcu.valid := fcmps.map(_.valid).reduce(_|_)
-  io.ack.vfvu.valid := fconvs.map(_.valid).reduce(_|_)
+  io.ack.vimu.valid := vimus.map(_.valid).reduce(_|_)
+  io.ack.vfcu.valid := vfcus.map(_.valid).reduce(_|_)
+  io.ack.vfvu.valid := vfvus.map(_.valid).reduce(_|_)
 
   io.ack.vqu.bits.pred := ctrl.io.uop.vqu.bits.pred
   io.ack.vgu.bits.pred := ctrl.io.uop.vgu.bits.pred
-  io.ack.vimu.bits.pred := Vec(imuls.map(_.valid)).toBits
-  io.ack.vfmu0.bits.pred := Vec(fma0s.map(_.valid)).toBits
-  io.ack.vfmu1.bits.pred := Vec(fma1s.map(_.valid)).toBits
-  io.ack.vfcu.bits.pred := Vec(fcmps.map(_.valid)).toBits
-  io.ack.vfvu.bits.pred := Vec(fconvs.map(_.valid)).toBits
+  io.ack.vimu.bits.pred := Vec(vimus.map(_.valid)).toBits
+  io.ack.vfcu.bits.pred := Vec(vfcus.map(_.valid)).toBits
+  io.ack.vfvu.bits.pred := Vec(vfvus.map(_.valid)).toBits
 }

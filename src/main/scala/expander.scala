@@ -41,7 +41,7 @@ class TickerIO extends VXUBundle {
   val xbar = Vec.fill(nGOPL){Vec.fill(maxXbarTicks){Valid(new XBarLaneOp)}}
   val viu = Vec.fill(maxVIUTicks){Valid(new VIULaneOp)}
   val vimu = Vec.fill(maxVIMUTicks){Valid(new VIMULaneOp)}
-  val vfmu = Vec.fill(maxVFMUTicks){Valid(new VFMULaneOp)}
+  val vfmu = Vec.fill(nVFMU){Vec.fill(maxVFMUTicks){Valid(new VFMULaneOp)}}
   val vfcu = Vec.fill(maxVFCUTicks){Valid(new VFCULaneOp)}
   val vfvu = Vec.fill(maxVFVUTicks){Valid(new VFVULaneOp)}
   val vgu = Vec.fill(maxVGUTicks){Valid(new VGULaneOp)}
@@ -73,6 +73,9 @@ class Expander extends VXUModule {
     }))
 
     def ondeck = s(0)
+
+    def connect(tio: Vec[ValidIO[T]]) =
+      (tio zip s) foreach { case (io, lop) => io := lop }
   }
 
   class BuildExpander {
@@ -83,7 +86,7 @@ class Expander extends VXUModule {
     val tick_xbar = IndexedSeq.fill(nGOPL){new Ticker(new XBarLaneOp, maxXbarTicks)}
     val tick_viu = new Ticker(new VIULaneOp, maxVIUTicks)
     val tick_vimu = new Ticker(new VIMULaneOp, maxVIMUTicks)
-    val tick_vfmu = new Ticker(new VFMULaneOp, maxVFMUTicks)
+    val tick_vfmu = IndexedSeq.fill(nVFMU){new Ticker(new VFMULaneOp, maxVFMUTicks)}
     val tick_vfcu = new Ticker(new VFCULaneOp, maxVFCUTicks)
     val tick_vfvu = new Ticker(new VFVULaneOp, maxVFVUTicks)
     val tick_vgu = new Ticker(new VGULaneOp, maxVGUTicks)
@@ -111,9 +114,11 @@ class Expander extends VXUModule {
       e.bits.local.valid := Bool(false)
 
       // 3-ported operations
-      when (io.seq.bits.active.vfmu) {
-        e.bits.global.valid := Bool(true)
-        e.bits.global.id := UInt(idx)
+      (0 until nVFMU) foreach { i =>
+        when (io.seq.bits.active_vfmu(i)) {
+          e.bits.global.valid := Bool(true)
+          e.bits.global.id := UInt(3*i+idx)
+        }
       }
 
       // 2-ported operations
@@ -171,7 +176,13 @@ class Expander extends VXUModule {
         e.bits.addr := io.seq.bits.reg.vd.id
         e.bits.strip := io.seq.bits.strip
         e.bits.selg := Bool(false)
-        when (io.seq.bits.active.vimu || io.seq.bits.active.vfmu || io.seq.bits.active.vfvu) {
+        (0 until nVFMU) foreach { i =>
+          when (io.seq.bits.active_vfmu(i)) {
+            e.bits.selg := Bool(true)
+            e.bits.wsel := UInt(i)
+          }
+        }
+        when (io.seq.bits.active.vimu || io.seq.bits.active.vfvu) {
           e.bits.selg := Bool(true)
           e.bits.wsel := UInt(0)
         }
@@ -211,16 +222,22 @@ class Expander extends VXUModule {
       mark_sreg(tick_sreg_local, i, fn, sfn)
 
     def mark_xbars_sregs = {
-      when (io.seq.bits.active.vfmu || io.seq.bits.active.vimu) {
+      (0 until nVFMU) foreach { i =>
+        when (io.seq.bits.active_vfmu(i)) {
+          mark_xbar(3*i+0, reg_vs1)
+          mark_xbar(3*i+1, reg_vs2)
+          mark_xbar(3*i+2, reg_vs3)
+          mark_sreg_global(3*i+0, reg_vs1, sreg_ss1)
+          mark_sreg_global(3*i+1, reg_vs2, sreg_ss2)
+          mark_sreg_global(3*i+2, reg_vs3, sreg_ss3)
+        }
+      }
+
+      when (io.seq.bits.active.vimu) {
         mark_xbar(0, reg_vs1)
         mark_xbar(1, reg_vs2)
         mark_sreg_global(0, reg_vs1, sreg_ss1)
         mark_sreg_global(1, reg_vs2, sreg_ss2)
-      }
-
-      when (io.seq.bits.active.vfmu) {
-        mark_xbar(2, reg_vs3)
-        mark_sreg_global(2, reg_vs3, sreg_ss3)
       }
 
       when (io.seq.bits.active.vfvu) {
@@ -250,29 +267,29 @@ class Expander extends VXUModule {
       }
     }
 
-    def mark_vfu[T <: LaneOp](tick: Ticker[T], afn: VFU=>Bool, idx: UInt, fn: T=>Unit) = {
-      when (afn(io.seq.bits.active)) {
-        tick.s(idx).valid := Bool(true)
-        tick.s(idx).bits.strip := io.seq.bits.strip
-        fn(tick.s(idx).bits)
+    def mark_vfu[T <: LaneOp](tick: Ticker[T], opfn: SequencerOp=>Bool, fn: T=>Unit) = {
+      when (opfn(io.seq.bits)) {
+        tick.s(op_idx).valid := Bool(true)
+        tick.s(op_idx).bits.strip := io.seq.bits.strip
+        fn(tick.s(op_idx).bits)
       }
     }
 
-    def mark_viu = mark_vfu(tick_viu, (a: VFU) => a.viu, op_idx,
+    def mark_viu = mark_vfu(tick_viu, (op: SequencerOp) => op.active.viu,
       (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu(); lop.eidx := io.seq.bits.eidx })
-    def mark_vimu = mark_vfu(tick_vimu, (a: VFU) => a.vimu, op_idx,
+    def mark_vimu = mark_vfu(tick_vimu, (op: SequencerOp) => op.active.vimu,
       (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu() })
-    def mark_vfmu = mark_vfu(tick_vfmu, (a: VFU) => a.vfmu, op_idx,
+    def mark_vfmu(i: Int) = mark_vfu(tick_vfmu(i), (op: SequencerOp) => op.active_vfmu(i),
       (lop: VFMULaneOp) => { lop.fn := io.seq.bits.fn.vfmu() })
-    def mark_vfcu = mark_vfu(tick_vfcu, (a: VFU) => a.vfcu, op_idx,
+    def mark_vfcu = mark_vfu(tick_vfcu, (op: SequencerOp) => op.active.vfcu,
       (lop: VFCULaneOp) => { lop.fn := io.seq.bits.fn.vfcu() })
-    def mark_vfvu = mark_vfu(tick_vfvu, (a: VFU) => a.vfvu, op_idx,
+    def mark_vfvu = mark_vfu(tick_vfvu, (op: SequencerOp) => op.active.vfvu,
       (lop: VFVULaneOp) => { lop.fn := io.seq.bits.fn.vfvu() })
-    def mark_vgu = mark_vfu(tick_vgu, (a: VFU) => a.vgu, op_idx,
+    def mark_vgu = mark_vfu(tick_vgu, (op: SequencerOp) => op.active.vgu,
       (lop: VGULaneOp) => { lop.fn := io.seq.bits.fn.vmu() })
-    def mark_vsu = mark_vfu(tick_vsu, (a: VFU) => a.vsu, op_idx,
+    def mark_vsu = mark_vfu(tick_vsu, (op: SequencerOp) => op.active.vsu,
       (lop: VSULaneOp) => { lop.selff := Bool(false) })
-    def mark_vqu = mark_vfu(tick_vqu, (a: VFU) => a.vqu, op_idx,
+    def mark_vqu = mark_vfu(tick_vqu, (op: SequencerOp) => op.active.vqu,
       (lop: VQULaneOp) => { lop.fn := io.seq.bits.fn.vqu() })
   }
 
@@ -284,7 +301,7 @@ class Expander extends VXUModule {
     exp.mark_xbars_sregs
     exp.mark_viu
     exp.mark_vimu
-    exp.mark_vfmu
+    (0 until nVFMU) foreach { i => exp.mark_vfmu(i) }
     exp.mark_vfcu
     exp.mark_vfvu
     exp.mark_vgu
@@ -310,33 +327,29 @@ class Expander extends VXUModule {
     io.lane.opl.local(s1_sram_read.bits.local.id).valid := Bool(true)
   }
 
-  (0 until nGOPL).foreach { i => io.lane.sreg.global(i) := exp.tick_sreg_global(i).ondeck }
-  (0 until nLOPL).foreach { i => io.lane.sreg.local(i) := exp.tick_sreg_local(i).ondeck }
-  (0 until nGOPL).foreach { i => io.lane.xbar(i) := exp.tick_xbar(i).ondeck }
+  (0 until nGOPL) foreach { i => io.lane.sreg.global(i) := exp.tick_sreg_global(i).ondeck }
+  (0 until nLOPL) foreach { i => io.lane.sreg.local(i) := exp.tick_sreg_local(i).ondeck }
+  (0 until nGOPL) foreach { i => io.lane.xbar(i) := exp.tick_xbar(i).ondeck }
   io.lane.viu <> exp.tick_viu.ondeck
   io.lane.vimu <> exp.tick_vimu.ondeck
-  io.lane.vfmu0 <> exp.tick_vfmu.ondeck
-  io.lane.vfmu1.valid := Bool(false)
+  (0 until nVFMU) foreach { i => io.lane.vfmu(i) <> exp.tick_vfmu(i).ondeck }
   io.lane.vfcu <> exp.tick_vfcu.ondeck
   io.lane.vfvu <> exp.tick_vfvu.ondeck
   io.lane.vgu <> exp.tick_vgu.ondeck
   io.lane.vsu <> exp.tick_vsu.ondeck
   io.lane.vqu <> exp.tick_vqu.ondeck
 
-  (io.ticker.sram.read zip exp.tick_sram_read.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.sram.write zip exp.tick_sram_write.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.sreg.global zip exp.tick_sreg_global) foreach { case (tio, tick) =>
-    (tio zip tick.s) foreach { case (io, lop) => io := lop } }
-  (io.ticker.sreg.local zip exp.tick_sreg_local) foreach { case (tio, tick) =>
-    (tio zip tick.s) foreach { case (io, lop) => io := lop } }
-  (io.ticker.xbar zip exp.tick_xbar) foreach { case (tio, tick) =>
-    (tio zip tick.s) foreach { case (io, lop) => io := lop } }
-  (io.ticker.viu zip exp.tick_viu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vimu zip exp.tick_vimu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vfmu zip exp.tick_vfmu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vfcu zip exp.tick_vfcu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vfvu zip exp.tick_vfvu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vgu zip exp.tick_vgu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vsu zip exp.tick_vsu.s) foreach { case (io, lop) => io := lop }
-  (io.ticker.vqu zip exp.tick_vqu.s) foreach { case (io, lop) => io := lop }
+  exp.tick_sram_read connect io.ticker.sram.read
+  exp.tick_sram_write connect io.ticker.sram.write
+  (0 until nGOPL) foreach { i => exp.tick_sreg_global(i) connect io.ticker.sreg.global(i) }
+  (0 until nLOPL) foreach { i => exp.tick_sreg_local(i) connect io.ticker.sreg.local(i) }
+  (0 until nGOPL) foreach { i => exp.tick_xbar(i) connect io.ticker.xbar(i) }
+  exp.tick_viu connect io.ticker.viu
+  exp.tick_vimu connect io.ticker.vimu
+  (0 until nVFMU) foreach { i => exp.tick_vfmu(i) connect io.ticker.vfmu(i) }
+  exp.tick_vfcu connect io.ticker.vfcu
+  exp.tick_vfvu connect io.ticker.vfvu
+  exp.tick_vgu connect io.ticker.vgu
+  exp.tick_vsu connect io.ticker.vsu
+  exp.tick_vqu connect io.ticker.vqu
 }

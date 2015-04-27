@@ -148,7 +148,7 @@ class IssueOp extends DecodedInstruction {
 // sequencer op
 //-------------------------------------------------------------------------\\
 
-class VFU extends VXUBundle {
+class SeqType extends VXUBundle {
   val viu = Bool()
   val vimu = Bool()
   val vidu = Bool()
@@ -164,7 +164,7 @@ class VFU extends VXUBundle {
 }
 
 class SeqEntry extends DecodedInstruction {
-  val active = new VFU
+  val active = new SeqType
   val base = new DecodedRegisters
   val raw = Vec.fill(nSeq){Bool()}
   val war = Vec.fill(nSeq){Bool()}
@@ -176,12 +176,19 @@ class SeqEntry extends DecodedInstruction {
   val age = UInt(width = log2Up(nBanks))
 }
 
+class SeqSelect extends VXUBundle {
+  val vfmu = UInt(width = log2Up(nVFMU))
+}
+
 class SequencerOp extends DecodedInstruction {
-  val active = new VFU
+  val active = new SeqType
+  val select = new SeqSelect
   val eidx = UInt(width = bVLen)
   val rports = UInt(width = bRPorts)
   val wport = UInt(width = bWPortLatency)
   val strip = UInt(width = bStrip)
+
+  def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
 

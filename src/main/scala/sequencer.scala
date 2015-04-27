@@ -60,7 +60,7 @@ class Sequencer extends VXUModule {
       val use_mask_sreg_global = Vec.fill(nGOPL){Bits(OUTPUT, maxSRegGlobalTicks+nBanks-1)}
       val use_mask_xbar = Vec.fill(nGOPL){Bits(OUTPUT, maxXbarTicks+nBanks-1)}
       val use_mask_vimu = Bits(OUTPUT, maxVIMUTicks+nBanks-1)
-      val use_mask_vfmu = Bits(OUTPUT, maxVFMUTicks+nBanks-1)
+      val use_mask_vfmu = Vec.fill(nVFMU){Bits(OUTPUT, maxVFMUTicks+nBanks-1)}
       val use_mask_vfcu = Bits(OUTPUT, maxVFCUTicks+nBanks-1)
       val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
       val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
@@ -170,7 +170,7 @@ class Sequencer extends VXUModule {
       valid(n) := Bool(false)
     }
 
-    def set_active(n: UInt, afn: VFU=>Bool, fn: IssueOp=>Bits) = {
+    def set_active(n: UInt, afn: SeqType=>Bool, fn: IssueOp=>Bits) = {
       afn(e(n).active) := Bool(true)
       e(n).fn.union := fn(io.op.bits)
     }
@@ -277,18 +277,18 @@ class Sequencer extends VXUModule {
       Cat(d.fn.vfdu().op_is(FD_DIV), Bool(true))
     }
 
-    def set_viu(n: UInt) = set_active(n, (a: VFU) => a.viu, fn_identity)
-    def set_vimu(n: UInt) = set_active(n, (a: VFU) => a.vimu, fn_identity)
-    def set_vidu(n: UInt) = set_active(n, (a: VFU) => a.vidu, fn_identity)
-    def set_vfmu(n: UInt) = set_active(n, (a: VFU) => a.vfmu, fn_identity)
-    def set_vfdu(n: UInt) = set_active(n, (a: VFU) => a.vfdu, fn_identity)
-    def set_vfcu(n: UInt) = set_active(n, (a: VFU) => a.vfcu, fn_identity)
-    def set_vfvu(n: UInt) = set_active(n, (a: VFU) => a.vfvu, fn_identity)
-    def set_vgu(n: UInt) = set_active(n, (a: VFU) => a.vgu, fn_identity)
-    def set_vcu(n: UInt) = set_active(n, (a: VFU) => a.vcu, fn_identity)
-    def set_vlu(n: UInt) = set_active(n, (a: VFU) => a.vlu, fn_identity)
-    def set_vsu(n: UInt) = set_active(n, (a: VFU) => a.vsu, fn_identity)
-    def set_vqu(n: UInt) = set_active(n, (a: VFU) => a.vqu, fn_vqu)
+    def set_viu(n: UInt) = set_active(n, (a: SeqType) => a.viu, fn_identity)
+    def set_vimu(n: UInt) = set_active(n, (a: SeqType) => a.vimu, fn_identity)
+    def set_vidu(n: UInt) = set_active(n, (a: SeqType) => a.vidu, fn_identity)
+    def set_vfmu(n: UInt) = set_active(n, (a: SeqType) => a.vfmu, fn_identity)
+    def set_vfdu(n: UInt) = set_active(n, (a: SeqType) => a.vfdu, fn_identity)
+    def set_vfcu(n: UInt) = set_active(n, (a: SeqType) => a.vfcu, fn_identity)
+    def set_vfvu(n: UInt) = set_active(n, (a: SeqType) => a.vfvu, fn_identity)
+    def set_vgu(n: UInt) = set_active(n, (a: SeqType) => a.vgu, fn_identity)
+    def set_vcu(n: UInt) = set_active(n, (a: SeqType) => a.vcu, fn_identity)
+    def set_vlu(n: UInt) = set_active(n, (a: SeqType) => a.vlu, fn_identity)
+    def set_vsu(n: UInt) = set_active(n, (a: SeqType) => a.vsu, fn_identity)
+    def set_vqu(n: UInt) = set_active(n, (a: SeqType) => a.vqu, fn_vqu)
 
     def set_vs(n: UInt,
       e_vsfn: DecodedRegisters=>RegInfo, op_vsfn: DecodedRegisters=>RegInfo,
@@ -504,7 +504,7 @@ class Sequencer extends VXUModule {
     val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
     val use_mask_xbar = io.ticker.xbar map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
     val use_mask_vimu = use_mask_lop(io.ticker.vimu).reduce(_ | _) >> UInt(1)
-    val use_mask_vfmu = use_mask_lop(io.ticker.vfmu).reduce(_ | _) >> UInt(1)
+    val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
     val use_mask_vfcu = use_mask_lop(io.ticker.vfcu).reduce(_ | _) >> UInt(1)
     val use_mask_vfvu = use_mask_lop(io.ticker.vfvu).reduce(_ | _) >> UInt(1)
     val use_mask_vgu = use_mask_lop(io.ticker.vgu).reduce(_ | _) >> UInt(1)
@@ -527,7 +527,7 @@ class Sequencer extends VXUModule {
         val check_operand_3_4_5 = check_operand_3_4 || check_operand(reg_vs3, 5)
         val check_operand_5 = check_operand(reg_vs1, 5)
         val shazard_vimu = check_operand_0_1 || check_shazard(use_mask_vimu)
-        val shazard_vfmu = check_operand_0_1_2 || check_shazard(use_mask_vfmu)
+        val shazard_vfmu = check_operand_0_1_2 || check_shazard(use_mask_vfmu(1))
         val shazard_vfcu = check_operand_3_4 || check_shazard(use_mask_vfcu)
         val shazard_vfvu = check_operand_2 || check_shazard(use_mask_vfvu)
         val shazard_vgu = check_operand_5 || check_shazard(use_mask_vgu)
@@ -643,6 +643,7 @@ class Sequencer extends VXUModule {
       out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
       out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
       out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
+      out.select.vfmu := UInt(1)
       out.eidx := readfn(exp_sched, (e: SeqEntry) => e.eidx)
       out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
       out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
@@ -728,7 +729,7 @@ class Sequencer extends VXUModule {
       io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
       io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
       io.debug.use_mask_vimu := use_mask_vimu
-      io.debug.use_mask_vfmu := use_mask_vfmu
+      io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
       io.debug.use_mask_vfcu := use_mask_vfcu
       io.debug.use_mask_vfvu := use_mask_vfvu
       io.debug.use_mask_vgu := use_mask_vgu
