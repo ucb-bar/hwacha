@@ -71,10 +71,13 @@ class Sequencer extends VXUModule {
     }
   }
 
-  def strip_to_bmask(strip: UInt) = {
+  def strip_to_bcnt(strip: UInt) = {
     val stripp1 = strip + UInt(1)
-    val in = if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
-    EnableDecoder(in, nBanks).toBits
+    if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
+  }
+
+  def strip_to_bmask(strip: UInt) = {
+    EnableDecoder(strip_to_bcnt(strip), nBanks).toBits
   }
 
   class BuildSequencer {
@@ -768,21 +771,21 @@ class Sequencer extends VXUModule {
   io.seq.valid := seq.exp_val
   io.seq.bits := seq.exp_seq
 
-  val vqu_cnt = PopCount(strip_to_bmask(seq.vqu_strip))
+  val vqu_cnt = strip_to_bcnt(seq.vqu_strip)
   (io.dqla zipWithIndex) map { case (la, i) =>
     la.cnt := vqu_cnt
     la.reserve := seq.exp_val && seq.exp_seq.active.vqu && seq.exp_seq.fn.vqu().latch(i)
   }
 
-  io.dila.cnt := PopCount(strip_to_bmask(seq.vidu_strip))
+  io.dila.cnt := strip_to_bcnt(seq.vidu_strip)
   io.dila.reserve := seq.vidu_val && io.dila.available
   seq.vidu_ready := io.dila.available
 
-  io.dfla.cnt := PopCount(strip_to_bmask(seq.vfdu_strip))
+  io.dfla.cnt := strip_to_bcnt(seq.vfdu_strip)
   io.dfla.reserve := seq.vfdu_val && io.dfla.available
   seq.vfdu_ready := io.dfla.available
 
-  io.gla.cnt := PopCount(strip_to_bmask(seq.vgu_strip))
+  io.gla.cnt := strip_to_bcnt(seq.vgu_strip)
   io.gla.reserve := seq.exp_val && seq.exp_seq.active.vgu
 
   io.vmu.pala.cnt := seq.vcu_strip
