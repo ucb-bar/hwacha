@@ -514,9 +514,10 @@ class VLUInterposer extends VXUModule with VMUParameters {
   }
 
   val meta = io.enq.bits.meta
+  val ecnt = Mux(meta.ecnt === UInt(0), UInt(tlDataBytes), meta.ecnt)
 
   val ecnt_head = SInt(nBatch) - meta.eskip.zext
-  val ecnt_tail = meta.ecnt.zext - ecnt_head
+  val ecnt_tail = ecnt.zext - ecnt_head
   val has_head = (ecnt_head > SInt(0))
   val has_tail = (ecnt_tail > SInt(0))
 

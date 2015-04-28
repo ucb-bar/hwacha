@@ -48,7 +48,7 @@ class SBox extends VMUModule {
   funnel.io.shift := offset.zext - index_real.zext
 
   // Map (ecnt == 0) to tlDataBytes
-  val mask_lut = Vec(UInt(tlDataBytes) +:
+  val mask_lut = Vec(UInt((1 << tlDataBytes) - 1) +:
     (1 until tlDataBytes).map(i => UInt((1 << i) - 1)))
   val mask_elt = mask_lut(meta.ecnt)
   val mask_shl = mask_elt << meta.eskip
