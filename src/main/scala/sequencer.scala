@@ -514,7 +514,7 @@ class Sequencer extends VXUModule {
       (0 until nSeq) map { r =>
         val op_idx = e(r).rports + UInt(1, bRPorts+1)
         val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
-        val ask_mask = UInt(strip_to_bmask(op_idx) << UInt(strip), maxXbarTicks+nBanks-1)
+        val ask_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
         def check_shazard(use_mask: Bits) = (use_mask & ask_mask).orR
         def check_operand(fn: DecodedRegisters=>RegInfo, i: Int) =
           fn(e(r).reg).valid && (
