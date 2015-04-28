@@ -4,6 +4,12 @@ import Chisel._
 import rocket.ALU._
 import ScalarFPUDecode._
 
+class VCFG extends HwachaBundle {
+  val nppr = UInt(width = bPRegs)
+  val nvpr = UInt(width = bVRegs)
+  val vlen = UInt(width = bVLen)
+}
+
 class CtrlDpathIO extends HwachaBundle {
   val inst = Bits(INPUT, 64)
   val ex_inst = Bits(INPUT, 64)
@@ -81,9 +87,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vf_active     = Reg(init=Bool(false))
   val ex_vf_active  = Reg(init=Bool(false))
   val wb_vf_active  = Reg(init=Bool(false))
-  val vl            = Reg(init=UInt(0, bVLen))
-  val vregs         = Reg(init=UInt(32, bVRegs))
-  val pregs         = Reg(init=UInt(0, bPRegs))
+  val vcfg = Reg(new VCFG())
+  val vl = vcfg.vlen
+  val vregs = vcfg.nvpr
+  val pregs = vcfg.nppr
 
   val pending_memop = Reg(init=Bool(false))
 
@@ -135,12 +142,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   when (fire(null,decode_vsetcfg)) {
-    vl    := io.cmdq.imm.bits(vl.getWidth, 0)
-    vregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth, vl.getWidth+1)
-    pregs := io.cmdq.imm.bits(vl.getWidth+vregs.getWidth+pregs.getWidth, vl.getWidth+vregs.getWidth+1)
+    vcfg := new VCFG().fromBits(io.cmdq.imm.bits(vcfg.getWidth,0))
   }
   when (fire(null,decode_vsetvl)) {
-    vl    := io.cmdq.imm.bits(vl.getWidth, 0)
+    vcfg.vlen    := io.cmdq.imm.bits(vcfg.vlen.getWidth, 0)
   }
   io.dpath.fire_vf := Bool(false)
   when (fire(null,decode_vf)) {

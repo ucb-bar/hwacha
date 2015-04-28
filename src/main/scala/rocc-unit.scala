@@ -70,10 +70,10 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   }
 
   // Cofiguration state
-  val cfg_maxvl = Reg(init=UInt(64, bVLen))
+  val cfg_maxvl = Reg(init=UInt(8, bVLen))
   val cfg_vl = Reg(init=UInt(0, bVLen))
-  val cfg_vregs = Reg(init=UInt(32, bVRegs))
-  val cfg_pregs = Reg(init=UInt(0, bPRegs))
+  val cfg_vregs = Reg(init=UInt(256, bVRegs))
+  val cfg_pregs = Reg(init=UInt(1, bPRegs))
   io.cfg.vstride := cfg_vregs
 
   // Decode
@@ -125,8 +125,8 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   }
 
   // Logic to handle vector length calculation
-  val nvpr = (io.rocc.cmd.bits.rs1(bVRegs-1, 0) + inst_i_imm(bVRegs-1, 0))(bVRegs-1, 0)
-  val nppr = (io.rocc.cmd.bits.rs1(bVRegs+bPRegs-1, bVRegs) + inst_i_imm(11, bVRegs))(bPRegs-1, 0)
+  val nvpr = (io.rocc.cmd.bits.rs1(bVRegs-2, 0) + inst_i_imm(bVRegs-2, 0)) + UInt(1,bVRegs)
+  val nppr = (io.rocc.cmd.bits.rs1(bVRegs+bPRegs-3, bVRegs-1) + inst_i_imm(11, bVRegs-1)) + UInt(1,bPRegs)
 
   // vector length lookup
   val rom_allocation_units = (0 to nVRegs).toArray.map(n => (UInt(n),
@@ -134,7 +134,7 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   ))
 
   val elems_per_bank = Lookup(nvpr, rom_allocation_units.last._2, rom_allocation_units)
-  val new_maxvl = elems_per_bank * UInt(nBanks)
+  val new_maxvl = elems_per_bank * UInt(nBanks) * UInt(nSlices)
   val new_vl = Mux(io.rocc.cmd.bits.rs1 < cfg_maxvl, io.rocc.cmd.bits.rs1, cfg_maxvl)(bVLen-1, 0)
 
   when (fire(null, decode_vcfg)) {
@@ -160,13 +160,13 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   cmdq.io.enq.cmd.bits := sel_cmd
 
   // cmdq/imm dpath
-  val imm_vlen = Cat(nppr, nvpr, new_vl)
+  val imm_vlen = new VCFG().fromBits(Cat(nppr, nvpr, new_vl))
   val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
   val imm_addr = (io.rocc.cmd.bits.rs1 + vf_immediate).toUInt
 
   cmdq.io.enq.imm.bits :=
     MuxLookup(sel_imm, Bits(0), Array(
-      IMM_VLEN -> imm_vlen,
+    IMM_VLEN -> imm_vlen.toBits(),
       IMM_RS1  -> io.rocc.cmd.bits.rs1,
       IMM_ADDR -> imm_addr
     ))
