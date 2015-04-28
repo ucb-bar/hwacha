@@ -122,7 +122,7 @@ class Lane extends VXUModule with Packing {
   }
 
   val rdata = (0 until nGOPL).map { o =>
-    Mux(ctrl.io.uop.sreg(o).valid, ctrl.io.uop.sreg(o).bits.operand,
+    Mux(ctrl.io.uop.sreg(o).valid, splat_slice(ctrl.io.uop.sreg(o).bits.operand),
                                    banksrw.map(_.rdata(o).d).reduce(_|_)) }
 
   require(nLRQOperands == 3)
