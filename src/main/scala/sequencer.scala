@@ -643,7 +643,7 @@ class Sequencer extends VXUModule {
       out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
       out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
       out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
-      out.select.vfmu := UInt(1)
+      out.select.vfmu := UInt(0)
       out.eidx := readfn(exp_sched, (e: SeqEntry) => e.eidx)
       out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
       out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
