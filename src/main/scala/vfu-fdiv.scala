@@ -106,10 +106,10 @@ class FDivSlice extends VXUModule with Packing {
   val s1_result_hp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 10, 6)
 
   val s1_out = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), s1_result_dp,
-            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp._1)),
-                                                   expand_float_h(ieee_hp(s1_result_hp._1))))
+               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp._1)),
+                                                      expand_float_h(ieee_hp(s1_result_hp._1))))
   val s1_exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), Bits(0),
-            Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp._2, s1_result_hp._2))
+               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp._2, s1_result_hp._2))
 
   rq.io.enq.valid := s1_result_valid
   outtagq.io.deq.ready := s1_result_valid
