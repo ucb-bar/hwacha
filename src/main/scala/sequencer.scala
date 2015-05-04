@@ -15,6 +15,17 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val bStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
   val bLookAhead = log2Down(maxLookAhead) + 1
+
+  type RegFn = DecodedRegisters => RegInfo
+  val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
+  val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
+  val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
+  val reg_vd  = (reg: DecodedRegisters) => reg.vd
+
+  type SRegFn = ScalarRegisters => Bits
+  val sreg_ss1 = (sreg: ScalarRegisters) => sreg.ss1
+  val sreg_ss2 = (sreg: ScalarRegisters) => sreg.ss2
+  val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
 }
 
 class SequencerIO extends ValidIO(new SequencerOp)
@@ -219,14 +230,6 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // data hazard checking helpers
 
-    val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
-    val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
-    val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
-    val reg_vd  = (reg: DecodedRegisters) => reg.vd
-    val sreg_ss1 = (sreg: ScalarRegisters) => sreg.ss1
-    val sreg_ss2 = (sreg: ScalarRegisters) => sreg.ss2
-    val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
-
     def set_raw_haz(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
     def set_war_haz(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
     def set_waw_haz(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
@@ -234,7 +237,7 @@ class Sequencer extends VXUModule {
     def clear_war_haz(n: UInt, o: UInt) = { next_war(n)(o) := Bool(false) }
     def clear_waw_haz(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
 
-    def issue_base_eq(ifn: DecodedRegisters=>RegInfo, sfn: DecodedRegisters=>RegInfo) =
+    def issue_base_eq(ifn: RegFn, sfn: RegFn) =
       Vec((0 until nSeq).map{ i =>
         valid(i) && sfn(e(i).base).valid && !sfn(e(i).base).scalar &&
         ifn(io.op.bits.reg).valid && !ifn(io.op.bits.reg).scalar &&
@@ -294,16 +297,14 @@ class Sequencer extends VXUModule {
     def set_vsu(n: UInt) = set_active(n, (a: SeqType) => a.vsu, fn_identity)
     def set_vqu(n: UInt) = set_active(n, (a: SeqType) => a.vqu, fn_vqu)
 
-    def set_vs(n: UInt,
-      e_vsfn: DecodedRegisters=>RegInfo, op_vsfn: DecodedRegisters=>RegInfo,
-      e_ssfn: ScalarRegisters=>Bits, op_ssfn: ScalarRegisters=>Bits) = {
-        when (op_vsfn(io.op.bits.reg).valid) {
-          e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
-          e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
-          when (op_vsfn(io.op.bits.reg).scalar) {
-            e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
-          }
+    def set_vs(n: UInt, e_vsfn: RegFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
+      when (op_vsfn(io.op.bits.reg).valid) {
+        e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
+        e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
+        when (op_vsfn(io.op.bits.reg).scalar) {
+          e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
         }
+      }
     }
     def set_vs1(n: UInt) = {
       set_vs(n, reg_vs1, reg_vs1, sreg_ss1, sreg_ss1)
@@ -342,7 +343,7 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // bank hazard checking helpers
 
-    def nports_list(fns: DecodedRegisters=>RegInfo*) =
+    def nports_list(fns: RegFn*) =
       PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
     val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
     val nrport_vs1 = nports_list(reg_vs1)
@@ -455,7 +456,7 @@ class Sequencer extends VXUModule {
           if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
           else Bool(true) }) })
 
-    def wmatrix(fn: DecodedRegisters=>RegInfo) =
+    def wmatrix(fn: RegFn) =
       (0 until nSeq) map { r =>
         Vec((0 until maxWPortLatency) map { l =>
           io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
@@ -532,7 +533,7 @@ class Sequencer extends VXUModule {
         val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
         def check_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
         def check_op_shazard(use_mask: Bits) = check_shazard(use_mask, ask_op_mask)
-        def check_rport(fn: DecodedRegisters=>RegInfo, i: Int) =
+        def check_rport(fn: RegFn, i: Int) =
           fn(e(r).reg).valid && (
             !fn(e(r).reg).scalar && check_op_shazard(use_mask_xbar(i)) ||
             fn(e(r).reg).scalar && check_op_shazard(use_mask_sreg_global(i)))
@@ -674,7 +675,7 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // footer
 
-    def update_reg(i: Int, fn: DecodedRegisters=>RegInfo) = {
+    def update_reg(i: Int, fn: RegFn) = {
       when (fn(e(i).reg).valid && !fn(e(i).reg).scalar) {
         fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
       }

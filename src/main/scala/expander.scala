@@ -107,6 +107,11 @@ class Expander extends VXUModule {
 
     val op_idx = io.seq.bits.rports + UInt(1, bRPorts+1)
 
+    def check_assert[T <: LaneOp](name: String, t: Ticker[T], n: UInt) = {
+      assert(n < UInt(t.s.size), name+" asking over limit")
+      assert(n === UInt(t.s.size-1) || !t.s(n+UInt(1, n.getWidth+1)).valid, name+" scheduling is wrong")
+    }
+
     def mark_opl(n: UInt, idx: Int) = {
       val e = tick_sram_read.s(n)
 
@@ -159,6 +164,7 @@ class Expander extends VXUModule {
         case (fn, idx) => {
           val read_idx = rport_idx(idx)
           when (rport_valid(idx)) {
+            check_assert("sram read", tick_sram_read, read_idx)
             val e = tick_sram_read.s(read_idx)
             e.valid := Bool(true)
             e.bits.addr := fn(io.seq.bits.reg).id
@@ -171,6 +177,7 @@ class Expander extends VXUModule {
 
     def mark_sram_writes = {
       when (io.seq.bits.reg.vd.valid && !io.seq.bits.reg.vd.scalar) {
+        check_assert("sram write", tick_sram_write, io.seq.bits.wport)
         val e = tick_sram_write.s(io.seq.bits.wport)
         e.valid := Bool(true)
         e.bits.addr := io.seq.bits.reg.vd.id
@@ -193,33 +200,28 @@ class Expander extends VXUModule {
       }
     }
 
-    val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
-    val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
-    val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
-    val sreg_ss1 = (sreg: ScalarRegisters) => sreg.ss1
-    val sreg_ss2 = (sreg: ScalarRegisters) => sreg.ss2
-    val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
-
-    def mark_xbar(i: Int, fn: DecodedRegisters=>RegInfo) = {
+    def mark_xbar(i: Int, fn: RegFn) = {
       val rinfo = fn(io.seq.bits.reg)
       when (rinfo.valid && !rinfo.scalar) {
+        check_assert("xbar"+i, tick_xbar(i), op_idx)
         tick_xbar(i).s(op_idx).valid := Bool(true)
         tick_xbar(i).s(op_idx).bits.strip := io.seq.bits.strip
       }
     }
 
-    def mark_sreg(t: Seq[Ticker[SRegLaneOp]], i: Int, fn: DecodedRegisters=>RegInfo, sfn: ScalarRegisters=>Bits) = {
+    def mark_sreg(name: String, t: IndexedSeq[Ticker[SRegLaneOp]], i: Int, fn: RegFn, sfn: SRegFn) = {
       val rinfo = fn(io.seq.bits.reg)
       when (rinfo.valid && rinfo.scalar) {
+        check_assert("sreg"+name+i, t(i), op_idx)
         t(i).s(op_idx).valid := Bool(true)
         t(i).s(op_idx).bits.operand := sfn(io.seq.bits.sreg)
         t(i).s(op_idx).bits.strip := io.seq.bits.strip
       }
     }
-    def mark_sreg_global(i: Int, fn: DecodedRegisters=>RegInfo, sfn: ScalarRegisters=>Bits) =
-      mark_sreg(tick_sreg_global, i, fn, sfn)
-    def mark_sreg_local(i: Int, fn: DecodedRegisters=>RegInfo, sfn: ScalarRegisters=>Bits) =
-      mark_sreg(tick_sreg_local, i, fn, sfn)
+    def mark_sreg_global(i: Int, fn: RegFn, sfn: SRegFn) =
+      mark_sreg("global", tick_sreg_global, i, fn, sfn)
+    def mark_sreg_local(i: Int, fn: RegFn, sfn: SRegFn) =
+      mark_sreg("local", tick_sreg_local, i, fn, sfn)
 
     def mark_xbars_sregs = {
       (0 until nVFMU) foreach { i =>
@@ -267,30 +269,40 @@ class Expander extends VXUModule {
       }
     }
 
-    def mark_vfu[T <: LaneOp](tick: Ticker[T], opfn: SequencerOp=>Bool, fn: T=>Unit) = {
+    def mark_vfu[T <: LaneOp](name: String, tick: Ticker[T], opfn: SequencerOp=>Bool, fn: T=>Unit) = {
       when (opfn(io.seq.bits)) {
+        check_assert(name, tick, op_idx)
         tick.s(op_idx).valid := Bool(true)
         tick.s(op_idx).bits.strip := io.seq.bits.strip
         fn(tick.s(op_idx).bits)
       }
     }
 
-    def mark_viu = mark_vfu(tick_viu, (op: SequencerOp) => op.active.viu,
+    def mark_lop_sreg(sreg: Vec[Bool], nregs: Int) = {
+      (Seq(reg_vs1, reg_vs2, reg_vs3) zipWithIndex) map { case (fn, i) =>
+        if (nregs > i) {
+          val rinfo = fn(io.seq.bits.reg)
+          sreg(i) := rinfo.valid && rinfo.scalar
+        }
+      }
+    }
+
+    def mark_viu = mark_vfu("viu", tick_viu, (op: SequencerOp) => op.active.viu,
       (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu(); lop.eidx := io.seq.bits.eidx })
-    def mark_vsu = mark_vfu(tick_vsu, (op: SequencerOp) => op.active.vsu,
+    def mark_vsu = mark_vfu("vsu", tick_vsu, (op: SequencerOp) => op.active.vsu,
       (lop: VSULaneOp) => { lop.selff := Bool(false) })
-    def mark_vqu = mark_vfu(tick_vqu, (op: SequencerOp) => op.active.vqu,
-      (lop: VQULaneOp) => { lop.fn := io.seq.bits.fn.vqu() })
-    def mark_vgu = mark_vfu(tick_vgu, (op: SequencerOp) => op.active.vgu,
-      (lop: VGULaneOp) => { lop.fn := io.seq.bits.fn.vmu() })
-    def mark_vimu = mark_vfu(tick_vimu, (op: SequencerOp) => op.active.vimu,
-      (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu() })
-    def mark_vfmu(i: Int) = mark_vfu(tick_vfmu(i), (op: SequencerOp) => op.active_vfmu(i),
-      (lop: VFMULaneOp) => { lop.fn := io.seq.bits.fn.vfmu() })
-    def mark_vfcu = mark_vfu(tick_vfcu, (op: SequencerOp) => op.active.vfcu,
-      (lop: VFCULaneOp) => { lop.fn := io.seq.bits.fn.vfcu() })
-    def mark_vfvu = mark_vfu(tick_vfvu, (op: SequencerOp) => op.active.vfvu,
-      (lop: VFVULaneOp) => { lop.fn := io.seq.bits.fn.vfvu() })
+    def mark_vqu = mark_vfu("vqu", tick_vqu, (op: SequencerOp) => op.active.vqu,
+      (lop: VQULaneOp) => { lop.fn := io.seq.bits.fn.vqu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vgu = mark_vfu("vgu", tick_vgu, (op: SequencerOp) => op.active.vgu,
+      (lop: VGULaneOp) => { lop.fn := io.seq.bits.fn.vmu(); mark_lop_sreg(lop.sreg, 1) })
+    def mark_vimu = mark_vfu("vimu", tick_vimu, (op: SequencerOp) => op.active.vimu,
+      (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vfmu(i: Int) = mark_vfu("vfmu" + i, tick_vfmu(i), (op: SequencerOp) => op.active_vfmu(i),
+      (lop: VFMULaneOp) => { lop.fn := io.seq.bits.fn.vfmu(); mark_lop_sreg(lop.sreg, 3) })
+    def mark_vfcu = mark_vfu("vfcu", tick_vfcu, (op: SequencerOp) => op.active.vfcu,
+      (lop: VFCULaneOp) => { lop.fn := io.seq.bits.fn.vfcu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vfvu = mark_vfu("vfvu", tick_vfvu, (op: SequencerOp) => op.active.vfvu,
+      (lop: VFVULaneOp) => { lop.fn := io.seq.bits.fn.vfvu(); mark_lop_sreg(lop.sreg, 1) })
   }
 
   val exp = new BuildExpander
