@@ -65,6 +65,7 @@ class Sequencer extends VXUModule {
       val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
       val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
       val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
+      val use_mask_wport = Vec.fill(nWSel){Bits(OUTPUT, maxWPortLatency+nBanks-1)}
       val consider = Vec.fill(nSeq){Bool(OUTPUT)}
       val first_sched = Vec.fill(nSeq){Bool(OUTPUT)}
       val second_sched = Vec.fill(nSeq){Bool(OUTPUT)}
@@ -500,41 +501,57 @@ class Sequencer extends VXUModule {
     ///////////////////////////////////////////////////////////////////////////
     // strucutral hazard checking
 
-    def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]]) =
-      (lops zipWithIndex) map { case (lop, i) =>
-        dgate(lop.valid, UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1)) }
-    // shift right by one because we are looking one cycle in the future
-    val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
-    val use_mask_xbar = io.ticker.xbar map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
-    val use_mask_vimu = use_mask_lop(io.ticker.vimu).reduce(_ | _) >> UInt(1)
-    val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop(_).reduce(_ | _) >> UInt(1) }
-    val use_mask_vfcu = use_mask_lop(io.ticker.vfcu).reduce(_ | _) >> UInt(1)
-    val use_mask_vfvu = use_mask_lop(io.ticker.vfvu).reduce(_ | _) >> UInt(1)
-    val use_mask_vgu = use_mask_lop(io.ticker.vgu).reduce(_ | _) >> UInt(1)
-    val use_mask_vqu = use_mask_lop(io.ticker.vqu).reduce(_ | _) >> UInt(1)
+    def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
+      val mask =
+        (lops zipWithIndex) map { case (lop, i) =>
+          dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
+        } reduce(_|_)
+      mask >> UInt(1) // shift right by one because we are looking one cycle in the future
+    }
+    def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
+      use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
+    val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
+    val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
+    val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
+    val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
+    val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
+    val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
+    val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
+    val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
+    val use_mask_wport = (0 until nWSel) map { i =>
+      use_mask_lop(
+        io.ticker.sram.write,
+        (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)
+      ) }
 
     val shazard =
       (0 until nSeq) map { r =>
         val op_idx = e(r).rports + UInt(1, bRPorts+1)
         val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
-        val ask_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
-        def check_shazard(use_mask: Bits) = (use_mask & ask_mask).orR
-        def check_operand(fn: DecodedRegisters=>RegInfo, i: Int) =
+        val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
+        val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
+        def check_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
+        def check_op_shazard(use_mask: Bits) = check_shazard(use_mask, ask_op_mask)
+        def check_rport(fn: DecodedRegisters=>RegInfo, i: Int) =
           fn(e(r).reg).valid && (
-            !fn(e(r).reg).scalar && check_shazard(use_mask_xbar(i)) ||
-            fn(e(r).reg).scalar && check_shazard(use_mask_sreg_global(i)))
-        val check_operand_0_1 = check_operand(reg_vs1, 0) || check_operand(reg_vs2, 1)
-        val check_operand_0_1_2 = check_operand_0_1 || check_operand(reg_vs3, 2)
-        val check_operand_2 = check_operand(reg_vs1, 2)
-        val check_operand_3_4 = check_operand(reg_vs1, 3) || check_operand(reg_vs2, 4)
-        val check_operand_3_4_5 = check_operand_3_4 || check_operand(reg_vs3, 5)
-        val check_operand_5 = check_operand(reg_vs1, 5)
-        val shazard_vimu = check_operand_0_1 || check_shazard(use_mask_vimu)
-        val shazard_vfmu = check_operand_0_1_2 || check_shazard(use_mask_vfmu(1))
-        val shazard_vfcu = check_operand_3_4 || check_shazard(use_mask_vfcu)
-        val shazard_vfvu = check_operand_2 || check_shazard(use_mask_vfvu)
-        val shazard_vgu = check_operand_5 || check_shazard(use_mask_vgu)
-        val shazard_vqu = check_operand_3_4 || check_shazard(use_mask_vqu)
+            !fn(e(r).reg).scalar && check_op_shazard(use_mask_xbar(i)) ||
+            fn(e(r).reg).scalar && check_op_shazard(use_mask_sreg_global(i)))
+        val check_rport_0_1 = check_rport(reg_vs1, 0) || check_rport(reg_vs2, 1)
+        val check_rport_0_1_2 = check_rport_0_1 || check_rport(reg_vs3, 2)
+        val check_rport_2 = check_rport(reg_vs1, 2)
+        val check_rport_3_4 = check_rport(reg_vs1, 3) || check_rport(reg_vs2, 4)
+        val check_rport_3_4_5 = check_rport_3_4 || check_rport(reg_vs3, 5)
+        val check_rport_5 = check_rport(reg_vs1, 5)
+        def check_wport(i: Int) =
+          e(r).reg.vd.valid && (e(r).reg.vd.scalar || check_shazard(use_mask_wport(i), ask_wport_mask))
+        val check_wport_0 = check_wport(0)
+        val check_wport_1 = check_wport(1)
+        val shazard_vimu = check_rport_0_1 || check_wport_0 || check_op_shazard(use_mask_vimu)
+        val shazard_vfmu = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
+        val shazard_vfcu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vfcu)
+        val shazard_vfvu = check_rport_2 || check_wport_0 || check_op_shazard(use_mask_vfvu)
+        val shazard_vgu = check_rport_5 || check_wport_1 || check_op_shazard(use_mask_vgu)
+        val shazard_vqu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vqu)
         val a = e(r).active
         val out =
           a.vimu && shazard_vimu ||
@@ -737,6 +754,7 @@ class Sequencer extends VXUModule {
       io.debug.use_mask_vfvu := use_mask_vfvu
       io.debug.use_mask_vgu := use_mask_vgu
       io.debug.use_mask_vqu := use_mask_vqu
+      io.debug.use_mask_wport := use_mask_wport
 
       when (reset) {
         for (i <- 0 until nSeq) {
