@@ -525,6 +525,8 @@ class Sequencer extends VXUModule {
         (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)
       ) }
 
+    val select = Vec.fill(nSeq){new SeqSelect}
+
     val shazard =
       (0 until nSeq) map { r =>
         val op_idx = e(r).rports + UInt(1, bRPorts+1)
@@ -548,15 +550,17 @@ class Sequencer extends VXUModule {
         val check_wport_0 = check_wport(0)
         val check_wport_1 = check_wport(1)
         val shazard_vimu = check_rport_0_1 || check_wport_0 || check_op_shazard(use_mask_vimu)
-        val shazard_vfmu = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
+        val shazard_vfmu0 = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
+        val shazard_vfmu1 = check_rport_3_4_5 || check_wport_1 || check_op_shazard(use_mask_vfmu(1))
         val shazard_vfcu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vfcu)
         val shazard_vfvu = check_rport_2 || check_wport_0 || check_op_shazard(use_mask_vfvu)
         val shazard_vgu = check_rport_5 || check_wport_1 || check_op_shazard(use_mask_vgu)
         val shazard_vqu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vqu)
+        select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
         val a = e(r).active
         val out =
           a.vimu && shazard_vimu ||
-          a.vfmu && shazard_vfmu || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
+          a.vfmu && shazard_vfmu0 && shazard_vfmu1 || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
           a.vgu && shazard_vgu || a.vqu && shazard_vqu
         out
       }
@@ -618,10 +622,13 @@ class Sequencer extends VXUModule {
       Mux(vl > max_strip, max_strip, vl)
     }
 
-    def valfn(sched: Vec[Bool]) = sched.reduce(_ || _)
+    def valfn(sched: Vec[Bool]) = sched.reduce(_||_)
 
     def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
-      rfn(e(0)).clone.fromBits(sched.zip(e).map({ case (s, e) => dgate(s, rfn(e).toBits) }).reduce(_ | _))
+      rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
+
+    def selectfn(sched: Vec[Bool]) =
+      new SeqSelect().fromBits(Mux1H(sched, select.map(_.toBits)))
 
     val vidu_val = valfn(vidu_sched)
     val vidu_vlen = readfn(vidu_sched, (e: SeqEntry) => e.vlen)
@@ -664,7 +671,7 @@ class Sequencer extends VXUModule {
       out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
       out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
       out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
-      out.select.vfmu := UInt(0)
+      out.select := selectfn(exp_sched)
       out.eidx := readfn(exp_sched, (e: SeqEntry) => e.eidx)
       out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
       out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
