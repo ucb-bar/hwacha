@@ -87,12 +87,12 @@ class LaneCtrl extends VXUModule {
       uop.bits.pred := s.pred
       fn(uop.bits, s)
   }
-  connect_vfu(io.uop.vimu, vimu, (u: VIMUMicroOp, s: Shared[VIMULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vimu, vimu, (u: VIMUMicroOp, s: Shared[VIMULaneOp]) => u <> s.bits)
   (io.uop.vfmu zip vfmu) foreach { case (uop, shared) =>
-    connect_vfu(uop, shared, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u.fn := s.bits.fn)
+    connect_vfu(uop, shared, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u <> s.bits)
   }
-  connect_vfu(io.uop.vfcu, vfcu, (u: VFCUMicroOp, s: Shared[VFCULaneOp]) => u.fn := s.bits.fn)
-  connect_vfu(io.uop.vfvu, vfvu, (u: VFVUMicroOp, s: Shared[VFVULaneOp]) => u.fn := s.bits.fn)
-  connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u.fn := s.bits.fn)
-  connect_vfu(io.uop.vqu, vqu, (u: VQUMicroOp, s: Shared[VQULaneOp]) => u.fn := s.bits.fn)
+  connect_vfu(io.uop.vfcu, vfcu, (u: VFCUMicroOp, s: Shared[VFCULaneOp]) => u <> s.bits)
+  connect_vfu(io.uop.vfvu, vfvu, (u: VFVUMicroOp, s: Shared[VFVULaneOp]) => u <> s.bits)
+  connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u <> s.bits)
+  connect_vfu(io.uop.vqu, vqu, (u: VQUMicroOp, s: Shared[VQULaneOp]) => u <> s.bits)
 }

@@ -231,27 +231,31 @@ class VIUOp extends VXUBundle {
   val eidx = UInt(width = bVLen)
 }
 
-class VIMUOp extends VXUBundle {
+class SharedLLOp(nOperands: Int) extends VXUBundle {
+  val sreg = Vec.fill(nOperands){Bool()}
+}
+
+class VIMUOp extends SharedLLOp(2) {
   val fn = new VIMUFn
 }
 
-class VFMUOp extends VXUBundle {
+class VFMUOp extends SharedLLOp(3) {
   val fn = new VFMUFn
 }
 
-class VFCUOp extends VXUBundle {
+class VFCUOp extends SharedLLOp(2) {
   val fn = new VFCUFn
 }
 
-class VFVUOp extends VXUBundle {
+class VFVUOp extends SharedLLOp(1) {
   val fn = new VFVUFn
 }
 
-class VQUOp extends VXUBundle {
+class VQUOp extends SharedLLOp(2) {
   val fn = new VQUFn
 }
 
-class VGUOp extends VXUBundle {
+class VGUOp extends SharedLLOp(1) {
   val fn = new VMUFn
 }
 
