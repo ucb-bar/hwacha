@@ -125,6 +125,7 @@ class Lane extends VXUModule with Packing {
   val rdata = (0 until nGOPL).map { o => banksrw.map(_.rdata(o).d).reduce(_|_) }
 
   def operands[T <: SharedLLOp](name: String, uop: ValidIO[T], n: Int, rbase: Int) = {
+    require(n <= uop.bits.nOperands)
     (0 until n) map { i =>
       val ri = rbase+i
       assert(!uop.valid || !uop.bits.sreg(i) || ctrl.io.uop.sreg(ri).valid, "check sreg sched logic "+name+"_"+i)

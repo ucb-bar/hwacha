@@ -231,7 +231,7 @@ class VIUOp extends VXUBundle {
   val eidx = UInt(width = bVLen)
 }
 
-class SharedLLOp(nOperands: Int) extends VXUBundle {
+case class SharedLLOp(nOperands: Int) extends VXUBundle {
   val sreg = Vec.fill(nOperands){Bool()}
 }
 
