@@ -142,17 +142,22 @@ class ScalarDpath extends HwachaModule {
   alu.io.in1 := ex_op1
 
   //fpu ex
-  //io.fpu.req.bits.rm := ex_reg_inst(52,50)
-  io.fpu.req.bits.rm := Bits(0)
-  io.fpu.req.bits.typ := id_inst(54,53)
+  // FIXME: need to take Rocket's rounding mode for dynamic RM
+  val _rm = id_inst(52, 50)
+  val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
+  val in_fmt = id_inst(54,53)
+  val out_fmt = id_inst(56,55)
+  io.fpu.req.bits.rm := rm
+  io.fpu.req.bits.typ := out_fmt
   io.fpu.req.bits.in1 := 
-     Mux(io.fpu.req.bits.typ === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0)))
+     Mux(io.ctrl.id_ctrl.fpu_fn.fromint, id_sreads(0),
+     Mux(in_fmt === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0))))
   io.fpu.req.bits.in2 := 
-     Mux(io.fpu.req.bits.typ === UInt(0), 
+     Mux(in_fmt === UInt(0), 
      Cat(SInt(-1,32),recode_sp(id_sreads(1))), recode_dp(id_sreads(1)))
   io.fpu.req.bits.in3 := 
-     Mux(io.fpu.req.bits.typ === UInt(0), 
+     Mux(in_fmt === UInt(0), 
      Cat(SInt(-1,32),recode_sp(id_sreads(2))), recode_dp(id_sreads(2)))
 
   //fpu resp
@@ -195,11 +200,14 @@ class ScalarDpath extends HwachaModule {
   assert(!(io.ctrl.wb_wen && swrite_valid), "Cannot write vmss and scalar dest")
   assert(!(io.ctrl.wb_wen && awrite_valid), "Cannot write vmsa and scalar dest")
 
-  val wb_waddr = Mux(io.dmem.valid, io.dmem.bits.id,
-                 Mux(io.fpu.resp.valid, io.ctrl.pending_fpu_reg,
-                 wb_reg_inst(23,16)))
-  wb_wdata := Mux(io.dmem.valid, io.dmem.bits.data,
-              Mux(io.fpu.resp.valid, unrec_fpu_resp,
+  val wb_waddr = 
+    Mux(io.fpu.resp.valid, io.ctrl.pending_fpu_reg,
+    Mux(io.dmem.valid, io.dmem.bits.id,
+      wb_reg_inst(23,16)))
+
+  wb_wdata := 
+    Mux(io.fpu.resp.valid, Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data, unrec_fpu_resp),
+    Mux(io.dmem.valid, io.dmem.bits.data,
               wb_reg_wdata))
   when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
 

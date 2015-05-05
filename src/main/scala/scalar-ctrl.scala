@@ -33,6 +33,7 @@ class CtrlDpathIO extends HwachaBundle {
   val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
   val pending_fpu_reg = UInt(OUTPUT,log2Up(nSRegs))
   val pending_fpu_typ = UInt(OUTPUT,2)
+  val pending_fpu_fn = new rocket.FPUCtrlSigs().asOutput()
   val swrite = Bool(OUTPUT)
   val awrite = Bool(OUTPUT)
   val wb_vf_active = Bool(OUTPUT)
@@ -83,6 +84,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val pending_fpu = Reg(init=Bool(false))
   val pending_fpu_reg = Reg(init=UInt(width=log2Up(nSRegs)))
   val pending_fpu_typ = Reg(init=Bits(width=2))
+  val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
 
   val vf_active     = Reg(init=Bool(false))
   val ex_vf_active  = Reg(init=Bool(false))
@@ -249,7 +251,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   //on fpu resp valid we clear the sboard for its addr
   val clear_mem = io.dmem.valid
   val clear_fpu = io.fpu.resp.valid
-  val sboard_clear_addr = Mux(clear_mem, io.dmem.bits.id, pending_fpu_reg)
+  val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, io.dmem.bits.id)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
  
   val enq_fpu = id_val && id_ctrl.fpu_val
@@ -262,7 +264,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    (pending_fpu && id_ctrl.decode_stop) //stall stop on outstanding fpu/mem
+    ((pending_fpu || pending_memop) && id_ctrl.decode_stop) //stall stop on outstanding fpu/mem
 
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
@@ -283,20 +285,22 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     vf_active := Bool(false)
   }
 
-  // FIXME: need to take Rocket's rounding mode for dynamic RM
   val _rm = io.dpath.inst(52, 50)
   val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
+  val in_fmt = io.dpath.inst(54,53)
+  val out_fmt = io.dpath.inst(56,55)
 
   // to FPU
-  val fpu_fn = new rocket.FPUCtrlSigs().fromBits(id_ctrl.fpu_fn)
-  io.fpu.req.bits := fpu_fn
+  io.fpu.req.bits <> id_ctrl.fpu_fn
   io.fpu.req.valid := fire_decode(mask_fpu_ready, enq_fpu)
   io.dpath.pending_fpu_reg := pending_fpu_reg
   io.dpath.pending_fpu_typ := pending_fpu_typ
+  io.dpath.pending_fpu_fn := pending_fpu_fn
   when(io.fpu.req.fire()){
     pending_fpu := Bool(true)
-    pending_fpu_typ := io.dpath.inst(54,53)
+    pending_fpu_typ := Mux(id_ctrl.fpu_fn.fromint, in_fmt, out_fmt)
     pending_fpu_reg := id_waddr
+    pending_fpu_fn := id_ctrl.fpu_fn
   }
   when(io.fpu.resp.fire()){
     pending_fpu := Bool(false)
@@ -350,7 +354,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   when (io.vmu.valid && id_scalar_inst) {
     pending_memop := Bool(true)
   }
-  when (clear_mem) {
+  when (clear_mem && !(io.vmu.valid && id_scalar_inst)) {
     pending_memop := Bool(false)
   }
 
@@ -376,9 +380,9 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ctrl_stallx = ex_reg_valid && (vmu_stall_ex || fpu_stall_ex)
 
-  //give fixed priority to mem -> fpu -> alu
-  io.dmem.ready := Bool(true)
-  io.fpu.resp.ready := !io.dmem.valid
+  //give fixed priority to fpu -> mem -> alu
+  io.fpu.resp.ready := Bool(true)
+  io.dmem.ready := !io.fpu.resp.valid
  
   //writeback
   ctrl_killx := ctrl_stallx || !ex_reg_valid
@@ -392,9 +396,12 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     wb_vf_active := ex_vf_active
   }
 
+  val wb_use_port = wb_scalar_dest && wb_reg_valid && !(wb_ctrl.vmu_val || wb_ctrl.fpu_val)
+
   assert(!(!vf_active && sboard_not_empty), "vf should not end with non empty scoreboard")
-  assert(!(io.dmem.valid && wb_scalar_dest && wb_reg_valid), "load result and scalar wb conflict")
+  assert(!(io.dmem.valid && wb_use_port), "load result and scalar wb conflict")
+  assert(!(io.fpu.resp.valid && wb_use_port), "fpu result and scalar wb conflict")
 
   io.dpath.retire := wb_reg_valid
-  io.dpath.wb_wen := wb_vf_active && ((wb_reg_valid && wb_scalar_dest) || io.dmem.valid || io.fpu.resp.valid)
+  io.dpath.wb_wen := wb_vf_active && (wb_use_port || io.dmem.valid || io.fpu.resp.valid)
 }
