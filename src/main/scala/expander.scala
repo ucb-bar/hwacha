@@ -3,8 +3,6 @@ package hwacha
 import Chisel._
 
 abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
-  val expLatency = 1
-
   val rpVIU = 2
   val rpVIMU = 2
   val rpVFMU = 3

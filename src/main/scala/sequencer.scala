@@ -7,7 +7,8 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val nSeq = 8
   val nRPorts = 3
   val bRPorts = log2Down(nRPorts) + 1
-  val maxWPortLatency = nRPorts + 2 +
+  val expLatency = 1
+  val maxWPortLatency = nRPorts + 1 + expLatency +
     List(stagesALU, stagesIMul, stagesFMA,
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bWPortLatency = log2Down(maxWPortLatency) + 1
@@ -15,6 +16,13 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val bStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
   val bLookAhead = log2Down(maxLookAhead) + 1
+
+  // the following needs to hold in order to simplify dhazard_war checking
+  // otherwise, you need to check reg_vd against sram read ticker
+  require(nRPorts <= 3)
+  require(
+    List(stagesALU, stagesIMul, stagesFMA,
+         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) y else x) >= 1)
 
   type RegFn = DecodedRegisters => RegInfo
   val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
