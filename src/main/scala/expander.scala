@@ -105,7 +105,7 @@ class Expander extends VXUModule {
         Mux(rport_valid(1), UInt(2), UInt(1)),
         Mux(rport_valid(1), UInt(1), UInt(0)))))
 
-    val op_idx = io.seq.bits.rports + UInt(1, bRPorts+1)
+    val op_idx = io.seq.bits.rports + UInt(expLatency, bRPorts+1)
 
     def check_assert[T <: LaneOp](name: String, t: Ticker[T], n: UInt) = {
       assert(n < UInt(t.s.size), name+" asking over limit")

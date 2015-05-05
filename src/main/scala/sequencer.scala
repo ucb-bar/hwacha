@@ -359,7 +359,7 @@ class Sequencer extends VXUModule {
     def set_rport_vs2(n: UInt) = set_ports(n, nrport_vs2, UInt(0))
     def set_rport_vd(n: UInt) = set_ports(n, nrport_vd, UInt(0))
     def set_rports(n: UInt) = set_ports(n, nrports, UInt(0))
-    def set_rwports(n: UInt, latency: Int) = set_ports(n, nrports, nrports + UInt(latency+1))
+    def set_rwports(n: UInt, latency: Int) = set_ports(n, nrports, nrports + UInt(expLatency+latency))
 
     ///////////////////////////////////////////////////////////////////////////
     // issue -> sequencer
@@ -467,7 +467,7 @@ class Sequencer extends VXUModule {
     val wmatrix_vd = wmatrix(reg_vd)
 
     def wport_lookup(row: Vec[Bool], level: UInt) =
-      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level }) // FIXME expLatency
+      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
 
     val dhazard_raw =
       (0 until nSeq).map { r =>
@@ -529,7 +529,7 @@ class Sequencer extends VXUModule {
 
     val shazard =
       (0 until nSeq) map { r =>
-        val op_idx = e(r).rports + UInt(1, bRPorts+1)
+        val op_idx = e(r).rports + UInt(expLatency, bRPorts+1)
         val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
         val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
         val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
