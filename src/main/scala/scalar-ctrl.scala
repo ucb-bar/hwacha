@@ -39,7 +39,7 @@ class CtrlDpathIO extends HwachaBundle {
   val wb_vf_active = Bool(OUTPUT)
 }
 
-class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
+class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) with VMUParameters {
   import Commands._
 
   val io = new Bundle {
@@ -94,7 +94,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val vregs = vcfg.nvpr
   val pregs = vcfg.nppr
 
-  val pending_memop = Reg(init=Bool(false))
+  val outstanding_memop = Reg(init=UInt(0,width=log2Up(nVMUQ+1)))
+  val pending_memop = outstanding_memop != UInt(0)
 
   io.vf_active     := vf_active
   io.pending_memop := pending_memop
@@ -351,11 +352,13 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
   io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vl)
-  when (io.vmu.valid && id_scalar_inst) {
-    pending_memop := Bool(true)
+  when (io.vmu.valid  && io.vmu.ready && id_scalar_inst) {
+    when (!clear_mem) {
+      outstanding_memop := outstanding_memop + UInt(1)
+    }
   }
-  when (clear_mem && !(io.vmu.valid && id_scalar_inst)) {
-    pending_memop := Bool(false)
+  when (clear_mem && !(io.vmu.valid && io.vmu.ready && id_scalar_inst)) {
+    outstanding_memop := outstanding_memop - UInt(1)
   }
 
   //excute
