@@ -139,7 +139,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
-      !wb_vf_active, !io.pending_seq, io.cmdq.cmd.valid,
+    !vf_active, !wb_vf_active, !io.pending_seq, io.cmdq.cmd.valid,
       mask_imm_valid, mask_rd_valid)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
