@@ -255,7 +255,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, io.dmem.bits.id)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
  
-  val enq_fpu = id_val && id_ctrl.fpu_val
+  val enq_fpu = id_scalar_dest && id_val && id_ctrl.fpu_val
   val enq_vxu = id_val && !id_scalar_inst
   val enq_vmu = id_val && id_ctrl.vmu_val
 
