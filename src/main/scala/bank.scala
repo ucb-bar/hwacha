@@ -183,11 +183,9 @@ class BankRegfile extends Module
   val wdata_bwq = Mux(io.wen, wdata, io.bwq.bits.data)
   io.bwq.ready := !io.wen
 
-  val rfile = Mem(Bits(width = SZ_DATA), 256, seqRead = true)
-  val raddr = Reg(Bits())
-  when (wen_bwq) { rfile(waddr_bwq) := wdata_bwq }
-  when (io.ren) { raddr := io.raddr }
-  val rdata_rf = Mux(Reg(next=io.ren), rfile(raddr), Bits(0)) 
+  val rfile = SeqMem(Bits(width = SZ_DATA), 256)
+  when (wen_bwq) { rfile.write(waddr_bwq, wdata_bwq) }
+  val rdata_rf = Mux(Reg(next=io.ren), rfile.read(io.raddr, io.ren), Bits(0))
   io.rdata := rdata_rf
 
   val ropl0 = Reg(Bits(width = SZ_DATA))
