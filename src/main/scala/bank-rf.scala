@@ -19,14 +19,12 @@ class BankRegfile extends VXUModule {
     }
   }
 
-  val sram_rf = Mem(Bits(width = wBank), nSRAM, seqRead = true)
+  val sram_rf = SeqMem(Bits(width = wBank), nSRAM)
   val ff_rf = Mem(Bits(width = wBank), nFF)
   val opl = Mem(Bits(width = wBank), nGOPL+nLOPL)
 
   // SRAM RF read port
-  val sram_raddr = Reg(Bits())
-  when (io.op.sram.read.valid) { sram_raddr := io.op.sram.read.bits.addr }
-  val sram_rdata = sram_rf(sram_raddr)
+  val sram_rdata = sram_rf.read(io.op.sram.read.bits.addr, io.op.sram.read.valid)
 
   // SRAM RF write port
   val sram_warb = Module(new Arbiter(new RFWritePort, 3))
