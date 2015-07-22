@@ -74,7 +74,7 @@ trait DecodeConstants {
   def reg_type(t: Bits, d: Bool, i: Bool) = Mux(d, Mux(i, REG_VEC, REG_SHR), t)
 
   val SZ_I = 2
-  val IMM_X = UInt.DC(SZ_I)
+  val IMM_X = Bits("b??", SZ_I)
   val IMM_0 = UInt(0, SZ_I)
   val IMM_I = UInt(1, SZ_I)
   val IMM_S = UInt(2, SZ_I)
@@ -84,7 +84,7 @@ trait DecodeConstants {
   val DW32 = Bits("b0", 1)
   val DW64 = Bits("b1", 1)
 
-  val FP_ = Bits.DC(2)
+  val FP_ = Bits("b??", 2)
   val FPS = Bits("b00", 2)
   val FPD = Bits("b01", 2)
   val FPH = Bits("b10", 2)
@@ -124,7 +124,7 @@ trait DecodeConstants {
 trait VIUConstants {
   val SZ_VIU_OP = 4
 
-  val I_X    = UInt.DC(SZ_VIU_OP)
+  val I_X    = Bits("b????",SZ_VIU_OP)
   val I_ADD  = UInt(0, SZ_VIU_OP)
   val I_ADDU = UInt(1, SZ_VIU_OP)
   val I_SLL  = UInt(2, SZ_VIU_OP)
@@ -146,7 +146,7 @@ trait VIUConstants {
 trait VIMUConstants {
   val SZ_VIMU_OP = 2
 
-  val IM_X    = UInt.DC(SZ_VIMU_OP)
+  val IM_X    = Bits("b??",SZ_VIMU_OP)
   val IM_M    = UInt(0, SZ_VIMU_OP)
   val IM_MH   = UInt(1, SZ_VIMU_OP)
   val IM_MHSU = UInt(2, SZ_VIMU_OP)
@@ -156,7 +156,7 @@ trait VIMUConstants {
 trait VIDUConstants {
   val SZ_VIDU_OP = 2
 
-  val ID_X    = UInt.DC(SZ_VIDU_OP)
+  val ID_X    = Bits("b??",SZ_VIDU_OP)
   val ID_DIV  = UInt(0, SZ_VIDU_OP)
   val ID_DIVU = UInt(1, SZ_VIDU_OP)
   val ID_REM  = UInt(2, SZ_VIDU_OP)
@@ -166,7 +166,7 @@ trait VIDUConstants {
 trait VFMUConstants {
   val SZ_VFMU_OP = 3
 
-  val FM_X     = UInt.DC(SZ_VFMU_OP)
+  val FM_X     = Bits("b???",SZ_VFMU_OP)
   val FM_ADD   = UInt(0, SZ_VFMU_OP)
   val FM_SUB   = UInt(1, SZ_VFMU_OP)
   val FM_MUL   = UInt(2, SZ_VFMU_OP)
@@ -181,7 +181,7 @@ trait VFMUConstants {
 trait VFDUConstants {
   val SZ_VFDU_OP = 1
 
-  val FD_X    = UInt.DC(SZ_VFDU_OP)
+  val FD_X    = Bits("b?",SZ_VFDU_OP)
   val FD_DIV  = UInt(0, SZ_VFDU_OP)
   val FD_SQRT = UInt(1, SZ_VFDU_OP)
 }
@@ -189,7 +189,7 @@ trait VFDUConstants {
 trait VFCUConstants {
   val SZ_VFCU_OP = 3
 
-  val FC_X     = UInt.DC(SZ_VFCU_OP)
+  val FC_X     = Bits("b???",SZ_VFCU_OP)
   val FC_CEQ   = UInt(0, SZ_VFCU_OP)
   val FC_CLT   = UInt(1, SZ_VFCU_OP)
   val FC_CLE   = UInt(2, SZ_VFCU_OP)
@@ -201,7 +201,7 @@ trait VFCUConstants {
 trait VFVUConstants {
   val SZ_VFVU_OP = 4
 
-  val FV_X     = UInt.DC(SZ_VFVU_OP)
+  val FV_X     = Bits("b????",SZ_VFVU_OP)
   val FV_CLTF  = UInt(0, SZ_VFVU_OP)
   val FV_CLUTF = UInt(1, SZ_VFVU_OP)
   val FV_CWTF  = UInt(2, SZ_VFVU_OP)
@@ -221,7 +221,7 @@ trait VFVUConstants {
 trait VMUConstants {
   val SZ_VMU_MODE = 2
 
-  val MM_X  = UInt.DC(SZ_VMU_MODE)
+  val MM_X  = Bits("b??",SZ_VMU_MODE)
   val MM_VS = UInt(0, SZ_VMU_MODE) // vector strided
   val MM_VX = UInt(1, SZ_VMU_MODE) // vector indexed
   val MM_S  = UInt(2, SZ_VMU_MODE) // scalar
