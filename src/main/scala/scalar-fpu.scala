@@ -4,7 +4,8 @@ import Chisel._
 import rocket.FPConstants._
 
 object ScalarFPUDecode {
-  val FX       = List(FCMD_X,      X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X)
+  val FX: List[BitPat]=
+                 List(FCMD_X,      X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X)
   val FCVT_S_W = List(FCMD_CVT_FI, N,Y,N,N,N,X,X,Y,Y,N,N,N,N,N,Y,Y)
   val FCVT_S_WU= List(FCMD_CVT_FI, N,Y,N,N,N,X,X,Y,Y,N,N,N,N,N,Y,Y)
   val FCVT_S_L = List(FCMD_CVT_FI, N,Y,N,N,N,X,X,Y,Y,N,N,N,N,N,Y,Y)

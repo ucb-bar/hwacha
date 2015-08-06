@@ -68,7 +68,7 @@ class DecodedMemCommand extends Bundle {
 }
 
 object DecodedMemCommand {
-  def apply[T <: Bits](cmd: T): DecodedMemCommand = {
+  def apply[T <: UInt](cmd: T): DecodedMemCommand = {
     val res = new DecodedMemCommand
     res.load := (cmd === M_XRD)
     res.store := (cmd === M_XWR)

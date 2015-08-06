@@ -22,12 +22,12 @@ trait VMUParameters extends UsesHwachaParameters
   val bTag = log2Up(nVMDB)
   require(tlClientXactIdBits >= bTag)
 
-  val vaddrBits = params(uncore.VAddrBits)
-  val paddrBits = params(uncore.PAddrBits)
-  val pgIdxBits = params(uncore.PgIdxBits)
+  val vaddrBits = params(junctions.VAddrBits)
+  val paddrBits = params(junctions.PAddrBits)
+  val pgIdxBits = params(junctions.PgIdxBits)
   val pgSzBytes = 1 << pgIdxBits
-  val vpnBits = params(uncore.VPNBits)
-  val ppnBits = params(uncore.PPNBits)
+  val vpnBits = params(junctions.VPNBits)
+  val ppnBits = params(junctions.PPNBits)
   val maxAddrBits = math.max(vaddrBits, paddrBits) + 1
 
   val sretBits = log2Down(tlDataBytes) + 1

@@ -99,8 +99,8 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
     scalar.io.fpu <> sfpu.io
     io.fpu_req.valid := Bool(false)
   } else {
-    scalar.io.fpu.req <> io.fpu_req
-    scalar.io.fpu.resp <> io.fpu_resp
+    io.fpu_req <> scalar.io.fpu.req
+    io.fpu_resp <> scalar.io.fpu.resp
   }
 
   // Connect Scalar to I$

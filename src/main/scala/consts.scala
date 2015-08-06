@@ -23,82 +23,82 @@ trait MachineConstants {
 }
 
 trait HwachaDecodeConstants {
-  val Y = Bool(true)
-  val N = Bool(false)
-  val X = Bits("b?", 1)
+  val Y = BitPat("b1")
+  val N = BitPat("b0")
+  val X = BitPat("b?")
 
-  val VRT_X = Bits("b?", 1)
-  val VRT_S = Bits(0, 1)
-  val VRT_A = Bits(1, 1)
+  val VRT_X = BitPat("b?")
+  val VRT_S = UInt(0, 1)
+  val VRT_A = UInt(1, 1)
 
-  val VR_X   = Bits("b?", 1)
-  val VR_RS1 = Bits(0, 1)
-  val VR_RD  = Bits(1, 1)
+  val VR_X   = BitPat("b?")
+  val VR_RS1 = UInt(0, 1)
+  val VR_RD  = UInt(1, 1)
 
-  val IMM_X    = Bits("b???",3)
-  val IMM_VLEN = Bits(0,3)
-  val IMM_RS1  = Bits(1,3)
-  val IMM_RS2  = Bits(2,3)
-  val IMM_ADDR = Bits(3,3)
+  val IMM_X    = BitPat("b???")
+  val IMM_VLEN = UInt(0,3)
+  val IMM_RS1  = UInt(1,3)
+  val IMM_RS2  = UInt(2,3)
+  val IMM_ADDR = UInt(3,3)
 
-  val RESP_X     = Bits("b???",3)
-  val RESP_NVL   = Bits(0,3)
-  val RESP_CAUSE = Bits(1,3)
-  val RESP_AUX   = Bits(2,3)
-  val RESP_CFG   = Bits(3,3)
-  val RESP_VL    = Bits(4,3)
+  val RESP_X     = BitPat("b???")
+  val RESP_NVL   = UInt(0,3)
+  val RESP_CAUSE = UInt(1,3)
+  val RESP_AUX   = UInt(2,3)
+  val RESP_CFG   = UInt(3,3)
+  val RESP_VL    = UInt(4,3)
 
 }
 
 trait DecodeConstants {
-  val Y = Bool(true)
-  val N = Bool(false)
-  val X = Bits("b?", 1)
+  val Y = BitPat("b1")
+  val N = BitPat("b0")
+  val X = BitPat("b?")
 
-  val M0 = Bits("b00", 2)
-  val MR = Bits("b01", 2)
-  val ML = Bits("b10", 2)
-  val MI = Bits("b11", 2)
+  val M0 = UInt(0, 2)
+  val MR = UInt(1, 2)
+  val ML = UInt(2, 2)
+  val MI = UInt(3, 2)
 
-  val RX = Bits("b??", 2)
-  val RS = Bits("b00", 2)
-  val RA = Bits("b01", 2)
-  val RP = Bits("b10", 2)
-  val RV = Bits("b11", 2)
+  val RX = BitPat("b??")
+  val RS = UInt(0, 2)
+  val RA = UInt(1, 2)
+  val RP = UInt(2, 2)
+  val RV = UInt(3, 2)
 
-  val REG_SHR = Bits(0,2)
-  val REG_ADDR = Bits(1,2)
-  val REG_PRED = Bits(2,2)
-  val REG_VEC = Bits(3,2)
+  val REG_SHR = UInt(0,2)
+  val REG_ADDR = UInt(1,2)
+  val REG_PRED = UInt(2,2)
+  val REG_VEC = UInt(3,2)
 
   def reg_type(t: Bits, d: Bool, i: Bool) = Mux(d, Mux(i, REG_VEC, REG_SHR), t)
 
   val SZ_I = 2
-  val IMM_X = Bits("b??", SZ_I)
+  val IMM_X = BitPat("b??")
   val IMM_0 = UInt(0, SZ_I)
   val IMM_I = UInt(1, SZ_I)
   val IMM_S = UInt(2, SZ_I)
   val IMM_U = UInt(3, SZ_I)
 
-  val DW__ = Bool.DC
-  val DW32 = Bits("b0", 1)
-  val DW64 = Bits("b1", 1)
+  val DW__ = BitPat("b?")
+  val DW32 = UInt(0, 1)
+  val DW64 = UInt(1, 1)
 
-  val FP_ = Bits("b??", 2)
-  val FPS = Bits("b00", 2)
-  val FPD = Bits("b01", 2)
-  val FPH = Bits("b10", 2)
+  val FP_ = BitPat("b??")
+  val FPS = UInt(0, 2)
+  val FPD = UInt(1, 2)
+  val FPH = UInt(2, 2)
 
   val SZ_BMUXSEL = 2
   val SZ_DW = 1
   val SZ_FP = 2
 
-  val A1_X    = Bits("b??", 2)
+  val A1_X    = BitPat("b??")
   val A1_ZERO = UInt(0, 2)
   val A1_RS1  = UInt(1, 2)
   val A1_PC   = UInt(2, 2)
 
-  val A2_X    = Bits("b??", 2)
+  val A2_X    = BitPat("b??")
   val A2_ZERO = UInt(0, 2)
   val A2_FOUR = UInt(1, 2)
   val A2_RS2  = UInt(2, 2)
@@ -124,7 +124,7 @@ trait DecodeConstants {
 trait VIUConstants {
   val SZ_VIU_OP = 4
 
-  val I_X    = Bits("b????",SZ_VIU_OP)
+  val I_X    = BitPat("b????")
   val I_ADD  = UInt(0, SZ_VIU_OP)
   val I_ADDU = UInt(1, SZ_VIU_OP)
   val I_SLL  = UInt(2, SZ_VIU_OP)
@@ -146,7 +146,7 @@ trait VIUConstants {
 trait VIMUConstants {
   val SZ_VIMU_OP = 2
 
-  val IM_X    = Bits("b??",SZ_VIMU_OP)
+  val IM_X    = BitPat("b??")
   val IM_M    = UInt(0, SZ_VIMU_OP)
   val IM_MH   = UInt(1, SZ_VIMU_OP)
   val IM_MHSU = UInt(2, SZ_VIMU_OP)
@@ -156,7 +156,7 @@ trait VIMUConstants {
 trait VIDUConstants {
   val SZ_VIDU_OP = 2
 
-  val ID_X    = Bits("b??",SZ_VIDU_OP)
+  val ID_X    = BitPat("b??")
   val ID_DIV  = UInt(0, SZ_VIDU_OP)
   val ID_DIVU = UInt(1, SZ_VIDU_OP)
   val ID_REM  = UInt(2, SZ_VIDU_OP)
@@ -166,7 +166,7 @@ trait VIDUConstants {
 trait VFMUConstants {
   val SZ_VFMU_OP = 3
 
-  val FM_X     = Bits("b???",SZ_VFMU_OP)
+  val FM_X     = BitPat("b???")
   val FM_ADD   = UInt(0, SZ_VFMU_OP)
   val FM_SUB   = UInt(1, SZ_VFMU_OP)
   val FM_MUL   = UInt(2, SZ_VFMU_OP)
@@ -181,7 +181,7 @@ trait VFMUConstants {
 trait VFDUConstants {
   val SZ_VFDU_OP = 1
 
-  val FD_X    = Bits("b?",SZ_VFDU_OP)
+  val FD_X    = BitPat("b?")
   val FD_DIV  = UInt(0, SZ_VFDU_OP)
   val FD_SQRT = UInt(1, SZ_VFDU_OP)
 }
@@ -189,7 +189,7 @@ trait VFDUConstants {
 trait VFCUConstants {
   val SZ_VFCU_OP = 3
 
-  val FC_X     = Bits("b???",SZ_VFCU_OP)
+  val FC_X     = BitPat("b???")
   val FC_CEQ   = UInt(0, SZ_VFCU_OP)
   val FC_CLT   = UInt(1, SZ_VFCU_OP)
   val FC_CLE   = UInt(2, SZ_VFCU_OP)
@@ -201,7 +201,7 @@ trait VFCUConstants {
 trait VFVUConstants {
   val SZ_VFVU_OP = 4
 
-  val FV_X     = Bits("b????",SZ_VFVU_OP)
+  val FV_X     = BitPat("b????")
   val FV_CLTF  = UInt(0, SZ_VFVU_OP)
   val FV_CLUTF = UInt(1, SZ_VFVU_OP)
   val FV_CWTF  = UInt(2, SZ_VFVU_OP)
@@ -221,7 +221,7 @@ trait VFVUConstants {
 trait VMUConstants {
   val SZ_VMU_MODE = 2
 
-  val MM_X  = Bits("b??",SZ_VMU_MODE)
+  val MM_X  = BitPat("b??")
   val MM_VS = UInt(0, SZ_VMU_MODE) // vector strided
   val MM_VX = UInt(1, SZ_VMU_MODE) // vector indexed
   val MM_S  = UInt(2, SZ_VMU_MODE) // scalar
@@ -233,12 +233,12 @@ trait VMUConstants {
 object Commands extends Commands
 trait Commands {
   // command bits for the vector command queue
-  val CMD_X = Bits("b???",3)
+  val CMD_X = BitPat("b???")
 
-  val CMD_VSETCFG = Bits("b000",3)
-  val CMD_VSETVL  = Bits("b001",3)
-  val CMD_VF      = Bits("b010",3)
-  val CMD_VFT     = Bits("b011",3)
-  val CMD_VMSA    = Bits("b100",3)
-  val CMD_VMSS    = Bits("b101",3)
+  val CMD_VSETCFG = UInt(0,3)
+  val CMD_VSETVL  = UInt(1,3)
+  val CMD_VF      = UInt(2,3)
+  val CMD_VFT     = UInt(3,3)
+  val CMD_VMSA    = UInt(4,3)
+  val CMD_VMSS    = UInt(5,3)
 }

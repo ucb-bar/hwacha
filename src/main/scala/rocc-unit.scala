@@ -28,14 +28,15 @@ class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) 
 
 object HwachaDecodeTable extends HwachaDecodeConstants {
   import HwachaInstructions._
+  val default: List[BitPat] =
                 // * means special case decode code below     checkvl?             
                 //     inst_val                               |                         save
                 //     |  priv                                | vrd?      resp?         | restore
                 //     |  |  vmcd_val                         | | imm?    |             | |
                 //     |  |  |  cmd          rtype  imm       | | | vcnt? | resptype    | | kill
                 //     |  |  |  |            |      |         | | | |     | |           | | |
-  val default =   List(N, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     N,N,N)
-  val table = Array(
+                  List(N, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     N,N,N)
+  val table: Array[(BitPat, List[BitPat])] = Array(
     // General instructions
     VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, IMM_VLEN, N,N,Y,N,    N,RESP_X,     N,N,N), //* set maxvl register
     VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, IMM_VLEN, N,N,Y,N,    Y,RESP_NVL,   N,N,N), //* set vl register
