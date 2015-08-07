@@ -211,7 +211,8 @@ class ABox1 extends VMUModule {
   val ecnt_max = Mux(packed, ecnt_blk - eskip, UInt(1))
   val count_next = count.zext - ecnt_max
   val last = (count_next <= SInt(0))
-  val ecnt = Mux(last, count, ecnt_max)
+  val ecnt = Mux(last, count(tlByteAddrBits, 0), ecnt_max)
+  val ecnt_valve = UInt()
   val eidx = op.vlen - count
 
   val subblock = Reg(UInt(width = pgIdxBits - tlByteAddrBits))
@@ -221,13 +222,13 @@ class ABox1 extends VMUModule {
   // Track number of elements permitted to depart
   val valve = Reg(init = UInt(0, bVLen))
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
-  val valve_sub = Mux(io.mbox.fire(), io.mbox.bits.meta.ecnt, UInt(0))
+  val valve_sub = Mux(io.mbox.fire(), ecnt_valve, UInt(0))
   valve := valve + valve_add - valve_sub
 
   // Flush valve following exception
   val valve_on = (valve >= ecnt)
   val valve_ok = valve_on || (io.xcpt.prop.top.stall && (valve != UInt(0)))
-  val ecnt_valve = Mux(!valve_on && io.xcpt.prop.top.stall, valve, ecnt)
+  ecnt_valve := Mux(!valve_on && io.xcpt.prop.top.stall, valve(tlByteAddrBits, 0), ecnt)
 
   val ppn = io.vpaq.bits(paddrBits-1, pgIdxBits)
   val pgidx_blk = Mux(packed, subblock, io.vpaq.bits(pgIdxBits-1, tlByteAddrBits))
@@ -261,6 +262,9 @@ class ABox1 extends VMUModule {
         }
       }
       first := Bool(true)
+
+      // Check that valve counter returns to zero after each memory operation
+      assert(valve === UInt(0), "VMU: valve counter with non-zero initial value")
     }
 
     is (s_busy) {
