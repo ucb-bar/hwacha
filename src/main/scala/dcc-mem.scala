@@ -446,6 +446,10 @@ class VLU extends VXUModule with VMUParameters {
     val wb_mask = bwq.io.deq.bits.mask & Fill(nSlices, bwq.io.deq.fire())
     wb_update(i) := wb_mask << wb_shift
 
+    assert(!bwq.io.deq.valid ||
+      ((eidx <= wb_eidx) && (wb_eidx < eidx + UInt(nvlreq))),
+      "VLU: out-of-bounds eidx at writeback; check VMU valve logic");
+
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready
 
@@ -483,13 +487,12 @@ class VLU extends VXUModule with VMUParameters {
   wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state === s_busy)
 
   private def priority(in: Iterable[(Bool, UInt)]): (Bool, UInt) = {
-    if (in.size > 1) {
-      val cnt = in.foldLeft(UInt(0)) { case (cnt0, (sel, cnt1)) =>
-        Mux(sel, cnt1, cnt0)
-      }
-      val sel = in.map(_._1).reduce(_ || _)
-      (sel, cnt)
-    } else in.head
+    // Returns the last (lowest priority) item if none are selected
+    val cnt = in.init.foldRight(in.last._2) {
+      case ((sel, cnt0), cnt1) => Mux(sel, cnt0, cnt1)
+    }
+    val sel = in.map(_._1).reduce(_ || _)
+    (sel, cnt)
   }
 
   private def priority_tree(in: Iterable[(Bool, UInt)]): Iterable[(Bool, UInt)] = {
@@ -497,10 +500,10 @@ class VLU extends VXUModule with VMUParameters {
     if (stage.size > 1) priority_tree(stage) else stage
   }
 
-  // Limited leading-ones count
-  val wb_locnt_init = (0 until maxLookAhead).map(i => (wb_status(i), UInt(i+1)))
-  val wb_locnt_tree = priority_tree(wb_locnt_init).head
-  val wb_locnt = Mux(wb_locnt_tree._1, wb_locnt_tree._2, UInt(0))
+  // Limited leading-ones count (ffz)
+  val wb_locnt_init = (0 until maxLookAhead).map(i => (!wb_status(i), UInt(i))) :+
+    (Bool(true), UInt(maxLookAhead))
+  val wb_locnt = priority_tree(wb_locnt_init).head._2
   io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
 }
 
