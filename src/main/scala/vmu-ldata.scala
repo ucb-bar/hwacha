@@ -41,6 +41,7 @@ class LBox extends VMUModule {
 
   vldq.io.enq.bits.data := io.mbox.load.bits.data
   vldq.io.enq.bits.meta := vmdb.io.r.data
+  vldq.io.enq.bits.last := io.mbox.load.bits.last
   vldq.io.enq.valid := io.mbox.load.valid
   io.mbox.load.ready := vldq.io.enq.ready
 

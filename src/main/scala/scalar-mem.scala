@@ -42,6 +42,7 @@ class SMU extends VMUModule {
   req.bits.tag := UInt(0)
   req.bits.store.data := op.aux.s.data << Cat(shift, Bits(0,3))
   req.bits.store.mask := Cat(mask, Bits(1,1)) << shift
+  req.bits.last := Bool(true)
 
   val resp_data = resp.bits.data >> Cat(shift, Bits(0,3))
   val resp_mask = FillInterleaved(SZ_B, mask)

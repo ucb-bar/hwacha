@@ -316,6 +316,8 @@ class VLU extends VXUModule with VMUParameters {
 
   val vd = Reg(UInt(width = bRFAddr))
 
+  val sink = Reg(Bool())
+
   op.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
@@ -324,9 +326,11 @@ class VLU extends VXUModule with VMUParameters {
   switch (state) {
     is (s_idle) {
       op.ready := Bool(true)
+      eidx := UInt(0)
+      sink := Bool(true)
+
       when (op.valid) {
         state := s_busy
-        eidx := UInt(0)
         vlen := op.bits.vlen
         mt_hold := op.bits.fn.vmu().mt
         vd := op.bits.vd.id
@@ -346,9 +350,18 @@ class VLU extends VXUModule with VMUParameters {
   assert(!op.valid || op.bits.vd.valid, "invalid vd in VLU")
 
   val inter = Module(new VLUInterposer)
-  inter.io.enq <> io.vldq
   inter.io.en := mt.b
   inter.io.init := op.fire()
+
+  inter.io.enq.bits := io.vldq.bits
+  inter.io.enq.valid := io.vldq.valid && sink
+  io.vldq.ready := inter.io.enq.ready && sink
+
+  // Avoid prematurely accepting responses for the next memory operation
+  // before the current one has finished
+  when (io.vldq.fire() && io.vldq.bits.last) {
+    sink := Bool(false)
+  }
 
   val vldq = inter.io.deq
   val meta = vldq.bits.meta
@@ -537,6 +550,7 @@ class VLUInterposer extends VXUModule with VMUParameters {
   io.deq.bits.data := Mux(shift,
     io.enq.bits.data(tlDataBits-1, nBatch*8),
     io.enq.bits.data)
+  io.deq.bits.last := Bool(false) // don't care
 
   val s1 :: s2 :: Nil = Enum(UInt(), 2)
   val state = Reg(UInt())

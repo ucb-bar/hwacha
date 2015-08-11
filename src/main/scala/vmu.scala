@@ -95,15 +95,15 @@ class IBox extends VMUModule {
     val op = Decoupled(new VMUOp).flip
     val abox = new VMUIssueOpIO
     val sbox = new VMUIssueOpIO
+    val mbar = new VMUIssueOpIO
     val smu = new VMUIssueOpIO
-    val quiescent = Bool(INPUT)
   }
 
   val issueq = Module(new Queue(new VMUOp, nVMUQ))
   issueq.io.enq <> io.op
 
   val op = VMUDecodedOp(issueq.io.deq.bits)
-  private val backends = Seq(io.abox, io.sbox, io.smu)
+  private val backends = Seq(io.abox, io.sbox, io.mbar, io.smu)
   for (box <- backends) {
     box.op := op
     box.fire := Bool(false)
@@ -122,13 +122,14 @@ class IBox extends VMUModule {
           io.smu.fire := Bool(true)
         } .otherwise {
           io.abox.fire := Bool(true)
-          io.sbox.fire := op.cmd.store || op.cmd.amo
+          io.sbox.fire := op.cmd.write
         }
+        io.mbar.fire := Bool(true)
       }
     }
 
     is (s_busy) {
-      when (!backends.map(_.busy).reduce(_||_) && io.quiescent) {
+      when (!backends.map(_.busy).reduce(_||_)) {
         state := s_idle
         issueq.io.deq.ready := Bool(true)
       }
@@ -160,13 +161,11 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   val sbox = Module(new SBox)
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
+  val mbar = Module(new MBar)
 
   val smu = Module(new SMU)
-  val arb = Module(new VMUMemArb(2))
-  val mon = Module(new VMUMemMonitor)
 
   ibox.io.op <> io.op
-  val sel = ibox.io.smu.op.mode.scalar
 
   abox.io.issue <> ibox.io.abox
   abox.io.xcpt <> io.xcpt
@@ -176,7 +175,6 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
 
   tbox.io.inner(0) <> abox.io.tlb.lane
   tbox.io.inner(1) <> smu.io.tlb
-  tbox.io.sel := sel
 
   io.dtlb <> tbox.io.outer
   io.ptlb <> abox.io.tlb.pf
@@ -195,19 +193,15 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   smu.io.xcpt <> io.xcpt
   smu.io.scalar <> io.scalar
 
-  arb.io.inner(0) <> mbox.io.outer
-  arb.io.inner(1) <> smu.io.outer
-  arb.io.sel := sel
-  io.memif <> arb.io.outer
-
-  mon.io.req := io.memif.req.fire()
-  mon.io.resp := io.memif.resp.fire()
-  ibox.io.quiescent := mon.io.quiescent
+  mbar.io.issue <> ibox.io.mbar
+  mbar.io.inner.vmu <> mbox.io.outer
+  mbar.io.inner.smu <> smu.io.outer
+  io.memif <> mbar.io.outer
 
   val irqs = Seq(abox.io.irq, smu.io.irq)
   io.irq.vmu.ma_ld := irqs.map(_.vmu.ma_ld).reduce(_ || _)
   io.irq.vmu.ma_st := irqs.map(_.vmu.ma_st).reduce(_ || _)
   io.irq.vmu.faulted_ld := irqs.map(_.vmu.faulted_ld).reduce(_ || _)
   io.irq.vmu.faulted_st := irqs.map(_.vmu.faulted_st).reduce(_ || _)
-  io.irq.vmu.aux := Vec(irqs.map(_.vmu.aux))(sel)
+  io.irq.vmu.aux := Vec(irqs.map(_.vmu.aux))(abox.io.issue.op.mode.scalar)
 }

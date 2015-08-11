@@ -144,26 +144,23 @@ class ABox0 extends VMUModule {
 }
 
 class TBox(n: Int) extends VMUModule {
-  private val lgn = log2Up(n)
   val io = new Bundle {
     val inner = Vec.fill(n)(new TLBIO).flip
     val outer = new TLBIO
-
-    val sel = UInt(INPUT, lgn)
   }
 
-  val sel = UIntToOH(io.sel, n)
-  val sel_seq = (0 until n).map(sel(_))
-
-  io.outer.req.valid := Mux1H(sel_seq, io.inner.map(_.req.valid))
-  io.outer.query(
-    Mux1H(sel_seq, io.inner.map(_.req.bits.vpn)),
-    Mux1H(sel_seq, io.inner.map(_.req.bits.store)))
-
-  io.inner.zip(sel_seq).foreach { case (inner, en) =>
-    inner.resp := io.outer.resp
-    inner.req.ready := io.outer.req.ready && en
+  val ready = io.inner.init.map(!_.req.valid).scanLeft(io.outer.req.ready)(_ && _)
+  io.inner.zip(ready).foreach { case (i, r) =>
+    i.req.ready := r
+    i.resp := io.outer.resp
   }
+
+  // Priority mux
+  val bits = io.inner.init.foldRight(io.inner.last.req.bits) {
+    case (a, b) => Mux(a.req.valid, a.req.bits, b)
+  }
+  io.outer.req.bits := bits
+  io.outer.req.valid := io.inner.map(_.req.valid).reduce(_ || _)
 }
 
 class VPAQ extends VMUModule with SeqParameters {

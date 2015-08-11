@@ -124,7 +124,7 @@ class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
 
 class VPAQEntry extends VMUBundle {
   val addr = UInt(width = paddrBits)
-  val ecnt = UInt(width = bVLen) 
+  val ecnt = UInt(width = bVLen)
 }
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
@@ -170,6 +170,7 @@ abstract class VMUData extends VMUBundle {
 
 class VMULoadData extends VMUData {
   val tag = UInt(width = bTag)
+  val last = Bool()
 }
 
 class VMUStoreData extends VMUData {
@@ -178,6 +179,7 @@ class VMUStoreData extends VMUData {
 
 class VLDQEntry extends VMUData {
   val meta = new VMULoadMetaEntry
+  val last = Bool()
 }
 class VLDQIO extends DecoupledIO(new VLDQEntry)
 
