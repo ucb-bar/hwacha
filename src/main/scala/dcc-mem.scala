@@ -419,7 +419,7 @@ class VLU extends VXUModule {
   // masking / overflow
   //--------------------------------------------------------------------\\
 
-  val tick = Reg(Bool())
+  val tick = Reg(init = Bool(true))
   val tock = !tick
 
   val mask_root = EnableDecoder(meta.ecnt, nBatch)
@@ -428,8 +428,10 @@ class VLU extends VXUModule {
   val slice_unaligned = (eidx_slice != UInt(0)) && tick
   val slice_overflow = mask_root.last && slice_unaligned
 
-  val tock_next = vldq.valid && slice_overflow && (state === s_busy)
-  tick := !tock_next
+  val bwqs_fire = Bool()
+  when (bwqs_fire) {
+    tick := !slice_overflow
+  }
 
   val mask_head = tick
   val mask_tail = !slice_unaligned
@@ -484,8 +486,9 @@ class VLU extends VXUModule {
     (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _)
   }
 
-  val vldq_en = !slice_overflow
-  vldq.ready := fire(vldq.valid, vldq_en)
+  val bwqs_ready_all = fire(vldq.valid)
+  bwqs_fire := bwqs_ready_all && vldq.valid
+  vldq.ready := bwqs_ready_all && !slice_overflow
   bwqs.zip(bwqs_ready.zip(bwqs_en)).foreach { case (bwq, (ready, en)) =>
     bwq.valid := fire(ready, en)
   }
