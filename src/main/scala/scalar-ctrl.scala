@@ -39,7 +39,8 @@ class CtrlDpathIO extends HwachaBundle {
   val wb_vf_active = Bool(OUTPUT)
 }
 
-class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
+class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
+  with VMUParameters {
   import Commands._
 
   val io = new Bundle {

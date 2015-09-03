@@ -34,11 +34,11 @@ trait VMUParameters extends UsesHwachaParameters {
   require((tlDataBits & (SZ_D-1)) == 0)
 }
 
-class LaneMemIO extends Bundle {
+class LaneMemIO extends HwachaBundle {
   val vaq = new VVAQIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
-  val pred = Decoupled(Bits(width = nPredSet)).flip
+  val pred = Decoupled(Bits(width = nPredSet))
   val pala = new CounterLookAheadIO
 }
 
