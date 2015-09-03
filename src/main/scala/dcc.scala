@@ -2,8 +2,7 @@ package hwacha
 
 import Chisel._
 
-abstract trait DCCParameters extends UsesHwachaParameters with VMUParameters {
-  val nPredSet = tlDataBytes // TODO: rename
+abstract trait DCCParameters extends UsesHwachaParameters {
   val nDCCOpQ = 2
   val nDCCPredQ = 2
   val nVDUOperands = 2
@@ -14,7 +13,7 @@ class DCCAckIO extends HwachaBundle {
   val vfdu = Valid(new VFDUAck)
 }
 
-class DecoupledCluster extends VXUModule with VMUParameters {
+class DecoupledCluster extends VXUModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
@@ -31,6 +30,7 @@ class DecoupledCluster extends VXUModule with VMUParameters {
     val gla = new CounterLookAheadIO().flip
     val lla = new CounterLookAheadIO().flip
     val sla = new BRQLookAheadIO().flip
+    val lpred = Decoupled(Bits(width = nPredSet)).flip
     val spred = Decoupled(Bits(width = nPredSet)).flip
     val vmu = new LaneMemIO
     val xcpt = new XCPTIO().flip
@@ -76,6 +76,7 @@ class DecoupledCluster extends VXUModule with VMUParameters {
   vlu.io.op.valid := fire(mask_vlu_ready, io.op.bits.active.enq_vlu())
   vlu.io.op.bits := io.op.bits
   vlu.io.la <> io.lla
+  vlu.io.pred <> io.lpred
   vlu.io.vldq <> io.vmu.vldq
   io.bwqs.mem <> vlu.io.bwqs
 

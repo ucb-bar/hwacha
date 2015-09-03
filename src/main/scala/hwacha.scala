@@ -14,7 +14,9 @@ case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 
-abstract trait UsesHwachaParameters extends UsesParameters {
+abstract trait UsesHwachaParameters extends UsesParameters
+  with uncore.TileLinkParameters {
+
   val nARegs = params(HwachaNAddressRegs)
   val nSRegs = params(HwachaNScalarRegs)
   val nVRegs = params(HwachaNVectorRegs)
@@ -31,6 +33,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val maxVLen = params(HwachaMaxVLen)
   val bVLen = log2Down(maxVLen) + 1
+
+  val nPredSet = tlDataBytes
 
   val local_sfpu = params(HwachaLocalScalarFPU)
 

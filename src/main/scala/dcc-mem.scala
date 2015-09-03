@@ -72,7 +72,7 @@ class VGU extends VXUModule with Packing {
   io.vaq.bits.addr := addr
 }
 
-class VSU extends VXUModule with VMUParameters {
+class VSU extends VXUModule {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
     val xcpt = new XCPTIO().flip
@@ -287,11 +287,12 @@ class VLUEntry extends VXUBundle {
   val mask = Bits(width = nSlices)
 }
 
-class VLU extends VXUModule with VMUParameters {
+class VLU extends VXUModule {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
 
     val vldq = new VLDQIO().flip
+    val pred = Decoupled(Bits(width = nPredSet)).flip
     val bwqs = Vec.fill(nBanks)(new BWQIO)
     val la = new CounterLookAheadIO().flip
 
@@ -301,6 +302,8 @@ class VLU extends VXUModule with VMUParameters {
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
   opq.io.enq <> io.op
   val op = opq.io.deq
+
+  io.pred.ready := Bool(true) // FIXME
 
   //--------------------------------------------------------------------\\
   // control
@@ -520,7 +523,7 @@ class VLU extends VXUModule with VMUParameters {
   io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
 }
 
-class VLUInterposer extends VXUModule with VMUParameters {
+class VLUInterposer extends VXUModule {
   val io = new Bundle {
     val enq = new VLDQIO().flip
     val deq = new VLDQIO

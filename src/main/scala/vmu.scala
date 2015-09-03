@@ -9,8 +9,7 @@ case object HwachaNVSDQEntries extends Field[Int]
 case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVMDBEntries extends Field[Int]
 
-trait VMUParameters extends UsesHwachaParameters
-  with uncore.TileLinkParameters {
+trait VMUParameters extends UsesHwachaParameters {
   val nVMUQ = 2
   val nVVAQ = params(HwachaNVVAQEntries)
   val nVPAQ = params(HwachaNVPAQEntries)
@@ -39,6 +38,7 @@ class LaneMemIO extends Bundle {
   val vaq = new VVAQIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
+  val pred = Decoupled(Bits(width = nPredSet)).flip
   val pala = new CounterLookAheadIO
 }
 
@@ -204,4 +204,6 @@ class VMU(resetSignal: Bool = null) extends VMUModule(_reset = resetSignal) {
   io.irq.vmu.faulted_ld := irqs.map(_.vmu.faulted_ld).reduce(_ || _)
   io.irq.vmu.faulted_st := irqs.map(_.vmu.faulted_st).reduce(_ || _)
   io.irq.vmu.aux := Vec(irqs.map(_.vmu.aux))(abox.io.issue.op.mode.scalar)
+
+  io.lane.pred.ready := Bool(true) // FIXME
 }
