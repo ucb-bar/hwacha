@@ -156,6 +156,7 @@ class SeqType extends VXUBundle {
   val vfdu = Bool()
   val vfcu = Bool()
   val vfvu = Bool()
+  val vpu = Bool()
   val vgu = Bool()
   val vcu = Bool()
   val vlu = Bool()

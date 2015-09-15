@@ -54,6 +54,7 @@ class VXU extends HwachaModule {
   dcc.io.gla <> seq.io.gla
   dcc.io.lla <> seq.io.lla
   dcc.io.sla <> seq.io.sla
+  dcc.io.lpred <> seq.io.lpred
   dcc.io.spred <> seq.io.spred
 
   dcc.io.lrqs <> lane.io.lrqs

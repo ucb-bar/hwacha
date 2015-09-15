@@ -55,6 +55,7 @@ class Sequencer extends VXUModule {
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
 
+    val lpred = Decoupled(Bits(width=nPredSet))
     val spred = Decoupled(Bits(width=nPredSet))
 
     val lack = new LaneAckIO().flip
@@ -85,6 +86,7 @@ class Sequencer extends VXUModule {
       val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
       val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
       val use_mask_wport = Vec.fill(nWSel){Bits(OUTPUT, maxWPortLatency+nBanks-1)}
+      val pred_first = Vec.fill(nSeq){Bool(OUTPUT)}
       val consider = Vec.fill(nSeq){Bool(OUTPUT)}
       val first_sched = Vec.fill(nSeq){Bool(OUTPUT)}
       val second_sched = Vec.fill(nSeq){Bool(OUTPUT)}
@@ -134,10 +136,12 @@ class Sequencer extends VXUModule {
     val next_war = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
     val next_waw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
 
+    val pred_ready = Bool()
     val vidu_ready = Bool()
     val vfdu_ready = Bool()
     val vcu_ready = Bool()
     val vlu_ready = Bool()
+    val vgu_ready = Bool()
 
     ///////////////////////////////////////////////////////////////////////////
     // header
@@ -157,10 +161,12 @@ class Sequencer extends VXUModule {
         }
       }
 
+      pred_ready := Bool(false)
       vidu_ready := Bool(false)
       vfdu_ready := Bool(false)
       vcu_ready := Bool(false)
       vlu_ready := Bool(false)
+      vgu_ready := Bool(false)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -172,8 +178,8 @@ class Sequencer extends VXUModule {
     def ready = {
       val a = io.op.bits.active
       (a.vint || a.vimul || a.vfma || a.vfcmp || a.vfconv) && (empty >= UInt(1)) ||
-      (a.vidiv || a.vfdiv || a.vld || a.vst) && (empty >= UInt(2)) ||
-      (a.vldx || a.vstx) && (empty >= UInt(3)) ||
+      (a.vidiv || a.vfdiv) && (empty >= UInt(2)) ||
+      (a.vld || a.vst || a.vldx || a.vstx) && (empty >= UInt(3)) ||
       (a.vamo) && (empty >= UInt(4))
     }
 
@@ -299,6 +305,7 @@ class Sequencer extends VXUModule {
     def set_vfdu(n: UInt) = set_active(n, (a: SeqType) => a.vfdu, fn_identity)
     def set_vfcu(n: UInt) = set_active(n, (a: SeqType) => a.vfcu, fn_identity)
     def set_vfvu(n: UInt) = set_active(n, (a: SeqType) => a.vfvu, fn_identity)
+    def set_vpu(n: UInt) = set_active(n, (a: SeqType) => a.vpu, fn_identity)
     def set_vgu(n: UInt) = set_active(n, (a: SeqType) => a.vgu, fn_identity)
     def set_vcu(n: UInt) = set_active(n, (a: SeqType) => a.vcu, fn_identity)
     def set_vlu(n: UInt) = set_active(n, (a: SeqType) => a.vlu, fn_identity)
@@ -441,18 +448,22 @@ class Sequencer extends VXUModule {
       set_tail(t3)
     }
     def issue_vld = {
-      set_entry(t0); set_vcu(t0)
-                      set_noports(t0); set_war_hazs_vd(t0); set_waw_hazs_vd(t0)
-      set_entry(t1); set_vlu(t1); set_vd(t1)
-                      set_noports(t1)
-      set_tail(t2)
+      set_entry(t0); set_vpu(t0)
+                      set_noports(t0)
+      set_entry(t1); set_vcu(t1)
+                      set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
+      set_entry(t2); set_vlu(t2); set_vd(t2)
+                      set_noports(t2)
+      set_tail(t3)
     }
     def issue_vst = {
-      set_entry(t0); set_vcu(t0)
+      set_entry(t0); set_vpu(t0)
                       set_noports(t0)
-      set_entry(t1); set_vsu(t1); set_vd_as_vs1(t1)
-                      set_rport_vd(t1); set_raw_haz(t1, t0)
-      set_tail(t2)
+      set_entry(t1); set_vcu(t1)
+                      set_noports(t1)
+      set_entry(t2); set_vsu(t2); set_vd_as_vs1(t2)
+                      set_rport_vd(t2); set_raw_haz(t2, t1)
+      set_tail(t3)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -592,8 +603,10 @@ class Sequencer extends VXUModule {
 
     def nohazards(i: Int) = !dhazard(i) && !bhazard(i) && !shazard(i)
 
+    val pred_first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
     val vidu_sched = find_first((i: Int) => e(i).active.vidu && nohazards(i))
     val vfdu_sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
+    val vpu_sched = find_first((i: Int) => e(i).active.vpu && nohazards(i))
     val vcu_sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
     val vlu_sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
     val vgu_first = find_first((i: Int) => e(i).active.vgu)
@@ -603,7 +616,7 @@ class Sequencer extends VXUModule {
       val consider = (i: Int) => nohazards(i) && (
         e(i).active.viu || e(i).active.vimu ||
         e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
-        e(i).active.vgu && vgu_first(i) && io.gla.available ||
+        e(i).active.vgu && pred_first(i) && vgu_first(i) && pred_ready && vgu_ready ||
         e(i).active.vsu && vsu_first(i) && io.sla.available ||
         e(i).active.vqu && vqu_first(i) && (
           (!e(i).fn.vqu().latch(0) || io.dqla(0).available) &&
@@ -617,13 +630,18 @@ class Sequencer extends VXUModule {
       val sel = first_sched.reduce(_ || _)
       Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
     }
+    (io.debug.pred_first zip pred_first) foreach { case (io, c) => io := c }
 
     def fire_vidu(n: Int) = vidu_sched(n) && vidu_ready
     def fire_vfdu(n: Int) = vfdu_sched(n) && vfdu_ready
+    def fire_vpu(n: Int) = pred_first(n) && vpu_sched(n) && pred_ready
     def fire_vcu(n: Int) = vcu_sched(n) && vcu_ready
     def fire_vlu(n: Int) = vlu_sched(n) && vlu_ready
     def fire_exp(n: Int) = exp_sched(n)
-    def fire(n: Int) = fire_vidu(n) || fire_vfdu(n) || fire_vcu(n) || fire_vlu(n) || fire_exp(n)
+    def fire(n: Int) =
+      fire_vidu(n) || fire_vfdu(n) ||
+      fire_vpu(n) || fire_vcu(n) || fire_vlu(n) ||
+      fire_exp(n)
 
     def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
       val max_strip = Mux(vcu, UInt(nBatch << 1), UInt(nBatch))
@@ -638,6 +656,18 @@ class Sequencer extends VXUModule {
     def selectfn(sched: Vec[Bool]) =
       new SeqSelect().fromBits(Mux1H(sched, select.map(_.toBits)))
 
+    val pred_vpu = readfn(pred_first, (e: SeqEntry) => e.active.vpu)
+    val pred_fn = readfn(pred_first, (e: SeqEntry) => e.fn)
+    val pred_vlen = readfn(pred_first, (e: SeqEntry) => e.vlen)
+    val pred_eidx = readfn(pred_first, (e: SeqEntry) => e.eidx)
+    val pred_strip = stripfn(pred_vlen, pred_vpu, pred_fn)
+    val pred_odd = pred_eidx(3)
+    val pred_last = pred_vlen <= UInt(8)
+    val pred_mcmd = DecodedMemCommand(pred_fn.vmu().cmd)
+    val pred_mask = Mux(pred_vpu,
+      EnableDecoder(pred_strip, nPredSet).toBits,
+      EnableDecoder(Mux(pred_odd, UInt(8), UInt(0)) + pred_strip, nPredSet).toBits)
+
     val vidu_val = valfn(vidu_sched)
     val vidu_vlen = readfn(vidu_sched, (e: SeqEntry) => e.vlen)
     val vidu_fn = readfn(vidu_sched, (e: SeqEntry) => e.fn)
@@ -647,6 +677,8 @@ class Sequencer extends VXUModule {
     val vfdu_vlen = readfn(vfdu_sched, (e: SeqEntry) => e.vlen)
     val vfdu_fn = readfn(vfdu_sched, (e: SeqEntry) => e.fn)
     val vfdu_strip = stripfn(vfdu_vlen, Bool(false), vfdu_fn)
+
+    val vpu_val = valfn(Vec((pred_first zip vpu_sched) map { case (p, v) => p && v }))
 
     val vcu_val = valfn(vcu_sched)
     val vcu_vlen = readfn(vcu_sched, (e: SeqEntry) => e.vlen)
@@ -671,7 +703,7 @@ class Sequencer extends VXUModule {
     val vqu_fn = readfn(vqu_first, (e: SeqEntry) => e.fn)
     val vqu_strip = stripfn(vqu_vlen, Bool(false), vqu_fn)
 
-    val exp_val = valfn(exp_sched)
+    val exp_fire = valfn(exp_sched)
     val exp_vlen = readfn(exp_sched, (e: SeqEntry) => e.vlen)
     val exp_seq = {
       val out = new SequencerOp
@@ -711,7 +743,7 @@ class Sequencer extends VXUModule {
       val retire = Vec.fill(nSeq){Bool()}
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(e(i).vlen, e(i).active.vcu, e(i).fn)
+        val strip = stripfn(e(i).vlen, e(i).active.vpu || e(i).active.vcu, e(i).fn)
         when (valid(i)) {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
@@ -802,13 +834,13 @@ class Sequencer extends VXUModule {
     when (io.op.bits.active.vst) { seq.issue_vst }
   }
 
-  io.seq.valid := seq.exp_val
+  io.seq.valid := seq.exp_fire
   io.seq.bits := seq.exp_seq
 
   val vqu_cnt = strip_to_bcnt(seq.vqu_strip)
   (io.dqla zipWithIndex) map { case (la, i) =>
     la.cnt := vqu_cnt
-    la.reserve := seq.exp_val && seq.exp_seq.active.vqu && seq.exp_seq.fn.vqu().latch(i)
+    la.reserve := seq.exp_fire && seq.exp_seq.active.vqu && seq.exp_seq.fn.vqu().latch(i)
   }
 
   io.dila.cnt := strip_to_bcnt(seq.vidu_strip)
@@ -819,27 +851,40 @@ class Sequencer extends VXUModule {
   io.dfla.reserve := seq.vfdu_val && io.dfla.available
   seq.vfdu_ready := io.dfla.available
 
+  val pred_fire =
+    seq.vpu_val && seq.pred_ready ||
+    seq.exp_fire && seq.exp_seq.active.vgu && (seq.pred_odd || seq.pred_last)
+  io.lpred.bits := seq.pred_mask
+  io.spred.bits := seq.pred_mask
+  io.vmu.pred.bits := seq.pred_mask
+  io.lpred.valid := pred_fire && seq.pred_mcmd.read
+  io.spred.valid := pred_fire && seq.pred_mcmd.write
+  io.vmu.pred.valid := pred_fire
+  seq.pred_ready :=
+    io.vmu.pred.ready &&
+    (!seq.pred_mcmd.read || io.lpred.ready) &&
+    (!seq.pred_mcmd.write || io.spred.ready)
+
   io.gla.cnt := strip_to_bcnt(seq.vgu_strip)
-  io.gla.reserve := seq.exp_val && seq.exp_seq.active.vgu
+  io.gla.reserve := seq.exp_fire && seq.exp_seq.active.vgu
+  seq.vgu_ready := io.gla.available
 
   io.vmu.pala.cnt := seq.vcu_strip
   io.vmu.pala.reserve := seq.vcu_val && seq.vcu_ready
   io.lreq.cnt := seq.vcu_strip
-  io.lreq.reserve := seq.vcu_val && seq.vcu_mcmd.read && seq.vcu_ready
+  io.lreq.reserve := seq.vcu_val && seq.vcu_ready && seq.vcu_mcmd.read
   io.sreq.cnt := seq.vcu_strip
-  io.sreq.reserve := seq.vcu_val && seq.vcu_mcmd.store && seq.vcu_ready
-  io.spred.bits := EnableDecoder(seq.vcu_strip, nPredSet).toBits
-  io.spred.valid := seq.vcu_val && seq.vcu_mcmd.write && seq.vcu_ready
+  io.sreq.reserve := seq.vcu_val && seq.vcu_ready && seq.vcu_mcmd.store
   seq.vcu_ready :=
     io.vmu.pala.available &&
     (!seq.vcu_mcmd.read || io.lreq.available) &&
-    (!seq.vcu_mcmd.write || io.sreq.available && io.spred.ready)
+    (!seq.vcu_mcmd.write || io.sreq.available)
 
   io.lla.cnt := seq.vlu_strip
   io.lla.reserve := seq.vlu_val && io.lla.available
   seq.vlu_ready := io.lla.available
 
-  io.sla.reserve := seq.exp_val && seq.exp_seq.active.vsu
+  io.sla.reserve := seq.exp_fire && seq.exp_seq.active.vsu
   io.sla.mask := strip_to_bmask(seq.vsu_strip)
 
   io.pending := seq.valid.reduce(_ || _)
