@@ -28,6 +28,9 @@ class CtrlDpathIO extends HwachaBundle {
   val wb_valid = Bool(OUTPUT)
   val wb_waddr = Bits(INPUT, log2Up(nSRegs))
   val wb_wen = Bool(OUTPUT)
+  val wb_dmem_valid = Bool(OUTPUT)
+  val wb_fpu_valid  = Bool(OUTPUT)
+  val wb_dmem_waddr = UInt(OUTPUT,log2Up(nSRegs))
   val retire = Bool(OUTPUT)
   val bypass = Vec.fill(3)(Bool(OUTPUT))
   val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
@@ -132,7 +135,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   val ex_reg_valid = Reg(Bool())
   val wb_reg_valid = Reg(Bool())
-  val wb_reg_replay = Reg(Bool())
 
   val ctrl_killd = Bool()
   val ctrl_killx = Bool()
@@ -178,7 +180,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.dpath.aren(0) := aren1
   io.dpath.aren(1) := aren2
 
-  val ex_vd_val = ex_ctrl.vd_val
   val ex_vd_type = ex_ctrl.vd_type
 
   val wb_vd_val = wb_ctrl.vd_val
@@ -195,7 +196,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     (!vs2_val || id_scalar_src2) && (!vs3_val || id_scalar_src3)
 
   //COLIN FIXME: only send over dynamic bits from ex/wb_inst ala rockets ex_waddr
-  val ex_scalar_dest = ex_vd_val && (ex_vd_type === REG_SHR || ex_vd_type === REG_ADDR)
+  val ex_scalar_dest = ex_ctrl.vd_val  && (ex_ctrl.vd_type === REG_SHR  || ex_ctrl.vd_type === REG_ADDR)
   io.dpath.ex_scalar_dest := Bool(true)
   when(ex_vf_active && !ctrl_killx) { io.dpath.ex_scalar_dest := ex_scalar_dest }
 
@@ -249,11 +250,18 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   sboard.set(id_set_sboard, id_waddr)
 
 
+  // FPU/VMU setup
+  val wb_dmem_valid = Reg(next=io.dmem.valid)
+  val wb_fpu_valid = Reg(next=io.fpu.resp.valid)
+  val wb_dmem_waddr = Reg(next=io.dmem.bits.id)
+  io.dpath.wb_dmem_valid := wb_dmem_valid
+  io.dpath.wb_fpu_valid := wb_fpu_valid
+  io.dpath.wb_dmem_waddr := wb_dmem_waddr
   //on vmu resp valid we clear the sboard for its addr
   //on fpu resp valid we clear the sboard for its addr
-  val clear_mem = io.dmem.valid
-  val clear_fpu = io.fpu.resp.valid
-  val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, io.dmem.bits.id)
+  val clear_mem = wb_dmem_valid
+  val clear_fpu = wb_fpu_valid
+  val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, wb_dmem_waddr)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
  
   val enq_fpu = id_scalar_dest && id_val && id_ctrl.fpu_val
@@ -377,7 +385,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   }
 
   // stall inst in ex stage
-  //if either the vmu or fpu needs to writeback we need to stall
+  //if either the vmu or fpu needs to writeback next cycle we need to stall
   val ex_ll = ex_ctrl.vmu_val || ex_ctrl.fpu_val
   val vmu_stall_ex = ex_reg_valid && ex_scalar_dest && !ex_ll && io.dmem.valid
   val fpu_stall_ex = ex_reg_valid && ex_scalar_dest && !ex_ll && io.fpu.resp.valid
@@ -400,12 +408,14 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     wb_vf_active := ex_vf_active
   }
 
+  val wb_ll_valid = wb_dmem_valid || wb_fpu_valid
+
   val wb_use_port = wb_scalar_dest && wb_reg_valid && !(wb_ctrl.vmu_val || wb_ctrl.fpu_val)
 
   assert(!(!vf_active && sboard_not_empty), "vf should not end with non empty scoreboard")
-  assert(!(io.dmem.valid && wb_use_port), "load result and scalar wb conflict")
-  assert(!(io.fpu.resp.valid && wb_use_port), "fpu result and scalar wb conflict")
+  assert(!(wb_dmem_valid && wb_use_port), "load result and scalar wb conflict")
+  assert(!(wb_fpu_valid && wb_use_port), "fpu result and scalar wb conflict")
 
   io.dpath.retire := wb_reg_valid
-  io.dpath.wb_wen := wb_vf_active && (wb_use_port || io.dmem.valid || io.fpu.resp.valid)
+  io.dpath.wb_wen := wb_vf_active && (wb_use_port || wb_ll_valid)
 }
