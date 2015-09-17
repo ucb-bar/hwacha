@@ -235,7 +235,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
      id_ctrl_rens2_not0 && id_raddrs2 === ex_waddr ||
      id_ctrl_rens3_not0 && id_raddrs3 === ex_waddr)
 
-  val id_ex_hazard = !id_can_bypass && ex_reg_valid && data_hazard_ex
+  // can't bypass from kill'd regs either
+  val id_ex_hazard = !id_can_bypass && (ex_reg_valid || (!ex_reg_valid && ctrl_killx)) && data_hazard_ex
 
   val id_set_sboard = io.fpu.req.fire() || (id_scalar_dest && io.vmu.fire())
 
@@ -356,7 +357,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.reg.vd.id := id_waddr
 
   // to VMU
-  io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
+  io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu) && !ctrl_stalld
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
@@ -396,9 +397,10 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.fpu.resp.ready := Bool(true)
   io.dmem.ready := !io.fpu.resp.valid
  
+  val wb_ll_valid = wb_dmem_valid || wb_fpu_valid
   //writeback
-  ctrl_killx := ctrl_stallx || !ex_reg_valid
-  wb_reg_valid := !ctrl_killx
+  ctrl_killx := ctrl_stallx
+  wb_reg_valid := !ctrl_killx && (ex_reg_valid || wb_ll_valid)
   io.dpath.wb_valid := wb_reg_valid
 
   when (!ctrl_killx) {
@@ -408,7 +410,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
     wb_vf_active := ex_vf_active
   }
 
-  val wb_ll_valid = wb_dmem_valid || wb_fpu_valid
 
   val wb_use_port = wb_scalar_dest && wb_reg_valid && !(wb_ctrl.vmu_val || wb_ctrl.fpu_val)
 
