@@ -93,6 +93,20 @@ class Sequencer extends VXUModule {
     }
   }
 
+  require(isPow2(nSeq))
+
+  val full = Reg(init = Bool(false))
+  val head = Reg(init = UInt(0, log2Up(nSeq)))
+  val tail = Reg(init = UInt(0, log2Up(nSeq)))
+
+  val v = Vec.fill(nSeq){Reg(init=Bool(false))}
+  val e = Vec.fill(nSeq){Reg(new SeqEntry)}
+
+  def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
+    val max_strip = Mux(vcu, UInt(nBatch << 1), UInt(nBatch))
+    Mux(vl > max_strip, max_strip, vl)
+  }
+
   def strip_to_bcnt(strip: UInt) = {
     val stripp1 = strip + UInt(1)
     if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
@@ -102,495 +116,572 @@ class Sequencer extends VXUModule {
     EnableDecoder(strip_to_bcnt(strip), nBanks).toBits
   }
 
-  class BuildSequencer {
-    require(isPow2(nSeq))
+  ///////////////////////////////////////////////////////////////////////////
+  // data hazard checking helpers
 
-    ///////////////////////////////////////////////////////////////////////////
-    // state
-
-    val valid = Vec.fill(nSeq){Reg(init=Bool(false))}
-    val e = Vec.fill(nSeq){Reg(new SeqEntry)}
-
-    val full = Reg(init = Bool(false))
-    val head = Reg(init = UInt(0, log2Up(nSeq)))
-    val tail = Reg(init = UInt(0, log2Up(nSeq)))
-
-    ///////////////////////////////////////////////////////////////////////////
-    // wires
-
-    val h1 = head + UInt(1)
-    val t0 = tail
-    val t1 = tail + UInt(1)
-    val t2 = tail + UInt(2)
-    val t3 = tail + UInt(3)
-    val t4 = tail + UInt(4)
-
-    // clock gate ports and bypass ports
-    val update_head = Bool()
-    val update_tail = Bool()
-    val next_head = UInt(width = log2Up(nSeq))
-    val next_tail = UInt(width = log2Up(nSeq))
-
-    val update_haz = Vec.fill(nSeq){Bool()}
+  val dhazard = new {
+    val next_update = Vec.fill(nSeq){Bool()}
     val next_raw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
     val next_war = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
     val next_waw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
 
-    val pred_ready = Bool()
-    val vidu_ready = Bool()
-    val vfdu_ready = Bool()
-    val vcu_ready = Bool()
-    val vlu_ready = Bool()
-    val vgu_ready = Bool()
+    val set = new {
+      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
+      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
+      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // header
+      def issue_base_eq(ifn: RegFn, sfn: RegFn) =
+        Vec((0 until nSeq) map { i =>
+          v(i) && sfn(e(i).base).valid && !sfn(e(i).base).scalar &&
+          ifn(io.op.bits.reg).valid && !ifn(io.op.bits.reg).scalar &&
+          sfn(e(i).base).id === ifn(io.op.bits.reg).id })
+      val ivs1_evd_eq = issue_base_eq(reg_vs1, reg_vd)
+      val ivs2_evd_eq = issue_base_eq(reg_vs2, reg_vd)
+      val ivs3_evd_eq = issue_base_eq(reg_vs3, reg_vd)
+      val ivd_evs1_eq = issue_base_eq(reg_vd, reg_vs1)
+      val ivd_evs2_eq = issue_base_eq(reg_vd, reg_vs2)
+      val ivd_evs3_eq = issue_base_eq(reg_vd, reg_vs3)
+      val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
+
+      def raws(n: UInt, eq: Vec[Bool]) = {
+        for (i <- 0 until nSeq) {
+          when (eq(i)) {
+            raw(n, UInt(i))
+          }
+        }
+      }
+      def wars(n: UInt) = {
+        for (i <- 0 until nSeq) {
+          when (ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
+            war(n, UInt(i))
+          }
+        }
+      }
+      def waws(n: UInt) = {
+        for (i <- 0 until nSeq) {
+          when (ivd_evd_eq(i)) {
+            waw(n, UInt(i))
+          }
+        }
+      }
+      def raw_vs1(n: UInt) = raws(n, ivs1_evd_eq)
+      def raw_vs2(n: UInt) = raws(n, ivs2_evd_eq)
+      def raw_vs3(n: UInt) = raws(n, ivs3_evd_eq)
+      def raw_vd(n: UInt) = raws(n, ivd_evd_eq)
+      def war_vd(n: UInt) = wars(n)
+      def waw_vd(n: UInt) = waws(n)
+    }
+
+    val clear = new {
+      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(false) }
+      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(false) }
+      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
+    }
+
+    val check = new {
+      val vlen_check_ok =
+        Vec((0 until nSeq).map { r =>
+          Vec((0 until nSeq).map { c =>
+            if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
+            else Bool(true) }) })
+
+      def wmatrix(fn: RegFn) =
+        (0 until nSeq) map { r =>
+          Vec((0 until maxWPortLatency) map { l =>
+            io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
+            io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) }
+      val wmatrix_vs1 = wmatrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wmatrix_vs2 = wmatrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wmatrix_vs3 = wmatrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wmatrix_vd = wmatrix(reg_vd)
+
+      def wport_lookup(row: Vec[Bool], level: UInt) =
+        Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
+
+      val raw =
+        (0 until nSeq).map { r =>
+          (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
+          wmatrix_vs1(r).toBits.orR ||
+          wmatrix_vs2(r).toBits.orR ||
+          wmatrix_vs3(r).toBits.orR }
+      val war =
+        (0 until nSeq).map { r =>
+          (e(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
+      val waw =
+        (0 until nSeq).map { r =>
+          (e(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
+          wport_lookup(wmatrix_vd(r), e(r).wport).toBits.orR }
+
+      val result =
+        (0 until nSeq).map { r =>
+          raw(r) || war(r) || waw(r) }
+
+      def debug = {
+        io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
+        io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wmatrix_vs1(r).toBits.orR })
+        io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wmatrix_vs2(r).toBits.orR })
+        io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wmatrix_vs3(r).toBits.orR })
+        io.debug.dhazard_war := war
+        io.debug.dhazard_waw := waw
+        io.debug.dhazard := result
+      }
+    }
+
+    def update(n: UInt) = next_update(n) := Bool(true)
 
     def header = {
-      update_head := Bool(false)
-      update_tail := Bool(false)
-      next_head := head
-      next_tail := tail
-
       for (i <- 0 until nSeq) {
-        update_haz(i) := Bool(false)
+        next_update(i) := Bool(false)
         for (j <- 0 until nSeq) {
           next_raw(i)(j) := e(i).raw(j)
           next_war(i)(j) := e(i).war(j)
           next_waw(i)(j) := e(i).waw(j)
         }
       }
-
-      pred_ready := Bool(false)
-      vidu_ready := Bool(false)
-      vfdu_ready := Bool(false)
-      vcu_ready := Bool(false)
-      vlu_ready := Bool(false)
-      vgu_ready := Bool(false)
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // helpers
+    def logic = {
+      for (i <- 0 until nSeq) {
+        when (next_update(i)) {
+          e(i).raw := next_raw(i)
+          e(i).war := next_war(i)
+          e(i).waw := next_waw(i)
+        }
+      }
+    }
+  }
 
-    val count = Cat(full && head === tail, tail - head)
-    val empty = UInt(nSeq) - count
+  ///////////////////////////////////////////////////////////////////////////
+  // bank hazard checking helpers
+
+  val bhazard = new {
+    val set = new {
+      def nports_list(fns: RegFn*) =
+        PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
+      val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
+      val nrport_vs1 = nports_list(reg_vs1)
+      val nrport_vs2 = nports_list(reg_vs2)
+      val nrport_vd = nports_list(reg_vd)
+
+      def ports(n: UInt, rports: UInt, wport: UInt) = {
+        e(n).rports := rports
+        e(n).wport := wport
+      }
+      def noports(n: UInt) = ports(n, UInt(0), UInt(0))
+      def rport_vs1(n: UInt) = ports(n, nrport_vs1, UInt(0))
+      def rport_vs2(n: UInt) = ports(n, nrport_vs2, UInt(0))
+      def rport_vd(n: UInt) = ports(n, nrport_vd, UInt(0))
+      def rports(n: UInt) = ports(n, nrports, UInt(0))
+      def rwports(n: UInt, latency: Int) = ports(n, nrports, nrports + UInt(expLatency+latency))
+    }
+
+    val check = new {
+      // tail (shift right by one) because we are looking one cycle in the future
+      val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
+      val wport_mask = Vec(io.ticker.sram.write.tail map { _.valid })
+
+      val result =
+        (0 until nSeq) map { r =>
+          e(r).rports.orR && rport_mask.reduce(_ | _) ||
+          e(r).wport.orR && wport_mask(e(r).wport)
+        }
+
+      def debug = {
+        io.debug.bhazard := result
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // structural hazard checking helpers
+
+  val shazard = new {
+    val check = new {
+      def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
+        val mask =
+          (lops zipWithIndex) map { case (lop, i) =>
+            dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
+          } reduce(_|_)
+        mask >> UInt(1) // shift right by one because we are looking one cycle in the future
+      }
+      def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
+        use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
+      val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
+      val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
+      val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
+      val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
+      val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
+      val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
+      val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
+      val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
+      val use_mask_wport = (0 until nWSel) map { i =>
+        use_mask_lop(
+          io.ticker.sram.write,
+          (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)
+        ) }
+
+      val select = Vec.fill(nSeq){new SeqSelect}
+
+      val result =
+        (0 until nSeq) map { r =>
+          val op_idx = e(r).rports + UInt(expLatency, bRPorts+1)
+          val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
+          val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
+          val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
+          def check_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
+          def check_op_shazard(use_mask: Bits) = check_shazard(use_mask, ask_op_mask)
+          def check_rport(fn: RegFn, i: Int) =
+            fn(e(r).reg).valid && (
+              !fn(e(r).reg).scalar && check_op_shazard(use_mask_xbar(i)) ||
+              fn(e(r).reg).scalar && check_op_shazard(use_mask_sreg_global(i)))
+          val check_rport_0_1 = check_rport(reg_vs1, 0) || check_rport(reg_vs2, 1)
+          val check_rport_0_1_2 = check_rport_0_1 || check_rport(reg_vs3, 2)
+          val check_rport_2 = check_rport(reg_vs1, 2)
+          val check_rport_3_4 = check_rport(reg_vs1, 3) || check_rport(reg_vs2, 4)
+          val check_rport_3_4_5 = check_rport_3_4 || check_rport(reg_vs3, 5)
+          val check_rport_5 = check_rport(reg_vs1, 5)
+          def check_wport(i: Int) =
+            e(r).reg.vd.valid && (e(r).reg.vd.scalar || check_shazard(use_mask_wport(i), ask_wport_mask))
+          val check_wport_0 = check_wport(0)
+          val check_wport_1 = check_wport(1)
+          val shazard_vimu = check_rport_0_1 || check_wport_0 || check_op_shazard(use_mask_vimu)
+          val shazard_vfmu0 = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
+          val shazard_vfmu1 = check_rport_3_4_5 || check_wport_1 || check_op_shazard(use_mask_vfmu(1))
+          val shazard_vfcu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vfcu)
+          val shazard_vfvu = check_rport_2 || check_wport_0 || check_op_shazard(use_mask_vfvu)
+          val shazard_vgu = check_rport_5 || check_wport_1 || check_op_shazard(use_mask_vgu)
+          val shazard_vqu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vqu)
+          select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
+          val a = e(r).active
+          val out =
+            a.vimu && shazard_vimu ||
+            a.vfmu && shazard_vfmu0 && shazard_vfmu1 || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
+            a.vgu && shazard_vgu || a.vqu && shazard_vqu
+          out
+        }
+
+      def debug = {
+        io.debug.shazard := result
+        io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
+        io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
+        io.debug.use_mask_vimu := use_mask_vimu
+        io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
+        io.debug.use_mask_vfcu := use_mask_vfcu
+        io.debug.use_mask_vfvu := use_mask_vfvu
+        io.debug.use_mask_vgu := use_mask_vgu
+        io.debug.use_mask_vqu := use_mask_vqu
+        io.debug.use_mask_wport := use_mask_wport
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // issue window helpers
+
+  val iwindow = new {
+    val update_head = Bool()
+    val update_tail = Bool()
+    val next_head = UInt(width = log2Up(nSeq))
+    val next_tail = UInt(width = log2Up(nSeq))
+
+    val set = new {
+      def head(n: UInt) = { update_head := Bool(true); next_head := n }
+      def tail(n: UInt) = { update_tail := Bool(true); next_tail := n }
+
+      def valid(n: UInt) = { v(n) := Bool(true) }
+
+      def entry(n: UInt) = {
+        valid(n)
+        e(n).vlen := io.op.bits.vlen
+        e(n).eidx := UInt(0)
+        e(n).reg.vs1.valid := Bool(false)
+        e(n).reg.vs2.valid := Bool(false)
+        e(n).reg.vs3.valid := Bool(false)
+        e(n).reg.vd.valid := Bool(false)
+        e(n).base.vs1.valid := Bool(false)
+        e(n).base.vs2.valid := Bool(false)
+        e(n).base.vs3.valid := Bool(false)
+        e(n).base.vd.valid := Bool(false)
+        e(n).age := UInt(0)
+        dhazard.update(n)
+        for (i <- 0 until nSeq) {
+          dhazard.clear.raw(n, UInt(i))
+          dhazard.clear.war(n, UInt(i))
+          dhazard.clear.waw(n, UInt(i))
+        }
+      }
+
+      def active(n: UInt, afn: SeqType=>Bool, fn: IssueOp=>Bits) = {
+        afn(e(n).active) := Bool(true)
+        e(n).fn.union := fn(io.op.bits)
+      }
+
+      val fn_identity = (d: IssueOp) => d.fn.union
+      val fn_vqu = (d: IssueOp) => {
+        assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
+        Cat(d.active.vidiv || d.fn.vfdu().op_is(FD_DIV), Bool(true))
+      }
+
+      def viu(n: UInt) = active(n, (a: SeqType) => a.viu, fn_identity)
+      def vimu(n: UInt) = active(n, (a: SeqType) => a.vimu, fn_identity)
+      def vidu(n: UInt) = active(n, (a: SeqType) => a.vidu, fn_identity)
+      def vfmu(n: UInt) = active(n, (a: SeqType) => a.vfmu, fn_identity)
+      def vfdu(n: UInt) = active(n, (a: SeqType) => a.vfdu, fn_identity)
+      def vfcu(n: UInt) = active(n, (a: SeqType) => a.vfcu, fn_identity)
+      def vfvu(n: UInt) = active(n, (a: SeqType) => a.vfvu, fn_identity)
+      def vpu(n: UInt) = active(n, (a: SeqType) => a.vpu, fn_identity)
+      def vgu(n: UInt) = active(n, (a: SeqType) => a.vgu, fn_identity)
+      def vcu(n: UInt) = active(n, (a: SeqType) => a.vcu, fn_identity)
+      def vlu(n: UInt) = active(n, (a: SeqType) => a.vlu, fn_identity)
+      def vsu(n: UInt) = active(n, (a: SeqType) => a.vsu, fn_identity)
+      def vqu(n: UInt) = active(n, (a: SeqType) => a.vqu, fn_vqu)
+
+      def vs(n: UInt, e_vsfn: RegFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
+        when (op_vsfn(io.op.bits.reg).valid) {
+          e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
+          e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
+          when (op_vsfn(io.op.bits.reg).scalar) {
+            e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
+          }
+        }
+      }
+      def vs1(n: UInt) = {
+        vs(n, reg_vs1, reg_vs1, sreg_ss1, sreg_ss1)
+        dhazard.set.raw_vs1(n)
+      }
+      def vs2(n: UInt) = {
+        vs(n, reg_vs2, reg_vs2, sreg_ss2, sreg_ss2)
+        dhazard.set.raw_vs2(n)
+      }
+      def vs3(n: UInt) = {
+        vs(n, reg_vs3, reg_vs3, sreg_ss3, sreg_ss3)
+        dhazard.set.raw_vs3(n)
+      }
+      def vs2_as_vs1(n: UInt) = {
+        vs(n, reg_vs1, reg_vs2, sreg_ss1, sreg_ss2)
+        dhazard.set.raw_vs2(n)
+      }
+      def vd_as_vs1(n: UInt) = {
+        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "iwindow.set.vd_as_vs1: vd should always be vector")
+        when (io.op.bits.reg.vd.valid) {
+          e(n).reg.vs1 := io.op.bits.reg.vd
+          e(n).base.vs1 := io.op.bits.reg.vd
+        }
+        dhazard.set.raw_vd(n)
+      }
+      def vd(n: UInt) = {
+        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "iwindow.set.vd: vd should always be vector")
+        when (io.op.bits.reg.vd.valid) {
+          e(n).reg.vd := io.op.bits.reg.vd
+          e(n).base.vd := io.op.bits.reg.vd
+        }
+        dhazard.set.war_vd(n)
+        dhazard.set.waw_vd(n)
+      }
+    }
+
+    val clear = new {
+      def valid(n: UInt) = { v(n) := Bool(false) }
+      def active(n: UInt) = { e(n).active := e(0).active.clone().fromBits(Bits(0)) }
+    }
+
+    def retire(n: UInt) = {
+      clear.valid(n)
+      for (i <- 0 until nSeq) {
+        dhazard.update(UInt(i))
+        dhazard.clear.raw(UInt(i), n)
+        dhazard.clear.war(UInt(i), n)
+        dhazard.clear.waw(UInt(i), n)
+      }
+    }
 
     def ready = {
+      val count = Cat(full && head === tail, tail - head)
+      val empty = UInt(nSeq) - count
       val a = io.op.bits.active
-      (a.vint || a.vimul || a.vfma || a.vfcmp || a.vfconv) && (empty >= UInt(1)) ||
-      (a.vidiv || a.vfdiv) && (empty >= UInt(2)) ||
-      (a.vld || a.vst || a.vldx || a.vstx) && (empty >= UInt(3)) ||
-      (a.vamo) && (empty >= UInt(4))
+
+      (empty >= UInt(1)) && (a.vint || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
+      (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
+      (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
+      (empty >= UInt(4)) && (a.vamo)
     }
 
-    def set_head(n: UInt) = {
-      update_head := Bool(true)
-      next_head := n
-    }
-    def set_tail(n: UInt) = {
-      update_tail := Bool(true)
-      next_tail := n
+    def header = {
+      update_head := Bool(false)
+      update_tail := Bool(false)
+      next_head := head
+      next_tail := tail
     }
 
-    def set_valid(n: UInt) = {
-      valid(n) := Bool(true)
-    }
-    def clear_valid(n: UInt) = {
-      valid(n) := Bool(false)
-    }
+    def logic = {
+      io.op.ready := ready
 
-    def set_active(n: UInt, afn: SeqType=>Bool, fn: IssueOp=>Bits) = {
-      afn(e(n).active) := Bool(true)
-      e(n).fn.union := fn(io.op.bits)
-    }
-    def clear_all_active(n: UInt) = {
-      e(n).active := e(0).active.clone().fromBits(Bits(0))
-    }
-
-    def set_entry(n: UInt) = {
-      set_valid(n)
-      e(n).vlen := io.op.bits.vlen
-      e(n).eidx := UInt(0)
-      e(n).reg.vs1.valid := Bool(false)
-      e(n).reg.vs2.valid := Bool(false)
-      e(n).reg.vs3.valid := Bool(false)
-      e(n).reg.vd.valid := Bool(false)
-      e(n).base.vs1.valid := Bool(false)
-      e(n).base.vs2.valid := Bool(false)
-      e(n).base.vs3.valid := Bool(false)
-      e(n).base.vd.valid := Bool(false)
-      e(n).age := UInt(0)
-      update_haz(n) := Bool(true)
-      for (i <- 0 until nSeq) {
-        clear_raw_haz(n, UInt(i))
-        clear_war_haz(n, UInt(i))
-        clear_waw_haz(n, UInt(i))
+      when (update_head) { head := next_head }
+      when (update_tail) { tail := next_tail }
+      when (update_head && !update_tail) {
+        full := Bool(false)
       }
-    }
-    def clear_entry(n: UInt) = {
-      clear_valid(n)
-    }
+      when (update_tail) {
+        full := next_head === next_tail
+      }
 
-    def retire_entry(n: UInt) = {
-      clear_entry(n)
-      for (i <- 0 until nSeq) {
-        update_haz(UInt(i)) := Bool(true)
-        clear_raw_haz(UInt(i), n)
-        clear_war_haz(UInt(i), n)
-        clear_waw_haz(UInt(i), n)
+      when (v(head) && e(head).vlen === UInt(0)) {
+        retire(head)
+        set.head(head + UInt(1))
       }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // data hazard checking helpers
-
-    def set_raw_haz(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
-    def set_war_haz(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
-    def set_waw_haz(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
-    def clear_raw_haz(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(false) }
-    def clear_war_haz(n: UInt, o: UInt) = { next_war(n)(o) := Bool(false) }
-    def clear_waw_haz(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
-
-    def issue_base_eq(ifn: RegFn, sfn: RegFn) =
-      Vec((0 until nSeq).map{ i =>
-        valid(i) && sfn(e(i).base).valid && !sfn(e(i).base).scalar &&
-        ifn(io.op.bits.reg).valid && !ifn(io.op.bits.reg).scalar &&
-        sfn(e(i).base).id === ifn(io.op.bits.reg).id })
-    val ivs1_evd_eq = issue_base_eq(reg_vs1, reg_vd)
-    val ivs2_evd_eq = issue_base_eq(reg_vs2, reg_vd)
-    val ivs3_evd_eq = issue_base_eq(reg_vs3, reg_vd)
-    val ivd_evs1_eq = issue_base_eq(reg_vd, reg_vs1)
-    val ivd_evs2_eq = issue_base_eq(reg_vd, reg_vs2)
-    val ivd_evs3_eq = issue_base_eq(reg_vd, reg_vs3)
-    val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
-
-    def set_raw_hazs(n: UInt, eq: Vec[Bool]) = {
-      for (i <- 0 until nSeq) {
-        when (eq(i)) {
-          set_raw_haz(n, UInt(i))
+    def footer = {
+      when (reset) {
+        for (i <- 0 until nSeq) {
+          clear.valid(UInt(i))
+          clear.active(UInt(i))
         }
       }
     }
-    def set_war_hazs(n: UInt) = {
-      for (i <- 0 until nSeq) {
-        when (ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
-          set_war_haz(n, UInt(i))
-        }
+
+    def debug = {
+      io.debug.head := head
+      io.debug.tail := tail
+      io.debug.full := full
+      io.debug.valid := v
+      io.debug.e := e
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // issue helpers
+
+  val issue = new {
+    val t0 = tail
+    val t1 = tail + UInt(1)
+    val t2 = tail + UInt(2)
+    val t3 = tail + UInt(3)
+    val t4 = tail + UInt(4)
+
+    def start(n: UInt) = iwindow.set.entry(n)
+    def stop(n: UInt) = iwindow.set.tail(n)
+
+    def vint = {
+      start(t0); { import iwindow.set._; viu(t0); vs1(t0); vs2(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesALU); }
+      stop(t1); }
+
+    def vimul = {
+      start(t0); { import iwindow.set._; vimu(t0); vs1(t0); vs2(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesIMul); }
+      stop(t1); }
+
+    def vidiv = {
+      start(t0); { import iwindow.set._; vqu(t0); vs1(t0); vs2(t0); }
+                 { import bhazard.set._; rports(t0); }
+                 { import dhazard.set._; war_vd(t0); waw_vd(t0); }
+      start(t1); { import iwindow.set._; vidu(t1); vd(t1); }
+                 { import bhazard.set._; noports(t1); }
+      stop(t2); }
+
+    def vfma = {
+      start(t0); { import iwindow.set._; vfmu(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesFMA); }
+      stop(t1); }
+
+    def vfdiv = {
+      start(t0); { import iwindow.set._; vqu(t0); vs1(t0); vs2(t0); }
+                 { import bhazard.set._; rports(t0); }
+                 { import dhazard.set._; war_vd(t0); waw_vd(t0); }
+      start(t1); { import iwindow.set._; vfdu(t1); vd(t1); }
+                 { import bhazard.set._; noports(t1); }
+      stop(t2); }
+
+    def vfcmp = {
+      start(t0); { import iwindow.set._; vfcu(t0); vs1(t0); vs2(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesFCmp); }
+      stop(t1); }
+
+    def vfconv = {
+      start(t0); { import iwindow.set._; vfvu(t0); vs1(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesFConv); }
+      stop(t1); }
+
+    def vamo = {
+      start(t0); { import iwindow.set._; vgu(t0); vs1(t0); }
+                 { import bhazard.set._; rport_vs1(t0); }
+      start(t1); { import iwindow.set._; vcu(t1); }
+                 { import bhazard.set._; noports(t1); }
+                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
+      start(t2); { import iwindow.set._; vsu(t2); vs2_as_vs1(t2); }
+                 { import bhazard.set._; rport_vs2(t2); }
+                 { import dhazard.set._; raw(t2, t1); }
+      start(t3); { import iwindow.set._; vlu(t3); vd(t3); }
+                 { import bhazard.set._; noports(t3); }
+      stop(t4); }
+
+    def vldx = {
+      start(t0); { import iwindow.set._; vgu(t0); vs2_as_vs1(t0); }
+                 { import bhazard.set._; rport_vs2(t0); }
+      start(t1); { import iwindow.set._; vcu(t1); }
+                 { import bhazard.set._; noports(t1); }
+                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
+      start(t2); { import iwindow.set._; vlu(t2); vd(t2); }
+                 { import bhazard.set._; noports(t2); }
+      stop(t3); }
+
+    def vstx = {
+      start(t0); { import iwindow.set._; vgu(t0); vs2_as_vs1(t0); }
+                 { import bhazard.set._; rport_vs2(t0); }
+      start(t1); { import iwindow.set._; vcu(t1); }
+                 { import bhazard.set._; noports(t1); }
+      start(t2); { import iwindow.set._; vsu(t2); vd_as_vs1(t2); }
+                 { import bhazard.set._; rport_vd(t2); }
+                 { import dhazard.set._; raw(t2, t1); }
+      stop(t3); }
+
+    def vld = {
+      start(t0); { import iwindow.set._; vpu(t0); }
+                 { import bhazard.set._; noports(t0); }
+      start(t1); { import iwindow.set._; vcu(t1); }
+                 { import bhazard.set._; noports(t1); }
+                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
+      start(t2); { import iwindow.set._; vlu(t2); vd(t2); }
+                 { import bhazard.set._; noports(t2); }
+      stop(t3); }
+
+    def vst = {
+      start(t0); { import iwindow.set._; vpu(t0); }
+                 { import bhazard.set._; noports(t0); }
+      start(t1); { import iwindow.set._; vcu(t1); }
+                 { import bhazard.set._; noports(t1); }
+      start(t2); { import iwindow.set._; vsu(t2); vd_as_vs1(t2); }
+                 { import bhazard.set._; rport_vd(t2); }
+                 { import dhazard.set._; raw(t2, t1); }
+      stop(t3); }
+
+    def logic = {
+      when (io.op.fire()) {
+        when (io.op.bits.active.vint) { vint }
+        when (io.op.bits.active.vimul) { vimul }
+        when (io.op.bits.active.vidiv) { vidiv }
+        when (io.op.bits.active.vfma) { vfma }
+        when (io.op.bits.active.vfdiv) { vfdiv }
+        when (io.op.bits.active.vfcmp) { vfcmp }
+        when (io.op.bits.active.vfconv) { vfconv }
+        when (io.op.bits.active.vamo) { vamo }
+        when (io.op.bits.active.vldx) { vldx }
+        when (io.op.bits.active.vstx) { vstx }
+        when (io.op.bits.active.vld) { vld }
+        when (io.op.bits.active.vst) { vst }
       }
     }
-    def set_waw_hazs(n: UInt) = {
-      for (i <- 0 until nSeq) {
-        when (ivd_evd_eq(i)) {
-          set_waw_haz(n, UInt(i))
-        }
-      }
-    }
-    def set_raw_hazs_vs1(n: UInt) = set_raw_hazs(n, ivs1_evd_eq)
-    def set_raw_hazs_vs2(n: UInt) = set_raw_hazs(n, ivs2_evd_eq)
-    def set_raw_hazs_vs3(n: UInt) = set_raw_hazs(n, ivs3_evd_eq)
-    def set_raw_hazs_vd(n: UInt) = set_raw_hazs(n, ivd_evd_eq)
-    def set_war_hazs_vd(n: UInt) = set_war_hazs(n)
-    def set_waw_hazs_vd(n: UInt) = set_waw_hazs(n)
+  }
 
-    val fn_identity = (d: IssueOp) => d.fn.union
-    val fn_vqu = (d: IssueOp) => {
-      assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
-      Cat(d.active.vidiv || d.fn.vfdu().op_is(FD_DIV), Bool(true))
-    }
+  ///////////////////////////////////////////////////////////////////////////
+  // scheduling helpers
 
-    def set_viu(n: UInt) = set_active(n, (a: SeqType) => a.viu, fn_identity)
-    def set_vimu(n: UInt) = set_active(n, (a: SeqType) => a.vimu, fn_identity)
-    def set_vidu(n: UInt) = set_active(n, (a: SeqType) => a.vidu, fn_identity)
-    def set_vfmu(n: UInt) = set_active(n, (a: SeqType) => a.vfmu, fn_identity)
-    def set_vfdu(n: UInt) = set_active(n, (a: SeqType) => a.vfdu, fn_identity)
-    def set_vfcu(n: UInt) = set_active(n, (a: SeqType) => a.vfcu, fn_identity)
-    def set_vfvu(n: UInt) = set_active(n, (a: SeqType) => a.vfvu, fn_identity)
-    def set_vpu(n: UInt) = set_active(n, (a: SeqType) => a.vpu, fn_identity)
-    def set_vgu(n: UInt) = set_active(n, (a: SeqType) => a.vgu, fn_identity)
-    def set_vcu(n: UInt) = set_active(n, (a: SeqType) => a.vcu, fn_identity)
-    def set_vlu(n: UInt) = set_active(n, (a: SeqType) => a.vlu, fn_identity)
-    def set_vsu(n: UInt) = set_active(n, (a: SeqType) => a.vsu, fn_identity)
-    def set_vqu(n: UInt) = set_active(n, (a: SeqType) => a.vqu, fn_vqu)
-
-    def set_vs(n: UInt, e_vsfn: RegFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
-      when (op_vsfn(io.op.bits.reg).valid) {
-        e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
-        e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
-        when (op_vsfn(io.op.bits.reg).scalar) {
-          e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
-        }
-      }
-    }
-    def set_vs1(n: UInt) = {
-      set_vs(n, reg_vs1, reg_vs1, sreg_ss1, sreg_ss1)
-      set_raw_hazs_vs1(n)
-    }
-    def set_vs2(n: UInt) = {
-      set_vs(n, reg_vs2, reg_vs2, sreg_ss2, sreg_ss2)
-      set_raw_hazs_vs2(n)
-    }
-    def set_vs3(n: UInt) = {
-      set_vs(n, reg_vs3, reg_vs3, sreg_ss3, sreg_ss3)
-      set_raw_hazs_vs3(n)
-    }
-    def set_vs2_as_vs1(n: UInt) = {
-      set_vs(n, reg_vs1, reg_vs2, sreg_ss1, sreg_ss2)
-      set_raw_hazs_vs2(n)
-    }
-    def set_vd_as_vs1(n: UInt) = {
-      assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "set_vd_as_vs1: vd should always be vector")
-      when (io.op.bits.reg.vd.valid) {
-        e(n).reg.vs1 := io.op.bits.reg.vd
-        e(n).base.vs1 := io.op.bits.reg.vd
-      }
-      set_raw_hazs_vd(n)
-    }
-    def set_vd(n: UInt) = {
-      assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "set_vd: vd should always be vector")
-      when (io.op.bits.reg.vd.valid) {
-        e(n).reg.vd := io.op.bits.reg.vd
-        e(n).base.vd := io.op.bits.reg.vd
-      }
-      set_war_hazs_vd(n)
-      set_waw_hazs_vd(n)
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // bank hazard checking helpers
-
-    def nports_list(fns: RegFn*) =
-      PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
-    val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
-    val nrport_vs1 = nports_list(reg_vs1)
-    val nrport_vs2 = nports_list(reg_vs2)
-    val nrport_vd = nports_list(reg_vd)
-
-    def set_ports(n: UInt, rports: UInt, wport: UInt) = {
-      e(n).rports := rports
-      e(n).wport := wport
-    }
-    def set_noports(n: UInt) = set_ports(n, UInt(0), UInt(0))
-    def set_rport_vs1(n: UInt) = set_ports(n, nrport_vs1, UInt(0))
-    def set_rport_vs2(n: UInt) = set_ports(n, nrport_vs2, UInt(0))
-    def set_rport_vd(n: UInt) = set_ports(n, nrport_vd, UInt(0))
-    def set_rports(n: UInt) = set_ports(n, nrports, UInt(0))
-    def set_rwports(n: UInt, latency: Int) = set_ports(n, nrports, nrports + UInt(expLatency+latency))
-
-    ///////////////////////////////////////////////////////////////////////////
-    // issue -> sequencer
-
-    def issue_vint = {
-      set_entry(t0); set_viu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, stagesALU)
-      set_tail(t1)
-    }
-    def issue_vimul = {
-      set_entry(t0); set_vimu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, stagesIMul)
-      set_tail(t1)
-    }
-    def issue_vidiv = {
-      set_entry(t0); set_vqu(t0); set_vs1(t0); set_vs2(t0)
-                      set_rports(t0); set_war_hazs_vd(t0); set_waw_hazs_vd(t0)
-      set_entry(t1); set_vidu(t1); set_vd(t1)
-                      set_noports(t1)
-      set_tail(t2)
-    }
-    def issue_vfma = {
-      set_entry(t0); set_vfmu(t0); set_vs1(t0); set_vs2(t0); set_vs3(t0); set_vd(t0)
-                      set_rwports(t0, stagesFMA)
-      set_tail(t1)
-    }
-    def issue_vfdiv = {
-      set_entry(t0); set_vqu(t0); set_vs1(t0); set_vs2(t0)
-                      set_rports(t0); set_war_hazs_vd(t0); set_waw_hazs_vd(t0)
-      set_entry(t1); set_vfdu(t1); set_vd(t1)
-                      set_noports(t1)
-      set_tail(t2)
-    }
-    def issue_vfcmp = {
-      set_entry(t0); set_vfcu(t0); set_vs1(t0); set_vs2(t0); set_vd(t0)
-                      set_rwports(t0, stagesFCmp)
-      set_tail(t1)
-    }
-    def issue_vfconv = {
-      set_entry(t0); set_vfvu(t0); set_vs1(t0); set_vd(t0)
-                      set_rwports(t0, stagesFConv)
-      set_tail(t1)
-    }
-    def issue_vamo = {
-      set_entry(t0); set_vgu(t0); set_vs1(t0)
-                      set_rport_vs1(t0)
-      set_entry(t1); set_vcu(t1)
-                      set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
-      set_entry(t2); set_vsu(t2); set_vs2_as_vs1(t2)
-                      set_rport_vs2(t2); set_raw_haz(t2, t1)
-      set_entry(t3); set_vlu(t3); set_vd(t3)
-                      set_noports(t3)
-      set_tail(t4)
-    }
-    def issue_vldx = {
-      set_entry(t0); set_vgu(t0); set_vs2_as_vs1(t0)
-                      set_rport_vs2(t0)
-      set_entry(t1); set_vcu(t1)
-                      set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
-      set_entry(t2); set_vlu(t2); set_vd(t2)
-                      set_noports(t2)
-      set_tail(t3)
-    }
-    def issue_vstx = {
-      set_entry(t0); set_vgu(t0); set_vs2_as_vs1(t0)
-                      set_rport_vs2(t0)
-      set_entry(t1); set_vcu(t1)
-                      set_noports(t1)
-      set_entry(t2); set_vsu(t2); set_vd_as_vs1(t2)
-                      set_rport_vd(t2); set_raw_haz(t2, t1)
-      set_tail(t3)
-    }
-    def issue_vld = {
-      set_entry(t0); set_vpu(t0)
-                      set_noports(t0)
-      set_entry(t1); set_vcu(t1)
-                      set_noports(t1); set_war_hazs_vd(t1); set_waw_hazs_vd(t1)
-      set_entry(t2); set_vlu(t2); set_vd(t2)
-                      set_noports(t2)
-      set_tail(t3)
-    }
-    def issue_vst = {
-      set_entry(t0); set_vpu(t0)
-                      set_noports(t0)
-      set_entry(t1); set_vcu(t1)
-                      set_noports(t1)
-      set_entry(t2); set_vsu(t2); set_vd_as_vs1(t2)
-                      set_rport_vd(t2); set_raw_haz(t2, t1)
-      set_tail(t3)
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // data hazard checking
-
-    val vlen_check_ok =
-      Vec((0 until nSeq).map { r =>
-        Vec((0 until nSeq).map { c =>
-          if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
-          else Bool(true) }) })
-
-    def wmatrix(fn: RegFn) =
-      (0 until nSeq) map { r =>
-        Vec((0 until maxWPortLatency) map { l =>
-          io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
-          io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) }
-    val wmatrix_vs1 = wmatrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-    val wmatrix_vs2 = wmatrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-    val wmatrix_vs3 = wmatrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-    val wmatrix_vd = wmatrix(reg_vd)
-
-    def wport_lookup(row: Vec[Bool], level: UInt) =
-      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
-
-    val dhazard_raw =
-      (0 until nSeq).map { r =>
-        (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
-        wmatrix_vs1(r).toBits.orR ||
-        wmatrix_vs2(r).toBits.orR ||
-        wmatrix_vs3(r).toBits.orR }
-    val dhazard_war =
-      (0 until nSeq).map { r =>
-        (e(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
-    val dhazard_waw =
-      (0 until nSeq).map { r =>
-        (e(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
-        wport_lookup(wmatrix_vd(r), e(r).wport).toBits.orR }
-    val dhazard =
-      (0 until nSeq).map { r =>
-        dhazard_raw(r) || dhazard_war(r) || dhazard_waw(r) }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // bank hazard checking
-
-    // tail (shift right by one) because we are looking one cycle in the future
-    val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
-    val wport_mask = Vec(io.ticker.sram.write.tail map { _.valid })
-
-    val bhazard =
-      (0 until nSeq) map { r =>
-        e(r).rports.orR && rport_mask.reduce(_ | _) ||
-        e(r).wport.orR && wport_mask(e(r).wport)
-      }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // strucutral hazard checking
-
-    def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
-      val mask =
-        (lops zipWithIndex) map { case (lop, i) =>
-          dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
-        } reduce(_|_)
-      mask >> UInt(1) // shift right by one because we are looking one cycle in the future
-    }
-    def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
-      use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
-    val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
-    val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
-    val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
-    val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
-    val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
-    val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
-    val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
-    val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
-    val use_mask_wport = (0 until nWSel) map { i =>
-      use_mask_lop(
-        io.ticker.sram.write,
-        (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)
-      ) }
-
-    val select = Vec.fill(nSeq){new SeqSelect}
-
-    val shazard =
-      (0 until nSeq) map { r =>
-        val op_idx = e(r).rports + UInt(expLatency, bRPorts+1)
-        val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
-        val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
-        val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
-        def check_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
-        def check_op_shazard(use_mask: Bits) = check_shazard(use_mask, ask_op_mask)
-        def check_rport(fn: RegFn, i: Int) =
-          fn(e(r).reg).valid && (
-            !fn(e(r).reg).scalar && check_op_shazard(use_mask_xbar(i)) ||
-            fn(e(r).reg).scalar && check_op_shazard(use_mask_sreg_global(i)))
-        val check_rport_0_1 = check_rport(reg_vs1, 0) || check_rport(reg_vs2, 1)
-        val check_rport_0_1_2 = check_rport_0_1 || check_rport(reg_vs3, 2)
-        val check_rport_2 = check_rport(reg_vs1, 2)
-        val check_rport_3_4 = check_rport(reg_vs1, 3) || check_rport(reg_vs2, 4)
-        val check_rport_3_4_5 = check_rport_3_4 || check_rport(reg_vs3, 5)
-        val check_rport_5 = check_rport(reg_vs1, 5)
-        def check_wport(i: Int) =
-          e(r).reg.vd.valid && (e(r).reg.vd.scalar || check_shazard(use_mask_wport(i), ask_wport_mask))
-        val check_wport_0 = check_wport(0)
-        val check_wport_1 = check_wport(1)
-        val shazard_vimu = check_rport_0_1 || check_wport_0 || check_op_shazard(use_mask_vimu)
-        val shazard_vfmu0 = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
-        val shazard_vfmu1 = check_rport_3_4_5 || check_wport_1 || check_op_shazard(use_mask_vfmu(1))
-        val shazard_vfcu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vfcu)
-        val shazard_vfvu = check_rport_2 || check_wport_0 || check_op_shazard(use_mask_vfvu)
-        val shazard_vgu = check_rport_5 || check_wport_1 || check_op_shazard(use_mask_vgu)
-        val shazard_vqu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vqu)
-        select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
-        val a = e(r).active
-        val out =
-          a.vimu && shazard_vimu ||
-          a.vfmu && shazard_vfmu0 && shazard_vfmu1 || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
-          a.vgu && shazard_vgu || a.vqu && shazard_vqu
-        out
-      }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // schedule
-
+  val scheduling = new {
     def find_first(fn: Int=>Bool) = {
       val internal = Vec.fill(2*nSeq){Bool()}
       for (i <- 0 until nSeq) {
-        internal(i+nSeq) := valid(i) && fn(i)
+        internal(i+nSeq) := v(i) && fn(i)
         internal(i) := internal(i+nSeq) && (UInt(i) >= head)
       }
       val priority_oh = PriorityEncoderOH(internal)
@@ -601,150 +692,257 @@ class Sequencer extends VXUModule {
       out
     }
 
-    def nohazards(i: Int) = !dhazard(i) && !bhazard(i) && !shazard(i)
-
-    val pred_first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
-    val vidu_sched = find_first((i: Int) => e(i).active.vidu && nohazards(i))
-    val vfdu_sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
-    val vpu_sched = find_first((i: Int) => e(i).active.vpu && nohazards(i))
-    val vcu_sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
-    val vlu_sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
-    val vgu_first = find_first((i: Int) => e(i).active.vgu)
-    val vsu_first = find_first((i: Int) => e(i).active.vsu)
-    val vqu_first = find_first((i: Int) => e(i).active.vqu)
-    val exp_sched = {
-      val consider = (i: Int) => nohazards(i) && (
-        e(i).active.viu || e(i).active.vimu ||
-        e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
-        e(i).active.vgu && pred_first(i) && vgu_first(i) && pred_ready && vgu_ready ||
-        e(i).active.vsu && vsu_first(i) && io.sla.available ||
-        e(i).active.vqu && vqu_first(i) && (
-          (!e(i).fn.vqu().latch(0) || io.dqla(0).available) &&
-          (!e(i).fn.vqu().latch(1) || io.dqla(1).available)
-        ))
-      val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
-      val second_sched = find_first((i: Int) => consider(i))
-      (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
-      (io.debug.first_sched zip first_sched) foreach { case (io, c) => io := c }
-      (io.debug.second_sched zip second_sched) foreach { case (io, c) => io := c }
-      val sel = first_sched.reduce(_ || _)
-      Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
-    }
-    (io.debug.pred_first zip pred_first) foreach { case (io, c) => io := c }
-
-    def fire_vidu(n: Int) = vidu_sched(n) && vidu_ready
-    def fire_vfdu(n: Int) = vfdu_sched(n) && vfdu_ready
-    def fire_vpu(n: Int) = pred_first(n) && vpu_sched(n) && pred_ready
-    def fire_vcu(n: Int) = vcu_sched(n) && vcu_ready
-    def fire_vlu(n: Int) = vlu_sched(n) && vlu_ready
-    def fire_exp(n: Int) = exp_sched(n)
-    def fire(n: Int) =
-      fire_vidu(n) || fire_vfdu(n) ||
-      fire_vpu(n) || fire_vcu(n) || fire_vlu(n) ||
-      fire_exp(n)
-
-    def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
-      val max_strip = Mux(vcu, UInt(nBatch << 1), UInt(nBatch))
-      Mux(vl > max_strip, max_strip, vl)
-    }
-
     def valfn(sched: Vec[Bool]) = sched.reduce(_||_)
 
     def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
       rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
 
     def selectfn(sched: Vec[Bool]) =
-      new SeqSelect().fromBits(Mux1H(sched, select.map(_.toBits)))
+      new SeqSelect().fromBits(Mux1H(sched, shazard.check.select.map(_.toBits)))
 
-    val pred_vpu = readfn(pred_first, (e: SeqEntry) => e.active.vpu)
-    val pred_fn = readfn(pred_first, (e: SeqEntry) => e.fn)
-    val pred_vlen = readfn(pred_first, (e: SeqEntry) => e.vlen)
-    val pred_eidx = readfn(pred_first, (e: SeqEntry) => e.eidx)
-    val pred_strip = stripfn(pred_vlen, pred_vpu, pred_fn)
-    val pred_odd = pred_eidx(3)
-    val pred_last = pred_vlen <= UInt(8)
-    val pred_mcmd = DecodedMemCommand(pred_fn.vmu().cmd)
-    val pred_mask = Mux(pred_vpu,
-      EnableDecoder(pred_strip, nPredSet).toBits,
-      EnableDecoder(Mux(pred_odd, UInt(8), UInt(0)) + pred_strip, nPredSet).toBits)
+    def nohazards(i: Int) =
+      !dhazard.check.result(i) && !bhazard.check.result(i) && !shazard.check.result(i)
 
-    val vidu_val = valfn(vidu_sched)
-    val vidu_vlen = readfn(vidu_sched, (e: SeqEntry) => e.vlen)
-    val vidu_fn = readfn(vidu_sched, (e: SeqEntry) => e.fn)
-    val vidu_strip = stripfn(vidu_vlen, Bool(false), vidu_fn)
+    val exp = new {
+      val vgu_consider = Vec.fill(nSeq){Bool()}
+      val vsu_consider = Vec.fill(nSeq){Bool()}
+      val vqu_consider = Vec.fill(nSeq){Bool()}
 
-    val vfdu_val = valfn(vfdu_sched)
-    val vfdu_vlen = readfn(vfdu_sched, (e: SeqEntry) => e.vlen)
-    val vfdu_fn = readfn(vfdu_sched, (e: SeqEntry) => e.fn)
-    val vfdu_strip = stripfn(vfdu_vlen, Bool(false), vfdu_fn)
+      val consider = (i: Int) => nohazards(i) && (
+        e(i).active.viu || e(i).active.vimu ||
+        e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
+        e(i).active.vgu && vgu_consider(i) ||
+        e(i).active.vsu && vsu_consider(i) ||
+        e(i).active.vqu && vqu_consider(i))
+      val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
+      val second_sched = find_first((i: Int) => consider(i))
+      val sel = first_sched.reduce(_ || _)
+      val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val op = {
+        val out = new SequencerOp
+        out.fn := readfn(sched, (e: SeqEntry) => e.fn)
+        out.reg := readfn(sched, (e: SeqEntry) => e.reg)
+        out.sreg := readfn(sched, (e: SeqEntry) => e.sreg)
+        out.active := readfn(sched, (e: SeqEntry) => e.active)
+        out.select := selectfn(sched)
+        out.eidx := readfn(sched, (e: SeqEntry) => e.eidx)
+        out.rports := readfn(sched, (e: SeqEntry) => e.rports)
+        out.wport := readfn(sched, (e: SeqEntry) => e.wport)
+        out.strip := stripfn(vlen, Bool(false), out.fn)
+        out
+      }
 
-    val vpu_val = valfn(Vec((pred_first zip vpu_sched) map { case (p, v) => p && v }))
+      def fire(n: Int) = sched(n)
+      def fire_vgu = valid && op.active.vgu
+      def fire_vsu = valid && op.active.vsu
+      def fire_vqu(n: Int) = valid && op.active.vqu && op.fn.vqu().latch(n)
 
-    val vcu_val = valfn(vcu_sched)
-    val vcu_vlen = readfn(vcu_sched, (e: SeqEntry) => e.vlen)
-    val vcu_fn = readfn(vcu_sched, (e: SeqEntry) => e.fn)
-    val vcu_mcmd = DecodedMemCommand(vcu_fn.vmu().cmd)
-    val vcu_strip = stripfn(vcu_vlen, Bool(true), vcu_fn)
+      def logic = {
+        io.seq.valid := valid
+        io.seq.bits := op
+      }
 
-    val vlu_val = valfn(vlu_sched)
-    val vlu_vlen = readfn(vlu_sched, (e: SeqEntry) => e.vlen)
-    val vlu_fn = readfn(vlu_sched, (e: SeqEntry) => e.fn)
-    val vlu_strip = stripfn(vlu_vlen, Bool(false), vlu_fn)
-
-    val vsu_vlen = readfn(vsu_first, (e: SeqEntry) => e.vlen)
-    val vsu_fn = readfn(vsu_first, (e: SeqEntry) => e.fn)
-    val vsu_strip = stripfn(vsu_vlen, Bool(false), vsu_fn)
-
-    val vgu_vlen = readfn(vgu_first, (e: SeqEntry) => e.vlen)
-    val vgu_fn = readfn(vgu_first, (e: SeqEntry) => e.fn)
-    val vgu_strip = stripfn(vgu_vlen, Bool(false), vgu_fn)
-
-    val vqu_vlen = readfn(vqu_first, (e: SeqEntry) => e.vlen)
-    val vqu_fn = readfn(vqu_first, (e: SeqEntry) => e.fn)
-    val vqu_strip = stripfn(vqu_vlen, Bool(false), vqu_fn)
-
-    val exp_fire = valfn(exp_sched)
-    val exp_vlen = readfn(exp_sched, (e: SeqEntry) => e.vlen)
-    val exp_seq = {
-      val out = new SequencerOp
-      out.fn := readfn(exp_sched, (e: SeqEntry) => e.fn)
-      out.reg := readfn(exp_sched, (e: SeqEntry) => e.reg)
-      out.sreg := readfn(exp_sched, (e: SeqEntry) => e.sreg)
-      out.active := readfn(exp_sched, (e: SeqEntry) => e.active)
-      out.select := selectfn(exp_sched)
-      out.eidx := readfn(exp_sched, (e: SeqEntry) => e.eidx)
-      out.rports := readfn(exp_sched, (e: SeqEntry) => e.rports)
-      out.wport := readfn(exp_sched, (e: SeqEntry) => e.wport)
-      out.strip := stripfn(exp_vlen, Bool(false), out.fn)
-      out
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // footer
-
-    def update_reg(i: Int, fn: RegFn) = {
-      when (fn(e(i).reg).valid && !fn(e(i).reg).scalar) {
-        fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+      def debug = {
+        (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
+        (io.debug.first_sched zip first_sched) foreach { case (io, c) => io := c }
+        (io.debug.second_sched zip second_sched) foreach { case (io, c) => io := c }
       }
     }
 
-    def update_counter = {
-      when (update_head) { head := next_head }
-      when (update_tail) { tail := next_tail }
-      when (update_head && !update_tail) {
-        full := Bool(false)
-      }
-      when (update_tail) {
-        full := next_head === next_tail
+    val vidu = new {
+      val sched = find_first((i: Int) => e(i).active.vidu && nohazards(i))
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val ready = io.dila.available
+      def fire(n: Int) = sched(n) && ready
+
+      def logic = {
+        io.dila.cnt := strip_to_bcnt(strip)
+        io.dila.reserve := valid && io.dila.available
       }
     }
 
-    def footer = {
-      val retire = Vec.fill(nSeq){Bool()}
+    val vfdu = new {
+      val sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val ready = io.dfla.available
+      def fire(n: Int) = sched(n) && ready
+
+      def logic = {
+        io.dfla.cnt := strip_to_bcnt(strip)
+        io.dfla.reserve := valid && io.dfla.available
+      }
+    }
+
+    val pred = new {
+      val first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
+
+      val sel = readfn(first, (e: SeqEntry) => e.active.vpu)
+      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
+      val eidx = readfn(first, (e: SeqEntry) => e.eidx)
+      val strip = stripfn(vlen, sel, fn)
+      val odd = eidx(3)
+      val last = vlen <= UInt(8)
+      val mcmd = DecodedMemCommand(fn.vmu().cmd)
+      val mask = Mux(sel,
+        EnableDecoder(strip, nPredSet).toBits,
+        EnableDecoder(Mux(odd, UInt(8), UInt(0)) + strip, nPredSet).toBits)
+
+      val ready =
+        io.vmu.pred.ready &&
+        (!mcmd.read || io.lpred.ready) &&
+        (!mcmd.write || io.spred.ready)
+      val vpu_valid = Bool()
+      val fire = vpu_valid && ready || exp.fire_vgu && (odd || last)
+
+      def logic = {
+        io.lpred.bits := mask
+        io.spred.bits := mask
+        io.vmu.pred.bits := mask
+        io.lpred.valid := fire && mcmd.read
+        io.spred.valid := fire && mcmd.write
+        io.vmu.pred.valid := fire
+      }
+
+      def debug = {
+        (io.debug.pred_first zip first) foreach { case (io, c) => io := c }
+      }
+    }
+
+    val vpu = new {
+      val sched = find_first((i: Int) => e(i).active.vpu && nohazards(i))
+
+      def fire(n: Int) = pred.first(n) && sched(n) && pred.ready
+      pred.vpu_valid := valfn(Vec((pred.first zip sched) map { case (p, v) => p && v }))
+    }
+
+    val vgu = new {
+      val first = find_first((i: Int) => e(i).active.vgu)
+      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
+      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val ready = io.gla.available
+      (0 until nSeq) map { i => exp.vgu_consider(i) := pred.first(i) && first(i) && pred.ready && ready }
+
+      def logic = {
+        io.gla.cnt := strip_to_bcnt(strip)
+        io.gla.reserve := exp.fire_vgu
+      }
+    }
+
+    val vcu = new {
+      val sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val mcmd = DecodedMemCommand(fn.vmu().cmd)
+      val strip = stripfn(vlen, Bool(true), fn)
+
+      val ready =
+        io.vmu.pala.available &&
+        (!mcmd.read || io.lreq.available) &&
+        (!mcmd.write || io.sreq.available)
+      def fire(n: Int) = sched(n) && ready
+
+      def logic = {
+        io.vmu.pala.cnt := strip
+        io.vmu.pala.reserve := valid && ready
+        io.lreq.cnt := strip
+        io.lreq.reserve := valid && ready && mcmd.read
+        io.sreq.cnt := strip
+        io.sreq.reserve := valid && ready && mcmd.store
+      }
+    }
+
+    val vlu = new {
+      val sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val ready = io.lla.available
+      def fire(n: Int) = sched(n) && ready
+
+      def logic = {
+        io.lla.cnt := strip
+        io.lla.reserve := valid && io.lla.available
+      }
+    }
+
+    val vsu = new {
+      val first = find_first((i: Int) => e(i).active.vsu)
+      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
+      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val ready = io.sla.available
+      (0 until nSeq) map { i => exp.vsu_consider(i) := first(i) && ready }
+
+      def logic = {
+        io.sla.reserve := exp.fire_vsu
+        io.sla.mask := strip_to_bmask(strip)
+      }
+    }
+
+    val vqu = new {
+      val first = find_first((i: Int) => e(i).active.vqu)
+      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
+      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+      val cnt = strip_to_bcnt(strip)
+
+      def ready(n: Int) =
+        (!e(n).fn.vqu().latch(0) || io.dqla(0).available) &&
+        (!e(n).fn.vqu().latch(1) || io.dqla(1).available)
+      (0 until nSeq) map { i => exp.vqu_consider(i) := first(i) && ready(i) }
+
+      def logic = {
+        (io.dqla zipWithIndex) map { case (la, i) =>
+          la.cnt := cnt
+          la.reserve := exp.fire_vqu(i)
+        }
+      }
+    }
+
+    def logic = {
+      exp.logic
+      vidu.logic
+      vfdu.logic
+      pred.logic
+      vgu.logic
+      vcu.logic
+      vlu.logic
+      vsu.logic
+      vqu.logic
+
+      io.pending := v.reduce(_ || _)
+
+      def fire(n: Int) =
+        vidu.fire(n) || vfdu.fire(n) ||
+        vpu.fire(n) || vcu.fire(n) || vlu.fire(n) ||
+        exp.fire(n)
+
+      def update_reg(i: Int, fn: RegFn) = {
+        when (fn(e(i).reg).valid && !fn(e(i).reg).scalar) {
+          fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+        }
+      }
 
       for (i <- 0 until nSeq) {
         val strip = stripfn(e(i).vlen, e(i).active.vpu || e(i).active.vcu, e(i).fn)
-        when (valid(i)) {
+        when (v(i)) {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
             e(i).eidx := e(i).eidx + strip
@@ -753,141 +951,38 @@ class Sequencer extends VXUModule {
             update_reg(i, reg_vs3)
             update_reg(i, reg_vd)
             when (e(i).vlen === strip) {
-              clear_all_active(UInt(i))
+              iwindow.clear.active(UInt(i))
             }
           }
           when (e(i).age.orR) {
             e(i).age := e(i).age - UInt(1)
           }
-          when (fire_exp(i)) {
+          when (exp.fire(i)) {
             e(i).age := UInt(nBanks-1)
           }
         }
       }
+    }
 
-      when (valid(head) && e(head).vlen === UInt(0)) {
-        retire_entry(head)
-        set_head(h1)
-      }
-
-      update_counter
-
-      for (i <- 0 until nSeq) {
-        when (update_haz(i)) {
-          e(i).raw := next_raw(i)
-          e(i).war := next_war(i)
-          e(i).waw := next_waw(i)
-        }
-      }
-
-      io.debug.valid := valid
-      io.debug.e := e
-      io.debug.head := head
-      io.debug.tail := tail
-      io.debug.full := full
-      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
-      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wmatrix_vs1(r).toBits.orR })
-      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wmatrix_vs2(r).toBits.orR })
-      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wmatrix_vs3(r).toBits.orR })
-      io.debug.dhazard_war := dhazard_war
-      io.debug.dhazard_waw := dhazard_waw
-      io.debug.dhazard := dhazard
-      io.debug.bhazard := bhazard
-      io.debug.shazard := shazard
-      io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
-      io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
-      io.debug.use_mask_vimu := use_mask_vimu
-      io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
-      io.debug.use_mask_vfcu := use_mask_vfcu
-      io.debug.use_mask_vfvu := use_mask_vfvu
-      io.debug.use_mask_vgu := use_mask_vgu
-      io.debug.use_mask_vqu := use_mask_vqu
-      io.debug.use_mask_wport := use_mask_wport
-
-      when (reset) {
-        for (i <- 0 until nSeq) {
-          clear_entry(UInt(i))
-          clear_all_active(UInt(i))
-        }
-      }
+    def debug = {
+      pred.debug
+      exp.debug
     }
   }
 
-  val seq = new BuildSequencer
+  iwindow.header
+  dhazard.header
 
-  seq.header
+  iwindow.logic
+  issue.logic
+  dhazard.logic
+  scheduling.logic
 
-  io.op.ready := seq.ready
+  iwindow.footer
 
-  when (io.op.fire()) {
-    when (io.op.bits.active.vint) { seq.issue_vint }
-    when (io.op.bits.active.vimul) { seq.issue_vimul }
-    when (io.op.bits.active.vidiv) { seq.issue_vidiv }
-    when (io.op.bits.active.vfma) { seq.issue_vfma }
-    when (io.op.bits.active.vfdiv) { seq.issue_vfdiv }
-    when (io.op.bits.active.vfcmp) { seq.issue_vfcmp }
-    when (io.op.bits.active.vfconv) { seq.issue_vfconv }
-    when (io.op.bits.active.vamo) { seq.issue_vamo }
-    when (io.op.bits.active.vldx) { seq.issue_vldx }
-    when (io.op.bits.active.vstx) { seq.issue_vstx }
-    when (io.op.bits.active.vld) { seq.issue_vld }
-    when (io.op.bits.active.vst) { seq.issue_vst }
-  }
-
-  io.seq.valid := seq.exp_fire
-  io.seq.bits := seq.exp_seq
-
-  val vqu_cnt = strip_to_bcnt(seq.vqu_strip)
-  (io.dqla zipWithIndex) map { case (la, i) =>
-    la.cnt := vqu_cnt
-    la.reserve := seq.exp_fire && seq.exp_seq.active.vqu && seq.exp_seq.fn.vqu().latch(i)
-  }
-
-  io.dila.cnt := strip_to_bcnt(seq.vidu_strip)
-  io.dila.reserve := seq.vidu_val && io.dila.available
-  seq.vidu_ready := io.dila.available
-
-  io.dfla.cnt := strip_to_bcnt(seq.vfdu_strip)
-  io.dfla.reserve := seq.vfdu_val && io.dfla.available
-  seq.vfdu_ready := io.dfla.available
-
-  val pred_fire =
-    seq.vpu_val && seq.pred_ready ||
-    seq.exp_fire && seq.exp_seq.active.vgu && (seq.pred_odd || seq.pred_last)
-  io.lpred.bits := seq.pred_mask
-  io.spred.bits := seq.pred_mask
-  io.vmu.pred.bits := seq.pred_mask
-  io.lpred.valid := pred_fire && seq.pred_mcmd.read
-  io.spred.valid := pred_fire && seq.pred_mcmd.write
-  io.vmu.pred.valid := pred_fire
-  seq.pred_ready :=
-    io.vmu.pred.ready &&
-    (!seq.pred_mcmd.read || io.lpred.ready) &&
-    (!seq.pred_mcmd.write || io.spred.ready)
-
-  io.gla.cnt := strip_to_bcnt(seq.vgu_strip)
-  io.gla.reserve := seq.exp_fire && seq.exp_seq.active.vgu
-  seq.vgu_ready := io.gla.available
-
-  io.vmu.pala.cnt := seq.vcu_strip
-  io.vmu.pala.reserve := seq.vcu_val && seq.vcu_ready
-  io.lreq.cnt := seq.vcu_strip
-  io.lreq.reserve := seq.vcu_val && seq.vcu_ready && seq.vcu_mcmd.read
-  io.sreq.cnt := seq.vcu_strip
-  io.sreq.reserve := seq.vcu_val && seq.vcu_ready && seq.vcu_mcmd.store
-  seq.vcu_ready :=
-    io.vmu.pala.available &&
-    (!seq.vcu_mcmd.read || io.lreq.available) &&
-    (!seq.vcu_mcmd.write || io.sreq.available)
-
-  io.lla.cnt := seq.vlu_strip
-  io.lla.reserve := seq.vlu_val && io.lla.available
-  seq.vlu_ready := io.lla.available
-
-  io.sla.reserve := seq.exp_fire && seq.exp_seq.active.vsu
-  io.sla.mask := strip_to_bmask(seq.vsu_strip)
-
-  io.pending := seq.valid.reduce(_ || _)
-
-  seq.footer
+  iwindow.debug
+  dhazard.check.debug
+  bhazard.check.debug
+  shazard.check.debug
+  scheduling.debug
 }
