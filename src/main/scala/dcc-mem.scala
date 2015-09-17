@@ -226,7 +226,7 @@ class VSU extends VXUModule {
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = brqs_valid ++ Seq(pred.valid, vsdq_ready)
-    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+    (rvs.filter(_ ne exclude) ++ include :+ (state === s_busy)).reduce(_ && _)
   }
   next := fire(null)
 
