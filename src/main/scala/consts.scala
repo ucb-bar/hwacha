@@ -7,6 +7,7 @@ trait HwachaConstants
   extends MachineConstants
   with DecodeConstants
   with VIUConstants
+  with VIPUConstants
   with VIMUConstants
   with VIDUConstants
   with VFMUConstants
@@ -122,9 +123,9 @@ trait DecodeConstants {
 }
 
 trait VIUConstants {
-  val SZ_VIU_OP = 4
+  val SZ_VIU_OP = 5
 
-  val I_X    = BitPat("b????")
+  val I_X    = BitPat("b?????")
   val I_ADD  = UInt(0, SZ_VIU_OP)
   val I_ADDU = UInt(1, SZ_VIU_OP)
   val I_SLL  = UInt(2, SZ_VIU_OP)
@@ -141,6 +142,13 @@ trait VIUConstants {
   val I_FSJ  = UInt(13, SZ_VIU_OP)
   val I_FSJN = UInt(14, SZ_VIU_OP)
   val I_FSJX = UInt(15, SZ_VIU_OP)
+  val I_CEQ  = UInt(16, SZ_VIU_OP)
+  val I_CLT  = UInt(17, SZ_VIU_OP)
+  val I_CLTU = UInt(18, SZ_VIU_OP)
+}
+
+trait VIPUConstants {
+  val SZ_VIPU_OP = 8
 }
 
 trait VIMUConstants {

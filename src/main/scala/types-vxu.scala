@@ -23,6 +23,10 @@ class VIUFn extends VXUBundle {
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
 }
 
+class VIPUFn extends VXUBundle {
+  val op = Bits(width = SZ_VIPU_OP)
+}
+
 class VIXUFn(sz_op: Int) extends VXUBundle {
   val dw = UInt(width = SZ_DW)
   val op = UInt(width = sz_op)
@@ -61,6 +65,7 @@ class VQUFn extends VXUBundle {
 class VFn extends VXUBundle {
   val union = Bits(width = List(
     new VIUFn().toBits.getWidth,
+    new VIPUFn().toBits.getWidth,
     new VIMUFn().toBits.getWidth,
     new VIDUFn().toBits.getWidth,
     new VFMUFn().toBits.getWidth,
@@ -72,6 +77,7 @@ class VFn extends VXUBundle {
   )
 
   def viu(d: Int = 0) = new VIUFn().fromBits(this.union)
+  def vipu(d: Int = 0) = new VIPUFn().fromBits(this.union)
   def vimu(d: Int = 0) = new VIMUFn().fromBits(this.union)
   def vidu(d: Int = 0) = new VIDUFn().fromBits(this.union)
   def vfmu(d: Int = 0) = new VFMUFn().fromBits(this.union)
@@ -90,6 +96,7 @@ class VFn extends VXUBundle {
 class RegInfo extends VXUBundle {
   val valid = Bool()
   val scalar = Bool()
+  val pred = Bool()
   val id = UInt(width = bRFAddr)
 }
 
@@ -106,8 +113,15 @@ class ScalarRegisters extends VXUBundle {
   val ss3 = Bits(width = regLen)
 }
 
+class GuardPredicate extends VXUBundle {
+  val valid = Bool()
+  val neg = Bool()
+  val id = UInt(width = bPredAddr)
+}
+
 class DecodedInstruction extends VXUBundle {
   val fn = new VFn // union
+  val p = new GuardPredicate
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
 }
@@ -119,6 +133,7 @@ class DecodedInstruction extends VXUBundle {
 
 class IssueType extends VXUBundle {
   val vint = Bool()
+  val vipred = Bool()
   val vimul = Bool()
   val vidiv = Bool()
   val vfma = Bool()
@@ -150,6 +165,7 @@ class IssueOp extends DecodedInstruction {
 
 class SeqType extends VXUBundle {
   val viu = Bool()
+  val vipu = Bool()
   val vimu = Bool()
   val vidu = Bool()
   val vfmu = Bool()

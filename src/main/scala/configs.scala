@@ -36,6 +36,7 @@ class DefaultHwachaConfig extends ChiselConfig (
     case HwachaNSRAMRFEntries => 256
     case HwachaNFFRFEntries => 16
     case HwachaNFFRFReadPorts => 3
+    case HwachaNPredRFEntries => 256
     case HwachaNOperandLatches => 6
     case HwachaWriteSelects => 2
 
