@@ -25,6 +25,8 @@ class ScalarDpath extends HwachaModule {
     val imem = new FrontendIO
   }
 
+  // Fetch/decode definitions
+  val vf_pc = Reg(UInt())
 
   // execute definitions
   val ex_reg_pc = Reg(UInt())
@@ -60,15 +62,14 @@ class ScalarDpath extends HwachaModule {
       }
     }
   }
-  val srf = new SRegFile //doesn't have vs0
+  val srf = new SRegFile // doesn't have vs0
   val arf = Mem(UInt(width = 64), 32)
 
-  //fetch 
-  val vf_pc = Reg(UInt())
+  // fetch/decode
   when(io.ctrl.fire_vf) {
     vf_pc := io.cmdq.imm.bits
   }
-  when(!io.ctrl.killf){
+  when(!io.ctrl.stallf){
     vf_pc := vf_pc + UInt(8)
   }
   io.imem.req.bits.pc := io.cmdq.imm.bits
@@ -92,15 +93,59 @@ class ScalarDpath extends HwachaModule {
 
   io.ctrl.inst := id_inst
   io.ctrl.ex_waddr := ex_reg_inst(23,16)
-  io.ctrl.wb_waddr := wb_reg_inst(23,16)
   io.ctrl.ex_inst := ex_reg_inst
   io.ctrl.wb_inst := wb_reg_inst
 
-  //execute stage
-  ex_reg_kill := io.ctrl.killd
-  when(!io.ctrl.killd) {
+  // FPU
+  // FIXME: need to take Rocket's rounding mode for dynamic RM
+  val _rm = id_inst(52, 50)
+  val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
+  val in_fmt = id_inst(54,53)
+  val out_fmt = id_inst(56,55)
+  io.fpu.req.bits.rm := rm
+  io.fpu.req.bits.typ := out_fmt
+  io.fpu.req.bits.in1 := 
+     Mux(io.ctrl.id_ctrl.fpu_fn.fromint, id_sreads(0),
+     Mux(in_fmt === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0))))
+  io.fpu.req.bits.in2 := 
+     Mux(in_fmt === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(id_sreads(1))), recode_dp(id_sreads(1)))
+  io.fpu.req.bits.in3 := 
+     Mux(in_fmt === UInt(0), 
+     Cat(SInt(-1,32),recode_sp(id_sreads(2))), recode_dp(id_sreads(2)))
+
+  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
+  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
+  val unrec_fpu_resp = Mux(io.ctrl.pending_fpu_typ === UInt(0),
+               Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
+
+  //Memory requests - COLIN FIXME: check for critical path (need reg?)
+  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
+                      MT_B->  UInt(1),
+                      MT_BU-> UInt(1),
+                      MT_H->  UInt(2),
+                      MT_HU-> UInt(2),
+                      MT_W->  UInt(4),
+                      MT_WU-> UInt(4),
+                      MT_D->  UInt(8) 
+                    ))
+
+  io.vmu.bits.base :=
+    Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
+  io.vmu.bits.aux.union :=
+    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
+                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VS, 
+                           VMUAuxVector(addr_stride).toBits,
+                           VMUAuxScalar(id_sreads(1),
+                           Mux(io.ctrl.id_ctrl.vmu_cmd === M_XWR, 
+                           id_inst(40,33), id_inst(23,16))).toBits))
+
+  // execute
+  when(!io.ctrl.killf) {
     ex_reg_pc := id_pc
     ex_reg_inst := id_inst
+    // TODO: remove weird bypass stuff, just make explicit register?
     ex_reg_srs_bypass := io.ctrl.bypass
     for (i <- 0 until id_sreads.size) {
       when (io.ctrl.sren(i)) {
@@ -140,52 +185,8 @@ class ScalarDpath extends HwachaModule {
   alu.io.in2 := ex_op2.toUInt
   alu.io.in1 := ex_op1
 
-  //fpu ex
-  // FIXME: need to take Rocket's rounding mode for dynamic RM
-  val _rm = id_inst(52, 50)
-  val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
-  val in_fmt = id_inst(54,53)
-  val out_fmt = id_inst(56,55)
-  io.fpu.req.bits.rm := rm
-  io.fpu.req.bits.typ := out_fmt
-  io.fpu.req.bits.in1 := 
-     Mux(io.ctrl.id_ctrl.fpu_fn.fromint, id_sreads(0),
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0))))
-  io.fpu.req.bits.in2 := 
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(1))), recode_dp(id_sreads(1)))
-  io.fpu.req.bits.in3 := 
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(2))), recode_dp(id_sreads(2)))
-
-  //fpu resp
-  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
-  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
-  val unrec_fpu_resp = Mux(io.ctrl.pending_fpu_typ === UInt(0),
-               Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
-
-  //Memory requests - COLIN FIXME: check for criticla path (need reg?)
-  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
-                      MT_B->  UInt(1),
-                      MT_BU-> UInt(1),
-                      MT_H->  UInt(2),
-                      MT_HU-> UInt(2),
-                      MT_W->  UInt(4),
-                      MT_WU-> UInt(4),
-                      MT_D->  UInt(8) 
-                    ))
-
-  io.vmu.bits.base :=
-    Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
-  io.vmu.bits.aux.union :=
-    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
-                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VS, 
-                           VMUAuxVector(addr_stride).toBits,
-                           VMUAuxScalar(id_sreads(1),id_inst(23,16)).toBits))
-
-  //Writeback stage
-  when(!ex_reg_kill) {
+  // Writeback stage
+  when(!io.ctrl.killx) {
     wb_reg_pc := ex_reg_pc
     wb_reg_inst := ex_reg_inst
     wb_reg_wdata := alu.io.out
@@ -226,10 +227,10 @@ class ScalarDpath extends HwachaModule {
     printf("H: AW[r%d=%x][%d]\n",
          aswrite_rd, aswrite_imm, awrite_valid)
   }
-  when(io.ctrl.wb_vf_active) {
+  when(io.ctrl.vf_active || io.ctrl.wb_valid) {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
-         io.ctrl.retire, wb_reg_pc, 
-         Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_reg_wdata, io.ctrl.wb_wen,
+         io.ctrl.wb_valid, wb_reg_pc, 
+         Mux(io.ctrl.wb_wen, wb_waddr, UInt(0)), wb_wdata, io.ctrl.wb_wen,
          wb_reg_inst(31,24), Mux(io.ctrl.wb_ctrl.vs1_type === REG_ADDR,
                                  Reg(next=Reg(next=ex_reg_ars(0))),
                                  Reg(next=Reg(next=ex_srs(0)))),
