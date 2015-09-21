@@ -147,7 +147,7 @@ class Lane extends VXUModule with Packing {
 
   assert(!io.lrqs(0).valid || io.lrqs(0).ready, "check lrqs(0) counter logic")
   assert(!io.lrqs(1).valid || io.lrqs(1).ready, "check lrqs(1) counter logic")
-  assert(!io.lrqs(2).valid || io.lrqs(2).ready, "check lrqs(1) counter logic")
+  assert(!io.lrqs(2).valid || io.lrqs(2).ready, "check lrqs(2) counter logic")
 
   val vimu_operands = operands("vimu", ctrl.io.uop.vimu, 2, 0)
   val vimus = (0 until nSlices) map { i =>
