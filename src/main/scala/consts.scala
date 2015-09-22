@@ -120,6 +120,7 @@ trait DecodeConstants {
   val OPC_VS1 = UInt(62)
   val OPC_VS2 = UInt(61)
   val OPC_VS3 = UInt(60)
+  val OPC_NEG = UInt(32)
 }
 
 trait VIUConstants {

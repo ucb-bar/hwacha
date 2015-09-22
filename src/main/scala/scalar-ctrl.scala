@@ -212,6 +212,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val id_raddrs1 = io.dpath.inst(31,24)
   val id_raddrs2 = io.dpath.inst(40,33)
   val id_raddrs3 = io.dpath.inst(48,41)
+  val id_paddr   = io.dpath.inst(15,12)
 
   val bypassDst = Array(id_raddrs1, id_raddrs2, id_raddrs3)
   val bypassSrc = Array.fill(NBYP)((Bool(true), UInt(0)))
@@ -327,6 +328,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
   io.vxu.bits.vlen := vl
   io.vxu.bits.active.vint := id_ctrl.active_vint()
+  io.vxu.bits.active.vipred := id_ctrl.active_vipred()
   io.vxu.bits.active.vimul := id_ctrl.active_vimul()
   io.vxu.bits.active.vidiv := id_ctrl.active_vidiv()
   io.vxu.bits.active.vfma := id_ctrl.active_vfma()
@@ -342,6 +344,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.fn.union :=
     MuxCase(Bits(0), Array(
       id_ctrl.viu_val  -> id_ctrl.fn_viu().toBits,
+      id_ctrl.vipu_val -> id_ctrl.fn_vipu().toBits,
       id_ctrl.vimu_val -> id_ctrl.fn_vimu().toBits,
       id_ctrl.vidu_val -> id_ctrl.fn_vidu().toBits,
       id_ctrl.vfmu_val -> id_ctrl.fn_vfmu(rm).toBits,
@@ -358,10 +361,17 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.reg.vs2.scalar := id_scalar_src2
   io.vxu.bits.reg.vs3.scalar := id_scalar_src3
   io.vxu.bits.reg.vd.scalar := id_scalar_dest
+  io.vxu.bits.reg.vs1.pred := id_ctrl.vs1_type === REG_PRED
+  io.vxu.bits.reg.vs2.pred := id_ctrl.vs2_type === REG_PRED
+  io.vxu.bits.reg.vs3.pred := id_ctrl.vs3_type === REG_PRED
+  io.vxu.bits.reg.vd.pred := id_ctrl.vd_type === REG_PRED
   io.vxu.bits.reg.vs1.id := id_raddrs1
   io.vxu.bits.reg.vs2.id := id_raddrs2
   io.vxu.bits.reg.vs3.id := id_raddrs3
   io.vxu.bits.reg.vd.id := id_waddr
+  io.vxu.bits.p.valid := id_ctrl.vp_val
+  io.vxu.bits.p.neg := id_ctrl.vp_neg
+  io.vxu.bits.p.id := id_paddr
   // TODO: add predicate regs
 
   // to VMU
