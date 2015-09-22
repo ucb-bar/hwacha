@@ -233,9 +233,10 @@ trait VMUConstants {
   val MM_VS = UInt(0, SZ_VMU_MODE) // vector strided
   val MM_VX = UInt(1, SZ_VMU_MODE) // vector indexed
   val MM_S  = UInt(2, SZ_VMU_MODE) // scalar
+  val MM_P  = UInt(3, SZ_VMU_MODE) // predicate
 
   def is_indexed(mode: Bits) = mode(0)
-  def is_scalar(mode: Bits) = mode(1)
+  def is_scalar(mode: Bits) = (mode === MM_S)
 }
 
 object Commands extends Commands
