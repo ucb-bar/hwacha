@@ -33,7 +33,7 @@ class DefaultHwachaConfig extends ChiselConfig (
     // lane constants
     case HwachaBankWidth => 128
     case HwachaNBanks => 4
-    case HwachaNSRAMRFEntries => 256
+    case HwachaNSRAMRFEntries => Knob("HWACHA_NSRAMRF_ENTRIES")
     case HwachaNFFRFEntries => 16
     case HwachaNFFRFReadPorts => 3
     case HwachaNOperandLatches => 6
