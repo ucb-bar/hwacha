@@ -135,8 +135,7 @@ class ScalarDpath extends HwachaModule {
     Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
   io.vmu.bits.aux.union :=
     Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
-                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VS ||
-                             io.ctrl.id_ctrl.vmu_mode === MM_P,
+                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VU,
                            VMUAuxVector(addr_stride).toBits,
                            VMUAuxScalar(id_sreads(1),
                            Mux(io.ctrl.id_ctrl.vmu_cmd === M_XWR, 

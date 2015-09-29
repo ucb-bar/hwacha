@@ -231,12 +231,12 @@ trait VMUConstants {
   val SZ_VMU_MODE = 2
 
   val MM_X  = BitPat("b??")
-  val MM_VS = UInt(0, SZ_VMU_MODE) // vector strided
-  val MM_VX = UInt(1, SZ_VMU_MODE) // vector indexed
-  val MM_S  = UInt(2, SZ_VMU_MODE) // scalar
-  val MM_P  = UInt(3, SZ_VMU_MODE) // predicate
+  val MM_VU = UInt(0, SZ_VMU_MODE) // vector unit strided
+  val MM_VS = UInt(1, SZ_VMU_MODE) // vector non-unit strided
+  val MM_VX = UInt(2, SZ_VMU_MODE) // vector indexed
+  val MM_S  = UInt(3, SZ_VMU_MODE) // scalar
 
-  def is_indexed(mode: Bits) = mode(0)
+  def is_indexed(mode: Bits) = (mode === MM_VX)
   def is_scalar(mode: Bits) = (mode === MM_S)
 }
 
