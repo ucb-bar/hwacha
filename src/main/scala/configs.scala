@@ -57,4 +57,9 @@ class DefaultHwachaConfig extends ChiselConfig (
     case RoCCMaxTaggedMemXacts => site(HwachaNVMDBEntries)
     case BuildRoCC => Some(() => (Module(new Hwacha, { case CoreName => "Hwacha" })))
   }
-)
+) 
+{
+  override val knobValues:Any=>Any = {
+    case "HWACHA_NSRAMRF_ENTRIES" => 256
+  }
+}
