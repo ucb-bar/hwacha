@@ -78,7 +78,7 @@ object VMUDecodedOp extends HwachaConstants {
     op.aux.s := src.aux.scalar()
 
     op.unit :=
-      Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d).zipWithIndex.map(i =>
+      Seq(Bool(false)/*op.mt.b*/, op.mt.h, op.mt.w, op.mt.d).zipWithIndex.map(i =>
         i._1 && (op.aux.v.stride === UInt(1 << i._2))).reduce(_||_)
     op
   }

@@ -34,9 +34,12 @@ class SBox extends VMUModule {
   val index_real = index & Fill(tlByteAddrBits, index_mask)
   val index_step = Cat(mt.reverse)
   val index_next = index_real + index_step
+  val index_next_real = Cat(
+    index_next(tlByteAddrBits-1) & !op.mt.b,
+    index_next(tlByteAddrBits-2,0))
   val mbox_fire = io.mbox.valid && io.mbox.ready
   when (mbox_fire) {
-    index := index_next
+    index := index_next_real
   }
 
   val offset_base = op.base(tlByteAddrBits-1,0)
@@ -61,7 +64,7 @@ class SBox extends VMUModule {
   val truncate = (ecnt <= eoff) && !meta.first
 
   val data_valid = vsdq.io.deq.valid || (packed && truncate)
-  val dequeue = Mux(packed, !truncate, (index_next === UInt(0)) || meta.last)
+  val dequeue = Mux(packed, !truncate, (index_next_real === UInt(0)) || meta.last)
 
   vsdq.io.deq.ready := io.mbox.valid && dequeue
   io.mbox.ready := data_valid

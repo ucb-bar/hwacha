@@ -94,14 +94,12 @@ class VSU extends VXUModule {
 
   private val lgbank = log2Up(nBanks)
   private val nTotalSlices = nSlices * nBanks
-  private val sz_beat = math.max(1, nPredSet / nSlices) + lgbank
 
   val mt_fn = Reg(Bits(width = MT_SZ))
   val mt = DecodedMemType(mt_fn)
   val mtsel = Seq(mt.d, mt.w, mt.h, mt.b)
 
-  val beat = Reg(UInt(width = sz_beat))
-  val beat_mid = mt.b && !beat(0) // FIXME: parameterize
+  val beat = Reg(UInt(width = lgbank))
   val beat_cnt = Seq(SZ_D, SZ_W, SZ_H, SZ_B).map(sz =>
     // Maximum number of elements per beat
     math.min(tlDataBits / sz, nTotalSlices))
@@ -221,7 +219,7 @@ class VSU extends VXUModule {
 
   val brqs_en = pred_brqs.zip(brqs_mask).map { case (pred, mask) => pred && mask }
   val brqs_valid = brqs_deq.zip(brqs_en).map { case (brq, en) => !en || brq.valid }
-  val vsdq_en = brqs_en.reduce(_ || _) && (!beat_mid || last)
+  val vsdq_en = brqs_en.reduce(_ || _)
   val vsdq_ready = !vsdq_en || io.vsdq.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
@@ -240,8 +238,7 @@ class VSU extends VXUModule {
   }) || last
   pred.ready := fire(pred.valid, pred_dequeue)
 
-  io.vsdq.valid := fire(vsdq_ready, vsdq_en) ||
-    (io.xcpt.prop.vmu.stall && mt.b && (pending === UInt(1)) && !beat_mid)
+  io.vsdq.valid := fire(vsdq_ready, vsdq_en)
 
   //--------------------------------------------------------------------\\
   // permutation network
@@ -270,15 +267,8 @@ class VSU extends VXUModule {
   val data_h = repack(SZ_H, SZ_D)
   val data_b = repack(SZ_B, SZ_D)
 
-  val data_b_hold = Reg(Vec.fill(data_b.size)(Bits()))
-  when (next && beat_mid) {
-    data_b_hold := data_b
-  }
-
-  // Bypass hold register if final beat is odd
-  val data_b_head = Mux(last && beat_mid, data_b, data_b_hold)
   io.vsdq.bits := Mux1H(mtsel,
-    Seq(data_d, data_w, data_h, data_b_head ++ data_b).map(x => Cat(x.reverse)))
+    Seq(data_d, data_w, data_h, data_b).map(x => Cat(x.reverse)))
 }
 
 class VLUEntry extends VXUBundle {
