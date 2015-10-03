@@ -56,6 +56,7 @@ abstract trait UsesHwachaParameters extends UsesParameters
   require(confvcmdq.nimm >= _nBanks)
   require(confvcmdq.nrd >= _nBanks)
 
+  val nbpq = 2
   val nbrq = 2
   val nbwq = 2
 

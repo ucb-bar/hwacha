@@ -1,6 +1,11 @@
 package hwacha
 
 import Chisel._
+import DataGating._
+
+class BPQLookAheadIO extends VXUBundle with LookAheadIO {
+  val mask = Bits(OUTPUT, nBanks)
+}
 
 class BRQLookAheadIO extends VXUBundle with LookAheadIO {
   val mask = Bits(OUTPUT, nBanks)
@@ -9,7 +14,9 @@ class BRQLookAheadIO extends VXUBundle with LookAheadIO {
 class VGU extends VXUModule with Packing {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
-    val la = new CounterLookAheadIO().flip
+    val pla = new CounterLookAheadIO().flip // lpq entry
+    val qla = new CounterLookAheadIO().flip // lrq entry
+    val lpq = new LPQIO().flip
     val lrq = new LRQIO().flip
     val vaq = new VVAQIO
   }
@@ -17,25 +24,53 @@ class VGU extends VXUModule with Packing {
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
   opq.io.enq <> io.op
 
+  val lpq = Module(new Queue(new LPQEntry, nBanks+2))
+  lpq.io.enq <> io.lpq
+
+  val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  pcntr.io.inc.cnt := UInt(1)
+  pcntr.io.inc.update := lpq.io.deq.fire()
+  pcntr.io.dec <> io.pla
+
   val lrq = Module(new Queue(new LRQEntry, nBanks+2))
   lrq.io.enq <> io.lrq
 
-  val cntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
-  cntr.io.inc.cnt := UInt(1)
-  cntr.io.inc.update := lrq.io.deq.fire()
-  cntr.io.dec <> io.la
+  val rcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  rcntr.io.inc.cnt := UInt(1)
+  rcntr.io.inc.update := lrq.io.deq.fire()
+  rcntr.io.dec <> io.qla
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
   val slice = Reg(UInt(width = log2Up(nSlices)))
 
+  // FIXME: I didn't have time to generalize, logic explained below
+  require(nSlices == 2)
+
+  // if slice === UInt(1), shave off last bit
+  val pred = lpq.io.deq.bits.pred & Mux(slice === UInt(0), UInt(3), UInt(2))
+  // dequeue lq when one hot
+  val deq_lq = pred != UInt(3)
+  // enqueue vaq when there's something
+  val enq_vaq = pred != UInt(0)
+  // find slice_next when more then two elements are alive
+  val slice_next = Mux(pred === UInt(3), UInt(1), UInt(0))
+  // find first one for pick
+  val pick = Mux(pred(0), UInt(0), UInt(1))
+  // process 2 elements only when pred is empty, otherwise 1
+  val ecnt = Mux(pred === UInt(0), UInt(2), UInt(1))
+  val vlen_cnt = Mux(ecnt > op.vlen, op.vlen, ecnt)
+  val vlen_next = op.vlen - vlen_cnt
+
+  val mask_vaq_ready = !enq_vaq || io.vaq.ready
+
   def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(lrq.io.deq.valid, io.vaq.ready)
+    val rvs = Seq(
+      state === s_busy,
+      lpq.io.deq.valid, lrq.io.deq.valid, mask_vaq_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
-
-  val vlen_next = op.vlen - UInt(1)
 
   opq.io.deq.ready := Bool(false)
 
@@ -52,7 +87,7 @@ class VGU extends VXUModule with Packing {
     is (s_busy) {
       when (fire(null)) {
         op.vlen := vlen_next
-        slice := slice + UInt(1)
+        slice := slice_next
         when (vlen_next === UInt(0)) {
           state := s_idle
         }
@@ -60,16 +95,97 @@ class VGU extends VXUModule with Packing {
     }
   }
 
-  val deq_lrq = if (nSlices > 1) slice === UInt(nSlices-1) else Bool(true)
-  val addr =
-    if (nSlices > 1) {
-      MuxLookup(slice, Bits(0), (0 until nSlices) map {
-        i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
-    } else lrq.io.deq.bits.data
+  lpq.io.deq.ready := fire(lpq.io.deq.valid, deq_lq)
+  lrq.io.deq.ready := fire(lrq.io.deq.valid, deq_lq)
+  io.vaq.valid := fire(mask_vaq_ready, enq_vaq)
 
-  lrq.io.deq.ready := fire(lrq.io.deq.valid, deq_lrq)
-  io.vaq.valid := fire(io.vaq.ready)
-  io.vaq.bits.addr := addr
+  io.vaq.bits.addr := MuxLookup(pick, Bits(0), (0 until nSlices) map {
+    i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
+}
+
+class VPU extends VXUModule with BankLogic {
+  val io = new Bundle {
+    val op = Decoupled(new DCCOp).flip
+    val la = new BPQLookAheadIO().flip
+    val bpqs = Vec.fill(nBanks)(new BPQIO).flip
+    val pred = Decoupled(Bits(width = nPredSet))
+    val lpred = Decoupled(Bits(width = nPredSet))
+    val spred = Decoupled(Bits(width = nPredSet))
+  }
+
+  require(nBanks*2 == nPredSet)
+
+  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.io.enq <> io.op
+
+  val bpqs = (io.bpqs zipWithIndex) map { case (enq, i) =>
+    val bpq = Module(new Queue(new BPQEntry, nbpq))
+    val placntr = Module(new LookAheadCounter(nbpq, nbpq))
+    val en = io.la.mask(i)
+    bpq.io.enq <> enq
+    placntr.io.inc.cnt := UInt(1)
+    placntr.io.inc.update := bpq.io.deq.fire()
+    placntr.io.dec.cnt := UInt(1)
+    placntr.io.dec.reserve := io.la.reserve && en
+    (bpq.io.deq, !en || placntr.io.dec.available)
+  }
+  io.la.available := bpqs.map(_._2).reduce(_ && _)
+  val bpqs_deq = Vec(bpqs.map(_._1))
+
+  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
+  val state = Reg(init = s_idle)
+  val op = Reg(new DCCOp)
+
+  val strip = Mux(op.vlen > UInt(8), UInt(8), op.vlen)
+  val vlen_next = op.vlen - strip
+
+  val deq_bpqs = strip_to_bmask(strip)
+  val mask_bpqs_valid = (bpqs_deq zipWithIndex) map { case (bpq, i) =>
+    !deq_bpqs(i) || bpq.valid }
+  val enq_lpred = op.active.enq_vlu()
+  val enq_spred = op.active.enq_vsu()
+  val mask_lpred_ready = !enq_lpred || io.lpred.ready
+  val mask_spred_ready = !enq_spred || io.spred.ready
+
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(
+      state === s_busy,
+      io.pred.ready, mask_lpred_ready, mask_spred_ready) ++ mask_bpqs_valid
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  opq.io.deq.ready := Bool(false)
+
+  switch (state) {
+    is (s_idle) {
+      opq.io.deq.ready := Bool(true)
+      when (opq.io.deq.valid) {
+        state := s_busy
+        op := opq.io.deq.bits
+      }
+    }
+
+    is (s_busy) {
+      when (fire(null)) {
+        op.vlen := vlen_next
+        when (vlen_next === UInt(0)) {
+          state := s_idle
+        }
+      }
+    }
+  }
+
+  (bpqs_deq zipWithIndex) map { case (bpq, i) =>
+    bpq.ready := fire(mask_bpqs_valid(i), deq_bpqs(i)) }
+  io.pred.valid := fire(io.pred.ready)
+  io.lpred.valid := fire(mask_lpred_ready, enq_lpred)
+  io.spred.valid := fire(mask_spred_ready, enq_spred)
+
+  val pred = Vec((bpqs_deq zipWithIndex) map { case (bpq, i) =>
+    dgate(deq_bpqs(i), bpq.bits.pred) }).toBits
+  io.pred.bits := pred
+  io.lpred.bits := pred
+  io.spred.bits := pred
 }
 
 class VSU extends VXUModule {

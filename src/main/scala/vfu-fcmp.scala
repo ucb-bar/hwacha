@@ -12,6 +12,7 @@ class FCmpOperand extends Bundle {
 
 class FCmpResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
+  val cmp = Bool()
 }
 
 class FCmpSlice extends VXUModule with Packing {
@@ -65,17 +66,13 @@ class FCmpSlice extends VXUModule with Packing {
     List(expand_float_d _, expand_float_s _, expand_float_h _) zip cmps zip classifys map {
       case ((expand, cmp), classify) => {
         val less = cmp.a_lt_b
-        val equal = cmp.a_eq_b
         val want_min = fn.op_is(FC_MIN)
         val in0_nan = classify._1(8) || classify._1(9) // isNaN, 8: sNaN, 9: qNaN
         val in1_nan = classify._2(8) || classify._2(9) // isNaN, 8: sNaN, 9: qNaN
         val minmax =
           Mux(in1_nan || !in0_nan && (want_min === less), expand(in0), expand(in1))
-        val sel = List(FC_CEQ,FC_CLT,FC_CLE,FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
+        val sel = List(FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
         val in = List(
-          equal,         // FC_CEQ
-          less,          // FC_C
-          equal || less, // FC_CLE
           minmax,        // FC_MIN
           minmax,        // FC_MAX
           classify._1)   // FC_CLASS
@@ -83,9 +80,25 @@ class FCmpSlice extends VXUModule with Packing {
       }
     }
 
+  val cmp_results =
+    List(expand_float_d _, expand_float_s _, expand_float_h _) zip cmps zip classifys map {
+      case ((expand, cmp), classify) => {
+        val less = cmp.a_lt_b
+        val equal = cmp.a_eq_b
+        val sel = List(FC_CEQ,FC_CLT,FC_CLE).map(fn.op_is(_))
+        val in = List(
+          equal,         // FC_CEQ
+          less,          // FC_CLT
+          equal || less) // FC_CLE
+        Mux1H(sel, in)
+      }
+    }
+
+
   val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
   val result = new FCmpResult
   result.out := Mux1H(fpmatch, results)
+  result.cmp := Mux1H(fpmatch, cmp_results)
 
   io.resp := Pipe(io.req.valid, result, stagesFCmp)
 }

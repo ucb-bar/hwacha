@@ -11,6 +11,7 @@ class ALUOperand extends VXUBundle {
 
 class ALUResult extends Bundle {
   val out = Bits(width = SZ_D)
+  val cmp = Bool()
 }
 
 class ALUSlice(id: Int) extends VXUModule with Packing {
@@ -45,7 +46,6 @@ class ALUSlice(id: Int) extends VXUModule with Packing {
   val shin = Mux(shright, shin_r, Reverse(shin_r))
   val shout_r = (Cat(sra & shin_r(63), shin).toSInt >> shamt)(63,0)
   val shift_out = Mux(fn.op_is(I_SLL), Reverse(shout_r), shout_r)
-
 
   val ltu = (in0.toUInt < in1.toUInt)
   val lt = (in0(63) === in1(63)) && ltu || in0(63) && ~in1(63)
@@ -88,8 +88,16 @@ class ALUSlice(id: Int) extends VXUModule with Packing {
       fn.dw_is(DW32) -> expand_w(s0_result64(31,0))
     ))
 
+  val s0_cmp = MuxCase(
+    Bool(false), Array(
+      fn.op_is(I_CEQ) -> (in0 === in1),
+      fn.op_is(I_CLT) -> lt,
+      fn.op_is(I_CLTU) -> ltu
+    ))
+
   val result = new ALUResult
   result.out := s0_result
+  result.cmp := s0_cmp
 
   io.resp := Pipe(io.req.valid, result, stagesALU)
 }

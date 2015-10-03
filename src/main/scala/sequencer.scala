@@ -12,6 +12,8 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
     List(stagesALU, stagesIMul, stagesFMA,
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bWPortLatency = log2Down(maxWPortLatency) + 1
+  val maxPredWPortLatency = expLatency +
+    List(1 + stagesPLU, 3 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val maxStrip = nBanks * (wBank / SZ_B)
   val bStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
@@ -37,19 +39,24 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
 }
 
 class SequencerIO extends ValidIO(new SequencerOp)
+class SequencerVPUIO extends ValidIO(new SequencerVPUOp)
 
-class Sequencer extends VXUModule {
+class Sequencer extends VXUModule with BankLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new VXUIssueOpIO().flip
     val seq = new SequencerIO
+    val seq_vpu = new SequencerVPUIO
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
 
+    val dpla = new CounterLookAheadIO
     val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}
     val dila = new CounterLookAheadIO
     val dfla = new CounterLookAheadIO
-    val gla = new CounterLookAheadIO
+    val gpla = new CounterLookAheadIO
+    val gqla = new CounterLookAheadIO
+    val pla = new BPQLookAheadIO
     val lla = new CounterLookAheadIO
     val sla = new BRQLookAheadIO
     val lreq = new CounterLookAheadIO
@@ -107,15 +114,6 @@ class Sequencer extends VXUModule {
     Mux(vl > max_strip, max_strip, vl)
   }
 
-  def strip_to_bcnt(strip: UInt) = {
-    val stripp1 = strip + UInt(1)
-    if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
-  }
-
-  def strip_to_bmask(strip: UInt) = {
-    EnableDecoder(strip_to_bcnt(strip), nBanks).toBits
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // data hazard checking helpers
 
@@ -131,9 +129,10 @@ class Sequencer extends VXUModule {
       def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
 
       def issue_base_eq(ifn: RegFn, sfn: RegFn) =
-        Vec((0 until nSeq) map { i =>
-          v(i) && sfn(e(i).base).valid && !sfn(e(i).base).scalar &&
-          ifn(io.op.bits.reg).valid && !ifn(io.op.bits.reg).scalar &&
+        Vec((0 until nSeq) map { i => v(i) &&
+          sfn(e(i).base).valid && ifn(io.op.bits.reg).valid &&
+          !sfn(e(i).base).scalar && !ifn(io.op.bits.reg).scalar &&
+          !(sfn(e(i).base).pred ^ ifn(io.op.bits.reg).pred) &&
           sfn(e(i).base).id === ifn(io.op.bits.reg).id })
       val ivs1_evd_eq = issue_base_eq(reg_vs1, reg_vd)
       val ivs2_evd_eq = issue_base_eq(reg_vs2, reg_vd)
@@ -142,6 +141,17 @@ class Sequencer extends VXUModule {
       val ivd_evs2_eq = issue_base_eq(reg_vd, reg_vs2)
       val ivd_evs3_eq = issue_base_eq(reg_vd, reg_vs3)
       val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
+
+      val ivp_evd_eq =
+        Vec((0 until nSeq) map { i => v(i) &&
+          e(i).base.vd.valid && io.op.bits.reg.vp.valid &&
+          !e(i).base.vd.scalar && e(i).base.vd.pred &&
+          e(i).base.vd.id === io.op.bits.reg.vp.id })
+      val ivd_evp_eq =
+        Vec((0 until nSeq) map {i => v(i) &&
+          e(i).base.vp.valid && io.op.bits.reg.vd.valid &&
+          !io.op.bits.reg.vd.scalar && io.op.bits.reg.vd.pred &&
+          e(i).base.vp.id === io.op.bits.reg.vd.id })
 
       def raws(n: UInt, eq: Vec[Bool]) = {
         for (i <- 0 until nSeq) {
@@ -152,7 +162,7 @@ class Sequencer extends VXUModule {
       }
       def wars(n: UInt) = {
         for (i <- 0 until nSeq) {
-          when (ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
+          when (ivd_evp_eq(i) || ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
             war(n, UInt(i))
           }
         }
@@ -164,6 +174,7 @@ class Sequencer extends VXUModule {
           }
         }
       }
+      def raw_vp(n: UInt) = raws(n, ivp_evd_eq)
       def raw_vs1(n: UInt) = raws(n, ivs1_evd_eq)
       def raw_vs2(n: UInt) = raws(n, ivs2_evd_eq)
       def raw_vs3(n: UInt) = raws(n, ivs3_evd_eq)
@@ -256,8 +267,11 @@ class Sequencer extends VXUModule {
 
   val bhazard = new {
     val set = new {
-      def nports_list(fns: RegFn*) =
-        PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
+      def nports_list(fns: RegFn*) = {
+        val cnt = PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
+        // make sure # of rports is larger than 1, because we need to read predicate
+        Mux(cnt > UInt(0), cnt, UInt(1))
+      }
       val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
       val nrport_vs1 = nports_list(reg_vs1)
       val nrport_vs2 = nports_list(reg_vs2)
@@ -737,7 +751,8 @@ class Sequencer extends VXUModule {
       def fire(n: Int) = sched(n)
       def fire_vgu = valid && op.active.vgu
       def fire_vsu = valid && op.active.vsu
-      def fire_vqu(n: Int) = valid && op.active.vqu && op.fn.vqu().latch(n)
+      def fire_vqu = valid && op.active.vqu
+      def fire_vqu_latch(n: Int) = fire_vqu && op.fn.vqu().latch(n)
 
       def logic = {
         io.seq.valid := valid
@@ -763,7 +778,7 @@ class Sequencer extends VXUModule {
 
       def logic = {
         io.dila.cnt := strip_to_bcnt(strip)
-        io.dila.reserve := valid && io.dila.available
+        io.dila.reserve := valid && ready
       }
     }
 
@@ -779,51 +794,31 @@ class Sequencer extends VXUModule {
 
       def logic = {
         io.dfla.cnt := strip_to_bcnt(strip)
-        io.dfla.reserve := valid && io.dfla.available
-      }
-    }
-
-    val pred = new {
-      val first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
-
-      val sel = readfn(first, (e: SeqEntry) => e.active.vpu)
-      val fn = readfn(first, (e: SeqEntry) => e.fn)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val eidx = readfn(first, (e: SeqEntry) => e.eidx)
-      val strip = stripfn(vlen, sel, fn)
-      val odd = eidx(3)
-      val last = vlen <= UInt(8)
-      val mcmd = DecodedMemCommand(fn.vmu().cmd)
-      val mask = Mux(sel,
-        EnableDecoder(strip, nPredSet).toBits,
-        EnableDecoder(Mux(odd, UInt(8), UInt(0)) + strip, nPredSet).toBits)
-
-      val ready =
-        io.vmu.pred.ready &&
-        (!mcmd.read || io.lpred.ready) &&
-        (!mcmd.write || io.spred.ready)
-      val vpu_valid = Bool()
-      val fire = vpu_valid && ready || exp.fire_vgu && (odd || last)
-
-      def logic = {
-        io.lpred.bits := mask
-        io.spred.bits := mask
-        io.vmu.pred.bits := mask
-        io.lpred.valid := fire && mcmd.read
-        io.spred.valid := fire && mcmd.write
-        io.vmu.pred.valid := fire
-      }
-
-      def debug = {
-        (io.debug.pred_first zip first) foreach { case (io, c) => io := c }
+        io.dfla.reserve := valid && ready
       }
     }
 
     val vpu = new {
-      val sched = find_first((i: Int) => e(i).active.vpu && nohazards(i))
+      val sched = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+      val sel = readfn(sched, (e: SeqEntry) => e.active.vgu)
 
-      def fire(n: Int) = pred.first(n) && sched(n) && pred.ready
-      pred.vpu_valid := valfn(Vec((pred.first zip sched) map { case (p, v) => p && v }))
+      val ready = io.pla.available && (!sel || exp.fire_vgu)
+      def fire(n: Int) = sched(n) && ready
+
+      def logic = {
+        io.seq_vpu.valid := valid && ready
+        io.seq_vpu.bits.strip := strip
+        io.pla.reserve := valid && ready
+        io.pla.mask := strip_to_bmask(strip)
+      }
+
+      def debug = {
+        (io.debug.pred_first zip sched) foreach { case (io, c) => io := c }
+      }
     }
 
     val vgu = new {
@@ -831,13 +826,17 @@ class Sequencer extends VXUModule {
       val vlen = readfn(first, (e: SeqEntry) => e.vlen)
       val fn = readfn(first, (e: SeqEntry) => e.fn)
       val strip = stripfn(vlen, Bool(false), fn)
+      val cnt = strip_to_bcnt(strip)
 
-      val ready = io.gla.available
-      (0 until nSeq) map { i => exp.vgu_consider(i) := pred.first(i) && first(i) && pred.ready && ready }
+      val ready = io.gpla.available && io.gqla.available
+      (0 until nSeq) map { i =>
+        exp.vgu_consider(i) := vpu.sched(i) && first(i) && io.pla.available && ready }
 
       def logic = {
-        io.gla.cnt := strip_to_bcnt(strip)
-        io.gla.reserve := exp.fire_vgu
+        io.gpla.cnt := cnt
+        io.gpla.reserve := exp.fire_vgu
+        io.gqla.cnt := cnt
+        io.gqla.reserve := exp.fire_vgu
       }
     }
 
@@ -847,7 +846,7 @@ class Sequencer extends VXUModule {
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
-      val strip = stripfn(vlen, Bool(true), fn)
+      val strip = stripfn(vlen, Bool(false), fn)
 
       val ready =
         io.vmu.pala.available &&
@@ -904,14 +903,17 @@ class Sequencer extends VXUModule {
       val cnt = strip_to_bcnt(strip)
 
       def ready(n: Int) =
+        io.dpla.available &&
         (!e(n).fn.vqu().latch(0) || io.dqla(0).available) &&
         (!e(n).fn.vqu().latch(1) || io.dqla(1).available)
       (0 until nSeq) map { i => exp.vqu_consider(i) := first(i) && ready(i) }
 
       def logic = {
+        io.dpla.cnt := cnt
+        io.dpla.reserve := exp.fire_vqu
         (io.dqla zipWithIndex) map { case (la, i) =>
           la.cnt := cnt
-          la.reserve := exp.fire_vqu(i)
+          la.reserve := exp.fire_vqu_latch(i)
         }
       }
     }
@@ -920,7 +922,7 @@ class Sequencer extends VXUModule {
       exp.logic
       vidu.logic
       vfdu.logic
-      pred.logic
+      vpu.logic
       vgu.logic
       vcu.logic
       vlu.logic
@@ -941,7 +943,7 @@ class Sequencer extends VXUModule {
       }
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(e(i).vlen, e(i).active.vpu || e(i).active.vcu, e(i).fn)
+        val strip = stripfn(e(i).vlen, Bool(false), e(i).fn)
         when (v(i)) {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
@@ -965,7 +967,7 @@ class Sequencer extends VXUModule {
     }
 
     def debug = {
-      pred.debug
+      vpu.debug
       exp.debug
     }
   }

@@ -46,6 +46,17 @@ abstract trait Packing extends LaneParameters {
   def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, params(HwachaRegLen), wBank)
 }
 
+abstract trait BankLogic extends LaneParameters {
+  def strip_to_bcnt(strip: UInt) = {
+    val stripp1 = strip + UInt(1)
+    if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
+  }
+
+  def strip_to_bmask(strip: UInt) = {
+    EnableDecoder(strip_to_bcnt(strip), nBanks).toBits
+  }
+}
+
 object DataGating {
   def dgate(valid: Bool, b: Bits) = Fill(b.getWidth, valid) & b
 }

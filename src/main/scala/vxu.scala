@@ -42,22 +42,26 @@ class VXU extends HwachaModule {
   dcc.io.op.bits.vd := io.issue.bits.reg.vd
 
   exp.io.seq <> seq.io.seq
+  exp.io.seq_vpu <> seq.io.seq_vpu
   lane.io.op <> exp.io.lane
 
   seq.io.ticker <> exp.io.ticker
   seq.io.lack <> lane.io.ack
   seq.io.dack <> dcc.io.ack
 
+  dcc.io.dpla <> seq.io.dpla
   dcc.io.dqla <> seq.io.dqla
   dcc.io.dila <> seq.io.dila
   dcc.io.dfla <> seq.io.dfla
-  dcc.io.gla <> seq.io.gla
+  dcc.io.gpla <> seq.io.gpla
+  dcc.io.gqla <> seq.io.gqla
+  dcc.io.pla <> seq.io.pla
   dcc.io.lla <> seq.io.lla
   dcc.io.sla <> seq.io.sla
-  dcc.io.lpred <> seq.io.lpred
-  dcc.io.spred <> seq.io.spred
 
+  dcc.io.lpqs <> lane.io.lpqs
   dcc.io.lrqs <> lane.io.lrqs
+  dcc.io.bpqs <> lane.io.bpqs
   dcc.io.brqs <> lane.io.brqs
   lane.io.bwqs <> dcc.io.bwqs
 

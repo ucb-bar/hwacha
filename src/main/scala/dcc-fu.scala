@@ -3,11 +3,10 @@ package hwacha
 import Chisel._
 import DataGating._
 
-class VDUTag extends VXUBundle {
+class VDUTag extends VXUBundle with BankPred {
   val bank = UInt(width = log2Up(nBanks))
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val pred = Bits(width = nSlices)
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
@@ -16,9 +15,11 @@ class VDU extends VXUModule {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
     val ack = new DCCAckIO
+    val pla = new CounterLookAheadIO().flip // lpq entry
     val qla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // lrq entries
     val ila = new CounterLookAheadIO().flip // idiv output entries
     val fla = new CounterLookAheadIO().flip // fdiv output entries
+    val lpq = new LPQIO().flip
     val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
     val bwqs = Vec.fill(nBanks){new BWQIO}
   }
@@ -29,6 +30,15 @@ class VDU extends VXUModule {
   ctrl.io.ila <> io.ila
   ctrl.io.fla <> io.fla
   ctrl.io.cfg <> io.cfg
+
+  val lpq = Module(new Queue(new LPQEntry, nBanks+2))
+  lpq.io.enq <> io.lpq
+  ctrl.io.lpq <> lpq.io.deq
+
+  val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  pcntr.io.inc.cnt := UInt(1)
+  pcntr.io.inc.update := lpq.io.deq.fire()
+  pcntr.io.dec <> io.pla
 
   for (i <- 0 until nVDUOperands) {
     val lrq = Module(new Queue(new LRQEntry, nBanks+2))
@@ -59,6 +69,7 @@ class VDUCtrl extends VXUModule with Packing {
     val op = Decoupled(new DCCOp).flip
     val ila = new CounterLookAheadIO().flip
     val fla = new CounterLookAheadIO().flip
+    val lpq = new LPQIO().flip
     val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
 
     val idiv = new Bundle {
@@ -118,8 +129,8 @@ class VDUCtrl extends VXUModule with Packing {
 
   val deq_lrq1 = op.fn.vfdu().op_is(FD_DIV)
   val mask_lrq1_valid = !deq_lrq1 || io.lrqs(1).valid
-  val enq_idivs_req = (0 until nSlices).map { pred(_) }
-  val enq_fdivs_req = (0 until nSlices).map { pred(_) }
+  val enq_idivs_req = (0 until nSlices).map { i => pred(i) && io.lpq.bits.pred(i) }
+  val enq_fdivs_req = (0 until nSlices).map { i => pred(i) && io.lpq.bits.pred(i) }
   val mask_idivs_req_ready = io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
     !enq_idivs_req(i) || idiv.req.ready }
   val mask_fdivs_req_ready = io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
@@ -128,7 +139,7 @@ class VDUCtrl extends VXUModule with Packing {
   def fire_idiv(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       state === s_busy, op.active.vidiv,
-      io.lrqs(0).valid, io.lrqs(1).valid,
+      io.lpq.valid, io.lrqs(0).valid, io.lrqs(1).valid,
       tagq.io.enq.ready) ++ mask_idivs_req_ready
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -136,12 +147,13 @@ class VDUCtrl extends VXUModule with Packing {
   def fire_fdiv(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       state === s_busy, op.active.vfdiv,
-      io.lrqs(0).valid, mask_lrq1_valid,
+      io.lpq.valid, io.lrqs(0).valid, mask_lrq1_valid,
       tagq.io.enq.ready) ++ mask_fdivs_req_ready
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   fire := fire_idiv(null) || fire_fdiv(null)
+  io.lpq.ready := fire_idiv(io.lpq.valid) || fire_fdiv(io.lpq.valid)
   io.lrqs(0).ready := fire_idiv(io.lrqs(0).valid) || fire_fdiv(io.lrqs(0).valid)
   io.lrqs(1).ready := fire_idiv(io.lrqs(1).valid) || fire_fdiv(mask_lrq1_valid, deq_lrq1)
   tagq.io.enq.valid := fire_idiv(tagq.io.enq.ready) || fire_fdiv(tagq.io.enq.ready)
@@ -175,7 +187,7 @@ class VDUCtrl extends VXUModule with Packing {
   val mask_fdivs_resp_valid = io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     !deq_fdivs_resp(i) || fdiv.resp.valid }
 
-  val enq_bwqs = (0 until nBanks).map { tagq.io.deq.bits.bank === UInt(_) }
+  val enq_bwqs = (0 until nBanks).map { tagq.io.deq.bits.active() && tagq.io.deq.bits.bank === UInt(_) }
   val mask_bwqs_ready = io.bwqs.zipWithIndex.map { case (bwq, i) => !enq_bwqs(i) || bwq.ready }
 
   def fire_bwq(exclude: Bool, include: Bool*) = {

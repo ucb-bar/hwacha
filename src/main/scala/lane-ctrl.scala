@@ -35,11 +35,18 @@ class LaneCtrl extends VXUModule {
 
   io.uop.bank.foldLeft(io.op.sram.read)((lop, bio) => gen_systolic(lop, bio.sram.read))
   io.uop.bank.foldLeft(io.op.sram.write)((lop, bio) => gen_systolic(lop, bio.sram.write))
+  io.uop.bank.foldLeft(io.op.pred.read)((lops, bio) => gen_vec_systolic(lops, bio.pred.read))
+  io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write))
   io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global))
   io.uop.bank.foldLeft(io.op.opl.local)((lops, bio) => gen_vec_systolic(lops, bio.opl.local))
+  io.uop.bank.foldLeft(io.op.pdl.global)((lops, bio) => gen_vec_systolic(lops, bio.pdl.global))
+  io.uop.bank.foldLeft(io.op.pdl.local)((lops, bio) => gen_vec_systolic(lops, bio.pdl.local))
   io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg))
   io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar))
+  io.uop.bank.foldLeft(io.op.pxbar)((lops, bio) => gen_vec_systolic(lops, bio.pxbar))
   io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
+  io.uop.bank.foldLeft(io.op.vipu)((lop, bio) => gen_systolic(lop, bio.vipu))
+  io.uop.bank.foldLeft(io.op.vpu)((lop, bio) => gen_systolic(lop, bio.vpu))
   io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu))
 
   class Shared[T <: LaneOp](in: ValidIO[T]) {
@@ -68,12 +75,12 @@ class LaneCtrl extends VXUModule {
   }
 
   val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i)) }
+  val vqu = new Shared(io.op.vqu)
+  val vgu = new Shared(io.op.vgu)
   val vimu = new Shared(io.op.vimu)
   val vfmu = (0 until nVFMU) map { i => new Shared(io.op.vfmu(i)) }
   val vfcu = new Shared(io.op.vfcu)
   val vfvu = new Shared(io.op.vfvu)
-  val vgu = new Shared(io.op.vgu)
-  val vqu = new Shared(io.op.vqu)
 
   (io.uop.sreg zip sreg) foreach { case (u, s) =>
     u.valid := s.valid
@@ -87,12 +94,12 @@ class LaneCtrl extends VXUModule {
       uop.bits.pred := s.pred
       fn(uop.bits, s)
   }
+  connect_vfu(io.uop.vqu, vqu, (u: VQUMicroOp, s: Shared[VQULaneOp]) => u <> s.bits)
+  connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u <> s.bits)
   connect_vfu(io.uop.vimu, vimu, (u: VIMUMicroOp, s: Shared[VIMULaneOp]) => u <> s.bits)
   (io.uop.vfmu zip vfmu) foreach { case (uop, shared) =>
     connect_vfu(uop, shared, (u: VFMUMicroOp, s: Shared[VFMULaneOp]) => u <> s.bits)
   }
   connect_vfu(io.uop.vfcu, vfcu, (u: VFCUMicroOp, s: Shared[VFCULaneOp]) => u <> s.bits)
   connect_vfu(io.uop.vfvu, vfvu, (u: VFVUMicroOp, s: Shared[VFVULaneOp]) => u <> s.bits)
-  connect_vfu(io.uop.vgu, vgu, (u: VGUMicroOp, s: Shared[VGULaneOp]) => u <> s.bits)
-  connect_vfu(io.uop.vqu, vqu, (u: VQUMicroOp, s: Shared[VQULaneOp]) => u <> s.bits)
 }

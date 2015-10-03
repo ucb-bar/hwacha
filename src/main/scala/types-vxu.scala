@@ -93,6 +93,12 @@ class VFn extends VXUBundle {
 // decoded information types
 //-------------------------------------------------------------------------\\
 
+class GuardPredicate extends VXUBundle {
+  val valid = Bool()
+  val neg = Bool()
+  val id = UInt(width = bPredAddr)
+}
+
 class RegInfo extends VXUBundle {
   val valid = Bool()
   val scalar = Bool()
@@ -101,6 +107,7 @@ class RegInfo extends VXUBundle {
 }
 
 class DecodedRegisters extends VXUBundle {
+  val vp = new GuardPredicate
   val vs1 = new RegInfo
   val vs2 = new RegInfo
   val vs3 = new RegInfo
@@ -113,15 +120,8 @@ class ScalarRegisters extends VXUBundle {
   val ss3 = Bits(width = regLen)
 }
 
-class GuardPredicate extends VXUBundle {
-  val valid = Bool()
-  val neg = Bool()
-  val id = UInt(width = bPredAddr)
-}
-
 class DecodedInstruction extends VXUBundle {
   val fn = new VFn // union
-  val p = new GuardPredicate
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
 }
@@ -148,9 +148,10 @@ class IssueType extends VXUBundle {
 
   def enq_vdu(dummy: Int = 0) = vidiv || vfdiv
   def enq_vgu(dummy: Int = 0) = vamo || vldx || vstx
+  def enq_vpu(dummy: Int = 0) = vamo || vldx || vstx || vld || vst
   def enq_vlu(dummy: Int = 0) = vamo || vldx || vld
   def enq_vsu(dummy: Int = 0) = vamo || vstx || vst
-  def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vlu() || enq_vsu()
+  def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vpu() || enq_vlu() || enq_vsu()
 }
 
 class IssueOp extends DecodedInstruction {
@@ -208,10 +209,22 @@ class SequencerOp extends DecodedInstruction {
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
+class SequencerVPUOp extends DecodedInstruction {
+  val strip = UInt(width = bStrip)
+}
+
+class SequencerVIPUOp extends DecodedInstruction {
+  val strip = UInt(width = bStrip)
+}
+
 
 //-------------------------------------------------------------------------\\
 // lane, micro op
 //-------------------------------------------------------------------------\\
+
+trait GatedOp extends VXUBundle {
+  val pdladdr = UInt(width = log2Down(nGPDL)+1)
+}
 
 class SRAMRFReadOp extends VXUBundle {
   val addr = UInt(width = log2Up(nSRAM))
@@ -233,19 +246,39 @@ class FFRFWriteOp extends VXUBundle {
   val wsel = UInt(width = log2Up(nWSel))
 }
 
+class PredRFReadOp extends VXUBundle {
+  val off = Bool()
+  val addr = UInt(width = log2Up(nPred))
+  val neg = Bool()
+}
+
+class PredRFWriteOp extends VXUBundle {
+  val addr = UInt(width = log2Up(nPred))
+  val selg = Bool()
+  val plu = Bool()
+}
+
 class OPLOp extends VXUBundle {
   val selff = Bool()
 }
+
+class PDLOp extends VXUBundle
 
 class SRegOp extends VXUBundle {
   val operand = Bits(width = regLen)
 }
 
-class XBarOp extends VXUBundle
+class XBarOp extends VXUBundle with GatedOp
+
+class PXBarOp extends VXUBundle
 
 class VIUOp extends VXUBundle {
   val fn = new VIUFn
   val eidx = UInt(width = bVLen)
+}
+
+class VIPUOp extends VXUBundle {
+  val fn = new VIPUFn
 }
 
 case class SharedLLOp(nOperands: Int) extends VXUBundle {
@@ -272,6 +305,8 @@ class VQUOp extends SharedLLOp(2) {
   val fn = new VQUFn
 }
 
+class VPUOp extends VXUBundle
+
 class VGUOp extends SharedLLOp(1) {
   val fn = new VMUFn
 }
@@ -292,15 +327,21 @@ class SRAMRFReadLaneOp extends SRAMRFReadOp with LaneOp
 class SRAMRFWriteLaneOp extends SRAMRFWriteOp with LaneOp
 class FFRFReadLaneOp extends FFRFReadOp with LaneOp
 class FFRFWriteLaneOp extends FFRFWriteOp with LaneOp
+class PredRFReadLaneOp extends PredRFReadOp with LaneOp
+class PredRFWriteLaneOp extends PredRFWriteOp with LaneOp
 class OPLLaneOp extends OPLOp with LaneOp
+class PDLLaneOp extends PDLOp with LaneOp
 class SRegLaneOp extends SRegOp with LaneOp
 class XBarLaneOp extends XBarOp with LaneOp
+class PXBarLaneOp extends PXBarOp with LaneOp
 class VIULaneOp extends VIUOp with LaneOp
+class VIPULaneOp extends VIPUOp with LaneOp
 class VIMULaneOp extends VIMUOp with LaneOp
 class VFMULaneOp extends VFMUOp with LaneOp
 class VFCULaneOp extends VFCUOp with LaneOp
 class VFVULaneOp extends VFVUOp with LaneOp
 class VQULaneOp extends VQUOp with LaneOp
+class VPULaneOp extends VPUOp with LaneOp
 class VGULaneOp extends VGUOp with LaneOp
 class VSULaneOp extends VSUOp with LaneOp
 
@@ -316,64 +357,87 @@ class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
 }
 class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp
 
+class PredRFReadExpEntry extends PredRFReadLaneOp {
+  val global = new VXUBundle {
+    val valid = Bool()
+    val id = UInt(width = log2Up(nGPDL))
+  }
+  val local = new VXUBundle {
+    val valid = Bool()
+    val id = UInt(width = log2Up(nLPDL))
+  }
+}
+
+class PredRFWriteExpEntry extends PredRFWriteLaneOp
+
+//-------------------------------------------------------------------------\\
+// banks
+//-------------------------------------------------------------------------\\
+
+trait BankPred extends VXUBundle {
+  val pred = Bits(width = nSlices)
+  def active(dummy: Int = 0) = pred.orR
+  def neg(cond: Bool) = Mux(cond, ~pred, pred)
+}
+
+trait BankMask extends VXUBundle {
+  val mask = Bits(width = wBank/8)
+}
+
+trait BankData extends VXUBundle {
+  val data = Bits(width = wBank)
+}
+
+class BankPredEntry extends BankPred
+class BankDataEntry extends BankData
+class BankDataPredEntry extends BankData with BankPred
+
 //-------------------------------------------------------------------------\\
 // micro op
 //-------------------------------------------------------------------------\\
 
-trait MicroOp extends VXUBundle {
-  val pred = Bits(width = nSlices)
-}
+trait MicroOp extends BankPred
 
 class SRAMRFReadMicroOp extends SRAMRFReadOp with MicroOp
 class SRAMRFWriteMicroOp extends SRAMRFWriteOp with MicroOp
 class FFRFReadMicroOp extends FFRFReadOp with MicroOp
 class FFRFWriteMicroOp extends FFRFWriteOp with MicroOp
+class PredRFReadMicroOp extends PredRFReadOp with MicroOp
+class PredRFWriteMicroOp extends PredRFWriteOp with MicroOp
 class OPLMicroOp extends OPLOp with MicroOp
+class PDLMicroOp extends PDLOp with MicroOp
 class SRegMicroOp extends SRegOp with MicroOp
 class XBarMicroOp extends XBarOp with MicroOp
+class PXBarMicroOp extends PXBarOp with MicroOp
 class VIUMicroOp extends VIUOp with MicroOp
+class VIPUMicroOp extends VIPUOp with MicroOp
 class VIMUMicroOp extends VIMUOp with MicroOp
 class VFMUMicroOp extends VFMUOp with MicroOp
 class VFCUMicroOp extends VFCUOp with MicroOp
 class VFVUMicroOp extends VFVUOp with MicroOp
 class VQUMicroOp extends VQUOp with MicroOp
+class VPUMicroOp extends VPUOp with MicroOp
 class VGUMicroOp extends VGUOp with MicroOp
 class VSUMicroOp extends VSUOp with MicroOp
-
-//-------------------------------------------------------------------------\\
-// xbar
-//-------------------------------------------------------------------------\\
-
-class BankReadEntry extends VXUBundle {
-  val d = Bits(width = wBank)
-}
-
-class BankWriteEntry extends VXUBundle {
-  val d = Bits(width = wBank)
-}
 
 //-------------------------------------------------------------------------\\
 // bank acks
 //-------------------------------------------------------------------------\\
 
-class VIXUAck extends VXUBundle {
-  val pred = Bits(width = nSlices)
-}
+class VIUAck extends BankPred
+class VIPUAck extends BankPred
+class VIMUAck extends BankPred
+class VIDUAck extends BankPred
+class VGUAck extends BankPred
+class VQUAck extends BankPred
 
-class VIUAck extends VIXUAck
-class VIMUAck extends VIXUAck
-class VIDUAck extends VIXUAck
-class VGUAck extends VIXUAck
-class VQUAck extends VIXUAck
-
-class VFXUAck extends VXUBundle {
-  val pred = Bits(width = nSlices)
+class VFXUAck extends VXUBundle with BankPred {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
 class VFMUAck extends VFXUAck
 class VFDUAck extends VFXUAck
-class VFCUAck extends VIXUAck // no exceptions can occur
+class VFCUAck extends BankPred // no exceptions can occur
 class VFVUAck extends VFXUAck
 
 
@@ -388,19 +452,13 @@ class DCCOp extends VXUBundle {
   val vd = new RegInfo
 }
 
-class LRQEntry extends VXUBundle {
-  val data = Bits(width = wBank)
-}
-
-class BRQEntry extends VXUBundle {
-  val data = Bits(width = wBank)
-}
-
-class BWQEntry extends VXUBundle {
+class LPQEntry extends VXUBundle with BankPred
+class BPQEntry extends VXUBundle with BankPred
+class LRQEntry extends VXUBundle with BankData
+class BRQEntry extends VXUBundle with BankData
+class BWQEntry extends VXUBundle with BankData with BankMask {
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val data = Bits(width = wBank)
-  val mask = Bits(width = wBank/8)
 
   def saddr(dummy: Int = 0) = addr(log2Up(nSRAM)-1, 0)
   def faddr(dummy: Int = 0) = addr(log2Up(nFF)-1, 0)
