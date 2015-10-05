@@ -12,6 +12,8 @@ class BankOpIO extends VXUBundle {
     val write = Valid(new FFRFWriteMicroOp)
   }
   val pred = new Bundle {
+    val gread = Valid(new PredRFGatedReadMicroOp)
+    val pread = Valid(new PredRFGatedReadMicroOp)
     val read = Vec.fill(nPredRPorts){Valid(new PredRFReadMicroOp)}
     val write = Valid(new PredRFWriteMicroOp)
   }
@@ -85,9 +87,9 @@ class Bank(id: Int) extends VXUModule with Packing {
     val plu = Module(new PLUSlice)
     plu.io.req.valid := io.op.vipu.valid && io.op.vipu.bits.pred(i)
     plu.io.req.bits.fn := io.op.vipu.bits.fn
-    plu.io.req.bits.in0 := rf.io.local.rpred(2).pred(i)
-    plu.io.req.bits.in1 := rf.io.local.rpred(3).pred(i)
-    plu.io.req.bits.in2 := rf.io.local.rpred(4).pred(i)
+    plu.io.req.bits.in0 := rf.io.local.rpred(0).pred(i)
+    plu.io.req.bits.in1 := rf.io.local.rpred(1).pred(i)
+    plu.io.req.bits.in2 := rf.io.local.rpred(2).pred(i)
     plu.io.resp
   }
 
@@ -98,7 +100,7 @@ class Bank(id: Int) extends VXUModule with Packing {
 
   // BPQ
   io.rw.bpq.valid := io.op.vpu.valid
-  io.rw.bpq.bits.pred := io.op.vpu.bits.pred & rf.io.local.rpred(1).pred
+  io.rw.bpq.bits.pred := io.op.vpu.bits.pred & rf.io.local.ppred.pred
 
   assert(!io.op.vpu.valid || io.rw.bpq.ready, "bpq enabled when not ready; check bpq counters")
 

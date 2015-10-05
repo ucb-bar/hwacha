@@ -161,6 +161,30 @@ class IssueOp extends DecodedInstruction {
 
 
 //-------------------------------------------------------------------------\\
+// traits
+//-------------------------------------------------------------------------\\
+
+trait LaneOp extends VXUBundle {
+  val strip = UInt(width = bStrip)
+}
+
+trait BankPred extends VXUBundle {
+  val pred = Bits(width = nSlices)
+  def active(dummy: Int = 0) = pred.orR
+  def neg(cond: Bool) = Mux(cond, ~pred, pred)
+}
+
+trait BankMask extends VXUBundle {
+  val mask = Bits(width = wBank/8)
+}
+
+trait BankData extends VXUBundle {
+  val data = Bits(width = wBank)
+}
+
+trait MicroOp extends BankPred
+
+//-------------------------------------------------------------------------\\
 // sequencer op
 //-------------------------------------------------------------------------\\
 
@@ -198,33 +222,23 @@ class SeqSelect extends VXUBundle {
   val vfmu = UInt(width = log2Up(nVFMU))
 }
 
-class SequencerOp extends DecodedInstruction {
+class SeqOp extends DecodedInstruction with LaneOp {
   val active = new SeqType
   val select = new SeqSelect
   val eidx = UInt(width = bVLen)
   val rports = UInt(width = bRPorts)
   val wport = UInt(width = bWPortLatency)
-  val strip = UInt(width = bStrip)
 
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
-class SequencerVPUOp extends DecodedInstruction {
-  val strip = UInt(width = bStrip)
-}
-
-class SequencerVIPUOp extends DecodedInstruction {
-  val strip = UInt(width = bStrip)
-}
+class SeqVPUOp extends DecodedInstruction with LaneOp
+class SeqVIPUOp extends DecodedInstruction with LaneOp
 
 
 //-------------------------------------------------------------------------\\
 // lane, micro op
 //-------------------------------------------------------------------------\\
-
-trait GatedOp extends VXUBundle {
-  val pdladdr = UInt(width = log2Down(nGPDL)+1)
-}
 
 class SRAMRFReadOp extends VXUBundle {
   val addr = UInt(width = log2Up(nSRAM))
@@ -247,8 +261,11 @@ class FFRFWriteOp extends VXUBundle {
 }
 
 class PredRFReadOp extends VXUBundle {
-  val off = Bool()
   val addr = UInt(width = log2Up(nPred))
+}
+
+class PredRFGatedReadOp extends PredRFReadOp {
+  val off = Bool()
   val neg = Bool()
 }
 
@@ -268,7 +285,9 @@ class SRegOp extends VXUBundle {
   val operand = Bits(width = regLen)
 }
 
-class XBarOp extends VXUBundle with GatedOp
+class XBarOp extends VXUBundle {
+  val pdladdr = UInt(width = log2Up(nGPDL))
+}
 
 class PXBarOp extends VXUBundle
 
@@ -319,15 +338,12 @@ class VSUOp extends VXUBundle {
 // lane op
 //-------------------------------------------------------------------------\\
 
-trait LaneOp extends VXUBundle {
-  val strip = UInt(width = bStrip)
-}
-
 class SRAMRFReadLaneOp extends SRAMRFReadOp with LaneOp
 class SRAMRFWriteLaneOp extends SRAMRFWriteOp with LaneOp
 class FFRFReadLaneOp extends FFRFReadOp with LaneOp
 class FFRFWriteLaneOp extends FFRFWriteOp with LaneOp
 class PredRFReadLaneOp extends PredRFReadOp with LaneOp
+class PredRFGatedReadLaneOp extends PredRFGatedReadOp with LaneOp
 class PredRFWriteLaneOp extends PredRFWriteOp with LaneOp
 class OPLLaneOp extends OPLOp with LaneOp
 class PDLLaneOp extends PDLOp with LaneOp
@@ -357,7 +373,7 @@ class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
 }
 class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp
 
-class PredRFReadExpEntry extends PredRFReadLaneOp {
+class PredRFReadExpEntry extends PredRFGatedReadLaneOp {
   val global = new VXUBundle {
     val valid = Bool()
     val id = UInt(width = log2Up(nGPDL))
@@ -374,20 +390,6 @@ class PredRFWriteExpEntry extends PredRFWriteLaneOp
 // banks
 //-------------------------------------------------------------------------\\
 
-trait BankPred extends VXUBundle {
-  val pred = Bits(width = nSlices)
-  def active(dummy: Int = 0) = pred.orR
-  def neg(cond: Bool) = Mux(cond, ~pred, pred)
-}
-
-trait BankMask extends VXUBundle {
-  val mask = Bits(width = wBank/8)
-}
-
-trait BankData extends VXUBundle {
-  val data = Bits(width = wBank)
-}
-
 class BankPredEntry extends BankPred
 class BankDataEntry extends BankData
 class BankDataPredEntry extends BankData with BankPred
@@ -396,13 +398,12 @@ class BankDataPredEntry extends BankData with BankPred
 // micro op
 //-------------------------------------------------------------------------\\
 
-trait MicroOp extends BankPred
-
 class SRAMRFReadMicroOp extends SRAMRFReadOp with MicroOp
 class SRAMRFWriteMicroOp extends SRAMRFWriteOp with MicroOp
 class FFRFReadMicroOp extends FFRFReadOp with MicroOp
 class FFRFWriteMicroOp extends FFRFWriteOp with MicroOp
 class PredRFReadMicroOp extends PredRFReadOp with MicroOp
+class PredRFGatedReadMicroOp extends PredRFGatedReadOp with MicroOp
 class PredRFWriteMicroOp extends PredRFWriteOp with MicroOp
 class OPLMicroOp extends OPLOp with MicroOp
 class PDLMicroOp extends PDLOp with MicroOp

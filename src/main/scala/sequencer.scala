@@ -38,15 +38,17 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
 }
 
-class SequencerIO extends ValidIO(new SequencerOp)
-class SequencerVPUIO extends ValidIO(new SequencerVPUOp)
+class SequencerIO extends VXUBundle {
+  val exp = Valid(new SeqOp)
+  val vpu = Valid(new SeqVPUOp)
+  val vipu = Valid(new SeqVIPUOp)
+}
 
 class Sequencer extends VXUModule with BankLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new VXUIssueOpIO().flip
     val seq = new SequencerIO
-    val seq_vpu = new SequencerVPUIO
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
 
@@ -735,7 +737,7 @@ class Sequencer extends VXUModule with BankLogic {
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val op = {
-        val out = new SequencerOp
+        val out = new SeqOp
         out.fn := readfn(sched, (e: SeqEntry) => e.fn)
         out.reg := readfn(sched, (e: SeqEntry) => e.reg)
         out.sreg := readfn(sched, (e: SeqEntry) => e.sreg)
@@ -755,8 +757,8 @@ class Sequencer extends VXUModule with BankLogic {
       def fire_vqu_latch(n: Int) = fire_vqu && op.fn.vqu().latch(n)
 
       def logic = {
-        io.seq.valid := valid
-        io.seq.bits := op
+        io.seq.exp.valid := valid
+        io.seq.exp.bits := op
       }
 
       def debug = {
@@ -810,8 +812,8 @@ class Sequencer extends VXUModule with BankLogic {
       def fire(n: Int) = sched(n) && ready
 
       def logic = {
-        io.seq_vpu.valid := valid && ready
-        io.seq_vpu.bits.strip := strip
+        io.seq.vpu.valid := valid && ready
+        io.seq.vpu.bits.strip := strip
         io.pla.reserve := valid && ready
         io.pla.mask := strip_to_bmask(strip)
       }

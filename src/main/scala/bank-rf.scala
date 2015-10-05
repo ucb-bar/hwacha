@@ -14,6 +14,7 @@ class BankRegfile extends VXUModule {
     val local = new Bundle {
       val pdl = Vec.fill(nLPDL){new BankPredEntry().asOutput}
       val opl = Vec.fill(nLOPL){new BankDataEntry().asOutput}
+      val ppred = new BankPredEntry().asOutput
       val rpred = Vec.fill(nPredRPorts){new BankPredEntry().asOutput}
       val wpred = Vec.fill(2){new BankPredEntry().asInput}
       val wdata = new BankDataPredEntry().asInput
@@ -29,15 +30,25 @@ class BankRegfile extends VXUModule {
   val gpdl = Mem(Bits(width = nSlices), nGPDL)
   val lpdl = Mem(Bits(width = nSlices), nLPDL)
 
+  def read_gpdl(addr: UInt) = {
+    new BankPredEntry().fromBits(gpdl(addr))
+  }
+
+  // Predicate RF gated read port
+  val pred_gated_op = IndexedSeq(io.op.pred.gread, io.op.pred.pread)
+  val pred_gated_raddr = pred_gated_op map { op => dgate(op.valid, op.bits.addr) }
+  val pred_gated_rdata_raw = pred_gated_raddr map { addr => pred_rf(addr) }
+  val pred_gated_rdata = (pred_gated_op zip pred_gated_rdata_raw) map { case (op, rdata) =>
+    new BankPredEntry().fromBits(Mux(op.bits.off, op.bits.pred, Mux(op.bits.neg, ~rdata, rdata))) }
+  val gpred = pred_gated_rdata(0)
+  val s1_gpred = RegEnable(gpred, io.op.pred.gread.valid)
+  io.local.ppred := pred_gated_rdata(1)
+
   // Predicate RF read port
-  val pred_raddr = (0 until nPredRPorts) map { i => dgate(io.op.pred.read(i).valid, io.op.pred.read(i).bits.addr) }
-  val pred_rdata_raw = (0 until nPredRPorts) map { i => pred_rf(pred_raddr(i)) }
-  val pred_rdata = (0 until nPredRPorts) map { i =>
-    new BankPredEntry().fromBits(
-      Mux(io.op.pred.read(i).bits.off, io.op.pred.read(i).bits.pred,
-        Mux(io.op.pred.read(i).bits.neg, ~pred_rdata_raw(i), pred_rdata_raw(i)))) }
-  val pdl_rdata = RegEnable(pred_rdata(0), io.op.pred.read(0).valid)
-  (io.local.rpred zip pred_rdata) map { case (rpred, rdata) => rpred := rdata }
+  val pred_raddr = io.op.pred.read map { op => dgate(op.valid, op.bits.addr) }
+  val pred_rdata = pred_raddr map { addr => pred_rf(addr) }
+  (io.local.rpred zip pred_rdata) map { case (rpred, rdata) =>
+    rpred := new BankPredEntry().fromBits(rdata) }
 
   // Predicate RF write port
   when (io.op.pred.write.valid) {
@@ -47,15 +58,8 @@ class BankRegfile extends VXUModule {
         Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)))
   }
 
-  def gop_pred[T <: GatedOp](op: ValidIO[T]) = {
-    new BankPredEntry().fromBits(gpdl(op.bits.pdladdr))
-  }
-  def gop_valid[T <: GatedOp](op: ValidIO[T]) = {
-    op.valid && gop_pred(op).active()
-  }
-
   // SRAM RF read port
-  val sram_rdata = sram_rf.read(io.op.sram.read.bits.addr, io.op.sram.read.valid && pred_rdata(0).active())
+  val sram_rdata = sram_rf.read(io.op.sram.read.bits.addr, io.op.sram.read.valid && gpred.active())
 
   // SRAM RF write port
   val sram_warb = Module(new Arbiter(new RFWritePort, 3))
@@ -91,8 +95,8 @@ class BankRegfile extends VXUModule {
   }
 
   // FF RF read port
-  val ff_raddr = (0 until nFFRPorts) map { i => dgate(io.op.ff.read(i).valid && pred_rdata(0).active(), io.op.ff.read(i).bits.addr) }
-  val ff_rdata = (0 until nFFRPorts) map { i => ff_rf(ff_raddr(i)) }
+  val ff_raddr = io.op.ff.read map { op => dgate(op.valid && gpred.active(), op.bits.addr) }
+  val ff_rdata = ff_raddr map { addr => ff_rf(addr) }
 
   // FF RF write port
   val ff_warb = Module(new Arbiter(new RFWritePort, 3))
@@ -138,20 +142,21 @@ class BankRegfile extends VXUModule {
 
   // Operand Latches (OPL)
   (0 until nGOPL) foreach { i =>
-    when (io.op.opl.global(i).valid && pdl_rdata.active()) {
+    when (io.op.opl.global(i).valid && s1_gpred.active()) {
       gopl.write(
         UInt(i),
         Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(regLen, io.op.opl.global(i).bits.pred & pdl_rdata.pred))
+        FillInterleaved(regLen, io.op.opl.global(i).bits.pred & s1_gpred.pred))
     }
-    io.global.opl(i).data := dgate(gop_valid(io.op.xbar(i)), gopl(i))
+    io.global.opl(i).data :=
+      dgate(io.op.xbar(i).valid && read_gpdl(io.op.xbar(i).bits.pdladdr).active(), gopl(i))
   }
   (0 until nLOPL) foreach { i =>
-    when (io.op.opl.local(i).valid && pdl_rdata.active()) {
+    when (io.op.opl.local(i).valid && s1_gpred.active()) {
       lopl.write(
         UInt(i),
         Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata),
-        FillInterleaved(regLen, io.op.opl.local(i).bits.pred & pdl_rdata.pred))
+        FillInterleaved(regLen, io.op.opl.local(i).bits.pred & s1_gpred.pred))
     }
     io.local.opl(i).data := lopl(i)
   }
@@ -159,13 +164,13 @@ class BankRegfile extends VXUModule {
   // Predicate Latches (PDL)
   (0 until nGPDL) foreach { i =>
     when (io.op.pdl.global(i).valid) {
-      gpdl.write(UInt(i), pdl_rdata.pred)
+      gpdl.write(UInt(i), s1_gpred.pred)
     }
     io.global.pdl(i).pred := dgate(io.op.pxbar(i).valid, gpdl(i))
   }
   (0 until nLPDL) foreach { i =>
     when (io.op.pdl.local(i).valid) {
-      lpdl.write(UInt(i), pdl_rdata.pred)
+      lpdl.write(UInt(i), s1_gpred.pred)
     }
     io.local.pdl(i).pred := lpdl(i)
   }

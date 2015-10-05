@@ -35,6 +35,8 @@ class LaneCtrl extends VXUModule {
 
   io.uop.bank.foldLeft(io.op.sram.read)((lop, bio) => gen_systolic(lop, bio.sram.read))
   io.uop.bank.foldLeft(io.op.sram.write)((lop, bio) => gen_systolic(lop, bio.sram.write))
+  io.uop.bank.foldLeft(io.op.pred.gread)((lop, bio) => gen_systolic(lop, bio.pred.gread))
+  io.uop.bank.foldLeft(io.op.pred.pread)((lop, bio) => gen_systolic(lop, bio.pred.pread))
   io.uop.bank.foldLeft(io.op.pred.read)((lops, bio) => gen_vec_systolic(lops, bio.pred.read))
   io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write))
   io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global))

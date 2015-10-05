@@ -14,7 +14,7 @@ abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
 
   val maxSRAMReadTicks = nRPorts
   val maxSRAMWriteTicks = maxWPortLatency
-  val maxPredReadTicks = maxSRAMReadTicks
+  val maxPredReadTicks = 1
   val maxPredWriteTicks = maxPredWPortLatency
   val maxSRegGlobalTicks = nRPorts+2
   val maxSRegLocalTicks = rpVIU+2
@@ -38,7 +38,9 @@ class TickerIO extends VXUBundle {
     val write = Vec.fill(maxSRAMWriteTicks){Valid(new SRAMRFWriteExpEntry)}
   }
   val pred = new Bundle {
-    val read = Vec.fill(nPredRPorts){Vec.fill(maxPredReadTicks){Valid(new PredRFReadExpEntry)}}
+    val gread = Vec.fill(maxSRAMReadTicks){Valid(new PredRFReadExpEntry)}
+    val pread = Vec.fill(maxPredReadTicks){Valid(new PredRFGatedReadLaneOp)}
+    val read = Vec.fill(nPredRPorts){Vec.fill(maxPredReadTicks){Valid(new PredRFReadLaneOp)}}
     val write = Vec.fill(maxPredWriteTicks){Valid(new PredRFWriteExpEntry)}
   }
   val sreg = new Bundle {
@@ -62,7 +64,6 @@ class TickerIO extends VXUBundle {
 class Expander extends VXUModule {
   val io = new Bundle {
     val seq = new SequencerIO().flip
-    val seq_vpu = new SequencerVPUIO().flip
     val lane = new LaneOpIO
     val ticker = new TickerIO
   }
@@ -92,7 +93,9 @@ class Expander extends VXUModule {
   val exp = new {
     val tick_sram_read = new Ticker(new SRAMRFReadExpEntry, maxSRAMReadTicks)
     val tick_sram_write = new Ticker(new SRAMRFWriteExpEntry, maxSRAMWriteTicks)
-    val tick_pred_read = IndexedSeq.fill(nPredRPorts){new Ticker(new PredRFReadExpEntry, maxPredReadTicks)}
+    val tick_pred_gread = new Ticker(new PredRFReadExpEntry, maxSRAMReadTicks)
+    val tick_pred_pread = new Ticker(new PredRFGatedReadLaneOp, maxPredReadTicks)
+    val tick_pred_read = IndexedSeq.fill(nPredRPorts){new Ticker(new PredRFReadLaneOp, maxPredReadTicks)}
     val tick_pred_write = new Ticker(new PredRFWriteExpEntry, maxPredWriteTicks)
     val tick_sreg_global = IndexedSeq.fill(nGOPL){new Ticker(new SRegLaneOp, maxSRegGlobalTicks)}
     val tick_sreg_local = IndexedSeq.fill(nLOPL){new Ticker(new SRegLaneOp, maxSRegLocalTicks)}
@@ -109,10 +112,13 @@ class Expander extends VXUModule {
     val tick_vfcu = new Ticker(new VFCULaneOp, maxVFCUTicks)
     val tick_vfvu = new Ticker(new VFVULaneOp, maxVFVUTicks)
 
+    val seq_exp = io.seq.exp.bits
+    val seq_vpu = io.seq.vpu.bits
+
     val rport_valid = Vec(Seq(
-      io.seq.bits.reg.vs1.valid && !io.seq.bits.reg.vs1.scalar,
-      io.seq.bits.reg.vs2.valid && !io.seq.bits.reg.vs2.scalar,
-      io.seq.bits.reg.vs3.valid && !io.seq.bits.reg.vs3.scalar))
+      seq_exp.reg.vs1.valid && !seq_exp.reg.vs1.scalar,
+      seq_exp.reg.vs2.valid && !seq_exp.reg.vs2.scalar,
+      seq_exp.reg.vs3.valid && !seq_exp.reg.vs3.scalar))
 
     val rport_idx = Vec(Seq(
       UInt(0),
@@ -121,7 +127,7 @@ class Expander extends VXUModule {
         Mux(rport_valid(1), UInt(2), UInt(1)),
         Mux(rport_valid(1), UInt(1), UInt(0)))))
 
-    val op_idx = io.seq.bits.rports + UInt(expLatency, bRPorts+1)
+    val op_idx = seq_exp.rports + UInt(expLatency, bRPorts+1)
 
     def check_assert[T <: LaneOp](name: String, t: Ticker[T], n: UInt) = {
       assert(n < UInt(t.s.size), name+" asking over limit")
@@ -136,7 +142,7 @@ class Expander extends VXUModule {
 
       // 3-ported operations
       (0 until nVFMU) foreach { i =>
-        when (io.seq.bits.active_vfmu(i)) {
+        when (seq_exp.active_vfmu(i)) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(3*i+idx)
         }
@@ -144,15 +150,15 @@ class Expander extends VXUModule {
 
       // 2-ported operations
       if (idx <= 1) {
-        when (io.seq.bits.active.vimu) {
+        when (seq_exp.active.vimu) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(idx)
         }
-        when (io.seq.bits.active.vqu || io.seq.bits.active.vfcu) {
+        when (seq_exp.active.vqu || seq_exp.active.vfcu) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(3+idx)
         }
-        when (io.seq.bits.active.viu) {
+        when (seq_exp.active.viu) {
           e.bits.local.valid := Bool(true)
           e.bits.local.id := UInt(idx)
         }
@@ -160,15 +166,15 @@ class Expander extends VXUModule {
 
       // 1-ported operations
       if (idx <= 0) {
-        when (io.seq.bits.active.vfvu) {
+        when (seq_exp.active.vfvu) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(2)
         }
-        when (io.seq.bits.active.vgu) {
+        when (seq_exp.active.vgu) {
           e.bits.global.valid := Bool(true)
           e.bits.global.id := UInt(5)
         }
-        when (io.seq.bits.active.vsu) {
+        when (seq_exp.active.vsu) {
           e.bits.local.valid := Bool(true)
           e.bits.local.id := UInt(2)
         }
@@ -176,14 +182,14 @@ class Expander extends VXUModule {
     }
 
     def mark_pdl(n: UInt, idx: Int) = {
-      val p = tick_pred_read(0).s(n)
+      val p = tick_pred_gread.s(n)
 
       p.bits.global.valid := Bool(false)
       p.bits.local.valid := Bool(false)
 
       // 3-ported operations
       (0 until nVFMU) foreach { i =>
-        when (io.seq.bits.active_vfmu(i)) {
+        when (seq_exp.active_vfmu(i)) {
           p.bits.global.valid := Bool(true)
           p.bits.global.id := UInt(2*i)
         }
@@ -191,15 +197,15 @@ class Expander extends VXUModule {
 
       // 2-ported operations
       if (idx <= 1) {
-        when (io.seq.bits.active.vimu) {
+        when (seq_exp.active.vimu) {
           p.bits.global.valid := Bool(true)
           p.bits.global.id := UInt(0)
         }
-        when (io.seq.bits.active.vqu || io.seq.bits.active.vfcu) {
+        when (seq_exp.active.vqu || seq_exp.active.vfcu) {
           p.bits.global.valid := Bool(true)
           p.bits.global.id := UInt(2)
         }
-        when (io.seq.bits.active.viu) {
+        when (seq_exp.active.viu) {
           p.bits.local.valid := Bool(true)
           p.bits.local.id := UInt(0)
         }
@@ -207,15 +213,15 @@ class Expander extends VXUModule {
 
       // 1-ported operations
       if (idx <= 0) {
-        when (io.seq.bits.active.vfvu) {
+        when (seq_exp.active.vfvu) {
           p.bits.global.valid := Bool(true)
           p.bits.global.id := UInt(1)
         }
-        when (io.seq.bits.active.vgu) {
+        when (seq_exp.active.vgu) {
           p.bits.global.valid := Bool(true)
           p.bits.global.id := UInt(3)
         }
-        when (io.seq.bits.active.vsu) {
+        when (seq_exp.active.vsu) {
           p.bits.local.valid := Bool(true)
           p.bits.local.id := UInt(1)
         }
@@ -230,8 +236,8 @@ class Expander extends VXUModule {
             check_assert("sram read", tick_sram_read, read_idx)
             val e = tick_sram_read.s(read_idx)
             e.valid := Bool(true)
-            e.bits.addr := fn(io.seq.bits.reg).id
-            e.bits.strip := io.seq.bits.strip
+            e.bits.addr := fn(seq_exp.reg).id
+            e.bits.strip := seq_exp.strip
             mark_opl(read_idx, idx)
           }
         }
@@ -243,35 +249,35 @@ class Expander extends VXUModule {
       (0 until 3) foreach { idx =>
         val read_idx = rport_idx(idx)
         when (rport_valid(idx) || null_rport && Bool(idx == 0)) {
-          check_assert("pred read", tick_pred_read(0), read_idx)
-          val p = tick_pred_read(0).s(read_idx)
+          check_assert("pred read", tick_pred_gread, read_idx)
+          val p = tick_pred_gread.s(read_idx)
           p.valid := Bool(true)
           p.bits.off := Bool(true)
-          p.bits.strip := io.seq.bits.strip
+          p.bits.strip := seq_exp.strip
           mark_pdl(read_idx, idx)
         }
       }
     }
 
     def mark_sram_writes = {
-      when (io.seq.bits.reg.vd.valid && !io.seq.bits.reg.vd.scalar) {
-        check_assert("sram write", tick_sram_write, io.seq.bits.wport)
-        val e = tick_sram_write.s(io.seq.bits.wport)
+      when (seq_exp.reg.vd.valid && !seq_exp.reg.vd.scalar) {
+        check_assert("sram write", tick_sram_write, seq_exp.wport)
+        val e = tick_sram_write.s(seq_exp.wport)
         e.valid := Bool(true)
-        e.bits.addr := io.seq.bits.reg.vd.id
-        e.bits.strip := io.seq.bits.strip
+        e.bits.addr := seq_exp.reg.vd.id
+        e.bits.strip := seq_exp.strip
         e.bits.selg := Bool(false)
         (0 until nVFMU) foreach { i =>
-          when (io.seq.bits.active_vfmu(i)) {
+          when (seq_exp.active_vfmu(i)) {
             e.bits.selg := Bool(true)
             e.bits.wsel := UInt(i)
           }
         }
-        when (io.seq.bits.active.vimu || io.seq.bits.active.vfvu) {
+        when (seq_exp.active.vimu || seq_exp.active.vfvu) {
           e.bits.selg := Bool(true)
           e.bits.wsel := UInt(0)
         }
-        when (io.seq.bits.active.vfcu) {
+        when (seq_exp.active.vfcu) {
           e.bits.selg := Bool(true)
           e.bits.wsel := UInt(1)
         }
@@ -279,28 +285,28 @@ class Expander extends VXUModule {
     }
 
     def mark_xbar(i: Int, p: Int, fn: RegFn) = {
-      val rinfo = fn(io.seq.bits.reg)
+      val rinfo = fn(seq_exp.reg)
       when (rinfo.valid && !rinfo.scalar) {
         check_assert("xbar"+i, tick_xbar(i), op_idx)
         tick_xbar(i).s(op_idx).valid := Bool(true)
         tick_xbar(i).s(op_idx).bits.pdladdr := UInt(p)
-        tick_xbar(i).s(op_idx).bits.strip := io.seq.bits.strip
+        tick_xbar(i).s(op_idx).bits.strip := seq_exp.strip
       }
     }
 
     def mark_pxbar(i: Int) = {
       check_assert("pxbar"+i, tick_pxbar(i), op_idx)
       tick_pxbar(i).s(op_idx).valid := Bool(true)
-      tick_pxbar(i).s(op_idx).bits.strip := io.seq.bits.strip
+      tick_pxbar(i).s(op_idx).bits.strip := seq_exp.strip
     }
 
     def mark_sreg(name: String, t: IndexedSeq[Ticker[SRegLaneOp]], i: Int, fn: RegFn, sfn: SRegFn) = {
-      val rinfo = fn(io.seq.bits.reg)
+      val rinfo = fn(seq_exp.reg)
       when (rinfo.valid && rinfo.scalar) {
         check_assert("sreg"+name+i, t(i), op_idx)
         t(i).s(op_idx).valid := Bool(true)
-        t(i).s(op_idx).bits.operand := sfn(io.seq.bits.sreg)
-        t(i).s(op_idx).bits.strip := io.seq.bits.strip
+        t(i).s(op_idx).bits.operand := sfn(seq_exp.sreg)
+        t(i).s(op_idx).bits.strip := seq_exp.strip
       }
     }
     def mark_sreg_global(i: Int, fn: RegFn, sfn: SRegFn) =
@@ -310,7 +316,7 @@ class Expander extends VXUModule {
 
     def mark_xbars_pxbars_sregs = {
       (0 until nVFMU) foreach { i =>
-        when (io.seq.bits.active_vfmu(i)) {
+        when (seq_exp.active_vfmu(i)) {
           mark_xbar(3*i+0, 2*i, reg_vs1)
           mark_xbar(3*i+1, 2*i, reg_vs2)
           mark_xbar(3*i+2, 2*i, reg_vs3)
@@ -321,7 +327,7 @@ class Expander extends VXUModule {
         }
       }
 
-      when (io.seq.bits.active.vimu) {
+      when (seq_exp.active.vimu) {
         mark_xbar(0, 0, reg_vs1)
         mark_xbar(1, 0, reg_vs2)
         mark_pxbar(0)
@@ -329,13 +335,13 @@ class Expander extends VXUModule {
         mark_sreg_global(1, reg_vs2, sreg_ss2)
       }
 
-      when (io.seq.bits.active.vfvu) {
+      when (seq_exp.active.vfvu) {
         mark_xbar(2, 1, reg_vs1)
         mark_pxbar(1)
         mark_sreg_global(2, reg_vs1, sreg_ss1)
       }
 
-      when (io.seq.bits.active.vqu || io.seq.bits.active.vfcu) {
+      when (seq_exp.active.vqu || seq_exp.active.vfcu) {
         mark_xbar(3, 2, reg_vs1)
         mark_xbar(4, 2, reg_vs2)
         mark_pxbar(2)
@@ -343,27 +349,27 @@ class Expander extends VXUModule {
         mark_sreg_global(4, reg_vs2, sreg_ss2)
       }
 
-      when (io.seq.bits.active.vgu) {
+      when (seq_exp.active.vgu) {
         mark_xbar(5, 3, reg_vs1)
         mark_pxbar(3)
         mark_sreg_global(5, reg_vs1, sreg_ss1)
       }
 
-      when (io.seq.bits.active.viu) {
+      when (seq_exp.active.viu) {
         mark_sreg_local(0, reg_vs1, sreg_ss1)
         mark_sreg_local(1, reg_vs2, sreg_ss2)
       }
 
-      when (io.seq.bits.active.vsu) {
+      when (seq_exp.active.vsu) {
         mark_sreg_local(2, reg_vs1, sreg_ss1)
       }
     }
 
-    def mark_vfu[T <: LaneOp](name: String, tick: Ticker[T], opfn: SequencerOp=>Bool, fn: T=>Unit) = {
-      when (opfn(io.seq.bits)) {
+    def mark_vfu[T <: LaneOp](name: String, tick: Ticker[T], opfn: SeqOp=>Bool, fn: T=>Unit) = {
+      when (opfn(seq_exp)) {
         check_assert(name, tick, op_idx)
         tick.s(op_idx).valid := Bool(true)
-        tick.s(op_idx).bits.strip := io.seq.bits.strip
+        tick.s(op_idx).bits.strip := seq_exp.strip
         fn(tick.s(op_idx).bits)
       }
     }
@@ -371,41 +377,41 @@ class Expander extends VXUModule {
     def mark_lop_sreg(sreg: Vec[Bool], nregs: Int) = {
       (Seq(reg_vs1, reg_vs2, reg_vs3) zipWithIndex) map { case (fn, i) =>
         if (nregs > i) {
-          val rinfo = fn(io.seq.bits.reg)
+          val rinfo = fn(seq_exp.reg)
           sreg(i) := rinfo.valid && rinfo.scalar
         }
       }
     }
 
-    def mark_viu = mark_vfu("viu", tick_viu, (op: SequencerOp) => op.active.viu,
-      (lop: VIULaneOp) => { lop.fn := io.seq.bits.fn.viu(); lop.eidx := io.seq.bits.eidx })
-    def mark_vsu = mark_vfu("vsu", tick_vsu, (op: SequencerOp) => op.active.vsu,
+    def mark_viu = mark_vfu("viu", tick_viu, (op: SeqOp) => op.active.viu,
+      (lop: VIULaneOp) => { lop.fn := seq_exp.fn.viu(); lop.eidx := seq_exp.eidx })
+    def mark_vsu = mark_vfu("vsu", tick_vsu, (op: SeqOp) => op.active.vsu,
       (lop: VSULaneOp) => { lop.selff := Bool(false) })
-    def mark_vqu = mark_vfu("vqu", tick_vqu, (op: SequencerOp) => op.active.vqu,
-      (lop: VQULaneOp) => { lop.fn := io.seq.bits.fn.vqu(); mark_lop_sreg(lop.sreg, 2) })
-    def mark_vgu = mark_vfu("vgu", tick_vgu, (op: SequencerOp) => op.active.vgu,
-      (lop: VGULaneOp) => { lop.fn := io.seq.bits.fn.vmu(); mark_lop_sreg(lop.sreg, 1) })
-    def mark_vimu = mark_vfu("vimu", tick_vimu, (op: SequencerOp) => op.active.vimu,
-      (lop: VIMULaneOp) => { lop.fn := io.seq.bits.fn.vimu(); mark_lop_sreg(lop.sreg, 2) })
-    def mark_vfmu(i: Int) = mark_vfu("vfmu" + i, tick_vfmu(i), (op: SequencerOp) => op.active_vfmu(i),
-      (lop: VFMULaneOp) => { lop.fn := io.seq.bits.fn.vfmu(); mark_lop_sreg(lop.sreg, 3) })
-    def mark_vfcu = mark_vfu("vfcu", tick_vfcu, (op: SequencerOp) => op.active.vfcu,
-      (lop: VFCULaneOp) => { lop.fn := io.seq.bits.fn.vfcu(); mark_lop_sreg(lop.sreg, 2) })
-    def mark_vfvu = mark_vfu("vfvu", tick_vfvu, (op: SequencerOp) => op.active.vfvu,
-      (lop: VFVULaneOp) => { lop.fn := io.seq.bits.fn.vfvu(); mark_lop_sreg(lop.sreg, 1) })
+    def mark_vqu = mark_vfu("vqu", tick_vqu, (op: SeqOp) => op.active.vqu,
+      (lop: VQULaneOp) => { lop.fn := seq_exp.fn.vqu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vgu = mark_vfu("vgu", tick_vgu, (op: SeqOp) => op.active.vgu,
+      (lop: VGULaneOp) => { lop.fn := seq_exp.fn.vmu(); mark_lop_sreg(lop.sreg, 1) })
+    def mark_vimu = mark_vfu("vimu", tick_vimu, (op: SeqOp) => op.active.vimu,
+      (lop: VIMULaneOp) => { lop.fn := seq_exp.fn.vimu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vfmu(i: Int) = mark_vfu("vfmu" + i, tick_vfmu(i), (op: SeqOp) => op.active_vfmu(i),
+      (lop: VFMULaneOp) => { lop.fn := seq_exp.fn.vfmu(); mark_lop_sreg(lop.sreg, 3) })
+    def mark_vfcu = mark_vfu("vfcu", tick_vfcu, (op: SeqOp) => op.active.vfcu,
+      (lop: VFCULaneOp) => { lop.fn := seq_exp.fn.vfcu(); mark_lop_sreg(lop.sreg, 2) })
+    def mark_vfvu = mark_vfu("vfvu", tick_vfvu, (op: SeqOp) => op.active.vfvu,
+      (lop: VFVULaneOp) => { lop.fn := seq_exp.fn.vfvu(); mark_lop_sreg(lop.sreg, 1) })
 
     def mark_vpu = {
-      check_assert("pred read", tick_pred_read(1), UInt(0))
-      tick_pred_read(1).s(0).valid := Bool(true)
-      tick_pred_read(1).s(0).bits.off := Bool(true)
-      tick_pred_read(1).s(0).bits.strip := io.seq_vpu.bits.strip
+      check_assert("pred read", tick_pred_pread, UInt(0))
+      tick_pred_pread.s(0).valid := Bool(true)
+      tick_pred_pread.s(0).bits.off := Bool(true)
+      tick_pred_pread.s(0).bits.strip := seq_vpu.strip
       check_assert("vpu", tick_vpu, UInt(0))
       tick_vpu.s(0).valid  := Bool(true)
-      tick_vpu.s(0).bits.strip := io.seq_vpu.bits.strip
+      tick_vpu.s(0).bits.strip := seq_vpu.strip
     }
   }
 
-  when (io.seq.valid) {
+  when (io.seq.exp.valid) {
     exp.mark_sram_reads
     exp.mark_pred_reads
     exp.mark_sram_writes
@@ -420,12 +426,14 @@ class Expander extends VXUModule {
     exp.mark_vfvu
   }
 
-  when (io.seq_vpu.valid) {
+  when (io.seq.vpu.valid) {
     exp.mark_vpu
   }
 
   io.lane.sram.read <> exp.tick_sram_read.ondeck
   io.lane.sram.write <> exp.tick_sram_write.ondeck
+  io.lane.pred.gread <> exp.tick_pred_gread.ondeck
+  io.lane.pred.pread <> exp.tick_pred_pread.ondeck
   (0 until nPredRPorts) foreach { i => io.lane.pred.read(i) <> exp.tick_pred_read(i).ondeck }
   io.lane.pred.write <> exp.tick_pred_write.ondeck
   (0 until nFFRPorts) foreach { io.lane.ff.read(_).valid := Bool(false) }
@@ -444,7 +452,7 @@ class Expander extends VXUModule {
     io.lane.opl.local(s1_sram_read.bits.local.id).valid := Bool(true)
   }
 
-  val s1_pred_read = Pipe(exp.tick_pred_read(0).ondeck.valid, exp.tick_pred_read(0).ondeck.bits)
+  val s1_pred_read = Pipe(exp.tick_pred_gread.ondeck.valid, exp.tick_pred_gread.ondeck.bits)
   (io.lane.pdl.global ++ io.lane.pdl.local) foreach { pdl =>
     pdl.valid := Bool(false)
     pdl.bits.strip := s1_pred_read.bits.strip

@@ -65,7 +65,9 @@ class LaneOpIO extends VXUBundle {
     val write = Valid(new FFRFWriteLaneOp)
   }
   val pred = new Bundle {
-    val read = Vec.fill(nPredRPorts){Valid(new PredRFReadLaneOp)}
+    val gread = Valid(new PredRFGatedReadLaneOp) // gated read
+    val pread = Valid(new PredRFGatedReadLaneOp) // vpu read
+    val read = Vec.fill(nPredRPorts){Valid(new PredRFReadLaneOp)} // plu read
     val write = Valid(new PredRFWriteLaneOp)
   }
   val opl = new Bundle {
