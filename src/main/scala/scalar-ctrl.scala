@@ -370,7 +370,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.reg.vs3.id := id_raddrs3
   io.vxu.bits.reg.vd.id := id_waddr
   io.vxu.bits.reg.vp.valid := id_ctrl.vp_val
-  io.vxu.bits.reg.vp.neg := id_ctrl.vp_neg
+  io.vxu.bits.reg.vp.pred := Bool(true)
+  io.vxu.bits.reg.vp.neg() := id_ctrl.vp_neg
   io.vxu.bits.reg.vp.id := id_paddr
   // TODO: add predicate regs
 

@@ -43,7 +43,7 @@ class DefaultHwachaConfig extends ChiselConfig (
     case HwachaWriteSelects => 2
 
     case HwachaStagesALU => 1
-    case HwachaStagesPLU => 1
+    case HwachaStagesPLU => 0
     case HwachaStagesIMul => 3
     case HwachaStagesFMA => 3
     case HwachaStagesFConv => 2

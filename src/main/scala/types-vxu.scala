@@ -93,21 +93,20 @@ class VFn extends VXUBundle {
 // decoded information types
 //-------------------------------------------------------------------------\\
 
-class GuardPredicate extends VXUBundle {
-  val valid = Bool()
-  val neg = Bool()
-  val id = UInt(width = bPredAddr)
-}
-
 class RegInfo extends VXUBundle {
   val valid = Bool()
   val scalar = Bool()
   val pred = Bool()
-  val id = UInt(width = bRFAddr)
+  val id = UInt(width = math.max(bRFAddr, bPredAddr))
+
+  def is_scalar(d: Int = 0) = !pred && scalar
+  def is_vector(d: Int = 0) = !pred && !scalar
+  def is_pred(d: Int = 0) = pred
+  def neg(d: Int = 0) = scalar
 }
 
 class DecodedRegisters extends VXUBundle {
-  val vp = new GuardPredicate
+  val vp = new RegInfo
   val vs1 = new RegInfo
   val vs2 = new RegInfo
   val vs3 = new RegInfo
@@ -212,7 +211,10 @@ class SeqEntry extends DecodedInstruction {
   val war = Vec.fill(nSeq){Bool()}
   val waw = Vec.fill(nSeq){Bool()}
   val rports = UInt(width = bRPorts)
-  val wport = UInt(width = bWPortLatency)
+  val wport = new Bundle {
+    val sram = UInt(width = bWPortLatency)
+    val pred = UInt(width = bPredWPortLatency)
+  }
   val vlen = UInt(width = bVLen)
   val eidx = UInt(width = bVLen)
   val age = UInt(width = log2Up(nBanks))
@@ -227,7 +229,10 @@ class SeqOp extends DecodedInstruction with LaneOp {
   val select = new SeqSelect
   val eidx = UInt(width = bVLen)
   val rports = UInt(width = bRPorts)
-  val wport = UInt(width = bWPortLatency)
+  val wport = new Bundle {
+    val sram = UInt(width = bWPortLatency)
+    val pred = UInt(width = bPredWPortLatency)
+  }
 
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }

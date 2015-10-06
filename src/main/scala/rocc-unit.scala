@@ -5,6 +5,7 @@ import Commands._
 
 class HwachaConfigIO extends HwachaBundle with LaneParameters {
   val vstride = UInt(OUTPUT, bRFAddr)
+  val pstride = UInt(OUTPUT, bPredAddr)
 }
 
 class CMDQIO extends HwachaBundle {
@@ -76,6 +77,7 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   val cfg_vregs = Reg(init=UInt(256, bVRegs))
   val cfg_pregs = Reg(init=UInt(1, bPRegs))
   io.cfg.vstride := cfg_vregs
+  io.cfg.pstride := cfg_pregs
 
   // Decode
   val raw_inst = io.rocc.cmd.bits.inst.toBits

@@ -13,7 +13,9 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bWPortLatency = log2Down(maxWPortLatency) + 1
   val maxPredWPortLatency = expLatency +
-    List(1 + stagesPLU, 3 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
+    List(stagesPLU, 2 + 1 + stagesALU,
+         2 + 1 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
+  val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
   val maxStrip = nBanks * (wBank / SZ_B)
   val bStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
@@ -27,6 +29,7 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) y else x) >= 1)
 
   type RegFn = DecodedRegisters => RegInfo
+  val reg_vp  = (reg: DecodedRegisters) => reg.vp
   val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
   val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
   val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
@@ -40,8 +43,8 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
 
 class SequencerIO extends VXUBundle {
   val exp = Valid(new SeqOp)
-  val vpu = Valid(new SeqVPUOp)
   val vipu = Valid(new SeqVIPUOp)
+  val vpu = Valid(new SeqVPUOp)
 }
 
 class Sequencer extends VXUModule with BankLogic {
@@ -78,6 +81,10 @@ class Sequencer extends VXUModule with BankLogic {
       val tail = UInt(OUTPUT, log2Up(nSeq))
       val full = Bool(OUTPUT)
       val dhazard_raw_vlen = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_pred_vp = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_pred_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_pred_vs2 = Vec.fill(nSeq){Bool(OUTPUT)}
+      val dhazard_raw_pred_vs3 = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard_raw_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard_raw_vs2 = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard_raw_vs3 = Vec.fill(nSeq){Bool(OUTPUT)}
@@ -94,7 +101,8 @@ class Sequencer extends VXUModule with BankLogic {
       val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
       val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
       val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
-      val use_mask_wport = Vec.fill(nWSel){Bits(OUTPUT, maxWPortLatency+nBanks-1)}
+      val use_mask_wport_sram = Vec.fill(nWSel){Bits(OUTPUT, maxWPortLatency+nBanks-1)}
+      val use_mask_wport_pred = Bits(OUTPUT, maxPredWPortLatency+nBanks-1)
       val pred_first = Vec.fill(nSeq){Bool(OUTPUT)}
       val consider = Vec.fill(nSeq){Bool(OUTPUT)}
       val first_sched = Vec.fill(nSeq){Bool(OUTPUT)}
@@ -133,27 +141,19 @@ class Sequencer extends VXUModule with BankLogic {
       def issue_base_eq(ifn: RegFn, sfn: RegFn) =
         Vec((0 until nSeq) map { i => v(i) &&
           sfn(e(i).base).valid && ifn(io.op.bits.reg).valid &&
-          !sfn(e(i).base).scalar && !ifn(io.op.bits.reg).scalar &&
-          !(sfn(e(i).base).pred ^ ifn(io.op.bits.reg).pred) &&
+          !sfn(e(i).base).is_scalar() && !ifn(io.op.bits.reg).is_scalar() &&
+          (sfn(e(i).base).is_vector() && ifn(io.op.bits.reg).is_vector() ||
+           sfn(e(i).base).is_pred() && ifn(io.op.bits.reg).is_pred()) &&
           sfn(e(i).base).id === ifn(io.op.bits.reg).id })
+      val ivp_evd_eq = issue_base_eq(reg_vp, reg_vd)
       val ivs1_evd_eq = issue_base_eq(reg_vs1, reg_vd)
       val ivs2_evd_eq = issue_base_eq(reg_vs2, reg_vd)
       val ivs3_evd_eq = issue_base_eq(reg_vs3, reg_vd)
+      val ivd_evp_eq = issue_base_eq(reg_vd, reg_vp)
       val ivd_evs1_eq = issue_base_eq(reg_vd, reg_vs1)
       val ivd_evs2_eq = issue_base_eq(reg_vd, reg_vs2)
       val ivd_evs3_eq = issue_base_eq(reg_vd, reg_vs3)
       val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
-
-      val ivp_evd_eq =
-        Vec((0 until nSeq) map { i => v(i) &&
-          e(i).base.vd.valid && io.op.bits.reg.vp.valid &&
-          !e(i).base.vd.scalar && e(i).base.vd.pred &&
-          e(i).base.vd.id === io.op.bits.reg.vp.id })
-      val ivd_evp_eq =
-        Vec((0 until nSeq) map {i => v(i) &&
-          e(i).base.vp.valid && io.op.bits.reg.vd.valid &&
-          !io.op.bits.reg.vd.scalar && io.op.bits.reg.vd.pred &&
-          e(i).base.vp.id === io.op.bits.reg.vd.id })
 
       def raws(n: UInt, eq: Vec[Bool]) = {
         for (i <- 0 until nSeq) {
@@ -198,15 +198,26 @@ class Sequencer extends VXUModule with BankLogic {
             if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
             else Bool(true) }) })
 
-      def wmatrix(fn: RegFn) =
+      def wsram_matrix(fn: RegFn) =
         (0 until nSeq) map { r =>
           Vec((0 until maxWPortLatency) map { l =>
-            io.ticker.sram.write(l).valid && fn(e(r).reg).valid && !fn(e(r).reg).scalar &&
+            io.ticker.sram.write(l).valid && fn(e(r).reg).valid && fn(e(r).reg).is_vector() &&
             io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) }
-      val wmatrix_vs1 = wmatrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wmatrix_vs2 = wmatrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wmatrix_vs3 = wmatrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wmatrix_vd = wmatrix(reg_vd)
+      val wsram_matrix_vs1 = wsram_matrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wsram_matrix_vs2 = wsram_matrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wsram_matrix_vs3 = wsram_matrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+      val wsram_matrix_vd = wsram_matrix(reg_vd)
+
+      def wpred_matrix(fn: RegFn) =
+        (0 until nSeq) map { r =>
+          Vec((0 until maxPredWPortLatency) map { l =>
+            io.ticker.pred.write(l).valid && fn(e(r).reg).valid && fn(e(r).reg).is_pred() &&
+            io.ticker.pred.write(l).bits.addr === fn(e(r).reg).id }) }
+      val wpred_matrix_vp = wpred_matrix(reg_vp) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+      val wpred_matrix_vs1 = wpred_matrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+      val wpred_matrix_vs2 = wpred_matrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+      val wpred_matrix_vs3 = wpred_matrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+      val wpred_matrix_vd = wpred_matrix(reg_vd)
 
       def wport_lookup(row: Vec[Bool], level: UInt) =
         Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
@@ -214,16 +225,18 @@ class Sequencer extends VXUModule with BankLogic {
       val raw =
         (0 until nSeq).map { r =>
           (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
-          wmatrix_vs1(r).toBits.orR ||
-          wmatrix_vs2(r).toBits.orR ||
-          wmatrix_vs3(r).toBits.orR }
+          wpred_matrix_vp(r).toBits.orR ||
+          wpred_matrix_vs1(r).toBits.orR || wsram_matrix_vs1(r).toBits.orR ||
+          wpred_matrix_vs2(r).toBits.orR || wsram_matrix_vs2(r).toBits.orR ||
+          wpred_matrix_vs3(r).toBits.orR || wsram_matrix_vs3(r).toBits.orR }
       val war =
         (0 until nSeq).map { r =>
           (e(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
       val waw =
         (0 until nSeq).map { r =>
           (e(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
-          wport_lookup(wmatrix_vd(r), e(r).wport).toBits.orR }
+          wport_lookup(wpred_matrix_vd(r), e(r).wport.pred).toBits.orR ||
+          wport_lookup(wsram_matrix_vd(r), e(r).wport.sram).toBits.orR }
 
       val result =
         (0 until nSeq).map { r =>
@@ -231,9 +244,13 @@ class Sequencer extends VXUModule with BankLogic {
 
       def debug = {
         io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
-        io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wmatrix_vs1(r).toBits.orR })
-        io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wmatrix_vs2(r).toBits.orR })
-        io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wmatrix_vs3(r).toBits.orR })
+        io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_matrix_vp(r).toBits.orR })
+        io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_matrix_vs1(r).toBits.orR })
+        io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_matrix_vs2(r).toBits.orR })
+        io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_matrix_vs3(r).toBits.orR })
+        io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_matrix_vs1(r).toBits.orR })
+        io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_matrix_vs2(r).toBits.orR })
+        io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_matrix_vs3(r).toBits.orR })
         io.debug.dhazard_war := war
         io.debug.dhazard_waw := waw
         io.debug.dhazard := result
@@ -270,36 +287,48 @@ class Sequencer extends VXUModule with BankLogic {
   val bhazard = new {
     val set = new {
       def nports_list(fns: RegFn*) = {
-        val cnt = PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && !fn(io.op.bits.reg).scalar })
+        val cnt = PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && fn(io.op.bits.reg).is_vector() })
         // make sure # of rports is larger than 1, because we need to read predicate
-        Mux(cnt > UInt(0), cnt, UInt(1))
+        val gated = !io.op.bits.active.vipred
+        val min = Mux(gated, UInt(1), UInt(0))
+        Mux(cnt > UInt(0), cnt, min)
       }
       val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
       val nrport_vs1 = nports_list(reg_vs1)
       val nrport_vs2 = nports_list(reg_vs2)
       val nrport_vd = nports_list(reg_vd)
 
-      def ports(n: UInt, rports: UInt, wport: UInt) = {
+      def mark_rports(n: UInt, rports: UInt) = {
         e(n).rports := rports
-        e(n).wport := wport
+        e(n).wport.sram := UInt(0)
+        e(n).wport.pred := UInt(0)
       }
-      def noports(n: UInt) = ports(n, UInt(0), UInt(0))
-      def rport_vs1(n: UInt) = ports(n, nrport_vs1, UInt(0))
-      def rport_vs2(n: UInt) = ports(n, nrport_vs2, UInt(0))
-      def rport_vd(n: UInt) = ports(n, nrport_vd, UInt(0))
-      def rports(n: UInt) = ports(n, nrports, UInt(0))
-      def rwports(n: UInt, latency: Int) = ports(n, nrports, nrports + UInt(expLatency+latency))
+      def mark_wport(n: UInt, wport: UInt) = {
+        when (io.op.bits.reg.vd.is_vector()) { e(n).wport.sram := wport }
+        when (io.op.bits.reg.vd.is_pred()) { e(n).wport.pred := wport }
+      }
+      def noports(n: UInt) = mark_rports(n, UInt(0))
+      def rport_vs1(n: UInt) = mark_rports(n, nrport_vs1)
+      def rport_vs2(n: UInt) = mark_rports(n, nrport_vs2)
+      def rport_vd(n: UInt) = mark_rports(n, nrport_vd)
+      def rports(n: UInt) = mark_rports(n, nrports)
+      def rwports(n: UInt, latency: Int) = {
+        mark_rports(n, nrports)
+        mark_wport(n, nrports + UInt(expLatency+latency))
+      }
     }
 
     val check = new {
       // tail (shift right by one) because we are looking one cycle in the future
       val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
-      val wport_mask = Vec(io.ticker.sram.write.tail map { _.valid })
+      val wport_sram_mask = Vec(io.ticker.sram.write.tail map { _.valid })
+      val wport_pred_mask = Vec(io.ticker.pred.write.tail map { _.valid })
 
       val result =
         (0 until nSeq) map { r =>
           e(r).rports.orR && rport_mask.reduce(_ | _) ||
-          e(r).wport.orR && wport_mask(e(r).wport)
+          e(r).wport.sram.orR && wport_sram_mask(e(r).wport.sram) ||
+          e(r).wport.pred.orR && wport_pred_mask(e(r).wport.pred)
         }
 
       def debug = {
@@ -330,11 +359,14 @@ class Sequencer extends VXUModule with BankLogic {
       val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
       val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
       val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
-      val use_mask_wport = (0 until nWSel) map { i =>
+      val use_mask_wport_sram = (0 until nWSel) map { i =>
         use_mask_lop(
           io.ticker.sram.write,
-          (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)
-        ) }
+          (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)) }
+      val use_mask_wport_pred =
+        use_mask_lop(
+          io.ticker.pred.write,
+          (lop: ValidIO[PredRFWriteOp]) => lop.valid && lop.bits.selg)
 
       val select = Vec.fill(nSeq){new SeqSelect}
 
@@ -343,30 +375,33 @@ class Sequencer extends VXUModule with BankLogic {
           val op_idx = e(r).rports + UInt(expLatency, bRPorts+1)
           val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
           val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
-          val ask_wport_mask = UInt(strip_to_bmask(strip) << e(r).wport, maxWPortLatency+nBanks-1)
-          def check_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
-          def check_op_shazard(use_mask: Bits) = check_shazard(use_mask, ask_op_mask)
-          def check_rport(fn: RegFn, i: Int) =
+          val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << e(r).wport.sram, maxWPortLatency+nBanks-1)
+          val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << e(r).wport.pred, maxPredWPortLatency+nBanks-1)
+          def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
+          def chk_op_shazard(use_mask: Bits) = chk_shazard(use_mask, ask_op_mask)
+          def chk_rport(fn: RegFn, i: Int) =
             fn(e(r).reg).valid && (
-              !fn(e(r).reg).scalar && check_op_shazard(use_mask_xbar(i)) ||
-              fn(e(r).reg).scalar && check_op_shazard(use_mask_sreg_global(i)))
-          val check_rport_0_1 = check_rport(reg_vs1, 0) || check_rport(reg_vs2, 1)
-          val check_rport_0_1_2 = check_rport_0_1 || check_rport(reg_vs3, 2)
-          val check_rport_2 = check_rport(reg_vs1, 2)
-          val check_rport_3_4 = check_rport(reg_vs1, 3) || check_rport(reg_vs2, 4)
-          val check_rport_3_4_5 = check_rport_3_4 || check_rport(reg_vs3, 5)
-          val check_rport_5 = check_rport(reg_vs1, 5)
-          def check_wport(i: Int) =
-            e(r).reg.vd.valid && (e(r).reg.vd.scalar || check_shazard(use_mask_wport(i), ask_wport_mask))
-          val check_wport_0 = check_wport(0)
-          val check_wport_1 = check_wport(1)
-          val shazard_vimu = check_rport_0_1 || check_wport_0 || check_op_shazard(use_mask_vimu)
-          val shazard_vfmu0 = check_rport_0_1_2 || check_wport_0 || check_op_shazard(use_mask_vfmu(0))
-          val shazard_vfmu1 = check_rport_3_4_5 || check_wport_1 || check_op_shazard(use_mask_vfmu(1))
-          val shazard_vfcu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vfcu)
-          val shazard_vfvu = check_rport_2 || check_wport_0 || check_op_shazard(use_mask_vfvu)
-          val shazard_vgu = check_rport_5 || check_wport_1 || check_op_shazard(use_mask_vgu)
-          val shazard_vqu = check_rport_3_4 || check_wport_1 || check_op_shazard(use_mask_vqu)
+              fn(e(r).reg).is_vector() && chk_op_shazard(use_mask_xbar(i)) ||
+              fn(e(r).reg).is_scalar() && chk_op_shazard(use_mask_sreg_global(i)))
+          val chk_rport_0_1 = chk_rport(reg_vs1, 0) || chk_rport(reg_vs2, 1)
+          val chk_rport_0_1_2 = chk_rport_0_1 || chk_rport(reg_vs3, 2)
+          val chk_rport_2 = chk_rport(reg_vs1, 2)
+          val chk_rport_3_4 = chk_rport(reg_vs1, 3) || chk_rport(reg_vs2, 4)
+          val chk_rport_3_4_5 = chk_rport_3_4 || chk_rport(reg_vs3, 5)
+          val chk_rport_5 = chk_rport(reg_vs1, 5)
+          def chk_wport_sram(i: Int) =
+            e(r).reg.vd.valid && chk_shazard(use_mask_wport_sram(i), ask_wport_sram_mask)
+          val chk_wport_sram_0 = chk_wport_sram(0)
+          val chk_wport_sram_1 = chk_wport_sram(1)
+          val chk_wport_pred =
+            e(r).reg.vd.valid && chk_shazard(use_mask_wport_pred, ask_wport_pred_mask)
+          val shazard_vimu = chk_rport_0_1 || chk_wport_sram_0 || chk_op_shazard(use_mask_vimu)
+          val shazard_vfmu0 = chk_rport_0_1_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfmu(0))
+          val shazard_vfmu1 = chk_rport_3_4_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vfmu(1))
+          val shazard_vfcu = chk_rport_3_4 || chk_wport_sram_1 || chk_wport_pred || chk_op_shazard(use_mask_vfcu)
+          val shazard_vfvu = chk_rport_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfvu)
+          val shazard_vgu = chk_rport_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vgu)
+          val shazard_vqu = chk_rport_3_4 || chk_wport_sram_1 || chk_op_shazard(use_mask_vqu)
           select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
           val a = e(r).active
           val out =
@@ -386,7 +421,8 @@ class Sequencer extends VXUModule with BankLogic {
         io.debug.use_mask_vfvu := use_mask_vfvu
         io.debug.use_mask_vgu := use_mask_vgu
         io.debug.use_mask_vqu := use_mask_vqu
-        io.debug.use_mask_wport := use_mask_wport
+        io.debug.use_mask_wport_sram := use_mask_wport_sram
+        io.debug.use_mask_wport_pred := use_mask_wport_pred
       }
     }
   }
@@ -410,10 +446,12 @@ class Sequencer extends VXUModule with BankLogic {
         valid(n)
         e(n).vlen := io.op.bits.vlen
         e(n).eidx := UInt(0)
+        e(n).reg.vp.valid := Bool(false)
         e(n).reg.vs1.valid := Bool(false)
         e(n).reg.vs2.valid := Bool(false)
         e(n).reg.vs3.valid := Bool(false)
         e(n).reg.vd.valid := Bool(false)
+        e(n).base.vp.valid := Bool(false)
         e(n).base.vs1.valid := Bool(false)
         e(n).base.vs2.valid := Bool(false)
         e(n).base.vs3.valid := Bool(false)
@@ -439,6 +477,7 @@ class Sequencer extends VXUModule with BankLogic {
       }
 
       def viu(n: UInt) = active(n, (a: SeqType) => a.viu, fn_identity)
+      def vipu(n: UInt) = active(n, (a: SeqType) => a.vipu, fn_identity)
       def vimu(n: UInt) = active(n, (a: SeqType) => a.vimu, fn_identity)
       def vidu(n: UInt) = active(n, (a: SeqType) => a.vidu, fn_identity)
       def vfmu(n: UInt) = active(n, (a: SeqType) => a.vfmu, fn_identity)
@@ -452,11 +491,18 @@ class Sequencer extends VXUModule with BankLogic {
       def vsu(n: UInt) = active(n, (a: SeqType) => a.vsu, fn_identity)
       def vqu(n: UInt) = active(n, (a: SeqType) => a.vqu, fn_vqu)
 
+      def vp(n: UInt) = {
+        when (io.op.bits.reg.vp.valid) {
+          e(n).reg.vp := io.op.bits.reg.vp
+          e(n).base.vp := io.op.bits.reg.vp
+        }
+        dhazard.set.raw_vp(n)
+      }
       def vs(n: UInt, e_vsfn: RegFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
         when (op_vsfn(io.op.bits.reg).valid) {
           e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
           e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
-          when (op_vsfn(io.op.bits.reg).scalar) {
+          when (op_vsfn(io.op.bits.reg).is_scalar()) {
             e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
           }
         }
@@ -478,7 +524,7 @@ class Sequencer extends VXUModule with BankLogic {
         dhazard.set.raw_vs2(n)
       }
       def vd_as_vs1(n: UInt) = {
-        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "iwindow.set.vd_as_vs1: vd should always be vector")
+        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.is_scalar(), "iwindow.set.vd_as_vs1: vd should always be vector")
         when (io.op.bits.reg.vd.valid) {
           e(n).reg.vs1 := io.op.bits.reg.vd
           e(n).base.vs1 := io.op.bits.reg.vd
@@ -486,7 +532,7 @@ class Sequencer extends VXUModule with BankLogic {
         dhazard.set.raw_vd(n)
       }
       def vd(n: UInt) = {
-        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.scalar, "iwindow.set.vd: vd should always be vector")
+        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.is_scalar(), "iwindow.set.vd: vd should always be vector")
         when (io.op.bits.reg.vd.valid) {
           e(n).reg.vd := io.op.bits.reg.vd
           e(n).base.vd := io.op.bits.reg.vd
@@ -516,7 +562,7 @@ class Sequencer extends VXUModule with BankLogic {
       val empty = UInt(nSeq) - count
       val a = io.op.bits.active
 
-      (empty >= UInt(1)) && (a.vint || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
+      (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
       (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
       (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
       (empty >= UInt(4)) && (a.vamo)
@@ -579,17 +625,22 @@ class Sequencer extends VXUModule with BankLogic {
     def stop(n: UInt) = iwindow.set.tail(n)
 
     def vint = {
-      start(t0); { import iwindow.set._; viu(t0); vs1(t0); vs2(t0); vd(t0); }
+      start(t0); { import iwindow.set._; viu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesALU); }
       stop(t1); }
 
+    def vipred = {
+      start(t0); { import iwindow.set._; vipu(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
+                 { import bhazard.set._; rwports(t0, stagesPLU); }
+      stop(t1); }
+
     def vimul = {
-      start(t0); { import iwindow.set._; vimu(t0); vs1(t0); vs2(t0); vd(t0); }
+      start(t0); { import iwindow.set._; vimu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesIMul); }
       stop(t1); }
 
     def vidiv = {
-      start(t0); { import iwindow.set._; vqu(t0); vs1(t0); vs2(t0); }
+      start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); vs2(t0); }
                  { import bhazard.set._; rports(t0); }
                  { import dhazard.set._; war_vd(t0); waw_vd(t0); }
       start(t1); { import iwindow.set._; vidu(t1); vd(t1); }
@@ -597,12 +648,12 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t2); }
 
     def vfma = {
-      start(t0); { import iwindow.set._; vfmu(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
+      start(t0); { import iwindow.set._; vfmu(t0); vp(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesFMA); }
       stop(t1); }
 
     def vfdiv = {
-      start(t0); { import iwindow.set._; vqu(t0); vs1(t0); vs2(t0); }
+      start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); vs2(t0); }
                  { import bhazard.set._; rports(t0); }
                  { import dhazard.set._; war_vd(t0); waw_vd(t0); }
       start(t1); { import iwindow.set._; vfdu(t1); vd(t1); }
@@ -610,22 +661,22 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t2); }
 
     def vfcmp = {
-      start(t0); { import iwindow.set._; vfcu(t0); vs1(t0); vs2(t0); vd(t0); }
+      start(t0); { import iwindow.set._; vfcu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesFCmp); }
       stop(t1); }
 
     def vfconv = {
-      start(t0); { import iwindow.set._; vfvu(t0); vs1(t0); vd(t0); }
+      start(t0); { import iwindow.set._; vfvu(t0); vp(t0); vs1(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesFConv); }
       stop(t1); }
 
     def vamo = {
-      start(t0); { import iwindow.set._; vgu(t0); vs1(t0); }
+      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs1(t0); }
                  { import bhazard.set._; rport_vs1(t0); }
       start(t1); { import iwindow.set._; vcu(t1); }
                  { import bhazard.set._; noports(t1); }
                  { import dhazard.set._; war_vd(t1); waw_vd(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vs2_as_vs1(t2); }
+      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vs2_as_vs1(t2); }
                  { import bhazard.set._; rport_vs2(t2); }
                  { import dhazard.set._; raw(t2, t1); }
       start(t3); { import iwindow.set._; vlu(t3); vd(t3); }
@@ -633,7 +684,7 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t4); }
 
     def vldx = {
-      start(t0); { import iwindow.set._; vgu(t0); vs2_as_vs1(t0); }
+      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs2_as_vs1(t0); }
                  { import bhazard.set._; rport_vs2(t0); }
       start(t1); { import iwindow.set._; vcu(t1); }
                  { import bhazard.set._; noports(t1); }
@@ -643,17 +694,17 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t3); }
 
     def vstx = {
-      start(t0); { import iwindow.set._; vgu(t0); vs2_as_vs1(t0); }
+      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs2_as_vs1(t0); }
                  { import bhazard.set._; rport_vs2(t0); }
       start(t1); { import iwindow.set._; vcu(t1); }
                  { import bhazard.set._; noports(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vd_as_vs1(t2); }
+      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vd_as_vs1(t2); }
                  { import bhazard.set._; rport_vd(t2); }
                  { import dhazard.set._; raw(t2, t1); }
       stop(t3); }
 
     def vld = {
-      start(t0); { import iwindow.set._; vpu(t0); }
+      start(t0); { import iwindow.set._; vpu(t0); vp(t0); }
                  { import bhazard.set._; noports(t0); }
       start(t1); { import iwindow.set._; vcu(t1); }
                  { import bhazard.set._; noports(t1); }
@@ -663,11 +714,11 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t3); }
 
     def vst = {
-      start(t0); { import iwindow.set._; vpu(t0); }
+      start(t0); { import iwindow.set._; vpu(t0); vp(t0); }
                  { import bhazard.set._; noports(t0); }
       start(t1); { import iwindow.set._; vcu(t1); }
                  { import bhazard.set._; noports(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vd_as_vs1(t2); }
+      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vd_as_vs1(t2); }
                  { import bhazard.set._; rport_vd(t2); }
                  { import dhazard.set._; raw(t2, t1); }
       stop(t3); }
@@ -675,6 +726,7 @@ class Sequencer extends VXUModule with BankLogic {
     def logic = {
       when (io.op.fire()) {
         when (io.op.bits.active.vint) { vint }
+        when (io.op.bits.active.vipred) { vipred }
         when (io.op.bits.active.vimul) { vimul }
         when (io.op.bits.active.vidiv) { vidiv }
         when (io.op.bits.active.vfma) { vfma }
@@ -745,7 +797,8 @@ class Sequencer extends VXUModule with BankLogic {
         out.select := selectfn(sched)
         out.eidx := readfn(sched, (e: SeqEntry) => e.eidx)
         out.rports := readfn(sched, (e: SeqEntry) => e.rports)
-        out.wport := readfn(sched, (e: SeqEntry) => e.wport)
+        out.wport.sram := readfn(sched, (e: SeqEntry) => e.wport.sram)
+        out.wport.pred := readfn(sched, (e: SeqEntry) => e.wport.pred)
         out.strip := stripfn(vlen, Bool(false), out.fn)
         out
       }
@@ -765,6 +818,30 @@ class Sequencer extends VXUModule with BankLogic {
         (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
         (io.debug.first_sched zip first_sched) foreach { case (io, c) => io := c }
         (io.debug.second_sched zip second_sched) foreach { case (io, c) => io := c }
+      }
+    }
+
+    val vipu = new {
+      val consider = (i: Int) => e(i).active.vipu && nohazards(i)
+      val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
+      val second_sched = find_first((i: Int) => consider(i))
+      val sel = first_sched.reduce(_ || _)
+      val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
+      val valid = valfn(sched)
+      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val op = {
+        val out = new SeqVIPUOp
+        out.fn := readfn(sched, (e: SeqEntry) => e.fn)
+        out.reg := readfn(sched, (e: SeqEntry) => e.reg)
+        out.strip := stripfn(vlen, Bool(false), out.fn)
+        out
+      }
+
+      def fire(n: Int) = sched(n)
+
+      def logic = {
+        io.seq.vipu.valid := valid
+        io.seq.vipu.bits := op
       }
     }
 
@@ -801,7 +878,8 @@ class Sequencer extends VXUModule with BankLogic {
     }
 
     val vpu = new {
-      val sched = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
+      val first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
+      val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
@@ -813,6 +891,7 @@ class Sequencer extends VXUModule with BankLogic {
 
       def logic = {
         io.seq.vpu.valid := valid && ready
+        io.seq.vpu.bits.reg := readfn(sched, (e: SeqEntry) => e.reg)
         io.seq.vpu.bits.strip := strip
         io.pla.reserve := valid && ready
         io.pla.mask := strip_to_bmask(strip)
@@ -832,7 +911,7 @@ class Sequencer extends VXUModule with BankLogic {
 
       val ready = io.gpla.available && io.gqla.available
       (0 until nSeq) map { i =>
-        exp.vgu_consider(i) := vpu.sched(i) && first(i) && io.pla.available && ready }
+        exp.vgu_consider(i) := vpu.first(i) && first(i) && io.pla.available && ready }
 
       def logic = {
         io.gpla.cnt := cnt
@@ -922,6 +1001,7 @@ class Sequencer extends VXUModule with BankLogic {
 
     def logic = {
       exp.logic
+      vipu.logic
       vidu.logic
       vfdu.logic
       vpu.logic
@@ -934,13 +1014,18 @@ class Sequencer extends VXUModule with BankLogic {
       io.pending := v.reduce(_ || _)
 
       def fire(n: Int) =
+        exp.fire(n) || vipu.fire(n) ||
         vidu.fire(n) || vfdu.fire(n) ||
-        vpu.fire(n) || vcu.fire(n) || vlu.fire(n) ||
-        exp.fire(n)
+        vpu.fire(n) || vcu.fire(n) || vlu.fire(n)
 
       def update_reg(i: Int, fn: RegFn) = {
-        when (fn(e(i).reg).valid && !fn(e(i).reg).scalar) {
-          fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+        when (fn(e(i).reg).valid) {
+          when (fn(e(i).reg).is_vector()) {
+            fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+          }
+          when (fn(e(i).reg).is_pred()) {
+            fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.pstride
+          }
         }
       }
 
@@ -950,6 +1035,7 @@ class Sequencer extends VXUModule with BankLogic {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
             e(i).eidx := e(i).eidx + strip
+            update_reg(i, reg_vp)
             update_reg(i, reg_vs1)
             update_reg(i, reg_vs2)
             update_reg(i, reg_vs3)
