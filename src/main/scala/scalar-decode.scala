@@ -380,5 +380,5 @@ object VectorArithmeticDecode extends VFDecodeTable {
     VCMPFLE_H ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPH,N,MM_X, M_X,      MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   Y,FC_CLE,  N,FV_X)     ++ FX),
     // FIXME END
 
-    VPOP      ->(List[BitPat](Y,N,N,Y,RP,N,Y,RP,N,Y,RP,N,Y,RP,N,N,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, N,I_X,   Y,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   Y,FC_X,    N,FV_X)     ++ FX))
+    VPOP      ->(List[BitPat](Y,N,N,Y,RP,N,Y,RP,N,Y,RP,N,Y,RP,N,N,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, N,I_X,   Y,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX))
 }
