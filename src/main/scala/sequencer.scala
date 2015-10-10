@@ -124,6 +124,8 @@ class Sequencer extends VXUModule with BankLogic {
     Mux(vl > max_strip, max_strip, vl)
   }
 
+  var retired = false
+
   ///////////////////////////////////////////////////////////////////////////
   // data hazard checking helpers
 
@@ -591,6 +593,8 @@ class Sequencer extends VXUModule with BankLogic {
         retire(head)
         set.head(head + UInt(1))
       }
+
+      retired = true
     }
 
     def footer = {
@@ -724,6 +728,8 @@ class Sequencer extends VXUModule with BankLogic {
       stop(t3); }
 
     def logic = {
+      require(!retired) // must issue before retiring for dhazard bookkeeping
+
       when (io.op.fire()) {
         when (io.op.bits.active.vint) { vint }
         when (io.op.bits.active.vipred) { vipred }
@@ -1063,8 +1069,8 @@ class Sequencer extends VXUModule with BankLogic {
   iwindow.header
   dhazard.header
 
-  iwindow.logic
   issue.logic
+  iwindow.logic
   dhazard.logic
   scheduling.logic
 
