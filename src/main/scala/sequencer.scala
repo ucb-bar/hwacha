@@ -852,7 +852,8 @@ class Sequencer extends VXUModule with BankLogic {
     }
 
     val vidu = new {
-      val sched = find_first((i: Int) => e(i).active.vidu && nohazards(i))
+      val first = find_first((i: Int) => e(i).active.vidu)
+      val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
@@ -868,7 +869,8 @@ class Sequencer extends VXUModule with BankLogic {
     }
 
     val vfdu = new {
-      val sched = find_first((i: Int) => e(i).active.vfdu && nohazards(i))
+      val first = find_first((i: Int) => e(i).active.vfdu)
+      val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
@@ -928,7 +930,8 @@ class Sequencer extends VXUModule with BankLogic {
     }
 
     val vcu = new {
-      val sched = find_first((i: Int) => e(i).active.vcu && nohazards(i))
+      val first = find_first((i: Int) => e(i).active.vcu)
+      val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
@@ -952,7 +955,8 @@ class Sequencer extends VXUModule with BankLogic {
     }
 
     val vlu = new {
-      val sched = find_first((i: Int) => e(i).active.vlu && nohazards(i))
+      val first = find_first((i: Int) => e(i).active.vlu)
+      val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val fn = readfn(sched, (e: SeqEntry) => e.fn)
