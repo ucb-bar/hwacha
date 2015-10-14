@@ -383,7 +383,7 @@ class VSU extends VXUModule {
   val data_h = repack(SZ_H, SZ_D)
   val data_b = repack(SZ_B, SZ_D)
 
-  io.vsdq.bits := Mux1H(mtsel,
+  io.vsdq.bits.data := Mux1H(mtsel,
     Seq(data_d, data_w, data_h, data_b).map(x => Cat(x.reverse)))
 }
 
@@ -405,9 +405,9 @@ class VLU extends VXUModule {
     val cfg = new HwachaConfigIO().flip
   }
 
-  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
-  val op = opq.io.deq
+  opq.io.deq.ready := Bool(false)
 
   io.pred.ready := Bool(true) // FIXME
 
@@ -415,65 +415,52 @@ class VLU extends VXUModule {
   // control
   //--------------------------------------------------------------------\\
 
-  val vlen = Reg(UInt(width = bVLen))
+  val op = Reg(new DCCOp)
+  val mt = DecodedMemType(op.fn.vmu().mt)
+  private val mts = Seq(mt.d, mt.w, mt.h, mt.b)
+
   val eidx = Reg(UInt(width = bVLen))
   val eidx_next = eidx + io.la.cnt
-
-  val mt_hold = Reg(Bits(width = MT_SZ))
-  val mt = DecodedMemType(mt_hold)
-  val mt_sel = Seq(mt.d, mt.w, mt.h, mt.b)
-
-  val vd = Reg(UInt(width = bRFAddr))
+  val eidx_end = (eidx_next === op.vlen)
 
   val sink = Reg(Bool())
-
-  op.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      op.ready := Bool(true)
       eidx := UInt(0)
       sink := Bool(true)
 
-      when (op.valid) {
+      opq.io.deq.ready := Bool(true)
+      when (opq.io.deq.valid) {
         state := s_busy
-        vlen := op.bits.vlen
-        mt_hold := op.bits.fn.vmu().mt
-        vd := op.bits.vd.id
+        op := opq.io.deq.bits
+
+        assert(opq.io.deq.bits.vd.valid, "VLU: invalid vd")
       }
     }
 
     is (s_busy) {
       when (io.la.reserve) {
         eidx := eidx_next
-        when (eidx_next === vlen) {
+        when (eidx_end) {
           state := s_idle
         }
       }
     }
   }
 
-  assert(!op.valid || op.bits.vd.valid, "invalid vd in VLU")
-
-  val inter = Module(new VLUInterposer)
-  inter.io.en := mt.b
-  inter.io.init := op.fire()
-
-  inter.io.enq.bits := io.vldq.bits
-  inter.io.enq.valid := io.vldq.valid && sink
-  io.vldq.ready := inter.io.enq.ready && sink
-
   // Avoid prematurely accepting responses for the next memory operation
   // before the current one has finished
-  when (io.vldq.fire() && io.vldq.bits.last) {
+  val vldq_valid = io.vldq.valid && sink
+  when (io.vldq.fire() && io.vldq.bits.meta.last) {
     sink := Bool(false)
   }
 
-  val vldq = inter.io.deq
-  val meta = vldq.bits.meta
+  private val vldq = io.vldq
+  private val meta = vldq.bits.meta
 
   //--------------------------------------------------------------------\\
   // permutation network
@@ -491,7 +478,7 @@ class VLU extends VXUModule {
 
   require(nSlices == 2)
 
-  val data_rotamt = eidx_batch - meta.eskip
+  val data_rotamt = eidx_batch - meta.epad
   val mask_rotamt = eidx_batch
 
   private def rotate[T <: Data](gen: T, in: Iterable[T], sel: UInt) = {
@@ -503,23 +490,30 @@ class VLU extends VXUModule {
     out
   }
 
-  val mt_signed = !mt.unsigned
-  private def extend(in: Bits, sz: Int): Bits =
-    if (sz < regLen) Cat(Fill(regLen-sz, in(sz-1) && mt_signed), in) else in
+  private def extend[T <: Bits](in: T, sz: Int) =
+    if (sz < regLen) Cat(Fill(regLen-sz, in(sz-1) && mt.signed), in) else in
 
-  private def rotate_data(sz: Int) = {
-    val elts = (0 until tlDataBits by sz).map(i => vldq.bits.data(i+sz-1, i))
-    val in = if (elts.size > nBatch) elts.take(nBatch) else elts
+  private def rotate_data[T <: Bits](data: T, sz: Int) = {
+    val w = data.getWidth
+    require(w > 0)
+    val in = (0 until w by sz).map(i => data(i+sz-1, i))
+    require(in.size <= nBatch)
     val out = rotate(Bits(), in, data_rotamt)
     Vec(out.map(extend(_, sz)))
   }
 
-  val data_d = rotate_data(SZ_D)
-  val data_w = rotate_data(SZ_W)
-  val data_h = rotate_data(SZ_H)
-  val data_b = rotate_data(SZ_B)
+  private val tlDataMidBits = tlDataBits >> 1
 
-  val data = Mux1H(mt_sel, Seq(data_d, data_w, data_h, data_b))
+  val load = vldq.bits.data
+  val load_b = Mux(meta.epad(tlByteAddrBits-1),
+    load(tlDataBits-1, tlDataMidBits),
+    load(tlDataMidBits-1, 0))
+
+  val data_d = rotate_data(load, SZ_D)
+  val data_w = rotate_data(load, SZ_W)
+  val data_h = rotate_data(load, SZ_H)
+  val data_b = rotate_data(load_b, SZ_B)
+  val data = Mux1H(mts, Seq(data_d, data_w, data_h, data_b))
 
   //--------------------------------------------------------------------\\
   // masking / overflow
@@ -528,9 +522,11 @@ class VLU extends VXUModule {
   val tick = Reg(init = Bool(true))
   val tock = !tick
 
-  val mask_root = EnableDecoder(meta.ecnt, nBatch)
+  val ecnt = meta.ecnt.decode()
+  val mask_root_all = EnableDecoder(ecnt, nBatch)
+  val mask_root = (0 until nBatch).map(mask_root_all(_))
 
-  assert(!vldq.valid || (meta.ecnt <= UInt(nBatch)), "ecnt exceeds limit")
+  assert(!vldq_valid || (ecnt <= UInt(nBatch)), "VLU: ecnt exceeds limit")
   val slice_unaligned = (eidx_slice != UInt(0)) && tick
   val slice_overflow = mask_root.last && slice_unaligned
 
@@ -578,7 +574,7 @@ class VLU extends VXUModule {
     bwq.io.deq.ready := deq.ready
 
     deq.bits.selff := Bool(false) // FIXME
-    deq.bits.addr := vd + (bwq.io.deq.bits.eidx * io.cfg.vstride)
+    deq.bits.addr := op.vd.id + (bwq.io.deq.bits.eidx * io.cfg.vstride)
     deq.bits.data := bwq.io.deq.bits.data
     deq.bits.mask := FillInterleaved(regLen >> 3, bwq.io.deq.bits.mask)
 
@@ -588,13 +584,13 @@ class VLU extends VXUModule {
   val bwqs_ready = bwqs.zip(bwqs_en).map { case (bwq, en) => !en || bwq.ready }
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = vldq.valid +: bwqs_ready
+    val rvs = vldq_valid +: bwqs_ready
     (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _)
   }
 
-  val bwqs_ready_all = fire(vldq.valid)
-  bwqs_fire := bwqs_ready_all && vldq.valid
-  vldq.ready := bwqs_ready_all && !slice_overflow
+  val bwqs_ready_all = fire(vldq_valid)
+  bwqs_fire := bwqs_ready_all && vldq_valid
+  vldq.ready := bwqs_ready_all && !slice_overflow && sink
   bwqs.zip(bwqs_ready.zip(bwqs_en)).foreach { case (bwq, (ready, en)) =>
     bwq.valid := fire(ready, en)
   }
@@ -630,73 +626,4 @@ class VLU extends VXUModule {
     (Bool(true), UInt(maxLookAhead))
   val wb_locnt = priority_tree(wb_locnt_init).head._2
   io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
-}
-
-class VLUInterposer extends VXUModule {
-  val io = new Bundle {
-    val enq = new VLDQIO().flip
-    val deq = new VLDQIO
-
-    val init = Bool(INPUT)
-    val en = Bool(INPUT)
-  }
-
-  val meta = io.enq.bits.meta
-  val ecnt = Mux(meta.ecnt === UInt(0), UInt(tlDataBytes), meta.ecnt)
-
-  val ecnt_head = SInt(nBatch) - meta.eskip.zext
-  val ecnt_tail = ecnt.zext - ecnt_head
-  val has_head = (ecnt_head > SInt(0))
-  val has_tail = (ecnt_tail > SInt(0))
-
-  val shift = Bool()
-  val dequeue = Bool()
-  shift := Bool(false)
-  dequeue := Bool(true)
-
-  io.deq.valid := io.enq.valid
-  io.enq.ready := io.deq.ready && dequeue
-
-  val fire = io.deq.fire()
-  io.deq.bits.meta := meta
-  io.deq.bits.data := Mux(shift,
-    io.enq.bits.data(tlDataBits-1, nBatch*8),
-    io.enq.bits.data)
-  io.deq.bits.last := Bool(false) // don't care
-
-  val s1 :: s2 :: Nil = Enum(UInt(), 2)
-  val state = Reg(UInt())
-
-  when (io.init) {
-    state := s1
-  }
-
-  when (io.en) {
-    switch (state) {
-      is (s1) {
-        when (has_tail) {
-          when (has_head) { /* two beats */
-            io.deq.bits.meta.ecnt := ecnt_head
-            dequeue := Bool(false)
-            when (fire) {
-              state := s2
-            }
-          } .otherwise { /* one beat, shifted */
-            io.deq.bits.meta.eskip := meta.eskip - UInt(nBatch)
-            shift := Bool(true)
-          }
-        }
-      }
-
-      is (s2) {
-        io.deq.bits.meta.ecnt := ecnt_tail
-        io.deq.bits.meta.eidx := meta.eidx + ecnt_head
-        io.deq.bits.meta.eskip := UInt(0)
-        shift := Bool(true)
-        when (fire) {
-          state := s1
-        }
-      }
-    }
-  }
 }

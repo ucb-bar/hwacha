@@ -2,280 +2,338 @@ package hwacha
 
 import Chisel._
 
-class VMUAddr extends VMUMemOp {
-  val meta = new VMUMetaUnion
+class AGUPipeEntry extends VMUBundle {
+  val addr = UInt(width = bPAddr - tlByteAddrBits)
+  val mask = UInt(width = tlDataBytes >> 1)
+  val meta = new VMUMetaAddr
 }
-class VMUAddrIO extends DecoupledIO(new VMUAddr)
+class AGUPipeIO extends DecoupledIO(new AGUPipeEntry)
 
-class VVAQ extends VMUModule with SeqParameters {
+class VVAQ extends VMUModule {
   val io = new Bundle {
     val enq = new VVAQIO().flip
     val deq = new VVAQIO
   }
 
-  val q = Module(new Queue(io.enq.bits.clone, nVVAQ))
+  val q = Module(new Queue(io.enq.bits, nVVAQ))
   q.io.enq <> io.enq
   io.deq <> q.io.deq
 }
 
-class TLBIO extends VMUBundle {
-  val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBRespNoHitIndex().flip
-
-  def query(vpn: UInt, store: Bool): Bool = {
-    this.req.bits.vpn := vpn
-    this.req.bits.asid := UInt(0)
-    this.req.bits.passthrough := Bool(false)
-    this.req.bits.instruction := Bool(false)
-    this.req.bits.store := store
-
-    this.req.ready && !this.resp.miss
-  }
-
-  def query(op: VMUDecodedOp, addr: UInt, irq: IRQIO): (Bool, Bool) = {
-    val tlb_ready = this.query(addr(vaddrBits, pgIdxBits), op.cmd.write)
-    val tlb_finish = tlb_ready && this.req.valid
-
-    val addr_ma = Seq(op.mt.h, op.mt.w, op.mt.d).zipWithIndex.map(x =>
-        x._1 && (addr(x._2, 0) != UInt(0))).reduce(_ || _) // misalignment
-
-    val xcpts = Seq(
-      addr_ma && op.cmd.read,
-      addr_ma && op.cmd.write,
-      this.resp.xcpt_ld && op.cmd.read,
-      this.resp.xcpt_st && op.cmd.write)
-    val irqs = Seq(irq.vmu.ma_ld, irq.vmu.ma_st,
-      irq.vmu.faulted_ld, irq.vmu.faulted_st)
-
-    irqs.zip(xcpts).foreach { case (irq, xcpt) =>
-      irq := xcpt && tlb_finish
-    }
-    irq.vmu.aux := addr
-
-    (tlb_ready, xcpts.reduce(_ || _))
-  }
-}
-
 class ABox0 extends VMUModule {
-  val io = new Bundle {
-    val issue = new VMUIssueOpIO().flip
-    val xcpt = new XCPTIO().flip
-    val irq = new IRQIO
-
-    val tlb = new TLBIO
+  val io = new VMUIssueIO {
     val vvaq = new VVAQIO().flip
     val vpaq = new VPAQIO
+    val vcu = new VCUIO
+
+    val tlb = new TLBIO
+    val mask = new VMUMaskIO_0().flip
+    val xcpt = new XCPTIO().flip
   }
 
-  val op = io.issue.op
-  private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
+  val op = Reg(new VMUDecodedOp)
+  private val mask = io.mask.bits
 
-  private def pgidx(x: UInt) = x(pgIdxBits-1, 0)
-  val offset = pgidx(op.base)
-  val ecnt_off = offset >> op.mt.shamt()
+  val stride_n = op.aux.vector().stride << mask.nonunit.shift
+  val stride = Mux(op.mode.unit, UInt(pgSize), stride_n)
 
-  val first = Reg(Bool())
-  val ecnt_pg = Mux1H(mt, (0 until mt.size).map(i => UInt(pgSzBytes >> i)))
-  val ecnt_max = Mux(op.unit && !op.mode.indexed,
-    ecnt_pg - (ecnt_off & Fill(first, pgIdxBits)), UInt(1))
+  val addr_offset = Mux(op.mode.indexed, io.vvaq.bits.addr, stride)
+  val addr_result = op.base + addr_offset
+  val addr = Mux(op.mode.indexed, addr_result, op.base)
 
-  val count = Reg(UInt(width = bVLen))
-  val count_next = count.zext - ecnt_max.zext
-  val count_last = (count_next <= SInt(0))
-  val ecnt = Mux(count_next(bVLen), count, ecnt_max)
+  val pred = mask.pred
 
-  val stride = Mux(op.unit, UInt(pgSzBytes), op.aux.v.stride)
-  val accum = Reg(UInt())
-  val addr_addend = Mux(op.mode.indexed, io.vvaq.bits.addr, stride)
-  val addr_sum = accum + addr_addend
-  val addr = Mux(op.mode.indexed, addr_sum, accum)
-  val addr_valid = !op.mode.indexed || io.vvaq.valid
+  io.tlb.req.bits.addr := addr
+  io.tlb.req.bits.store := op.cmd.write
+  io.tlb.req.bits.mt := op.mt
+  io.vpaq.bits.addr := io.tlb.paddr()
+  io.vcu.bits.ecnt := mask.ecnt
 
-  val (tlb_ready, xcpt) = io.tlb.query(op, addr, io.irq)
+  val vvaq_valid = !op.mode.indexed || io.vvaq.valid
+  val vpaq_ready = !pred || io.vpaq.ready
+  val tlb_ready = !pred || io.tlb.req.ready
 
-  io.vpaq.bits.addr := Cat(io.tlb.resp.ppn, pgidx(addr))
-  io.vpaq.bits.ecnt := ecnt
-
-  val stall_hold = Reg(init = Bool(false))
-  val stall = stall_hold || io.xcpt.prop.vmu.stall
-  when (io.tlb.req.fire() && xcpt) {
-    stall_hold := Bool(true)
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(io.mask.valid, vvaq_valid, vpaq_ready, tlb_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
+
+  io.op.ready := Bool(false)
+  io.mask.ready := Bool(false)
+  io.vvaq.ready := Bool(false)
+  io.vpaq.valid := Bool(false)
+  io.vcu.valid := Bool(false)
+  io.tlb.req.valid := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
-
-  val busy = (state === s_busy)
-  io.issue.busy := busy
-
-  val en = busy && !stall
-  private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(addr_valid, tlb_ready, io.vpaq.ready)
-    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _) && en
-  }
-
-  io.vvaq.ready := fire(addr_valid, op.mode.indexed)
-  io.tlb.req.valid := fire(tlb_ready)
-  io.vpaq.valid := fire(io.vpaq.ready, !xcpt)
+  val stall = Reg(init = Bool(false))
 
   switch (state) {
     is (s_idle) {
-      when (io.issue.fire) {
+      io.op.ready := Bool(true)
+      when (io.op.valid) {
         state := s_busy
-        count := op.vlen
-        accum := op.base
-        first := Bool(true)
+        op := io.op.bits
       }
     }
 
     is (s_busy) {
-      when (io.vpaq.fire()) {
-        when (!op.mode.indexed) {
-          accum := addr_sum
+      unless (stall || io.xcpt.prop.vmu.stall) {
+        io.mask.ready := fire(io.mask.valid)
+        io.vvaq.ready := fire(vvaq_valid, op.mode.indexed)
+        io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
+        io.tlb.req.valid := vvaq_valid && io.mask.valid && pred
+
+        when (fire(null)) {
+          unless (op.mode.indexed || (op.mode.unit && !mask.unit.page)) {
+            op.base := addr_result
+          }
+          when (io.tlb.resp.xcpt && pred) {
+            stall := Bool(true)
+          } .otherwise {
+            io.vcu.valid := Bool(true)
+            when (mask.last) {
+              state := s_idle
+            }
+          }
         }
-        count := count_next
-        when (count_last) {
-          state := s_idle
-        }
-        first := Bool(false)
       }
     }
   }
-}
-
-class TBox(n: Int) extends VMUModule {
-  val io = new Bundle {
-    val inner = Vec.fill(n)(new TLBIO).flip
-    val outer = new TLBIO
-  }
-
-  val ready = io.inner.init.map(!_.req.valid).scanLeft(io.outer.req.ready)(_ && _)
-  io.inner.zip(ready).foreach { case (i, r) =>
-    i.req.ready := r
-    i.resp := io.outer.resp
-  }
-
-  // Priority mux
-  val bits = io.inner.init.foldRight(io.inner.last.req.bits) {
-    case (a, b) => Mux(a.req.valid, a.req.bits, b)
-  }
-  io.outer.req.bits := bits
-  io.outer.req.valid := io.inner.map(_.req.valid).reduce(_ || _)
 }
 
 class VPAQ extends VMUModule with SeqParameters {
   val io = new Bundle {
     val enq = new VPAQIO().flip
-    val deq = Decoupled(UInt(width = paddrBits))
+    val deq = new VPAQIO
+
+    val vcu = Valid(new VCUEntry).flip
     val la = new CounterLookAheadIO().flip
   }
 
-  val q = Module(new Queue(io.enq.bits.addr.clone, nVPAQ))
-  q.io.enq.valid := io.enq.valid
-  q.io.enq.bits := io.enq.bits.addr
-  io.enq.ready := q.io.enq.ready
+  val q = Module(new Queue(io.enq.bits, nVPAQ))
+  q.io.enq <> io.enq
   io.deq <> q.io.deq
 
-  val lacntr = Module(new LookAheadCounter(0, maxVLen))
-  lacntr.io.inc.cnt := io.enq.bits.ecnt
-  lacntr.io.inc.update := io.enq.fire()
-  lacntr.io.dec <> io.la
+  val vcucntr = Module(new LookAheadCounter(0, maxVCU))
+  vcucntr.io.inc.cnt := io.vcu.bits.ecnt
+  vcucntr.io.inc.update := io.vcu.valid
+  vcucntr.io.dec <> io.la
 }
 
 class ABox1 extends VMUModule {
-  val io = new Bundle {
-    val issue = new VMUIssueOpIO().flip
+  val io = new VMUIssueIO {
+    val vpaq = new VPAQIO().flip
+    val pipe = new AGUPipeIO
+
+    val mask = new VMUMaskIO_1().flip
     val xcpt = new XCPTIO().flip
     val la = new CounterLookAheadIO().flip
-
-    val vpaq = Decoupled(UInt(width = paddrBits)).flip
-    val mbox = new VMUAddrIO
   }
 
-  val op = io.issue.op
-  private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
-  val packed = op.unit && !op.mode.indexed
+  val op = Reg(new VMUDecodedOp)
+  val shift = Reg(UInt(width = 2))
 
-  val count = Reg(UInt(width = bVLen))
-  val first = Reg(Bool())
+  private val limit = tlDataBytes >> 1
+  private val lglimit = tlByteAddrBits - 1
 
-  // Byte offset of first element
-  val offset = io.vpaq.bits(tlByteAddrBits-1,0) &
-    Fill(tlByteAddrBits, !packed || first)
-  val eskip = offset >> op.mt.shamt()
+  val lead = Reg(Bool())
+  val beat = Reg(UInt(width = 1))
+  private val beat_1 = (beat === UInt(1))
 
-  val ecnt_blk = Mux1H(mt, (0 until mt.size).map(i => UInt(tlDataBytes >> i)))
-  val ecnt_max = Mux(packed, ecnt_blk - eskip, UInt(1))
-  val count_next = count.zext - ecnt_max
-  val last = (count_next <= SInt(0))
-  val ecnt = Mux(last, count(tlByteAddrBits, 0), ecnt_max)
-  val ecnt_valve = UInt()
-  val eidx = op.vlen - count
+  private def offset(x: UInt) = x(tlByteAddrBits-1, 0)
+  val pad_u_rear = Cat(op.mt.b && beat_1, UInt(0, tlByteAddrBits-1))
+//val pad_u_rear = Mux(op.mt.b && beat_1, UInt(limit), UInt(0))
+  val pad_u = Mux(lead, offset(op.base), pad_u_rear)
+  val eoff = offset(io.vpaq.bits.addr) >> shift
+  val epad = Mux(!op.mode.unit || lead, eoff, pad_u_rear)
 
-  val subblock = Reg(UInt(width = pgIdxBits - tlByteAddrBits))
-  val subblock_next = subblock + UInt(1)
-  val dequeue = !packed || (subblock_next === UInt(0)) || last
+  /* Equivalence: x modulo UInt(limit) */
+  private def truncate(x: UInt) = x(tlByteAddrBits-2, 0)
+  private def saturate(x: UInt) = {
+    /* Precondition: x != UInt(0) */
+    val v = truncate(x)
+    Cat(v === UInt(0), v)
+  }
 
-  // Track number of elements permitted to depart
-  val valve = Reg(init = UInt(0, bVLen))
+  val ecnt_u_max = (UInt(tlDataBytes) - pad_u) >> shift
+  val ecnt_u = saturate(ecnt_u_max)
+  val ecnt_max = Mux(op.mode.unit, ecnt_u, UInt(1))
+
+  val vlen_next = op.vlen.zext - ecnt_max
+  val vlen_end = (vlen_next <= SInt(0))
+  val ecnt_test = Mux(vlen_end, offset(op.vlen), ecnt_max)
+
+  val xcpt = io.xcpt.prop.top.stall
+
+  val valve = Reg(init = UInt(0, bVCU))
+  val valve_off = (valve < ecnt_test)
+  val valve_end = xcpt && (valve_off || (valve === ecnt_test))
+  val ecnt = Mux(valve_off, offset(valve), ecnt_test)
+  /* Track number of elements permitted to depart following VCU */
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
-  val valve_sub = Mux(io.mbox.fire(), ecnt_valve, UInt(0))
+  val valve_sub = Mux(io.mask.fire(), ecnt, UInt(0))
   valve := valve + valve_add - valve_sub
 
-  // Flush valve following exception
-  val valve_on = (valve >= ecnt)
-  val valve_ok = valve_on || (io.xcpt.prop.top.stall && (valve != UInt(0)))
-  ecnt_valve := Mux(!valve_on && io.xcpt.prop.top.stall, valve(tlByteAddrBits, 0), ecnt)
+  val en = !valve_off || xcpt
+  val end = vlen_end || valve_end
 
-  val ppn = io.vpaq.bits(paddrBits-1, pgIdxBits)
-  val pgidx_blk = Mux(packed, subblock, io.vpaq.bits(pgIdxBits-1, tlByteAddrBits))
-  val pgidx_off = io.vpaq.bits(tlByteAddrBits-1, 0) & Fill(tlByteAddrBits, !packed)
-  val addr = Cat(ppn, pgidx_blk, pgidx_off)
+  val blkidx = op.base(bPgIdx-1, tlByteAddrBits)
+  val blkidx_next = blkidx + UInt(1)
+  val blkidx_update = !op.mt.b || beat_1
+  val blkidx_end = (blkidx_update && (blkidx_next === UInt(0)))
 
-  io.issue.busy := Bool(false)
+  val addr_ppn = io.vpaq.bits.addr(bPAddr-1, bPgIdx)
+  val addr_pgidx = Mux(op.mode.unit,
+    Cat(blkidx, Bits(0, tlByteAddrBits)),
+    io.vpaq.bits.addr(bPgIdx-1, 0))
+  val addr = Cat(addr_ppn, addr_pgidx)
+
+  /* Clear predicates unrelated to the current request */
+  val mask_ecnt = EnableDecoder(ecnt_max, limit)
+  val mask_xcpt = EnableDecoder(valve, limit)
+  val mask_aux_base = mask_ecnt & mask_xcpt
+  val mask_aux = (mask_aux_base << truncate(epad))(limit-1, 0)
+  val mask_data = io.mask.bits.data & mask_aux
+  val pred = mask_data.orR
+  val pred_hold = Reg(Bool())
+  val pred_u = pred_hold || pred
+
+  io.mask.meta.eoff := truncate(eoff)
+  io.mask.meta.last := vlen_end
+
+  io.pipe.bits.addr := addr(bPAddr-1, tlByteAddrBits)
+  io.pipe.bits.mask := mask_data
+  io.pipe.bits.meta.ecnt.encode(ecnt)
+  io.pipe.bits.meta.epad := epad
+  io.pipe.bits.meta.last := end
+  io.pipe.bits.meta.vsdq := io.mask.bits.vsdq
+
+  val vpaq_deq_u = pred_u && (blkidx_end || vlen_end)
+  val vpaq_deq = Mux(op.mode.unit, vpaq_deq_u, pred)
+  val vpaq_valid = !pred || io.vpaq.valid
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(io.mask.valid, vpaq_valid, io.pipe.ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  io.op.ready := Bool(false)
+  io.mask.ready := Bool(false)
   io.vpaq.ready := Bool(false)
-  io.mbox.valid := Bool(false)
-  io.mbox.bits.cmd := op.fn.cmd
-  io.mbox.bits.mt := op.fn.mt
-  io.mbox.bits.addr := addr
-  io.mbox.bits.meta.eidx := eidx
-  io.mbox.bits.meta.ecnt := ecnt_valve
-  io.mbox.bits.meta.eskip := eskip
-
-  io.mbox.bits.meta.offset := offset
-  io.mbox.bits.meta.first := first
-  io.mbox.bits.meta.last := last
+  io.pipe.valid := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      when (io.issue.fire) {
+      io.op.ready := Bool(true)
+      when (io.op.valid) {
         state := s_busy
-        count := op.vlen
-        when (packed) {
-          subblock := op.base(pgIdxBits-1, tlByteAddrBits)
-        }
+        op := io.op.bits
+        shift := io.op.bits.mt.shift()
       }
-      first := Bool(true)
-
-      // Check that valve counter returns to zero after each memory operation
-      assert(valve === UInt(0), "VMU: valve counter with non-zero initial value")
+      beat := io.op.bits.base(tlByteAddrBits-1)
+      lead := Bool(true)
+      pred_hold := Bool(false)
     }
 
     is (s_busy) {
-      io.issue.busy := Bool(true)
-      io.mbox.valid := io.vpaq.valid && valve_ok
-      io.vpaq.ready := io.mbox.ready && valve_ok && dequeue
+      when (en) {
+        io.mask.ready := fire(io.mask.valid)
+        io.vpaq.ready := fire(vpaq_valid, vpaq_deq)
+        io.pipe.valid := fire(io.pipe.ready)
 
-      when (io.mbox.fire()) {
-        count := count_next
-        when (packed) {
-          subblock := subblock_next
+        when (fire(null)) {
+          lead := Bool(false)
+          pred_hold := pred_u && !blkidx_end
+          when (op.mt.b) {
+            beat := beat + UInt(1)
+          }
+          when (op.mode.unit && blkidx_update) {
+            blkidx := blkidx_next
+          }
+          op.vlen := vlen_next
+          when (end) {
+            state := s_idle
+          }
         }
-        first := Bool(false)
-        when (last) {
+      }
+    }
+  }
+}
+
+class ABox2 extends VMUModule {
+  val io = new VMUIssueIO {
+    val inner = new AGUPipeIO().flip
+    val outer = new AGUIO
+    val store = Valid(new VMUStoreCtrl)
+  }
+
+  private val outer = io.outer.bits
+  private val inner = io.inner.bits
+
+  val op = Reg(new VMUDecodedOp)
+  val mt = DecodedMemType(op.fn.mt)
+
+  val eidx = Reg(UInt(width = bVLen))
+
+  val offset = (inner.meta.epad << mt.shift())(tlByteAddrBits-1, 0)
+
+  val mask_shift = inner.meta.epad(tlByteAddrBits - 1)
+  val mask_full = Mux(mask_shift,
+    Cat(inner.mask, UInt(0, tlDataBytes >> 1)),
+    inner.mask)
+  val mask = PredicateByteMask(mask_full, mt)
+
+  outer.addr := Cat(inner.addr, offset)
+  outer.fn.cmd := op.fn.cmd
+  outer.fn.mt := op.fn.mt
+  outer.mask := mask
+  outer.pred := inner.mask.orR
+  outer.meta.eidx := eidx
+  outer.meta.ecnt := inner.meta.ecnt
+  outer.meta.epad := inner.meta.epad
+  outer.meta.last := inner.meta.last
+  outer.meta.vsdq := inner.meta.vsdq
+
+  io.store.bits.mode.unit := op.mode.unit
+  io.store.bits.base := op.base(tlByteAddrBits-1, 0)
+  io.store.bits.mt := mt
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(io.inner.valid, io.outer.ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  io.op.ready := Bool(false)
+  io.inner.ready := Bool(false)
+  io.outer.valid := Bool(false)
+  io.store.valid := Bool(false)
+
+  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
+  val state = Reg(init = s_idle)
+
+  switch (state) {
+    is (s_idle) {
+      io.op.ready := Bool(true)
+      when (io.op.valid) {
+        state := s_busy
+        op := io.op.bits
+      }
+      eidx := UInt(0)
+    }
+
+    is (s_busy) {
+      io.inner.ready := fire(io.inner.valid)
+      io.outer.valid := fire(io.outer.ready)
+      io.store.valid := Bool(true)
+
+      when (fire(null)) {
+        eidx := eidx + inner.meta.ecnt.decode()
+        when (inner.meta.last) {
           state := s_idle
         }
       }
@@ -283,97 +341,50 @@ class ABox1 extends VMUModule {
   }
 }
 
-class VPFQ extends VMUModule {
-  val io = new Bundle {
-    val xcpt = new XCPTIO().flip
-    val tlb = new TLBIO
-
-    val enq = new VVAPFQIO().flip
-    val deq = new VMUAddrIO
-  }
-
-  private def vpn(x: UInt) = x(vaddrBits, pgIdxBits)
-  private def pgidx(x: UInt) = x(pgIdxBits-1, 0)
-
-  val vvapfq = Module(new Queue(io.enq.bits.clone, nVPFQ))
-  vvapfq.io.enq <> io.enq
-
-  val tlb_ready = io.tlb.query(
-    vpn(vvapfq.io.deq.bits.addr), vvapfq.io.deq.bits.store)
-
-  val en = !io.xcpt.prop.vmu.stall
-  private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(vvapfq.io.deq.valid, tlb_ready, io.deq.ready)
-    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _) && en
-  }
-
-  vvapfq.io.deq.ready := fire(vvapfq.io.deq.valid)
-  io.tlb.req.valid := fire(tlb_ready)
-  io.deq.valid := fire(io.deq.ready,
-    !(io.tlb.resp.xcpt_ld && io.tlb.resp.xcpt_st))
-
-  io.deq.bits.cmd := Mux(vvapfq.io.deq.bits.store, M_PFW, M_PFR)
-  io.deq.bits.mt := Bits(0)
-  io.deq.bits.addr := Cat(io.tlb.resp.ppn, pgidx(vvapfq.io.deq.bits.addr))
-  io.deq.bits.meta := (new VMUMetaUnion).fromBits(Bits(0))
-}
-
 class ABox extends VMUModule {
   val io = new Bundle {
-    val issue = new VMUIssueOpIO().flip
-    val xcpt = new XCPTIO().flip
-    val irq = new IRQIO
-
-    val tlb = new Bundle {
-      val lane = new TLBIO
-      val pf = new TLBIO
-    }
-
+    val op = Vec.fill(3)(Decoupled(new VMUDecodedOp).flip)
     val lane = new VVAQIO().flip
-    val pf = new VVAPFQIO().flip
+    val mem = new AGUIO
+
+    val tlb = new TLBIO
+    val mask = new VMUMaskIO().flip
+    val xcpt = new XCPTIO().flip
     val la = new CounterLookAheadIO().flip
 
-    val mbox = new VMUAddrIO
+    val store = Valid(new VMUStoreCtrl)
   }
 
   val vvaq = Module(new VVAQ)
   val vpaq = Module(new VPAQ)
   val abox0 = Module(new ABox0)
   val abox1 = Module(new ABox1)
+  val abox2 = Module(new ABox2)
 
   vvaq.io.enq <> io.lane
 
+  abox0.io.op <> io.op(0)
+  abox0.io.mask <> io.mask.ante
   abox0.io.vvaq <> vvaq.io.deq
-  abox0.io.issue.op := io.issue.op
-  abox0.io.issue.fire := io.issue.fire
   abox0.io.xcpt <> io.xcpt
-  abox0.io.tlb <> io.tlb.lane
+  io.tlb <> abox0.io.tlb
 
   vpaq.io.enq <> abox0.io.vpaq
+  vpaq.io.vcu <> abox0.io.vcu
   vpaq.io.la <> io.la
 
+  abox1.io.op <> io.op(1)
+  abox1.io.mask <> io.mask.post
   abox1.io.vpaq <> vpaq.io.deq
-  abox1.io.issue <> io.issue
   abox1.io.xcpt <> io.xcpt
   abox1.io.la <> io.la
 
-  val mboxq = Module(new Queue(io.mbox.bits.clone.asDirectionless(), 2))
-  if (confvru) {
-    val vpfq = Module(new VPFQ)
-    vpfq.io.enq <> io.pf
-    vpfq.io.xcpt <> io.xcpt
-    vpfq.io.tlb <> io.tlb.pf
+  val pipe = Module(new Queue(abox1.io.pipe.bits, 2))
+  pipe.io.enq <> abox1.io.pipe
 
-    val arb = Module(new RRArbiter(io.mbox.bits.clone.asDirectionless(), 2))
-    arb.io.in(0) <> abox1.io.mbox
-    arb.io.in(1) <> vpfq.io.deq
-    mboxq.io.enq <> arb.io.out
-  } else {
-    mboxq.io.enq <> abox1.io.mbox
-    io.pf.ready := Bool(false)
-    io.tlb.pf.req.valid := Bool(false)
-  }
-  io.mbox <> mboxq.io.deq
+  abox2.io.op <> io.op(2)
+  abox2.io.inner <> pipe.io.deq
+  io.mem <> abox2.io.outer
 
-  io.irq <> abox0.io.irq
+  io.store <> abox2.io.store
 }

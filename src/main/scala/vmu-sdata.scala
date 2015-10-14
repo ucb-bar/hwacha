@@ -2,81 +2,98 @@ package hwacha
 
 import Chisel._
 
-class VMUStoreIO extends Bundle {
-  val valid = Bool(OUTPUT)
-  val ready = Bool(INPUT)
-  val meta = new VMUStoreMetaEntry().asOutput
-  val store = new VMUStoreData().asInput
+class VMUStoreCtrl extends VMUBundle {
+  val mode = new Bundle {
+    val unit = Bool()
+  }
+  val base = UInt(width = tlByteAddrBits)
+  val mt = new DecodedMemType
+}
+
+class VMSUMeta extends VMUMetaCount with VMUMetaStore {
+  val offset = UInt(width = tlByteAddrBits)
+}
+
+class VMSUIO extends VSDQIO {
+  val meta = new VMSUMeta().asInput()
 }
 
 class SBox extends VMUModule {
   val io = new Bundle {
-    val issue = new VMUIssueOpIO().flip
+    val ctrl = Valid(new VMUStoreCtrl).flip
     val lane = new VSDQIO().flip
-    val mbox = new VMUStoreIO().flip
+    val mem = new VMSUIO
   }
 
-  val op = io.issue.op
-  val meta = io.mbox.meta
-  val packed = op.unit && !op.mode.indexed
-  private val mt = Seq(op.mt.b, op.mt.h, op.mt.w, op.mt.d)
+  private val op = io.ctrl.bits
+  private val mts = Seq(op.mt.d, op.mt.w, op.mt.h, op.mt.b)
+  private val meta = io.mem.meta
 
-  val vsdq = Module(new Queue(Bits(width = tlDataBits), nVSDQ))
+  val vsdq = Module(new Queue(io.lane.bits, nVSDQ))
   vsdq.io.enq <> io.lane
 
-  val hold = Reg(Bits(width = tlDataBits - 8))
+  /* Byte mode: Ignore MSB */
+  private def saturate[T <: Bits](x: T) =
+    Cat(x(tlByteAddrBits-1) & (!op.mt.b), x(tlByteAddrBits-2, 0))
+
+  val lead = Reg(init = Bool(true))
+  val index = Reg(init = UInt(0, tlByteAddrBits))
+  val index_step = Cat(mts)
+  val index_next = saturate(index + index_step)
+  val index_end = (index_next === UInt(0))
+
+  val offset_u = saturate(op.base)
+  val offset = Mux(op.mode.unit, offset_u, meta.offset)
+
+  /* NOTE: Due to read bandwidth constraints, only the lower half of a
+     VSDQ entry (width tlDataBits/2) is populated for byte operations
+     ("byte mode"). */
+  private val bbyte = tlDataBits >> 1
+  /* Byte mode: Number of relevant data bits in a partial VSDQ entry to
+     save into the hold register */
+  private val bpart = bbyte - 8
+
+  val hold = Reg(Bits(width = tlDataBits - 16))
   when (vsdq.io.deq.fire()) {
-    hold := vsdq.io.deq.bits(tlDataBits-1, 8)
+   /* Byte mode: Align relevant data bits to the upper end of the
+      hold register */
+    hold := Cat(Mux(op.mt.b,
+        vsdq.io.deq.bits.data(bpart+7, 8),
+        vsdq.io.deq.bits.data(tlDataBits-1, tlDataBits-bpart)),
+      /* Lower bits ignored during byte mode */
+      vsdq.io.deq.bits.data(tlDataBits-bpart-1, 16))
   }
 
-  val index = Reg(Bits(width = tlByteAddrBits))
-  val index_mask = !(packed || meta.first)
-  val index_real = index & Fill(tlByteAddrBits, index_mask)
-  val index_step = Cat(mt.reverse)
-  val index_next = index_real + index_step
-  val index_next_real = Cat(
-    index_next(tlByteAddrBits-1) & !op.mt.b,
-    index_next(tlByteAddrBits-2,0))
-  val mbox_fire = io.mbox.valid && io.mbox.ready
-  when (mbox_fire) {
-    index := index_next_real
+  val data_head = Cat(vsdq.io.deq.bits.data, hold, Bits(0, 8) /* pad */)
+  /* Equivalence: index + (UInt(tlDataBytes) - 1 - offset) */
+  val shift = Cat(UInt(0,1), index) + (~offset)
+
+  val data_align = (data_head >> Cat(shift, UInt(0,3)))(tlDataBits-1, 0)
+  val data_hi = data_align(tlDataBits-1, bbyte)
+  val data_lo = data_align(bbyte-1, 0)
+  val data = Cat(Mux(op.mode.unit && op.mt.b, data_lo, data_hi), data_lo)
+  io.mem.bits.data := data
+
+  val bcnt = meta.ecnt.decode() << op.mt.shift()
+  assert(!op.mt.b || (bcnt <= UInt(tlDataBytes >> 1)),
+    "SBox: bcnt exceeds limit")
+  val truncate = (bcnt <= op.base) && !lead && meta.last
+
+  val vsdq_deq = meta.vsdq &&
+    Mux(op.mode.unit, !truncate, index_end || meta.last)
+  val vsdq_valid = !meta.vsdq || (op.mode.unit && truncate) ||
+    vsdq.io.deq.valid
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(vsdq_valid, io.mem.ready, io.ctrl.valid)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  val offset_base = op.base(tlByteAddrBits-1,0)
-  val offset = Mux(packed, offset_base, meta.offset)
+  vsdq.io.deq.ready := fire(vsdq_valid, vsdq_deq)
+  io.mem.valid := fire(io.mem.ready)
 
-  val funnel = Module(new FunnelShifter(Bits(width = 8), tlDataBytes))
-  funnel.io.in0 := Vec((0 until tlDataBits by 8).map(i => vsdq.io.deq.bits(i+7,i)))
-  funnel.io.in1 := Vec(Bits(0) +: (0 until tlDataBits-8 by 8).map(i => hold(i+7,i)))
-  funnel.io.shift := offset.zext - index_real.zext
-
-  // Map (ecnt == 0) to tlDataBytes
-  val mask_lut = Vec(UInt((1 << tlDataBytes) - 1) +:
-    (1 until tlDataBytes).map(i => UInt((1 << i) - 1)))
-  val mask_elt = mask_lut(meta.ecnt)
-  val mask_shl = mask_elt << meta.eskip
-
-  val mask = Mux1H(mt, (0 until mt.size).map(i => /* Expand */
-    FillInterleaved(1 << i, mask_shl((tlDataBytes >> i)-1, 0))))
-
-  val ecnt = Mux(meta.ecnt === UInt(0), UInt(tlDataBytes), meta.ecnt)
-  val eoff = offset_base >> op.mt.shamt()
-  val truncate = (ecnt <= eoff) && !meta.first
-
-  val data_valid = vsdq.io.deq.valid || (packed && truncate)
-  val dequeue = Mux(packed, !truncate, (index_next_real === UInt(0)) || meta.last)
-
-  vsdq.io.deq.ready := io.mbox.valid && dequeue
-  io.mbox.ready := data_valid
-
-  io.mbox.store.data := Cat(funnel.io.out.reverse)
-  io.mbox.store.mask := mask
-
-  val busy = Reg(init = Bool(false))
-  when (io.issue.fire) {
-    busy := Bool(true)
-  } .elsewhen(mbox_fire && meta.last) {
-    busy := Bool(false)
+  when (fire(null)) {
+    index := Mux(op.mode.unit || meta.last, UInt(0), index_next)
+    lead := meta.last
   }
-  io.issue.busy := busy
 }

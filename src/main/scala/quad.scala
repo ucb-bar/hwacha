@@ -10,8 +10,8 @@ class Quad extends HwachaModule {
       val vmu = Decoupled(new VMUOp).flip
       val scalar = new ScalarMemIO
     }
-    val dtlb = new TLBIO
-    val ptlb = new TLBIO
+    val dtlb = new RTLBIO
+    val ptlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO
     val pending = new Bundle {
       val seq = Bool(OUTPUT)
@@ -43,7 +43,7 @@ class Quad extends HwachaModule {
   io.pending.seq := vxu.io.pending
   io.pending.mem := mrt.io.pending
 
-  vmu.io.pf.vaq.valid := Bool(false)
+//vmu.io.pf.vaq.valid := Bool(false)
   vmu.io.xcpt.prop.vmu.stall := Bool(false)
   vmu.io.xcpt.prop.vmu.drain := Bool(false)
   vmu.io.xcpt.prop.top.stall := Bool(false)

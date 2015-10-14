@@ -54,10 +54,10 @@ class DefaultHwachaConfig extends ChiselConfig (
     case HwachaNVPFQEntries => 8
     case HwachaNVSDQEntries => 16
     case HwachaNVLDQEntries => 16
-    case HwachaNVMDBEntries => 16
+    case HwachaNVLTEntries => 16
 
     // +2 comes from the overhead of tagging for the arbitration
-    case RoCCMaxTaggedMemXacts => site(HwachaNVMDBEntries)
+    case RoCCMaxTaggedMemXacts => site(HwachaNVLTEntries)
     case BuildRoCC => Some(() => (Module(new Hwacha, { case CoreName => "Hwacha" })))
   }
 ) 

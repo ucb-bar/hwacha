@@ -34,8 +34,8 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
 class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module {
   require(n <= m)
   val io = new Bundle {
-    val in = Vec.fill(n){ gen.clone.asInput }
-    val out = Vec.fill(m){ gen.clone.asOutput }
+    val in = Vec.fill(n)(gen.clone.asInput())
+    val out = Vec.fill(m)(gen.clone.asOutput())
     val sel = UInt(INPUT, log2Up(m))
   }
 
@@ -60,10 +60,12 @@ class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends M
 }
 
 object EnableDecoder {
-  def apply[T <: Data](in: T, n: Int) = {
-    val out = Vec.fill(n)(Bool())
-    val sel = (n until 0 by -1).map(i => (in === Bits(i)))
-    out := Vec((0 until n).map(i => sel.take(sel.size - i).reduce(_||_)))
-    out
+  def apply[T <: UInt](in: T, n: Int): Bits = {
+    val lgn = log2Up(n)
+    val lut = Vec(
+      (0 until n).map(i => Bits((1 << i) - 1, n)) ++
+      Seq.fill((1 << lgn) - n)(Fill(n, Bool(true))))
+    val mask = ((in >> lgn) != UInt(0))
+    lut(in(lgn-1, 0)) | Fill(n, mask)
   }
 }

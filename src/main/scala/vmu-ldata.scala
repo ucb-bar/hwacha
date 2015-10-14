@@ -2,52 +2,67 @@ package hwacha
 
 import Chisel._
 
-class MetadataBuffer extends VMUModule {
-  val io = new Bundle {
-    val r = new MetaReadIO(new VMULoadMetaEntry).flip
-    val w = new MetaWriteIO(new VMULoadMetaEntry).flip
-  }
-
-  val valid = Reg(init = Bits(0, nVMDB))
-  val data = Mem(io.r.data.clone, nVMDB)
-
-  io.w.tag := PriorityEncoder(~valid)
-  io.w.ready := !(valid.toBools.reduce(_&&_))
-
-  val wen = io.w.valid && io.w.ready
-  val valid_mask_r = UIntToOH(io.r.tag) & Fill(nVMDB, io.r.valid)
-  val valid_mask_w = UIntToOH(io.w.tag) & Fill(nVMDB, wen)
-
-  valid := (valid & (~valid_mask_r)) | valid_mask_w
-  when (wen) {
-    data(io.w.tag) := io.w.data
-  }
-  io.r.data := data(io.r.tag)
+class VLTWIO extends DecoupledIO(new VLTEntry)
+  with VMUParameters {
+  val tag = UInt(INPUT, bTag)
 }
 
-class VMULoadIO extends Bundle {
-  val meta = new MetaWriteIO(new VMULoadMetaEntry)
-  val load = Decoupled(new VMULoadData)
+class VLTRIO extends ValidIO(new VMUBundle with VMUTag) {
+  val meta = new VLTEntry().asInput()
+}
+
+class VMLUIO extends Bundle {
+  val load = Decoupled(new VMLUData)
+  val meta = new VLTWIO
+}
+
+class VLT extends VMUModule {
+  val io = new Bundle {
+    val r = new VLTRIO().flip
+    val w = new VLTWIO().flip
+  }
+
+  val valid = Reg(init = Bits(0, nVLT))
+  val table = Mem(new VLTEntry, nVLT)
+
+  io.w.ready := !valid.andR
+
+  private val rtag = io.r.bits.tag
+  private val wtag = io.w.tag
+  wtag := PriorityEncoder(~valid)
+
+  val wen = io.w.fire()
+  val ren = io.r.valid
+  val valid_mask_r = (Bits(1) << rtag) & Fill(nVLT, ren)
+  val valid_mask_w = (Bits(1) << wtag) & Fill(nVLT, wen)
+  valid := (valid & (~valid_mask_r)) | valid_mask_w
+
+  assert(!ren || valid(rtag), "VLT: invalid read tag")
+
+  io.r.meta := table(rtag)
+  when (wen) {
+    table(io.w.tag) := io.w.bits
+  }
 }
 
 class LBox extends VMUModule {
   val io = new Bundle {
-    val mbox = new VMULoadIO().flip
+    val mem = new VMLUIO().flip
     val lane = new VLDQIO
   }
 
-  val vldq = Module(new Queue(new VLDQEntry, nVLDQ))
-  val vmdb = Module(new MetadataBuffer)
+  val vldq = Module(new Queue(io.lane.bits, nVLDQ))
+  val vlt = Module(new VLT)
 
-  vldq.io.enq.bits.data := io.mbox.load.bits.data
-  vldq.io.enq.bits.meta := vmdb.io.r.data
-  vldq.io.enq.bits.last := io.mbox.load.bits.last
-  vldq.io.enq.valid := io.mbox.load.valid
-  io.mbox.load.ready := vldq.io.enq.ready
+  vlt.io.w <> io.mem.meta
+  vlt.io.r.bits.tag := io.mem.load.bits.tag
+  vlt.io.r.valid := io.mem.load.fire()
 
-  vmdb.io.w <> io.mbox.meta
-  vmdb.io.r.tag := io.mbox.load.bits.tag
-  vmdb.io.r.valid := vldq.io.enq.fire()
+  vldq.io.enq.bits.data := io.mem.load.bits.data
+  vldq.io.enq.bits.meta := vlt.io.r.meta
+  vldq.io.enq.bits.meta.last := io.mem.load.bits.last
+  vldq.io.enq.valid := io.mem.load.valid
+  io.mem.load.ready := vldq.io.enq.ready
 
   io.lane <> vldq.io.deq
 }

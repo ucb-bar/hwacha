@@ -6,6 +6,11 @@ abstract class VMUModule(clock: Clock = null, _reset: Bool = null)
   extends HwachaModule(clock, _reset) with VMUParameters
 abstract class VMUBundle extends HwachaBundle with VMUParameters
 
+class VMUMemFn extends Bundle {
+  val cmd = Bits(width = M_SZ)
+  val mt = Bits(width = MT_SZ)
+}
+
 class VMUFn extends Bundle {
   val mode = Bits(width = SZ_VMU_MODE)
   val cmd = Bits(width = M_SZ)
@@ -17,7 +22,7 @@ class VMUAuxVector extends HwachaBundle {
 }
 
 object VMUAuxVector {
-  def apply(stride: UInt) = {
+  def apply(stride: UInt): VMUAuxVector = {
     val aux = new VMUAuxVector
     aux.stride := stride
     aux
@@ -30,7 +35,7 @@ class VMUAuxScalar extends HwachaBundle {
 }
 
 object VMUAuxScalar {
-  def apply(data: Bits, id: UInt) = {
+  def apply(data: Bits, id: UInt): VMUAuxScalar = {
     val aux = new VMUAuxScalar
     aux.data := data
     aux.id := id
@@ -47,13 +52,10 @@ class VMUAux extends Bundle {
   def scalar(dummy: Int = 0) = new VMUAuxScalar().fromBits(this.union)
 }
 
-abstract class VMUOpBase extends VMUBundle {
+class VMUOp extends VMUBundle {
   val fn = new VMUFn
   val vlen = UInt(width = bVLen)
-  val base = UInt(width = maxAddrBits)
-}
-
-class VMUOp extends VMUOpBase {
+  val base = UInt(width = bVAddr)
   val aux = new VMUAux
 }
 
@@ -69,15 +71,14 @@ class DecodedMemCommand extends Bundle {
 
 object DecodedMemCommand {
   def apply[T <: UInt](cmd: T): DecodedMemCommand = {
-    val res = new DecodedMemCommand
-    res.load := (cmd === M_XRD)
-    res.store := (cmd === M_XWR)
-    res.amo := isAMO(cmd)
-    res.pf := isPrefetch(cmd)
-
-    res.read := (res.load || res.amo)
-    res.write := (res.store || res.amo)
-    res
+    val dec = new DecodedMemCommand
+    dec.load := (cmd === M_XRD)
+    dec.store := (cmd === M_XWR)
+    dec.amo := isAMO(cmd)
+    dec.pf := isPrefetch(cmd)
+    dec.read := (dec.load || dec.amo)
+    dec.write := (dec.store || dec.amo)
+    dec
   }
 }
 
@@ -86,9 +87,9 @@ class DecodedMemType extends Bundle {
   val h = Bool() // halfword
   val w = Bool() // word
   val d = Bool() // doubleword
-  val unsigned = Bool()
+  val signed = Bool()
 
-  def shamt(dummy: Int = 0): UInt =
+  def shift(dummy: Int = 0): UInt =
     Cat(this.w || this.d, this.h || this.d).toUInt
 }
 
@@ -102,86 +103,132 @@ object DecodedMemType {
     val hu = (mt === MT_HU)
     val wu = (mt === MT_WU)
 
-    val mtd = new DecodedMemType
-    mtd.b := (b || bu)
-    mtd.h := (h || hu)
-    mtd.w := (w || wu)
-    mtd.d := d
-    mtd.unsigned := (bu || hu || wu)
-    mtd
+    val dec = new DecodedMemType
+    dec.b := (b || bu)
+    dec.h := (h || hu)
+    dec.w := (w || wu)
+    dec.d := d
+    dec.signed := (b || h || w || d)
+    dec
   }
 }
 
+/**********************************************************************/
+
 class VVAQEntry extends VMUBundle {
-  val addr = UInt(width = maxAddrBits)
+  val addr = UInt(width = bVAddrExtended)
 }
 class VVAQIO extends DecoupledIO(new VVAQEntry)
 
-class VVAPFQEntry extends VVAQEntry {
-  val store = Bool()
+trait VMUAddr extends VMUBundle {
+  val addr = UInt(width = bPAddr)
 }
-class VVAPFQIO extends DecoupledIO(new VVAPFQEntry)
-
-class VPAQEntry extends VMUBundle {
-  val addr = UInt(width = paddrBits)
-  val ecnt = UInt(width = bVLen)
-}
+class VPAQEntry extends VMUAddr
 class VPAQIO extends DecoupledIO(new VPAQEntry)
 
-trait VMUMetadataBase extends VMUBundle {
-  val ecnt = UInt(width = tlByteAddrBits)
-  val eskip = UInt(width = tlByteAddrBits)
-}
-trait VMUMetadataLoad extends VMUMetadataBase {
-  val eidx = UInt(width = bVLen)
-}
-trait VMUMetadataStore extends VMUMetadataBase {
-  val first = Bool()
-  val last = Bool()
-  val offset = UInt(width = tlByteAddrBits)
-}
 
-class VMULoadMetaEntry extends VMUMetadataLoad
-class VMUStoreMetaEntry extends VMUMetadataStore
-class VMUMetaUnion extends VMUMetadataLoad with VMUMetadataStore
-
-trait VMUMemOp extends VMUBundle {
-  val cmd = Bits(width = M_SZ)
-  val mt = Bits(width = MT_SZ)
-  val addr = UInt(width = paddrBits)
-}
-
-class MetaReadIO[T <: Data](gen: T) extends VMUBundle {
-  val valid = Bool(OUTPUT)
-  val tag = UInt(OUTPUT, bTag)
-  val data = gen.clone.asInput
-}
-
-class MetaWriteIO[T <: Data](gen: T) extends VMUBundle {
-  val valid = Bool(OUTPUT)
-  val ready = Bool(INPUT)
-  val data = gen.clone.asOutput
-  val tag = UInt(INPUT, bTag)
-}
-
-abstract class VMUData extends VMUBundle {
+trait VMUData extends VMUBundle {
   val data = Bits(width = tlDataBits)
 }
 
-class VMULoadData extends VMUData {
+class VSDQEntry extends VMUData
+class VSDQIO extends DecoupledIO(new VSDQEntry)
+
+class VCUEntry extends VMUBundle {
+  val ecnt = UInt(width = bVLen)
+}
+class VCUIO extends ValidIO(new VCUEntry)
+
+
+trait VMUTag extends VMUBundle {
   val tag = UInt(width = bTag)
+}
+
+class VMLUData extends VMUData with VMUTag {
   val last = Bool()
 }
 
-class VMUStoreData extends VMUData {
-  val mask = Bits(width = tlDataBytes)
-}
+class VLTEntry extends VMUMetaCount
+  with VMUMetaPadding with VMUMetaIndex
 
 class VLDQEntry extends VMUData {
-  val meta = new VMULoadMetaEntry
-  val last = Bool()
+  val meta = new VLTEntry {
+    val last = Bool()
+  }
 }
 class VLDQIO extends DecoupledIO(new VLDQEntry)
 
-class VSDQEntry extends UInt with VMUParameters { setWidth(tlDataBits) }
-class VSDQIO extends DecoupledIO(new VSDQEntry)
+/**********************************************************************/
+
+class PredEntry extends HwachaBundle {
+  val pred = Bits(width = nPredSet)
+}
+
+class VMUMaskEntry_0 extends VMUBundle {
+  val pred = Bool()
+  val ecnt = UInt(width = bVLen)
+  val last = Bool()
+
+  val unit = new Bundle {
+    val page = Bool() /* Entry is final for current page */
+  }
+  val nonunit = new Bundle {
+    val shift = UInt(width = log2Up(nPredSet))
+  }
+}
+class VMUMaskIO_0 extends DecoupledIO(new VMUMaskEntry_0)
+
+class VMUMaskEntry_1 extends VMUBundle {
+  val data = Bits(width = tlDataBytes >> 1)
+  val vsdq = Bool()
+}
+class VMUMaskIO_1 extends DecoupledIO(new VMUMaskEntry_1) {
+  val meta = new VMUBundle {
+    val eoff = UInt(INPUT, tlByteAddrBits - 1)
+    val last = Bool(INPUT)
+  }
+}
+
+/**********************************************************************/
+
+/* Encodes 2^n as 0; values 1 to (2^n-1) are represented as normal. */
+class CInt(n: Int) extends Bundle {
+  val raw = UInt(width = n)
+  def encode[T <: UInt](x: T) {
+    assert(x != UInt(0), "CInt: invalid value")
+    raw := x
+  }
+  def decode(dummy: Int = 0): UInt = Cat(raw === UInt(0), raw)
+}
+
+trait VMUMetaCount extends VMUBundle {
+  val ecnt = new CInt(tlByteAddrBits-1)
+}
+trait VMUMetaPadding extends VMUBundle {
+  val epad = UInt(width = tlByteAddrBits)
+}
+trait VMUMetaIndex extends VMUBundle {
+  val eidx = UInt(width = bVLen)
+}
+trait VMUMetaStore extends VMUBundle {
+  val last = Bool()
+  val vsdq = Bool()
+}
+
+/**********************************************************************/
+
+trait VMUMemOp extends VMUAddr {
+  val fn = new VMUMemFn
+  val mask = UInt(width = tlDataBytes)
+}
+
+class VMUMetaAddr extends VMUMetaCount
+  with VMUMetaPadding
+  with VMUMetaStore
+
+class AGUEntry extends VMUMemOp {
+  val pred = Bool()
+  val meta = new VMUMetaAddr with VMUMetaIndex
+}
+
+class AGUIO extends DecoupledIO(new AGUEntry)

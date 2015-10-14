@@ -2,17 +2,16 @@ package hwacha
 
 import Chisel._
 
-class VMUMemReq extends VMUMemOp {
-  val tag = UInt(width = bTag)
-  val store = new VMUStoreData
+class VMUMemReq extends VMUMemOp
+  with VMUTag with VMUData {
   val last = Bool()
 }
 
-class VMUMemResp extends VMULoadData {
+class VMUMemResp extends VMLUData {
   val store = Bool()
 }
 
-class VMUMemIO extends VMUBundle {
+class VMUMemIO extends Bundle {
   val req = Decoupled(new VMUMemReq)
   val resp = Decoupled(new VMUMemResp).flip
 }
@@ -20,12 +19,13 @@ class VMUMemIO extends VMUBundle {
 class MBox extends VMUModule {
   val io = new Bundle {
     val inner = new Bundle {
-      val abox = new VMUAddrIO().flip
-      val sbox = new VMUStoreIO
-      val lbox = new VMULoadIO
-      val sret = new CounterUpdateIO(sretBits)
+      val abox = new AGUIO().flip
+      val sbox = new VMSUIO().flip
+      val lbox = new VMLUIO
     }
     val outer = new VMUMemIO
+
+    val sret = new CounterUpdateIO(bSRet)
   }
 
   private val abox = io.inner.abox
@@ -34,54 +34,66 @@ class MBox extends VMUModule {
   private val req = io.outer.req
   private val resp = io.outer.resp
 
-  val cmd = DecodedMemCommand(abox.bits.cmd)
-  val sbox_ready = !cmd.write || sbox.ready
-  val lbox_ready = !cmd.read || lbox.meta.ready
+  val cmd = DecodedMemCommand(abox.bits.fn.cmd)
+  val read = cmd.read
+  val write = cmd.write
+  val pred = abox.bits.pred
+
+  val sbox_valid = !(pred && write) || sbox.valid
+  val lbox_ready = !(pred && read) || lbox.meta.ready
+  val req_ready = !pred || req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(abox.valid, sbox_ready, lbox_ready, req.ready)
+    val rvs = Seq(abox.valid, sbox_valid, lbox_ready, req_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   abox.ready := fire(abox.valid)
-  sbox.valid := fire(sbox_ready, cmd.write)
-  lbox.meta.valid := fire(lbox_ready, cmd.read)
-  req.valid := fire(req.ready)
+  sbox.ready := fire(sbox_valid, write)
+  lbox.meta.valid := fire(lbox_ready, read, pred)
+  req.valid := fire(req_ready, pred)
 
-  // Load metadata
-  lbox.meta.data.eidx := abox.bits.meta.eidx
-  lbox.meta.data.ecnt := abox.bits.meta.ecnt
-  lbox.meta.data.eskip := abox.bits.meta.eskip
+  /* Load metadata */
+  lbox.meta.bits.eidx := abox.bits.meta.eidx
+  lbox.meta.bits.ecnt := abox.bits.meta.ecnt
+  lbox.meta.bits.epad := abox.bits.meta.epad
 
-  // Store metadata
+  /* Store metadata */
+  sbox.meta.offset := abox.bits.addr(tlByteAddrBits-1, 0)
   sbox.meta.ecnt := abox.bits.meta.ecnt
-  sbox.meta.eskip := abox.bits.meta.eskip
-  sbox.meta.offset := abox.bits.meta.offset
-  sbox.meta.first := abox.bits.meta.first
   sbox.meta.last := abox.bits.meta.last
+  sbox.meta.vsdq := abox.bits.meta.vsdq
 
-  req.bits.cmd := abox.bits.cmd
-  req.bits.mt := abox.bits.mt
+  /* Request */
+  req.bits.fn := abox.bits.fn
   req.bits.addr := abox.bits.addr
-  req.bits.tag := Mux(cmd.read, lbox.meta.tag, sbox.meta.ecnt)
-  require(tlByteAddrBits <= bTag)
-  req.bits.store := sbox.store
+  req.bits.mask := abox.bits.mask
+  req.bits.data := sbox.bits.data
   req.bits.last := abox.bits.meta.last
+  req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)
+  require(tlByteAddrBits-1 <= bTag)
 
-  // Response demux
-  resp.ready := resp.bits.store || lbox.load.ready
+  /* Response */
+  lbox.load.bits := resp.bits
   lbox.load.valid := resp.valid && !resp.bits.store
-  lbox.load.bits.data := resp.bits.data
-  lbox.load.bits.tag := resp.bits.tag
-  lbox.load.bits.last := resp.bits.last
+  resp.ready := resp.bits.store || lbox.load.ready
 
-  io.inner.sret.update := resp.valid && resp.bits.store
-  io.inner.sret.cnt := Mux(resp.bits.tag === UInt(0), UInt(tlDataBytes), resp.bits.tag)
+  /* Store acknowledgement */
+  val sret_req = abox.bits.meta.ecnt
+  val sret_resp = new CInt(tlByteAddrBits-1)
+  sret_resp.raw := resp.bits.tag
+
+  val sret_req_en = fire(null, write, !pred)
+  val sret_resp_en = resp.fire() && resp.bits.store
+
+  io.sret.update := Bool(true)
+  io.sret.cnt :=
+    Mux(sret_req_en, Cat(Bits(0,1), sret_req.decode()), UInt(0)) +
+    Mux(sret_resp_en, Cat(Bits(0,1), sret_resp.decode()), UInt(0))
 }
 
 class MBar extends VMUModule {
-  val io = new Bundle {
-    val issue = new VMUIssueOpIO().flip
+  val io = new VMUIssueIO {
     val inner = new Bundle {
       val vmu = new VMUMemIO().flip
       val smu = new VMUMemIO().flip
@@ -92,13 +104,8 @@ class MBar extends VMUModule {
   private val vmu = io.inner.vmu
   private val smu = io.inner.smu
 
-  // TODO: Use queue to buffer io.issue.op.mode.scalar flags for greater
-  //       decoupling if needed
-  val start_hold = Reg(init = Bool(false))
-  val start = start_hold || io.issue.fire
-  start_hold := start
-
-  io.issue.busy := start_hold
+  val op = Reg(new VMUDecodedOp)
+  val scalar = op.mode.scalar
 
   // Prevent memory requests associated with the next operation from
   // departing until all prior transactions have completed.
@@ -117,33 +124,34 @@ class MBar extends VMUModule {
   assert(!(count_next(w) && count_inc), "VMU: MBar counter overflow")
   assert(!(count_next(w) && count_dec), "VMU: MBar counter underflow")
 
-  val scalar = Reg(Bool())
   val open = Bool()
   val last = Bool()
   open := Bool(false)
   last := Bool(false)
 
-  // Arbiter
+  /* Arbiter */
   io.outer.req.bits := Mux(scalar, smu.req.bits, vmu.req.bits)
   io.outer.req.valid := Mux(scalar, smu.req.valid, vmu.req.valid) && open
   io.outer.resp.ready := Mux(scalar, smu.resp.ready, vmu.resp.ready)
 
   Seq((vmu, !scalar), (smu, scalar)).foreach { case (inner, sel) =>
-    inner.req.ready := io.outer.req.ready && sel && open
-    inner.resp.valid := io.outer.resp.valid && sel
-    inner.resp.bits := io.outer.resp.bits
-    inner.resp.bits.last := last
+      inner.req.ready := io.outer.req.ready && sel && open
+      inner.resp.valid := io.outer.resp.valid && sel
+      inner.resp.bits := io.outer.resp.bits
+      inner.resp.bits.last := last
   }
+
+  io.op.ready := Bool(false)
 
   val s_close :: s_open :: s_flush :: Nil = Enum(UInt(), 3)
   val state = Reg(init = s_close)
 
   switch (state) {
     is (s_close) {
-      when (start) {
-        start_hold := Bool(false)
-        scalar := io.issue.op.mode.scalar
+      io.op.ready := Bool(true)
+      when (io.op.valid) {
         state := s_open
+        op := io.op.bits
       }
     }
 
@@ -165,7 +173,6 @@ class MBar extends VMUModule {
   }
 }
 
-
 class VMUTileLink extends VMUModule {
   import uncore._
 
@@ -181,9 +188,9 @@ class VMUTileLink extends VMUModule {
   private val acquire = io.dmem.acquire
   private val grant = io.dmem.grant
 
-  val cmd = DecodedMemCommand(req.bits.cmd)
+  val cmd = DecodedMemCommand(req.bits.fn.cmd)
   assert(!req.valid || cmd.load || cmd.store || cmd.amo || cmd.pf,
-    "Unknown memory command")
+    "memif: unknown memory command")
 
   req.ready := acquire.ready
   acquire.valid := req.valid
@@ -192,22 +199,25 @@ class VMUTileLink extends VMUModule {
     Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
 
   val acq_shift = req.bits.addr(tlByteAddrBits-1, 0)
-  val acq_union_amo = Cat(acq_shift, req.bits.mt, req.bits.cmd)
-  val acq_union = Cat(Mux1H(Seq(cmd.load || cmd.pf, cmd.store, cmd.amo),
-    Seq(req.bits.cmd, req.bits.store.mask, acq_union_amo)), Bool(true))
+  val acq_union_amo = Cat(acq_shift, req.bits.fn.mt, req.bits.fn.cmd)
+  val acq_union = Cat(Mux1H(Seq(
+      (cmd.load || cmd.pf, req.bits.fn.cmd),
+      (cmd.store, req.bits.mask),
+      (cmd.amo, acq_union_amo))),
+    Bool(true))
 
   acquire.bits := Acquire(
     is_builtin_type = Bool(true),
     a_type = acq_type,
     client_xact_id = req.bits.tag,
-    addr_block = req.bits.addr(paddrBits-1, tlBlockAddrOffset),
-    addr_beat = req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits) &
-      Fill(tlBeatAddrBits, !cmd.pf),
-    data = req.bits.store.data,
+    addr_block = req.bits.addr(bPAddr-1, tlBlockAddrOffset),
+    addr_beat = Mux(cmd.pf, UInt(0),
+      req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits)),
+    data = req.bits.data,
     union = acq_union)
 
   val resp_en = grant.bits.hasData() || resp.bits.store
-  grant.ready := (!resp_en || resp.ready)
+  grant.ready := !resp_en || resp.ready
 
   resp.valid := grant.valid && resp_en
   resp.bits.tag := grant.bits.client_xact_id

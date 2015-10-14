@@ -9,7 +9,7 @@ class LaneMRTIO extends Bundle with SeqParameters {
 }
 
 class MRTIO extends LaneMRTIO with VMUParameters {
-  val sret = new CounterUpdateIO(sretBits)
+  val sret = new CounterUpdateIO(bSRet)
   val pending = Bool(INPUT)
 }
 
