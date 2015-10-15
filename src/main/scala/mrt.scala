@@ -10,7 +10,7 @@ class LaneMRTIO extends Bundle with SeqParameters {
 
 class MRTIO extends LaneMRTIO with VMUParameters {
   val sret = new CounterUpdateIO(sretBits)
-  val pending_memop = Bool(INPUT)
+  val pending = Bool(INPUT)
 }
 
 class MemTracker extends HwachaModule {
@@ -25,5 +25,5 @@ class MemTracker extends HwachaModule {
   scnt.io.dec <> io.sreq
   scnt.io.inc <> io.sret
 
-  io.pending_memop := !lcnt.io.full || !scnt.io.full
+  io.pending := !lcnt.io.full || !scnt.io.full
 }

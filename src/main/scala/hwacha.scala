@@ -79,10 +79,7 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
 
   val rocc = Module(new RoCCUnit)
   val scalar = Module(new ScalarUnit)
-  val vxu = Module(new VXU)
-  val vmu = Module(new VMU)
-  val memif = Module(new VMUTileLink)
-  val mrt = Module(new MemTracker)
+  val vquad = Module(new VQuad)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -92,13 +89,13 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
   rocc.io.rocc.interrupt <> io.interrupt
   rocc.io.rocc.exception <> io.exception
 
-  //Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := mrt.io.pending_memop || scalar.io.pending_memop
-  rocc.io.pending_seq := vxu.io.pending_seq
+  // Connect RoccUnit to ScalarUnit
+  rocc.io.pending_memop := vquad.io.pending.mem || scalar.io.pending_memop
+  rocc.io.pending_seq := vquad.io.pending.seq
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
 
-  //Connect ScalarUnit to Rocket's FPU
+  // Connect ScalarUnit to Rocket's FPU
   if (local_sfpu) {
     val sfpu = Module(new ScalarFPU)
     scalar.io.fpu <> sfpu.io
@@ -132,35 +129,18 @@ class Hwacha extends rocket.RoCC with UsesHwachaParameters {
     io.iptw <> icache.io.ptw
   }
 
-  vmu.io.scalar <> scalar.io.dmem
-  vmu.io.op <> scalar.io.vmu
-
   // Connect supporting Hwacha memory modules to external ports
+  io.mem.req.valid := Bool(false)
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 
-  vxu.io.cfg <> rocc.io.cfg
+  vquad.io.cfg <> rocc.io.cfg
+  vquad.io.issue.vxu <> scalar.io.vxu
+  vquad.io.issue.vmu <> scalar.io.vmu
+  vquad.io.issue.scalar <> scalar.io.dmem
 
-  vxu.io.issue <> scalar.io.vxu
-  vxu.io.pending_seq <> scalar.io.pending_seq
-
-  vmu.io.lane <> vxu.io.vmu
-
-  vmu.io.pf.vaq.valid := Bool(false)
-
-  vmu.io.xcpt.prop.vmu.stall := Bool(false)
-  vmu.io.xcpt.prop.vmu.drain := Bool(false)
-  vmu.io.xcpt.prop.top.stall := Bool(false)
-
-  dtlb.io <> vmu.io.dtlb
-  ptlb.io <> vmu.io.ptlb
-
-  memif.io.vmu <> vmu.io.memif 
-  io.dmem <> memif.io.dmem
-  io.mem.req.valid := Bool(false)
-
-  mrt.io.lreq <> vxu.io.mrt.lreq
-  mrt.io.lret <> vxu.io.mrt.lret
-  mrt.io.sreq <> vxu.io.mrt.sreq
-  mrt.io.sret <> vmu.io.sret
+  dtlb.io <> vquad.io.dtlb
+  ptlb.io <> vquad.io.ptlb
+  io.dmem <> vquad.io.dmem
+  scalar.io.pending_seq <> vquad.io.pending.seq
 }

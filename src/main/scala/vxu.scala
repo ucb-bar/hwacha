@@ -10,7 +10,7 @@ class VXU extends HwachaModule {
     val issue = new VXUIssueOpIO().flip
     val vmu = new LaneMemIO
     val mrt = new LaneMRTIO
-    val pending_seq = Bool(OUTPUT)
+    val pending = Bool(OUTPUT)
   }
 
   val seq = Module(new Sequencer)
@@ -67,7 +67,7 @@ class VXU extends HwachaModule {
   io.vmu <> seq.io.vmu
   io.vmu <> dcc.io.vmu
 
-  io.pending_seq := seq.io.pending
+  io.pending := seq.io.pending
 
   io.mrt.lreq <> seq.io.lreq
   io.mrt.sreq <> seq.io.sreq
