@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class VQuad extends HwachaModule {
+class Quad extends HwachaModule {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new Bundle {
