@@ -4,7 +4,6 @@ import Chisel._
 
 class AGUPipeEntry extends VMUBundle {
   val addr = UInt(width = bPAddr - tlByteAddrBits)
-  val mask = UInt(width = tlDataBytes >> 1)
   val meta = new VMUMetaAddr
 }
 class AGUPipeIO extends DecoupledIO(new AGUPipeEntry)
@@ -204,10 +203,10 @@ class ABox1 extends VMUModule {
   io.mask.meta.last := vlen_end
 
   io.pipe.bits.addr := addr(bPAddr-1, tlByteAddrBits)
-  io.pipe.bits.mask := mask_data
   io.pipe.bits.meta.ecnt.encode(ecnt)
   io.pipe.bits.meta.epad := epad
   io.pipe.bits.meta.last := end
+  io.pipe.bits.meta.mask := mask_data
   io.pipe.bits.meta.vsdq := io.mask.bits.vsdq
 
   val vpaq_deq_u = pred_u && (blkidx_end || vlen_end)
@@ -282,21 +281,14 @@ class ABox2 extends VMUModule {
 
   val offset = (inner.meta.epad << mt.shift())(tlByteAddrBits-1, 0)
 
-  val mask_shift = inner.meta.epad(tlByteAddrBits - 1)
-  val mask_full = Mux(mask_shift,
-    Cat(inner.mask, UInt(0, tlDataBytes >> 1)),
-    inner.mask)
-  val mask = PredicateByteMask(mask_full, mt)
-
   outer.addr := Cat(inner.addr, offset)
   outer.fn.cmd := op.fn.cmd
   outer.fn.mt := op.fn.mt
-  outer.mask := mask
-  outer.pred := inner.mask.orR
   outer.meta.eidx := eidx
   outer.meta.ecnt := inner.meta.ecnt
   outer.meta.epad := inner.meta.epad
   outer.meta.last := inner.meta.last
+  outer.meta.mask := inner.meta.mask
   outer.meta.vsdq := inner.meta.vsdq
 
   io.store.bits.mode.unit := op.mode.unit

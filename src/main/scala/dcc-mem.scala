@@ -405,15 +405,13 @@ class VLU extends VXUModule {
     val cfg = new HwachaConfigIO().flip
   }
 
+  private val lgbanks = log2Up(nBanks)
+  private val lgslices = log2Up(nSlices)
+  private val lgbatch = log2Up(nBatch)
+
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
   opq.io.deq.ready := Bool(false)
-
-  io.pred.ready := Bool(true) // FIXME
-
-  //--------------------------------------------------------------------\\
-  // control
-  //--------------------------------------------------------------------\\
 
   val op = Reg(new DCCOp)
   val mt = DecodedMemType(op.fn.vmu().mt)
@@ -423,20 +421,56 @@ class VLU extends VXUModule {
   val eidx_next = eidx + io.la.cnt
   val eidx_end = (eidx_next === op.vlen)
 
-  val sink = Reg(Bool())
+  val retire = Mux(io.la.reserve, io.la.cnt >> lgbatch, UInt(0))
+  assert(!io.la.reserve || eidx_end ||
+    (io.la.cnt(lgbatch-1, 0) === UInt(0)),
+    "VLU: retire count not a batch multiple")
+
+  //--------------------------------------------------------------------\\
+  // predication
+  //--------------------------------------------------------------------\\
+
+  val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
+  predq.io.enq <> io.pred
+  predq.io.deq.ready := Bool(false)
+
+  require(nPredSet == nBatch)
+  val pidx = Reg(UInt(width = log2Down(nvlreq) - lgbatch))
+  val pcnt = Reg(UInt(width = bVLen - lgbatch))
+  val pidx_end = (pidx === UInt((nvlreq - 1) >> lgbatch))
+  val pcnt_end = (pcnt === UInt(0))
+
+  val pred_base = Mux(predq.io.deq.valid, ~predq.io.deq.bits, UInt(0))
+  val pred_shift = Cat(pidx, UInt(0, lgbatch))
+  val pred = (pred_base << pred_shift)(nvlreq-1, 0)
+
+  val pidx_step = predq.io.deq.fire()
+  val pidx_next = pidx.zext + pidx_step.toUInt - retire
+  pidx := pidx_next
+  when (pidx_step) {
+    pcnt := pcnt - UInt(1)
+  }
+
+  //--------------------------------------------------------------------\\
+  // control
+  //--------------------------------------------------------------------\\
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
+  val sink = Reg(Bool())
 
   switch (state) {
     is (s_idle) {
       eidx := UInt(0)
+      pidx := UInt(0)
       sink := Bool(true)
 
       opq.io.deq.ready := Bool(true)
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
+        pcnt := opq.io.deq.bits.vlen(bVLen-1, lgbatch) +
+          opq.io.deq.bits.vlen(lgbatch-1, 0).orR.toUInt /* ceil */
 
         assert(opq.io.deq.bits.vd.valid, "VLU: invalid vd")
       }
@@ -449,6 +483,11 @@ class VLU extends VXUModule {
           state := s_idle
         }
       }
+
+      predq.io.deq.ready := !(pidx_end || pcnt_end)
+      /* NOTE: Predicates should always arrive before the corresponding
+         load due to VMU latency, thus precluding this race condition */
+      assert(pidx_next >= SInt(0), "VLU: pidx underflow")
     }
   }
 
@@ -466,10 +505,6 @@ class VLU extends VXUModule {
   // permutation network
   //--------------------------------------------------------------------\\
 
-  private val lgbanks = log2Up(nBanks)
-  private val lgslices = log2Up(nSlices)
-  private val lgbatch = log2Up(nBatch)
-
   val eidx_slice = meta.eidx(lgslices-1, 0)
   val eidx_batch = meta.eidx(lgbatch-1, 0)
   val eidx_bank = meta.eidx(lgbatch-1, lgslices)
@@ -478,13 +513,13 @@ class VLU extends VXUModule {
 
   require(nSlices == 2)
 
-  val data_rotamt = eidx_batch - meta.epad
-  val mask_rotamt = eidx_batch
+  val epad = CTZ(meta.mask, nBatch)
+  val rotamt = eidx_batch - epad
 
-  private def rotate[T <: Data](gen: T, in: Iterable[T], sel: UInt) = {
+  private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
     val rot = Module(new Rotator(gen, in.size, nBatch))
     val out = Vec.fill(nBatch)(gen.clone)
-    rot.io.sel := sel
+    rot.io.sel := rotamt
     rot.io.in := in
     out := rot.io.out
     out
@@ -498,14 +533,14 @@ class VLU extends VXUModule {
     require(w > 0)
     val in = (0 until w by sz).map(i => data(i+sz-1, i))
     require(in.size <= nBatch)
-    val out = rotate(Bits(), in, data_rotamt)
+    val out = rotate(Bits(), in)
     Vec(out.map(extend(_, sz)))
   }
 
   private val tlDataMidBits = tlDataBits >> 1
 
   val load = vldq.bits.data
-  val load_b = Mux(meta.epad(tlByteAddrBits-1),
+  val load_b = Mux(meta.shift,
     load(tlDataBits-1, tlDataMidBits),
     load(tlDataMidBits-1, 0))
 
@@ -522,13 +557,10 @@ class VLU extends VXUModule {
   val tick = Reg(init = Bool(true))
   val tock = !tick
 
-  val ecnt = meta.ecnt.decode()
-  val mask_root_all = EnableDecoder(ecnt, nBatch)
-  val mask_root = (0 until nBatch).map(mask_root_all(_))
+  val mask_root = (0 until nBatch).map(meta.mask(_))
 
-  assert(!vldq_valid || (ecnt <= UInt(nBatch)), "VLU: ecnt exceeds limit")
   val slice_unaligned = (eidx_slice != UInt(0)) && tick
-  val slice_overflow = mask_root.last && slice_unaligned
+  val slice_overflow = mask_root.head && mask_root.last && slice_unaligned
 
   val bwqs_fire = Bool()
   when (bwqs_fire) {
@@ -538,7 +570,7 @@ class VLU extends VXUModule {
   val mask_head = tick
   val mask_tail = !slice_unaligned
   val mask_beat = mask_root.init.map(_ && mask_head) :+ (mask_root.last && mask_tail)
-  val mask = rotate(Bool(), mask_beat, eidx_batch)
+  val mask = rotate(Bool(), mask_beat)
 
   //--------------------------------------------------------------------\\
   // bank write queues
@@ -600,30 +632,15 @@ class VLU extends VXUModule {
   //--------------------------------------------------------------------\\
 
   val wb_status = Reg(Bits(width = nvlreq))
-  val wb_next = wb_status | wb_update.reduce(_ | _)
-  val wb_retire_cnt = (io.la.cnt >> UInt(lgbatch)) &
-    Fill(maxLookAhead - lgbatch, io.la.reserve)
-  val wb_retire = Cat(wb_retire_cnt, UInt(0, lgbatch))
+  val wb_next = wb_status | wb_update.reduce(_ | _) | pred
+  val wb_shift = Cat(retire, UInt(0, lgbatch))
+  val wb_locnt = CTZ(~wb_status, maxLookAhead)
 
-  wb_status := (wb_next >> wb_retire) & Fill(nvlreq, state === s_busy)
+  wb_status := Bits(0)
+  io.la.available := Bool(false)
 
-  private def priority(in: Iterable[(Bool, UInt)]): (Bool, UInt) = {
-    // Returns the last (lowest priority) item if none are selected
-    val cnt = in.init.foldRight(in.last._2) {
-      case ((sel, cnt0), cnt1) => Mux(sel, cnt0, cnt1)
-    }
-    val sel = in.map(_._1).reduce(_ || _)
-    (sel, cnt)
+  when (state === s_busy) {
+    wb_status := (wb_next >> wb_shift)
+    io.la.available := (wb_locnt >= io.la.cnt)
   }
-
-  private def priority_tree(in: Iterable[(Bool, UInt)]): Iterable[(Bool, UInt)] = {
-    val stage = in.grouped(2).map(xs => priority(xs)).toSeq
-    if (stage.size > 1) priority_tree(stage) else stage
-  }
-
-  // Limited leading-ones count (ffz)
-  val wb_locnt_init = (0 until maxLookAhead).map(i => (!wb_status(i), UInt(i))) :+
-    (Bool(true), UInt(maxLookAhead))
-  val wb_locnt = priority_tree(wb_locnt_init).head._2
-  io.la.available := (wb_locnt >= io.la.cnt) && (state === s_busy)
 }

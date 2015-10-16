@@ -69,3 +69,26 @@ object EnableDecoder {
     lut(in(lgn-1, 0)) | Fill(n, mask)
   }
 }
+
+/* Count trailing zeroes */
+object CTZ {
+  private def mux[T <: Data](in: Iterable[(Bool, T)]): (Bool, T) = {
+    /* Returns the last (lowest-priority) item if none are selected */
+    val elt = in.init.foldRight(in.last._2) {
+      case ((sel, elt0), elt1) => Mux(sel, elt0, elt1)
+    }
+    val sel = in.map(_._1).reduce(_ || _)
+    (sel, elt)
+  }
+
+  private def tree[T <: Data](in: Iterable[(Bool, T)]): Iterable[(Bool, T)] = {
+    val stage = in.grouped(2).map(mux(_)).toSeq
+    if (stage.size > 1) tree(stage) else stage
+  }
+
+  def apply[T <: Bits](in: T, n: Int): UInt = {
+    val init = (0 until n).map(i => (in(i), UInt(i))) :+
+      (Bool(true), UInt(n)) /* Result for zero input */
+    tree(init).head._2
+  }
+}

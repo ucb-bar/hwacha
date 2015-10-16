@@ -4,6 +4,7 @@ import Chisel._
 
 class VMUMemReq extends VMUMemOp
   with VMUTag with VMUData {
+  val mask = UInt(width = tlDataBytes)
   val last = Bool()
 }
 
@@ -34,10 +35,12 @@ class MBox extends VMUModule {
   private val req = io.outer.req
   private val resp = io.outer.resp
 
+  val mt = DecodedMemType(abox.bits.fn.mt)
   val cmd = DecodedMemCommand(abox.bits.fn.cmd)
   val read = cmd.read
   val write = cmd.write
-  val pred = abox.bits.pred
+
+  val pred = abox.bits.meta.mask.orR
 
   val sbox_valid = !(pred && write) || sbox.valid
   val lbox_ready = !(pred && read) || lbox.meta.ready
@@ -53,10 +56,16 @@ class MBox extends VMUModule {
   lbox.meta.valid := fire(lbox_ready, read, pred)
   req.valid := fire(req_ready, pred)
 
+  /* Data mask */
+  val mask_shift = abox.bits.meta.epad(tlByteAddrBits - 1)
+  val mask = Mux(mask_shift,
+    Cat(abox.bits.meta.mask, UInt(0, tlDataBytes >> 1)),
+    abox.bits.meta.mask)
+
   /* Load metadata */
   lbox.meta.bits.eidx := abox.bits.meta.eidx
-  lbox.meta.bits.ecnt := abox.bits.meta.ecnt
-  lbox.meta.bits.epad := abox.bits.meta.epad
+  lbox.meta.bits.mask := abox.bits.meta.mask
+  lbox.meta.bits.shift := mask_shift
 
   /* Store metadata */
   sbox.meta.offset := abox.bits.addr(tlByteAddrBits-1, 0)
@@ -67,7 +76,7 @@ class MBox extends VMUModule {
   /* Request */
   req.bits.fn := abox.bits.fn
   req.bits.addr := abox.bits.addr
-  req.bits.mask := abox.bits.mask
+  req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
   req.bits.last := abox.bits.meta.last
   req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)

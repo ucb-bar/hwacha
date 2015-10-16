@@ -148,8 +148,10 @@ class VMLUData extends VMUData with VMUTag {
   val last = Bool()
 }
 
-class VLTEntry extends VMUMetaCount
-  with VMUMetaPadding with VMUMetaIndex
+class VLTEntry extends VMUMetaIndex {
+  val mask = Bits(width = tlDataBytes >> 1)
+  val shift = Bool()
+}
 
 class VLDQEntry extends VMUData {
   val meta = new VLTEntry {
@@ -219,15 +221,14 @@ trait VMUMetaStore extends VMUBundle {
 
 trait VMUMemOp extends VMUAddr {
   val fn = new VMUMemFn
-  val mask = UInt(width = tlDataBytes)
 }
 
 class VMUMetaAddr extends VMUMetaCount
-  with VMUMetaPadding
-  with VMUMetaStore
+  with VMUMetaPadding with VMUMetaStore {
+  val mask = UInt(width = tlDataBytes >> 1)
+}
 
 class AGUEntry extends VMUMemOp {
-  val pred = Bool()
   val meta = new VMUMetaAddr with VMUMetaIndex
 }
 
