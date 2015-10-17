@@ -365,9 +365,9 @@ object VectorArithmeticDecode extends VFDecodeTable {
     VFCVT_H_LU->(List[BitPat](Y,N,N,Y,RX,Y,Y,RX,Y,N,RX,N,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPH,N,MM_X, M_X,      MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    Y,FV_CLUTF) ++ FX),
     // FIXME END
 
-    VCMPEQ    ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, N,I_CEQ, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
-    VCMPLT    ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, N,I_CLT, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
-    VCMPLTU   ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, N,I_CLTU,N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
+    VCMPEQ    ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, Y,I_CEQ, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
+    VCMPLT    ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, Y,I_CLT, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
+    VCMPLTU   ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   N,FP_,N,MM_X, M_X,      MT_X, Y,I_CLTU,N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X)     ++ FX),
     VCMPFEQ_D ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,N,MM_X, M_X,      MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   Y,FC_CEQ,  N,FV_X)     ++ FEQ_D),
     VCMPFLT_D ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,N,MM_X, M_X,      MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   Y,FC_CLT,  N,FV_X)     ++ FLT_D),
     VCMPFLE_D ->(List[BitPat](Y,N,N,Y,RP,N,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW_X,  A1_X,   A2_X,   Y,FPD,N,MM_X, M_X,      MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   Y,FC_CLE,  N,FV_X)     ++ FLE_D),
