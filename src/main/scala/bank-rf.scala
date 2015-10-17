@@ -39,7 +39,8 @@ class BankRegfile extends VXUModule {
   val pred_gated_raddr = pred_gated_op map { op => dgate(op.valid, op.bits.addr) }
   val pred_gated_rdata_raw = pred_gated_raddr map { addr => pred_rf(addr) }
   val pred_gated_rdata = (pred_gated_op zip pred_gated_rdata_raw) map { case (op, rdata) =>
-    new BankPredEntry().fromBits(Mux(op.bits.off, op.bits.pred, Mux(op.bits.neg, ~rdata, rdata))) }
+    new BankPredEntry().fromBits(
+      Mux(op.bits.off, op.bits.pred, op.bits.pred & Mux(op.bits.neg, ~rdata, rdata))) }
   val gpred = pred_gated_rdata(0)
   val ppred = pred_gated_rdata(1)
   val s1_gpred = RegEnable(gpred, io.op.pred.gread.valid)
@@ -49,14 +50,15 @@ class BankRegfile extends VXUModule {
   val pred_raddr = io.op.pred.read map { op => dgate(op.valid, op.bits.addr) }
   val pred_rdata = pred_raddr map { addr => pred_rf(addr) }
   (io.op.pred.read zip io.local.rpred zip pred_rdata) map { case ((op, rpred), rdata) =>
-    rpred := RegEnable(new BankPredEntry().fromBits(rdata), op.valid) }
+    rpred := RegEnable(new BankPredEntry().fromBits(op.bits.pred & rdata), op.valid) }
 
   // Predicate RF write port
   when (io.op.pred.write.valid) {
     pred_rf.write(
       io.op.pred.write.bits.addr,
       Mux(io.op.pred.write.bits.selg, io.global.wpred.pred,
-        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)))
+        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)),
+      io.op.pred.write.bits.pred)
   }
 
   // SRAM RF read port
