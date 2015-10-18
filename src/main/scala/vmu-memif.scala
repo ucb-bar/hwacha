@@ -94,7 +94,7 @@ class MBox extends VMUModule {
   val sret_resp = new CInt(tlByteAddrBits-1)
   sret_resp.raw := resp.bits.tag
 
-  val sret_req_en = fire(null, write, !pred)
+  val sret_req_en = fire(null, cmd.store, !pred)
   val sret_resp_en = resp.fire() && resp.bits.store
 
   io.sret.update := Bool(true)
