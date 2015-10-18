@@ -148,9 +148,8 @@ class VMLUData extends VMUData with VMUTag {
   val last = Bool()
 }
 
-class VLTEntry extends VMUMetaIndex {
+class VLTEntry extends VMUMetaIndex with VMUMetaPadding {
   val mask = Bits(width = tlDataBytes >> 1)
-  val shift = Bool()
 }
 
 class VLDQEntry extends VMUData {

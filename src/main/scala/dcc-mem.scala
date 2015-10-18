@@ -513,8 +513,7 @@ class VLU extends VXUModule {
 
   require(nSlices == 2)
 
-  val epad = CTZ(meta.mask, nBatch)
-  val rotamt = eidx_batch - epad
+  val rotamt = eidx_batch - meta.epad
 
   private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
     val rot = Module(new Rotator(gen, in.size, nBatch))
@@ -540,7 +539,7 @@ class VLU extends VXUModule {
   private val tlDataMidBits = tlDataBits >> 1
 
   val load = vldq.bits.data
-  val load_b = Mux(meta.shift,
+  val load_b = Mux(meta.epad(tlByteAddrBits - 1),
     load(tlDataBits-1, tlDataMidBits),
     load(tlDataMidBits-1, 0))
 

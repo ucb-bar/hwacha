@@ -65,8 +65,8 @@ class MBox extends VMUModule {
 
   /* Load metadata */
   lbox.meta.bits.eidx := abox.bits.meta.eidx
+  lbox.meta.bits.epad := abox.bits.meta.epad
   lbox.meta.bits.mask := abox.bits.meta.mask
-  lbox.meta.bits.shift := mask_shift
 
   /* Store metadata */
   sbox.meta.offset := abox.bits.addr(tlByteAddrBits-1, 0)
