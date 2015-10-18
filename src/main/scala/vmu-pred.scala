@@ -76,7 +76,8 @@ class PBox0 extends VMUModule {
 
   io.sample.bits.pred := pred
   io.sample.bits.ecnt := ecnt
-  io.sample.bits.last := vlen_end || (op.mode.unit && pglen_final)
+  io.sample.bits.last := vlen_end ||
+    (op.mode.unit && pglen_final && ecnt_u_page)
   io.sample.bits.unit.page := ecnt_u_page
   io.sample.bits.nonunit.shift := lgecnt_n
   io.egress.bits := io.ingress.bits
