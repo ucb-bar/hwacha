@@ -6,6 +6,7 @@ class VMUMemReq extends VMUMemOp
   with VMUTag with VMUData {
   val mask = UInt(width = tlDataBytes)
   val last = Bool()
+  val pred = Bool()
 }
 
 class VMUMemResp extends VMLUData {
@@ -44,7 +45,7 @@ class MBox extends VMUModule {
 
   val sbox_valid = !(pred && write) || sbox.valid
   val lbox_ready = !(pred && read) || lbox.meta.ready
-  val req_ready = !pred || req.ready
+  val req_ready = /*!pred ||*/ req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(abox.valid, sbox_valid, lbox_ready, req_ready)
@@ -54,7 +55,7 @@ class MBox extends VMUModule {
   abox.ready := fire(abox.valid)
   sbox.ready := fire(sbox_valid, write)
   lbox.meta.valid := fire(lbox_ready, read, pred)
-  req.valid := fire(req_ready, pred)
+  req.valid := fire(req_ready/*, pred*/)
 
   /* Data mask */
   val mask_shift = abox.bits.meta.epad(tlByteAddrBits - 1)
@@ -79,6 +80,7 @@ class MBox extends VMUModule {
   req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
   req.bits.last := abox.bits.meta.last
+  req.bits.pred := pred
   req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)
   require(tlByteAddrBits-1 <= bTag)
 
@@ -108,6 +110,7 @@ class MBar extends VMUModule {
       val smu = new VMUMemIO().flip
     }
     val outer = new VMUMemIO
+    val last = Bool(INPUT)
   }
 
   private val vmu = io.inner.vmu
@@ -133,6 +136,7 @@ class MBar extends VMUModule {
   assert(!(count_next(w) && count_inc), "VMU: MBar counter overflow")
   assert(!(count_next(w) && count_dec), "VMU: MBar counter underflow")
 
+  val pred = io.outer.req.bits.pred
   val open = Bool()
   val last = Bool()
   open := Bool(false)
@@ -140,11 +144,13 @@ class MBar extends VMUModule {
 
   /* Arbiter */
   io.outer.req.bits := Mux(scalar, smu.req.bits, vmu.req.bits)
-  io.outer.req.valid := Mux(scalar, smu.req.valid, vmu.req.valid) && open
+  val req_valid = Mux(scalar, smu.req.valid, vmu.req.valid)
+  val req_ready = !pred || io.outer.req.ready
+  io.outer.req.valid :=  req_valid && open && pred
   io.outer.resp.ready := Mux(scalar, smu.resp.ready, vmu.resp.ready)
 
   Seq((vmu, !scalar), (smu, scalar)).foreach { case (inner, sel) =>
-      inner.req.ready := io.outer.req.ready && sel && open
+      inner.req.ready := (!inner.req.bits.pred || io.outer.req.ready) && sel && open
       inner.resp.valid := io.outer.resp.valid && sel
       inner.resp.bits := io.outer.resp.bits
       inner.resp.bits.last := last
@@ -166,12 +172,15 @@ class MBar extends VMUModule {
 
     is (s_open) {
       open := Bool(true)
-      when (count_inc && io.outer.req.bits.last) {
+      when (req_valid && req_ready && io.outer.req.bits.last) {
         state := s_flush
       }
     }
 
     is (s_flush) {
+      when (count === UInt(0)) {
+          state := s_close
+      }
       when (count === UInt(1)) {
         last := Bool(true)
         when (count_dec) {

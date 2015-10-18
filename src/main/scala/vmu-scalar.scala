@@ -37,6 +37,7 @@ class SMU extends VMUModule {
   req.bits.mask := Cat(mask, Bits(1,1)) << offset
   req.bits.data := aux.data << shift
   req.bits.last := Bool(true)
+  req.bits.pred := Bool(true)
   req.bits.tag := UInt(0)
 
   val resp_data = resp.bits.data >> shift
