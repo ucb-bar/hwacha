@@ -77,7 +77,7 @@ class SBox extends VMUModule {
   val bcnt = meta.ecnt.decode() << op.mt.shift()
   assert(!op.mt.b || (bcnt <= UInt(tlDataBytes >> 1)),
     "SBox: bcnt exceeds limit")
-  val truncate = (bcnt <= op.base) && !lead && meta.last
+  val truncate = (bcnt <= offset_u) && !lead && meta.last
 
   val vsdq_deq = meta.vsdq &&
     Mux(op.mode.unit, !truncate, index_end || meta.last)
