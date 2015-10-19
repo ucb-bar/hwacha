@@ -8,6 +8,11 @@ class HwachaConfigIO extends HwachaBundle with LaneParameters {
   val pstride = UInt(OUTPUT, bPredAddr)
 }
 
+class DecodeRegConfig extends HwachaBundle {
+  val nppr = UInt(width = bPRegs-1)
+  val nvpr = UInt(width = bVRegs-1)
+}
+
 class CMDQIO extends HwachaBundle {
   val cmd = Decoupled(Bits(width = CMD_X.getWidth))
   val imm = Decoupled(Bits(width = regLen))
@@ -56,7 +61,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants {
   )
 }
 
-class RoCCUnit extends HwachaModule with LaneParameters {
+class RoCCUnit extends HwachaModule with LaneParameters with MinMax {
   import HwachaDecodeTable._
 
   val io = new Bundle {
@@ -75,14 +80,18 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   val cfg_maxvl = Reg(init=UInt(8, bVLen))
   val cfg_vl = Reg(init=UInt(0, bVLen))
   val cfg_vregs = Reg(init=UInt(256, bVRegs))
-  val cfg_pregs = Reg(init=UInt(1, bPRegs))
+  val cfg_pregs = Reg(init=UInt(16, bPRegs))
   io.cfg.vstride := cfg_vregs
   io.cfg.pstride := cfg_pregs
 
   // Decode
-  val raw_inst = io.rocc.cmd.bits.inst.toBits
-  val inst_i_imm = raw_inst(31, 20)
-  val logic = rocket.DecodeLogic(raw_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
+  val rocc_inst = io.rocc.cmd.bits.inst.toBits
+  val rocc_imm12 = rocc_inst(31, 20)
+  val rocc_split_imm12 = Cat(rocc_inst(31, 25), rocc_inst(11, 7))
+  val rocc_rd = rocc_inst(11, 7)
+  val rocc_srd = Cat(rocc_inst(22, 20), rocc_rd)
+
+  val logic = rocket.DecodeLogic(rocc_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
   val cs = logic.map {
     case b if b.inputs.head.getClass == classOf[Bool] => b.toBool
     case u => u
@@ -128,26 +137,36 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   }
 
   // Logic to handle vector length calculation
-  val nvpr = (io.rocc.cmd.bits.rs1(bVRegs-2, 0) + inst_i_imm(bVRegs-2, 0)) + UInt(1,bVRegs)
-  val nppr = (io.rocc.cmd.bits.rs1(bVRegs+bPRegs-3, bVRegs-1) + inst_i_imm(11, bVRegs-1)) + UInt(1,bPRegs)
+  val nregs_imm = new DecodeRegConfig().fromBits(rocc_imm12)
+  val nregs_rs1 = new DecodeRegConfig().fromBits(io.rocc.cmd.bits.rs1)
+  val nvpr = nregs_imm.nvpr + nregs_rs1.nvpr + UInt(1, bVRegs) // widening add
+  val nppr = nregs_imm.nppr + nregs_rs1.nppr + UInt(1, bPRegs) // widening add
 
   // vector length lookup
-  val rom_allocation_units = (0 to nVRegs).toArray.map(n => (UInt(n),
-    UInt(if (n < 2) (nSRAM) else (nSRAM / n), width = log2Down(nSRAM)+1)
-  ))
+  val lookup_tbl_nvpr = (0 to nVRegs).toArray map { n =>
+    (UInt(n), UInt(if (n < 2) (nSRAM) else (nSRAM / n), width = log2Down(nSRAM)+1)) }
+  val lookup_tbl_nppr = (0 to nPRegs).toArray map { n =>
+    (UInt(n), UInt(if (n < 2) (nPred) else (nPred / n), width = log2Down(nPred)+1)) }
 
-  val elems_per_bank = Lookup(nvpr, rom_allocation_units.last._2, rom_allocation_units)
-  val new_maxvl = elems_per_bank * UInt(nBanks) * UInt(nSlices)
-  val new_vl = Mux(io.rocc.cmd.bits.rs1 < cfg_maxvl, io.rocc.cmd.bits.rs1, cfg_maxvl)(bVLen-1, 0)
+  // epb: elements per bank
+  val epb_nvpr = Lookup(nvpr, lookup_tbl_nvpr.last._2, lookup_tbl_nvpr)
+  val epb_nppr = Lookup(nppr, lookup_tbl_nppr.last._2, lookup_tbl_nppr)
+  val epb = min(epb_nvpr, epb_nppr)
+  val new_maxvl = epb * UInt(nBanks) * UInt(nSlices)
+  val new_vl = min(cfg_maxvl, io.rocc.cmd.bits.rs1)(bVLen-1, 0)
 
   when (fire(null, decode_vcfg)) {
     cfg_maxvl := new_maxvl
     cfg_vl := UInt(0)
     cfg_vregs := nvpr
     cfg_pregs := nppr
+    printf("H: VSETCFG[nvpr=%d][nppr=%d][epb_nvpr=%d][epb_nppr=%d][maxvl=%d]\n",
+      nvpr, nppr, epb_nvpr, epb_nppr, new_maxvl)
   }
   when (fire(null, decode_vsetvl)) {
     cfg_vl := new_vl
+    printf("H: VSETVL[maxvl=%d][vl=%d]\n",
+      cfg_maxvl, new_vl)
   }
 
   // Hookup ready port of RoCC cmd queue
@@ -159,25 +178,15 @@ class RoCCUnit extends HwachaModule with LaneParameters {
   cmdq.io.enq.cnt.valid := fire(mask_cnt_ready, enq_cnt)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
 
-  // cmdq/cmd dpath
+  // cmdq dpath
   cmdq.io.enq.cmd.bits := sel_cmd
-
-  // cmdq/imm dpath
-  val imm_vlen = new VCFG().fromBits(Cat(nppr, nvpr, new_vl))
-  val vf_immediate = Cat(raw_inst(31,25),raw_inst(11,7)).toSInt
-  val imm_addr = (io.rocc.cmd.bits.rs1 + vf_immediate).toUInt
-
   cmdq.io.enq.imm.bits :=
     MuxLookup(sel_imm, Bits(0), Array(
-    IMM_VLEN -> imm_vlen.toBits(),
+      IMM_VLEN -> new_vl,
       IMM_RS1  -> io.rocc.cmd.bits.rs1,
-      IMM_ADDR -> imm_addr
+      IMM_ADDR -> (io.rocc.cmd.bits.rs1 + rocc_split_imm12.toSInt).toUInt
     ))
-
-  // cmdq/rd dpath
-  val rd = Mux(rd_type === VRT_S, Cat(raw_inst(22,20), raw_inst(11,7)), raw_inst(11,7))
-
-  cmdq.io.enq.rd.bits := rd
+  cmdq.io.enq.rd.bits := Mux(rd_type === VRT_S, rocc_srd, rocc_rd)
 
   // respq dpath
   respq.io.enq.bits.data :=
@@ -186,7 +195,6 @@ class RoCCUnit extends HwachaModule with LaneParameters {
       RESP_CFG -> Cat(cfg_pregs, cfg_vregs),
       RESP_VL  -> cfg_vl
     ))
-
   respq.io.enq.bits.rd := io.rocc.cmd.bits.inst.rd
 
   // hookup output ports

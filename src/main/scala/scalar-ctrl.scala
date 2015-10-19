@@ -4,12 +4,6 @@ import Chisel._
 import rocket.ALU._
 import ScalarFPUDecode._
 
-class VCFG extends HwachaBundle {
-  val nppr = UInt(width = bPRegs)
-  val nvpr = UInt(width = bVRegs)
-  val vlen = UInt(width = bVLen)
-}
-
 class CtrlDpathIO extends HwachaBundle {
   val stallf = Bool(OUTPUT)
   val killf = Bool(OUTPUT)
@@ -101,11 +95,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val sboard = new Scoreboard(nSRegs)
   val sboard_not_empty = (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
 
-  val vf_active     = Reg(init=Bool(false))
-  val vcfg = Reg(new VCFG())
-  val vl = vcfg.vlen
-  val vregs = vcfg.nvpr
-  val pregs = vcfg.nppr
+  val vf_active = Reg(init=Bool(false))
+  val vlen = Reg(UInt(width = bVLen))
 
   val ex_ctrl = Reg(new IntCtrlSigs)
   val wb_ctrl = Reg(new IntCtrlSigs)
@@ -125,8 +116,8 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   val outstanding_memop = Reg(init=UInt(0,width=log2Up(nVMUQ+1)))
   val pending_memop = outstanding_memop != UInt(0)
 
-  io.vf_active     := vf_active
-  io.dpath.vf_active     := vf_active
+  io.vf_active := vf_active
+  io.dpath.vf_active := vf_active
   io.pending_memop := pending_memop
 
   // decode cmdq
@@ -165,14 +156,15 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.dpath.ex_ctrl := ex_ctrl
   io.dpath.wb_ctrl := wb_ctrl
 
-  when (fire_cmdq(null,decode_vsetcfg)) {
-    vcfg := new VCFG().fromBits(io.cmdq.imm.bits(vcfg.getWidth,0))
+  when (fire_cmdq(null, decode_vsetcfg)) {
+    vlen := io.cmdq.imm.bits
   }
-  when (fire_cmdq(null,decode_vsetvl)) {
-    vcfg.vlen    := io.cmdq.imm.bits(vcfg.vlen.getWidth, 0)
+  when (fire_cmdq(null, decode_vsetvl)) {
+    vlen := io.cmdq.imm.bits
   }
+
   io.dpath.fire_vf := Bool(false)
-  when (fire_cmdq(null,decode_vf)) {
+  when (fire_cmdq(null, decode_vf)) {
     vf_active := Bool(true)
     io.dpath.fire_vf := Bool(true)
   }
@@ -326,7 +318,7 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
 
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
-  io.vxu.bits.vlen := vl
+  io.vxu.bits.vlen := vlen
   io.vxu.bits.active.vint := id_ctrl.active_vint()
   io.vxu.bits.active.vipred := id_ctrl.active_vipred()
   io.vxu.bits.active.vimul := id_ctrl.active_vimul()
@@ -340,7 +332,6 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.active.vstx := id_ctrl.active_vstx()
   io.vxu.bits.active.vld := id_ctrl.active_vld()
   io.vxu.bits.active.vst := id_ctrl.active_vst()
-  // TODO: add predicate ops
   io.vxu.bits.fn.union :=
     MuxCase(Bits(0), Array(
       id_ctrl.viu_val  -> id_ctrl.fn_viu().toBits,
@@ -373,14 +364,13 @@ class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSi
   io.vxu.bits.reg.vp.pred := Bool(true)
   io.vxu.bits.reg.vp.neg() := id_ctrl.vp_neg
   io.vxu.bits.reg.vp.id := id_paddr
-  // TODO: add predicate regs
 
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
-  io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vl)
+  io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vlen)
   when (io.vmu.fire() && id_scalar_inst) {
     when (!clear_mem) {
       // TODO: try to remove outstanding_memop because we should really only have 1

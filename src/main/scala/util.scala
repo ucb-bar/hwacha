@@ -57,6 +57,11 @@ abstract trait BankLogic extends LaneParameters {
   }
 }
 
+abstract trait MinMax {
+  def min(x: UInt, y: UInt) = Mux(x > y, y, x)
+  def max(x: UInt, y: UInt) = Mux(x > y, x, y)
+}
+
 object DataGating {
   def dgate(valid: Bool, b: Bits) = Fill(b.getWidth, valid) & b
 }
