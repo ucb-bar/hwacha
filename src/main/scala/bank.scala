@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class BankOpIO extends VXUBundle {
+class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadMicroOp)
     val write = Valid(new SRAMRFWriteMicroOp)
@@ -34,11 +34,11 @@ class BankOpIO extends VXUBundle {
   val vsu = Valid(new VSUMicroOp)
 }
 
-class BPQIO extends DecoupledIO(new BPQEntry)
-class BRQIO extends DecoupledIO(new BRQEntry)
-class BWQIO extends DecoupledIO(new BWQEntry)
+class BPQIO(implicit p: Parameters) extends DecoupledIO(new BPQEntry()(p))
+class BRQIO(implicit p: Parameters) extends DecoupledIO(new BRQEntry()(p))
+class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p))
 
-class BankRWIO extends VXUBundle {
+class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   val pdl = Vec.fill(nGPDL){new BankPredEntry().asOutput}
   val opl = Vec.fill(nGOPL){new BankDataEntry().asOutput}
   val wpred = new BankPredEntry().asInput
@@ -52,7 +52,7 @@ class BankRWIO extends VXUBundle {
   }
 }
 
-class Bank(id: Int) extends VXUModule with Packing {
+class Bank(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val ack = new Bundle {

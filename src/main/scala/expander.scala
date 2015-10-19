@@ -32,7 +32,7 @@ abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
   val maxVQUTicks = rpVQU+2
 }
 
-class TickerIO extends VXUBundle {
+class TickerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {
     val read = Vec.fill(maxSRAMReadTicks){Valid(new SRAMRFReadExpEntry)}
     val write = Vec.fill(maxSRAMWriteTicks){Valid(new SRAMRFWriteExpEntry)}
@@ -61,7 +61,7 @@ class TickerIO extends VXUBundle {
   val vfvu = Vec.fill(maxVFVUTicks){Valid(new VFVULaneOp)}
 }
 
-class Expander extends VXUModule {
+class Expander(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val seq = new SequencerIO().flip
     val lane = new LaneOpIO

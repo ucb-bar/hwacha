@@ -3,15 +3,15 @@ package hwacha
 import Chisel._
 import DataGating._
 
-class BPQLookAheadIO extends VXUBundle with LookAheadIO {
+class BPQLookAheadIO(implicit p: Parameters) extends VXUBundle()(p) with LookAheadIO {
   val mask = Bits(OUTPUT, nBanks)
 }
 
-class BRQLookAheadIO extends VXUBundle with LookAheadIO {
+class BRQLookAheadIO(implicit p: Parameters) extends VXUBundle()(p) with LookAheadIO {
   val mask = Bits(OUTPUT, nBanks)
 }
 
-class VGU extends VXUModule with Packing {
+class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
     val pla = new CounterLookAheadIO().flip // lpq entry
@@ -103,7 +103,7 @@ class VGU extends VXUModule with Packing {
     i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
 }
 
-class VPU extends VXUModule with BankLogic {
+class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
     val la = new BPQLookAheadIO().flip
@@ -188,7 +188,7 @@ class VPU extends VXUModule with BankLogic {
   io.spred.bits := pred
 }
 
-class VSU extends VXUModule {
+class VSU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
     val xcpt = new XCPTIO().flip
@@ -387,13 +387,13 @@ class VSU extends VXUModule {
     Seq(data_d, data_w, data_h, data_b).map(x => Cat(x.reverse)))
 }
 
-class VLUEntry extends VXUBundle {
+class VLUEntry(implicit p: Parameters) extends VXUBundle()(p) {
   val eidx = UInt(width = bVLen - log2Up(nBatch))
   val data = Bits(width = wBank)
   val mask = Bits(width = nSlices)
 }
 
-class VLU extends VXUModule {
+class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
 

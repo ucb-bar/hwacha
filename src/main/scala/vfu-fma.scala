@@ -5,7 +5,7 @@ import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
 
-class FMAOperand extends Bundle {
+class FMAOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFMUFn
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
@@ -17,7 +17,7 @@ class FMAResult extends Bundle {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class FMASlice extends VXUModule with Packing {
+class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val req = Valid(new FMAOperand).flip
     val resp = Valid(new FMAResult)

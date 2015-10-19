@@ -4,7 +4,7 @@ import Chisel._
 import DataGating._
 import HardFloatHelper._
 
-class FCmpOperand extends Bundle {
+class FCmpOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFCUFn
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
@@ -15,7 +15,7 @@ class FCmpResult extends Bundle {
   val cmp = Bool()
 }
 
-class FCmpSlice extends VXUModule with Packing {
+class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val req = Valid(new FCmpOperand).flip
     val resp = Valid(new FCmpResult)

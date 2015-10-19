@@ -20,42 +20,42 @@ case object HwachaStagesFConv extends Field[Int]
 case object HwachaStagesFCmp extends Field[Int]
 
 abstract trait LaneParameters extends UsesHwachaParameters {
-  val wBank = params(HwachaBankWidth)
-  val nBanks = params(HwachaNBanks)
-  val nSRAM = params(HwachaNSRAMRFEntries)
-  val nFF = params(HwachaNFFRFEntries)
+  val wBank = p(HwachaBankWidth)
+  val nBanks = p(HwachaNBanks)
+  val nSRAM = p(HwachaNSRAMRFEntries)
+  val nFF = p(HwachaNFFRFEntries)
   val bRFAddr = math.max(log2Up(nSRAM), log2Up(nFF))
-  val nFFRPorts = params(HwachaNFFRFReadPorts)
-  val nPred = params(HwachaNPredRFEntries)
+  val nFFRPorts = p(HwachaNFFRFReadPorts)
+  val nPred = p(HwachaNPredRFEntries)
   val bPredAddr = log2Up(nPred)
-  val nPredRPorts = params(HwachaNPredRFReadPorts)
+  val nPredRPorts = p(HwachaNPredRFReadPorts)
 
-  val nSlices = wBank / params(HwachaRegLen)
+  val nSlices = wBank / p(HwachaRegLen)
   val nBankSRAMRegs = nSRAM * nSlices
   val nLaneSRAMRegs = nBanks * nBankSRAMRegs
   val nBatch = nBanks * nSlices
 
-  val nGOPL = params(HwachaNOperandLatches)
+  val nGOPL = p(HwachaNOperandLatches)
   val nLOPL = 3
-  val nGPDL = params(HwachaNPredLatches)
+  val nGPDL = p(HwachaNPredLatches)
   val nLPDL = 2
-  val nWSel = params(HwachaWriteSelects)
+  val nWSel = p(HwachaWriteSelects)
   val nLPQ = 2
   val nLRQ = 3
   val nDecoupledUnitWBQueue = 4
   val nVFMU = 2
 
-  val stagesALU = params(HwachaStagesALU)
-  val stagesPLU = params(HwachaStagesPLU)
-  val stagesIMul = params(HwachaStagesIMul)
-  val stagesFMA = params(HwachaStagesFMA)
-  val stagesFConv = params(HwachaStagesFConv)
-  val stagesFCmp = params(HwachaStagesFCmp)
+  val stagesALU = p(HwachaStagesALU)
+  val stagesPLU = p(HwachaStagesPLU)
+  val stagesIMul = p(HwachaStagesIMul)
+  val stagesFMA = p(HwachaStagesFMA)
+  val stagesFConv = p(HwachaStagesFConv)
+  val stagesFCmp = p(HwachaStagesFCmp)
 
   require(nVRegs <= nSRAM)
 }
 
-class LaneOpIO extends VXUBundle {
+class LaneOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {
     val read = Valid(new SRAMRFReadLaneOp)
     val write = Valid(new SRAMRFWriteLaneOp)
@@ -96,7 +96,7 @@ class LaneOpIO extends VXUBundle {
   val vfvu = Valid(new VFVULaneOp)
 }
 
-class MicroOpIO extends VXUBundle {
+class MicroOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val bank = Vec.fill(nBanks){new BankOpIO}
   val sreg = Vec.fill(nGOPL){Valid(new SRegMicroOp)}
   val vqu = Valid(new VQUMicroOp)
@@ -107,7 +107,7 @@ class MicroOpIO extends VXUBundle {
   val vfvu = Valid(new VFVUMicroOp)
 }
 
-class LaneAckIO extends VXUBundle {
+class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
   val viu = Vec.fill(nBanks){Valid(new VIUAck)}
   val vipu = Vec.fill(nBanks){Valid(new VIPUAck)}
   val vqu = Valid(new VQUAck)
@@ -118,10 +118,10 @@ class LaneAckIO extends VXUBundle {
   val vfvu = Valid(new VFVUAck)
 }
 
-class LPQIO extends DecoupledIO(new LPQEntry)
-class LRQIO extends DecoupledIO(new LRQEntry)
+class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
+class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
 
-class Lane extends VXUModule with Packing {
+class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO

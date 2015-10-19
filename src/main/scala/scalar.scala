@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class ScalarUnit extends HwachaModule {
+class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cmdq = new CMDQIO().flip
 

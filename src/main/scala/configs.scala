@@ -11,7 +11,6 @@ class DefaultHwachaConfig extends ChiselConfig (
     case RowBits => site(CacheName) match { case "HwI" => 2*site(CoreInstBits) }
     case NTLBEntries => site(CacheName) match { case "HwI" => 8 }
     case FetchWidth => 1
-    case NBTBEntries => if (site(CoreName) == "Hwacha") 8 else 62
     case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
 
@@ -58,7 +57,8 @@ class DefaultHwachaConfig extends ChiselConfig (
 
     // +2 comes from the overhead of tagging for the arbitration
     case RoCCMaxTaggedMemXacts => site(HwachaNVLTEntries)
-    case BuildRoCC => Some(() => (Module(new Hwacha, { case CoreName => "Hwacha" })))
+    case BuildRoCC => Some((p: Parameters) => 
+      Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
   }
 ) 
 {

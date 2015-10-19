@@ -3,11 +3,11 @@ package hwacha
 import Chisel._
 import DataGating._
 
-class RFWritePort extends VXUBundle with BankData with BankMask {
+class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData with BankMask {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class BankRegfile extends VXUModule {
+class BankRegfile(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val global = new BankRWIO

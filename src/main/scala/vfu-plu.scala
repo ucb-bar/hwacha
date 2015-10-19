@@ -2,18 +2,18 @@ package hwacha
 
 import Chisel._
 
-class PLUOperand extends VXUBundle {
+class PLUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIPUFn
   val in0 = Bool()
   val in1 = Bool()
   val in2 = Bool()
 }
 
-class PLUResult extends VXUBundle {
+class PLUResult(implicit p: Parameters) extends VXUBundle()(p) {
   val out = Bool()
 }
 
-class PLUSlice extends VXUModule {
+class PLUSlice(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val req = Valid(new PLUOperand).flip
     val resp = Valid(new PLUResult)

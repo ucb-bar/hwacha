@@ -2,23 +2,23 @@ package hwacha
 
 import Chisel._
 
-class VMUMemReq extends VMUMemOp
+class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {
   val mask = UInt(width = tlDataBytes)
   val last = Bool()
   val pred = Bool()
 }
 
-class VMUMemResp extends VMLUData {
+class VMUMemResp(implicit p: Parameters) extends VMLUData()(p) {
   val store = Bool()
 }
 
-class VMUMemIO extends Bundle {
+class VMUMemIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new VMUMemReq)
   val resp = Decoupled(new VMUMemResp).flip
 }
 
-class MBox extends VMUModule {
+class MBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val inner = new Bundle {
       val abox = new AGUIO().flip
@@ -103,7 +103,7 @@ class MBox extends VMUModule {
     Mux(sret_resp_en, Cat(Bits(0,1), sret_resp.decode()), UInt(0))
 }
 
-class MBar extends VMUModule {
+class MBar(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val inner = new Bundle {
       val vmu = new VMUMemIO().flip
@@ -191,7 +191,7 @@ class MBar extends VMUModule {
   }
 }
 
-class VMUTileLink extends VMUModule {
+class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
   import uncore._
 
   val io = new Bundle {

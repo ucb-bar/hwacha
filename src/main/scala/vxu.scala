@@ -2,9 +2,9 @@ package hwacha
 
 import Chisel._
 
-class VXUIssueOpIO extends DecoupledIO(new IssueOp)
+class VXUIssueOpIO(implicit p: Parameters) extends DecoupledIO(new IssueOp()(p))
 
-class VXU extends HwachaModule {
+class VXU(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new VXUIssueOpIO().flip

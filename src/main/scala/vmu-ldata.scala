@@ -2,21 +2,20 @@ package hwacha
 
 import Chisel._
 
-class VLTWIO extends DecoupledIO(new VLTEntry)
-  with VMUParameters {
+class VLTWIO(implicit val p: Parameters) extends DecoupledIO(new VLTEntry()(p)) with VMUParameters {
   val tag = UInt(INPUT, bTag)
 }
 
-class VLTRIO extends ValidIO(new VMUBundle with VMUTag) {
+class VLTRIO(implicit p: Parameters) extends ValidIO(new VMUBundle()(p) with VMUTag) {
   val meta = new VLTEntry().asInput()
 }
 
-class VMLUIO extends Bundle {
+class VMLUIO(implicit p: Parameters) extends VMUBundle()(p) {
   val load = Decoupled(new VMLUData)
   val meta = new VLTWIO
 }
 
-class VLT extends VMUModule {
+class VLT(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val r = new VLTRIO().flip
     val w = new VLTWIO().flip
@@ -45,7 +44,7 @@ class VLT extends VMUModule {
   }
 }
 
-class LBox extends VMUModule {
+class LBox(implicit p: Parameters)  extends VMUModule()(p) {
   val io = new Bundle {
     val mem = new VMLUIO().flip
     val lane = new VLDQIO

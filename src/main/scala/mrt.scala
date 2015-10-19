@@ -2,18 +2,18 @@ package hwacha
 
 import Chisel._
 
-class LaneMRTIO extends Bundle with SeqParameters {
+class LaneMRTIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
   val lreq = new CounterLookAheadIO
   val sreq = new CounterLookAheadIO
   val lret = new CounterUpdateIO(bLookAhead)
 }
 
-class MRTIO extends LaneMRTIO with VMUParameters {
+class MRTIO(implicit p: Parameters) extends LaneMRTIO()(p) with VMUParameters {
   val sret = new CounterUpdateIO(bSRet)
   val pending = Bool(INPUT)
 }
 
-class MemTracker extends HwachaModule {
+class MemTracker(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new MRTIO().flip
 
   val lcnt = Module(new LookAheadCounter(nvlreq, nvlreq))

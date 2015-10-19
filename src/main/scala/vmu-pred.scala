@@ -2,12 +2,12 @@ package hwacha
 
 import Chisel._
 
-class VMUMaskIO extends Bundle {
+class VMUMaskIO(implicit p: Parameters) extends VMUBundle()(p) {
   val ante = new VMUMaskIO_0
   val post = new VMUMaskIO_1
 }
 
-class PBox0 extends VMUModule {
+class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val ingress = Decoupled(new PredEntry).flip
     val egress = Decoupled(new PredEntry)
@@ -159,7 +159,7 @@ class PBox0 extends VMUModule {
   }
 }
 
-class PBox1 extends VMUModule {
+class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val ingress = Decoupled(new PredEntry).flip
     val sample = new VMUMaskIO_1
@@ -288,7 +288,7 @@ class PBox1 extends VMUModule {
   }
 }
 
-class PBox extends VMUModule {
+class PBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val op = Vec.fill(2)(Decoupled(new VMUDecodedOp).flip)
     val pred = Decoupled(new PredEntry).flip

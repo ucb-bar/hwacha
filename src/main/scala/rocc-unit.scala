@@ -3,24 +3,23 @@ package hwacha
 import Chisel._
 import Commands._
 
-class HwachaConfigIO extends HwachaBundle with LaneParameters {
+class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val vstride = UInt(OUTPUT, bRFAddr)
   val pstride = UInt(OUTPUT, bPredAddr)
 }
 
-class DecodeRegConfig extends HwachaBundle {
+class DecodeRegConfig(implicit p: Parameters) extends HwachaBundle()(p) {
   val nppr = UInt(width = bPRegs-1)
   val nvpr = UInt(width = bVRegs-1)
 }
-
-class CMDQIO extends HwachaBundle {
+class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val cmd = Decoupled(Bits(width = CMD_X.getWidth))
   val imm = Decoupled(Bits(width = regLen))
   val rd  = Decoupled(Bits(width = bSDest))
   val cnt = Decoupled(Bits(width = bVLen))
 }
 
-class CMDQ(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal) {
+class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
   val io = new Bundle {
     val enq = new CMDQIO().flip
     val deq = new CMDQIO()
@@ -61,7 +60,7 @@ object HwachaDecodeTable extends HwachaDecodeConstants {
   )
 }
 
-class RoCCUnit extends HwachaModule with LaneParameters with MinMax {
+class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParameters with MinMax{
   import HwachaDecodeTable._
 
   val io = new Bundle {

@@ -4,12 +4,12 @@ import Chisel._
 import DataGating._
 import HardFloatHelper._
 
-class Write extends HwachaBundle {
+class Write(implicit p: Parameters) extends HwachaBundle()(p) {
   val rd  = Bits(width = bSDest)
   val imm = Bits(width = regLen)
 }
 
-class ScalarDpath extends HwachaModule {
+class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cmdq = new CMDQIO().flip
     val ctrl = new CtrlDpathIO().flip
@@ -74,7 +74,7 @@ class ScalarDpath extends HwachaModule {
   }
   io.imem.req.bits.pc := io.cmdq.imm.bits
 
-  val id_inst = io.imem.resp.bits.data(0).toBits; require(params(rocket.FetchWidth) == 1)
+  val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc
   //register reads
   val id_sraddr = Vec(dgate(io.ctrl.sren(0),id_inst(31,24)), dgate(io.ctrl.sren(1),id_inst(40,33)), dgate(io.ctrl.sren(2),id_inst(48,41)))

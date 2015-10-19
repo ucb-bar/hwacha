@@ -18,7 +18,7 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
   val maxStrip = nBanks * (wBank / SZ_B)
   val bStrip = log2Down(maxStrip) + 1
-  val maxLookAhead = math.max(params(uncore.TLDataBits) / SZ_B, nBatch)
+  val maxLookAhead = math.max(tlDataBits / SZ_B, nBatch)
   val bLookAhead = log2Down(maxLookAhead) + 1
 
   // the following needs to hold in order to simplify dhazard_war checking
@@ -41,13 +41,13 @@ abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
   val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
 }
 
-class SequencerIO extends VXUBundle {
+class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val exp = Valid(new SeqOp)
   val vipu = Valid(new SeqVIPUOp)
   val vpu = Valid(new SeqVPUOp)
 }
 
-class Sequencer extends VXUModule with BankLogic {
+class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new VXUIssueOpIO().flip

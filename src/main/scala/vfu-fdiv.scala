@@ -4,7 +4,7 @@ import Chisel._
 import DataGating._
 import HardFloatHelper._
 
-class FDivOperand extends Bundle {
+class FDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFDUFn
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
@@ -15,17 +15,17 @@ class FDivResult extends Bundle {
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class FDivIO extends Bundle {
+class FDivIO(implicit p: Parameters) extends VXUBundle()(p) {
   val req = Decoupled(new FDivOperand)
   val resp = Decoupled(new FDivResult).flip
 }
 
-class FDivTag extends Bundle {
+class FDivTag(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFDUFn
   val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
 }
 
-class FDivSlice extends VXUModule with Packing {
+class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new FDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))

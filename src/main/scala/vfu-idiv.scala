@@ -6,7 +6,7 @@ case object FastMulDiv extends Field[Boolean]
 
 object RocketConstants extends rocket.constants.ScalarOpConstants
 
-class IDivOperand extends Bundle {
+class IDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIDUFn
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
@@ -16,12 +16,12 @@ class IDivResult extends Bundle {
   val out = Bits(width = SZ_D)
 }
 
-class IDivIO extends Bundle {
+class IDivIO(implicit p: Parameters) extends VXUBundle()(p) {
   val req = Decoupled(new IDivOperand)
   val resp = Decoupled(new IDivResult).flip
 }
 
-class IDivSlice extends VXUModule {
+class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   val io = new IDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
@@ -29,7 +29,7 @@ class IDivSlice extends VXUModule {
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
 
-  val div = Module(new rocket.MulDiv(mulUnroll = 8, earlyOut = true))
+  val div = Module(new rocket.MulDiv(width = p(HwachaRegLen), unroll = 8, earlyOut = true))
 
   div.io.req.valid := io.req.valid
   io.req.ready := !qcnt.io.empty && div.io.req.ready

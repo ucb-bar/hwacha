@@ -2,13 +2,13 @@ package hwacha
 
 import Chisel._
 
-class TLBRequest extends VMUBundle {
+class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
     val addr = UInt(width = bVAddrExtended)
     val store = Bool()
     val mt = new DecodedMemType
 }
 
-class TLBIO extends VMUBundle {
+class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new TLBRequest)
   val resp = new Bundle {
     val ppn = UInt(INPUT, bPgIdx)
@@ -20,7 +20,7 @@ class TLBIO extends VMUBundle {
   def paddr(dummy: Int = 0): UInt = Cat(this.resp.ppn, this.pgidx())
 }
 
-class RTLBIO extends VMUBundle {
+class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new rocket.TLBReq)
   val resp = new rocket.TLBRespNoHitIndex().flip
 
@@ -38,7 +38,7 @@ class RTLBIO extends VMUBundle {
   }
 }
 
-class TBox(n: Int) extends VMUModule {
+class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val inner = Vec.fill(n)(new TLBIO().flip)
     val outer = new RTLBIO

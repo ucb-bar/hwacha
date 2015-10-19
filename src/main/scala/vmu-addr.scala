@@ -2,13 +2,13 @@ package hwacha
 
 import Chisel._
 
-class AGUPipeEntry extends VMUBundle {
+class AGUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val addr = UInt(width = bPAddr - tlByteAddrBits)
   val meta = new VMUMetaAddr
 }
-class AGUPipeIO extends DecoupledIO(new AGUPipeEntry)
+class AGUPipeIO(implicit p: Parameters) extends DecoupledIO(new AGUPipeEntry()(p))
 
-class VVAQ extends VMUModule {
+class VVAQ(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val enq = new VVAQIO().flip
     val deq = new VVAQIO
@@ -19,7 +19,7 @@ class VVAQ extends VMUModule {
   io.deq <> q.io.deq
 }
 
-class ABox0 extends VMUModule {
+class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val vvaq = new VVAQIO().flip
     val vpaq = new VPAQIO
@@ -102,7 +102,7 @@ class ABox0 extends VMUModule {
   }
 }
 
-class VPAQ extends VMUModule with SeqParameters {
+class VPAQ(implicit p: Parameters) extends VMUModule()(p) with SeqParameters {
   val io = new Bundle {
     val enq = new VPAQIO().flip
     val deq = new VPAQIO
@@ -121,7 +121,7 @@ class VPAQ extends VMUModule with SeqParameters {
   vcucntr.io.dec <> io.la
 }
 
-class ABox1 extends VMUModule {
+class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val vpaq = new VPAQIO().flip
     val pipe = new AGUPipeIO
@@ -264,7 +264,7 @@ class ABox1 extends VMUModule {
   }
 }
 
-class ABox2 extends VMUModule {
+class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val inner = new AGUPipeIO().flip
     val outer = new AGUIO
@@ -333,7 +333,7 @@ class ABox2 extends VMUModule {
   }
 }
 
-class ABox extends VMUModule {
+class ABox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val op = Vec.fill(3)(Decoupled(new VMUDecodedOp).flip)
     val lane = new VVAQIO().flip

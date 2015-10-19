@@ -2,16 +2,16 @@ package hwacha
 
 import Chisel._
 
-abstract class VXUModule(clock: Clock = null, _reset: Bool = null)
-  extends HwachaModule(clock, _reset) with SeqParameters with LaneParameters with DCCParameters with ExpParameters
-abstract class VXUBundle
-  extends HwachaBundle with SeqParameters with LaneParameters with DCCParameters with ExpParameters
+abstract class VXUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
+  extends HwachaModule(clock, _reset)(p) with SeqParameters with LaneParameters with DCCParameters with ExpParameters
+abstract class VXUBundle(implicit p: Parameters)
+  extends HwachaBundle()(p) with SeqParameters with LaneParameters with DCCParameters with ExpParameters
 
 //-------------------------------------------------------------------------\\
 // vector functional unit fn types
 //-------------------------------------------------------------------------\\
 
-class VIUFn extends VXUBundle {
+class VIUFn(implicit p: Parameters) extends VXUBundle()(p) {
   val dw = Bits(width = SZ_DW)
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
@@ -23,11 +23,11 @@ class VIUFn extends VXUBundle {
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
 }
 
-class VIPUFn extends VXUBundle {
+class VIPUFn(implicit p: Parameters) extends VXUBundle()(p) {
   val op = Bits(width = SZ_VIPU_OP)
 }
 
-class VIXUFn(sz_op: Int) extends VXUBundle {
+class VIXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val dw = UInt(width = SZ_DW)
   val op = UInt(width = sz_op)
 
@@ -39,10 +39,10 @@ class VIXUFn(sz_op: Int) extends VXUBundle {
   def is(_dw: UInt, ops: UInt*) = dw_is(_dw) && op_is(ops.toList)
 }
 
-class VIMUFn extends VIXUFn(SZ_VIMU_OP)
-class VIDUFn extends VIXUFn(SZ_VIDU_OP)
+class VIMUFn(implicit p: Parameters) extends VIXUFn(SZ_VIMU_OP)(p)
+class VIDUFn(implicit p: Parameters) extends VIXUFn(SZ_VIDU_OP)(p)
 
-class VFXUFn(sz_op: Int) extends VXUBundle {
+class VFXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val fp = UInt(width = SZ_FP)
   val rm = UInt(width = rocket.FPConstants.RM_SZ)
   val op = UInt(width = sz_op)
@@ -53,16 +53,16 @@ class VFXUFn(sz_op: Int) extends VXUBundle {
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
 }
 
-class VFMUFn extends VFXUFn(SZ_VFMU_OP)
-class VFDUFn extends VFXUFn(SZ_VFDU_OP)
-class VFCUFn extends VFXUFn(SZ_VFCU_OP)
-class VFVUFn extends VFXUFn(SZ_VFVU_OP)
+class VFMUFn(implicit p: Parameters) extends VFXUFn(SZ_VFMU_OP)(p)
+class VFDUFn(implicit p: Parameters) extends VFXUFn(SZ_VFDU_OP)(p)
+class VFCUFn(implicit p: Parameters) extends VFXUFn(SZ_VFCU_OP)(p)
+class VFVUFn(implicit p: Parameters) extends VFXUFn(SZ_VFVU_OP)(p)
 
-class VQUFn extends VXUBundle {
+class VQUFn(implicit p: Parameters) extends VXUBundle()(p) {
   val latch = Bits(width = 2)
 }
 
-class VFn extends VXUBundle {
+class VFn(implicit p: Parameters) extends VXUBundle()(p) {
   val union = Bits(width = List(
     new VIUFn().toBits.getWidth,
     new VIPUFn().toBits.getWidth,
@@ -93,7 +93,7 @@ class VFn extends VXUBundle {
 // decoded information types
 //-------------------------------------------------------------------------\\
 
-class RegInfo extends VXUBundle {
+class RegInfo(implicit p: Parameters) extends VXUBundle()(p) {
   val valid = Bool()
   val scalar = Bool()
   val pred = Bool()
@@ -105,7 +105,7 @@ class RegInfo extends VXUBundle {
   def neg(d: Int = 0) = scalar
 }
 
-class DecodedRegisters extends VXUBundle {
+class DecodedRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val vp = new RegInfo
   val vs1 = new RegInfo
   val vs2 = new RegInfo
@@ -113,13 +113,13 @@ class DecodedRegisters extends VXUBundle {
   val vd = new RegInfo
 }
 
-class ScalarRegisters extends VXUBundle {
+class ScalarRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val ss1 = Bits(width = regLen)
   val ss2 = Bits(width = regLen)
   val ss3 = Bits(width = regLen)
 }
 
-class DecodedInstruction extends VXUBundle {
+class DecodedInstruction(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFn // union
   val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
@@ -130,7 +130,7 @@ class DecodedInstruction extends VXUBundle {
 // issue op
 //-------------------------------------------------------------------------\\
 
-class IssueType extends VXUBundle {
+class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   val vint = Bool()
   val vipred = Bool()
   val vimul = Bool()
@@ -153,7 +153,7 @@ class IssueType extends VXUBundle {
   def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vpu() || enq_vlu() || enq_vsu()
 }
 
-class IssueOp extends DecodedInstruction {
+class IssueOp(implicit p: Parameters) extends DecodedInstruction()(p) {
   val vlen = UInt(width = bVLen)
   val active = new IssueType
 }
@@ -187,7 +187,7 @@ trait MicroOp extends BankPred
 // sequencer op
 //-------------------------------------------------------------------------\\
 
-class SeqType extends VXUBundle {
+class SeqType(implicit p: Parameters) extends VXUBundle()(p) {
   val viu = Bool()
   val vipu = Bool()
   val vimu = Bool()
@@ -204,7 +204,7 @@ class SeqType extends VXUBundle {
   val vqu = Bool()
 }
 
-class SeqEntry extends DecodedInstruction {
+class SeqEntry(implicit p: Parameters) extends DecodedInstruction()(p) {
   val active = new SeqType
   val base = new DecodedRegisters
   val raw = Vec.fill(nSeq){Bool()}
@@ -220,11 +220,11 @@ class SeqEntry extends DecodedInstruction {
   val age = UInt(width = log2Up(nBanks))
 }
 
-class SeqSelect extends VXUBundle {
+class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
   val vfmu = UInt(width = log2Up(nVFMU))
 }
 
-class SeqOp extends DecodedInstruction with LaneOp {
+class SeqOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp {
   val active = new SeqType
   val select = new SeqSelect
   val eidx = UInt(width = bVLen)
@@ -237,105 +237,105 @@ class SeqOp extends DecodedInstruction with LaneOp {
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
-class SeqVPUOp extends DecodedInstruction with LaneOp
-class SeqVIPUOp extends DecodedInstruction with LaneOp
+class SeqVPUOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp
+class SeqVIPUOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp
 
 
 //-------------------------------------------------------------------------\\
 // lane, micro op
 //-------------------------------------------------------------------------\\
 
-class SRAMRFReadOp extends VXUBundle {
+class SRAMRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class SRAMRFWriteOp extends VXUBundle {
+class SRAMRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nSRAM))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class FFRFReadOp extends VXUBundle {
+class FFRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nFF))
 }
 
-class FFRFWriteOp extends VXUBundle {
+class FFRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nFF))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class PredRFReadOp extends VXUBundle {
+class PredRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nPred))
 }
 
-class PredRFGatedReadOp extends PredRFReadOp {
+class PredRFGatedReadOp(implicit p: Parameters) extends PredRFReadOp()(p) {
   val off = Bool()
   val neg = Bool()
 }
 
-class PredRFWriteOp extends VXUBundle {
+class PredRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
   val addr = UInt(width = log2Up(nPred))
   val selg = Bool()
   val plu = Bool()
 }
 
-class OPLOp extends VXUBundle {
+class OPLOp(implicit p: Parameters) extends VXUBundle()(p) {
   val selff = Bool()
 }
 
-class PDLOp extends VXUBundle
+class PDLOp(implicit p: Parameters) extends VXUBundle()(p)
 
-class SRegOp extends VXUBundle {
+class SRegOp(implicit p: Parameters) extends VXUBundle()(p) {
   val operand = Bits(width = regLen)
 }
 
-class XBarOp extends VXUBundle {
+class XBarOp(implicit p: Parameters) extends VXUBundle()(p) {
   val pdladdr = UInt(width = log2Up(nGPDL))
 }
 
-class PXBarOp extends VXUBundle
+class PXBarOp(implicit p: Parameters) extends VXUBundle()(p)
 
-class VIUOp extends VXUBundle {
+class VIUOp(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn
   val eidx = UInt(width = bVLen)
 }
 
-class VIPUOp extends VXUBundle {
+class VIPUOp(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIPUFn
 }
 
-case class SharedLLOp(nOperands: Int) extends VXUBundle {
+case class SharedLLOp(nOperands: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val sreg = Vec.fill(nOperands){Bool()}
 }
 
-class VIMUOp extends SharedLLOp(2) {
+class VIMUOp(implicit p: Parameters) extends SharedLLOp(2)(p) {
   val fn = new VIMUFn
 }
 
-class VFMUOp extends SharedLLOp(3) {
+class VFMUOp(implicit p: Parameters) extends SharedLLOp(3)(p) {
   val fn = new VFMUFn
 }
 
-class VFCUOp extends SharedLLOp(2) {
+class VFCUOp(implicit p: Parameters) extends SharedLLOp(2)(p) {
   val fn = new VFCUFn
 }
 
-class VFVUOp extends SharedLLOp(1) {
+class VFVUOp(implicit p: Parameters) extends SharedLLOp(1)(p) {
   val fn = new VFVUFn
 }
 
-class VQUOp extends SharedLLOp(2) {
+class VQUOp(implicit p: Parameters) extends SharedLLOp(2)(p) {
   val fn = new VQUFn
 }
 
-class VPUOp extends VXUBundle
+class VPUOp(implicit p: Parameters) extends VXUBundle()(p)
 
-class VGUOp extends SharedLLOp(1) {
+class VGUOp(implicit p: Parameters) extends SharedLLOp(1)(p) {
   val fn = new VMUFn
 }
 
-class VSUOp extends VXUBundle {
+class VSUOp(implicit p: Parameters) extends VXUBundle()(p) {
   val selff = Bool() // select ff if true
 }
 
@@ -343,30 +343,30 @@ class VSUOp extends VXUBundle {
 // lane op
 //-------------------------------------------------------------------------\\
 
-class SRAMRFReadLaneOp extends SRAMRFReadOp with LaneOp
-class SRAMRFWriteLaneOp extends SRAMRFWriteOp with LaneOp
-class FFRFReadLaneOp extends FFRFReadOp with LaneOp
-class FFRFWriteLaneOp extends FFRFWriteOp with LaneOp
-class PredRFReadLaneOp extends PredRFReadOp with LaneOp
-class PredRFGatedReadLaneOp extends PredRFGatedReadOp with LaneOp
-class PredRFWriteLaneOp extends PredRFWriteOp with LaneOp
-class OPLLaneOp extends OPLOp with LaneOp
-class PDLLaneOp extends PDLOp with LaneOp
-class SRegLaneOp extends SRegOp with LaneOp
-class XBarLaneOp extends XBarOp with LaneOp
-class PXBarLaneOp extends PXBarOp with LaneOp
-class VIULaneOp extends VIUOp with LaneOp
-class VIPULaneOp extends VIPUOp with LaneOp
-class VIMULaneOp extends VIMUOp with LaneOp
-class VFMULaneOp extends VFMUOp with LaneOp
-class VFCULaneOp extends VFCUOp with LaneOp
-class VFVULaneOp extends VFVUOp with LaneOp
-class VQULaneOp extends VQUOp with LaneOp
-class VPULaneOp extends VPUOp with LaneOp
-class VGULaneOp extends VGUOp with LaneOp
-class VSULaneOp extends VSUOp with LaneOp
+class SRAMRFReadLaneOp(implicit p: Parameters) extends SRAMRFReadOp()(p) with LaneOp
+class SRAMRFWriteLaneOp(implicit p: Parameters) extends SRAMRFWriteOp()(p) with LaneOp
+class FFRFReadLaneOp(implicit p: Parameters) extends FFRFReadOp()(p) with LaneOp
+class FFRFWriteLaneOp(implicit p: Parameters) extends FFRFWriteOp()(p) with LaneOp
+class PredRFReadLaneOp(implicit p: Parameters) extends PredRFReadOp()(p) with LaneOp
+class PredRFGatedReadLaneOp(implicit p: Parameters) extends PredRFGatedReadOp()(p) with LaneOp
+class PredRFWriteLaneOp(implicit p: Parameters) extends PredRFWriteOp()(p) with LaneOp
+class OPLLaneOp(implicit p: Parameters) extends OPLOp()(p) with LaneOp
+class PDLLaneOp(implicit p: Parameters) extends PDLOp()(p) with LaneOp
+class SRegLaneOp(implicit p: Parameters) extends SRegOp()(p) with LaneOp
+class XBarLaneOp(implicit p: Parameters) extends XBarOp()(p) with LaneOp
+class PXBarLaneOp(implicit p: Parameters) extends PXBarOp()(p) with LaneOp
+class VIULaneOp(implicit p: Parameters) extends VIUOp()(p) with LaneOp
+class VIPULaneOp(implicit p: Parameters) extends VIPUOp()(p) with LaneOp
+class VIMULaneOp(implicit p: Parameters) extends VIMUOp()(p) with LaneOp
+class VFMULaneOp(implicit p: Parameters) extends VFMUOp()(p) with LaneOp
+class VFCULaneOp(implicit p: Parameters) extends VFCUOp()(p) with LaneOp
+class VFVULaneOp(implicit p: Parameters) extends VFVUOp()(p) with LaneOp
+class VQULaneOp(implicit p: Parameters) extends VQUOp()(p) with LaneOp
+class VPULaneOp(implicit p: Parameters) extends VPUOp()(p) with LaneOp
+class VGULaneOp(implicit p: Parameters) extends VGUOp()(p) with LaneOp
+class VSULaneOp(implicit p: Parameters) extends VSUOp()(p) with LaneOp
 
-class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
+class SRAMRFReadExpEntry(implicit p: Parameters) extends SRAMRFReadLaneOp()(p) {
   val global = new VXUBundle {
     val valid = Bool()
     val id = UInt(width = log2Up(nGOPL))
@@ -376,9 +376,9 @@ class SRAMRFReadExpEntry extends SRAMRFReadLaneOp {
     val id = UInt(width = log2Up(nLOPL))
   }
 }
-class SRAMRFWriteExpEntry extends SRAMRFWriteLaneOp
+class SRAMRFWriteExpEntry(implicit p: Parameters) extends SRAMRFWriteLaneOp()(p)
 
-class PredRFReadExpEntry extends PredRFGatedReadLaneOp {
+class PredRFReadExpEntry(implicit p: Parameters) extends PredRFGatedReadLaneOp()(p) {
   val global = new VXUBundle {
     val valid = Bool()
     val id = UInt(width = log2Up(nGPDL))
@@ -389,80 +389,80 @@ class PredRFReadExpEntry extends PredRFGatedReadLaneOp {
   }
 }
 
-class PredRFWriteExpEntry extends PredRFWriteLaneOp
+class PredRFWriteExpEntry(implicit p: Parameters) extends PredRFWriteLaneOp()(p)
 
 //-------------------------------------------------------------------------\\
 // banks
 //-------------------------------------------------------------------------\\
 
-class BankPredEntry extends BankPred
-class BankDataEntry extends BankData
-class BankDataPredEntry extends BankData with BankPred
+class BankPredEntry(implicit p: Parameters) extends BankPred
+class BankDataEntry(implicit p: Parameters) extends BankData
+class BankDataPredEntry(implicit p: Parameters) extends BankData with BankPred
 
 //-------------------------------------------------------------------------\\
 // micro op
 //-------------------------------------------------------------------------\\
 
-class SRAMRFReadMicroOp extends SRAMRFReadOp with MicroOp
-class SRAMRFWriteMicroOp extends SRAMRFWriteOp with MicroOp
-class FFRFReadMicroOp extends FFRFReadOp with MicroOp
-class FFRFWriteMicroOp extends FFRFWriteOp with MicroOp
-class PredRFReadMicroOp extends PredRFReadOp with MicroOp
-class PredRFGatedReadMicroOp extends PredRFGatedReadOp with MicroOp
-class PredRFWriteMicroOp extends PredRFWriteOp with MicroOp
-class OPLMicroOp extends OPLOp with MicroOp
-class PDLMicroOp extends PDLOp with MicroOp
-class SRegMicroOp extends SRegOp with MicroOp
-class XBarMicroOp extends XBarOp with MicroOp
-class PXBarMicroOp extends PXBarOp with MicroOp
-class VIUMicroOp extends VIUOp with MicroOp
-class VIPUMicroOp extends VIPUOp with MicroOp
-class VIMUMicroOp extends VIMUOp with MicroOp
-class VFMUMicroOp extends VFMUOp with MicroOp
-class VFCUMicroOp extends VFCUOp with MicroOp
-class VFVUMicroOp extends VFVUOp with MicroOp
-class VQUMicroOp extends VQUOp with MicroOp
-class VPUMicroOp extends VPUOp with MicroOp
-class VGUMicroOp extends VGUOp with MicroOp
-class VSUMicroOp extends VSUOp with MicroOp
+class SRAMRFReadMicroOp(implicit p: Parameters) extends SRAMRFReadOp()(p) with MicroOp
+class SRAMRFWriteMicroOp(implicit p: Parameters) extends SRAMRFWriteOp()(p) with MicroOp
+class FFRFReadMicroOp(implicit p: Parameters) extends FFRFReadOp()(p) with MicroOp
+class FFRFWriteMicroOp(implicit p: Parameters) extends FFRFWriteOp()(p) with MicroOp
+class PredRFReadMicroOp(implicit p: Parameters) extends PredRFReadOp()(p) with MicroOp
+class PredRFGatedReadMicroOp(implicit p: Parameters) extends PredRFGatedReadOp()(p) with MicroOp
+class PredRFWriteMicroOp(implicit p: Parameters) extends PredRFWriteOp()(p) with MicroOp
+class OPLMicroOp(implicit p: Parameters) extends OPLOp()(p) with MicroOp
+class PDLMicroOp(implicit p: Parameters) extends PDLOp()(p) with MicroOp
+class SRegMicroOp(implicit p: Parameters) extends SRegOp()(p) with MicroOp
+class XBarMicroOp(implicit p: Parameters) extends XBarOp()(p) with MicroOp
+class PXBarMicroOp(implicit p: Parameters) extends PXBarOp()(p) with MicroOp
+class VIUMicroOp(implicit p: Parameters) extends VIUOp()(p) with MicroOp
+class VIPUMicroOp(implicit p: Parameters) extends VIPUOp()(p) with MicroOp
+class VIMUMicroOp(implicit p: Parameters) extends VIMUOp()(p) with MicroOp
+class VFMUMicroOp(implicit p: Parameters) extends VFMUOp()(p) with MicroOp
+class VFCUMicroOp(implicit p: Parameters) extends VFCUOp()(p) with MicroOp
+class VFVUMicroOp(implicit p: Parameters) extends VFVUOp()(p) with MicroOp
+class VQUMicroOp(implicit p: Parameters) extends VQUOp()(p) with MicroOp
+class VPUMicroOp(implicit p: Parameters) extends VPUOp()(p) with MicroOp
+class VGUMicroOp(implicit p: Parameters) extends VGUOp()(p) with MicroOp
+class VSUMicroOp(implicit p: Parameters) extends VSUOp()(p) with MicroOp
 
 //-------------------------------------------------------------------------\\
 // bank acks
 //-------------------------------------------------------------------------\\
 
-class VIUAck extends BankPred
-class VIPUAck extends BankPred
-class VIMUAck extends BankPred
-class VIDUAck extends BankPred
-class VGUAck extends BankPred
-class VQUAck extends BankPred
+class VIUAck(implicit p: Parameters) extends BankPred
+class VIPUAck(implicit p: Parameters) extends BankPred
+class VIMUAck(implicit p: Parameters) extends BankPred
+class VIDUAck(implicit p: Parameters) extends BankPred
+class VGUAck(implicit p: Parameters) extends BankPred
+class VQUAck(implicit p: Parameters) extends BankPred
 
-class VFXUAck extends VXUBundle with BankPred {
+class VFXUAck(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class VFMUAck extends VFXUAck
-class VFDUAck extends VFXUAck
-class VFCUAck extends BankPred // no exceptions can occur
-class VFVUAck extends VFXUAck
+class VFMUAck(implicit p: Parameters) extends VFXUAck()(p)
+class VFDUAck(implicit p: Parameters) extends VFXUAck()(p)
+class VFCUAck(implicit p: Parameters) extends BankPred // no exceptions can occur
+class VFVUAck(implicit p: Parameters) extends VFXUAck()(p)
 
 
 //-------------------------------------------------------------------------\\
 // decoupled cluster (dcc) types
 //-------------------------------------------------------------------------\\
 
-class DCCOp extends VXUBundle {
+class DCCOp(implicit p: Parameters) extends VXUBundle()(p) {
   val vlen = UInt(width = bVLen)
   val active = new IssueType
   val fn = new VFn
   val vd = new RegInfo
 }
 
-class LPQEntry extends VXUBundle with BankPred
-class BPQEntry extends VXUBundle with BankPred
-class LRQEntry extends VXUBundle with BankData
-class BRQEntry extends VXUBundle with BankData
-class BWQEntry extends VXUBundle with BankData with BankMask {
+class LPQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankPred
+class BPQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankPred
+class LRQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData
+class BRQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData
+class BWQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData with BankMask {
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
 

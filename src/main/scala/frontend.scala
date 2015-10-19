@@ -2,18 +2,18 @@ package hwacha
 
 import Chisel._
 
-class FrontendReq extends rocket.CoreBundle {
+class FrontendReq(implicit p: Parameters) extends rocket.CoreBundle()(p) {
   val pc = UInt(width = vaddrBits+1)
 }
 
-class FrontendIO extends Bundle {
+class FrontendIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val active = Bool(OUTPUT)
   val req = Valid(new FrontendReq)
   val resp = Decoupled(new rocket.FrontendResp).flip
   val invalidate = Bool(OUTPUT)
 }
 
-class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
+class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket.HasL1CacheParameters {
   val io = new Bundle {
     val vxu = new FrontendIO().flip
     val vru = new FrontendIO().flip
@@ -217,14 +217,14 @@ class HwachaFrontend extends HwachaModule with rocket.FrontendParameters {
 
   val vxu_datablock = vxu_line.io.deq.bits.datablock
   val vru_datablock = vru_line.io.deq.bits.datablock
-  val vxu_fetch_data = vxu_datablock >> (s2_vxu_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
-  val vru_fetch_data = vru_datablock >> (s2_vru_pc(log2Up(rowBytes)-1,log2Up(coreFetchWidth*coreInstBytes)) << UInt(log2Up(coreFetchWidth*coreInstBits)))
-  for (i <- 0 until coreFetchWidth) {
+  val vxu_fetch_data = vxu_datablock >> (s2_vxu_pc(log2Up(rowBytes)-1,log2Up(fetchWidth*coreInstBytes)) << UInt(log2Up(fetchWidth*coreInstBits)))
+  val vru_fetch_data = vru_datablock >> (s2_vru_pc(log2Up(rowBytes)-1,log2Up(fetchWidth*coreInstBytes)) << UInt(log2Up(fetchWidth*coreInstBits)))
+  for (i <- 0 until fetchWidth) {
     io.vxu.resp.bits.data(i) := vxu_fetch_data(i*coreInstBits+coreInstBits-1, i*coreInstBits)
     io.vru.resp.bits.data(i) := vru_fetch_data(i*coreInstBits+coreInstBits-1, i*coreInstBits)
   }
 
-  val all_ones = UInt((1 << (coreFetchWidth+1))-1)
+  val all_ones = UInt((1 << (fetchWidth+1))-1)
   io.vxu.resp.bits.mask := all_ones//not using btb
   io.vru.resp.bits.mask := all_ones//not using btb
 

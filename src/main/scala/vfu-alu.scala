@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class ALUOperand extends VXUBundle {
+class ALUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn
   val eidx = Bits(width = bVLen)
   val in0 = Bits(width = SZ_D)
@@ -14,7 +14,7 @@ class ALUResult extends Bundle {
   val cmp = Bool()
 }
 
-class ALUSlice(id: Int) extends VXUModule with Packing {
+class ALUSlice(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val req = Valid(new ALUOperand).flip
     val resp = Valid(new ALUResult)

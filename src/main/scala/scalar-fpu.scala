@@ -62,7 +62,7 @@ object ScalarFPUDecode {
   val FSQRT_D  = List(FCMD_SQRT,   N,Y,Y,N,N,Y,X,N,N,N,N,N,N,Y,Y,Y)
 }
 
-class ScalarFPU extends HwachaModule {
+class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val req = Decoupled(new rocket.FPInput()).flip
     val resp = Decoupled(new rocket.FPResult())
@@ -81,12 +81,12 @@ class ScalarFPU extends HwachaModule {
   req.in2 := Mux(io.req.bits.swap23, io.req.bits.in3, io.req.bits.in2)
   req.in3 := Mux(io.req.bits.swap23, io.req.bits.in2, io.req.bits.in3)
 
-  val sfma = Module(new rocket.FPUFMAPipe(params(rocket.SFMALatency), 23, 9))
+  val sfma = Module(new rocket.FPUFMAPipe(p(rocket.SFMALatency), 23, 9))
   sfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       io.req.bits.single
   sfma.io.in.bits := req
 
-  val dfma = Module(new rocket.FPUFMAPipe(params(rocket.DFMALatency), 52, 12))
+  val dfma = Module(new rocket.FPUFMAPipe(p(rocket.DFMALatency), 52, 12))
   dfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       !io.req.bits.single
   dfma.io.in.bits := req

@@ -8,12 +8,12 @@ abstract trait DCCParameters extends UsesHwachaParameters {
   val nVDUOperands = 2
 }
 
-class DCCAckIO extends HwachaBundle {
+class DCCAckIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vidu = Valid(new VIDUAck)
   val vfdu = Valid(new VFDUAck)
 }
 
-class DecoupledCluster extends VXUModule {
+class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip

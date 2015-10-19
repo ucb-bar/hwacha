@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class VMUStoreCtrl extends VMUBundle {
+class VMUStoreCtrl(implicit p: Parameters) extends VMUBundle()(p) {
   val mode = new Bundle {
     val unit = Bool()
   }
@@ -10,15 +10,15 @@ class VMUStoreCtrl extends VMUBundle {
   val mt = new DecodedMemType
 }
 
-class VMSUMeta extends VMUMetaCount with VMUMetaStore {
+class VMSUMeta(implicit p: Parameters) extends VMUMetaCount with VMUMetaStore {
   val offset = UInt(width = tlByteAddrBits)
 }
 
-class VMSUIO extends VSDQIO {
+class VMSUIO(implicit p: Parameters) extends VSDQIO()(p) {
   val meta = new VMSUMeta().asInput()
 }
 
-class SBox extends VMUModule {
+class SBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val ctrl = Valid(new VMUStoreCtrl).flip
     val lane = new VSDQIO().flip

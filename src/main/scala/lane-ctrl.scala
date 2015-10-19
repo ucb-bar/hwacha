@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class LaneCtrl extends VXUModule {
+class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = new LaneOpIO().flip
     val uop = new MicroOpIO

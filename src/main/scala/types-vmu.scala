@@ -2,9 +2,9 @@ package hwacha
 
 import Chisel._
 
-abstract class VMUModule(clock: Clock = null, _reset: Bool = null)
-  extends HwachaModule(clock, _reset) with VMUParameters
-abstract class VMUBundle extends HwachaBundle with VMUParameters
+abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
+  extends HwachaModule(clock, _reset)(p) with VMUParameters
+abstract class VMUBundle(implicit p: Parameters) extends HwachaBundle()(p) with VMUParameters
 
 class VMUMemFn extends Bundle {
   val cmd = Bits(width = M_SZ)
@@ -17,25 +17,25 @@ class VMUFn extends Bundle {
   val mt = Bits(width = MT_SZ)
 }
 
-class VMUAuxVector extends HwachaBundle {
+class VMUAuxVector(implicit p: Parameters) extends HwachaBundle()(p) {
   val stride = UInt(width = regLen)
 }
 
 object VMUAuxVector {
-  def apply(stride: UInt): VMUAuxVector = {
+  def apply(stride: UInt)(implicit p: Parameters): VMUAuxVector = {
     val aux = new VMUAuxVector
     aux.stride := stride
     aux
   }
 }
 
-class VMUAuxScalar extends HwachaBundle {
+class VMUAuxScalar(implicit p: Parameters) extends HwachaBundle()(p) {
   val data = Bits(width = regLen)
   val id = UInt(width = log2Up(nSRegs))
 }
 
 object VMUAuxScalar {
-  def apply(data: Bits, id: UInt): VMUAuxScalar = {
+def apply(data: Bits, id: UInt)(implicit p: Parameters): VMUAuxScalar = {
     val aux = new VMUAuxScalar
     aux.data := data
     aux.id := id
@@ -43,7 +43,7 @@ object VMUAuxScalar {
   }
 }
 
-class VMUAux extends Bundle {
+class VMUAux(implicit p: Parameters) extends HwachaBundle()(p) {
   val union = Bits(width = math.max(
     new VMUAuxVector().toBits.getWidth,
     new VMUAuxScalar().toBits.getWidth))
@@ -52,7 +52,7 @@ class VMUAux extends Bundle {
   def scalar(dummy: Int = 0) = new VMUAuxScalar().fromBits(this.union)
 }
 
-class VMUOp extends VMUBundle {
+class VMUOp(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
   val vlen = UInt(width = bVLen)
   val base = UInt(width = bVAddr)
@@ -115,57 +115,57 @@ object DecodedMemType {
 
 /**********************************************************************/
 
-class VVAQEntry extends VMUBundle {
+class VVAQEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val addr = UInt(width = bVAddrExtended)
 }
-class VVAQIO extends DecoupledIO(new VVAQEntry)
+class VVAQIO(implicit p: Parameters) extends DecoupledIO(new VVAQEntry()(p))
 
 trait VMUAddr extends VMUBundle {
   val addr = UInt(width = bPAddr)
 }
-class VPAQEntry extends VMUAddr
-class VPAQIO extends DecoupledIO(new VPAQEntry)
+class VPAQEntry(implicit p: Parameters) extends VMUAddr
+class VPAQIO(implicit p: Parameters) extends DecoupledIO(new VPAQEntry()(p))
 
 
 trait VMUData extends VMUBundle {
   val data = Bits(width = tlDataBits)
 }
 
-class VSDQEntry extends VMUData
-class VSDQIO extends DecoupledIO(new VSDQEntry)
+class VSDQEntry(implicit p: Parameters) extends VMUData
+class VSDQIO(implicit p: Parameters) extends DecoupledIO(new VSDQEntry()(p))
 
-class VCUEntry extends VMUBundle {
+class VCUEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val ecnt = UInt(width = bVLen)
 }
-class VCUIO extends ValidIO(new VCUEntry)
+class VCUIO(implicit p: Parameters) extends ValidIO(new VCUEntry()(p))
 
 
 trait VMUTag extends VMUBundle {
   val tag = UInt(width = bTag)
 }
 
-class VMLUData extends VMUData with VMUTag {
+class VMLUData(implicit p: Parameters) extends VMUData with VMUTag {
   val last = Bool()
 }
 
-class VLTEntry extends VMUMetaIndex with VMUMetaPadding {
+class VLTEntry(implicit p: Parameters) extends VMUBundle()(p) with VMUMetaIndex with VMUMetaPadding {
   val mask = Bits(width = tlDataBytes >> 1)
 }
 
-class VLDQEntry extends VMUData {
+class VLDQEntry(implicit p: Parameters) extends VMUData {
   val meta = new VLTEntry {
     val last = Bool()
   }
 }
-class VLDQIO extends DecoupledIO(new VLDQEntry)
+class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p))
 
 /**********************************************************************/
 
-class PredEntry extends HwachaBundle {
+class PredEntry(implicit p: Parameters) extends HwachaBundle()(p) {
   val pred = Bits(width = nPredSet)
 }
 
-class VMUMaskEntry_0 extends VMUBundle {
+class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
   val pred = Bool()
   val ecnt = UInt(width = bVLen)
   val last = Bool()
@@ -177,13 +177,13 @@ class VMUMaskEntry_0 extends VMUBundle {
     val shift = UInt(width = log2Up(nPredSet))
   }
 }
-class VMUMaskIO_0 extends DecoupledIO(new VMUMaskEntry_0)
+class VMUMaskIO_0(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_0()(p))
 
-class VMUMaskEntry_1 extends VMUBundle {
+class VMUMaskEntry_1(implicit p: Parameters) extends VMUBundle()(p) {
   val data = Bits(width = tlDataBytes >> 1)
   val vsdq = Bool()
 }
-class VMUMaskIO_1 extends DecoupledIO(new VMUMaskEntry_1) {
+class VMUMaskIO_1(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_1()(p)) {
   val meta = new VMUBundle {
     val eoff = UInt(INPUT, tlByteAddrBits - 1)
     val last = Bool(INPUT)
@@ -222,13 +222,13 @@ trait VMUMemOp extends VMUAddr {
   val fn = new VMUMemFn
 }
 
-class VMUMetaAddr extends VMUMetaCount
+class VMUMetaAddr(implicit p: Parameters) extends VMUMetaCount
   with VMUMetaPadding with VMUMetaStore {
   val mask = UInt(width = tlDataBytes >> 1)
 }
 
-class AGUEntry extends VMUMemOp {
+class AGUEntry(implicit p: Parameters) extends VMUMemOp {
   val meta = new VMUMetaAddr with VMUMetaIndex
 }
 
-class AGUIO extends DecoupledIO(new AGUEntry)
+class AGUIO(implicit p: Parameters) extends DecoupledIO(new AGUEntry()(p))

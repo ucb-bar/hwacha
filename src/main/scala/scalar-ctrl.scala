@@ -4,7 +4,7 @@ import Chisel._
 import rocket.ALU._
 import ScalarFPUDecode._
 
-class CtrlDpathIO extends HwachaBundle {
+class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val stallf = Bool(OUTPUT)
   val killf = Bool(OUTPUT)
   val stallx = Bool(OUTPUT)
@@ -48,7 +48,7 @@ class CtrlDpathIO extends HwachaBundle {
   val vf_active = Bool(OUTPUT)
 }
 
-class ScalarCtrl(resetSignal: Bool = null) extends HwachaModule(_reset = resetSignal)
+class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
   with VMUParameters {
   import Commands._
 

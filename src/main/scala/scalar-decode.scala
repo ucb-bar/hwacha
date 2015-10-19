@@ -5,7 +5,7 @@ import HwachaElementInstructions._
 import rocket.ALU._
 import ScalarFPUDecode._
 
-class IntCtrlSigs extends Bundle {
+class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val ival = Bool()
   val decode_scalar = Bool()
   val decode_stop = Bool()

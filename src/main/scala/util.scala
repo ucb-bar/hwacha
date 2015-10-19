@@ -43,7 +43,7 @@ abstract trait Packing extends LaneParameters {
 
   def splat_slice(n: Bits) = Fill(nSlices, n.toUInt)
   def repack_slice(n: Seq[Bits]) = _repack(n, nSlices)
-  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, params(HwachaRegLen), wBank)
+  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, p(HwachaRegLen), wBank)
 }
 
 abstract trait BankLogic extends LaneParameters {
@@ -119,12 +119,12 @@ class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends M
   io.empty := count === UInt(0)
 }
 
-trait LookAheadIO extends Bundle {
+trait LookAheadIO extends HwachaBundle {
   val reserve = Bool(OUTPUT)
   val available = Bool(INPUT)
 }
 
-class CounterLookAheadIO extends LookAheadIO with SeqParameters {
+class CounterLookAheadIO(implicit p: Parameters) extends LookAheadIO with SeqParameters {
   val cnt = UInt(OUTPUT, bLookAhead)
 }
 
@@ -133,7 +133,7 @@ class CounterUpdateIO(sz: Int) extends Bundle {
   val update = Bool(OUTPUT)
 }
 
-class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal) with LaneParameters {
+class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) with LaneParameters {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val inc = new CounterUpdateIO(sz).flip

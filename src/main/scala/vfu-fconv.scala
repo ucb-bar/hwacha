@@ -4,7 +4,7 @@ import Chisel._
 import DataGating._
 import HardFloatHelper._
 
-class FConvOperand extends Bundle {
+class FConvOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFVUFn
   val in = Bits(width = SZ_D)
 }
@@ -14,7 +14,7 @@ class FConvResult extends Bundle {
   val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
 }
 
-class FConvSlice extends VXUModule with Packing {
+class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val req = Valid(new FConvOperand).flip
     val resp = Valid(new FConvResult)

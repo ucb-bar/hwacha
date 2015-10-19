@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 
-class XCPTIO extends HwachaBundle {
+class XCPTIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val prop = new Bundle {
     val vu = new Bundle {
       val busy = Bool(OUTPUT)
@@ -51,7 +51,7 @@ class XCPTIO extends HwachaBundle {
   }
 }
 
-class XCPT extends HwachaModule {
+class XCPT(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new HwachaBundle {
     val rocc = new Bundle {
       val exception = Bool(INPUT)

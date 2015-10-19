@@ -3,14 +3,14 @@ package hwacha
 import Chisel._
 import DataGating._
 
-class VDUTag extends VXUBundle with BankPred {
+class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
   val bank = UInt(width = log2Up(nBanks))
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
-class VDU extends VXUModule {
+class VDU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip
@@ -63,7 +63,7 @@ class VDU extends VXUModule {
   io.bwqs <> ctrl.io.bwqs
 }
 
-class VDUCtrl extends VXUModule with Packing {
+class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Decoupled(new DCCOp).flip

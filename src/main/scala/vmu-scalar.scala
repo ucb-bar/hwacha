@@ -2,9 +2,9 @@ package hwacha
 
 import Chisel._
 
-class ScalarMemIO extends DecoupledIO(new VMUAuxScalar)
+class ScalarMemIO(implicit p: Parameters) extends DecoupledIO(new VMUAuxScalar()(p))
 
-class SMU extends VMUModule {
+class SMU(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
     val inner = new ScalarMemIO
     val outer = new VMUMemIO

@@ -11,24 +11,24 @@ case object HwachaNVLTEntries extends Field[Int]
 
 trait VMUParameters extends UsesHwachaParameters {
   val nVMUQ = 2
-  val nVVAQ = params(HwachaNVVAQEntries)
-  val nVPAQ = params(HwachaNVPAQEntries)
-  val nVPFQ = params(HwachaNVPFQEntries)
-  val nVSDQ = params(HwachaNVSDQEntries)
-  val nVLDQ = params(HwachaNVLDQEntries)
+  val nVVAQ = p(HwachaNVVAQEntries)
+  val nVPAQ = p(HwachaNVPAQEntries)
+  val nVPFQ = p(HwachaNVPFQEntries)
+  val nVSDQ = p(HwachaNVSDQEntries)
+  val nVLDQ = p(HwachaNVLDQEntries)
   val nVMUPredQ = 4
 
-  val nVLT = params(HwachaNVLTEntries)
+  val nVLT = p(HwachaNVLTEntries)
   val bTag = log2Up(nVLT)
   require(tlClientXactIdBits >= bTag)
 
-  val bVAddr = params(junctions.VAddrBits)
-  val bPAddr = params(junctions.PAddrBits)
+  val bVAddr = p(junctions.VAddrBits)
+  val bPAddr = p(junctions.PAddrBits)
   val bVAddrExtended = bVAddr + (if (bVAddr < regLen) 1 else 0)
 
-  val bVPN = params(junctions.VPNBits)
-  val bPPN = params(junctions.PPNBits)
-  val bPgIdx = params(junctions.PgIdxBits)
+  val bVPN = p(junctions.VPNBits)
+  val bPPN = p(junctions.PPNBits)
+  val bPgIdx = p(junctions.PgIdxBits)
   val pgSize = 1 << bPgIdx
 
   /* Maximum of two ongoing operations in the VMU */
@@ -40,7 +40,7 @@ trait VMUParameters extends UsesHwachaParameters {
   require((tlDataBits & (regLen - 1)) == 0)
 }
 
-class LaneMemIO extends HwachaBundle {
+class LaneMemIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vaq = new VVAQIO
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
@@ -49,7 +49,7 @@ class LaneMemIO extends HwachaBundle {
   val pala = new CounterLookAheadIO
 }
 
-class VMUDecodedOp extends VMUOp {
+class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) {
   val mode = new Bundle {
     val unit = Bool()
     val indexed = Bool()
@@ -60,7 +60,7 @@ class VMUDecodedOp extends VMUOp {
 }
 
 object VMUDecodedOp extends HwachaConstants {
-  def apply(op: VMUOp): VMUDecodedOp = {
+  def apply(op: VMUOp)(implicit p: Parameters): VMUDecodedOp = {
     val dec = new VMUDecodedOp
     dec.fn := op.fn
     dec.vlen := op.vlen
@@ -77,11 +77,11 @@ object VMUDecodedOp extends HwachaConstants {
   }
 }
 
-class VMUIssueIO extends Bundle {
-  val op = Decoupled(new VMUDecodedOp).flip
+class VMUIssueIO(implicit p: Parameters) extends HwachaBundle()(p) {
+  val op = Decoupled(new VMUDecodedOp()(p)).flip
 }
 
-class IBox extends VMUModule {
+class IBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new VMUOp).flip
     val abox = Vec.fill(3)(Decoupled(new VMUDecodedOp))
@@ -121,8 +121,8 @@ class IBox extends VMUModule {
 }
 
 
-class VMU(resetSignal: Bool = null)
-  extends VMUModule(_reset = resetSignal) {
+class VMU(resetSignal: Bool = null)(implicit p: Parameters)
+  extends VMUModule(_reset = resetSignal)(p) {
   val io = new Bundle {
     val op = Decoupled(new VMUOp).flip
     val lane = new LaneMemIO().flip
