@@ -6,6 +6,7 @@ abstract trait DCCParameters extends UsesHwachaParameters {
   val nDCCOpQ = 2
   val nDCCPredQ = 2
   val nVDUOperands = 2
+  val maxSLA = 7 /* Ideally (2^i - 1) where (i > 1) */
 }
 
 class DCCAckIO(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -36,7 +37,6 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
     val lla = new CounterLookAheadIO().flip
     val sla = new BRQLookAheadIO().flip
     val vmu = new LaneMemIO
-    val xcpt = new XCPTIO().flip
   }
 
   val vdu = Module(new VDU)
@@ -98,8 +98,7 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
 
   vsu.io.op.valid := fire(mask_vsu_ready, io.op.bits.active.enq_vsu())
   vsu.io.op.bits := io.op.bits
-  vsu.io.brqs <> io.brqs
   vsu.io.la <> io.sla
-  vsu.io.xcpt <> io.xcpt
+  vsu.io.brqs <> io.brqs
   io.vmu.vsdq <> vsu.io.vsdq
 }

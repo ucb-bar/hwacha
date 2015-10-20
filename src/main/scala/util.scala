@@ -134,6 +134,7 @@ class CounterUpdateIO(sz: Int) extends Bundle {
 }
 
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) with LaneParameters {
+  require(reset_cnt <= max_cnt)
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val inc = new CounterUpdateIO(sz).flip

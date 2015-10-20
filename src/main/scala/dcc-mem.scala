@@ -191,200 +191,166 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 class VSU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new DCCOp).flip
-    val xcpt = new XCPTIO().flip
+    val la = new BRQLookAheadIO().flip
+    val brqs = Vec.fill(nBanks)(new BRQIO).flip
+    val vsdq = new VSDQIO
 
     val pred = Decoupled(Bits(width = nPredSet)).flip
-    val brqs = Vec.fill(nBanks)(new BRQIO).flip
-    val la = new BRQLookAheadIO().flip
-
-    val vsdq = new VSDQIO
   }
 
-  val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  private val lgbanks = log2Up(nBanks)
+  private val lgbatch = log2Up(nBatch)
+
+  val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
-  val op = opq.io.deq
+  opq.io.deq.ready := Bool(false)
 
-  val predq = Module(new Queue(Bits(width=nPredSet), nDCCPredQ))
+  val op = Reg(new DCCOp)
+  val mt = DecodedMemType(op.fn.vmu().mt)
+  val mts = Seq(mt.d, mt.w, mt.h, mt.b)
+  val mtb = Seq(SZ_D, SZ_W, SZ_H, SZ_B)
+
+  val beat = Reg(UInt(width = lgbanks))
+
+  /* Number of elements per VSDQ entry */
+  val ecnts = mtb.map { sz =>
+    require(tlDataBits % sz == 0)
+    math.min(tlDataBits / sz, nBatch)
+  }
+  val ecnt = Mux1H(mts, ecnts.map(UInt(_)))
+
+  val vlen_next = op.vlen.zext - ecnt
+  val vlen_end = (vlen_next <= SInt(0))
+
+  //--------------------------------------------------------------------\\
+  // predication / masking
+  //--------------------------------------------------------------------\\
+
+  require(wBank <= tlDataBits)
+  /* Number of active BRQs per VSDQ entry */
+  val qcnts = ecnts.map(_ / nSlices)
+  val brqs_sel = (0 until nBanks).map(i =>
+    Mux1H(mts, qcnts.map(n =>
+      if (n == nBanks) Bool(true) else {
+        val lgn = log2Ceil(n)
+        beat(lgbanks-lgn-1, 0) === UInt(i >> lgn)
+      })))
+
+  val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
   predq.io.enq <> io.pred
-  val pred = predq.io.deq
+  private val pred = predq.io.deq
 
-  private val lgbank = log2Up(nBanks)
-  private val nTotalSlices = nSlices * nBanks
+  require(nPredSet == nBatch)
+  val brqs_pred = pred.bits.toBools.grouped(nSlices).map(
+    xs => xs.reduce(_ || _)).toSeq
+  val brqs_mask = brqs_sel.zip(brqs_pred)
+  val brqs_en = brqs_mask.map { case (sel, pred) => sel && pred }
 
-  val mt_fn = Reg(Bits(width = MT_SZ))
-  val mt = DecodedMemType(mt_fn)
-  val mtsel = Seq(mt.d, mt.w, mt.h, mt.b)
+  //--------------------------------------------------------------------\\
+  // bank read queues
+  //--------------------------------------------------------------------\\
 
-  val beat = Reg(UInt(width = lgbank))
-  val beat_cnt = Seq(SZ_D, SZ_W, SZ_H, SZ_B).map(sz =>
-    // Maximum number of elements per beat
-    math.min(tlDataBits / sz, nTotalSlices))
+  val brqs = io.brqs.map { enq =>
+    val brq = Module(new Queue(enq.bits, nbrq))
+    brq.io.enq <> enq
+    brq.io.deq.ready := Bool(false)
+    brq.io.deq
+  }
 
-  val vlen = Reg(UInt(width = bVLen))
-  val ecnt = Mux1H(mtsel, beat_cnt.map(i => UInt(i)))
-  val vlen_next = vlen.zext - ecnt.zext
-  val last = (vlen_next <= SInt(0))
-  val next = Bool()
+  val brqs_la = brqs.zipWithIndex.map { case (brq, i) =>
+    val scntr = Module(new LookAheadCounter(nbrq, maxSLA))
+    val en = io.la.mask(i)
+    scntr.io.inc.cnt := UInt(1)
+    scntr.io.inc.update := Bool(false)
+    scntr.io.dec.cnt := UInt(1)
+    scntr.io.dec.reserve := io.la.reserve && en
+    (scntr, !en || scntr.io.dec.available)
+  }
+  val brqs_cntr = brqs_la.map(_._1)
+  io.la.available := brqs_la.map(_._2).reduce(_ && _)
 
-  op.ready := Bool(false)
+  /* Preemptively increment the lookahead counter on false predicates
+   * without waiting for the actual sequencer reservation, but constrain
+   * runahead to prevent counter overflow.
+   * The maxSLA parameter determines how much decoupling is possible.
+   */
+  val brqs_valid = brqs.zip(brqs_mask).zip(brqs_cntr).map {
+    case ((brq, (sel, pred)), scntr) =>
+      !sel || Mux(pred, brq.valid, !scntr.io.full)
+  }
+  val vsdq_en = brqs_en.reduce(_ || _)
+  val vsdq_ready = !vsdq_en || io.vsdq.ready
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = brqs_valid ++ Seq(pred.valid, vsdq_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  pred.ready := Bool(false)
+  io.vsdq.valid := Bool(false)
+
+  val pred_deq = vlen_end || Mux1H(mts, ecnts.map { cnt =>
+    val n = nPredSet / cnt
+    if (n > 1) (beat(log2Ceil(n)-1, 0) === UInt(n-1))
+    else Bool(true)
+  })
+
+  //--------------------------------------------------------------------\\
+  // permutation network
+  //--------------------------------------------------------------------\\
+
+  private def repack(sz: Int, cnt: Int) = {
+    require(sz <= regLen)
+    val elts = for (q <- brqs; i <- (0 until wBank by regLen))
+      yield q.bits.data(sz-1+i, i)
+    val sets = elts.grouped(cnt).map(xs =>
+      Cat(xs.reverse)).toIterable
+    if (sets.size > 1) Vec(sets)(beat) else sets.head
+  }
+
+  io.vsdq.bits.data := Mux1H(mts, mtb.zip(ecnts).map {
+    case (sz, cnt) => repack(sz, cnt)
+  })
+
+  //--------------------------------------------------------------------\\
+  // control
+  //--------------------------------------------------------------------\\
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      op.ready := Bool(true)
-      when (op.valid) {
+      opq.io.deq.ready := Bool(true)
+      when (opq.io.deq.valid) {
         state := s_busy
-        vlen := op.bits.vlen
-        mt_fn := op.bits.fn.vmu().mt
-        beat := UInt(0)
+        op := opq.io.deq.bits
       }
+      beat := UInt(0)
     }
 
     is (s_busy) {
-      when (next) {
-        vlen := vlen_next
+      pred.ready := fire(pred.valid, pred_deq)
+      brqs.zip(brqs_valid.zip(brqs_en)).foreach {
+        case (brq, (valid, en)) =>
+          brq.ready := fire(valid, en)
+      }
+      io.vsdq.valid := fire(vsdq_ready, vsdq_en)
+
+      when (fire(null)) {
+        brqs_cntr.zip(brqs_sel).foreach {
+          case (scntr, sel) =>
+            scntr.io.inc.update := sel
+        }
+
         beat := beat + UInt(1)
-        when (last) {
+        op.vlen := vlen_next
+        when (vlen_end) {
           state := s_idle
         }
       }
     }
   }
-
-  //--------------------------------------------------------------------\\
-  // predication / masking
-  //--------------------------------------------------------------------\\
-
-  val brqs_cnt = Seq(SZ_D, SZ_W, SZ_H, SZ_B).map { sz =>
-    // Yields (n, m) where
-    // n: number of active BRQs per VSDQ subblock
-    // m: number of complete subblocks per BRQ entry
-    val brqDataBits = sz * nSlices
-    if (tlDataBits >= brqDataBits) {
-      val n = math.min(nBanks, tlDataBits / brqDataBits)
-      require(isPow2(n))
-      (n, 1)
-    } else {
-      val m = brqDataBits / tlDataBits
-      require(isPow2(m))
-      (1, m)
-    }
-  }
-  val brqs_mask = (0 until nBanks).map(i =>
-    Mux1H(mtsel, brqs_cnt.map { case (n, m) =>
-      if (n == nBanks) Bool(true) else {
-        val lgn = log2Ceil(n)
-        val lgm = log2Ceil(m)
-        (beat(lgbank-lgn-1+lgm, lgm) === UInt(i >> lgn))
-      }
-    }))
-
-  val pred_head = if (nPredSet > nTotalSlices) {
-    require(nPredSet % nTotalSlices == 0)
-    val pred_shift = Mux1H(mtsel, brqs_cnt.map { case (n, m) =>
-      UInt((lgbank - log2Ceil(n)) + log2Ceil(m))
-    })
-    val pred_index = beat >> pred_shift
-    Vec((0 until nPredSet by nTotalSlices).map(i =>
-      pred.bits(i+nTotalSlices-1, i)))(pred_index)
-  } else {
-    require(nTotalSlices % nPredSet == 0)
-    Cat(Seq.fill(nTotalSlices / nPredSet)(pred.bits))
-  }
-
-  val pred_split = (0 until nTotalSlices).map(pred_head(_))
-  val pred_slice = Vec(pred_split.grouped(nSlices).map(x => x.reduce(_ || _)).toSeq)
-
-  val pred_brqs = if (brqs_cnt.indexWhere(_._2 > 1) < 0)
-      pred_slice // optimization for uniform (m == 1)
-    else
-      Mux1H(mtsel, brqs_cnt.map { case (n, m) =>
-        if (m == 1) pred_slice else {
-          val pred_blks = pred_split.grouped(nSlices / m).map(x => x.reduce(_ || _))
-          val pred_ways = pred_blks.toSeq.zipWithIndex.groupBy(_._2 % m)
-          val pred_group = (0 until m).map(i => Vec(pred_ways(i).map(_._1)))
-          Vec(pred_group)(beat/*(log2Ceil(m)-1, 0)*/)
-        }
-      })
-
-  //--------------------------------------------------------------------\\
-  // bank read queues
-  //--------------------------------------------------------------------\\
-
-  private val sz_pending = log2Down(nbrq+1) + 1
-  val pending = Reg(init = UInt(0, sz_pending))
-  val pending_add = Mux(io.la.reserve, UInt(1), UInt(0))
-  val pending_sub = Mux(io.vsdq.fire(), Mux(mt.b, UInt(2), UInt(1)), UInt(0))
-  pending := pending + pending_add - pending_sub
-
-  val brqs = io.brqs.zipWithIndex.map { case (enq, i) =>
-    val brq = Module(new Queue(new BRQEntry, nbrq))
-    val slacntr = Module(new LookAheadCounter(nbrq, nbrq))
-    val en = io.la.mask(i)
-    brq.io.enq <> enq
-    slacntr.io.inc.cnt := UInt(1)
-    slacntr.io.inc.update := brq.io.deq.fire()
-    slacntr.io.dec.cnt := UInt(1)
-    slacntr.io.dec.reserve := io.la.reserve && en
-    (brq.io.deq, !en || slacntr.io.dec.available)
-  }
-  io.la.available := brqs.map(_._2).reduce(_ && _)
-  val brqs_deq = Vec(brqs.map(_._1))
-
-  val brqs_en = pred_brqs.zip(brqs_mask).map { case (pred, mask) => pred && mask }
-  val brqs_valid = brqs_deq.zip(brqs_en).map { case (brq, en) => !en || brq.valid }
-  val vsdq_en = brqs_en.reduce(_ || _)
-  val vsdq_ready = !vsdq_en || io.vsdq.ready
-
-  private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = brqs_valid ++ Seq(pred.valid, vsdq_ready)
-    (rvs.filter(_ ne exclude) ++ include :+ (state === s_busy)).reduce(_ && _)
-  }
-  next := fire(null)
-
-  brqs_deq.zip(brqs_valid.zip(brqs_en)).foreach { case (brq, (valid, en)) =>
-    brq.ready := fire(valid, en) // FIXME: Delay dequeuing for (m > 1)
-  }
-
-  val pred_dequeue = Mux1H(mtsel, beat_cnt.map { cnt =>
-    val n = nPredSet / cnt
-    if (n > 1) (beat(log2Ceil(n)-1, 0) === UInt(n-1)) else Bool(true)
-  }) || last
-  pred.ready := fire(pred.valid, pred_dequeue)
-
-  io.vsdq.valid := fire(vsdq_ready, vsdq_en)
-
-  //--------------------------------------------------------------------\\
-  // permutation network
-  //--------------------------------------------------------------------\\
-
-  private def repack(sz_elt: Int, sz_reg: Int) = {
-    require((sz_elt <= sz_reg) && (tlDataBits % sz_elt == 0))
-    val elts = for (g <- (0 until wBank by sz_reg).grouped(nSlices);
-      q <- brqs_deq; i <- g.iterator) yield q.bits.data(i+sz_elt-1, i)
-    val sets = elts.grouped(tlDataBits / sz_elt).map(Vec(_)).toIterable
-    if (sets.size > 1) Vec(sets)(beat) else sets.head
-  }
-
-/*
-  private def select(sz_elt: Int) = {
-    val xs = Seq(SZ_D, SZ_W, SZ_H, SZ_B).zip(prec).span(_._1 >= sz_elt)._1
-    require(xs.size > 0)
-    if (xs.size > 1)
-      Mux1H(xs.map(_._2), xs.map(p => repack(sz_elt, p._1)))
-    else repack(sz_elt, xs.head._1)
-  }
-*/
-
-  val data_d = repack(SZ_D, SZ_D)
-  val data_w = repack(SZ_W, SZ_D)
-  val data_h = repack(SZ_H, SZ_D)
-  val data_b = repack(SZ_B, SZ_D)
-
-  io.vsdq.bits.data := Mux1H(mtsel,
-    Seq(data_d, data_w, data_h, data_b).map(x => Cat(x.reverse)))
 }
 
 class VLUEntry(implicit p: Parameters) extends VXUBundle()(p) {

@@ -73,7 +73,4 @@ class VXU(implicit p: Parameters) extends HwachaModule()(p) {
   io.mrt.sreq <> seq.io.sreq
   io.mrt.lret.cnt := dcc.io.lla.cnt
   io.mrt.lret.update := dcc.io.lla.reserve
-
-  // FIXME
-  dcc.io.xcpt.prop.vmu.stall := Bool(false)
 }
