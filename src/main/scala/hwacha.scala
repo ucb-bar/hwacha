@@ -22,7 +22,7 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-  abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLinkParameters {
+abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLinkParameters {
   val nARegs = p(HwachaNAddressRegs)
   val nSRegs = p(HwachaNScalarRegs)
   val nVRegs = p(HwachaNVectorRegs)
@@ -69,7 +69,6 @@ abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBun
   val nvsreq = 128
   val nvlreq = 128
   val nvsdq = nbrq * _nBanks
-
 }
 
 class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaParameters
