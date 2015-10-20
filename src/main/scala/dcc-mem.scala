@@ -27,18 +27,8 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val lpq = Module(new Queue(new LPQEntry, nBanks+2))
   lpq.io.enq <> io.lpq
 
-  val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
-  pcntr.io.inc.cnt := UInt(1)
-  pcntr.io.inc.update := lpq.io.deq.fire()
-  pcntr.io.dec <> io.pla
-
   val lrq = Module(new Queue(new LRQEntry, nBanks+2))
   lrq.io.enq <> io.lrq
-
-  val rcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
-  rcntr.io.inc.cnt := UInt(1)
-  rcntr.io.inc.update := lrq.io.deq.fire()
-  rcntr.io.dec <> io.qla
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
@@ -53,7 +43,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   // dequeue lq when one hot
   val deq_lq = pred != UInt(3)
   // enqueue vaq when there's something
-  val enq_vaq = pred != UInt(0)
+  val active_entry = pred != UInt(0)
   // find slice_next when more then two elements are alive
   val slice_next = Mux(pred === UInt(3), UInt(1), UInt(0))
   // find first one for pick
@@ -63,12 +53,13 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val vlen_cnt = Mux(ecnt > op.vlen, op.vlen, ecnt)
   val vlen_next = op.vlen - vlen_cnt
 
-  val mask_vaq_ready = !enq_vaq || io.vaq.ready
+  val mask_lrq_valid = !active_entry || lrq.io.deq.valid
+  val mask_vaq_ready = !active_entry || io.vaq.ready
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       state === s_busy,
-      lpq.io.deq.valid, lrq.io.deq.valid, mask_vaq_ready)
+      lpq.io.deq.valid, mask_lrq_valid, mask_vaq_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -96,11 +87,24 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   }
 
   lpq.io.deq.ready := fire(lpq.io.deq.valid, deq_lq)
-  lrq.io.deq.ready := fire(lrq.io.deq.valid, deq_lq)
-  io.vaq.valid := fire(mask_vaq_ready, enq_vaq)
+  lrq.io.deq.ready := fire(mask_lrq_valid, deq_lq)
+  io.vaq.valid := fire(mask_vaq_ready, active_entry)
 
   io.vaq.bits.addr := MuxLookup(pick, Bits(0), (0 until nSlices) map {
     i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
+
+  // using fire fn, just to be consistent with rcntr
+  // don't really need to do this, because lpq entry should always be there
+  val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  pcntr.io.inc.cnt := UInt(1)
+  pcntr.io.inc.update := fire(null, deq_lq)
+  pcntr.io.dec <> io.pla
+
+  // have to update with fire fn, since there are cases where the lrq is empty
+  val rcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  rcntr.io.inc.cnt := UInt(1)
+  rcntr.io.inc.update := fire(null, deq_lq)
+  rcntr.io.dec <> io.qla
 }
 
 class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
