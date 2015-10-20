@@ -12,8 +12,7 @@ class BRQLookAheadIO(implicit p: Parameters) extends VXUBundle()(p) with LookAhe
 }
 
 class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
-    val op = Decoupled(new DCCOp).flip
+  val io = new DCCIssueIO {
     val pla = new CounterLookAheadIO().flip // lpq entry
     val qla = new CounterLookAheadIO().flip // lrq entry
     val lpq = new LPQIO().flip
@@ -108,8 +107,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
 }
 
 class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
-  val io = new Bundle {
-    val op = Decoupled(new DCCOp).flip
+  val io = new DCCIssueIO {
     val la = new BPQLookAheadIO().flip
     val bpqs = Vec.fill(nBanks)(new BPQIO).flip
     val pred = Decoupled(Bits(width = nPredSet))
@@ -193,8 +191,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 }
 
 class VSU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val op = Decoupled(new DCCOp).flip
+  val io = new DCCIssueIO {
     val la = new BRQLookAheadIO().flip
     val brqs = Vec.fill(nBanks)(new BRQIO).flip
     val vsdq = new VSDQIO
@@ -364,9 +361,7 @@ class VLUEntry(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class VLU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val op = Decoupled(new DCCOp).flip
-
+  val io = new DCCIssueIO {
     val vldq = new VLDQIO().flip
     val pred = Decoupled(Bits(width = nPredSet)).flip
     val bwqs = Vec.fill(nBanks)(new BWQIO)

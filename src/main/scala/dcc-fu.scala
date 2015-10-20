@@ -11,9 +11,8 @@ class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
 }
 
 class VDU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
-    val op = Decoupled(new DCCOp).flip
     val ack = new DCCAckIO
     val pla = new CounterLookAheadIO().flip // lpq entry
     val qla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // lrq entries
@@ -64,9 +63,8 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 }
 
 class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
+  val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
-    val op = Decoupled(new DCCOp).flip
     val ila = new CounterLookAheadIO().flip
     val fla = new CounterLookAheadIO().flip
     val lpq = new LPQIO().flip

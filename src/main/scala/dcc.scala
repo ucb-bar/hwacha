@@ -19,10 +19,13 @@ class DCCAckIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vfdu = Valid(new VFDUAck)
 }
 
+class DCCIssueIO(implicit p: Parameters) extends Bundle {
+  val op = Decoupled(new DCCOp).flip
+}
+
 class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
-    val op = Decoupled(new DCCOp).flip
     val ack = new DCCAckIO
     val lpqs = Vec.fill(nLPQ){new LPQIO}.flip
     val lrqs = Vec.fill(nLRQ){new LRQIO}.flip
