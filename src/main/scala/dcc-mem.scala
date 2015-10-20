@@ -123,8 +123,8 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   opq.io.enq <> io.op
 
   val bpqs = (io.bpqs zipWithIndex) map { case (enq, i) =>
-    val bpq = Module(new Queue(new BPQEntry, nbpq))
-    val placntr = Module(new LookAheadCounter(nbpq, nbpq))
+    val bpq = Module(new Queue(new BPQEntry, nBPQ))
+    val placntr = Module(new LookAheadCounter(nBPQ, nBPQ))
     val en = io.la.mask(i)
     bpq.io.enq <> enq
     placntr.io.inc.cnt := UInt(1)
@@ -255,14 +255,14 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
   //--------------------------------------------------------------------\\
 
   val brqs = io.brqs.map { enq =>
-    val brq = Module(new Queue(enq.bits, nbrq))
+    val brq = Module(new Queue(enq.bits, nBRQ))
     brq.io.enq <> enq
     brq.io.deq.ready := Bool(false)
     brq.io.deq
   }
 
   val brqs_la = brqs.zipWithIndex.map { case (brq, i) =>
-    val scntr = Module(new LookAheadCounter(nbrq, maxSLA))
+    val scntr = Module(new LookAheadCounter(nBRQ, maxSLA))
     val en = io.la.mask(i)
     scntr.io.inc.cnt := UInt(1)
     scntr.io.inc.update := Bool(false)
@@ -555,7 +555,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val wb_update = Vec.fill(nBanks)(Bits(width = nvlreq))
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
-    val bwq = Module(new Queue(new VLUEntry, nbwq))
+    val bwq = Module(new Queue(new VLUEntry, nBWQ))
 
     val eidx_advance = (UInt(i) < eidx_bank) || tock
     bwq.io.enq.bits.eidx := Mux(eidx_advance, eidx_reg_next, eidx_reg)

@@ -62,13 +62,8 @@ abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLi
   require(confvcmdq.nimm >= _nBanks)
   require(confvcmdq.nrd >= _nBanks)
 
-  val nbpq = 2
-  val nbrq = 2
-  val nbwq = 2
-
   val nvsreq = 128
   val nvlreq = 128
-  val nvsdq = nbrq * _nBanks
 }
 
 class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaParameters
