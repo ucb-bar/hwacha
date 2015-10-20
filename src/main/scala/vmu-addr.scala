@@ -48,7 +48,8 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   io.vpaq.bits.addr := io.tlb.paddr()
   io.vcu.bits.ecnt := mask.ecnt
 
-  val vvaq_valid = !op.mode.indexed || io.vvaq.valid
+  val vvaq_en = op.mode.indexed && pred
+  val vvaq_valid = !vvaq_en || io.vvaq.valid
   val vpaq_ready = !pred || io.vpaq.ready
   val tlb_ready = !pred || io.tlb.req.ready
 
@@ -80,7 +81,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     is (s_busy) {
       unless (stall || io.xcpt.prop.vmu.stall) {
         io.mask.ready := fire(io.mask.valid)
-        io.vvaq.ready := fire(vvaq_valid, op.mode.indexed)
+        io.vvaq.ready := fire(vvaq_valid, vvaq_en)
         io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
         io.tlb.req.valid := vvaq_valid && io.mask.valid && pred
 
