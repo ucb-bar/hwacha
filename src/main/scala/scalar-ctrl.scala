@@ -26,8 +26,7 @@ class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
 
   // x signals
   val ex_waddr = Bits(INPUT, log2Up(nSRegs))
-  val bypass = Vec.fill(3)(Bool(OUTPUT))
-  val bypass_src = Vec.fill(3)(Bits(OUTPUT, SZ_BYP))
+  val bypass = Vec.fill(3){Bool(OUTPUT)}
 
   // w signals
   val wb_valid = Bool(OUTPUT)
@@ -194,16 +193,6 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_raddrs3 = io.dpath.inst(48,41)
   val id_paddr   = io.dpath.inst(15,12)
 
-  val bypassDst = Array(id_raddrs1, id_raddrs2, id_raddrs3)
-  val bypassSrc = Array.fill(NBYP)((Bool(true), UInt(0)))
-  bypassSrc(BYP_EX) = (ex_reg_valid, io.dpath.ex_waddr)
-
-  val doBypass = bypassDst.map(d => bypassSrc.map(s => s._1 && s._2 === d))
-  for (i <- 0 until io.dpath.bypass.size) {
-    io.dpath.bypass(i) := doBypass(i).reduce(_||_)
-    io.dpath.bypass_src(i) := PriorityEncoder(doBypass(i))
-  }
-
   // only look at shared reg because addr reg can't be written during vf block
   val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_waddr != UInt(0)
   val id_ctrl_rens1_not0 = sren1 && id_raddrs1 != UInt(0)
@@ -217,11 +206,11 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // stall for RAW hazards on non scalar integer pipes
   val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val
-  val data_hazard_ex =
-    id_ctrl_rens1_not0 && id_raddrs1 === io.dpath.ex_waddr ||
-    id_ctrl_rens2_not0 && id_raddrs2 === io.dpath.ex_waddr ||
-    id_ctrl_rens3_not0 && id_raddrs3 === io.dpath.ex_waddr
-  val id_ex_hazard = !id_can_bypass && ex_reg_valid && data_hazard_ex
+  val data_hazard_ex = Vec(
+    id_ctrl_rens1_not0 && id_raddrs1 === io.dpath.ex_waddr,
+    id_ctrl_rens2_not0 && id_raddrs2 === io.dpath.ex_waddr,
+    id_ctrl_rens3_not0 && id_raddrs3 === io.dpath.ex_waddr)
+  val id_ex_hazard = !id_can_bypass && ex_reg_valid && data_hazard_ex.reduce(_||_)
 
   // stall on RAW/WAW hazards on loads/fpu until data returns
   val id_sboard_hazard = 
@@ -231,6 +220,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     id_ctrl_wen_not0 && sboard.read(id_waddr)
 
   sboard.set(id_set_sboard, id_sboard_addr)
+
+  io.dpath.bypass := data_hazard_ex.map(ex_reg_valid && _)
  
   val enq_fpu = id_val && id_scalar_dest && id_ctrl.fpu_val
   val enq_vxu = id_val && !id_scalar_inst

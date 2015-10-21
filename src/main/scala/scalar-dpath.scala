@@ -31,11 +31,9 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   // execute definitions
   val ex_reg_pc = Reg(UInt())
   val ex_reg_inst = Reg(Bits())
-  val ex_reg_kill = Reg(Bool())
-  val ex_reg_srs_bypass = Vec.fill(3)(Reg(Bool()))
-  val ex_reg_srs_lsb = Vec.fill(3)(Reg(Bits()))
-  val ex_reg_srs_msb = Vec.fill(3)(Reg(Bits()))
-  val ex_reg_ars = Vec.fill(2)(Reg(Bits()))
+  val ex_reg_bypass = Vec.fill(3){Reg(Bool())}
+  val ex_reg_srs = Vec.fill(3){Reg(Bits())}
+  val ex_reg_ars = Vec.fill(2){Reg(Bits())}
 
   // writeback definitions
   val wb_reg_pc = Reg(UInt())
@@ -141,30 +139,17 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   when (!io.ctrl.killd) {
     ex_reg_pc := id_pc
     ex_reg_inst := id_inst
-    // TODO: remove weird bypass stuff, just make explicit register?
-    ex_reg_srs_bypass := io.ctrl.bypass
+    ex_reg_bypass := io.ctrl.bypass
     for (i <- 0 until id_sreads.size) {
-      when (io.ctrl.sren(i)) {
-        ex_reg_srs_lsb(i) := id_sreads(i)(SZ_BYP-1,0)
-        when (!io.ctrl.bypass(i)) {
-          ex_reg_srs_msb(i) := id_sreads(i) >> UInt(SZ_BYP)
-        }
-      }
-      when (io.ctrl.bypass(i)) { ex_reg_srs_lsb(i) := io.ctrl.bypass_src(i) }
+      when (io.ctrl.sren(i)) { ex_reg_srs(i) := id_sreads(i) }
     }
     for (i <- 0 until id_areads.size) {
-      when (io.ctrl.aren(i)) {
-        ex_reg_ars(i) := id_areads(i)
-      }
+      when (io.ctrl.aren(i)) { ex_reg_ars(i) := id_areads(i) }
     }
   }
 
-  val bypass = Vec.fill(NBYP)(Bits())
-  bypass(BYP_0) := Bits(0)
-  bypass(BYP_EX) := wb_reg_wdata
-
   val ex_srs = for (i <- 0 until id_sreads.size)
-    yield Mux(ex_reg_srs_bypass(i), bypass(ex_reg_srs_lsb(i)), Cat(ex_reg_srs_msb(i), ex_reg_srs_lsb(i)))
+    yield Mux(ex_reg_bypass(i), wb_reg_wdata, ex_reg_srs(i))
 
   val ex_imm = imm(io.ctrl.ex_ctrl.sel_imm, ex_reg_inst)
   val ex_op1 = MuxLookup(io.ctrl.ex_ctrl.alu_sel1, SInt(0), Seq(
