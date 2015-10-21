@@ -187,9 +187,10 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     wb_reg_inst := ex_reg_inst
     wb_reg_wdata := alu.io.out
   }
-  val wb_ll_wdata = Reg(next=Mux(io.fpu.resp.valid,
+  val wb_ll_wdata = Reg(next=
+    Mux(io.fpu.resp.valid,
       Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data, unrec_fpu_resp),
-      io.dmem.bits.data))
+        io.dmem.bits.data))
 
   val awrite_valid = io.ctrl.awrite
   val swrite_valid = io.ctrl.swrite
@@ -201,11 +202,11 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
 
   val wb_waddr = 
     Mux(io.ctrl.wb_fpu_valid, io.ctrl.pending_fpu_reg,
-    Mux(io.ctrl.wb_dmem_valid, io.ctrl.wb_dmem_waddr,
+    Mux(io.ctrl.wb_dmem_load_valid, io.ctrl.wb_dmem_waddr,
       wb_reg_inst(23,16)))
 
-  val wb_wdata = Mux(io.ctrl.wb_fpu_valid || io.ctrl.wb_dmem_valid, wb_ll_wdata, wb_reg_wdata)
-  when(io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
+  val wb_wdata = Mux(io.ctrl.wb_fpu_valid || io.ctrl.wb_dmem_load_valid, wb_ll_wdata, wb_reg_wdata)
+  when (io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
 
   when(swrite_valid) { srf.write(aswrite_rd, aswrite_imm) }
   when(awrite_valid) { arf(aswrite_rd) := aswrite_imm }

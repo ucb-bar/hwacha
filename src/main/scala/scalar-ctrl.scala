@@ -32,7 +32,7 @@ class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
   // w signals
   val wb_valid = Bool(OUTPUT)
   val wb_wen = Bool(OUTPUT)
-  val wb_dmem_valid = Bool(OUTPUT)
+  val wb_dmem_load_valid = Bool(OUTPUT)
   val wb_fpu_valid  = Bool(OUTPUT)
   val wb_dmem_waddr = UInt(OUTPUT,log2Up(nSRegs))
   val swrite = Bool(OUTPUT)
@@ -106,6 +106,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val pending_fpu_typ = Reg(init=Bits(width=2))
   val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
   val pending_smu = Reg(init=Bool(false))
+  val pending_smu_store = Reg(Bool())
 
   io.vf_active := vf_active
   io.dpath.vf_active := vf_active
@@ -332,7 +333,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
   io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vlen)
-  when (io.vmu.fire() && id_scalar_inst) { pending_smu := Bool(true) }
+  when (io.vmu.fire() && id_scalar_inst) {
+    pending_smu := Bool(true)
+    pending_smu_store := id_ctrl.vmu_cmd === M_XWR
+  }
 
   // EXECUTE
   // if we didn't stallx (which includes stallw) then we should move the pipe forward
@@ -342,14 +346,19 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
-  val ex_stall_smu = ex_reg_valid && io.dmem.valid
+  val ex_stall_smu = ex_reg_valid && io.dmem.valid && !pending_smu_store
 
   io.dpath.stallx := ex_stall_fpu || ex_stall_smu || io.dpath.stallw
   io.dpath.killx := !ex_reg_valid || io.dpath.stallx
 
+  // give fixed priority to fpu -> mem -> alu
+  io.fpu.resp.ready := Bool(true)
+  io.dmem.ready := !io.fpu.resp.valid
+
   // WRITEBACK
   val wb_fpu_valid = Reg(next=io.fpu.resp.valid)
-  val wb_dmem_valid = Reg(next=io.dmem.valid)
+  val wb_dmem_valid = Reg(next=io.dmem.valid && !io.fpu.resp.valid)
+  val wb_dmem_load_valid = wb_dmem_valid && !pending_smu_store
   val wb_dmem_waddr = RegEnable(io.dmem.bits.id, io.dmem.valid)
 
   when (!io.dpath.stallw) {
@@ -360,18 +369,14 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.dpath.stallw := Bool(false)
 
   io.dpath.wb_valid := wb_reg_valid
-  io.dpath.wb_wen := wb_fpu_valid || wb_dmem_valid || wb_reg_valid
+  io.dpath.wb_wen := wb_fpu_valid || wb_dmem_load_valid || wb_reg_valid
   io.dpath.wb_fpu_valid := wb_fpu_valid
-  io.dpath.wb_dmem_valid := wb_dmem_valid
+  io.dpath.wb_dmem_load_valid := wb_dmem_load_valid
   io.dpath.wb_dmem_waddr := wb_dmem_waddr
 
-  // give fixed priority to fpu -> mem -> alu
-  io.fpu.resp.ready := Bool(true) 
-  io.dmem.ready := !io.fpu.resp.valid
-
   // clear ll sb at cycle of wb not the cycle result returned
-  val clear_mem = wb_dmem_valid
   val clear_fpu = wb_fpu_valid
+  val clear_mem = wb_dmem_valid
 
   val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, wb_dmem_waddr)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
@@ -381,6 +386,6 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (clear_mem) { pending_smu := Bool(false) }
 
   assert(!(!vf_active && sboard_not_empty), "vf should not end with non empty scoreboard")
-  assert(!(wb_dmem_valid && wb_reg_valid), "load result and scalar wb conflict")
+  assert(!(wb_dmem_load_valid && wb_reg_valid), "load result and scalar wb conflict")
   assert(!(wb_fpu_valid && wb_reg_valid), "fpu result and scalar wb conflict")
 }
