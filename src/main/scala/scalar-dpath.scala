@@ -66,12 +66,8 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val arf = Mem(UInt(width = 64), 32)
 
   // fetch/decode
-  when(io.ctrl.fire_vf) {
-    vf_pc := io.cmdq.imm.bits
-  }
-  when(!io.ctrl.stallf){
-    vf_pc := vf_pc + UInt(8)
-  }
+  when(io.ctrl.fire_vf) { vf_pc := io.cmdq.imm.bits }
+  when (!io.ctrl.stalld) { vf_pc := vf_pc + UInt(8) }
   io.imem.req.bits.pc := io.cmdq.imm.bits
 
   val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
@@ -142,7 +138,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
                            id_inst(40,33), id_inst(23,16))).toBits))
 
   // execute
-  when(!io.ctrl.killf) {
+  when (!io.ctrl.killd) {
     ex_reg_pc := id_pc
     ex_reg_inst := id_inst
     // TODO: remove weird bypass stuff, just make explicit register?
@@ -186,7 +182,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   alu.io.in1 := ex_op1
 
   // Writeback stage
-  when(!io.ctrl.killx) {
+  when (!io.ctrl.killx) {
     wb_reg_pc := ex_reg_pc
     wb_reg_inst := ex_reg_inst
     wb_reg_wdata := alu.io.out
