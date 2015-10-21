@@ -115,25 +115,28 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
                Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
 
   //Memory requests - COLIN FIXME: check for critical path (need reg?)
-  val addr_stride = MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
-                      MT_B->  UInt(1),
-                      MT_BU-> UInt(1),
-                      MT_H->  UInt(2),
-                      MT_HU-> UInt(2),
-                      MT_W->  UInt(4),
-                      MT_WU-> UInt(4),
-                      MT_D->  UInt(8) 
-                    ))
+  val addr_stride =
+    MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
+      MT_B->  UInt(1),
+      MT_BU-> UInt(1),
+      MT_H->  UInt(2),
+      MT_HU-> UInt(2),
+      MT_W->  UInt(4),
+      MT_WU-> UInt(4),
+      MT_D->  UInt(8)
+    ))
 
   io.vmu.bits.base :=
-    Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
+    Mux(io.ctrl.aren(0), id_areads(0), // unit-stride
+      Mux(isAMO(io.ctrl.id_ctrl.vmu_cmd), UInt(0), // AMO
+        id_sreads(0))) // indexed
   io.vmu.bits.aux.union :=
-    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits,
-                         Mux(io.ctrl.id_ctrl.vmu_mode === MM_VU,
-                           VMUAuxVector(addr_stride).toBits,
-                           VMUAuxScalar(id_sreads(1),
-                           Mux(io.ctrl.id_ctrl.vmu_cmd === M_XWR, 
-                           id_inst(40,33), id_inst(23,16))).toBits))
+    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits, // constant-stride
+      Mux(io.ctrl.id_ctrl.vmu_mode === MM_VU,
+        VMUAuxVector(addr_stride).toBits, // unit-stride
+        VMUAuxScalar(id_sreads(1), // scalar
+          Mux(io.ctrl.id_ctrl.vmu_cmd === M_XWR,
+            id_inst(40,33), id_inst(23,16))).toBits))
 
   // execute
   when (!io.ctrl.killd) {
