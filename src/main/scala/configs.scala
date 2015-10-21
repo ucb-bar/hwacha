@@ -29,6 +29,9 @@ class DefaultHwachaConfig extends ChiselConfig (
     case HwachaCacheBlockOffsetBits => site(CacheBlockOffsetBits)
     case HwachaLocalScalarFPU => false
 
+    // Multi-lane constants
+    case HwachaNLanes => 1
+
     // lane constants
     case HwachaBankWidth => 128
     case HwachaNBanks => 4
@@ -56,7 +59,8 @@ class DefaultHwachaConfig extends ChiselConfig (
     case HwachaNVLTEntries => 32
 
     // +2 comes from the overhead of tagging for the arbitration
-    case RoCCMaxTaggedMemXacts => site(HwachaNVLTEntries)
+    case RoccMaxTaggedMemXacts => site(HwachaNVLTEntries)
+    case RoccNMemChannels => site(HwachaNLanes)
     case BuildRoCC => Some((p: Parameters) => 
       Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
   }

@@ -4,6 +4,7 @@ import Chisel._
 import junctions.ParameterizedBundle
 import rocket.NTLBEntries
 
+case object HwachaNLanes extends Field[Int]
 case object HwachaNAddressRegs extends Field[Int]
 case object HwachaNScalarRegs extends Field[Int]
 case object HwachaNVectorRegs extends Field[Int]
@@ -138,6 +139,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   dtlb.io <> quad.io.dtlb
   ptlb.io <> quad.io.ptlb
-  io.dmem <> quad.io.dmem
+  io.dmem.head <> quad.io.dmem
   scalar.io.pending_seq <> quad.io.pending.seq
 }
