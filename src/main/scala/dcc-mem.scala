@@ -476,8 +476,6 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val eidx_reg = meta.eidx(bVLen-1, lgbatch)
   val eidx_reg_next = eidx_reg + UInt(1)
 
-  require(nSlices == 2)
-
   val rotamt = eidx_batch - meta.epad
 
   private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
@@ -515,26 +513,38 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val data = Mux1H(mts, Seq(data_d, data_w, data_h, data_b))
 
   //--------------------------------------------------------------------\\
-  // masking / overflow
+  // masking / conflict arbitration
   //--------------------------------------------------------------------\\
 
+  require(nSlices == 2)
   val tick = Reg(init = Bool(true))
-  val tock = !tick
 
-  val mask_root = (0 until nBatch).map(meta.mask(_))
-
-  val slice_unaligned = (eidx_slice != UInt(0)) && tick
-  val slice_overflow = mask_root.head && mask_root.last && slice_unaligned
+  /* When the load represents a full batch of elements and meta.eidx is
+   * odd, the first and last elements reside in the same bank but in
+   * different SRAM entries.  If both are present, they must be written
+   * separately over two cycles.
+   */
+  val slice_unaligned = (eidx_slice != UInt(0)) && (meta.epad === UInt(0))
+  val slice_used = slice_unaligned && meta.mask(0)
+  val slice_free = slice_unaligned && !meta.mask(0)
+  val slice_conflict = slice_used && meta.mask(nBatch-1)
+  val tick_next = !(slice_conflict && tick)
 
   val bwqs_fire = Bool()
   when (bwqs_fire) {
-    tick := !slice_overflow
+    tick := tick_next
   }
 
   val mask_head = tick
-  val mask_tail = !slice_unaligned
-  val mask_beat = mask_root.init.map(_ && mask_head) :+ (mask_root.last && mask_tail)
-  val mask = rotate(Bool(), mask_beat)
+  val mask_tail = Mux(tick, !slice_used, Bool(true))
+  val mask_beat = Cat(mask_tail, Fill(nBatch-1, mask_head))
+  val mask_base = meta.mask & mask_beat
+  val mask = rotate(Bool(), mask_base.toBools)
+
+  /* Handle intra-load eidx increment */
+  val eidx_step_head = EnableDecoder(eidx_bank, nBanks)
+  val eidx_step_tail = Mux(tick, slice_free, Bool(true)) << eidx_bank
+  val eidx_step = eidx_step_head | eidx_step_tail
 
   //--------------------------------------------------------------------\\
   // bank write queues
@@ -552,8 +562,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nBWQ))
 
-    val eidx_advance = (UInt(i) < eidx_bank) || tock
-    bwq.io.enq.bits.eidx := Mux(eidx_advance, eidx_reg_next, eidx_reg)
+    bwq.io.enq.bits.eidx := Mux(eidx_step(i), eidx_reg_next, eidx_reg)
     bwq.io.enq.bits.data := bwqs_data(i)
     bwq.io.enq.bits.mask := bwqs_mask(i)
 
@@ -586,7 +595,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
 
   val bwqs_ready_all = fire(vldq_valid)
   bwqs_fire := bwqs_ready_all && vldq_valid
-  vldq.ready := bwqs_ready_all && !slice_overflow && sink
+  vldq.ready := bwqs_ready_all && tick_next && sink
   bwqs.zip(bwqs_ready.zip(bwqs_en)).foreach { case (bwq, (ready, en)) =>
     bwq.valid := fire(ready, en)
   }
