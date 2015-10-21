@@ -71,8 +71,8 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
   val id_pc   = io.imem.resp.bits.pc
   //register reads
-  val id_sraddr = Vec(dgate(io.ctrl.sren(0),id_inst(31,24)), dgate(io.ctrl.sren(1),id_inst(40,33)), dgate(io.ctrl.sren(2),id_inst(48,41)))
-  val id_araddr = Vec(dgate(io.ctrl.aren(0),id_inst(28,24)), dgate(io.ctrl.aren(1),id_inst(37,33)))
+  val id_sraddr = Vec(id_inst(31,24), id_inst(40,33), id_inst(48,41))
+  val id_araddr = Vec(id_inst(28,24), id_inst(37,33))
   val id_sreads = id_sraddr.map(srf.read _ )
   val id_areads = id_araddr.map(arf(_))
 
