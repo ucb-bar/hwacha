@@ -80,7 +80,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
     vs1_type := reg_type(vs1_t, vs1_dyn, inst(OPC_VS1))
     vs2_type := reg_type(vs2_t, vs2_dyn, inst(OPC_VS2))
     vs3_type := reg_type(vs3_t, vs3_dyn, inst(OPC_VS3))
-    vipu_fn := inst(56,49)
+    vipu_fn := inst(57,50)
     vp_neg := inst(OPC_NEG)
     this
   }
