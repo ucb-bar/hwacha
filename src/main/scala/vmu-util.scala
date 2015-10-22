@@ -70,6 +70,12 @@ object EnableDecoder {
   }
 }
 
+object Ceil {
+  def apply[T <: UInt](in: T, shift: Int): UInt =
+    if (shift == 0) in else
+      ((in >> shift) + in(shift-1, 0).orR.toUInt)
+}
+
 /* Count trailing zeroes */
 object CTZ {
   private def mux[T <: Data](in: Iterable[(Bool, T)]): (Bool, T) = {

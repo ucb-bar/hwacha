@@ -199,6 +199,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
     val pred = Decoupled(Bits(width = nPredSet)).flip
   }
 
+  private val lgslices = log2Up(nSlices)
   private val lgbanks = log2Up(nBanks)
   private val lgbatch = log2Up(nBatch)
 
@@ -211,31 +212,33 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
   val mts = Seq(mt.d, mt.w, mt.h, mt.b)
   val mtb = Seq(SZ_D, SZ_W, SZ_H, SZ_B)
 
-  val beat = Reg(UInt(width = lgbanks))
+  require(wBank <= tlDataBits)
 
-  /* Number of elements per VSDQ entry */
-  val ecnts = mtb.map { sz =>
-    require(tlDataBits % sz == 0)
-    math.min(tlDataBits / sz, nBatch)
+  /* Maximum number of active BRQs per VSDQ entry */
+  val qcnts = mtb.map { sz =>
+    val b = sz << lgslices
+    require(tlDataBits % b == 0)
+    math.min(tlDataBits / b, nBanks)
   }
-  val ecnt = Mux1H(mts, ecnts.map(UInt(_)))
+  val qcnt_max = Mux1H(mts, qcnts.map(UInt(_)))
+  val ecnt_max = Cat(qcnt_max, UInt(0, lgslices))
 
-  val vlen_next = op.vlen.zext - ecnt
+  val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))
+  val ecnt = Mux(vlen_end, op.vlen(lgbatch, 0), ecnt_max)
+  val qcnt = Ceil(ecnt, lgslices)
+
+  val index = Reg(UInt(width = lgbanks))
+  val index_next = index + qcnt_max
+  val index_end = (index_next(lgbanks-1, 0) === UInt(0))
 
   //--------------------------------------------------------------------\\
   // predication / masking
   //--------------------------------------------------------------------\\
 
-  require(wBank <= tlDataBits)
-  /* Number of active BRQs per VSDQ entry */
-  val qcnts = ecnts.map(_ / nSlices)
-  val brqs_sel = (0 until nBanks).map(i =>
-    Mux1H(mts, qcnts.map(n =>
-      if (n == nBanks) Bool(true) else {
-        val lgn = log2Ceil(n)
-        beat(lgbanks-lgn-1, 0) === UInt(i >> lgn)
-      })))
+  val brqs_sel_base = EnableDecoder(qcnt, nBanks)
+  val brqs_sel_bits = (brqs_sel_base << index)(nBanks-1, 0)
+  val brqs_sel = (0 until nBanks).map(brqs_sel_bits(_))
 
   val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
   predq.io.enq <> io.pred
@@ -290,26 +293,26 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
   pred.ready := Bool(false)
   io.vsdq.valid := Bool(false)
 
-  val pred_deq = vlen_end || Mux1H(mts, ecnts.map { cnt =>
-    val n = nPredSet / cnt
-    if (n > 1) (beat(log2Ceil(n)-1, 0) === UInt(n-1))
-    else Bool(true)
-  })
+  require(nPredSet == nBatch)
+  val pred_deq = index_end || vlen_end
 
   //--------------------------------------------------------------------\\
   // permutation network
   //--------------------------------------------------------------------\\
 
-  private def repack(sz: Int, cnt: Int) = {
+  private def repack(sz: Int, qcnt: Int) = {
     require(sz <= regLen)
     val elts = for (q <- brqs; i <- (0 until wBank by regLen))
       yield q.bits.data(sz-1+i, i)
-    val sets = elts.grouped(cnt).map(xs =>
+    val sets = elts.grouped(qcnt << lgslices).map(xs =>
       Cat(xs.reverse)).toIterable
-    if (sets.size > 1) Vec(sets)(beat) else sets.head
+    if (sets.size > 1) {
+      val sel = index(lgbanks-1, log2Ceil(qcnt))
+      Vec(sets)(sel)
+    } else sets.head
   }
 
-  io.vsdq.bits.data := Mux1H(mts, mtb.zip(ecnts).map {
+  io.vsdq.bits.data := Mux1H(mts, mtb.zip(qcnts).map {
     case (sz, cnt) => repack(sz, cnt)
   })
 
@@ -327,7 +330,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
         state := s_busy
         op := opq.io.deq.bits
       }
-      beat := UInt(0)
+      index := UInt(0)
     }
 
     is (s_busy) {
@@ -344,7 +347,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p) {
             scntr.io.inc.update := sel
         }
 
-        beat := beat + UInt(1)
+        index := index_next
         op.vlen := vlen_next
         when (vlen_end) {
           state := s_idle

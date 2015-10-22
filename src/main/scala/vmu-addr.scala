@@ -322,7 +322,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
     is (s_busy) {
       io.inner.ready := fire(io.inner.valid)
       io.outer.valid := fire(io.outer.ready)
-      io.store.valid := Bool(true)
+      io.store.valid := op.cmd.write
 
       when (fire(null)) {
         eidx := eidx + inner.meta.ecnt.decode()
