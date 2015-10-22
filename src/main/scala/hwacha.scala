@@ -4,6 +4,7 @@ import Chisel._
 import junctions.ParameterizedBundle
 import rocket.NTLBEntries
 
+case object HwachaCommitLog extends Field[Boolean]
 case object HwachaNLanes extends Field[Int]
 case object HwachaNAddressRegs extends Field[Int]
 case object HwachaNScalarRegs extends Field[Int]
@@ -24,6 +25,8 @@ abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBun
   with UsesHwachaParameters
 
 abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLinkParameters {
+  val commit_log = p(HwachaCommitLog)
+
   val nARegs = p(HwachaNAddressRegs)
   val nSRegs = p(HwachaNScalarRegs)
   val nVRegs = p(HwachaNVectorRegs)

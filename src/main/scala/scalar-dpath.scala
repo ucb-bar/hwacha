@@ -177,7 +177,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   }
   val wb_ll_wdata = Reg(next=
     Mux(io.fpu.resp.valid,
-      Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data, unrec_fpu_resp),
+      Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp),
         io.dmem.bits.data))
 
   val awrite_valid = io.ctrl.awrite
@@ -194,24 +194,25 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
       wb_reg_inst(23,16)))
 
   val wb_wdata = Mux(io.ctrl.wb_fpu_valid || io.ctrl.wb_dmem_load_valid, wb_ll_wdata, wb_reg_wdata)
-  when (io.ctrl.wb_wen) { srf.write(wb_waddr, wb_wdata) }
+  when (io.ctrl.wb_wen) {
+    srf.write(wb_waddr, wb_wdata)
+    if (commit_log) printf("H: write_srf %d %x\n", wb_waddr, wb_wdata)
+  }
 
-  when(swrite_valid) { srf.write(aswrite_rd, aswrite_imm) }
-  when(awrite_valid) { arf(aswrite_rd) := aswrite_imm }
+  when (swrite_valid) {
+    srf.write(aswrite_rd, aswrite_imm)
+    if (commit_log) printf("H: write_srf %d %x\n", aswrite_rd, aswrite_imm)
+  }
+  when (awrite_valid) {
+    arf(aswrite_rd) := aswrite_imm
+    if (commit_log) printf("H: write_arf %d %x\n", aswrite_rd, aswrite_imm)
+  }
 
   // to VXU
   io.vxu.bits.sreg.ss1 := id_sreads(0)
   io.vxu.bits.sreg.ss2 := id_sreads(1)
   io.vxu.bits.sreg.ss3 := id_sreads(2)
 
-  when(swrite_valid) {
-    printf("H: SW[r%d=%x][%d]\n",
-         aswrite_rd, aswrite_imm, swrite_valid)
-  }
-  when(awrite_valid) {
-    printf("H: AW[r%d=%x][%d]\n",
-         aswrite_rd, aswrite_imm, awrite_valid)
-  }
   when(io.ctrl.vf_active || io.ctrl.wb_valid) {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
          io.ctrl.wb_valid, wb_reg_pc, 

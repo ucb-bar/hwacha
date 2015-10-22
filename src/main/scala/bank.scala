@@ -62,7 +62,7 @@ class Bank(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     val rw = new BankRWIO
   }
 
-  val rf = Module(new BankRegfile)
+  val rf = Module(new BankRegfile(id))
 
   rf.io.op <> io.op
   rf.io.global <> io.rw

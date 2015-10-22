@@ -14,6 +14,8 @@ class DefaultHwachaConfig extends ChiselConfig (
     case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
 
+    case HwachaCommitLog => true
+
     // hwacha constants
     case HwachaNAddressRegs => 32
     case HwachaNScalarRegs => 64

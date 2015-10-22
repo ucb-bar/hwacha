@@ -7,7 +7,7 @@ class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData w
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class BankRegfile(implicit p: Parameters) extends VXUModule()(p) {
+class BankRegfile(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val global = new BankRWIO
@@ -55,11 +55,21 @@ class BankRegfile(implicit p: Parameters) extends VXUModule()(p) {
 
   // Predicate RF write port
   when (io.op.pred.write.valid) {
-    pred_rf.write(
-      io.op.pred.write.bits.addr,
+    val waddr = io.op.pred.write.bits.addr
+    val wdata =
       Mux(io.op.pred.write.bits.selg, io.global.wpred.pred,
-        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)).toBools,
-      io.op.pred.write.bits.pred.toBools)
+        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)).toBools
+    val wmask = io.op.pred.write.bits.pred.toBools
+
+    pred_rf.write(waddr, wdata, wmask)
+
+    if (commit_log) {
+      (0 until nSlices) foreach { case i =>
+        when (wmask(i)) {
+          printf("H: write_prf bank %d %d %d %d\n", UInt(id), waddr, UInt(i), wdata(i))
+        }
+      }
+    }
   }
 
   // SRAM RF read port
@@ -93,10 +103,20 @@ class BankRegfile(implicit p: Parameters) extends VXUModule()(p) {
 
   sram_warb.io.out.ready := Bool(true) // can always write the register file
   when (sram_warb.io.out.valid) {
-    sram_rf.write(
-      sram_warb.io.out.bits.addr,
-      toBytes(sram_warb.io.out.bits.data),
-      sram_warb.io.out.bits.mask.toBools)
+    val waddr = sram_warb.io.out.bits.addr
+    val wdata = toBytes(sram_warb.io.out.bits.data)
+    val wmask = sram_warb.io.out.bits.mask.toBools
+
+    sram_rf.write(waddr, wdata, wmask)
+
+    if (commit_log) {
+      val wdata = toDWords(sram_warb.io.out.bits.data)
+      (0 until nSlices) foreach { case i =>
+        when (wmask(8*i)) {
+          printf("H: write_vrf bank %d %d %d %x\n", UInt(id), waddr, UInt(i), wdata(i))
+        }
+      }
+    }
   }
 
   // FF RF read port
