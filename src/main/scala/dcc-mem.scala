@@ -41,16 +41,16 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   // if slice === UInt(1), shave off last bit
   val pred = lpq.io.deq.bits.pred & Mux(slice === UInt(0), UInt(3), UInt(2))
   // dequeue lq when one hot
-  val deq_lq = pred != UInt(3)
+  val deq_lq = pred =/= UInt(3)
   // enqueue vaq when there's something
-  val active_entry = pred != UInt(0)
+  val active_entry = pred =/= UInt(0)
   // find slice_next when more then two elements are alive
   val slice_next = Mux(pred === UInt(3), UInt(1), UInt(0))
   // find first one for pick
   val pick = Mux(pred(0), UInt(0), UInt(1))
   // process 2 elements only when pred is empty or popcount of 1
   // otherwise process 1 element
-  val ecnt = Mux(pred != UInt(3) && slice === UInt(0), UInt(2), UInt(1))
+  val ecnt = Mux(pred =/= UInt(3) && slice === UInt(0), UInt(2), UInt(1))
   val vlen_cnt = Mux(ecnt > op.vlen, op.vlen, ecnt)
   val vlen_next = op.vlen - vlen_cnt
 
@@ -529,7 +529,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
    * different SRAM entries.  If both are present, they must be written
    * separately over two cycles.
    */
-  val slice_unaligned = (eidx_slice != UInt(0)) && (meta.epad === UInt(0))
+  val slice_unaligned = (eidx_slice =/= UInt(0)) && (meta.epad === UInt(0))
   val slice_used = slice_unaligned && meta.mask(0)
   val slice_free = slice_unaligned && !meta.mask(0)
   val slice_conflict = slice_used && meta.mask(nBatch-1)
