@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
     val addr = UInt(width = bVAddrExtended)

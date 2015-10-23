@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class ScalarMemIO(implicit p: Parameters) extends DecoupledIO(new VMUAuxScalar()(p))
 

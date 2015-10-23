@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.{Parameters, Field}
 
 case object HwachaBankWidth extends Field[Int]
 case object HwachaNBanks extends Field[Int]

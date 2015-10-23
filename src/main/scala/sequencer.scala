@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 import DataGating._
 
 abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {

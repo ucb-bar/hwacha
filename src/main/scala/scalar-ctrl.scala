@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 import rocket.ALU._
 import ScalarFPUDecode._
 

@@ -1,10 +1,11 @@
 package hwacha
 
 import Chisel._
+import cde.{Config, Parameters, Knob}
 import uncore._
 import rocket._
 
-class DefaultHwachaConfig extends ChiselConfig (
+class DefaultHwachaConfig extends Config (
   (pname,site,here) => pname match {
     case NSets => site(CacheName) match { case "HwI" => 64 }
     case NWays => site(CacheName) match { case "HwI" => 1 }

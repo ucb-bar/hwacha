@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 abstract class VXUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
   extends HwachaModule(clock, _reset)(p) with SeqParameters with LaneParameters with DCCParameters with ExpParameters

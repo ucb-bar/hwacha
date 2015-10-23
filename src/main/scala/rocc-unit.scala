@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 import Commands._
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {

@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
   val rpVIU = 2

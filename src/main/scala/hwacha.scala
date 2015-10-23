@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.{Parameters, Field}
 import junctions.ParameterizedBundle
 import rocket.NTLBEntries
 

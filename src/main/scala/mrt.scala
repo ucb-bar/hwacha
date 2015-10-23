@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class LaneMRTIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
   val lreq = new CounterLookAheadIO

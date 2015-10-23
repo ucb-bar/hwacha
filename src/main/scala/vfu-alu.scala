@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class ALUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn

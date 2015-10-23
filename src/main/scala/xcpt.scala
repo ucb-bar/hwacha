@@ -1,6 +1,7 @@
 package hwacha 
 
 import Chisel._
+import cde.Parameters
 
 class XCPTIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val prop = new Bundle {

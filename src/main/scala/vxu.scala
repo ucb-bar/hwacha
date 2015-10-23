@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class VXUIssueOpIO(implicit p: Parameters) extends DecoupledIO(new IssueOp()(p))
 

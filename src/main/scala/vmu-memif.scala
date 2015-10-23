@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {

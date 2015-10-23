@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class VLTWIO(implicit val p: Parameters) extends DecoupledIO(new VLTEntry()(p)) with VMUParameters {
   val tag = UInt(INPUT, bTag)

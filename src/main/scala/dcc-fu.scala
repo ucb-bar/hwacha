@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 import DataGating._
 
 class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {

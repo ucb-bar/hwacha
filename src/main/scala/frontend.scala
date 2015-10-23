@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class FrontendReq(implicit p: Parameters) extends rocket.CoreBundle()(p) {
   val pc = UInt(width = vaddrBits+1)

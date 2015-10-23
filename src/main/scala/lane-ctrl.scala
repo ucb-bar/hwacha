@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {

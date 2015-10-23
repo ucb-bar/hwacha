@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {

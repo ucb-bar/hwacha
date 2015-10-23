@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 abstract trait DCCParameters extends UsesHwachaParameters {
   val nDCCOpQ = 2

@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import cde.Parameters
 
 class AGUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val addr = UInt(width = bPAddr - tlByteAddrBits)
