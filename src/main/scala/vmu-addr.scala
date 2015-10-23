@@ -144,11 +144,14 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   private val beat_1 = (beat === UInt(1))
 
   private def offset(x: UInt) = x(tlByteAddrBits-1, 0)
+  val off_u = offset(op.base)
+  val off_n = offset(io.vpaq.bits.addr)
+  val off = Mux(op.mode.unit, off_u, off_n)
+  val eoff = off >> shift
   val pad_u_rear = Cat(op.mt.b && beat_1, UInt(0, tlByteAddrBits-1))
 //val pad_u_rear = Mux(op.mt.b && beat_1, UInt(limit), UInt(0))
-  val pad_u = Mux(lead, offset(op.base), pad_u_rear)
-  val eoff = offset(io.vpaq.bits.addr) >> shift
-  val epad = Mux(!op.mode.unit || lead, eoff, pad_u_rear)
+  val pad_u = Mux(lead, off_u, pad_u_rear)
+  val epad = Mux(op.mode.unit && !lead, pad_u_rear, eoff)
 
   /* Equivalence: x modulo UInt(limit) */
   private def truncate(x: UInt) = x(tlByteAddrBits-2, 0)
