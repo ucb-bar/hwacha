@@ -48,8 +48,9 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val slice_next = Mux(pred === UInt(3), UInt(1), UInt(0))
   // find first one for pick
   val pick = Mux(pred(0), UInt(0), UInt(1))
-  // process 2 elements only when pred is empty, otherwise 1
-  val ecnt = Mux(pred === UInt(0), UInt(2), UInt(1))
+  // process 2 elements only when pred is empty or popcount of 1
+  // otherwise process 1 element
+  val ecnt = Mux(pred != UInt(3) && slice === UInt(0), UInt(2), UInt(1))
   val vlen_cnt = Mux(ecnt > op.vlen, op.vlen, ecnt)
   val vlen_next = op.vlen - vlen_cnt
 
@@ -87,7 +88,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   }
 
   lpq.io.deq.ready := fire(lpq.io.deq.valid, deq_lq)
-  lrq.io.deq.ready := fire(mask_lrq_valid, deq_lq)
+  lrq.io.deq.ready := fire(mask_lrq_valid, deq_lq, active_entry)
   io.vaq.valid := fire(mask_vaq_ready, active_entry)
 
   io.vaq.bits.addr := MuxLookup(pick, Bits(0), (0 until nSlices) map {
