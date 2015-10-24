@@ -481,7 +481,11 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   val eidx_reg = meta.eidx(bVLen-1, lgbatch)
   val eidx_reg_next = eidx_reg + UInt(1)
 
-  val rotamt = eidx_batch - meta.epad
+  require(tlDataBytes == (nBatch << 1))
+  val epad_msb = meta.epad(lgbatch)
+  val epad_eff = meta.epad(lgbatch-1, 0)
+
+  val rotamt = eidx_batch - epad_eff
 
   private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
     val rot = Module(new Rotator(gen, in.size, nBatch))
@@ -507,7 +511,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
   private val tlDataMidBits = tlDataBits >> 1
 
   val load = vldq.bits.data
-  val load_b = Mux(meta.epad(tlByteAddrBits - 1),
+  val load_b = Mux(epad_msb,
     load(tlDataBits-1, tlDataMidBits),
     load(tlDataMidBits-1, 0))
 
@@ -529,7 +533,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p) {
    * different SRAM entries.  If both are present, they must be written
    * separately over two cycles.
    */
-  val slice_unaligned = (eidx_slice =/= UInt(0)) && (meta.epad === UInt(0))
+  val slice_unaligned = (eidx_slice =/= UInt(0)) && (epad_eff === UInt(0))
   val slice_used = slice_unaligned && meta.mask(0)
   val slice_free = slice_unaligned && !meta.mask(0)
   val slice_conflict = slice_used && meta.mask(nBatch-1)
