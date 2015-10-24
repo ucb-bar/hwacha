@@ -44,8 +44,9 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 
   val pred = abox.bits.meta.mask.orR
 
-  val sbox_valid = !(pred && write) || sbox.valid
-  val lbox_ready = !(pred && read) || lbox.meta.ready
+  val lbox_en = pred && read
+  val lbox_ready = !lbox_en || lbox.meta.ready
+  val sbox_valid = !write || sbox.valid
   val req_ready = /*!pred ||*/ req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
@@ -55,7 +56,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 
   abox.ready := fire(abox.valid)
   sbox.ready := fire(sbox_valid, write)
-  lbox.meta.valid := fire(lbox_ready, read, pred)
+  lbox.meta.valid := fire(lbox_ready, lbox_en)
   req.valid := fire(req_ready/*, pred*/)
 
   /* Data mask */
