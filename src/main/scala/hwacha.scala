@@ -81,7 +81,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   val rocc = Module(new RoCCUnit)
   val scalar = Module(new ScalarUnit)
-  val quad = Module(new Quad)
+  val vu = Module(new VectorUnit)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -92,8 +92,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := quad.io.pending.mem || scalar.io.pending_memop
-  rocc.io.pending_seq := quad.io.pending.seq
+  rocc.io.pending_memop := vu.io.pending.mem || scalar.io.pending_memop
+  rocc.io.pending_seq := vu.io.pending.seq
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
 
@@ -136,13 +136,13 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.dptw <> dtlb.io.ptw
   io.pptw <> ptlb.io.ptw
 
-  quad.io.cfg <> rocc.io.cfg
-  quad.io.issue.vxu <> scalar.io.vxu
-  quad.io.issue.vmu <> scalar.io.vmu
-  quad.io.issue.scalar <> scalar.io.dmem
+  vu.io.cfg <> rocc.io.cfg
+  vu.io.issue.vxu <> scalar.io.vxu
+  vu.io.issue.vmu <> scalar.io.vmu
+  vu.io.issue.scalar <> scalar.io.dmem
 
-  dtlb.io <> quad.io.dtlb
-  ptlb.io <> quad.io.ptlb
-  io.dmem.head <> quad.io.dmem
-  scalar.io.pending_seq <> quad.io.pending.seq
+  dtlb.io <> vu.io.dtlb
+  ptlb.io <> vu.io.ptlb
+  io.dmem.head <> vu.io.dmem
+  scalar.io.pending_seq <> vu.io.pending.seq
 }
