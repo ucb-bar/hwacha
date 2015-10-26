@@ -5,6 +5,7 @@ import cde.Parameters
 import Commands._
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
+  val lstride = UInt(OUTPUT, 2)
   val vstride = UInt(OUTPUT, bRFAddr)
   val pstride = UInt(OUTPUT, bPredAddr)
 }
@@ -17,7 +18,7 @@ class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val cmd = Decoupled(Bits(width = CMD_X.getWidth))
   val imm = Decoupled(Bits(width = regLen))
   val rd  = Decoupled(Bits(width = bSDest))
-  val cnt = Decoupled(Bits(width = bVLen))
+  val cnt = Decoupled(Bits(width = bMLVLen))
 }
 
 class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
@@ -77,10 +78,12 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   }
 
   // Cofiguration state
-  val cfg_maxvl = Reg(init=UInt(8, bVLen))
-  val cfg_vl = Reg(init=UInt(0, bVLen))
+  val cfg_maxvl = Reg(init=UInt(8, bMLVLen))
+  val cfg_vl = Reg(init=UInt(0, bMLVLen))
   val cfg_vregs = Reg(init=UInt(256, bVRegs))
   val cfg_pregs = Reg(init=UInt(16, bPRegs))
+
+  io.cfg.lstride := UInt(3)
   io.cfg.vstride := cfg_vregs
   io.cfg.pstride := cfg_pregs
 
@@ -152,8 +155,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val epb_nvpr = Lookup(nvpr, lookup_tbl_nvpr.last._2, lookup_tbl_nvpr)
   val epb_nppr = Lookup(nppr, lookup_tbl_nppr.last._2, lookup_tbl_nppr)
   val epb = min(epb_nvpr, epb_nppr)
-  val new_maxvl = epb * UInt(nBanks) * UInt(nSlices)
-  val new_vl = min(cfg_maxvl, io.rocc.cmd.bits.rs1)(bVLen-1, 0)
+  val new_maxvl = epb * UInt(nLanes) * UInt(nBanks) * UInt(nSlices)
+  val new_vl = min(cfg_maxvl, io.rocc.cmd.bits.rs1)(bMLVLen-1, 0)
 
   when (fire(null, decode_vcfg)) {
     cfg_maxvl := new_maxvl

@@ -53,12 +53,14 @@ class VMUAux(implicit p: Parameters) extends HwachaBundle()(p) {
   def scalar(dummy: Int = 0) = new VMUAuxScalar().fromBits(this.union)
 }
 
-class VMUOp(implicit p: Parameters) extends VMUBundle()(p) {
+class VMUOpBase(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
-  val vlen = UInt(width = bVLen)
   val base = UInt(width = bVAddr)
   val aux = new VMUAux
 }
+
+class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen
+class VMUOpML(implicit p: Parameters) extends VMUOpBase()(p) with MultiLaneVLen
 
 class DecodedMemCommand extends Bundle {
   val load = Bool()

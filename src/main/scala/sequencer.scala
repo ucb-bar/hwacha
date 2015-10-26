@@ -1042,10 +1042,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 
       for (i <- 0 until nSeq) {
         val strip = stripfn(e(i).vlen, Bool(false), e(i).fn)
+        assert (io.cfg.lstride === UInt(3), "need to fix sequencing logic otherwise")
         when (v(i)) {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
-            e(i).eidx := e(i).eidx + strip
+            e(i).eidx := e(i).eidx + (UInt(1) << io.cfg.lstride) * UInt(nLanes)
             update_reg(i, reg_vp)
             update_reg(i, reg_vs1)
             update_reg(i, reg_vs2)

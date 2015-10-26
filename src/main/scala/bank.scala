@@ -53,8 +53,9 @@ class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   }
 }
 
-class Bank(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
     val op = new BankOpIO().flip
     val ack = new Bundle {
       val viu = Valid(new VIUAck)
@@ -63,14 +64,15 @@ class Bank(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     val rw = new BankRWIO
   }
 
-  val rf = Module(new BankRegfile(id))
+  val rf = Module(new BankRegfile(lid, bid))
 
   rf.io.op <> io.op
   rf.io.global <> io.rw
 
   // ALU
   val outs = (0 until nSlices) map { i =>
-    val alu = Module(new ALUSlice(id*nSlices+i))
+    val alu = Module(new ALUSlice(lid, bid*nSlices+i))
+    alu.io.cfg <> io.cfg
     alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i) && rf.io.local.pdl(0).pred(i)
     alu.io.req.bits.fn := io.op.viu.bits.fn
     alu.io.req.bits.eidx := io.op.viu.bits.eidx

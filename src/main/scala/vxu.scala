@@ -5,7 +5,7 @@ import cde.Parameters
 
 class VXUIssueOpIO(implicit p: Parameters) extends DecoupledIO(new IssueOp()(p))
 
-class VXU(implicit p: Parameters) extends HwachaModule()(p) {
+class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new VXUIssueOpIO().flip
@@ -16,10 +16,11 @@ class VXU(implicit p: Parameters) extends HwachaModule()(p) {
 
   val seq = Module(new Sequencer)
   val exp = Module(new Expander)
-  val lane = Module(new Lane)
+  val lane = Module(new Lane(id))
   val dcc = Module(new DecoupledCluster)
 
   seq.io.cfg <> io.cfg
+  lane.io.cfg <> io.cfg
   dcc.io.cfg <> io.cfg
 
   val enq_dcc = io.issue.bits.active.enq_dcc()

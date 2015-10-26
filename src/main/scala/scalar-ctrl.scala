@@ -51,18 +51,19 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   import Commands._
 
   val io = new Bundle {
-    val cmdq = new CMDQIO().flip
-
-    val imem = new FrontendIO
     val dpath = new CtrlDpathIO
 
-    val vxu = new VXUIssueOpIO
-    val vmu = Decoupled(new VMUOp)
-    val dmem = new ScalarMemIO().flip
+    val cfg = new HwachaConfigIO().flip
+
+    val cmdq = new CMDQIO().flip
+    val imem = new FrontendIO
+    val vxu = Decoupled(new IssueOpML)
+    val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
+    val dmem = new ScalarMemIO().flip
 
     val vf_active = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
@@ -92,7 +93,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val sboard_not_empty = (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
 
   val vf_active = Reg(init=Bool(false))
-  val vlen = Reg(UInt(width = bVLen))
+  val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
 
   val ex_ctrl = Reg(new IntCtrlSigs)
   val wb_ctrl = Reg(new IntCtrlSigs)
@@ -154,8 +155,29 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.dpath.ex_ctrl := ex_ctrl
   io.dpath.wb_ctrl := wb_ctrl
 
-  when (fire_cmdq(null, decode_vsetcfg)) { vlen := io.cmdq.imm.bits }
-  when (fire_cmdq(null, decode_vsetvl)) { vlen := io.cmdq.imm.bits }
+  when (fire_cmdq(null, decode_vsetcfg)) {
+    (0 until nLanes) map { case i =>
+      vl(i).active := Bool(false)
+      vl(i).vlen := UInt(0)
+    }
+  }
+  when (fire_cmdq(null, decode_vsetvl)) {
+    val lgStrip = io.cfg.lstride
+    val lgLane = log2Floor(nLanes)
+    val nStrip = UInt(1) << lgStrip
+    val vlen_ml = io.cmdq.imm.bits
+    val vlen_base = (vlen_ml >> (UInt(0, lgStrip.getWidth+1) + UInt(lgLane) + lgStrip)) << lgStrip
+    val vlen_lane = (vlen_ml >> lgStrip)(lgLane-1, 0)
+    val vlen_strip = vlen_ml & (nStrip - UInt(1))
+    (0 until nLanes) map { case i =>
+      val vlen_fringe =
+        Mux(vlen_lane > UInt(i), nStrip,
+          Mux(vlen_lane === UInt(i), vlen_strip, UInt(0)))
+      val vlen = if (nLanes == 1) vlen_ml else vlen_base + vlen_fringe
+      vl(i).active := vlen.orR
+      vl(i).vlen := vlen
+    }
+  }
 
   io.dpath.fire_vf := Bool(false)
   when (fire_cmdq(null, decode_vf)) {
@@ -272,7 +294,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
-  io.vxu.bits.vlen := vlen
+  io.vxu.bits.lane := vl
   io.vxu.bits.active.vint := id_ctrl.active_vint()
   io.vxu.bits.active.vipred := id_ctrl.active_vipred()
   io.vxu.bits.active.vimul := id_ctrl.active_vimul()
@@ -324,7 +346,11 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.vmu_mt
-  io.vmu.bits.vlen := Mux(id_scalar_inst, UInt(1), vlen)
+  (io.vmu.bits.lane zip vl zipWithIndex) map { case ((lane, vl), i) =>
+    // if scalar memory op, only enable first lane
+    lane.active := Mux(id_scalar_inst, Bool(i == 0), vl.active)
+    lane.vlen := Mux(id_scalar_inst, UInt(1), vl.vlen)
+  }
   when (io.vmu.fire() && id_scalar_inst) {
     pending_smu := Bool(true)
     pending_smu_store := id_ctrl.vmu_cmd === M_XWR

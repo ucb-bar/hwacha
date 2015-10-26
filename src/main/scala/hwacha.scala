@@ -7,11 +7,13 @@ import rocket.NTLBEntries
 
 case object HwachaCommitLog extends Field[Boolean]
 case object HwachaNLanes extends Field[Int]
+case object HwachaNBanks extends Field[Int]
 case object HwachaNAddressRegs extends Field[Int]
 case object HwachaNScalarRegs extends Field[Int]
 case object HwachaNVectorRegs extends Field[Int]
 case object HwachaNPredRegs extends Field[Int]
 case object HwachaMaxVLen extends Field[Int]
+case object HwachaBankWidth extends Field[Int]
 case object HwachaRegLen extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
@@ -42,8 +44,21 @@ abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLi
 
   require(SZ_D == regLen)
 
+  val nLanes = p(HwachaNLanes)
+  val nBanks = p(HwachaNBanks)
+  val wBank = p(HwachaBankWidth)
+  val nSlices = wBank / regLen
+  val nBatch = nBanks * nSlices
+
+  require(isPow2(nLanes))
+  require(isPow2(nBanks))
+  require(isPow2(nSlices))
+
   val maxVLen = p(HwachaMaxVLen)
   val bVLen = log2Down(maxVLen) + 1
+
+  val maxMLVLen = nLanes * maxVLen
+  val bMLVLen = log2Down(maxMLVLen) + 1
 
   val nPredSet = 8 // FIXME (nBatch)
 
@@ -54,18 +69,16 @@ abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLi
   val confvru = false
   val confprec = false
 
-  val _nBanks = p(HwachaNBanks) // FIXME
-
   val confvcmdq = new {
     val ncmd = 16
     val nimm = 16
     val nrd = 16
-    val ncnt = _nBanks
+    val ncnt = nBanks
   }
 
-  require(confvcmdq.ncmd >= _nBanks)
-  require(confvcmdq.nimm >= _nBanks)
-  require(confvcmdq.nrd >= _nBanks)
+  require(confvcmdq.ncmd >= nBanks)
+  require(confvcmdq.nimm >= nBanks)
+  require(confvcmdq.nrd >= nBanks)
 
   val nvsreq = 128
   val nvlreq = 128
@@ -76,12 +89,9 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   import HwachaDecodeTable._
   import Commands._
 
-  val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
-  val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
-
   val rocc = Module(new RoCCUnit)
   val scalar = Module(new ScalarUnit)
-  val vu = Module(new VectorUnit)
+  val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -92,10 +102,11 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := vu.io.pending.mem || scalar.io.pending_memop
-  rocc.io.pending_seq := vu.io.pending.seq
+  rocc.io.pending_memop := vus.map(_.io.pending.mem).reduce(_||_) || scalar.io.pending_memop
+  rocc.io.pending_seq := vus.map(_.io.pending.seq).reduce(_||_)
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
+  scalar.io.cfg <> rocc.io.cfg
 
   // Connect ScalarUnit to Rocket's FPU
   if (local_sfpu) {
@@ -133,16 +144,52 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
-  io.dptw <> dtlb.io.ptw
-  io.pptw <> ptlb.io.ptw
+  io.dptw.req.valid := Bool(false)
+  io.pptw.req.valid := Bool(false)
 
-  vu.io.cfg <> rocc.io.cfg
-  vu.io.issue.vxu <> scalar.io.vxu
-  vu.io.issue.vmu <> scalar.io.vmu
-  vu.io.issue.scalar <> scalar.io.dmem
+  scalar.io.dmem <> vus.head.io.issue.scalar
+  scalar.io.pending_seq := vus.map(_.io.pending.seq).reduce(_||_)
 
-  dtlb.io <> vu.io.dtlb
-  ptlb.io <> vu.io.ptlb
-  io.dmem.head <> vu.io.dmem
-  scalar.io.pending_seq <> vu.io.pending.seq
+  val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
+  val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
+  val mask_vxus_ready = (0 until nLanes) map { i => !enq_vxus(i) || vus(i).io.issue.vxu.ready }
+  val mask_vmus_ready = (0 until nLanes) map { i => !enq_vmus(i) || vus(i).io.issue.vmu.ready }
+
+  def fire_vxu(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(scalar.io.vxu.valid) ++ mask_vxus_ready
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  def fire_vmu(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(scalar.io.vmu.valid) ++ mask_vmus_ready
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  scalar.io.vxu.ready := fire_vxu(scalar.io.vxu.valid)
+  scalar.io.vmu.ready := fire_vmu(scalar.io.vmu.valid)
+
+  (vus zipWithIndex) map { case (vu, i) =>
+    val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
+    val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
+
+    vu.io.cfg <> rocc.io.cfg
+    vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))
+    vu.io.issue.vxu.bits.vlen := scalar.io.vxu.bits.lane(i).vlen
+    vu.io.issue.vxu.bits <> scalar.io.vxu.bits
+    vu.io.issue.vmu.valid := fire_vmu(mask_vmus_ready(i), enq_vmus(i))
+    vu.io.issue.vmu.bits.vlen := scalar.io.vmu.bits.lane(i).vlen
+    vu.io.issue.vmu.bits <> scalar.io.vmu.bits
+
+    dtlb.io <> vu.io.dtlb
+    dtlb.io.ptw.req.ready := Bool(true)
+    dtlb.io.ptw.resp.valid := Bool(false)
+    dtlb.io.ptw.invalidate := Bool(false)
+
+    ptlb.io <> vu.io.ptlb
+    ptlb.io.ptw.req.ready := Bool(true)
+    ptlb.io.ptw.resp.valid := Bool(false)
+    ptlb.io.ptw.invalidate := Bool(false)
+
+    io.dmem(i) <> vu.io.dmem
+  }
 }

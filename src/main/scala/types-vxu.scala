@@ -131,6 +131,19 @@ class DecodedInstruction(implicit p: Parameters) extends VXUBundle()(p) {
 // issue op
 //-------------------------------------------------------------------------\\
 
+trait SingleLaneVLen extends HwachaBundle {
+  val vlen = UInt(width = bVLen)
+}
+
+class VLenEntry(implicit p: Parameters) extends HwachaBundle()(p) {
+  val active = Bool()
+  val vlen = UInt(width = bVLen)
+}
+
+trait MultiLaneVLen extends HwachaBundle {
+  val lane = Vec.fill(nLanes){new VLenEntry}
+}
+
 class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   val vint = Bool()
   val vipred = Bool()
@@ -154,10 +167,12 @@ class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vpu() || enq_vlu() || enq_vsu()
 }
 
-class IssueOp(implicit p: Parameters) extends DecodedInstruction()(p) {
-  val vlen = UInt(width = bVLen)
+class IssueOpBase(implicit p: Parameters) extends DecodedInstruction()(p) {
   val active = new IssueType
 }
+
+class IssueOp(implicit p: Parameters) extends IssueOpBase()(p) with SingleLaneVLen
+class IssueOpML(implicit p: Parameters) extends IssueOpBase()(p) with MultiLaneVLen
 
 
 //-------------------------------------------------------------------------\\

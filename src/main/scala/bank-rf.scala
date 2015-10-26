@@ -8,7 +8,7 @@ class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData w
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class BankRegfile(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
+class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val global = new BankRWIO
@@ -67,7 +67,7 @@ class BankRegfile(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     if (commit_log) {
       (0 until nSlices) foreach { case i =>
         when (wmask(i)) {
-          printf("H: write_prf bank %d %d %d %d\n", UInt(id), waddr, UInt(i), wdata(i))
+          printf("H: write_prf bank %d %d %d %d\n", UInt(bid), waddr, UInt(i), wdata(i))
         }
       }
     }
@@ -114,7 +114,7 @@ class BankRegfile(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
       val wdata = toDWords(sram_warb.io.out.bits.data)
       (0 until nSlices) foreach { case i =>
         when (wmask(8*i)) {
-          printf("H: write_vrf bank %d %d %d %x\n", UInt(id), waddr, UInt(i), wdata(i))
+          printf("H: write_vrf bank %d %d %d %x\n", UInt(bid), waddr, UInt(i), wdata(i))
         }
       }
     }

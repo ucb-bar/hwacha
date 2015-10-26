@@ -3,8 +3,6 @@ package hwacha
 import Chisel._
 import cde.{Parameters, Field}
 
-case object HwachaBankWidth extends Field[Int]
-case object HwachaNBanks extends Field[Int]
 case object HwachaNSRAMRFEntries extends Field[Int]
 case object HwachaNFFRFEntries extends Field[Int]
 case object HwachaNFFRFReadPorts extends Field[Int]
@@ -21,8 +19,6 @@ case object HwachaStagesFConv extends Field[Int]
 case object HwachaStagesFCmp extends Field[Int]
 
 abstract trait LaneParameters extends UsesHwachaParameters {
-  val wBank = p(HwachaBankWidth)
-  val nBanks = p(HwachaNBanks)
   val nSRAM = p(HwachaNSRAMRFEntries)
   val nFF = p(HwachaNFFRFEntries)
   val bRFAddr = math.max(log2Up(nSRAM), log2Up(nFF))
@@ -31,10 +27,8 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val bPredAddr = log2Up(nPred)
   val nPredRPorts = p(HwachaNPredRFReadPorts)
 
-  val nSlices = wBank / p(HwachaRegLen)
   val nBankSRAMRegs = nSRAM * nSlices
   val nLaneSRAMRegs = nBanks * nBankSRAMRegs
-  val nBatch = nBanks * nSlices
 
   val nGOPL = p(HwachaNOperandLatches)
   val nLOPL = 3
@@ -122,8 +116,9 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
 class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
 class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
 
-class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO
     val lpqs = Vec.fill(nLPQ){new LPQIO}
@@ -140,9 +135,9 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing {
   ctrl.io.op <> io.op
 
   val banksrw = (0 until nBanks) map { i =>
-    val bank = Module(new Bank(i))
+    val bank = Module(new Bank(id, i))
 
-    // TODO: this needs to be sequenced
+    bank.io.cfg <> io.cfg
     bank.io.op <> ctrl.io.uop.bank(i)
     io.bpqs(i) <> bank.io.rw.bpq
     io.brqs(i) <> bank.io.rw.brq

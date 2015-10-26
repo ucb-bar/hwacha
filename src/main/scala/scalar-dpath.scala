@@ -12,18 +12,17 @@ class Write(implicit p: Parameters) extends HwachaBundle()(p) {
 
 class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
-    val cmdq = new CMDQIO().flip
     val ctrl = new CtrlDpathIO().flip
+
+    val cmdq = new CMDQIO().flip
+    val imem = new FrontendIO
+    val vxu = new VXUIssueOpIO
+    val vmu = Decoupled(new VMUOp)
     val fpu = new Bundle {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-
-    val vmu = Decoupled(new VMUOp)
     val dmem = new ScalarMemIO().flip
-    val vxu = new VXUIssueOpIO
-
-    val imem = new FrontendIO
   }
 
   // Fetch/decode definitions

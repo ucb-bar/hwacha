@@ -15,8 +15,9 @@ class ALUResult extends Bundle {
   val cmp = Bool()
 }
 
-class ALUSlice(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class ALUSlice(lid: Int, aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
     val req = Valid(new ALUOperand).flip
     val resp = Valid(new ALUResult)
   }
@@ -71,7 +72,7 @@ class ALUSlice(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Pack
 
   val s0_result64 = MuxCase(
     Bits(0, SZ_D), Array(
-      fn.op_is(I_IDX) -> (eidx + UInt(id)),
+      fn.op_is(I_IDX) -> (eidx + (UInt(1) << io.cfg.lstride) * UInt(lid) + UInt(aid)),
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
