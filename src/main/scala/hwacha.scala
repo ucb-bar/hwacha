@@ -183,11 +183,13 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     dtlb.io <> vu.io.dtlb
     dtlb.io.ptw.req.ready := Bool(true)
     dtlb.io.ptw.resp.valid := Bool(false)
+    dtlb.io.ptw.status := io.dptw.status
     dtlb.io.ptw.invalidate := Bool(false)
 
     ptlb.io <> vu.io.ptlb
     ptlb.io.ptw.req.ready := Bool(true)
     ptlb.io.ptw.resp.valid := Bool(false)
+    ptlb.io.ptw.status := io.dptw.status
     ptlb.io.ptw.invalidate := Bool(false)
 
     io.dmem(i) <> vu.io.dmem
