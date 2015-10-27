@@ -192,7 +192,8 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   io.spred.bits := pred
 }
 
-class VSU(implicit p: Parameters) extends VXUModule()(p) {
+class VSU(implicit p: Parameters) extends VXUModule()(p)
+  with MemParameters {
   val io = new DCCIssueIO {
     val la = new BRQLookAheadIO().flip
     val brqs = Vec.fill(nBanks)(new BRQIO).flip
@@ -365,7 +366,8 @@ class VLUEntry(implicit p: Parameters) extends VXUBundle()(p) {
   val mask = Bits(width = nSlices)
 }
 
-class VLU(implicit p: Parameters) extends VXUModule()(p) {
+class VLU(implicit p: Parameters) extends VXUModule()(p)
+  with MemParameters {
   val io = new DCCIssueIO {
     val vldq = new VLDQIO().flip
     val pred = Decoupled(Bits(width = nPredSet)).flip

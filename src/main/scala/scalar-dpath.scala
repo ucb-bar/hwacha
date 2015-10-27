@@ -22,7 +22,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new ScalarMemIO().flip
+    val dmem = new SMUIO
   }
 
   // Fetch/decode definitions
@@ -116,7 +116,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
 
   //Memory requests - COLIN FIXME: check for critical path (need reg?)
   val addr_stride =
-    MuxLookup(io.ctrl.id_ctrl.vmu_mt, UInt(0),Seq(
+    MuxLookup(io.ctrl.id_ctrl.mt, UInt(0),Seq(
       MT_B->  UInt(1),
       MT_BU-> UInt(1),
       MT_H->  UInt(2),
@@ -130,13 +130,9 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     Mux(io.ctrl.aren(0), id_areads(0), // unit-stride
       Mux(isAMO(io.ctrl.id_ctrl.vmu_cmd), UInt(0), // AMO
         id_sreads(0))) // indexed
-  io.vmu.bits.aux.union :=
-    Mux(io.ctrl.aren(1), VMUAuxVector(id_areads(1)).toBits, // constant-stride
-      Mux(io.ctrl.id_ctrl.vmu_mode === MM_VU,
-        VMUAuxVector(addr_stride).toBits, // unit-stride
-        VMUAuxScalar(id_sreads(1), // scalar
-          Mux(io.ctrl.id_ctrl.vmu_cmd === M_XWR,
-            id_inst(40,33), id_inst(23,16))).toBits))
+  io.vmu.bits.stride :=
+    Mux(io.ctrl.aren(1), id_areads(1), // constant-stride
+      addr_stride) // unit-stride
 
   // execute
   when (!io.ctrl.killd) {
@@ -178,7 +174,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val wb_ll_wdata = Reg(next=
     Mux(io.fpu.resp.valid,
       Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp),
-        io.dmem.bits.data))
+        io.dmem.resp.bits.data))
 
   val awrite_valid = io.ctrl.awrite
   val swrite_valid = io.ctrl.swrite

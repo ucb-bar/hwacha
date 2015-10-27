@@ -5,7 +5,8 @@ import cde.Parameters
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
   extends HwachaModule(clock, _reset)(p) with VMUParameters
-abstract class VMUBundle(implicit p: Parameters) extends HwachaBundle()(p) with VMUParameters
+abstract class VMUBundle(implicit p: Parameters)
+  extends HwachaBundle()(p) with VMUParameters
 
 class VMUMemFn extends Bundle {
   val cmd = Bits(width = M_SZ)
@@ -18,45 +19,10 @@ class VMUFn extends Bundle {
   val mt = Bits(width = MT_SZ)
 }
 
-class VMUAuxVector(implicit p: Parameters) extends HwachaBundle()(p) {
-  val stride = UInt(width = regLen)
-}
-
-object VMUAuxVector {
-  def apply(stride: UInt)(implicit p: Parameters): VMUAuxVector = {
-    val aux = new VMUAuxVector
-    aux.stride := stride
-    aux
-  }
-}
-
-class VMUAuxScalar(implicit p: Parameters) extends HwachaBundle()(p) {
-  val data = Bits(width = regLen)
-  val id = UInt(width = log2Up(nSRegs))
-}
-
-object VMUAuxScalar {
-def apply(data: Bits, id: UInt)(implicit p: Parameters): VMUAuxScalar = {
-    val aux = new VMUAuxScalar
-    aux.data := data
-    aux.id := id
-    aux
-  }
-}
-
-class VMUAux(implicit p: Parameters) extends HwachaBundle()(p) {
-  val union = Bits(width = math.max(
-    new VMUAuxVector().toBits.getWidth,
-    new VMUAuxScalar().toBits.getWidth))
-
-  def vector(dummy: Int = 0) = new VMUAuxVector().fromBits(this.union)
-  def scalar(dummy: Int = 0) = new VMUAuxScalar().fromBits(this.union)
-}
-
 class VMUOpBase(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
-  val base = UInt(width = bVAddr)
-  val aux = new VMUAux
+  val base = UInt(width = bVAddrExtended)
+  val stride = UInt(width = regLen)
 }
 
 class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen

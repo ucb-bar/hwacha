@@ -29,7 +29,9 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends UsesParameters with uncore.HasTileLinkParameters {
+abstract trait UsesHwachaParameters extends UsesParameters {
+  implicit val p: Parameters
+
   val commit_log = p(HwachaCommitLog)
 
   val nARegs = p(HwachaNAddressRegs)
@@ -150,7 +152,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.dptw.req.valid := Bool(false)
   io.pptw.req.valid := Bool(false)
 
-  scalar.io.dmem <> vus.head.io.issue.scalar
+  scalar.io.dmem.req.ready := Bool(false) // FIXME
+  scalar.io.dmem.resp.valid := Bool(false) // FIXME
   scalar.io.pending_seq := mseq.io.pending
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)

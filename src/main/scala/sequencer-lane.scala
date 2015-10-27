@@ -16,7 +16,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogi
     val op = Valid(new IssueOp).flip
     val master = new MasterSequencerIO().flip
     val seq = new SequencerIO
-    val vmu = new LaneMemIO
+    val vmu = new VMUIO
     val ticker = new TickerIO().flip
 
     val dpla = new CounterLookAheadIO

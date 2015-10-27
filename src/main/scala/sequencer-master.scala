@@ -4,7 +4,8 @@ import Chisel._
 import cde.Parameters
 import DataGating._
 
-abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
+abstract trait SeqParameters extends UsesHwachaParameters
+  with LaneParameters with MemParameters {
   val nSeq = 8
   val nRPorts = 3
   val bRPorts = log2Down(nRPorts) + 1

@@ -15,6 +15,7 @@ trait HwachaConstants
   with VFCUConstants
   with VFVUConstants
   with VMUConstants
+  with SMUConstants
 
 trait MachineConstants {
   val SZ_D = 64
@@ -225,14 +226,21 @@ trait VFVUConstants {
 trait VMUConstants {
   val SZ_VMU_MODE = 2
 
-  val MM_X  = BitPat("b??")
-  val MM_VU = UInt(0, SZ_VMU_MODE) // vector unit strided
-  val MM_VS = UInt(1, SZ_VMU_MODE) // vector non-unit strided
-  val MM_VX = UInt(2, SZ_VMU_MODE) // vector indexed
-  val MM_S  = UInt(3, SZ_VMU_MODE) // scalar
+  val VM_X = BitPat("b??")
+  val VM_U = UInt(0, SZ_VMU_MODE) // unit-stride
+  val VM_S = UInt(1, SZ_VMU_MODE) // constant-stride
+  val VM_I = UInt(2, SZ_VMU_MODE) // indexed
 
-  def is_indexed(mode: Bits) = (mode === MM_VX)
-  def is_scalar(mode: Bits) = (mode === MM_S)
+  def vmu_unit(mode: Bits): Bool = (mode === VM_U)
+  def vmu_indexed(mode: Bits): Bool = mode(1)
+}
+
+trait SMUConstants {
+  val SZ_SMU_CMD = 1
+
+  val SM_X = BitPat("b?")
+  val SM_L = UInt(0, SZ_SMU_CMD)
+  val SM_S = UInt(1, SZ_SMU_CMD)
 }
 
 object Commands extends Commands

@@ -107,19 +107,12 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 
 class MBar(implicit p: Parameters) extends VMUModule()(p) {
   val io = new VMUIssueIO {
-    val inner = new Bundle {
-      val vmu = new VMUMemIO().flip
-      val smu = new VMUMemIO().flip
-    }
+    val inner =new VMUMemIO().flip
     val outer = new VMUMemIO
     val last = Bool(INPUT)
   }
 
-  private val vmu = io.inner.vmu
-  private val smu = io.inner.smu
-
   val op = Reg(new VMUDecodedOp)
-  val scalar = op.mode.scalar
 
   // Prevent memory requests associated with the next operation from
   // departing until all prior transactions have completed.
@@ -144,19 +137,14 @@ class MBar(implicit p: Parameters) extends VMUModule()(p) {
   open := Bool(false)
   last := Bool(false)
 
-  /* Arbiter */
-  io.outer.req.bits := Mux(scalar, smu.req.bits, vmu.req.bits)
-  val req_valid = Mux(scalar, smu.req.valid, vmu.req.valid)
-  val req_ready = !pred || io.outer.req.ready
-  io.outer.req.valid :=  req_valid && open && pred
-  io.outer.resp.ready := Mux(scalar, smu.resp.ready, vmu.resp.ready)
+  io.outer.req.bits := io.inner.req.bits
+  io.outer.req.valid := io.inner.req.valid && open && pred
+  io.inner.req.ready := (!pred || io.outer.req.ready) && open
 
-  Seq((vmu, !scalar), (smu, scalar)).foreach { case (inner, sel) =>
-      inner.req.ready := (!inner.req.bits.pred || io.outer.req.ready) && sel && open
-      inner.resp.valid := io.outer.resp.valid && sel
-      inner.resp.bits := io.outer.resp.bits
-      inner.resp.bits.last := last
-  }
+  io.outer.resp.ready := io.inner.resp.ready
+  io.inner.resp.valid := io.outer.resp.valid
+  io.inner.resp.bits := io.outer.resp.bits
+  io.inner.resp.bits.last := last
 
   io.op.ready := Bool(false)
 
@@ -174,7 +162,7 @@ class MBar(implicit p: Parameters) extends VMUModule()(p) {
 
     is (s_open) {
       open := Bool(true)
-      when (req_valid && req_ready && io.outer.req.bits.last) {
+      when (io.inner.req.fire() && io.inner.req.bits.last) {
         state := s_flush
       }
     }

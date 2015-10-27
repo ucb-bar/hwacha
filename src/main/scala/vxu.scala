@@ -8,7 +8,7 @@ class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
     val cfg = new HwachaConfigIO().flip
     val issue = Decoupled(new IssueOp).flip
     val mseq = new MasterSequencerIO().flip
-    val vmu = new LaneMemIO
+    val vmu = new VMUIO
     val mrt = new LaneMRTIO
   }
 

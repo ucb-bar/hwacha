@@ -63,7 +63,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new ScalarMemIO().flip
+    val dmem = new SMUIO
 
     val vf_active = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)
@@ -345,7 +345,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
-  io.vmu.bits.fn.mt := id_ctrl.vmu_mt
+  io.vmu.bits.fn.mt := id_ctrl.mt
   (io.vmu.bits.lane zip vl zipWithIndex) map { case ((lane, vl), i) =>
     // if scalar memory op, only enable first lane
     lane.active := Mux(id_scalar_inst, Bool(i == 0), vl.active)
@@ -364,20 +364,20 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
-  val ex_stall_smu = ex_reg_valid && io.dmem.valid && !pending_smu_store
+  val ex_stall_smu = ex_reg_valid && io.dmem.resp.valid && !pending_smu_store
 
   io.dpath.stallx := ex_stall_fpu || ex_stall_smu || io.dpath.stallw
   io.dpath.killx := !ex_reg_valid || io.dpath.stallx
 
   // give fixed priority to fpu -> mem -> alu
   io.fpu.resp.ready := Bool(true)
-  io.dmem.ready := !io.fpu.resp.valid
+  io.dmem.resp.ready := !io.fpu.resp.valid
 
   // WRITEBACK
   val wb_fpu_valid = Reg(next=io.fpu.resp.valid)
-  val wb_dmem_valid = Reg(next=io.dmem.valid && !io.fpu.resp.valid)
+  val wb_dmem_valid = Reg(next=io.dmem.resp.valid && !io.fpu.resp.valid)
   val wb_dmem_load_valid = wb_dmem_valid && !pending_smu_store
-  val wb_dmem_waddr = RegEnable(io.dmem.bits.id, io.dmem.valid)
+  val wb_dmem_waddr = RegEnable(io.dmem.resp.bits.tag, io.dmem.resp.valid)
 
   when (!io.dpath.stallw) {
     wb_reg_valid := !io.dpath.killx

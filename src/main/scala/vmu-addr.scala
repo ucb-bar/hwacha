@@ -34,7 +34,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   val op = Reg(new VMUDecodedOp)
   private val mask = io.mask.bits
 
-  val stride_n = op.aux.vector().stride << mask.nonunit.shift
+  val stride_n = op.stride << mask.nonunit.shift
   val stride = Mux(op.mode.unit, UInt(pgSize), stride_n)
 
   val addr_offset = Mux(op.mode.indexed, io.vvaq.bits.addr, stride)

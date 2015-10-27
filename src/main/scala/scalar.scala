@@ -15,7 +15,7 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new ScalarMemIO().flip
+    val dmem = new SMUIO
     
     val vf_active = Bool(OUTPUT)
     val pending_memop = Bool(OUTPUT)

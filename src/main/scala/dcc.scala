@@ -45,7 +45,7 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
     val pla = new BPQLookAheadIO().flip
     val lla = new CounterLookAheadIO().flip
     val sla = new BRQLookAheadIO().flip
-    val vmu = new LaneMemIO
+    val vmu = new VMUIO
   }
 
   val vdu = Module(new VDU)

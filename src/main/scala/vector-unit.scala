@@ -9,7 +9,6 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
     val issue = new Bundle {
       val vxu = Decoupled(new IssueOp).flip
       val vmu = Decoupled(new VMUOp).flip
-      val scalar = new ScalarMemIO
     }
     val mseq = new MasterSequencerIO().flip
     val dtlb = new RTLBIO
@@ -27,7 +26,6 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   vxu.io.issue <> io.issue.vxu
   vxu.io.mseq <> io.mseq
   vmu.io.op <> io.issue.vmu
-  vmu.io.scalar <> io.issue.scalar
 
   vmu.io.lane <> vxu.io.vmu
   memif.io.vmu <> vmu.io.memif 
