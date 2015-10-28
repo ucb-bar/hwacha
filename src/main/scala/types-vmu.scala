@@ -113,18 +113,13 @@ trait VMUTag extends VMUBundle {
   val tag = UInt(width = bVMUTag)
 }
 
-class VMLUData(implicit p: Parameters) extends VMUData with VMUTag {
-  val last = Bool()
-}
+class VMLUData(implicit p: Parameters) extends VMUData with VMUTag
 
-class VLTEntry(implicit p: Parameters) extends VMUBundle()(p) with VMUMetaIndex with VMUMetaPadding {
-  val mask = Bits(width = tlDataBytes >> 1)
-}
+class VLTEntry(implicit p: Parameters) extends VMUBundle()(p)
+  with VMUMetaIndex with VMUMetaPadding with VMUMetaMask with VLUSelect
 
 class VLDQEntry(implicit p: Parameters) extends VMUData {
-  val meta = new VLTEntry {
-    val last = Bool()
-  }
+  val meta = new VLTEntry
 }
 class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p))
 
@@ -180,6 +175,9 @@ trait VMUMetaPadding extends VMUBundle {
 trait VMUMetaIndex extends VMUBundle {
   val eidx = UInt(width = bVLen)
 }
+trait VMUMetaMask extends VMUBundle {
+  val mask = Bits(width = nBatch)
+}
 trait VMUMetaStore extends VMUBundle {
   val last = Bool()
   val vsdq = Bool()
@@ -192,9 +190,7 @@ trait VMUMemOp extends VMUAddr {
 }
 
 class VMUMetaAddr(implicit p: Parameters) extends VMUMetaCount
-  with VMUMetaPadding with VMUMetaStore {
-  val mask = UInt(width = tlDataBytes >> 1)
-}
+  with VMUMetaPadding with VMUMetaMask with VMUMetaStore with VLUSelect
 
 class AGUEntry(implicit p: Parameters) extends VMUMemOp {
   val meta = new VMUMetaAddr with VMUMetaIndex

@@ -51,6 +51,7 @@ class VMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
 
   val pred = Decoupled(Bits(width = nPredSet))
   val pala = new CounterLookAheadIO
+  val vlu = new VLUSelectIO
 }
 
 class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) {
@@ -88,7 +89,6 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
     val op = Decoupled(new VMUOp).flip
     val abox = Vec.fill(3)(Decoupled(new VMUDecodedOp))
     val pbox = Vec.fill(2)(Decoupled(new VMUDecodedOp))
-    val mbar = Decoupled(new VMUDecodedOp)
   }
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))
@@ -96,7 +96,7 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
   opq.io.deq.ready := Bool(false)
 
   val op = VMUDecodedOp(opq.io.deq.bits)
-  private val issue = io.abox ++ io.pbox :+ io.mbar
+  private val issue = io.abox ++ io.pbox
 
   val mask = Reg(init = Bits(0, issue.size))
 
@@ -135,7 +135,6 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   val sbox = Module(new SBox)
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
-  val mbar = Module(new MBar)
 
   ibox.io.op <> io.op
 
@@ -148,6 +147,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   abox.io.lane <> io.lane.vaq
   abox.io.xcpt <> io.xcpt
   abox.io.la <> io.lane.pala
+  abox.io.load <> io.lane.vlu
 
   tbox.io.inner(0) <> abox.io.tlb
   io.tlb <> tbox.io.outer
@@ -163,7 +163,5 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   mbox.io.inner.lbox <> lbox.io.mem
   io.sret <> mbox.io.sret
 
-  mbar.io.op <> ibox.io.mbar
-  mbar.io.inner <> mbox.io.outer
-  io.memif <> mbar.io.outer
+  io.memif <> mbox.io.outer
 }

@@ -274,6 +274,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
     val inner = new AGUPipeIO().flip
     val outer = new AGUIO
     val store = Valid(new VMUStoreCtrl)
+    val load = new VLUSelectIO().flip
   }
 
   private val outer = io.outer.bits
@@ -283,12 +284,14 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   val mt = DecodedMemType(op.fn.mt)
 
   val eidx = Reg(UInt(width = bVLen))
+  val vidx = Reg(io.load.bits.vidx)
 
   val offset = (inner.meta.epad << mt.shift())(tlByteAddrBits-1, 0)
 
   outer.addr := Cat(inner.addr, offset)
   outer.fn.cmd := op.fn.cmd
   outer.fn.mt := op.fn.mt
+  outer.meta.vidx := vidx
   outer.meta.eidx := eidx
   outer.meta.ecnt := inner.meta.ecnt
   outer.meta.epad := inner.meta.epad
@@ -300,6 +303,12 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   io.store.bits.base := op.base(tlByteAddrBits-1, 0)
   io.store.bits.mt := mt
 
+  val load_valid = !io.op.bits.cmd.read || io.load.valid
+
+  private def issue(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(io.op.valid, load_valid)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(io.inner.valid, io.outer.ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
@@ -309,16 +318,19 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   io.inner.ready := Bool(false)
   io.outer.valid := Bool(false)
   io.store.valid := Bool(false)
+  io.load.ready := Bool(false)
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
-      when (io.op.valid) {
+      io.op.ready := issue(io.op.valid)
+      io.load.ready := issue(load_valid, io.op.bits.cmd.read)
+      when (issue(null)) {
         state := s_busy
         op := io.op.bits
+        vidx := io.load.bits.vidx
       }
       eidx := UInt(0)
     }
@@ -350,6 +362,7 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
     val la = new CounterLookAheadIO().flip
 
     val store = Valid(new VMUStoreCtrl)
+    val load = new VLUSelectIO().flip
   }
 
   val vvaq = Module(new VVAQ)
@@ -383,5 +396,6 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
   abox2.io.inner <> pipe.io.deq
   io.mem <> abox2.io.outer
 
+  abox2.io.load <> io.load
   io.store <> abox2.io.store
 }

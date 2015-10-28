@@ -64,7 +64,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val maxMLVLen = nLanes * maxVLen
   val bMLVLen = log2Down(maxMLVLen) + 1
 
-  val nPredSet = 8 // FIXME (nBatch)
+  val nPredSet = nBatch
 
   val local_sfpu = p(HwachaLocalScalarFPU)
 

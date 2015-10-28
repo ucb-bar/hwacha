@@ -360,7 +360,8 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   }
 }
 
-class VLUEntry(implicit p: Parameters) extends VXUBundle()(p) {
+class VLUEntry(implicit p: Parameters) extends VXUBundle()(p)
+  with VLUSelect {
   val eidx = UInt(width = bVLen - log2Up(nBatch))
   val data = Bits(width = wBank)
   val mask = Bits(width = nSlices)
@@ -374,6 +375,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val bwqs = Vec.fill(nBanks)(new BWQIO)
     val la = new CounterLookAheadIO().flip
 
+    val map = new VLUSelectIO
     val cfg = new HwachaConfigIO().flip
   }
 
@@ -381,22 +383,68 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   private val lgslices = log2Up(nSlices)
   private val lgbatch = log2Up(nBatch)
 
+  private val vldq = io.vldq
+  private val meta = vldq.bits.meta
+
+  //--------------------------------------------------------------------\\
+  // control
+  //--------------------------------------------------------------------\\
+
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
-  opq.io.deq.ready := Bool(false)
 
-  val op = Reg(new DCCOp)
-  val mt = DecodedMemType(op.fn.vmu().mt)
+  val map = Module(new VLUMapper)
+  map.io.op <> opq.io.deq
+  map.io.free := Bool(false)
+  io.map <> map.io.use
+
+  val busy = map.io.busy
+  val issue = map.io.use.fire()
+
+  /* NOTE: To avoid the need for a full shifter and special masking of
+   * final predicate entries, vectors always begin at an nBatch-aligned
+   * boundary in the writeback bitmap.  Extra padding proportional to
+   * the maximum number of simultaneous vectors is therefore required in
+   * case the vector lengths are not a multiple of nBatch.
+   */
+  require(nvlreq % nBatch == 0)
+  private val szwb = nvlreq + ((nVLU - 1) * (nBatch - 1))
+  private val lgwb = log2Up(szwb)
+
+  val op = Reg(Vec(nVLU, new DCCOp))
+  val wb = Reg(init = Bits(0, szwb))
+
+  val vidx = map.io.vidx
+  val vidx_tail = map.io.use.bits.vidx
+
+  val op_head = op(vidx)
+  val op_load = op(meta.vidx)
+  val mt = DecodedMemType(op_load.fn.vmu().mt)
   private val mts = Seq(mt.d, mt.w, mt.h, mt.b)
 
-  val eidx = Reg(UInt(width = bVLen))
-  val eidx_next = eidx + io.la.cnt
-  val eidx_end = (eidx_next === op.vlen)
+  val rcnt = Ceil(io.la.cnt, lgbatch)
+  val rcnt_pulse = Mux(io.la.reserve, rcnt, UInt(0))
+  val rcnt_residue = io.la.cnt(lgbatch-1, 0)
 
-  val retire = Mux(io.la.reserve, io.la.cnt >> lgbatch, UInt(0))
-  assert(!io.la.reserve || eidx_end ||
-    (io.la.cnt(lgbatch-1, 0) === UInt(0)),
+  private val bbias = bVLen - lgbatch + 1
+  val bias = Reg(Vec(nVLU, SInt(width = bbias)))
+  val bias_in = Vec(nVLU, SInt())
+  val bias_next = Vec(bias_in.map(_ + rcnt_pulse))
+  bias_in := bias
+  bias := bias_next
+
+  val bias_tail = Reg(init = SInt(0, bbias))
+  val vlen_tail = Ceil(opq.io.deq.bits.vlen, lgbatch)
+  val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
+  bias_tail := (bias_tail + rcnt_pulse) - bias_tail_sub
+  assert(bias_tail <= SInt(0), "VLU: positive bias_tail")
+
+  val vlen_next = bias_next(vidx)
+  val vlen_end = (vlen_next === op_head.vlen)
+  assert(!io.la.reserve || vlen_end || (rcnt_residue === UInt(0)),
     "VLU: retire count not a batch multiple")
+
+  map.io.free := vlen_end
 
   //--------------------------------------------------------------------\\
   // predication
@@ -404,74 +452,38 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
   predq.io.enq <> io.pred
-  predq.io.deq.ready := Bool(false)
+  val pred_fire = predq.io.deq.fire()
 
   require(nPredSet == nBatch)
-  val pidx = Reg(UInt(width = log2Down(nvlreq) - lgbatch))
-  val pcnt = Reg(UInt(width = bVLen - lgbatch))
-  val pidx_end = (pidx === UInt((nvlreq - 1) >> lgbatch))
+
+  private val bpcnt = bVLen - lgbatch + log2Ceil(nVLU)
+  val pcnt = Reg(init = UInt(0, bpcnt))
   val pcnt_end = (pcnt === UInt(0))
+  val pcnt_add = Mux(issue, vlen_tail, UInt(0))
+  val pcnt_next = (pcnt.zext + pcnt_add) - pred_fire.toUInt
+  pcnt := pcnt_next
+  assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
-  val pred_base = Mux(predq.io.deq.valid, ~predq.io.deq.bits, UInt(0))
-  val pred_shift = Cat(pidx, UInt(0, lgbatch))
-  val pred = (pred_base << pred_shift)(nvlreq-1, 0)
-
-  val pidx_step = predq.io.deq.fire()
-  val pidx_next = pidx.zext + pidx_step.toUInt - retire
+  private val maxpidx = (szwb >> lgbatch) - 1
+  val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
+  val pidx_end = (pidx === UInt(maxpidx))
+  val pidx_next = (pidx.zext + pred_fire.toUInt) - rcnt_pulse
   pidx := pidx_next
-  when (pidx_step) {
-    pcnt := pcnt - UInt(1)
+  /* NOTE: Predicates should always arrive before the corresponding
+     load due to VMU latency, thus precluding this race condition */
+  assert(pidx_next >= SInt(0), "VLU: pidx underflow")
+
+  val pred = Mux(pred_fire, ~predq.io.deq.bits, UInt(0))
+  val pred_shift = Cat(pidx, UInt(0, lgbatch))
+  val wb_pred = pred << pred_shift
+  predq.io.deq.ready := !(pcnt_end || pidx_end)
+
+  unless (busy) {
+    assert(wb === Bits(0), "VLU: non-zero quiescent wb")
+    assert(bias_tail === SInt(0), "VLU: non-zero quiescent bias_tail")
+    assert(pcnt === UInt(0), "VLU: non-zero quiescent pcnt")
+    assert(pidx === UInt(0), "VLU: non-zero quiescent pidx")
   }
-
-  //--------------------------------------------------------------------\\
-  // control
-  //--------------------------------------------------------------------\\
-
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
-  val sink = Reg(Bool())
-
-  switch (state) {
-    is (s_idle) {
-      eidx := UInt(0)
-      pidx := UInt(0)
-      sink := Bool(true)
-
-      opq.io.deq.ready := Bool(true)
-      when (opq.io.deq.valid) {
-        state := s_busy
-        op := opq.io.deq.bits
-        pcnt := opq.io.deq.bits.vlen(bVLen-1, lgbatch) +
-          opq.io.deq.bits.vlen(lgbatch-1, 0).orR.toUInt /* ceil */
-
-        assert(opq.io.deq.bits.vd.valid, "VLU: invalid vd")
-      }
-    }
-
-    is (s_busy) {
-      when (io.la.reserve) {
-        eidx := eidx_next
-        when (eidx_end) {
-          state := s_idle
-        }
-      }
-
-      predq.io.deq.ready := !(pidx_end || pcnt_end)
-      /* NOTE: Predicates should always arrive before the corresponding
-         load due to VMU latency, thus precluding this race condition */
-      assert(pidx_next >= SInt(0), "VLU: pidx underflow")
-    }
-  }
-
-  // Avoid prematurely accepting responses for the next memory operation
-  // before the current one has finished
-  val vldq_valid = io.vldq.valid && sink
-  when (io.vldq.fire() && io.vldq.bits.meta.last) {
-    sink := Bool(false)
-  }
-
-  private val vldq = io.vldq
-  private val meta = vldq.bits.meta
 
   //--------------------------------------------------------------------\\
   // permutation network
@@ -568,45 +580,50 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val bwqs_mask = merge(mask)
   val bwqs_en = bwqs_mask.map(_.orR)
 
-  val wb_update = Vec.fill(nBanks)(Bits(width = nvlreq))
+  val wb_update = Vec(nBanks, Bits(width = szwb))
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nBWQ))
 
+    bwq.io.enq.bits.vidx := meta.vidx
     bwq.io.enq.bits.eidx := Mux(eidx_step(i), eidx_reg_next, eidx_reg)
     bwq.io.enq.bits.data := bwqs_data(i)
     bwq.io.enq.bits.mask := bwqs_mask(i)
 
-    val wb_eidx = Cat(bwq.io.deq.bits.eidx, UInt(i, lgbanks), UInt(0, lgslices))
-    val wb_shift = wb_eidx - eidx
-    val wb_mask = bwq.io.deq.bits.mask & Fill(nSlices, bwq.io.deq.fire())
+    val wb_mask = Mux(bwq.io.deq.fire(), bwq.io.deq.bits.mask, Bits(0))
+    val wb_vidx = bwq.io.deq.bits.vidx
+    val wb_eidx = bwq.io.deq.bits.eidx
+    val wb_offset = wb_eidx.zext - bias(wb_vidx)
+    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << lgslices,lgbatch))
     wb_update(i) := wb_mask << wb_shift
 
-    assert(!bwq.io.deq.valid ||
-      ((eidx <= wb_eidx) && (wb_eidx < eidx + UInt(nvlreq))),
-      "VLU: out-of-bounds eidx at writeback; check VMU valve logic");
+    val max = (szwb + (nBatch-1)) >> lgbatch
+    val s = "VLU: BWQ " + i
+    assert(!deq.valid || (wb_offset >= SInt(0)), s+": wb_offset underflow")
+    assert(!deq.valid || (wb_offset < SInt(max)), s+": wb_offset overflow")
 
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready
 
     deq.bits.selff := Bool(false) // FIXME
-    deq.bits.addr := op.vd.id + (bwq.io.deq.bits.eidx * io.cfg.vstride)
+    deq.bits.addr := op(wb_vidx).vd.id + (wb_eidx * io.cfg.vstride)
     deq.bits.data := bwq.io.deq.bits.data
     deq.bits.mask := FillInterleaved(regLen >> 3, bwq.io.deq.bits.mask)
 
     bwq.io.enq
   }
 
-  val bwqs_ready = bwqs.zip(bwqs_en).map { case (bwq, en) => !en || bwq.ready }
-
+  val bwqs_ready = bwqs.zip(bwqs_en).map {
+    case (bwq, en) => !en || bwq.ready
+  }
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = vldq_valid +: bwqs_ready
+    val rvs = vldq.valid +: bwqs_ready
     (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _)
   }
 
-  val bwqs_ready_all = fire(vldq_valid)
-  bwqs_fire := bwqs_ready_all && vldq_valid
-  vldq.ready := bwqs_ready_all && tick_next && sink
+  val bwqs_ready_all = fire(vldq.valid)
+  bwqs_fire := bwqs_ready_all && vldq.valid
+  vldq.ready := bwqs_ready_all && tick_next
   bwqs.zip(bwqs_ready.zip(bwqs_en)).foreach { case (bwq, (ready, en)) =>
     bwq.valid := fire(ready, en)
   }
@@ -615,16 +632,76 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   // writeback status
   //--------------------------------------------------------------------\\
 
-  val wb_status = Reg(Bits(width = nvlreq))
-  val wb_next = wb_status | wb_update.reduce(_ | _) | pred
-  val wb_shift = Cat(retire, UInt(0, lgbatch))
-  val wb_locnt = CTZ(~wb_status, maxLookAhead)
+  val wb_sets = Seq(wb, wb_pred) ++ wb_update
+  assert(wb_sets.reduce(_ & _) === Bits(0), "VLU: wb bitmap collision")
 
-  wb_status := Bits(0)
-  io.la.available := Bool(false)
+  val wb_merge = wb_sets.reduce(_ | _)
+  val wb_shift = Cat(rcnt_pulse, UInt(0, lgbatch))
+  val wb_next = wb_merge >> wb_shift
+  wb := wb_next
 
-  when (state === s_busy) {
-    wb_status := (wb_next >> wb_shift)
-    io.la.available := (wb_locnt >= io.la.cnt)
+  val wb_cnt = CTZ(~wb, maxLookAhead)
+  io.la.available := busy && (wb_cnt >= io.la.cnt)
+
+  //--------------------------------------------------------------------\\
+  // initialization
+  //--------------------------------------------------------------------\\
+
+  when (issue) {
+    op(vidx_tail) := opq.io.deq.bits
+    op(vidx_tail).vlen := vlen_tail
+    bias_in(vidx_tail) := bias_tail
+
+    assert(opq.io.deq.bits.vd.valid, "VLU: invalid vd")
+  }
+}
+
+trait VLUSelect extends DCCParameters {
+  val vidx = UInt(width = bVLU)
+}
+class VLUSelectIO(implicit p: Parameters)
+  extends DecoupledIO(new VXUBundle()(p) with VLUSelect)
+
+class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
+  val io = new DCCIssueIO {
+    val use = new VLUSelectIO
+    val free = Bool(INPUT)
+    val vidx = UInt(OUTPUT, bVLU)
+    val busy = Bool(OUTPUT)
+  }
+
+  val head = Reg(init = UInt(0, bVLU))
+  val tail = Reg(init = UInt(0, bVLU))
+  val equal = (head === tail)
+
+  private def next[T <: UInt](ptr: T) = {
+    val ptr1 = ptr + UInt(1)
+    if (isPow2(nVLU)) ptr1 else
+      Mux(ptr === UInt(nVLU-1), UInt(0), ptr1)
+  }
+  val head_next = next(head)
+  val tail_next = next(tail)
+
+  val used = Reg(init = Bool(false))
+  val valid = !(equal && used)
+  io.busy := !(equal && !used)
+
+  private def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(valid, io.op.valid, io.use.ready)
+    (rvs.filter(_.ne(exclude)) ++ include).reduce(_ && _)
+  }
+
+  io.op.ready := fire(io.op.valid)
+  io.use.valid := fire(io.use.ready)
+  io.use.bits.vidx := tail
+  io.vidx := head
+
+  when (io.use.fire()) {
+    tail := tail_next
+    used := Bool(true)
+  }
+  when (io.free) {
+    head := head_next
+    used := Bool(false)
   }
 }

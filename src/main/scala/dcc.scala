@@ -13,6 +13,9 @@ abstract trait DCCParameters extends UsesHwachaParameters {
   val nBWQ = 2
 
   val maxSLA = 7 /* Ideally (2^i - 1) where (i > 1) */
+
+  val nVLU = 2
+  val bVLU = log2Ceil(nVLU)
 }
 
 class DCCAckIO(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -104,6 +107,7 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   vlu.io.la <> io.lla
   vlu.io.vldq <> io.vmu.vldq
   io.bwqs.mem <> vlu.io.bwqs
+  io.vmu.vlu <> vlu.io.map
 
   vsu.io.op.valid := fire(mask_vsu_ready, io.op.bits.active.enq_vsu())
   vsu.io.op.bits := io.op.bits

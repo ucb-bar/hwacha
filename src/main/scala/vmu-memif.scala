@@ -6,7 +6,6 @@ import cde.Parameters
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {
   val mask = UInt(width = tlDataBytes)
-  val last = Bool()
   val pred = Bool()
 }
 
@@ -47,7 +46,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   val lbox_en = pred && read
   val lbox_ready = !lbox_en || lbox.meta.ready
   val sbox_valid = !write || sbox.valid
-  val req_ready = /*!pred ||*/ req.ready
+  val req_ready = !pred || req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(abox.valid, sbox_valid, lbox_ready, req_ready)
@@ -57,7 +56,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   abox.ready := fire(abox.valid)
   sbox.ready := fire(sbox_valid, write)
   lbox.meta.valid := fire(lbox_ready, lbox_en)
-  req.valid := fire(req_ready/*, pred*/)
+  req.valid := fire(req_ready, pred)
 
   /* Data mask */
   val mask_shift = abox.bits.meta.epad(tlByteAddrBits - 1)
@@ -66,6 +65,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     abox.bits.meta.mask)
 
   /* Load metadata */
+  lbox.meta.bits.vidx := abox.bits.meta.vidx
   lbox.meta.bits.eidx := abox.bits.meta.eidx
   lbox.meta.bits.epad := abox.bits.meta.epad
   lbox.meta.bits.mask := abox.bits.meta.mask
@@ -81,7 +81,6 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   req.bits.addr := abox.bits.addr
   req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
-  req.bits.last := abox.bits.meta.last
   req.bits.pred := pred
   req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)
   require(tlByteAddrBits-1 <= bVMUTag)
@@ -103,82 +102,6 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   io.sret.cnt :=
     Mux(sret_req_en, Cat(Bits(0,1), sret_req.decode()), UInt(0)) +
     Mux(sret_resp_en, Cat(Bits(0,1), sret_resp.decode()), UInt(0))
-}
-
-class MBar(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val inner =new VMUMemIO().flip
-    val outer = new VMUMemIO
-    val last = Bool(INPUT)
-  }
-
-  val op = Reg(new VMUDecodedOp)
-
-  // Prevent memory requests associated with the next operation from
-  // departing until all prior transactions have completed.
-  // This ensures that responses attached to different operations never
-  // intermix despite arbitrary reordering by the memory system, as is
-  // required to compensate for the inability of downstream units
-  // (e.g., VLU) to handle multiple simultaneous operations.
-
-  private val w = log2Down(math.max(nvlreq, nvsreq)) + 1
-  val count = Reg(init = UInt(0, w))
-  val count_inc = io.outer.req.fire()
-  val count_dec = io.outer.resp.fire()
-  val count_next = count.zext + count_inc.toUInt - count_dec.toUInt
-  count := count_next
-
-  assert(!(count_next(w) && count_inc), "VMU: MBar counter overflow")
-  assert(!(count_next(w) && count_dec), "VMU: MBar counter underflow")
-
-  val pred = io.outer.req.bits.pred
-  val open = Bool()
-  val last = Bool()
-  open := Bool(false)
-  last := Bool(false)
-
-  io.outer.req.bits := io.inner.req.bits
-  io.outer.req.valid := io.inner.req.valid && open && pred
-  io.inner.req.ready := (!pred || io.outer.req.ready) && open
-
-  io.outer.resp.ready := io.inner.resp.ready
-  io.inner.resp.valid := io.outer.resp.valid
-  io.inner.resp.bits := io.outer.resp.bits
-  io.inner.resp.bits.last := last
-
-  io.op.ready := Bool(false)
-
-  val s_close :: s_open :: s_flush :: Nil = Enum(UInt(), 3)
-  val state = Reg(init = s_close)
-
-  switch (state) {
-    is (s_close) {
-      io.op.ready := Bool(true)
-      when (io.op.valid) {
-        state := s_open
-        op := io.op.bits
-      }
-    }
-
-    is (s_open) {
-      open := Bool(true)
-      when (io.inner.req.fire() && io.inner.req.bits.last) {
-        state := s_flush
-      }
-    }
-
-    is (s_flush) {
-      when (count === UInt(0)) {
-          state := s_close
-      }
-      when (count === UInt(1)) {
-        last := Bool(true)
-        when (count_dec) {
-          state := s_close
-        }
-      }
-    }
-  }
 }
 
 class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
@@ -231,5 +154,4 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
   resp.bits.tag := grant.bits.client_xact_id
   resp.bits.data := grant.bits.data
   resp.bits.store := grant.bits.isBuiltInType(Grant.putAckType)
-  resp.bits.last := Bool(false) // don't care
 }
