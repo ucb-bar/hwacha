@@ -16,8 +16,8 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
 
     val cmdq = new CMDQIO().flip
     val imem = new FrontendIO
-    val vxu = new VXUIssueOpIO
-    val vmu = Decoupled(new VMUOp)
+    val vxu = Decoupled(new IssueOpML)
+    val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
