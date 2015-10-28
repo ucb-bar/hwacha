@@ -45,7 +45,7 @@ class Table[T <: Data](n: Int, gen: => T) extends Module {
 
 class VMLUIO(implicit p: Parameters) extends VMUBundle()(p) {
   val load = Decoupled(new VMLUData)
-  val meta = new TableWIO(new VLTEntry, bTag)
+  val meta = new TableWIO(new VLTEntry, bVMUTag)
 }
 
 class LBox(implicit p: Parameters)  extends VMUModule()(p) {

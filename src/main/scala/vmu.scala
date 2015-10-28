@@ -34,8 +34,8 @@ trait VMUParameters extends MemParameters {
   val nVMUPredQ = 4
 
   val nVLT = p(HwachaNVLTEntries)
-  val bTag = log2Up(nVLT)
-  require(tlClientXactIdBits >= bTag)
+  val bVMUTag = log2Up(nVLT)
+  require(tlClientXactIdBits >= bVMUTag)
 
   /* Maximum of two ongoing operations in the VMU */
   val maxVCU = maxVLen << 1

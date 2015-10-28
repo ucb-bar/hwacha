@@ -84,7 +84,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   req.bits.last := abox.bits.meta.last
   req.bits.pred := pred
   req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)
-  require(tlByteAddrBits-1 <= bTag)
+  require(tlByteAddrBits-1 <= bVMUTag)
 
   /* Response */
   lbox.load.bits := resp.bits

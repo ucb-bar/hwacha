@@ -97,6 +97,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val scalar = Module(new ScalarUnit)
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
   val mseq = Module(new MasterSequencer)
+  val smu = Module(new SMU)
+  val imemarb = Module(new uncore.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -133,8 +135,10 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.vru.req := vru_req
     icache.io.vru.active := ShiftRegister(scalar.io.imem.active, delay)
     icache.io.vru.resp.ready := Bool(true)
-    io.imem <> icache.io.mem
     io.iptw <> icache.io.ptw
+    imemarb.io.in(0) <> icache.io.mem
+    imemarb.io.in(2).acquire.valid := Bool(false) // FIXME
+    imemarb.io.in(2).grant.ready := Bool(false) // FIXME
   } else {
     val icache = Module(new rocket.Frontend()(p.alterPartial({case uncore.CacheName => "HwI"})))
     icache.io.cpu.req <> scalar.io.imem.req
@@ -143,17 +147,21 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.cpu.bht_update.valid := Bool(false)
     icache.io.cpu.ras_update.valid := Bool(false)
     icache.io.cpu.invalidate := scalar.io.imem.invalidate
-    io.imem <> icache.io.mem
     io.iptw <> icache.io.ptw
+    imemarb.io.in(0) <> icache.io.mem
   }
+
+  imemarb.io.in(1) <> smu.io.dmem
+  io.imem <> imemarb.io.out
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
   io.dptw.req.valid := Bool(false)
   io.pptw.req.valid := Bool(false)
 
-  scalar.io.dmem.req.ready := Bool(false) // FIXME
-  scalar.io.dmem.resp.valid := Bool(false) // FIXME
+  smu.io.tlb.req.ready := Bool(false) // FIXME
+  smu.io.scalar.req.valid := Bool(false) // FIXME
+  smu.io.scalar <> scalar.io.dmem
   scalar.io.pending_seq := mseq.io.pending
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)

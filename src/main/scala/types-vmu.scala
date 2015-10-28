@@ -110,7 +110,7 @@ class VCUIO(implicit p: Parameters) extends ValidIO(new VCUEntry()(p))
 
 
 trait VMUTag extends VMUBundle {
-  val tag = UInt(width = bTag)
+  val tag = UInt(width = bVMUTag)
 }
 
 class VMLUData(implicit p: Parameters) extends VMUData with VMUTag {

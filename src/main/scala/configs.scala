@@ -65,8 +65,11 @@ class DefaultHwachaConfig extends Config (
     case HwachaNVLDQEntries => 16
     case HwachaNVLTEntries => 32
 
+    case HwachaNSMUEntries => 2
+
     // +2 comes from the overhead of tagging for the arbitration
-    case RoccMaxTaggedMemXacts => site(HwachaNVLTEntries)
+    case RoccMaxTaggedMemXacts =>
+      math.max(site(HwachaNVLTEntries), site(HwachaNSMUEntries))
     case RoccNMemChannels => site(HwachaNLanes)
     case BuildRoCC => Some((p: Parameters) => 
       Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
