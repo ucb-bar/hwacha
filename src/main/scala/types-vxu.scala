@@ -91,14 +91,17 @@ class VFn(implicit p: Parameters) extends VXUBundle()(p) {
 
 
 //-------------------------------------------------------------------------\\
-// decoded information types
+// register information types
 //-------------------------------------------------------------------------\\
 
-class RegInfo(implicit p: Parameters) extends VXUBundle()(p) {
+class RegId(bId: Int)(implicit p: Parameters) extends VXUBundle()(p) {
+  val id = UInt(width = bId)
+}
+
+class RegInfo(bId: Int)(implicit p: Parameters) extends RegId(bId)(p) {
   val valid = Bool()
   val scalar = Bool()
   val pred = Bool()
-  val id = UInt(width = math.max(bRFAddr, bPredAddr))
 
   def is_scalar(d: Int = 0) = !pred && scalar
   def is_vector(d: Int = 0) = !pred && !scalar
@@ -106,12 +109,36 @@ class RegInfo(implicit p: Parameters) extends VXUBundle()(p) {
   def neg(d: Int = 0) = scalar
 }
 
-class DecodedRegisters(implicit p: Parameters) extends VXUBundle()(p) {
-  val vp = new RegInfo
-  val vs1 = new RegInfo
-  val vs2 = new RegInfo
-  val vs3 = new RegInfo
-  val vd = new RegInfo
+class BasePRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPredRegBits))(p)
+class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegBits))(p)
+
+class BaseRegisters(implicit p: Parameters) extends VXUBundle()(p) {
+  val vp = new BasePRegInfo
+  val vs1 = new BaseRegInfo
+  val vs2 = new BaseRegInfo
+  val vs3 = new BaseRegInfo
+  val vd = new BaseRegInfo
+}
+
+class PhysicalPRegId(implicit p: Parameters) extends RegId(p(HwachaPRFAddrBits))(p)
+class PhysicalRegId(implicit p: Parameters) extends RegId(p(HwachaRFAddrBits))(p)
+class PhysicalPRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPRFAddrBits))(p)
+class PhysicalRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRFAddrBits))(p)
+
+class PhysicalRegisterIds(implicit p: Parameters) extends VXUBundle()(p) {
+  val vp = new PhysicalPRegId
+  val vs1 = new PhysicalRegId
+  val vs2 = new PhysicalRegId
+  val vs3 = new PhysicalRegId
+  val vd = new PhysicalRegId
+}
+
+class PhysicalRegisters(implicit p: Parameters) extends VXUBundle()(p) {
+  val vp = new PhysicalPRegInfo
+  val vs1 = new PhysicalRegInfo
+  val vs2 = new PhysicalRegInfo
+  val vs3 = new PhysicalRegInfo
+  val vd = new PhysicalRegInfo
 }
 
 class ScalarRegisters(implicit p: Parameters) extends VXUBundle()(p) {
@@ -120,29 +147,32 @@ class ScalarRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val ss3 = Bits(width = regLen)
 }
 
-class DecodedInstruction(implicit p: Parameters) extends VXUBundle()(p) {
+
+//-------------------------------------------------------------------------\\
+// decoded instruction
+//-------------------------------------------------------------------------\\
+
+class DecodedInst(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFn // union
-  val reg = new DecodedRegisters
   val sreg = new ScalarRegisters
+}
+
+trait HasBaseRegs extends VXUBundle {
+  val base = new BaseRegisters
+}
+
+trait HasPhysRegIds extends VXUBundle {
+  val reg = new PhysicalRegisterIds
+}
+
+trait HasPhysRegs extends VXUBundle {
+  val reg = new PhysicalRegisters
 }
 
 
 //-------------------------------------------------------------------------\\
 // issue op
 //-------------------------------------------------------------------------\\
-
-trait SingleLaneVLen extends HwachaBundle {
-  val vlen = UInt(width = bVLen)
-}
-
-class VLenEntry(implicit p: Parameters) extends HwachaBundle()(p) {
-  val active = Bool()
-  val vlen = UInt(width = bVLen)
-}
-
-trait MultiLaneVLen extends HwachaBundle {
-  val lane = Vec.fill(nLanes){new VLenEntry}
-}
 
 class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   val vint = Bool()
@@ -167,7 +197,20 @@ class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   def enq_dcc(dummy: Int = 0) = enq_vdu() || enq_vgu() || enq_vpu() || enq_vlu() || enq_vsu()
 }
 
-class IssueOpBase(implicit p: Parameters) extends DecodedInstruction()(p) {
+trait SingleLaneVLen extends HwachaBundle {
+  val vlen = UInt(width = bVLen)
+}
+
+class VLenEntry(implicit p: Parameters) extends HwachaBundle()(p) {
+  val active = Bool()
+  val vlen = UInt(width = bVLen)
+}
+
+trait MultiLaneVLen extends HwachaBundle {
+  val lane = Vec.fill(nLanes){new VLenEntry}
+}
+
+class IssueOpBase(implicit p: Parameters) extends DecodedInst()(p) with HasBaseRegs {
   val active = new IssueType
 }
 
@@ -220,9 +263,8 @@ class SeqType(implicit p: Parameters) extends VXUBundle()(p) {
   val vqu = Bool()
 }
 
-class SeqEntry(implicit p: Parameters) extends DecodedInstruction()(p) {
+class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p) with HasBaseRegs {
   val active = new SeqType
-  val base = new DecodedRegisters
   val raw = Vec.fill(nSeq){Bool()}
   val war = Vec.fill(nSeq){Bool()}
   val waw = Vec.fill(nSeq){Bool()}
@@ -231,6 +273,9 @@ class SeqEntry(implicit p: Parameters) extends DecodedInstruction()(p) {
     val sram = UInt(width = bWPortLatency)
     val pred = UInt(width = bPredWPortLatency)
   }
+}
+
+class SeqEntry(implicit p: Parameters) extends VXUBundle()(p) with HasPhysRegIds {
   val vlen = UInt(width = bVLen)
   val eidx = UInt(width = bVLen)
   val age = UInt(width = log2Up(nBanks))
@@ -240,7 +285,7 @@ class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
   val vfmu = UInt(width = log2Up(nVFMU))
 }
 
-class SeqOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp {
+class SeqOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp {
   val active = new SeqType
   val select = new SeqSelect
   val eidx = UInt(width = bVLen)
@@ -253,8 +298,8 @@ class SeqOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp 
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
-class SeqVPUOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp
-class SeqVIPUOp(implicit p: Parameters) extends DecodedInstruction()(p) with LaneOp
+class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
+class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
 
 
 //-------------------------------------------------------------------------\\
@@ -471,7 +516,7 @@ class DCCOp(implicit p: Parameters) extends VXUBundle()(p) {
   val vlen = UInt(width = bVLen)
   val active = new IssueType
   val fn = new VFn
-  val vd = new RegInfo
+  val vd = new RegInfo(bRFAddr)
 }
 
 class LPQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankPred

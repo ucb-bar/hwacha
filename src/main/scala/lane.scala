@@ -11,6 +11,8 @@ case object HwachaNPredRFReadPorts extends Field[Int]
 case object HwachaNOperandLatches extends Field[Int]
 case object HwachaNPredLatches extends Field[Int]
 case object HwachaWriteSelects extends Field[Int]
+case object HwachaRFAddrBits extends Field[Int]
+case object HwachaPRFAddrBits extends Field[Int]
 case object HwachaStagesALU extends Field[Int]
 case object HwachaStagesPLU extends Field[Int]
 case object HwachaStagesIMul extends Field[Int]
@@ -21,11 +23,11 @@ case object HwachaStagesFCmp extends Field[Int]
 abstract trait LaneParameters extends UsesHwachaParameters {
   val nSRAM = p(HwachaNSRAMRFEntries)
   val nFF = p(HwachaNFFRFEntries)
-  val bRFAddr = math.max(log2Up(nSRAM), log2Up(nFF))
   val nFFRPorts = p(HwachaNFFRFReadPorts)
   val nPred = p(HwachaNPredRFEntries)
-  val bPredAddr = log2Up(nPred)
   val nPredRPorts = p(HwachaNPredRFReadPorts)
+  val bRFAddr = p(HwachaRFAddrBits)
+  val bPredAddr = p(HwachaPRFAddrBits)
 
   val nBankSRAMRegs = nSRAM * nSlices
   val nLaneSRAMRegs = nBanks * nBankSRAMRegs

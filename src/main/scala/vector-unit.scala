@@ -7,17 +7,15 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new Bundle {
-      val vxu = new VXUIssueOpIO().flip
+      val vxu = Decoupled(new IssueOp).flip
       val vmu = Decoupled(new VMUOp).flip
       val scalar = new ScalarMemIO
     }
+    val mseq = new MasterSequencerIO().flip
     val dtlb = new RTLBIO
     val ptlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO
-    val pending = new Bundle {
-      val seq = Bool(OUTPUT)
-      val mem = Bool(OUTPUT)
-    }
+    val pending = Bool(OUTPUT)
   }
 
   val vxu = Module(new VXU(id))
@@ -27,6 +25,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
 
   vxu.io.cfg <> io.cfg
   vxu.io.issue <> io.issue.vxu
+  vxu.io.mseq <> io.mseq
   vmu.io.op <> io.issue.vmu
   vmu.io.scalar <> io.issue.scalar
 
@@ -41,8 +40,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   io.dtlb <> vmu.io.dtlb
   io.ptlb <> vmu.io.ptlb
   io.dmem <> memif.io.dmem
-  io.pending.seq := vxu.io.pending
-  io.pending.mem := mrt.io.pending
+  io.pending := mrt.io.pending
 
 //vmu.io.pf.vaq.valid := Bool(false)
   vmu.io.xcpt.prop.vmu.stall := Bool(false)

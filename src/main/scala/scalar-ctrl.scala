@@ -320,26 +320,26 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       id_ctrl.vfvu_val -> id_ctrl.fn_vfvu(rm).toBits,
       id_ctrl.vmu_val  -> id_ctrl.fn_vmu().toBits
     ))
-  io.vxu.bits.reg.vs1.valid := id_ctrl.vs1_val
-  io.vxu.bits.reg.vs2.valid := id_ctrl.vs2_val
-  io.vxu.bits.reg.vs3.valid := id_ctrl.vs3_val
-  io.vxu.bits.reg.vd.valid := id_ctrl.vd_val
-  io.vxu.bits.reg.vs1.scalar := id_scalar_src1
-  io.vxu.bits.reg.vs2.scalar := id_scalar_src2
-  io.vxu.bits.reg.vs3.scalar := id_scalar_src3
-  io.vxu.bits.reg.vd.scalar := id_scalar_dest
-  io.vxu.bits.reg.vs1.pred := id_ctrl.vs1_type === REG_PRED
-  io.vxu.bits.reg.vs2.pred := id_ctrl.vs2_type === REG_PRED
-  io.vxu.bits.reg.vs3.pred := id_ctrl.vs3_type === REG_PRED
-  io.vxu.bits.reg.vd.pred := id_ctrl.vd_type === REG_PRED
-  io.vxu.bits.reg.vs1.id := id_raddrs1
-  io.vxu.bits.reg.vs2.id := id_raddrs2
-  io.vxu.bits.reg.vs3.id := id_raddrs3
-  io.vxu.bits.reg.vd.id := id_waddr
-  io.vxu.bits.reg.vp.valid := id_ctrl.vp_val
-  io.vxu.bits.reg.vp.pred := Bool(true)
-  io.vxu.bits.reg.vp.neg() := id_ctrl.vp_neg
-  io.vxu.bits.reg.vp.id := id_paddr
+  io.vxu.bits.base.vs1.valid := id_ctrl.vs1_val
+  io.vxu.bits.base.vs2.valid := id_ctrl.vs2_val
+  io.vxu.bits.base.vs3.valid := id_ctrl.vs3_val
+  io.vxu.bits.base.vd.valid := id_ctrl.vd_val
+  io.vxu.bits.base.vs1.scalar := id_scalar_src1
+  io.vxu.bits.base.vs2.scalar := id_scalar_src2
+  io.vxu.bits.base.vs3.scalar := id_scalar_src3
+  io.vxu.bits.base.vd.scalar := id_scalar_dest
+  io.vxu.bits.base.vs1.pred := id_ctrl.vs1_type === REG_PRED
+  io.vxu.bits.base.vs2.pred := id_ctrl.vs2_type === REG_PRED
+  io.vxu.bits.base.vs3.pred := id_ctrl.vs3_type === REG_PRED
+  io.vxu.bits.base.vd.pred := id_ctrl.vd_type === REG_PRED
+  io.vxu.bits.base.vs1.id := id_raddrs1
+  io.vxu.bits.base.vs2.id := id_raddrs2
+  io.vxu.bits.base.vs3.id := id_raddrs3
+  io.vxu.bits.base.vd.id := id_waddr
+  io.vxu.bits.base.vp.valid := id_ctrl.vp_val
+  io.vxu.bits.base.vp.pred := Bool(true)
+  io.vxu.bits.base.vp.neg() := id_ctrl.vp_neg
+  io.vxu.bits.base.vp.id := id_paddr
 
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)

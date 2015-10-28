@@ -3,15 +3,13 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
-class VXUIssueOpIO(implicit p: Parameters) extends DecoupledIO(new IssueOp()(p))
-
 class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val issue = new VXUIssueOpIO().flip
+    val issue = Decoupled(new IssueOp).flip
+    val mseq = new MasterSequencerIO().flip
     val vmu = new LaneMemIO
     val mrt = new LaneMRTIO
-    val pending = Bool(OUTPUT)
   }
 
   val seq = Module(new Sequencer)
@@ -27,21 +25,21 @@ class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   val mask_dcc_ready = !enq_dcc || dcc.io.op.ready
 
   def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(
-      io.issue.valid,
-      seq.io.op.ready, mask_dcc_ready)
+    val rvs = Seq(io.issue.valid, mask_dcc_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   io.issue.ready := fire(io.issue.valid)
-  seq.io.op.valid := fire(seq.io.op.ready)
+  seq.io.op.valid := fire(null)
   dcc.io.op.valid := fire(mask_dcc_ready, enq_dcc)
 
   seq.io.op.bits := io.issue.bits
   dcc.io.op.bits.vlen := io.issue.bits.vlen
   dcc.io.op.bits.active := io.issue.bits.active
   dcc.io.op.bits.fn := io.issue.bits.fn
-  dcc.io.op.bits.vd := io.issue.bits.reg.vd
+  dcc.io.op.bits.vd := io.issue.bits.base.vd
+
+  seq.io.master <> io.mseq
 
   exp.io.seq <> seq.io.seq
   lane.io.op <> exp.io.lane
@@ -68,8 +66,6 @@ class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
 
   io.vmu <> seq.io.vmu
   io.vmu <> dcc.io.vmu
-
-  io.pending := seq.io.pending
 
   io.mrt.lreq <> seq.io.lreq
   io.mrt.sreq <> seq.io.sreq

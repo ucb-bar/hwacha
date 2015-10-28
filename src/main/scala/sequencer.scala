@@ -4,44 +4,6 @@ import Chisel._
 import cde.Parameters
 import DataGating._
 
-abstract trait SeqParameters extends UsesHwachaParameters with LaneParameters {
-  val nSeq = 8
-  val nRPorts = 3
-  val bRPorts = log2Down(nRPorts) + 1
-  val expLatency = 1
-  val maxWPortLatency = nRPorts + 1 + expLatency +
-    List(stagesALU, stagesIMul, stagesFMA,
-         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
-  val bWPortLatency = log2Down(maxWPortLatency) + 1
-  val maxPredWPortLatency = expLatency +
-    List(stagesPLU, 2 + 1 + stagesALU,
-         2 + 1 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
-  val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
-  val maxStrip = nBanks * (wBank / SZ_B)
-  val bStrip = log2Down(maxStrip) + 1
-  val maxLookAhead = math.max(tlDataBits / SZ_B, nBatch)
-  val bLookAhead = log2Down(maxLookAhead) + 1
-
-  // the following needs to hold in order to simplify dhazard_war checking
-  // otherwise, you need to check reg_vd against sram read ticker
-  require(nRPorts <= 3)
-  require(
-    List(stagesALU, stagesIMul, stagesFMA,
-         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) y else x) >= 1)
-
-  type RegFn = DecodedRegisters => RegInfo
-  val reg_vp  = (reg: DecodedRegisters) => reg.vp
-  val reg_vs1 = (reg: DecodedRegisters) => reg.vs1
-  val reg_vs2 = (reg: DecodedRegisters) => reg.vs2
-  val reg_vs3 = (reg: DecodedRegisters) => reg.vs3
-  val reg_vd  = (reg: DecodedRegisters) => reg.vd
-
-  type SRegFn = ScalarRegisters => Bits
-  val sreg_ss1 = (sreg: ScalarRegisters) => sreg.ss1
-  val sreg_ss2 = (sreg: ScalarRegisters) => sreg.ss2
-  val sreg_ss3 = (sreg: ScalarRegisters) => sreg.ss3
-}
-
 class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val exp = Valid(new SeqOp)
   val vipu = Valid(new SeqVIPUOp)
@@ -51,7 +13,8 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
 class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
-    val op = new VXUIssueOpIO().flip
+    val op = Valid(new IssueOp).flip
+    val master = new MasterSequencerIO().flip
     val seq = new SequencerIO
     val vmu = new LaneMemIO
     val ticker = new TickerIO().flip
@@ -74,13 +37,9 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     val lack = new LaneAckIO().flip
     val dack = new DCCAckIO().flip
 
-    val pending = Bool(OUTPUT)
     val debug = new Bundle {
       val valid = Vec.fill(nSeq){Bool(OUTPUT)}
       val e = Vec.fill(nSeq){new SeqEntry}.asOutput
-      val head = UInt(OUTPUT, log2Up(nSeq))
-      val tail = UInt(OUTPUT, log2Up(nSeq))
-      val full = Bool(OUTPUT)
       val dhazard_raw_vlen = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard_raw_pred_vp = Vec.fill(nSeq){Bool(OUTPUT)}
       val dhazard_raw_pred_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
@@ -111,11 +70,9 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
   }
 
-  require(isPow2(nSeq))
-
-  val full = Reg(init = Bool(false))
-  val head = Reg(init = UInt(0, log2Up(nSeq)))
-  val tail = Reg(init = UInt(0, log2Up(nSeq)))
+  val mv = io.master.state.valid
+  val me = io.master.state.e
+  val head = io.master.state.head
 
   val v = Vec.fill(nSeq){Reg(init=Bool(false))}
   val e = Vec.fill(nSeq){Reg(new SeqEntry)}
@@ -125,162 +82,72 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     Mux(vl > max_strip, max_strip, vl)
   }
 
-  var retired = false
-
   ///////////////////////////////////////////////////////////////////////////
   // data hazard checking helpers
 
   val dhazard = new {
-    val next_update = Vec.fill(nSeq){Bool()}
-    val next_raw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
-    val next_war = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
-    val next_waw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
+    val vlen_check_ok =
+      Vec((0 until nSeq).map { r =>
+        Vec((0 until nSeq).map { c =>
+          if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
+          else Bool(true) }) })
 
-    val set = new {
-      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
-      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
-      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
+    def wsram_mat(fn: RegFn, pfn: PRegIdFn) =
+      (0 until nSeq) map { r =>
+        Vec((0 until maxWPortLatency) map { l =>
+          io.ticker.sram.write(l).valid && fn(me(r).base).valid && fn(me(r).base).is_vector() &&
+          io.ticker.sram.write(l).bits.addr === pfn(e(r).reg).id }) }
+    val wsram_mat_vs1 = wsram_mat(reg_vs1, pregid_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wsram_mat_vs2 = wsram_mat(reg_vs2, pregid_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wsram_mat_vs3 = wsram_mat(reg_vs3, pregid_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
+    val wsram_mat_vd = wsram_mat(reg_vd, pregid_vd)
 
-      def issue_base_eq(ifn: RegFn, sfn: RegFn) =
-        Vec((0 until nSeq) map { i => v(i) &&
-          sfn(e(i).base).valid && ifn(io.op.bits.reg).valid &&
-          !sfn(e(i).base).is_scalar() && !ifn(io.op.bits.reg).is_scalar() &&
-          (sfn(e(i).base).is_vector() && ifn(io.op.bits.reg).is_vector() ||
-           sfn(e(i).base).is_pred() && ifn(io.op.bits.reg).is_pred()) &&
-          sfn(e(i).base).id === ifn(io.op.bits.reg).id })
-      val ivp_evd_eq = issue_base_eq(reg_vp, reg_vd)
-      val ivs1_evd_eq = issue_base_eq(reg_vs1, reg_vd)
-      val ivs2_evd_eq = issue_base_eq(reg_vs2, reg_vd)
-      val ivs3_evd_eq = issue_base_eq(reg_vs3, reg_vd)
-      val ivd_evp_eq = issue_base_eq(reg_vd, reg_vp)
-      val ivd_evs1_eq = issue_base_eq(reg_vd, reg_vs1)
-      val ivd_evs2_eq = issue_base_eq(reg_vd, reg_vs2)
-      val ivd_evs3_eq = issue_base_eq(reg_vd, reg_vs3)
-      val ivd_evd_eq  = issue_base_eq(reg_vd, reg_vd)
+    def wpred_mat(fn: RegFn, pfn: PRegIdFn) =
+      (0 until nSeq) map { r =>
+        Vec((0 until maxPredWPortLatency) map { l =>
+          io.ticker.pred.write(l).valid && fn(me(r).base).valid && fn(me(r).base).is_pred() &&
+          io.ticker.pred.write(l).bits.addr === pfn(e(r).reg).id }) }
+    val wpred_mat_vp = wpred_mat(reg_vp, pregid_vp) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+    val wpred_mat_vs1 = wpred_mat(reg_vs1, pregid_vs1) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+    val wpred_mat_vs2 = wpred_mat(reg_vs2, pregid_vs2) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+    val wpred_mat_vs3 = wpred_mat(reg_vs3, pregid_vs3) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
+    val wpred_mat_vd = wpred_mat(reg_vd, pregid_vd)
 
-      def raws(n: UInt, eq: Vec[Bool]) = {
-        for (i <- 0 until nSeq) {
-          when (eq(i)) {
-            raw(n, UInt(i))
-          }
-        }
-      }
-      def wars(n: UInt) = {
-        for (i <- 0 until nSeq) {
-          when (ivd_evp_eq(i) || ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
-            war(n, UInt(i))
-          }
-        }
-      }
-      def waws(n: UInt) = {
-        for (i <- 0 until nSeq) {
-          when (ivd_evd_eq(i)) {
-            waw(n, UInt(i))
-          }
-        }
-      }
-      def raw_vp(n: UInt) = raws(n, ivp_evd_eq)
-      def raw_vs1(n: UInt) = raws(n, ivs1_evd_eq)
-      def raw_vs2(n: UInt) = raws(n, ivs2_evd_eq)
-      def raw_vs3(n: UInt) = raws(n, ivs3_evd_eq)
-      def raw_vd(n: UInt) = raws(n, ivd_evd_eq)
-      def war_vd(n: UInt) = wars(n)
-      def waw_vd(n: UInt) = waws(n)
-    }
+    def wport_lookup(row: Vec[Bool], level: UInt) =
+      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
 
-    val clear = new {
-      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(false) }
-      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(false) }
-      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
-    }
+    val raw =
+      (0 until nSeq).map { r =>
+        (me(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
+        wpred_mat_vp(r).toBits.orR ||
+        wpred_mat_vs1(r).toBits.orR || wsram_mat_vs1(r).toBits.orR ||
+        wpred_mat_vs2(r).toBits.orR || wsram_mat_vs2(r).toBits.orR ||
+        wpred_mat_vs3(r).toBits.orR || wsram_mat_vs3(r).toBits.orR }
+    val war =
+      (0 until nSeq).map { r =>
+        (me(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
+    val waw =
+      (0 until nSeq).map { r =>
+        (me(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
+        wport_lookup(wpred_mat_vd(r), me(r).wport.pred).toBits.orR ||
+        wport_lookup(wsram_mat_vd(r), me(r).wport.sram).toBits.orR }
 
-    val check = new {
-      val vlen_check_ok =
-        Vec((0 until nSeq).map { r =>
-          Vec((0 until nSeq).map { c =>
-            if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
-            else Bool(true) }) })
+    val check =
+      (0 until nSeq).map { r =>
+        raw(r) || war(r) || waw(r) }
 
-      def wsram_matrix(fn: RegFn) =
-        (0 until nSeq) map { r =>
-          Vec((0 until maxWPortLatency) map { l =>
-            io.ticker.sram.write(l).valid && fn(e(r).reg).valid && fn(e(r).reg).is_vector() &&
-            io.ticker.sram.write(l).bits.addr === fn(e(r).reg).id }) }
-      val wsram_matrix_vs1 = wsram_matrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wsram_matrix_vs2 = wsram_matrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wsram_matrix_vs3 = wsram_matrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
-      val wsram_matrix_vd = wsram_matrix(reg_vd)
-
-      def wpred_matrix(fn: RegFn) =
-        (0 until nSeq) map { r =>
-          Vec((0 until maxPredWPortLatency) map { l =>
-            io.ticker.pred.write(l).valid && fn(e(r).reg).valid && fn(e(r).reg).is_pred() &&
-            io.ticker.pred.write(l).bits.addr === fn(e(r).reg).id }) }
-      val wpred_matrix_vp = wpred_matrix(reg_vp) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
-      val wpred_matrix_vs1 = wpred_matrix(reg_vs1) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
-      val wpred_matrix_vs2 = wpred_matrix(reg_vs2) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
-      val wpred_matrix_vs3 = wpred_matrix(reg_vs3) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
-      val wpred_matrix_vd = wpred_matrix(reg_vd)
-
-      def wport_lookup(row: Vec[Bool], level: UInt) =
-        Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
-
-      val raw =
-        (0 until nSeq).map { r =>
-          (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
-          wpred_matrix_vp(r).toBits.orR ||
-          wpred_matrix_vs1(r).toBits.orR || wsram_matrix_vs1(r).toBits.orR ||
-          wpred_matrix_vs2(r).toBits.orR || wsram_matrix_vs2(r).toBits.orR ||
-          wpred_matrix_vs3(r).toBits.orR || wsram_matrix_vs3(r).toBits.orR }
-      val war =
-        (0 until nSeq).map { r =>
-          (e(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
-      val waw =
-        (0 until nSeq).map { r =>
-          (e(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
-          wport_lookup(wpred_matrix_vd(r), e(r).wport.pred).toBits.orR ||
-          wport_lookup(wsram_matrix_vd(r), e(r).wport.sram).toBits.orR }
-
-      val result =
-        (0 until nSeq).map { r =>
-          raw(r) || war(r) || waw(r) }
-
-      def debug = {
-        io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (e(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
-        io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_matrix_vp(r).toBits.orR })
-        io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_matrix_vs1(r).toBits.orR })
-        io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_matrix_vs2(r).toBits.orR })
-        io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_matrix_vs3(r).toBits.orR })
-        io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_matrix_vs1(r).toBits.orR })
-        io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_matrix_vs2(r).toBits.orR })
-        io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_matrix_vs3(r).toBits.orR })
-        io.debug.dhazard_war := war
-        io.debug.dhazard_waw := waw
-        io.debug.dhazard := result
-      }
-    }
-
-    def update(n: UInt) = next_update(n) := Bool(true)
-
-    def header = {
-      for (i <- 0 until nSeq) {
-        next_update(i) := Bool(false)
-        for (j <- 0 until nSeq) {
-          next_raw(i)(j) := e(i).raw(j)
-          next_war(i)(j) := e(i).war(j)
-          next_waw(i)(j) := e(i).waw(j)
-        }
-      }
-    }
-
-    def logic = {
-      for (i <- 0 until nSeq) {
-        when (next_update(i)) {
-          e(i).raw := next_raw(i)
-          e(i).war := next_war(i)
-          e(i).waw := next_waw(i)
-        }
-      }
+    def debug = {
+      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (me(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
+      io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_mat_vp(r).toBits.orR })
+      io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_mat_vs1(r).toBits.orR })
+      io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_mat_vs2(r).toBits.orR })
+      io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_mat_vs3(r).toBits.orR })
+      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_mat_vs1(r).toBits.orR })
+      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_mat_vs2(r).toBits.orR })
+      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_mat_vs3(r).toBits.orR })
+      io.debug.dhazard_war := war
+      io.debug.dhazard_waw := waw
+      io.debug.dhazard := check
     }
   }
 
@@ -288,55 +155,20 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   // bank hazard checking helpers
 
   val bhazard = new {
-    val set = new {
-      def nports_list(fns: RegFn*) = {
-        val cnt = PopCount(fns.map{ fn => fn(io.op.bits.reg).valid && fn(io.op.bits.reg).is_vector() })
-        // make sure # of rports is larger than 1, because we need to read predicate
-        val gated = !io.op.bits.active.vipred
-        val min = Mux(gated, UInt(1), UInt(0))
-        Mux(cnt > UInt(0), cnt, min)
-      }
-      val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
-      val nrport_vs1 = nports_list(reg_vs1)
-      val nrport_vs2 = nports_list(reg_vs2)
-      val nrport_vd = nports_list(reg_vd)
+    // tail (shift right by one) because we are looking one cycle in the future
+    val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
+    val wport_sram_mask = Vec(io.ticker.sram.write.tail map { _.valid })
+    val wport_pred_mask = Vec(io.ticker.pred.write.tail map { _.valid })
 
-      def mark_rports(n: UInt, rports: UInt) = {
-        e(n).rports := rports
-        e(n).wport.sram := UInt(0)
-        e(n).wport.pred := UInt(0)
+    val check =
+      (0 until nSeq) map { r =>
+        me(r).rports.orR && rport_mask.reduce(_ | _) ||
+        me(r).wport.sram.orR && wport_sram_mask(me(r).wport.sram) ||
+        me(r).wport.pred.orR && wport_pred_mask(me(r).wport.pred)
       }
-      def mark_wport(n: UInt, wport: UInt) = {
-        when (io.op.bits.reg.vd.is_vector()) { e(n).wport.sram := wport }
-        when (io.op.bits.reg.vd.is_pred()) { e(n).wport.pred := wport }
-      }
-      def noports(n: UInt) = mark_rports(n, UInt(0))
-      def rport_vs1(n: UInt) = mark_rports(n, nrport_vs1)
-      def rport_vs2(n: UInt) = mark_rports(n, nrport_vs2)
-      def rport_vd(n: UInt) = mark_rports(n, nrport_vd)
-      def rports(n: UInt) = mark_rports(n, nrports)
-      def rwports(n: UInt, latency: Int) = {
-        mark_rports(n, nrports)
-        mark_wport(n, nrports + UInt(expLatency+latency))
-      }
-    }
 
-    val check = new {
-      // tail (shift right by one) because we are looking one cycle in the future
-      val rport_mask = Vec(io.ticker.sram.read.tail map { _.valid })
-      val wport_sram_mask = Vec(io.ticker.sram.write.tail map { _.valid })
-      val wport_pred_mask = Vec(io.ticker.pred.write.tail map { _.valid })
-
-      val result =
-        (0 until nSeq) map { r =>
-          e(r).rports.orR && rport_mask.reduce(_ | _) ||
-          e(r).wport.sram.orR && wport_sram_mask(e(r).wport.sram) ||
-          e(r).wport.pred.orR && wport_pred_mask(e(r).wport.pred)
-        }
-
-      def debug = {
-        io.debug.bhazard := result
-      }
+    def debug = {
+      io.debug.bhazard := check
     }
   }
 
@@ -344,89 +176,87 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   // structural hazard checking helpers
 
   val shazard = new {
-    val check = new {
-      def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
-        val mask =
-          (lops zipWithIndex) map { case (lop, i) =>
-            dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
-          } reduce(_|_)
-        mask >> UInt(1) // shift right by one because we are looking one cycle in the future
+    def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
+      val mask =
+        (lops zipWithIndex) map { case (lop, i) =>
+          dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
+        } reduce(_|_)
+      mask >> UInt(1) // shift right by one because we are looking one cycle in the future
+    }
+    def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
+      use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
+    val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
+    val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
+    val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
+    val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
+    val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
+    val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
+    val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
+    val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
+    val use_mask_wport_sram = (0 until nWSel) map { i =>
+      use_mask_lop(
+        io.ticker.sram.write,
+        (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)) }
+    val use_mask_wport_pred =
+      use_mask_lop(
+        io.ticker.pred.write,
+        (lop: ValidIO[PredRFWriteOp]) => lop.valid && lop.bits.selg)
+
+    val select = Vec.fill(nSeq){new SeqSelect}
+
+    val check =
+      (0 until nSeq) map { r =>
+        val op_idx = me(r).rports + UInt(expLatency, bRPorts+1)
+        val strip = stripfn(e(r).vlen, Bool(false), me(r).fn)
+        val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
+        val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << me(r).wport.sram, maxWPortLatency+nBanks-1)
+        val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << me(r).wport.pred, maxPredWPortLatency+nBanks-1)
+        def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
+        def chk_op_shazard(use_mask: Bits) = chk_shazard(use_mask, ask_op_mask)
+        def chk_rport(fn: RegFn, i: Int) =
+          fn(me(r).base).valid && (
+            fn(me(r).base).is_vector() && chk_op_shazard(use_mask_xbar(i)) ||
+            fn(me(r).base).is_scalar() && chk_op_shazard(use_mask_sreg_global(i)))
+        val chk_rport_0_1 = chk_rport(reg_vs1, 0) || chk_rport(reg_vs2, 1)
+        val chk_rport_0_1_2 = chk_rport_0_1 || chk_rport(reg_vs3, 2)
+        val chk_rport_2 = chk_rport(reg_vs1, 2)
+        val chk_rport_3_4 = chk_rport(reg_vs1, 3) || chk_rport(reg_vs2, 4)
+        val chk_rport_3_4_5 = chk_rport_3_4 || chk_rport(reg_vs3, 5)
+        val chk_rport_5 = chk_rport(reg_vs1, 5)
+        def chk_wport_sram(i: Int) =
+          me(r).base.vd.valid && chk_shazard(use_mask_wport_sram(i), ask_wport_sram_mask)
+        val chk_wport_sram_0 = chk_wport_sram(0)
+        val chk_wport_sram_1 = chk_wport_sram(1)
+        val chk_wport_pred =
+          me(r).base.vd.valid && chk_shazard(use_mask_wport_pred, ask_wport_pred_mask)
+        val shazard_vimu = chk_rport_0_1 || chk_wport_sram_0 || chk_op_shazard(use_mask_vimu)
+        val shazard_vfmu0 = chk_rport_0_1_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfmu(0))
+        val shazard_vfmu1 = chk_rport_3_4_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vfmu(1))
+        val shazard_vfcu = chk_rport_3_4 || chk_wport_sram_1 || chk_wport_pred || chk_op_shazard(use_mask_vfcu)
+        val shazard_vfvu = chk_rport_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfvu)
+        val shazard_vgu = chk_rport_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vgu)
+        val shazard_vqu = chk_rport_3_4 || chk_wport_sram_1 || chk_op_shazard(use_mask_vqu)
+        select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
+        val a = me(r).active
+        val out =
+          a.vimu && shazard_vimu ||
+          a.vfmu && shazard_vfmu0 && shazard_vfmu1 || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
+          a.vgu && shazard_vgu || a.vqu && shazard_vqu
+        out
       }
-      def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
-        use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
-      val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
-      val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
-      val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
-      val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
-      val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
-      val use_mask_vfvu = use_mask_lop_valid(io.ticker.vfvu)
-      val use_mask_vgu = use_mask_lop_valid(io.ticker.vgu)
-      val use_mask_vqu = use_mask_lop_valid(io.ticker.vqu)
-      val use_mask_wport_sram = (0 until nWSel) map { i =>
-        use_mask_lop(
-          io.ticker.sram.write,
-          (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)) }
-      val use_mask_wport_pred =
-        use_mask_lop(
-          io.ticker.pred.write,
-          (lop: ValidIO[PredRFWriteOp]) => lop.valid && lop.bits.selg)
 
-      val select = Vec.fill(nSeq){new SeqSelect}
-
-      val result =
-        (0 until nSeq) map { r =>
-          val op_idx = e(r).rports + UInt(expLatency, bRPorts+1)
-          val strip = stripfn(e(r).vlen, Bool(false), e(r).fn)
-          val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
-          val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << e(r).wport.sram, maxWPortLatency+nBanks-1)
-          val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << e(r).wport.pred, maxPredWPortLatency+nBanks-1)
-          def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
-          def chk_op_shazard(use_mask: Bits) = chk_shazard(use_mask, ask_op_mask)
-          def chk_rport(fn: RegFn, i: Int) =
-            fn(e(r).reg).valid && (
-              fn(e(r).reg).is_vector() && chk_op_shazard(use_mask_xbar(i)) ||
-              fn(e(r).reg).is_scalar() && chk_op_shazard(use_mask_sreg_global(i)))
-          val chk_rport_0_1 = chk_rport(reg_vs1, 0) || chk_rport(reg_vs2, 1)
-          val chk_rport_0_1_2 = chk_rport_0_1 || chk_rport(reg_vs3, 2)
-          val chk_rport_2 = chk_rport(reg_vs1, 2)
-          val chk_rport_3_4 = chk_rport(reg_vs1, 3) || chk_rport(reg_vs2, 4)
-          val chk_rport_3_4_5 = chk_rport_3_4 || chk_rport(reg_vs3, 5)
-          val chk_rport_5 = chk_rport(reg_vs1, 5)
-          def chk_wport_sram(i: Int) =
-            e(r).reg.vd.valid && chk_shazard(use_mask_wport_sram(i), ask_wport_sram_mask)
-          val chk_wport_sram_0 = chk_wport_sram(0)
-          val chk_wport_sram_1 = chk_wport_sram(1)
-          val chk_wport_pred =
-            e(r).reg.vd.valid && chk_shazard(use_mask_wport_pred, ask_wport_pred_mask)
-          val shazard_vimu = chk_rport_0_1 || chk_wport_sram_0 || chk_op_shazard(use_mask_vimu)
-          val shazard_vfmu0 = chk_rport_0_1_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfmu(0))
-          val shazard_vfmu1 = chk_rport_3_4_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vfmu(1))
-          val shazard_vfcu = chk_rport_3_4 || chk_wport_sram_1 || chk_wport_pred || chk_op_shazard(use_mask_vfcu)
-          val shazard_vfvu = chk_rport_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfvu)
-          val shazard_vgu = chk_rport_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vgu)
-          val shazard_vqu = chk_rport_3_4 || chk_wport_sram_1 || chk_op_shazard(use_mask_vqu)
-          select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
-          val a = e(r).active
-          val out =
-            a.vimu && shazard_vimu ||
-            a.vfmu && shazard_vfmu0 && shazard_vfmu1 || a.vfcu && shazard_vfcu || a.vfvu && shazard_vfvu ||
-            a.vgu && shazard_vgu || a.vqu && shazard_vqu
-          out
-        }
-
-      def debug = {
-        io.debug.shazard := result
-        io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
-        io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
-        io.debug.use_mask_vimu := use_mask_vimu
-        io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
-        io.debug.use_mask_vfcu := use_mask_vfcu
-        io.debug.use_mask_vfvu := use_mask_vfvu
-        io.debug.use_mask_vgu := use_mask_vgu
-        io.debug.use_mask_vqu := use_mask_vqu
-        io.debug.use_mask_wport_sram := use_mask_wport_sram
-        io.debug.use_mask_wport_pred := use_mask_wport_pred
-      }
+    def debug = {
+      io.debug.shazard := check
+      io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
+      io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
+      io.debug.use_mask_vimu := use_mask_vimu
+      io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
+      io.debug.use_mask_vfcu := use_mask_vfcu
+      io.debug.use_mask_vfvu := use_mask_vfvu
+      io.debug.use_mask_vgu := use_mask_vgu
+      io.debug.use_mask_vqu := use_mask_vqu
+      io.debug.use_mask_wport_sram := use_mask_wport_sram
+      io.debug.use_mask_wport_pred := use_mask_wport_pred
     }
   }
 
@@ -434,318 +264,49 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   // issue window helpers
 
   val iwindow = new {
-    val update_head = Bool()
-    val update_tail = Bool()
-    val next_head = UInt(width = log2Up(nSeq))
-    val next_tail = UInt(width = log2Up(nSeq))
+    val next_update = Vec.fill(nSeq){Bool()}
+    val next_v = Vec.fill(nSeq){Bool()}
 
     val set = new {
-      def head(n: UInt) = { update_head := Bool(true); next_head := n }
-      def tail(n: UInt) = { update_tail := Bool(true); next_tail := n }
-
-      def valid(n: UInt) = { v(n) := Bool(true) }
-
-      def entry(n: UInt) = {
-        valid(n)
-        e(n).vlen := io.op.bits.vlen
-        e(n).eidx := UInt(0)
-        e(n).reg.vp.valid := Bool(false)
-        e(n).reg.vs1.valid := Bool(false)
-        e(n).reg.vs2.valid := Bool(false)
-        e(n).reg.vs3.valid := Bool(false)
-        e(n).reg.vd.valid := Bool(false)
-        e(n).base.vp.valid := Bool(false)
-        e(n).base.vs1.valid := Bool(false)
-        e(n).base.vs2.valid := Bool(false)
-        e(n).base.vs3.valid := Bool(false)
-        e(n).base.vd.valid := Bool(false)
-        e(n).age := UInt(0)
-        dhazard.update(n)
-        for (i <- 0 until nSeq) {
-          dhazard.clear.raw(n, UInt(i))
-          dhazard.clear.war(n, UInt(i))
-          dhazard.clear.waw(n, UInt(i))
-        }
-      }
-
-      def active(n: UInt, afn: SeqType=>Bool, fn: IssueOp=>Bits) = {
-        afn(e(n).active) := Bool(true)
-        e(n).fn.union := fn(io.op.bits)
-      }
-
-      val fn_identity = (d: IssueOp) => d.fn.union
-      val fn_vqu = (d: IssueOp) => {
-        assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
-        Cat(d.active.vidiv || d.fn.vfdu().op_is(FD_DIV), Bool(true))
-      }
-
-      def viu(n: UInt) = active(n, (a: SeqType) => a.viu, fn_identity)
-      def vipu(n: UInt) = active(n, (a: SeqType) => a.vipu, fn_identity)
-      def vimu(n: UInt) = active(n, (a: SeqType) => a.vimu, fn_identity)
-      def vidu(n: UInt) = active(n, (a: SeqType) => a.vidu, fn_identity)
-      def vfmu(n: UInt) = active(n, (a: SeqType) => a.vfmu, fn_identity)
-      def vfdu(n: UInt) = active(n, (a: SeqType) => a.vfdu, fn_identity)
-      def vfcu(n: UInt) = active(n, (a: SeqType) => a.vfcu, fn_identity)
-      def vfvu(n: UInt) = active(n, (a: SeqType) => a.vfvu, fn_identity)
-      def vpu(n: UInt) = active(n, (a: SeqType) => a.vpu, fn_identity)
-      def vgu(n: UInt) = active(n, (a: SeqType) => a.vgu, fn_identity)
-      def vcu(n: UInt) = active(n, (a: SeqType) => a.vcu, fn_identity)
-      def vlu(n: UInt) = active(n, (a: SeqType) => a.vlu, fn_identity)
-      def vsu(n: UInt) = active(n, (a: SeqType) => a.vsu, fn_identity)
-      def vqu(n: UInt) = active(n, (a: SeqType) => a.vqu, fn_vqu)
-
-      def vp(n: UInt) = {
-        when (io.op.bits.reg.vp.valid) {
-          e(n).reg.vp := io.op.bits.reg.vp
-          e(n).base.vp := io.op.bits.reg.vp
-        }
-        dhazard.set.raw_vp(n)
-      }
-      def vs(n: UInt, e_vsfn: RegFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
-        when (op_vsfn(io.op.bits.reg).valid) {
-          e_vsfn(e(n).reg) := op_vsfn(io.op.bits.reg)
-          e_vsfn(e(n).base) := op_vsfn(io.op.bits.reg)
-          when (op_vsfn(io.op.bits.reg).is_scalar()) {
-            e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
-          }
-        }
-      }
-      def vs1(n: UInt) = {
-        vs(n, reg_vs1, reg_vs1, sreg_ss1, sreg_ss1)
-        dhazard.set.raw_vs1(n)
-      }
-      def vs2(n: UInt) = {
-        vs(n, reg_vs2, reg_vs2, sreg_ss2, sreg_ss2)
-        dhazard.set.raw_vs2(n)
-      }
-      def vs3(n: UInt) = {
-        vs(n, reg_vs3, reg_vs3, sreg_ss3, sreg_ss3)
-        dhazard.set.raw_vs3(n)
-      }
-      def vs2_as_vs1(n: UInt) = {
-        vs(n, reg_vs1, reg_vs2, sreg_ss1, sreg_ss2)
-        dhazard.set.raw_vs2(n)
-      }
-      def vd_as_vs1(n: UInt) = {
-        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.is_scalar(), "iwindow.set.vd_as_vs1: vd should always be vector")
-        when (io.op.bits.reg.vd.valid) {
-          e(n).reg.vs1 := io.op.bits.reg.vd
-          e(n).base.vs1 := io.op.bits.reg.vd
-        }
-        dhazard.set.raw_vd(n)
-      }
-      def vd(n: UInt) = {
-        assert(!io.op.bits.reg.vd.valid || !io.op.bits.reg.vd.is_scalar(), "iwindow.set.vd: vd should always be vector")
-        when (io.op.bits.reg.vd.valid) {
-          e(n).reg.vd := io.op.bits.reg.vd
-          e(n).base.vd := io.op.bits.reg.vd
-        }
-        dhazard.set.war_vd(n)
-        dhazard.set.waw_vd(n)
+      def valid(n: UInt) = {
+        next_update(n) := Bool(true)
+        next_v(n) := Bool(true)
       }
     }
 
     val clear = new {
-      def valid(n: UInt) = { v(n) := Bool(false) }
-      def active(n: UInt) = { e(n).active := e(0).active.clone().fromBits(Bits(0)) }
-    }
-
-    def retire(n: UInt) = {
-      clear.valid(n)
-      for (i <- 0 until nSeq) {
-        dhazard.update(UInt(i))
-        dhazard.clear.raw(UInt(i), n)
-        dhazard.clear.war(UInt(i), n)
-        dhazard.clear.waw(UInt(i), n)
+      def valid(n: UInt) = {
+        next_update(n) := Bool(true)
+        next_v(n) := Bool(false)
       }
-    }
-
-    def ready = {
-      val count = Cat(full && head === tail, tail - head)
-      val empty = UInt(nSeq) - count
-      val a = io.op.bits.active
-
-      (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
-      (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
-      (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
-      (empty >= UInt(4)) && (a.vamo)
     }
 
     def header = {
-      update_head := Bool(false)
-      update_tail := Bool(false)
-      next_head := head
-      next_tail := tail
+      (0 until nSeq) map { r =>
+        next_update(r) := Bool(false)
+        next_v(r) := v(r)
+      }
     }
 
     def logic = {
-      io.op.ready := ready
-
-      when (update_head) { head := next_head }
-      when (update_tail) { tail := next_tail }
-      when (update_head && !update_tail) {
-        full := Bool(false)
-      }
-      when (update_tail) {
-        full := next_head === next_tail
-      }
-
-      when (v(head) && e(head).vlen === UInt(0)) {
-        retire(head)
-        set.head(head + UInt(1))
-      }
-
-      retired = true
-    }
-
-    def footer = {
-      when (reset) {
-        for (i <- 0 until nSeq) {
-          clear.valid(UInt(i))
-          clear.active(UInt(i))
+      (0 until nSeq) map { r =>
+        when (next_update(r)) {
+          v(r) := next_v(r)
         }
+        when (io.op.valid && io.master.update.valid(r)) {
+          set.valid(UInt(r))
+          e(r).reg := io.master.update.reg(r)
+          e(r).vlen := io.op.bits.vlen
+          e(r).eidx := UInt(0)
+          e(r).age := UInt(0)
+        }
+        io.master.clear(r) := !v(r) || !next_v(r)
       }
     }
 
     def debug = {
-      io.debug.head := head
-      io.debug.tail := tail
-      io.debug.full := full
       io.debug.valid := v
       io.debug.e := e
-    }
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // issue helpers
-
-  val issue = new {
-    val t0 = tail
-    val t1 = tail + UInt(1)
-    val t2 = tail + UInt(2)
-    val t3 = tail + UInt(3)
-    val t4 = tail + UInt(4)
-
-    def start(n: UInt) = iwindow.set.entry(n)
-    def stop(n: UInt) = iwindow.set.tail(n)
-
-    def vint = {
-      start(t0); { import iwindow.set._; viu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesALU); }
-      stop(t1); }
-
-    def vipred = {
-      start(t0); { import iwindow.set._; vipu(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesPLU); }
-      stop(t1); }
-
-    def vimul = {
-      start(t0); { import iwindow.set._; vimu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesIMul); }
-      stop(t1); }
-
-    def vidiv = {
-      start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); vs2(t0); }
-                 { import bhazard.set._; rports(t0); }
-                 { import dhazard.set._; war_vd(t0); waw_vd(t0); }
-      start(t1); { import iwindow.set._; vidu(t1); vd(t1); }
-                 { import bhazard.set._; noports(t1); }
-      stop(t2); }
-
-    def vfma = {
-      start(t0); { import iwindow.set._; vfmu(t0); vp(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesFMA); }
-      stop(t1); }
-
-    def vfdiv = {
-      start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); vs2(t0); }
-                 { import bhazard.set._; rports(t0); }
-                 { import dhazard.set._; war_vd(t0); waw_vd(t0); }
-      start(t1); { import iwindow.set._; vfdu(t1); vd(t1); }
-                 { import bhazard.set._; noports(t1); }
-      stop(t2); }
-
-    def vfcmp = {
-      start(t0); { import iwindow.set._; vfcu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesFCmp); }
-      stop(t1); }
-
-    def vfconv = {
-      start(t0); { import iwindow.set._; vfvu(t0); vp(t0); vs1(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesFConv); }
-      stop(t1); }
-
-    def vamo = {
-      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs1(t0); }
-                 { import bhazard.set._; rport_vs1(t0); }
-      start(t1); { import iwindow.set._; vcu(t1); }
-                 { import bhazard.set._; noports(t1); }
-                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vs2_as_vs1(t2); }
-                 { import bhazard.set._; rport_vs2(t2); }
-                 { import dhazard.set._; raw(t2, t1); }
-      start(t3); { import iwindow.set._; vlu(t3); vd(t3); }
-                 { import bhazard.set._; noports(t3); }
-      stop(t4); }
-
-    def vldx = {
-      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs2_as_vs1(t0); }
-                 { import bhazard.set._; rport_vs2(t0); }
-      start(t1); { import iwindow.set._; vcu(t1); }
-                 { import bhazard.set._; noports(t1); }
-                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
-      start(t2); { import iwindow.set._; vlu(t2); vd(t2); }
-                 { import bhazard.set._; noports(t2); }
-      stop(t3); }
-
-    def vstx = {
-      start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs2_as_vs1(t0); }
-                 { import bhazard.set._; rport_vs2(t0); }
-      start(t1); { import iwindow.set._; vcu(t1); }
-                 { import bhazard.set._; noports(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vd_as_vs1(t2); }
-                 { import bhazard.set._; rport_vd(t2); }
-                 { import dhazard.set._; raw(t2, t1); }
-      stop(t3); }
-
-    def vld = {
-      start(t0); { import iwindow.set._; vpu(t0); vp(t0); }
-                 { import bhazard.set._; noports(t0); }
-      start(t1); { import iwindow.set._; vcu(t1); }
-                 { import bhazard.set._; noports(t1); }
-                 { import dhazard.set._; war_vd(t1); waw_vd(t1); }
-      start(t2); { import iwindow.set._; vlu(t2); vd(t2); }
-                 { import bhazard.set._; noports(t2); }
-      stop(t3); }
-
-    def vst = {
-      start(t0); { import iwindow.set._; vpu(t0); vp(t0); }
-                 { import bhazard.set._; noports(t0); }
-      start(t1); { import iwindow.set._; vcu(t1); }
-                 { import bhazard.set._; noports(t1); }
-      start(t2); { import iwindow.set._; vsu(t2); vp(t2); vd_as_vs1(t2); }
-                 { import bhazard.set._; rport_vd(t2); }
-                 { import dhazard.set._; raw(t2, t1); }
-      stop(t3); }
-
-    def logic = {
-      require(!retired) // must issue before retiring for dhazard bookkeeping
-
-      when (io.op.fire()) {
-        when (io.op.bits.active.vint) { vint }
-        when (io.op.bits.active.vipred) { vipred }
-        when (io.op.bits.active.vimul) { vimul }
-        when (io.op.bits.active.vidiv) { vidiv }
-        when (io.op.bits.active.vfma) { vfma }
-        when (io.op.bits.active.vfdiv) { vfdiv }
-        when (io.op.bits.active.vfcmp) { vfcmp }
-        when (io.op.bits.active.vfconv) { vfconv }
-        when (io.op.bits.active.vamo) { vamo }
-        when (io.op.bits.active.vldx) { vldx }
-        when (io.op.bits.active.vstx) { vstx }
-        when (io.op.bits.active.vld) { vld }
-        when (io.op.bits.active.vst) { vst }
-      }
     }
   }
 
@@ -756,7 +317,7 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     def find_first(fn: Int=>Bool) = {
       val internal = Vec.fill(2*nSeq){Bool()}
       for (i <- 0 until nSeq) {
-        internal(i+nSeq) := v(i) && fn(i)
+        internal(i+nSeq) := mv(i) && v(i) && fn(i)
         internal(i) := internal(i+nSeq) && (UInt(i) >= head)
       }
       val priority_oh = PriorityEncoderOH(internal)
@@ -769,14 +330,31 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 
     def valfn(sched: Vec[Bool]) = sched.reduce(_||_)
 
+    def mreadfn[T <: Data](sched: Vec[Bool], rfn: MasterSeqEntry=>T) =
+      rfn(me(0)).clone.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
+
     def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
       rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
 
     def selectfn(sched: Vec[Bool]) =
-      new SeqSelect().fromBits(Mux1H(sched, shazard.check.select.map(_.toBits)))
+      new SeqSelect().fromBits(Mux1H(sched, shazard.select.map(_.toBits)))
+
+    def regfn(sched: Vec[Bool]) = {
+      val out = new PhysicalRegisters
+      List((preg_vp, reg_vp, pregid_vp),
+           (preg_vs1, reg_vs1, pregid_vs1),
+           (preg_vs2, reg_vs2, pregid_vs2),
+           (preg_vs3, reg_vs3, pregid_vs3),
+           (preg_vd, reg_vd, pregid_vd)) map {
+        case (pfn, rfn, pidfn) =>
+          pfn(out) := mreadfn(sched, (me: MasterSeqEntry) => rfn(me.base))
+          pfn(out).id := readfn(sched, (e: SeqEntry) => pidfn(e.reg).id)
+      }
+      out
+    }
 
     def nohazards(i: Int) =
-      !dhazard.check.result(i) && !bhazard.check.result(i) && !shazard.check.result(i)
+      !dhazard.check(i) && !bhazard.check(i) && !shazard.check(i)
 
     val exp = new {
       val vgu_consider = Vec.fill(nSeq){Bool()}
@@ -784,11 +362,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
       val vqu_consider = Vec.fill(nSeq){Bool()}
 
       val consider = (i: Int) => nohazards(i) && (
-        e(i).active.viu || e(i).active.vimu ||
-        e(i).active.vfmu || e(i).active.vfcu || e(i).active.vfvu ||
-        e(i).active.vgu && vgu_consider(i) ||
-        e(i).active.vsu && vsu_consider(i) ||
-        e(i).active.vqu && vqu_consider(i))
+        me(i).active.viu || me(i).active.vimu ||
+        me(i).active.vfmu || me(i).active.vfcu || me(i).active.vfvu ||
+        me(i).active.vgu && vgu_consider(i) ||
+        me(i).active.vsu && vsu_consider(i) ||
+        me(i).active.vqu && vqu_consider(i))
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
@@ -797,15 +375,15 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqOp
-        out.fn := readfn(sched, (e: SeqEntry) => e.fn)
-        out.reg := readfn(sched, (e: SeqEntry) => e.reg)
-        out.sreg := readfn(sched, (e: SeqEntry) => e.sreg)
-        out.active := readfn(sched, (e: SeqEntry) => e.active)
+        out.fn := mreadfn(sched, (me: MasterSeqEntry) => me.fn)
+        out.reg := regfn(sched)
+        out.sreg := mreadfn(sched, (me: MasterSeqEntry) => me.sreg)
+        out.active := mreadfn(sched, (me: MasterSeqEntry) => me.active)
         out.select := selectfn(sched)
         out.eidx := readfn(sched, (e: SeqEntry) => e.eidx)
-        out.rports := readfn(sched, (e: SeqEntry) => e.rports)
-        out.wport.sram := readfn(sched, (e: SeqEntry) => e.wport.sram)
-        out.wport.pred := readfn(sched, (e: SeqEntry) => e.wport.pred)
+        out.rports := mreadfn(sched, (me: MasterSeqEntry) => me.rports)
+        out.wport.sram := mreadfn(sched, (me: MasterSeqEntry) => me.wport.sram)
+        out.wport.pred := mreadfn(sched, (me: MasterSeqEntry) => me.wport.pred)
         out.strip := stripfn(vlen, Bool(false), out.fn)
         out
       }
@@ -829,7 +407,7 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vipu = new {
-      val consider = (i: Int) => e(i).active.vipu && nohazards(i)
+      val consider = (i: Int) => me(i).active.vipu && nohazards(i)
       val first_sched = find_first((i: Int) => consider(i) && e(i).age === UInt(0))
       val second_sched = find_first((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
@@ -838,8 +416,8 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqVIPUOp
-        out.fn := readfn(sched, (e: SeqEntry) => e.fn)
-        out.reg := readfn(sched, (e: SeqEntry) => e.reg)
+        out.fn := mreadfn(sched, (me: MasterSeqEntry) => me.fn)
+        out.reg := regfn(sched)
         out.strip := stripfn(vlen, Bool(false), out.fn)
         out
       }
@@ -853,11 +431,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vidu = new {
-      val first = find_first((i: Int) => e(i).active.vidu)
+      val first = find_first((i: Int) => me(i).active.vidu)
       val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
-      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(sched, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
 
       val ready = io.dila.available
@@ -870,11 +448,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vfdu = new {
-      val first = find_first((i: Int) => e(i).active.vfdu)
+      val first = find_first((i: Int) => me(i).active.vfdu)
       val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
-      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(sched, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
 
       val ready = io.dfla.available
@@ -887,23 +465,27 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vpu = new {
-      val first = find_first((i: Int) => e(i).active.vpu || e(i).active.vgu)
+      val first = find_first((i: Int) => me(i).active.vpu || me(i).active.vgu)
       val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
-      val fn = readfn(sched, (e: SeqEntry) => e.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
-      val sel = readfn(sched, (e: SeqEntry) => e.active.vgu)
+      val fn = mreadfn(sched, (me: MasterSeqEntry) => me.fn)
+      val op = {
+        val out = new SeqVPUOp
+        out.reg := regfn(sched)
+        out.strip := stripfn(vlen, Bool(false), fn)
+        out
+      }
 
+      val sel = mreadfn(sched, (me: MasterSeqEntry) => me.active.vgu)
       val ready = io.pla.available && (!sel || exp.fire_vgu)
       def fire(n: Int) = sched(n) && ready
 
       def logic = {
         io.seq.vpu.valid := valid && ready
-        io.seq.vpu.bits.reg := readfn(sched, (e: SeqEntry) => e.reg)
-        io.seq.vpu.bits.strip := strip
+        io.seq.vpu.bits := op
         io.pla.reserve := valid && ready
-        io.pla.mask := strip_to_bmask(strip)
+        io.pla.mask := strip_to_bmask(op.strip)
       }
 
       def debug = {
@@ -912,9 +494,9 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vgu = new {
-      val first = find_first((i: Int) => e(i).active.vgu)
+      val first = find_first((i: Int) => me(i).active.vgu)
       val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
       val cnt = strip_to_bcnt(strip)
 
@@ -931,11 +513,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vcu = new {
-      val first = find_first((i: Int) => e(i).active.vcu)
+      val first = find_first((i: Int) => me(i).active.vcu)
       val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
-      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(sched, (me: MasterSeqEntry) => me.fn)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
       val strip = stripfn(vlen, Bool(false), fn)
 
@@ -956,11 +538,11 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vlu = new {
-      val first = find_first((i: Int) => e(i).active.vlu)
+      val first = find_first((i: Int) => me(i).active.vlu)
       val sched = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val valid = valfn(sched)
       val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
-      val fn = readfn(sched, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(sched, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
 
       val ready = io.lla.available
@@ -973,9 +555,9 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vsu = new {
-      val first = find_first((i: Int) => e(i).active.vsu)
+      val first = find_first((i: Int) => me(i).active.vsu)
       val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
 
       val ready = io.sla.available
@@ -988,16 +570,16 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
 
     val vqu = new {
-      val first = find_first((i: Int) => e(i).active.vqu)
+      val first = find_first((i: Int) => me(i).active.vqu)
       val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = readfn(first, (e: SeqEntry) => e.fn)
+      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
       val cnt = strip_to_bcnt(strip)
 
       def ready(n: Int) =
         io.dpla.available &&
-        (!e(n).fn.vqu().latch(0) || io.dqla(0).available) &&
-        (!e(n).fn.vqu().latch(1) || io.dqla(1).available)
+        (!me(n).fn.vqu().latch(0) || io.dqla(0).available) &&
+        (!me(n).fn.vqu().latch(1) || io.dqla(1).available)
       (0 until nSeq) map { i => exp.vqu_consider(i) := first(i) && ready(i) }
 
       def logic = {
@@ -1022,38 +604,36 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
       vsu.logic
       vqu.logic
 
-      io.pending := v.reduce(_ || _)
-
       def fire(n: Int) =
         exp.fire(n) || vipu.fire(n) ||
         vidu.fire(n) || vfdu.fire(n) ||
         vpu.fire(n) || vcu.fire(n) || vlu.fire(n)
 
-      def update_reg(i: Int, fn: RegFn) = {
-        when (fn(e(i).reg).valid) {
-          when (fn(e(i).reg).is_vector()) {
-            fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.vstride
+      def update_reg(i: Int, fn: RegFn, pfn: PRegIdFn) = {
+        when (fn(me(i).base).valid) {
+          when (fn(me(i).base).is_vector()) {
+            pfn(e(i).reg).id := pfn(e(i).reg).id + io.cfg.vstride
           }
-          when (fn(e(i).reg).is_pred()) {
-            fn(e(i).reg).id := fn(e(i).reg).id + io.cfg.pstride
+          when (fn(me(i).base).is_pred()) {
+            pfn(e(i).reg).id := pfn(e(i).reg).id + io.cfg.pstride
           }
         }
       }
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(e(i).vlen, Bool(false), e(i).fn)
+        val strip = stripfn(e(i).vlen, Bool(false), me(i).fn)
         assert (io.cfg.lstride === UInt(3), "need to fix sequencing logic otherwise")
-        when (v(i)) {
+        when (mv(i) && v(i)) {
           when (fire(i)) {
             e(i).vlen := e(i).vlen - strip
             e(i).eidx := e(i).eidx + (UInt(1) << io.cfg.lstride) * UInt(nLanes)
-            update_reg(i, reg_vp)
-            update_reg(i, reg_vs1)
-            update_reg(i, reg_vs2)
-            update_reg(i, reg_vs3)
-            update_reg(i, reg_vd)
+            update_reg(i, reg_vp, pregid_vp)
+            update_reg(i, reg_vs1, pregid_vs1)
+            update_reg(i, reg_vs2, pregid_vs2)
+            update_reg(i, reg_vs3, pregid_vs3)
+            update_reg(i, reg_vd, pregid_vd)
             when (e(i).vlen === strip) {
-              iwindow.clear.active(UInt(i))
+              iwindow.clear.valid(UInt(i))
             }
           }
           when (e(i).age.orR) {
@@ -1073,18 +653,13 @@ class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   }
 
   iwindow.header
-  dhazard.header
 
-  issue.logic
   iwindow.logic
-  dhazard.logic
   scheduling.logic
 
-  iwindow.footer
-
   iwindow.debug
-  dhazard.check.debug
-  bhazard.check.debug
-  shazard.check.debug
+  dhazard.debug
+  bhazard.debug
+  shazard.debug
   scheduling.debug
 }

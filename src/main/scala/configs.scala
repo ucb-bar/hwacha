@@ -22,6 +22,8 @@ class DefaultHwachaConfig extends Config (
     case HwachaNScalarRegs => 64
     case HwachaNVectorRegs => 256
     case HwachaNPredRegs => 16
+    case HwachaRegBits => math.max(log2Up(site(HwachaNVectorRegs)), log2Up(site(HwachaNScalarRegs)))
+    case HwachaPredRegBits => log2Up(site(HwachaNPredRegs))
     case HwachaRegLen => 64
     case HwachaMaxVLen =>
       site(HwachaNBanks) * site(HwachaNSRAMRFEntries) *
@@ -46,6 +48,8 @@ class DefaultHwachaConfig extends Config (
     case HwachaNOperandLatches => 6
     case HwachaNPredLatches => 4
     case HwachaWriteSelects => 2
+    case HwachaRFAddrBits => math.max(log2Up(site(HwachaNSRAMRFEntries)), log2Up(site(HwachaNFFRFEntries)))
+    case HwachaPRFAddrBits => log2Up(site(HwachaNPredRFEntries))
 
     case HwachaStagesALU => 1
     case HwachaStagesPLU => 0

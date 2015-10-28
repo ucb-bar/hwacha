@@ -12,6 +12,8 @@ case object HwachaNAddressRegs extends Field[Int]
 case object HwachaNScalarRegs extends Field[Int]
 case object HwachaNVectorRegs extends Field[Int]
 case object HwachaNPredRegs extends Field[Int]
+case object HwachaRegBits extends Field[Int]
+case object HwachaPredRegBits extends Field[Int]
 case object HwachaMaxVLen extends Field[Int]
 case object HwachaBankWidth extends Field[Int]
 case object HwachaRegLen extends Field[Int]
@@ -92,6 +94,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val rocc = Module(new RoCCUnit)
   val scalar = Module(new ScalarUnit)
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
+  val mseq = Module(new MasterSequencer)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -102,8 +105,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := vus.map(_.io.pending.mem).reduce(_||_) || scalar.io.pending_memop
-  rocc.io.pending_seq := vus.map(_.io.pending.seq).reduce(_||_)
+  rocc.io.pending_memop := vus.map(_.io.pending).reduce(_||_) || scalar.io.pending_memop
+  rocc.io.pending_seq := mseq.io.pending
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
   scalar.io.cfg <> rocc.io.cfg
@@ -148,7 +151,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.pptw.req.valid := Bool(false)
 
   scalar.io.dmem <> vus.head.io.issue.scalar
-  scalar.io.pending_seq := vus.map(_.io.pending.seq).reduce(_||_)
+  scalar.io.pending_seq := mseq.io.pending
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
@@ -156,7 +159,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val mask_vmus_ready = (0 until nLanes) map { i => !enq_vmus(i) || vus(i).io.issue.vmu.ready }
 
   def fire_vxu(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(scalar.io.vxu.valid) ++ mask_vxus_ready
+    val rvs = Seq(scalar.io.vxu.valid, mseq.io.op.ready) ++ mask_vxus_ready
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -167,6 +170,12 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   scalar.io.vxu.ready := fire_vxu(scalar.io.vxu.valid)
   scalar.io.vmu.ready := fire_vmu(scalar.io.vmu.valid)
+
+  mseq.io.op.valid := fire_vxu(mseq.io.op.ready)
+  mseq.io.op.bits <> scalar.io.vxu.bits
+  (mseq.io.master.clear zipWithIndex) map { case (c, r) =>
+    c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
+  }
 
   (vus zipWithIndex) map { case (vu, i) =>
     val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
@@ -179,6 +188,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vu.io.issue.vmu.valid := fire_vmu(mask_vmus_ready(i), enq_vmus(i))
     vu.io.issue.vmu.bits.vlen := scalar.io.vmu.bits.lane(i).vlen
     vu.io.issue.vmu.bits <> scalar.io.vmu.bits
+    vu.io.mseq.state <> mseq.io.master.state
+    vu.io.mseq.update <> mseq.io.master.update
 
     dtlb.io <> vu.io.dtlb
     dtlb.io.ptw.req.ready := Bool(true)

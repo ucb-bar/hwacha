@@ -184,7 +184,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     def mark_sram_reads = {
-      (Seq(reg_vs1, reg_vs2, reg_vs3) zipWithIndex) foreach {
+      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) foreach {
         case (fn, idx) => {
           val read_idx = rport_idx(idx)
           when (rport_valid(idx)) {
@@ -306,7 +306,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       }
     }
 
-    def mark_xbar(i: Int, p: Int, fn: RegFn) = {
+    def mark_xbar(i: Int, p: Int, fn: PRegFn) = {
       val rinfo = fn(seq_exp.reg)
       assert(!rinfo.valid || !rinfo.is_pred(), "xbar op shouldn't be a pred operand")
       when (rinfo.valid && rinfo.is_vector()) {
@@ -323,7 +323,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       tick_pxbar(i).s(op_idx).bits.strip := seq_exp.strip
     }
 
-    def mark_sreg(name: String, t: IndexedSeq[Ticker[SRegLaneOp]], i: Int, fn: RegFn, sfn: SRegFn) = {
+    def mark_sreg(name: String, t: IndexedSeq[Ticker[SRegLaneOp]], i: Int, fn: PRegFn, sfn: SRegFn) = {
       val rinfo = fn(seq_exp.reg)
       assert(!rinfo.valid || !rinfo.is_pred(), "sreg op shouldn't be a pred operand")
       when (rinfo.valid && rinfo.is_scalar()) {
@@ -333,59 +333,59 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         t(i).s(op_idx).bits.strip := seq_exp.strip
       }
     }
-    def mark_sreg_global(i: Int, fn: RegFn, sfn: SRegFn) =
+    def mark_sreg_global(i: Int, fn: PRegFn, sfn: SRegFn) =
       mark_sreg("global", tick_sreg_global, i, fn, sfn)
-    def mark_sreg_local(i: Int, fn: RegFn, sfn: SRegFn) =
+    def mark_sreg_local(i: Int, fn: PRegFn, sfn: SRegFn) =
       mark_sreg("local", tick_sreg_local, i, fn, sfn)
 
     def mark_xbars_pxbars_sregs = {
       (0 until nVFMU) foreach { i =>
         when (seq_exp.active_vfmu(i)) {
-          mark_xbar(3*i+0, 2*i, reg_vs1)
-          mark_xbar(3*i+1, 2*i, reg_vs2)
-          mark_xbar(3*i+2, 2*i, reg_vs3)
+          mark_xbar(3*i+0, 2*i, preg_vs1)
+          mark_xbar(3*i+1, 2*i, preg_vs2)
+          mark_xbar(3*i+2, 2*i, preg_vs3)
           mark_pxbar(2*i)
-          mark_sreg_global(3*i+0, reg_vs1, sreg_ss1)
-          mark_sreg_global(3*i+1, reg_vs2, sreg_ss2)
-          mark_sreg_global(3*i+2, reg_vs3, sreg_ss3)
+          mark_sreg_global(3*i+0, preg_vs1, sreg_ss1)
+          mark_sreg_global(3*i+1, preg_vs2, sreg_ss2)
+          mark_sreg_global(3*i+2, preg_vs3, sreg_ss3)
         }
       }
 
       when (seq_exp.active.vimu) {
-        mark_xbar(0, 0, reg_vs1)
-        mark_xbar(1, 0, reg_vs2)
+        mark_xbar(0, 0, preg_vs1)
+        mark_xbar(1, 0, preg_vs2)
         mark_pxbar(0)
-        mark_sreg_global(0, reg_vs1, sreg_ss1)
-        mark_sreg_global(1, reg_vs2, sreg_ss2)
+        mark_sreg_global(0, preg_vs1, sreg_ss1)
+        mark_sreg_global(1, preg_vs2, sreg_ss2)
       }
 
       when (seq_exp.active.vfvu) {
-        mark_xbar(2, 1, reg_vs1)
+        mark_xbar(2, 1, preg_vs1)
         mark_pxbar(1)
-        mark_sreg_global(2, reg_vs1, sreg_ss1)
+        mark_sreg_global(2, preg_vs1, sreg_ss1)
       }
 
       when (seq_exp.active.vqu || seq_exp.active.vfcu) {
-        mark_xbar(3, 2, reg_vs1)
-        mark_xbar(4, 2, reg_vs2)
+        mark_xbar(3, 2, preg_vs1)
+        mark_xbar(4, 2, preg_vs2)
         mark_pxbar(2)
-        mark_sreg_global(3, reg_vs1, sreg_ss1)
-        mark_sreg_global(4, reg_vs2, sreg_ss2)
+        mark_sreg_global(3, preg_vs1, sreg_ss1)
+        mark_sreg_global(4, preg_vs2, sreg_ss2)
       }
 
       when (seq_exp.active.vgu) {
-        mark_xbar(5, 3, reg_vs1)
+        mark_xbar(5, 3, preg_vs1)
         mark_pxbar(3)
-        mark_sreg_global(5, reg_vs1, sreg_ss1)
+        mark_sreg_global(5, preg_vs1, sreg_ss1)
       }
 
       when (seq_exp.active.viu) {
-        mark_sreg_local(0, reg_vs1, sreg_ss1)
-        mark_sreg_local(1, reg_vs2, sreg_ss2)
+        mark_sreg_local(0, preg_vs1, sreg_ss1)
+        mark_sreg_local(1, preg_vs2, sreg_ss2)
       }
 
       when (seq_exp.active.vsu) {
-        mark_sreg_local(2, reg_vs1, sreg_ss1)
+        mark_sreg_local(2, preg_vs1, sreg_ss1)
       }
     }
 
@@ -399,7 +399,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     def mark_lop_sreg(sreg: Vec[Bool], nregs: Int) = {
-      (Seq(reg_vs1, reg_vs2, reg_vs3) zipWithIndex) map { case (fn, i) =>
+      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) map { case (fn, i) =>
         if (nregs > i) {
           val rinfo = fn(seq_exp.reg)
           sreg(i) := rinfo.valid && rinfo.is_scalar()
@@ -425,7 +425,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       (lop: VFVULaneOp) => { lop.fn := seq_exp.fn.vfvu(); mark_lop_sreg(lop.sreg, 1) })
 
     def mark_vipu = {
-      (Seq(reg_vs1, reg_vs2, reg_vs3) zipWithIndex) foreach { case (fn, idx) =>
+      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) foreach { case (fn, idx) =>
         check_assert("pred read" + idx, tick_pred_read(idx), UInt(0))
         assert(fn(seq_vipu.reg).valid, "pred op with no predicate")
         val e = tick_pred_read(idx).s(0)
