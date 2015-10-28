@@ -10,7 +10,7 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vpu = Valid(new SeqVPUOp)
 }
 
-class Sequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
+class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Valid(new IssueOp).flip

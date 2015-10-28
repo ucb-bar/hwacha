@@ -12,7 +12,7 @@ class VXU(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
     val mrt = new LaneMRTIO
   }
 
-  val seq = Module(new Sequencer)
+  val seq = Module(new LaneSequencer)
   val exp = Module(new Expander)
   val lane = Module(new Lane(id))
   val dcc = Module(new DecoupledCluster)
