@@ -142,8 +142,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // Logic to handle vector length calculation
   val nregs_imm = new DecodeRegConfig().fromBits(rocc_imm12)
   val nregs_rs1 = new DecodeRegConfig().fromBits(io.rocc.cmd.bits.rs1)
-  val nvpr = nregs_imm.nvpr + nregs_rs1.nvpr + UInt(1, bVRegs) // widening add
-  val nppr = nregs_imm.nppr + nregs_rs1.nppr + UInt(1, bPRegs) // widening add
+  val nvpr = UInt(1, bVRegs) + nregs_imm.nvpr + nregs_rs1.nvpr // widening add
+  val nppr = UInt(1, bPRegs) + nregs_imm.nppr + nregs_rs1.nppr // widening add
 
   // vector length lookup
   val lookup_tbl_nvpr = (0 to nVRegs).toArray map { n =>
