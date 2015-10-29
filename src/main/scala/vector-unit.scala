@@ -11,16 +11,15 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
       val vmu = Decoupled(new VMUOp).flip
     }
     val mseq = new MasterSequencerIO().flip
-    val dtlb = new RTLBIO
-    val ptlb = new RTLBIO
+    val tlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO
-    val pending = Bool(OUTPUT)
+    val pending = new MRTPending().asOutput
   }
 
   val vxu = Module(new VXU(id))
   val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
-  val mrt = Module(new MemTracker)
+  val mrt = Module(new MemTracker(nvlreq, nvsreq))
 
   vxu.io.cfg <> io.cfg
   vxu.io.issue <> io.issue.vxu
@@ -35,12 +34,10 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   mrt.io.sreq <> vxu.io.mrt.sreq
   mrt.io.sret <> vmu.io.sret
 
-  io.dtlb <> vmu.io.dtlb
-  io.ptlb <> vmu.io.ptlb
+  io.tlb <> vmu.io.tlb
   io.dmem <> memif.io.dmem
-  io.pending := mrt.io.pending
+  io.pending <> mrt.io.pending
 
-//vmu.io.pf.vaq.valid := Bool(false)
   vmu.io.xcpt.prop.vmu.stall := Bool(false)
   vmu.io.xcpt.prop.vmu.drain := Bool(false)
   vmu.io.xcpt.prop.top.stall := Bool(false)

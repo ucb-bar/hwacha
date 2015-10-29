@@ -22,7 +22,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new SMUIO
+    val smu = new SMUIO
   }
 
   // Fetch/decode definitions
@@ -134,6 +134,10 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     Mux(io.ctrl.aren(1), id_areads(1), // constant-stride
       addr_stride) // unit-stride
 
+  io.smu.req.bits.addr := Mux(io.ctrl.aren(0), id_areads(0), id_sreads(0))
+  io.smu.req.bits.data := id_sreads(1)
+  io.smu.req.bits.tag := id_inst(23,16)
+
   // execute
   when (!io.ctrl.killd) {
     ex_reg_pc := id_pc
@@ -174,7 +178,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val wb_ll_wdata = Reg(next=
     Mux(io.fpu.resp.valid,
       Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp),
-        io.dmem.resp.bits.data))
+        io.smu.resp.bits.data))
 
   val awrite_valid = io.ctrl.awrite
   val swrite_valid = io.ctrl.swrite

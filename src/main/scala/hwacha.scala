@@ -98,6 +98,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
   val mseq = Module(new MasterSequencer)
   val smu = Module(new SMU)
+  val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
   val imemarb = Module(new uncore.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
 
   // Connect RoccUnit to top level IO
@@ -109,8 +110,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
-  rocc.io.pending_memop := vus.map(_.io.pending).reduce(_||_) || scalar.io.pending_memop
-  rocc.io.pending_seq := mseq.io.pending
+  rocc.io.busy_mseq := mseq.io.busy
+  rocc.io.pending_mrt := scalar.io.pending.all || vus.map(_.io.pending.all).reduce(_||_)
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
   scalar.io.cfg <> rocc.io.cfg
@@ -159,10 +160,14 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.dptw.req.valid := Bool(false)
   io.pptw.req.valid := Bool(false)
 
-  smu.io.tlb.req.ready := Bool(false) // FIXME
-  smu.io.scalar.req.valid := Bool(false) // FIXME
-  smu.io.scalar <> scalar.io.dmem
-  scalar.io.pending_seq := mseq.io.pending
+  smu.io.scalar <> scalar.io.smu
+  ptlb.io <> smu.io.tlb
+  ptlb.io.ptw.req.ready := Bool(true)
+  ptlb.io.ptw.resp.valid := Bool(false)
+  ptlb.io.ptw.status := io.pptw.status
+  ptlb.io.ptw.invalidate := Bool(false)
+
+  scalar.io.busy_mseq := mseq.io.busy
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
@@ -190,7 +195,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   (vus zipWithIndex) map { case (vu, i) =>
     val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
-    val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))
@@ -202,17 +206,11 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vu.io.mseq.state <> mseq.io.master.state
     vu.io.mseq.update <> mseq.io.master.update
 
-    dtlb.io <> vu.io.dtlb
+    dtlb.io <> vu.io.tlb
     dtlb.io.ptw.req.ready := Bool(true)
     dtlb.io.ptw.resp.valid := Bool(false)
     dtlb.io.ptw.status := io.dptw.status
     dtlb.io.ptw.invalidate := Bool(false)
-
-    ptlb.io <> vu.io.ptlb
-    ptlb.io.ptw.req.ready := Bool(true)
-    ptlb.io.ptw.resp.valid := Bool(false)
-    ptlb.io.ptw.status := io.dptw.status
-    ptlb.io.ptw.invalidate := Bool(false)
 
     io.dmem(i) <> vu.io.dmem
   }

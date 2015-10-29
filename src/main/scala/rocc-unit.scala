@@ -69,8 +69,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     val rocc = new rocket.RoCCInterface
 
     val vf_active = Bool(INPUT)
-    val pending_seq = Bool(INPUT)
-    val pending_memop = Bool(INPUT)
+    val busy_mseq = Bool(INPUT)
+    val pending_mrt = Bool(INPUT)
 
     val cfg = new HwachaConfigIO
 
@@ -209,12 +209,12 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // COLIN FIXME: update keepcfg
   keepcfg :=
     cmdq.io.deq.cmd.valid ||
-    io.vf_active || io.pending_seq
+    io.vf_active || io.busy_mseq
 
   // Busy signal for fencing
   val busy =
     cmdq.io.deq.cmd.valid ||
-    io.vf_active || io.pending_seq || io.pending_memop
+    io.vf_active || io.busy_mseq || io.pending_mrt
 
   io.rocc.busy := busy
 

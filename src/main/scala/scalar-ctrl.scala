@@ -63,11 +63,14 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new SMUIO
+    val lreq = new CounterLookAheadIO
+    val sreq = new CounterLookAheadIO
 
+    val smu = new SMUIO
+
+    val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
-    val pending_memop = Bool(OUTPUT)
-    val pending_seq = Bool(INPUT)
+    val sboard_marked = Bool(OUTPUT)
   }
 
   // STATE
@@ -90,7 +93,6 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     }
   }
   val sboard = new Scoreboard(nSRegs)
-  val sboard_not_empty = (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
 
   val vf_active = Reg(init=Bool(false))
   val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
@@ -107,11 +109,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val pending_fpu_typ = Reg(init=Bits(width=2))
   val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
   val pending_smu = Reg(init=Bool(false))
-  val pending_smu_store = Reg(Bool())
 
   io.vf_active := vf_active
   io.dpath.vf_active := vf_active
-  io.pending_memop := pending_smu
+  io.sboard_marked := (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
 
   // decode cmdq
   val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
@@ -127,10 +128,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
 
-  // TODO: we could fire all cmd but vf* without pending_seq being clear
+  // TODO: we could fire all cmd but vf* without busy_mseq being clear
   def fire_cmdq(exclude: Bool, include: Bool*) = {
   val rvs = Seq(
-      !vf_active, !wb_reg_valid, !io.pending_seq, io.cmdq.cmd.valid, !pending_smu, !pending_fpu,
+      !vf_active, !wb_reg_valid, !io.busy_mseq, io.cmdq.cmd.valid, !pending_smu, !pending_fpu,
       mask_imm_valid, mask_rd_valid) 
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -222,13 +223,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_ctrl_rens2_not0 = sren2 && id_raddrs2 != UInt(0)
   val id_ctrl_rens3_not0 = sren3 && id_raddrs3 != UInt(0)
 
-  // only set sboard if we were able to send the req
-  val id_set_sboard = io.fpu.req.fire() || io.vmu.fire() && id_scalar_inst
-  val id_scalar_store = id_ctrl.vmu_val && id_ctrl.vmu_cmd === M_XWR
-  val id_sboard_addr = Mux(id_scalar_store, id_raddrs2, id_waddr)
-
   // stall for RAW hazards on non scalar integer pipes
-  val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val
+  val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val && !id_ctrl.smu_val
   val data_hazard_ex = Vec(
     id_ctrl_rens1_not0 && id_raddrs1 === io.dpath.ex_waddr,
     id_ctrl_rens2_not0 && id_raddrs2 === io.dpath.ex_waddr,
@@ -242,18 +238,26 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     id_ctrl_rens3_not0 && sboard.read(id_raddrs3) ||
     id_ctrl_wen_not0 && sboard.read(id_waddr)
 
-  sboard.set(id_set_sboard, id_sboard_addr)
+  // only set sboard if we were able to send the req
+  val id_set_sboard = io.fpu.req.fire() || io.smu.req.fire() && id_ctrl.fn_smu().cmd === SM_L
+  sboard.set(id_set_sboard, id_waddr)
 
   io.dpath.bypass := data_hazard_ex.map(ex_reg_valid && _)
+
+  io.lreq.cnt := UInt(1)
+  io.sreq.cnt := UInt(1)
  
   val enq_fpu = id_val && id_scalar_dest && id_ctrl.fpu_val
   val enq_vxu = id_val && !id_scalar_inst
-  val enq_vmu = id_val && id_ctrl.vmu_val // both scalar and vector memops
-  val enq_smu = enq_vmu && id_scalar_inst
+  val enq_vmu = id_val && id_ctrl.vmu_val
+  val enq_smu = id_val && id_ctrl.smu_val
 
   val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
   val mask_vxu_ready = !enq_vxu || io.vxu.ready
   val mask_vmu_ready = !enq_vmu || io.vmu.ready
+  val mask_smu_ready = !enq_smu || io.smu.req.ready
+  val mask_lreq_available = !enq_smu || id_ctrl.fn_smu().cmd =/= SM_L || io.lreq.available
+  val mask_sreq_available = !enq_smu || id_ctrl.fn_smu().cmd =/= SM_S || io.sreq.available
 
   val stall_pending_fpu = (id_ctrl.decode_stop || enq_fpu) && pending_fpu
   val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
@@ -262,7 +266,9 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     !vf_active || id_ex_hazard || id_sboard_hazard || stall_pending_fpu || stall_pending_smu
 
   def fire_decode(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(!ctrl_stalld_common, mask_fpu_ready, mask_vxu_ready, mask_vmu_ready)
+    val rvs = Seq(!ctrl_stalld_common,
+      mask_fpu_ready, mask_vxu_ready,
+      mask_vmu_ready, mask_smu_ready, mask_lreq_available, mask_sreq_available)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -346,15 +352,17 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.mt
-  (io.vmu.bits.lane zip vl zipWithIndex) map { case ((lane, vl), i) =>
-    // if scalar memory op, only enable first lane
-    lane.active := Mux(id_scalar_inst, Bool(i == 0), vl.active)
-    lane.vlen := Mux(id_scalar_inst, UInt(1), vl.vlen)
-  }
-  when (io.vmu.fire() && id_scalar_inst) {
-    pending_smu := Bool(true)
-    pending_smu_store := id_ctrl.vmu_cmd === M_XWR
-  }
+  io.vmu.bits.lane := vl
+
+  // to SMU
+  io.smu.req.valid := fire_decode(mask_smu_ready, enq_smu)
+  io.smu.req.bits.fn := id_ctrl.fn_smu()
+  when (io.smu.req.fire()) { pending_smu := Bool(true) }
+  when (io.smu.confirm) { pending_smu := Bool(false) }
+
+  // to MRT
+  io.lreq.reserve := fire_decode(null, enq_smu, id_ctrl.fn_smu().cmd === SM_L)
+  io.sreq.reserve := fire_decode(null, enq_smu, id_ctrl.fn_smu().cmd === SM_S)
 
   // EXECUTE
   // if we didn't stallx (which includes stallw) then we should move the pipe forward
@@ -364,20 +372,21 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
-  val ex_stall_smu = ex_reg_valid && io.dmem.resp.valid && !pending_smu_store
+  val ex_stall_smu = ex_reg_valid && io.smu.resp.valid && !io.smu.resp.bits.store
 
   io.dpath.stallx := ex_stall_fpu || ex_stall_smu || io.dpath.stallw
   io.dpath.killx := !ex_reg_valid || io.dpath.stallx
 
   // give fixed priority to fpu -> mem -> alu
   io.fpu.resp.ready := Bool(true)
-  io.dmem.resp.ready := !io.fpu.resp.valid
+  io.smu.resp.ready := !io.fpu.resp.valid
+  val ex_dmem_valid = io.smu.resp.valid && !io.fpu.resp.valid
 
   // WRITEBACK
   val wb_fpu_valid = Reg(next=io.fpu.resp.valid)
-  val wb_dmem_valid = Reg(next=io.dmem.resp.valid && !io.fpu.resp.valid)
-  val wb_dmem_load_valid = wb_dmem_valid && !pending_smu_store
-  val wb_dmem_waddr = RegEnable(io.dmem.resp.bits.tag, io.dmem.resp.valid)
+  val wb_dmem_valid = Reg(next=ex_dmem_valid)
+  val wb_dmem_load_valid = wb_dmem_valid && RegEnable(!io.smu.resp.bits.store, ex_dmem_valid)
+  val wb_dmem_waddr = RegEnable(io.smu.resp.bits.tag, ex_dmem_valid)
 
   when (!io.dpath.stallw) {
     wb_reg_valid := !io.dpath.killx
@@ -394,16 +403,14 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // clear ll sb at cycle of wb not the cycle result returned
   val clear_fpu = wb_fpu_valid
-  val clear_mem = wb_dmem_valid
+  val clear_mem = wb_dmem_load_valid
 
   val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, wb_dmem_waddr)
   sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
 
   // TODO: this is conservative in that we might be able to get an fpu resp and send out the req in the same cycle rather than waiting 1 cycle (see fpu.req.valid)
   when (clear_fpu) { pending_fpu := Bool(false) }
-  when (clear_mem) { pending_smu := Bool(false) }
 
-  assert(!(!vf_active && sboard_not_empty), "vf should not end with non empty scoreboard")
   assert(!(wb_dmem_load_valid && wb_reg_valid), "load result and scalar wb conflict")
   assert(!(wb_fpu_valid && wb_reg_valid), "fpu result and scalar wb conflict")
 }

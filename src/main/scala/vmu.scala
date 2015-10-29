@@ -120,10 +120,8 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   val io = new Bundle {
     val op = Decoupled(new VMUOp).flip
     val lane = new VMUIO().flip
+    val tlb = new RTLBIO
     val memif = new VMUMemIO
-
-    val dtlb = new RTLBIO
-    val ptlb = new RTLBIO
 
     val sret = new CounterUpdateIO(bSRet)
     val irq = new IRQIO
@@ -152,8 +150,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   abox.io.la <> io.lane.pala
 
   tbox.io.inner(0) <> abox.io.tlb
-  io.dtlb <> tbox.io.outer
-  io.ptlb.req.valid := Bool(false) // FIXME
+  io.tlb <> tbox.io.outer
 
   io.irq <> tbox.io.irq
 

@@ -77,8 +77,8 @@ class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
 class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new IssueOpBase).flip
-    val pending = Bool(OUTPUT)
     val master = new MasterSequencerIO
+    val busy = Bool(OUTPUT)
 
     val debug = new Bundle {
       val head = UInt(OUTPUT, log2Up(nSeq))
@@ -394,7 +394,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
         set.head(head + UInt(1))
       }
 
-      io.pending := v.reduce(_ || _)
+      io.busy := v.reduce(_ || _)
 
       retired = true
     }

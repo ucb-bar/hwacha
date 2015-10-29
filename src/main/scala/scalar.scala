@@ -15,15 +15,16 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
-    val dmem = new SMUIO
+    val smu = new SMUIO
     
+    val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
-    val pending_memop = Bool(OUTPUT)
-    val pending_seq = Bool(INPUT)
+    val pending = new MRTPending().asOutput
   }
 
-  val ctrl  = Module(new ScalarCtrl)
+  val ctrl = Module(new ScalarCtrl)
   val dpath = Module(new ScalarDpath)
+  val mrt = Module(new MemTracker(4, 4))
 
   ctrl.io.dpath <> dpath.io.ctrl
 
@@ -40,11 +41,21 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   io.vmu <> dpath.io.vmu
   io.fpu <> ctrl.io.fpu
   io.fpu <> dpath.io.fpu
+  io.smu <> ctrl.io.smu
+  io.smu <> dpath.io.smu
 
-  ctrl.io.dmem <> io.dmem
-  dpath.io.dmem <> io.dmem
+  mrt.io.lreq <> ctrl.io.lreq
+  mrt.io.sreq <> ctrl.io.sreq
+  mrt.io.lret.cnt := UInt(1)
+  mrt.io.lret.update := io.smu.resp.fire() && !io.smu.resp.bits.store
+  mrt.io.sret.cnt := UInt(1)
+  mrt.io.sret.update := io.smu.resp.fire() && io.smu.resp.bits.store
 
+  ctrl.io.busy_mseq := io.busy_mseq
   io.vf_active := ctrl.io.vf_active
-  io.pending_memop := ctrl.io.pending_memop
-  ctrl.io.pending_seq := io.pending_seq
+  io.pending := mrt.io.pending
+
+  // we need to delay io.pending.all by one cycle
+  // because writeback in the scalar unit is delayed by one cycle
+  assert(!(!io.vf_active && !Reg(next=io.pending.all) && ctrl.io.sboard_marked), "vf should not end with non empty scoreboard")
 }
