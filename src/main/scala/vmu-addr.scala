@@ -33,15 +33,18 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
 
   val op = Reg(new VMUDecodedOp)
   private val mask = io.mask.bits
+  val pred = mask.pred
 
+  unless (op.mode.unit) {
+    assert(!io.mask.valid || !pred || (mask.nonunit.shift === UInt(0)),
+      "ABox0: simultaneous true predicate and non-zero stride shift")
+  }
   val stride_n = op.stride << mask.nonunit.shift
   val stride = Mux(op.mode.unit, UInt(pgSize), stride_n)
 
   val addr_offset = Mux(op.mode.indexed, io.vvaq.bits.addr, stride)
   val addr_result = op.base + addr_offset
   val addr = Mux(op.mode.indexed, addr_result, op.base)
-
-  val pred = mask.pred
 
   io.tlb.req.bits.addr := addr
   io.tlb.req.bits.store := op.cmd.write

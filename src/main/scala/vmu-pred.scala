@@ -24,29 +24,29 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val step_max = UInt(nPredSet) - index
 
   /* Density-time approximation for non-coalesced operations:
-   * Skip ahead by power-of-2 lengths when the first (2^i - 1)
-   * predicates are false
+   * Skip ahead by power-of-2 lengths when the next 2^i predicates are
+   * uniformly false
    *
    * c.f. Smith et al., "Vector Instruction Set Support for Conditional
    *      Operations," in Proc. 27th Annual International Symp. on
    *      Computer Architecture, New York, NY, 2000, pp. 260-269.
    */
   private val scan = (1 to log2Down(nPredSet)).scanLeft(
-    (0, head(0), Bool(true))) {
-      case ((_, _, zero_tail), i) =>
+    (0, Bool(true))) {
+      case ((j, zero_tail), i) =>
         val m = (1 << i)
-        val n = (1 << (i-1)) - 1
+        val n = (1 << j) - 1
         // Ensure that sufficient number of predicates remain in the set
         val valid = (index <= UInt(nPredSet - m))
-        val zero = zero_tail && (head(m-2, n) === UInt(0)) && valid
-        (i, head(m-1), zero)
-  }
+        val zero = zero_tail && (head(m-1, n) === UInt(0)) && valid
+        (i, zero)
+  }.tail
 
   val pred_n = MuxCase(head(0),
-    scan.reverse.map { case (_, p, zero) => (zero -> p) })
+    scan.reverse.map { case (_, zero) => (zero -> Bool(false)) })
 
   val lgecnt_n = MuxCase(UInt(0),
-    scan.reverse.map { case (i, _, zero) => (zero -> UInt(i)) })
+    scan.reverse.map { case (i, zero) => (zero -> UInt(i)) })
   val ecnt_n = UInt(1) << lgecnt_n
   val step_n = ecnt_n
 
