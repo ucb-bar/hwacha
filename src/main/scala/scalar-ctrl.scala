@@ -60,7 +60,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
-      val req = Decoupled(new rocket.FPInput())
+      val req = Decoupled(new HwachaFPInput)
       val resp = Decoupled(new rocket.FPResult()).flip
     }
     val smu = new SMUIO

@@ -3,6 +3,10 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
+class HwachaFPInput extends rocket.FPInput {
+  val in_fmt = UInt(width = 2)
+}
+
 class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -12,7 +16,7 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
-      val req = Decoupled(new rocket.FPInput())
+      val req = Decoupled(new HwachaFPInput)
       val resp = Decoupled(new rocket.FPResult()).flip
     }
     val smu = new SMUIO

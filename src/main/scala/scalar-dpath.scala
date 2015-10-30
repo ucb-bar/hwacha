@@ -19,7 +19,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
-      val req = Decoupled(new rocket.FPInput())
+      val req = Decoupled(new HwachaFPInput)
       val resp = Decoupled(new rocket.FPResult()).flip
     }
     val smu = new SMUIO
@@ -98,16 +98,10 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   val out_fmt = id_inst(56,55)
   io.fpu.req.bits.rm := rm
   io.fpu.req.bits.typ := out_fmt
-  io.fpu.req.bits.in1 := 
-     Mux(io.ctrl.id_ctrl.fpu_fn.fromint, id_sreads(0),
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(0))), recode_dp(id_sreads(0))))
-  io.fpu.req.bits.in2 := 
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(1))), recode_dp(id_sreads(1)))
-  io.fpu.req.bits.in3 := 
-     Mux(in_fmt === UInt(0), 
-     Cat(SInt(-1,32),recode_sp(id_sreads(2))), recode_dp(id_sreads(2)))
+  io.fpu.req.bits.in_fmt := in_fmt
+  io.fpu.req.bits.in1 := id_sreads(0)
+  io.fpu.req.bits.in2 := id_sreads(1)
+  io.fpu.req.bits.in3 := id_sreads(2)
 
   val unrec_s = ieee_sp(io.fpu.resp.bits.data)
   val unrec_d = ieee_dp(io.fpu.resp.bits.data)

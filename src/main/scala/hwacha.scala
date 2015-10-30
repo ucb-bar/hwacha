@@ -123,8 +123,26 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     scalar.io.fpu <> sfpu.io
     io.fpu_req.valid := Bool(false)
   } else {
-    io.fpu_req <> scalar.io.fpu.req
-    io.fpu_resp <> scalar.io.fpu.resp
+    import HardFloatHelper._
+
+    val reqq = Module(new Queue(new HwachaFPInput, 2))
+    val respq = Module(new Queue(new rocket.FPResult, 2))
+
+    reqq.io.enq <> scalar.io.fpu.req
+    io.fpu_req.bits.in1 :=
+      Mux(reqq.io.deq.bits.fromint, reqq.io.deq.bits.in1,
+        Mux(reqq.io.deq.bits.in_fmt === UInt(0),
+          Cat(SInt(-1,32), recode_sp(reqq.io.deq.bits.in1)), recode_dp(reqq.io.deq.bits.in1)))
+    io.fpu_req.bits.in2 :=
+      Mux(reqq.io.deq.bits.in_fmt === UInt(0),
+        Cat(SInt(-1,32), recode_sp(reqq.io.deq.bits.in2)), recode_dp(reqq.io.deq.bits.in2))
+    io.fpu_req.bits.in3 :=
+       Mux(reqq.io.deq.bits.in_fmt === UInt(0),
+       Cat(SInt(-1,32), recode_sp(reqq.io.deq.bits.in3)), recode_dp(reqq.io.deq.bits.in3))
+    io.fpu_req <> reqq.io.deq
+
+    respq.io.enq <> io.fpu_resp
+    scalar.io.fpu.resp <> respq.io.deq
   }
 
   // Connect Scalar to I$
