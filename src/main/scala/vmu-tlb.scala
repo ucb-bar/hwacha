@@ -64,7 +64,7 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   /* Misalignment */
   val mt = arb.req.bits.mt
   val ma = Seq(mt.h, mt.w, mt.d).zipWithIndex.map(x =>
-    x._1 && (arb.req.bits.addr(x._2, 0) != UInt(0))).reduce(_ || _)
+    x._1 && (arb.req.bits.addr(x._2, 0) =/= UInt(0))).reduce(_ || _)
 
   val write = arb.req.bits.store
   val read = !write

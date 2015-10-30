@@ -97,7 +97,7 @@ class XCPT(implicit p: Parameters) extends HwachaModule()(p) {
     kill := Bool(true)
   }
 
-  io.vu.prop.vu.busy := (state != NORMAL) && (state != HOLD)
+  io.vu.prop.vu.busy := (state =/= NORMAL) && (state =/= HOLD)
   io.vu.prop.vu.flush_top := Bool(false)
   io.vu.prop.vu.flush_kill := Bool(false)
   io.vu.prop.vu.flush_aiw := Bool(false)

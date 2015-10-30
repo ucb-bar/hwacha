@@ -218,10 +218,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_paddr   = io.dpath.inst(15,12)
 
   // only look at shared reg because addr reg can't be written during vf block
-  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_waddr != UInt(0)
-  val id_ctrl_rens1_not0 = sren1 && id_raddrs1 != UInt(0)
-  val id_ctrl_rens2_not0 = sren2 && id_raddrs2 != UInt(0)
-  val id_ctrl_rens3_not0 = sren3 && id_raddrs3 != UInt(0)
+  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_waddr =/= UInt(0)
+  val id_ctrl_rens1_not0 = sren1 && id_raddrs1 =/= UInt(0)
+  val id_ctrl_rens2_not0 = sren2 && id_raddrs2 =/= UInt(0)
+  val id_ctrl_rens3_not0 = sren3 && id_raddrs3 =/= UInt(0)
 
   // stall for RAW hazards on non scalar integer pipes
   val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val && !id_ctrl.smu_val

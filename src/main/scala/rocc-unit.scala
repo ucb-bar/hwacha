@@ -120,7 +120,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val keepcfg = Bool()
   val mask_vcfg = !decode_vcfg || !keepcfg
 
-  val mask_vl = !check_vl || cfg_vl != UInt(0)
+  val mask_vl = !check_vl || cfg_vl =/= UInt(0)
   val enq_cmd = mask_vl && enq_cmd_
   val enq_imm = mask_vl && enq_imm_
   val enq_rd = mask_vl && enq_rd_

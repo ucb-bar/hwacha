@@ -65,7 +65,7 @@ object EnableDecoder {
     val lut = Vec(
       (0 until n).map(i => Bits((1 << i) - 1, n)) ++
       Seq.fill((1 << lgn) - n)(Fill(n, Bool(true))))
-    val mask = ((in >> lgn) != UInt(0))
+    val mask = ((in >> lgn) =/= UInt(0))
     lut(in(lgn-1, 0)) | Fill(n, mask)
   }
 }

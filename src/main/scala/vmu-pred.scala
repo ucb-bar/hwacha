@@ -247,7 +247,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
    */
   val remnant = (op.vlen + meta.eoff)(lglimit-1, 0)
   val truncate = op.mode.unit &&
-    (remnant <= meta.eoff) && (remnant != UInt(0))
+    (remnant <= meta.eoff) && (remnant =/= UInt(0))
   surplus := meta.last && truncate
 
   io.sample.bits.data := mask_data

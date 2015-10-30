@@ -48,12 +48,12 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     def read(addr: UInt) = {
       require(canRead)
       reads += addr -> UInt()
-      reads.last._2 := Mux(addr != UInt(0), rf(~addr), UInt(0))
+      reads.last._2 := Mux(addr =/= UInt(0), rf(~addr), UInt(0))
       reads.last._2
     }
     def write(addr: UInt, data: UInt) = {
       canRead = false
-      when (addr != UInt(0)) {
+      when (addr =/= UInt(0)) {
         rf(~addr) := data
         for ((raddr, rdata) <- reads)
           when (addr === raddr) { rdata := data }

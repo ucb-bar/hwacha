@@ -86,7 +86,7 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   val s0_vxu_n_match = s1_type && s1_valid &&
                      (vxu_req_pc_rowbyte === s1_pc_rowbyte)
   // line buffer matches
-  val s0_vxu_inval_nn_match = s1_type && s1_valid && (vxu_req_pc_rowbyte != s1_pc_rowbyte)
+  val s0_vxu_inval_nn_match = s1_type && s1_valid && (vxu_req_pc_rowbyte =/= s1_pc_rowbyte)
   val s0_vxu_nn_match = vxu_line_val && !vxu_icmiss &&
                           (vxu_req_pc_rowbyte === s2_vxu_pc_rowbyte) &&
                           !s0_vxu_inval_nn_match
@@ -106,7 +106,7 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   val s0_vru_n_match = !s1_type && s1_valid &&
                      (vru_req_pc_rowbyte === s1_pc_rowbyte)
   //line buffer matches
-  val s0_vru_inval_nn_match = !s1_type && s1_valid && (vru_req_pc_rowbyte != s1_pc_rowbyte)
+  val s0_vru_inval_nn_match = !s1_type && s1_valid && (vru_req_pc_rowbyte =/= s1_pc_rowbyte)
   val s0_vru_nn_match = vru_line_val && !vru_icmiss &&
                           (vru_req_pc_rowbyte === s2_vru_pc_rowbyte) &&
                           !s0_vru_inval_nn_match
