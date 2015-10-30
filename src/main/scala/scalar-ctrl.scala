@@ -63,10 +63,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       val req = Decoupled(new rocket.FPInput())
       val resp = Decoupled(new rocket.FPResult()).flip
     }
+    val smu = new SMUIO
+    val mocheck = new MOCheck().asInput
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
-
-    val smu = new SMUIO
 
     val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
@@ -239,7 +239,9 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     id_ctrl_wen_not0 && sboard.read(id_waddr)
 
   // only set sboard if we were able to send the req
-  val id_set_sboard = io.fpu.req.fire() || io.smu.req.fire() && id_ctrl.fn_smu().cmd === SM_L
+  val id_smu_load = id_ctrl.fn_smu().cmd === SM_L
+  val id_smu_store = id_ctrl.fn_smu().cmd === SM_S
+  val id_set_sboard = io.fpu.req.fire() || io.smu.req.fire() && id_smu_load
   sboard.set(id_set_sboard, id_waddr)
 
   io.dpath.bypass := data_hazard_ex.map(ex_reg_valid && _)
@@ -256,8 +258,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val mask_vxu_ready = !enq_vxu || io.vxu.ready
   val mask_vmu_ready = !enq_vmu || io.vmu.ready
   val mask_smu_ready = !enq_smu || io.smu.req.ready
-  val mask_lreq_available = !enq_smu || id_ctrl.fn_smu().cmd =/= SM_L || io.lreq.available
-  val mask_sreq_available = !enq_smu || id_ctrl.fn_smu().cmd =/= SM_S || io.sreq.available
+  val mask_smu_load_ok = !enq_smu || !id_smu_load || io.mocheck.load && io.lreq.available
+  val mask_smu_store_ok = !enq_smu || !id_smu_store || io.mocheck.store && io.sreq.available
 
   val stall_pending_fpu = (id_ctrl.decode_stop || enq_fpu) && pending_fpu
   val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
@@ -268,7 +270,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common,
       mask_fpu_ready, mask_vxu_ready,
-      mask_vmu_ready, mask_smu_ready, mask_lreq_available, mask_sreq_available)
+      mask_vmu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -361,8 +363,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (io.smu.confirm) { pending_smu := Bool(false) }
 
   // to MRT
-  io.lreq.reserve := fire_decode(null, enq_smu, id_ctrl.fn_smu().cmd === SM_L)
-  io.sreq.reserve := fire_decode(null, enq_smu, id_ctrl.fn_smu().cmd === SM_S)
+  io.lreq.reserve := fire_decode(null, enq_smu, id_smu_load)
+  io.sreq.reserve := fire_decode(null, enq_smu, id_smu_store)
 
   // EXECUTE
   // if we didn't stallx (which includes stallw) then we should move the pipe forward

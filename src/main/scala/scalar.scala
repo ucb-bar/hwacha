@@ -16,6 +16,7 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
       val resp = Decoupled(new rocket.FPResult()).flip
     }
     val smu = new SMUIO
+    val mocheck = new MOCheck().asInput
     
     val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
@@ -43,6 +44,7 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   io.fpu <> dpath.io.fpu
   io.smu <> ctrl.io.smu
   io.smu <> dpath.io.smu
+  ctrl.io.mocheck <> io.mocheck
 
   mrt.io.lreq <> ctrl.io.lreq
   mrt.io.sreq <> ctrl.io.sreq

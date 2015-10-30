@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
-class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
+class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with SeqParameters {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val issue = new Bundle {
@@ -11,6 +11,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
       val vmu = Decoupled(new VMUOp).flip
     }
     val mseq = new MasterSequencerIO().flip
+    val mocheck = Vec.fill(nSeq){new MOCheck}.asInput
     val tlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO
     val pending = new MRTPending().asOutput
@@ -24,6 +25,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) {
   vxu.io.cfg <> io.cfg
   vxu.io.issue <> io.issue.vxu
   vxu.io.mseq <> io.mseq
+  vxu.io.mocheck <> io.mocheck
   vmu.io.op <> io.issue.vmu
 
   vmu.io.lane <> vxu.io.vmu

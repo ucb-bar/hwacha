@@ -5,6 +5,7 @@ import cde.Parameters
 import Commands._
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
+  val morelax = Bool(OUTPUT)
   val lstride = UInt(OUTPUT, 2)
   val vstride = UInt(OUTPUT, bRFAddr)
   val pstride = UInt(OUTPUT, bPredAddr)
@@ -83,6 +84,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val cfg_vregs = Reg(init=UInt(256, bVRegs))
   val cfg_pregs = Reg(init=UInt(16, bPRegs))
 
+  io.cfg.morelax := Bool(false)
   io.cfg.lstride := UInt(3)
   io.cfg.vstride := cfg_vregs
   io.cfg.pstride := cfg_pregs

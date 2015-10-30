@@ -98,6 +98,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
   val mseq = Module(new MasterSequencer)
   val smu = Module(new SMU)
+  val mou = Module(new MemOrderingUnit)
   val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
   val imemarb = Module(new uncore.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
 
@@ -167,8 +168,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   ptlb.io.ptw.status := io.pptw.status
   ptlb.io.ptw.invalidate := Bool(false)
 
-  scalar.io.busy_mseq := mseq.io.busy
-
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
   val mask_vxus_ready = (0 until nLanes) map { i => !enq_vxus(i) || vus(i).io.issue.vxu.ready }
@@ -192,6 +191,14 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   (mseq.io.master.clear zipWithIndex) map { case (c, r) =>
     c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
   }
+  scalar.io.busy_mseq := mseq.io.busy
+
+  mou.io.cfg <> rocc.io.cfg
+  mou.io.mseq <> mseq.io.master.state
+  mou.io.pending.scalar <> scalar.io.pending
+  (mou.io.pending.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
+  scalar.io.mocheck <> mou.io.check.scalar
+  (vus zip mou.io.check.vus) map { case (vu, mocheck) => vu.io.mocheck <> mocheck }
 
   (vus zipWithIndex) map { case (vu, i) =>
     val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
