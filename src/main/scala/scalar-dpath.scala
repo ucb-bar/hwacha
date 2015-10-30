@@ -73,7 +73,7 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   //register reads
   val id_sraddr = Vec(id_inst(31,24), id_inst(40,33), id_inst(48,41))
   val id_araddr = Vec(id_inst(28,24), id_inst(37,33))
-  val id_sreads = id_sraddr.map(srf.read _ )
+  val id_sreads = id_sraddr.map(srf.read(_))
   val id_areads = id_araddr.map(arf(_))
 
   // immediate generation
