@@ -9,7 +9,7 @@ class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   val pred = Bool()
 }
 
-class VMUMemResp(implicit p: Parameters) extends VMLUData()(p) {
+class VMUMemResp(implicit p: Parameters) extends VMULoadData()(p) {
   val store = Bool()
 }
 
@@ -21,9 +21,9 @@ class VMUMemIO(implicit p: Parameters) extends VMUBundle()(p) {
 class MBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val inner = new Bundle {
-      val abox = new AGUIO().flip
-      val sbox = new VMSUIO().flip
-      val lbox = new VMLUIO
+      val abox = new VMUAddrIO().flip
+      val sbox = new VMUStoreIO().flip
+      val lbox = new VMULoadIO
     }
     val outer = new VMUMemIO
 

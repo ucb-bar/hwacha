@@ -113,7 +113,7 @@ trait VMUTag extends VMUBundle {
   val tag = UInt(width = bVMUTag)
 }
 
-class VMLUData(implicit p: Parameters) extends VMUData with VMUTag
+class VMULoadData(implicit p: Parameters) extends VMUData with VMUTag
 
 class VLTEntry(implicit p: Parameters) extends VMUBundle()(p)
   with VMUMetaIndex with VMUMetaPadding with VMUMetaMask with VLUSelect
@@ -192,8 +192,7 @@ trait VMUMemOp extends VMUAddr {
 class VMUMetaAddr(implicit p: Parameters) extends VMUMetaCount
   with VMUMetaPadding with VMUMetaMask with VMUMetaStore with VLUSelect
 
-class AGUEntry(implicit p: Parameters) extends VMUMemOp {
+class VMUAddrEntry(implicit p: Parameters) extends VMUMemOp {
   val meta = new VMUMetaAddr with VMUMetaIndex
 }
-
-class AGUIO(implicit p: Parameters) extends DecoupledIO(new AGUEntry()(p))
+class VMUAddrIO(implicit p: Parameters) extends DecoupledIO(new VMUAddrEntry()(p))

@@ -11,19 +11,18 @@ class VMUStoreCtrl(implicit p: Parameters) extends VMUBundle()(p) {
   val mt = new DecodedMemType
 }
 
-class VMSUMeta(implicit p: Parameters) extends VMUMetaCount with VMUMetaStore {
+class VMUStoreMeta(implicit p: Parameters) extends VMUMetaStore with VMUMetaCount {
   val offset = UInt(width = tlByteAddrBits)
 }
-
-class VMSUIO(implicit p: Parameters) extends VSDQIO()(p) {
-  val meta = new VMSUMeta().asInput()
+class VMUStoreIO(implicit p: Parameters) extends VSDQIO()(p) {
+  val meta = new VMUStoreMeta().asInput()
 }
 
 class SBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val ctrl = Valid(new VMUStoreCtrl).flip
     val lane = new VSDQIO().flip
-    val mem = new VMSUIO
+    val mem = new VMUStoreIO
   }
 
   private val op = io.ctrl.bits
