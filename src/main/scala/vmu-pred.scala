@@ -17,11 +17,11 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
 
   val op = Reg(new VMUDecodedOp)
 
-  private val lgpreds = log2Up(nPredSet)
+  private val lgpreds = log2Up(nStrip)
 
   val index = Reg(UInt(width = lgpreds))
   val head = io.ingress.bits.pred >> index
-  val step_max = UInt(nPredSet) - index
+  val step_max = UInt(nStrip) - index
 
   /* Density-time approximation for non-coalesced operations:
    * Skip ahead by power-of-2 lengths when the next 2^i predicates are
@@ -31,13 +31,13 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
    *      Operations," in Proc. 27th Annual International Symp. on
    *      Computer Architecture, New York, NY, 2000, pp. 260-269.
    */
-  private val scan = (1 to log2Down(nPredSet)).scanLeft(
+  private val scan = (1 to log2Down(nStrip)).scanLeft(
     (0, Bool(true))) {
       case ((j, zero_tail), i) =>
         val m = (1 << i)
         val n = (1 << j) - 1
         // Ensure that sufficient number of predicates remain in the set
-        val valid = (index <= UInt(nPredSet - m))
+        val valid = (index <= UInt(nStrip - m))
         val zero = zero_tail && (head(m-1, n) === UInt(0)) && valid
         (i, zero)
   }.tail
@@ -62,7 +62,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val pglen_reset = Bool()
   pglen_reset := Bool(false)
 
-  val head_mask = EnableDecoder(pglen, nPredSet)
+  val head_mask = EnableDecoder(pglen, nStrip)
   val pred_u = (head & head_mask).orR
   val pred = Mux(op.mode.unit, pred_u, pred_n)
 
@@ -84,7 +84,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   io.egress.bits := io.ingress.bits
 
   val index_next = index + step
-  val index_end = (index_next === UInt(nPredSet))
+  val index_end = (index_next === UInt(nStrip))
 
   val egress_en = index_end || vlen_end
   val egress_ready = !egress_en || io.egress.ready
@@ -124,12 +124,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
 
       when (fire(null)) {
         index := index_next
-        if (!isPow2(nPredSet)) {
-          when (index_end) {
-            index := UInt(0)
-          }
-        }
-        assert(index_next <= UInt(nPredSet), "PBox0: index overflow")
+        assert(index_next <= UInt(nStrip), "PBox0: index overflow")
 
         when (op.mode.unit) {
           when (pred_u) {
@@ -168,7 +163,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 
   private val limit = tlDataBytes >> 1
   private val lglimit = tlByteAddrBits - 1
-  require(limit == nPredSet)
+  require(limit == nStrip)
   require(isPow2(limit))
 
   /* Number of doublewords per TileLink subblock */
@@ -192,12 +187,12 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 
   val hold = Reg(Bits(width = limit - 1))
   when (io.ingress.fire()) {
-    hold := io.ingress.bits.pred(nPredSet-1, nPredSet-limit+1)
+    hold := io.ingress.bits.pred(nStrip-1, nStrip-limit+1)
   }
 
   val surplus = Bool()
   val pred = Mux(surplus, Bits(0), io.ingress.bits.pred)
-  val preds = (0 until nPredSet).map(pred(_)).toSeq
+  val preds = (0 until nStrip).map(pred(_)).toSeq
 
   val head = Cat(pred, hold)
   /* Equivalence: index + (UInt(limit) - 1 - eoff) */
@@ -233,7 +228,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   val mask_vsdq = Mux1H(mts, mask_vsdq_mux)
 
   /* Truncation condition for coalesced operations:
-   * After the first batch, if the number of remaining elements is less
+   * After the first strip, if the number of remaining elements is less
    * than or equal to the (non-zero) offset, then the final mask is
    * derived exclusively from the hold register.
    * Note that truncation only needs to be handled for the end of a

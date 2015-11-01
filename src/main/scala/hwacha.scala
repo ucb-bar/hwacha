@@ -52,7 +52,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nBanks = p(HwachaNBanks)
   val wBank = p(HwachaBankWidth)
   val nSlices = wBank / regLen
-  val nBatch = nBanks * nSlices
+  val nStrip = nBanks * nSlices
 
   require(isPow2(nLanes))
   require(isPow2(nBanks))
@@ -63,8 +63,6 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val maxMLVLen = nLanes * maxVLen
   val bMLVLen = log2Down(maxMLVLen) + 1
-
-  val nPredSet = nBatch
 
   val local_sfpu = p(HwachaLocalScalarFPU)
 

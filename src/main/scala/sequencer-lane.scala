@@ -32,8 +32,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
 
-    val lpred = Decoupled(Bits(width=nPredSet))
-    val spred = Decoupled(Bits(width=nPredSet))
+    val lpred = Decoupled(Bits(width=nStrip))
+    val spred = Decoupled(Bits(width=nStrip))
 
     val lack = new LaneAckIO().flip
     val dack = new DCCAckIO().flip
@@ -79,7 +79,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
   val e = Vec.fill(nSeq){Reg(new SeqEntry)}
 
   def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
-    val max_strip = Mux(vcu, UInt(nBatch << 1), UInt(nBatch))
+    val max_strip = Mux(vcu, UInt(nStrip << 1), UInt(nStrip))
     Mux(vl > max_strip, max_strip, vl)
   }
 

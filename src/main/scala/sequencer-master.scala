@@ -20,7 +20,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
   val maxStrip = nBanks * (wBank / SZ_B)
   val bStrip = log2Down(maxStrip) + 1
-  val maxLookAhead = math.max(tlDataBits / SZ_B, nBatch)
+  val maxLookAhead = math.max(tlDataBits / SZ_B, nStrip)
   val bLookAhead = log2Down(maxLookAhead) + 1
 
   // the following needs to hold in order to simplify dhazard_war checking

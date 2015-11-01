@@ -126,7 +126,7 @@ class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p))
 /**********************************************************************/
 
 class PredEntry(implicit p: Parameters) extends HwachaBundle()(p) {
-  val pred = Bits(width = nPredSet)
+  val pred = Bits(width = nStrip)
 }
 
 class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
@@ -138,7 +138,7 @@ class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
     val page = Bool() /* Entry is final for current page */
   }
   val nonunit = new Bundle {
-    val shift = UInt(width = log2Up(nPredSet))
+    val shift = UInt(width = log2Up(nStrip))
   }
 }
 class VMUMaskIO_0(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_0()(p))
@@ -176,7 +176,7 @@ trait VMUMetaIndex extends VMUBundle {
   val eidx = UInt(width = bVLen)
 }
 trait VMUMetaMask extends VMUBundle {
-  val mask = Bits(width = nBatch)
+  val mask = Bits(width = nStrip)
 }
 trait VMUMetaStore extends VMUBundle {
   val last = Bool()

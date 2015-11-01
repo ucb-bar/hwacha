@@ -112,12 +112,12 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new DCCIssueIO {
     val la = new BPQLookAheadIO().flip
     val bpqs = Vec.fill(nBanks)(new BPQIO).flip
-    val pred = Decoupled(Bits(width = nPredSet))
-    val lpred = Decoupled(Bits(width = nPredSet))
-    val spred = Decoupled(Bits(width = nPredSet))
+    val pred = Decoupled(Bits(width = nStrip))
+    val lpred = Decoupled(Bits(width = nStrip))
+    val spred = Decoupled(Bits(width = nStrip))
   }
 
-  require(nBanks*2 == nPredSet)
+  require(nBanks*2 == nStrip)
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
   opq.io.enq <> io.op
@@ -199,12 +199,12 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     val brqs = Vec.fill(nBanks)(new BRQIO).flip
     val vsdq = new VSDQIO
 
-    val pred = Decoupled(Bits(width = nPredSet)).flip
+    val pred = Decoupled(Bits(width = nStrip)).flip
   }
 
   private val lgslices = log2Up(nSlices)
   private val lgbanks = log2Up(nBanks)
-  private val lgbatch = log2Up(nBatch)
+  private val lgstrip = log2Up(nStrip)
 
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
@@ -228,7 +228,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
   val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))
-  val ecnt = Mux(vlen_end, op.vlen(lgbatch, 0), ecnt_max)
+  val ecnt = Mux(vlen_end, op.vlen(lgstrip, 0), ecnt_max)
   val qcnt = Ceil(ecnt, lgslices)
 
   val index = Reg(UInt(width = lgbanks))
@@ -247,7 +247,6 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   predq.io.enq <> io.pred
   private val pred = predq.io.deq
 
-  require(nPredSet == nBatch)
   val brqs_pred = pred.bits.toBools.grouped(nSlices).map(
     xs => xs.reduce(_ || _)).toSeq
   val brqs_mask = brqs_sel.zip(brqs_pred)
@@ -296,7 +295,6 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   pred.ready := Bool(false)
   io.vsdq.valid := Bool(false)
 
-  require(nPredSet == nBatch)
   val pred_deq = index_end || vlen_end
 
   //--------------------------------------------------------------------\\
@@ -362,7 +360,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
 class VLUEntry(implicit p: Parameters) extends VXUBundle()(p)
   with VLUSelect {
-  val eidx = UInt(width = bVLen - log2Up(nBatch))
+  val eidx = UInt(width = bVLen - log2Up(nStrip))
   val data = Bits(width = wBank)
   val mask = Bits(width = nSlices)
 }
@@ -371,7 +369,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   with MemParameters {
   val io = new DCCIssueIO {
     val vldq = new VLDQIO().flip
-    val pred = Decoupled(Bits(width = nPredSet)).flip
+    val pred = Decoupled(Bits(width = nStrip)).flip
     val bwqs = Vec.fill(nBanks)(new BWQIO)
     val la = new CounterLookAheadIO().flip
 
@@ -381,7 +379,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   private val lgbanks = log2Up(nBanks)
   private val lgslices = log2Up(nSlices)
-  private val lgbatch = log2Up(nBatch)
+  private val lgstrip = log2Up(nStrip)
 
   private val vldq = io.vldq
   private val meta = vldq.bits.meta
@@ -402,13 +400,13 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val issue = map.io.use.fire()
 
   /* NOTE: To avoid the need for a full shifter and special masking of
-   * final predicate entries, vectors always begin at an nBatch-aligned
+   * final predicate entries, vectors always begin at an nStrip-aligned
    * boundary in the writeback bitmap.  Extra padding proportional to
    * the maximum number of simultaneous vectors is therefore required in
-   * case the vector lengths are not a multiple of nBatch.
+   * case the vector lengths are not a multiple of nStrip.
    */
-  require(nvlreq % nBatch == 0)
-  private val szwb = nvlreq + ((nVLU - 1) * (nBatch - 1))
+  require(nvlreq % nStrip == 0)
+  private val szwb = nvlreq + ((nVLU - 1) * (nStrip - 1))
   private val lgwb = log2Up(szwb)
 
   val op = Reg(Vec(nVLU, new DCCOp))
@@ -422,11 +420,11 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val mt = DecodedMemType(op_load.fn.vmu().mt)
   private val mts = Seq(mt.d, mt.w, mt.h, mt.b)
 
-  val rcnt = Ceil(io.la.cnt, lgbatch)
+  val rcnt = Ceil(io.la.cnt, lgstrip)
   val rcnt_pulse = Mux(io.la.reserve, rcnt, UInt(0))
-  val rcnt_residue = io.la.cnt(lgbatch-1, 0)
+  val rcnt_residue = io.la.cnt(lgstrip-1, 0)
 
-  private val bbias = bVLen - lgbatch + 1
+  private val bbias = bVLen - lgstrip + 1
   val bias = Reg(Vec(nVLU, SInt(width = bbias)))
   val bias_in = Vec(nVLU, SInt())
   val bias_next = Vec(bias_in.map(_ + rcnt_pulse))
@@ -434,7 +432,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   bias := bias_next
 
   val bias_tail = Reg(init = SInt(0, bbias))
-  val vlen_tail = Ceil(opq.io.deq.bits.vlen, lgbatch)
+  val vlen_tail = Ceil(opq.io.deq.bits.vlen, lgstrip)
   val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
   bias_tail := (bias_tail + rcnt_pulse) - bias_tail_sub
   assert(bias_tail <= SInt(0), "VLU: positive bias_tail")
@@ -442,7 +440,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val vlen_next = bias_next(vidx)
   val vlen_end = (vlen_next === op_head.vlen)
   assert(!io.la.reserve || vlen_end || (rcnt_residue === UInt(0)),
-    "VLU: retire count not a batch multiple")
+    "VLU: retire count not a strip multiple")
 
   map.io.free := vlen_end
 
@@ -454,9 +452,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   predq.io.enq <> io.pred
   val pred_fire = predq.io.deq.fire()
 
-  require(nPredSet == nBatch)
-
-  private val bpcnt = bVLen - lgbatch + log2Ceil(nVLU)
+  private val bpcnt = bVLen - lgstrip + log2Ceil(nVLU)
   val pcnt = Reg(init = UInt(0, bpcnt))
   val pcnt_end = (pcnt === UInt(0))
   val pcnt_add = Mux(issue, vlen_tail, UInt(0))
@@ -464,7 +460,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   pcnt := pcnt_next
   assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
-  private val maxpidx = (szwb >> lgbatch) - 1
+  private val maxpidx = (szwb >> lgstrip) - 1
   val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
   val pidx_end = (pidx === UInt(maxpidx))
   val pidx_next = (pidx.zext + pred_fire.toUInt) - rcnt_pulse
@@ -474,7 +470,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   assert(pidx_next >= SInt(0), "VLU: pidx underflow")
 
   val pred = Mux(pred_fire, ~predq.io.deq.bits, UInt(0))
-  val pred_shift = Cat(pidx, UInt(0, lgbatch))
+  val pred_shift = Cat(pidx, UInt(0, lgstrip))
   val wb_pred = pred << pred_shift
   predq.io.deq.ready := !(pcnt_end || pidx_end)
 
@@ -490,20 +486,20 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   //--------------------------------------------------------------------\\
 
   val eidx_slice = meta.eidx(lgslices-1, 0)
-  val eidx_batch = meta.eidx(lgbatch-1, 0)
-  val eidx_bank = meta.eidx(lgbatch-1, lgslices)
-  val eidx_reg = meta.eidx(bVLen-1, lgbatch)
+  val eidx_strip = meta.eidx(lgstrip-1, 0)
+  val eidx_bank = meta.eidx(lgstrip-1, lgslices)
+  val eidx_reg = meta.eidx(bVLen-1, lgstrip)
   val eidx_reg_next = eidx_reg + UInt(1)
 
-  require(tlDataBytes == (nBatch << 1))
-  val epad_msb = meta.epad(lgbatch)
-  val epad_eff = meta.epad(lgbatch-1, 0)
+  require(tlDataBytes == (nStrip << 1))
+  val epad_msb = meta.epad(lgstrip)
+  val epad_eff = meta.epad(lgstrip-1, 0)
 
-  val rotamt = eidx_batch - epad_eff
+  val rotamt = eidx_strip - epad_eff
 
   private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
-    val rot = Module(new Rotator(gen, in.size, nBatch))
-    val out = Vec.fill(nBatch)(gen.clone)
+    val rot = Module(new Rotator(gen, in.size, nStrip))
+    val out = Vec.fill(nStrip)(gen.clone)
     rot.io.sel := rotamt
     rot.io.in := in
     out := rot.io.out
@@ -517,7 +513,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val w = data.getWidth
     require(w > 0)
     val in = (0 until w by sz).map(i => data(i+sz-1, i))
-    require(in.size <= nBatch)
+    require(in.size <= nStrip)
     val out = rotate(Bits(), in)
     Vec(out.map(extend(_, sz)))
   }
@@ -542,7 +538,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   require(nSlices == 2)
   val tick = Reg(init = Bool(true))
 
-  /* When the load represents a full batch of elements and meta.eidx is
+  /* When the load represents a full strip of elements and meta.eidx is
    * odd, the first and last elements reside in the same bank but in
    * different SRAM entries.  If both are present, they must be written
    * separately over two cycles.
@@ -550,7 +546,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val slice_unaligned = (eidx_slice =/= UInt(0)) && (epad_eff === UInt(0))
   val slice_used = slice_unaligned && meta.mask(0)
   val slice_free = slice_unaligned && !meta.mask(0)
-  val slice_conflict = slice_used && meta.mask(nBatch-1)
+  val slice_conflict = slice_used && meta.mask(nStrip-1)
   val tick_next = !(slice_conflict && tick)
 
   val bwqs_fire = Bool()
@@ -560,7 +556,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val mask_head = tick
   val mask_tail = Mux(tick, !slice_used, Bool(true))
-  val mask_beat = Cat(mask_tail, Fill(nBatch-1, mask_head))
+  val mask_beat = Cat(mask_tail, Fill(nStrip-1, mask_head))
   val mask_base = meta.mask & mask_beat
   val mask = rotate(Bool(), mask_base.toBools)
 
@@ -594,10 +590,10 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
-    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << lgslices,lgbatch))
+    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << lgslices,lgstrip))
     wb_update(i) := wb_mask << wb_shift
 
-    val max = (szwb + (nBatch-1)) >> lgbatch
+    val max = (szwb + (nStrip-1)) >> lgstrip
     val s = "VLU: BWQ " + i
     assert(!deq.valid || (wb_offset >= SInt(0)), s+": wb_offset underflow")
     assert(!deq.valid || (wb_offset < SInt(max)), s+": wb_offset overflow")
@@ -636,7 +632,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   assert(wb_sets.reduce(_ & _) === Bits(0), "VLU: wb bitmap collision")
 
   val wb_merge = wb_sets.reduce(_ | _)
-  val wb_shift = Cat(rcnt_pulse, UInt(0, lgbatch))
+  val wb_shift = Cat(rcnt_pulse, UInt(0, lgstrip))
   val wb_next = wb_merge >> wb_shift
   wb := wb_next
 

@@ -49,7 +49,7 @@ class VMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
 
-  val pred = Decoupled(Bits(width = nPredSet))
+  val pred = Decoupled(Bits(width = nStrip))
   val pala = new CounterLookAheadIO
   val vlu = new VLUSelectIO
 }
