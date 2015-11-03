@@ -18,7 +18,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
   }
 
   val vxu = Module(new VXU(id))
-  val vmu = Module(new VMU)
+  val vmu = Module(new VMU(id))
   val memif = Module(new VMUTileLink)
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
 
@@ -28,6 +28,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
   vxu.io.mocheck <> io.mocheck
   vmu.io.op <> io.issue.vmu
 
+  vmu.io.cfg <> io.cfg
   vmu.io.lane <> vxu.io.vmu
   memif.io.vmu <> vmu.io.memif 
 

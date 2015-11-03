@@ -54,13 +54,15 @@ class VMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vlu = new VLUSelectIO
 }
 
-class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) {
+class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) with VMUMetaIndex {
   val mode = new Bundle {
     val unit = Bool()
     val indexed = Bool()
   }
   val cmd = new DecodedMemCommand
   val mt = new DecodedMemType
+
+  val first = Bool()
 }
 
 object VMUDecodedOp extends HwachaConstants {
@@ -76,49 +78,175 @@ object VMUDecodedOp extends HwachaConstants {
 
     dec.cmd := DecodedMemCommand(op.fn.cmd)
     dec.mt := DecodedMemType(op.fn.mt)
+
+    dec.eidx := UInt(0)
+    dec.first := Bool(true)
     dec
   }
 }
 
 class VMUIssueIO(implicit p: Parameters) extends HwachaBundle()(p) {
-  val op = Decoupled(new VMUDecodedOp()(p)).flip
+  val op = Decoupled(new VMUDecodedOp).flip
+}
+class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
+  val issue = Vec(4, Decoupled(new VMUDecodedOp))
+
+  def span(sink: DecoupledIO[VMUDecodedOp]*) = {
+    val src = Decoupled(new VMUDecodedOp).asDirectionless()
+    val rvs = (src.ready, src.valid) +: sink.map(x => (x.valid, x.ready))
+    rvs.foreach { case (x, y) =>
+      x := rvs.map(_._2).filter(_ ne y).reduce(_ && _)
+    }
+    sink.foreach { case x => x.bits := src.bits }
+    src
+  }
 }
 
-class IBox(implicit p: Parameters) extends VMUModule()(p) {
+class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new VMUOp).flip
+    val cfg = new HwachaConfigIO().flip
+    val agu = new AGUIO
     val abox = Vec.fill(3)(Decoupled(new VMUDecodedOp))
     val pbox = Vec.fill(2)(Decoupled(new VMUDecodedOp))
   }
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))
   opq.io.enq <> io.op
-  opq.io.deq.ready := Bool(false)
-
   val op = VMUDecodedOp(opq.io.deq.bits)
-  private val issue = io.abox ++ io.pbox
 
-  val mask = Reg(init = Bits(0, issue.size))
+  val agent = if (nLanes > 1) {
+      val _agent = Module(new IBoxML(id))
+      _agent.io.cfg <> io.cfg
+      io.agu <> _agent.io.agu
+      _agent
+  } else Module(new IBoxSL)
 
-  issue.zipWithIndex.foreach { case (box, i) =>
+  agent.io.op.bits := op
+  agent.io.op.valid := opq.io.deq.valid
+  opq.io.deq.ready := agent.io.op.ready
+
+  val issue = Vec(io.abox(0), io.pbox(0),
+    agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
+  issue <> agent.io.issue
+}
+
+class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
+  val io = new IBoxIO
+
+  val mask = Reg(init = Bits(0, io.issue.size))
+  io.issue.zipWithIndex.map { case (box, i) =>
     val _mask = mask(i)
-    box.bits := op
-    box.valid := opq.io.deq.valid && !_mask
-    val fire = opq.io.deq.valid && box.ready
+    box.bits := io.op.bits
+    box.valid := io.op.valid && !_mask
+    val fire = io.op.valid && box.ready
     _mask := _mask || fire
   }
 
-  when (mask.andR) {
-    opq.io.deq.ready := Bool(true)
+  io.op.ready := mask.andR
+  when (io.op.ready) {
     mask := Bits(0)
   }
 }
 
+class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
+  val io = new IBoxIO {
+    val cfg = new HwachaConfigIO().flip
+    val agu = new AGUIO
+  }
 
-class VMU(resetSignal: Bool = null)(implicit p: Parameters)
+  val op = Reg(new VMUDecodedOp)
+  val indexed = io.op.bits.mode.indexed
+
+  val (lut, setup) = if (id != 0) {
+    val _lut = (0 to log2Up(id)).filter(i => (id & (1 << i)) != 0)
+    val _setup = Reg(UInt(width = log2Up(_lut.size)))
+    (Vec(_lut.map(UInt(_))), _setup)
+  } else (null, null)
+
+  val shift = UInt(width = io.agu.in.bits.shift.getWidth)
+  shift := UInt(log2Ceil(nLanes))
+
+  io.agu.in.valid := Bool(false)
+  io.agu.in.bits.base := op.base
+  io.agu.in.bits.offset := io.op.bits.stride
+  io.agu.in.bits.shift := io.cfg.lstride + shift
+
+  val ecnt_max = UInt(1) << io.cfg.lstride
+  val eidx_next = op.eidx + ecnt_max
+  val vlen_next = op.vlen.zext - ecnt_max
+  val vlen_end = (vlen_next <= SInt(0))
+  val ecnt = Mux(vlen_end, op.vlen(log2Up(nStrip), 0), ecnt_max)
+
+  val enq = io.span(io.issue.map { case deq =>
+    val q = Module(new Queue(new VMUDecodedOp, 2))
+    deq <> q.io.deq
+    q.io.enq
+  }:_*)
+  enq.bits := io.op.bits
+  enq.bits.vlen := ecnt
+  enq.bits.base := op.base
+  enq.bits.eidx := op.eidx
+  enq.bits.first := op.first
+
+  io.op.ready := Bool(false)
+  enq.valid := Bool(false)
+
+  val s_idle :: s_busy :: s_setup :: Nil = Enum(UInt(), 3)
+  val state = Reg(init = s_idle)
+
+  switch (state) {
+    is (s_idle) {
+      when (io.op.valid) {
+        op := io.op.bits
+        if (id != 0) {
+          setup := UInt(lut.size - 1)
+          state := Mux(indexed, s_busy, s_setup)
+        } else {
+          state := s_busy
+        }
+      }
+    }
+
+    is (s_busy) {
+      io.agu.in.valid := !indexed
+      enq.valid := indexed || io.agu.out.valid
+
+      when (enq.fire()) {
+        unless (indexed) {
+          op.base := io.agu.out.bits.addr
+        }
+        op.vlen := vlen_next
+        op.eidx := eidx_next
+        op.first := Bool(false)
+        when (vlen_end) {
+          state := s_idle
+          io.op.ready := Bool(true)
+        }
+      }
+    }
+
+    is (s_setup) {
+      if (id != 0) {
+        shift := lut(setup)
+        io.agu.in.valid := Bool(true)
+        when (io.agu.out.valid) {
+          op.base := io.agu.out.bits.addr
+          setup := setup - UInt(1)
+          when (setup === UInt(0)) {
+            state := s_busy
+          }
+        }
+      }
+    }
+  }
+}
+
+class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
   extends VMUModule(_reset = resetSignal)(p) {
   val io = new Bundle {
     val op = Decoupled(new VMUOp).flip
+    val cfg = new HwachaConfigIO().flip
     val lane = new VMUIO().flip
     val tlb = new RTLBIO
     val memif = new VMUMemIO
@@ -128,15 +256,19 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
     val xcpt = new XCPTIO().flip
   }
 
-  val ibox = Module(new IBox)
+  private val confml = (nLanes > 1)
+  val ibox = Module(new IBox(id))
   val pbox = Module(new PBox)
   val abox = Module(new ABox)
   val tbox = Module(new TBox(1))
   val sbox = Module(new SBox)
   val lbox = Module(new LBox)
   val mbox = Module(new MBox)
+  val agu = Module(new AGU(if (confml) 2 else 1))
 
   ibox.io.op <> io.op
+  ibox.io.cfg <> io.cfg
+  if (confml) agu.io(1) <> ibox.io.agu
 
   pbox.io.op <> ibox.io.pbox
   pbox.io.pred.bits.pred := io.lane.pred.bits
@@ -148,6 +280,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   abox.io.xcpt <> io.xcpt
   abox.io.la <> io.lane.pala
   abox.io.load <> io.lane.vlu
+  agu.io(0) <> abox.io.agu
 
   tbox.io.inner(0) <> abox.io.tlb
   io.tlb <> tbox.io.outer
