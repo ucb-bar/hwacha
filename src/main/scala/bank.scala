@@ -66,7 +66,6 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
 
   val rf = Module(new BankRegfile(lid, bid))
 
-  rf.io.cfg <> io.cfg
   rf.io.op <> io.op
   rf.io.global <> io.rw
 

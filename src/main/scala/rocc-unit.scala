@@ -165,8 +165,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_vl := UInt(0)
     cfg_vregs := nvpr
     cfg_pregs := nppr
-    printf("H: VSETCFG[nvpr=%d][nppr=%d][epb_nvpr=%d][epb_nppr=%d][maxvl=%d]\n",
-      nvpr, nppr, epb_nvpr, epb_nppr, new_maxvl)
+    printf("H: VSETCFG[nlanes=%d][nvpr=%d][nppr=%d][lstride=%d][epb_nvpr=%d][epb_nppr=%d][maxvl=%d]\n",
+      UInt(nLanes), nvpr, nppr, io.cfg.lstride, epb_nvpr, epb_nppr, new_maxvl)
   }
   when (fire(null, decode_vsetvl)) {
     cfg_vl := new_vl
