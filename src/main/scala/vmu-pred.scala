@@ -108,12 +108,6 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   switch (state) {
     is (s_idle) {
       io.op.ready := Bool(true)
-      when (io.op.valid) {
-        state := s_busy
-        op := io.op.bits
-      }
-      lead := Bool(true)
-      index := UInt(0)
       pglen_reset := Bool(true)
     }
 
@@ -139,6 +133,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
         op.vlen := vlen_next
         when (vlen_end) {
           state := s_idle
+          io.op.ready := Bool(true)
           assert(!op.mode.unit || pglen_end,
             "PBox0: desynchronized vlen and pglen counters");
         }
@@ -152,6 +147,13 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
     pglen := Mux(_pglen_final, _vlen_next, pglen_max)
     pglen_final := _pglen_final
     sample_en := Bool(true)
+  }
+
+  when (io.op.fire()) { /* initialization */
+    state := s_busy
+    op := io.op.bits
+    lead := Bool(true)
+    index := UInt(0)
   }
 }
 
@@ -266,12 +268,6 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   switch (state) {
     is (s_idle) {
       io.op.ready := Bool(true)
-      when (io.op.valid) {
-        state := s_busy
-        op := io.op.bits
-      }
-      hold := Bits(0)
-      index := UInt(0)
     }
 
     is (s_busy) {
@@ -279,8 +275,16 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
       io.sample.valid := fire(io.sample.ready)
       when (fire(null) && meta.last) {
         state := s_idle
+        io.op.ready := Bool(true)
       }
     }
+  }
+
+  when (io.op.fire()) { /* initialization */
+    state := s_busy
+    op := io.op.bits
+    hold := Bits(0)
+    index := UInt(0)
   }
 }
 

@@ -108,10 +108,6 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   switch (state) {
     is (s_idle) {
       io.op.ready := Bool(true)
-      when (io.op.valid) {
-        state := s_busy
-        op := io.op.bits
-      }
     }
 
     is (s_busy) {
@@ -133,11 +129,17 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
             io.vcu.valid := Bool(true)
             when (mask.last) {
               state := s_idle
+              io.op.ready := Bool(true)
             }
           }
         }
       }
     }
+  }
+
+  when (io.op.fire()) { /* initialization */
+    state := s_busy
+    op := io.op.bits
   }
 }
 
@@ -271,14 +273,6 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   switch (state) {
     is (s_idle) {
       io.op.ready := Bool(true)
-      when (io.op.valid) {
-        state := s_busy
-        op := io.op.bits
-        shift := io.op.bits.mt.shift()
-      }
-      beat := io.op.bits.base(tlByteAddrBits-1)
-      lead := Bool(true)
-      pred_hold := Bool(false)
     }
 
     is (s_busy) {
@@ -299,10 +293,20 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
           op.vlen := vlen_next
           when (end) {
             state := s_idle
+            io.op.ready := Bool(true)
           }
         }
       }
     }
+  }
+
+  when (io.op.fire()) { /* initialization */
+    state := s_busy
+    op := io.op.bits
+    shift := io.op.bits.mt.shift()
+    beat := io.op.bits.base(tlByteAddrBits-1)
+    lead := Bool(true)
+    pred_hold := Bool(false)
   }
 }
 
@@ -358,18 +362,12 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
+  val init = Bool()
+  init := Bool(false)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := issue(io.op.valid)
-      io.load.ready := issue(load_valid, load_en)
-      when (issue(null)) {
-        state := s_busy
-        op := io.op.bits
-        when (io.op.bits.first) {
-          vidx := io.load.bits.vidx
-        }
-      }
+      init := Bool(true)
     }
 
     is (s_busy) {
@@ -381,7 +379,20 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
         op.eidx := op.eidx + inner.meta.ecnt.decode()
         when (inner.meta.last) {
           state := s_idle
+          init := Bool(true)
         }
+      }
+    }
+  }
+
+  when (init) { /* initialization */
+    io.op.ready := issue(io.op.valid)
+    io.load.ready := issue(load_valid, load_en)
+    when (issue(null)) {
+      state := s_busy
+      op := io.op.bits
+      when (io.op.bits.first) {
+        vidx := io.load.bits.vidx
       }
     }
   }
