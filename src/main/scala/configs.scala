@@ -60,9 +60,8 @@ class DefaultHwachaConfig extends Config (
 
     case HwachaNVVAQEntries => 4
     case HwachaNVPAQEntries => 24
-    case HwachaNVPFQEntries => 8
-    case HwachaNVSDQEntries => 16
-    case HwachaNVLDQEntries => 16
+    case HwachaNVSDQEntries => 4
+    case HwachaNVLDQEntries => 4
     case HwachaNVLTEntries => 32
 
     case HwachaNSMUEntries => 2

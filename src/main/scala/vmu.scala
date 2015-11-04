@@ -5,7 +5,6 @@ import cde.{Parameters, Field}
 
 case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
-case object HwachaNVPFQEntries extends Field[Int]
 case object HwachaNVSDQEntries extends Field[Int]
 case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVLTEntries extends Field[Int]
@@ -28,7 +27,6 @@ trait VMUParameters extends MemParameters {
   val nVMUQ = 2
   val nVVAQ = p(HwachaNVVAQEntries)
   val nVPAQ = p(HwachaNVPAQEntries)
-  val nVPFQ = p(HwachaNVPFQEntries)
   val nVSDQ = p(HwachaNVSDQEntries)
   val nVLDQ = p(HwachaNVLDQEntries)
   val nVMUPredQ = 4
