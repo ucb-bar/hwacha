@@ -11,24 +11,33 @@ class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
 }
 
+class ReduceResultIO(implicit p: Parameters) extends VXUBundle()(p) {
+  val pred = Valid(new RPredResult)
+}
+
 class VDU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
     val pla = new CounterLookAheadIO().flip // lpq entry
     val qla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // lrq entries
-    val ila = new CounterLookAheadIO().flip // idiv output entries
-    val fla = new CounterLookAheadIO().flip // fdiv output entries
+    val idla = new CounterLookAheadIO().flip // idiv output entries
+    val fdla = new CounterLookAheadIO().flip // fdiv output entries
+    val rpla = new CounterLookAheadIO().flip // reduction pred output entries
+    val rfla = new CounterLookAheadIO().flip // reduction first output entries
     val lpq = new LPQIO().flip
     val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
     val bwqs = Vec.fill(nBanks){new BWQIO}
+    val red = new ReduceResultIO
   }
 
   val ctrl = Module(new VDUCtrl)
 
   ctrl.io.op <> io.op
-  ctrl.io.ila <> io.ila
-  ctrl.io.fla <> io.fla
+  ctrl.io.idla <> io.idla
+  ctrl.io.fdla <> io.fdla
+  ctrl.io.rpla <> io.rpla
+  ctrl.io.rfla <> io.rfla
   ctrl.io.cfg <> io.cfg
 
   val lpq = Module(new Queue(new LPQEntry, nBanks+2))
@@ -58,6 +67,10 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
     fdiv.io <> ctrl.io.fdiv.fus(i)
   }
 
+  val rpred = Module(new RPredLane)
+  rpred.io <> ctrl.io.rpred
+  io.red.pred.bits <> rpred.io.result.bits
+
   io.ack.vidu <> ctrl.io.idiv.ack
   io.ack.vfdu <> ctrl.io.fdiv.ack
   io.bwqs <> ctrl.io.bwqs
@@ -66,8 +79,10 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
-    val ila = new CounterLookAheadIO().flip
-    val fla = new CounterLookAheadIO().flip
+    val idla = new CounterLookAheadIO().flip
+    val fdla = new CounterLookAheadIO().flip
+    val rpla = new CounterLookAheadIO().flip
+    val rfla = new CounterLookAheadIO().flip
     val lpq = new LPQIO().flip
     val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
 
@@ -75,11 +90,11 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
       val fus = Vec.fill(nSlices){new IDivIO}
       val ack = Valid(new VIDUAck)
     }
-
     val fdiv = new Bundle {
       val fus = Vec.fill(nSlices){new FDivIO}
       val ack = Valid(new VFDUAck)
     }
+    val rpred = new RPredIO
 
     val bwqs = Vec.fill(nBanks){new BWQIO}
   }
@@ -151,15 +166,36 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  fire := fire_idiv(null) || fire_fdiv(null)
-  io.lpq.ready := fire_idiv(io.lpq.valid) || fire_fdiv(io.lpq.valid)
-  io.lrqs(0).ready := fire_idiv(io.lrqs(0).valid) || fire_fdiv(io.lrqs(0).valid)
+  def fire_rpred(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(
+      state === s_busy, op.active.vrpred,
+      io.lpq.valid, io.rpred.req.ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  def fire_rfirst(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(
+      state === s_busy, op.active.vrfirst,
+      io.lpq.valid, io.lrqs(0).valid)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  fire := fire_idiv(null) || fire_fdiv(null) || fire_rpred(null) || fire_rfirst(null)
+  io.lpq.ready :=
+    fire_idiv(io.lpq.valid) || fire_fdiv(io.lpq.valid) ||
+    fire_rpred(io.lpq.valid) || fire_rfirst(io.lpq.valid)
+  io.lrqs(0).ready :=
+    fire_idiv(io.lrqs(0).valid) || fire_fdiv(io.lrqs(0).valid) ||
+    fire_rfirst(io.lrqs(0).valid)
   io.lrqs(1).ready := fire_idiv(io.lrqs(1).valid) || fire_fdiv(mask_lrq1_valid, deq_lrq1)
   tagq.io.enq.valid := fire_idiv(tagq.io.enq.ready) || fire_fdiv(tagq.io.enq.ready)
   io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
     idiv.req.valid := fire_idiv(mask_idivs_req_ready(i), enq_idivs_req(i)) }
   io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     fdiv.req.valid := fire_fdiv(mask_fdivs_req_ready(i), enq_fdivs_req(i)) }
+  io.rpred.op.valid := opq.io.deq.fire() && opq.io.deq.bits.active.vrpred
+  io.rpred.op.bits := opq.io.deq.bits.fn.vrpu()
+  io.rpred.req.valid := fire_rpred(io.rpred.req.ready)
 
   tagq.io.enq.bits.pred := pred
   tagq.io.enq.bits.bank := bank
@@ -178,6 +214,9 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
     fdiv.req.bits.in0 := unpack_slice(io.lrqs(0).bits.data, i)
     fdiv.req.bits.in1 := unpack_slice(io.lrqs(1).bits.data, i)
   }
+
+  io.rpred.req.bits.pred := io.lpq.bits.pred
+  io.rpred.req.bits.active := pred
 
   val deq_idivs_resp = (0 until nSlices).map {  tagq.io.deq.bits.fusel.toBool && tagq.io.deq.bits.pred(_) }
   val deq_fdivs_resp = (0 until nSlices).map { !tagq.io.deq.bits.fusel.toBool && tagq.io.deq.bits.pred(_) }
@@ -220,10 +259,20 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val icntr = Module(new LookAheadCounter(0, maxLookAhead))
   icntr.io.inc.cnt := UInt(1)
   icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
-  icntr.io.dec <> io.ila
+  icntr.io.dec <> io.idla
 
   val fcntr = Module(new LookAheadCounter(0, maxLookAhead))
   fcntr.io.inc.cnt := UInt(1)
   fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.toBool)
-  fcntr.io.dec <> io.fla
+  fcntr.io.dec <> io.fdla
+
+  val rpcntr = Module(new LookAheadCounter(0, maxLookAhead))
+  rpcntr.io.inc.cnt := UInt(1)
+  rpcntr.io.inc.update := io.rpred.consumed
+  rpcntr.io.dec <> io.rpla
+
+  val rfcntr = Module(new LookAheadCounter(0, maxLookAhead))
+  rfcntr.io.inc.cnt := UInt(1)
+  rfcntr.io.inc.update := io.rpred.consumed
+  rfcntr.io.dec <> io.rfla
 }

@@ -14,6 +14,7 @@ trait HwachaConstants
   with VFDUConstants
   with VFCUConstants
   with VFVUConstants
+  with VRPUConstants
   with VMUConstants
   with SMUConstants
 
@@ -102,7 +103,7 @@ trait DecodeConstants {
 
   val A2_X    = BitPat("b??")
   val A2_ZERO = UInt(0, 2)
-  val A2_FOUR = UInt(1, 2)
+  val A2_8    = UInt(1, 2)
   val A2_RS2  = UInt(2, 2)
   val A2_IMM  = UInt(3, 2)
 
@@ -221,6 +222,14 @@ trait VFVUConstants {
   val FV_CSTH  = UInt(11, SZ_VFVU_OP)
   val FV_CHTD  = UInt(12, SZ_VFVU_OP)
   val FV_CHTS  = UInt(13, SZ_VFVU_OP)
+}
+
+trait VRPUConstants {
+  val SZ_VRPU_OP = 2
+
+  val FR_X   = BitPat("b??")
+  val FR_ALL = UInt(0, SZ_VRPU_OP)
+  val FR_ANY = UInt(1, SZ_VRPU_OP)
 }
 
 trait VMUConstants {

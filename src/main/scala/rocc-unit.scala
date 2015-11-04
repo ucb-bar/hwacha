@@ -12,8 +12,8 @@ class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with Lane
 }
 
 class DecodeRegConfig(implicit p: Parameters) extends HwachaBundle()(p) {
-  val nppr = UInt(width = bPRegs-1)
-  val nvpr = UInt(width = bVRegs-1)
+  val nppr = UInt(width = bPRegs)
+  val nvpr = UInt(width = bVRegs)
 }
 class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val cmd = Decoupled(Bits(width = CMD_X.getWidth))
@@ -81,8 +81,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // Cofiguration state
   val cfg_maxvl = Reg(init=UInt(8, bMLVLen))
   val cfg_vl = Reg(init=UInt(0, bMLVLen))
-  val cfg_vregs = Reg(init=UInt(256, bVRegs))
-  val cfg_pregs = Reg(init=UInt(16, bPRegs))
+  val cfg_vregs = Reg(init=UInt(256, bfVRegs))
+  val cfg_pregs = Reg(init=UInt(16, bfPRegs))
 
   io.cfg.morelax := Bool(false)
   io.cfg.lstride := UInt(3)
@@ -144,8 +144,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // Logic to handle vector length calculation
   val nregs_imm = new DecodeRegConfig().fromBits(rocc_imm12)
   val nregs_rs1 = new DecodeRegConfig().fromBits(io.rocc.cmd.bits.rs1)
-  val nvpr = UInt(1, bVRegs) + nregs_imm.nvpr + nregs_rs1.nvpr // widening add
-  val nppr = UInt(1, bPRegs) + nregs_imm.nppr + nregs_rs1.nppr // widening add
+  val nvpr = UInt(1, bfVRegs) + nregs_imm.nvpr + nregs_rs1.nvpr // widening add
+  val nppr = UInt(1, bfPRegs) + nregs_imm.nppr + nregs_rs1.nppr // widening add
 
   // vector length lookup
   val lookup_tbl_nvpr = (0 to nVRegs).toArray map { n =>

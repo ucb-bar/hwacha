@@ -9,6 +9,7 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     val issue = Decoupled(new IssueOp).flip
     val mseq = new MasterSequencerIO().flip
     val mocheck = Vec.fill(nSeq){new MOCheck}.asInput
+    val red = new ReduceResultIO
     val vmu = new VMUIO
     val mrt = new LaneMRTIO
   }
@@ -52,8 +53,10 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
 
   dcc.io.dpla <> seq.io.dpla
   dcc.io.dqla <> seq.io.dqla
-  dcc.io.dila <> seq.io.dila
-  dcc.io.dfla <> seq.io.dfla
+  dcc.io.didla <> seq.io.didla
+  dcc.io.dfdla <> seq.io.dfdla
+  dcc.io.drpla <> seq.io.drpla
+  dcc.io.drfla <> seq.io.drfla
   dcc.io.gpla <> seq.io.gpla
   dcc.io.gqla <> seq.io.gqla
   dcc.io.pla <> seq.io.pla
@@ -65,6 +68,8 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   dcc.io.bpqs <> lane.io.bpqs
   dcc.io.brqs <> lane.io.brqs
   lane.io.bwqs <> dcc.io.bwqs
+  io.red <> seq.io.red
+  io.red <> dcc.io.red
 
   io.vmu <> seq.io.vmu
   io.vmu <> dcc.io.vmu

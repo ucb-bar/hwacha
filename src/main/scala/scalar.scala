@@ -21,6 +21,7 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
     }
     val smu = new SMUIO
     val mocheck = new MOCheck().asInput
+    val red = new ReduceResultIO().flip
     
     val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
@@ -48,7 +49,6 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   io.fpu <> dpath.io.fpu
   io.smu <> ctrl.io.smu
   io.smu <> dpath.io.smu
-  ctrl.io.mocheck <> io.mocheck
 
   mrt.io.lreq <> ctrl.io.lreq
   mrt.io.sreq <> ctrl.io.sreq
@@ -56,6 +56,9 @@ class ScalarUnit(implicit p: Parameters) extends HwachaModule()(p) {
   mrt.io.lret.update := io.smu.resp.fire() && !io.smu.resp.bits.store
   mrt.io.sret.cnt := UInt(1)
   mrt.io.sret.update := io.smu.resp.fire() && io.smu.resp.bits.store
+
+  ctrl.io.mocheck <> io.mocheck
+  ctrl.io.red <> io.red
 
   ctrl.io.busy_mseq := io.busy_mseq
   io.vf_active := ctrl.io.vf_active

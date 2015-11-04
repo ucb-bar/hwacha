@@ -22,8 +22,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
 
     val dpla = new CounterLookAheadIO
     val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}
-    val dila = new CounterLookAheadIO
-    val dfla = new CounterLookAheadIO
+    val didla = new CounterLookAheadIO
+    val dfdla = new CounterLookAheadIO
+    val drpla = new CounterLookAheadIO
+    val drfla = new CounterLookAheadIO
     val gpla = new CounterLookAheadIO
     val gqla = new CounterLookAheadIO
     val pla = new BPQLookAheadIO
@@ -32,6 +34,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
 
+    val red = new ReduceResultIO
     val lpred = Decoupled(Bits(width=nStrip))
     val spred = Decoupled(Bits(width=nStrip))
 
@@ -303,6 +306,9 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         }
         io.master.clear(r) := !v(r) || !next_v(r)
       }
+      val vrpus = (v zip io.master.reduce.pred) map { case (valid, vrpu) => valid && vrpu } 
+      io.red.pred.valid := vrpus.reduce(_ || _)
+      // io.red.pred.bits get populated by RPredLane
     }
 
     def debug = {
@@ -318,11 +324,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val ffv = Vec((mv zip v) map { case (mvalid, valid) => mvalid && valid })
     def ff(fn: Int=>Bool) = find_first(ffv, head, fn)
 
-    def mreadfn[T <: Data](sched: Vec[Bool], rfn: MasterSeqEntry=>T) =
-      rfn(me(0)).clone.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
-
-    def readfn[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) =
-      rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
+    def mread[T <: Data](sched: Vec[Bool], rfn: MasterSeqEntry=>T) = mreadfn(sched, me, rfn)
+    def read[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) = readfn(sched, e, rfn)
 
     def selectfn(sched: Vec[Bool]) =
       new SeqSelect().fromBits(Mux1H(sched, shazard.select.map(_.toBits)))
@@ -335,8 +338,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
            (preg_vs3, reg_vs3, pregid_vs3),
            (preg_vd, reg_vd, pregid_vd)) map {
         case (pfn, rfn, pidfn) =>
-          pfn(out) := mreadfn(sched, (me: MasterSeqEntry) => rfn(me.base))
-          pfn(out).id := readfn(sched, (e: SeqEntry) => pidfn(e.reg).id)
+          pfn(out) := mread(sched, (me: MasterSeqEntry) => rfn(me.base))
+          pfn(out).id := read(sched, (e: SeqEntry) => pidfn(e.reg).id)
       }
       out
     }
@@ -344,6 +347,72 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val nohazards = (0 until nSeq) map { i =>
       !dhazard.check(i) && !bhazard.check(i) && !shazard.check(i) }
 
+    // independent ports that don't go to the expander
+    class vdu(afn: SeqType=>Bool, la: CounterLookAheadIO) {
+      val first = ff((i: Int) => afn(me(i).active))
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val ready = la.available
+      def fires(n: Int) = valids(n) && ready
+      val fire = valids.reduce(_ || _) && ready
+
+      def logic = {
+        la.cnt := strip_to_bcnt(strip)
+        la.reserve := fire
+      }
+    }
+
+    val vidu = new vdu((a: SeqType) => a.vidu, io.didla)
+    val vfdu = new vdu((a: SeqType) => a.vfdu, io.dfdla)
+    val vrpu = new vdu((a: SeqType) => a.vrpu, io.drpla)
+    val vrfu = new vdu((a: SeqType) => a.vrfu, io.drfla)
+
+    val vcu = new {
+      val first = ff((i: Int) => me(i).active.vcu)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+      val mcmd = DecodedMemCommand(fn.vmu().cmd)
+
+      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val readys = Vec((0 until nSeq) map { case i =>
+        io.vmu.pala.available &&
+        (!mcmd.read || io.mocheck(i).load && io.lreq.available) &&
+        (!mcmd.write || io.mocheck(i).store && io.sreq.available) })
+      def fires(n: Int) = valids(n) && readys(n)
+      val fire = (valids zip readys) map { case (v, r) => v && r } reduce(_ || _)
+
+      def logic = {
+        io.vmu.pala.cnt := strip
+        io.vmu.pala.reserve := fire
+        io.lreq.cnt := strip
+        io.lreq.reserve := fire && mcmd.read
+        io.sreq.cnt := strip
+        io.sreq.reserve := fire && mcmd.store
+      }
+    }
+
+    val vlu = new {
+      val first = ff((i: Int) => me(i).active.vlu)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
+      val strip = stripfn(vlen, Bool(false), fn)
+
+      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val ready = io.lla.available
+      def fires(n: Int) = valids(n) && ready
+      val fire = valids.reduce(_ || _) && ready
+
+      def logic = {
+        io.lla.cnt := strip
+        io.lla.reserve := fire
+      }
+    }
+
+    // scheduled ports that go to the expander
     val exp = new {
       val vgu_consider = Vec.fill(nSeq){Bool()}
       val vsu_consider = Vec.fill(nSeq){Bool()}
@@ -359,18 +428,18 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
-      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val vlen = read(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqOp
-        out.fn := mreadfn(sched, (me: MasterSeqEntry) => me.fn)
+        out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
-        out.sreg := mreadfn(sched, (me: MasterSeqEntry) => me.sreg)
-        out.active := mreadfn(sched, (me: MasterSeqEntry) => me.active)
+        out.sreg := mread(sched, (me: MasterSeqEntry) => me.sreg)
+        out.active := mread(sched, (me: MasterSeqEntry) => me.active)
         out.select := selectfn(sched)
-        out.eidx := readfn(sched, (e: SeqEntry) => e.eidx)
-        out.rports := mreadfn(sched, (me: MasterSeqEntry) => me.rports)
-        out.wport.sram := mreadfn(sched, (me: MasterSeqEntry) => me.wport.sram)
-        out.wport.pred := mreadfn(sched, (me: MasterSeqEntry) => me.wport.pred)
+        out.eidx := read(sched, (e: SeqEntry) => e.eidx)
+        out.rports := mread(sched, (me: MasterSeqEntry) => me.rports)
+        out.wport.sram := mread(sched, (me: MasterSeqEntry) => me.wport.sram)
+        out.wport.pred := mread(sched, (me: MasterSeqEntry) => me.wport.pred)
         out.strip := stripfn(vlen, Bool(false), out.fn)
         out
       }
@@ -400,10 +469,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
-      val vlen = readfn(sched, (e: SeqEntry) => e.vlen)
+      val vlen = read(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqVIPUOp
-        out.fn := mreadfn(sched, (me: MasterSeqEntry) => me.fn)
+        out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
         out.strip := stripfn(vlen, Bool(false), out.fn)
         out
@@ -420,9 +489,9 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
 
     val vpu = new {
       val first = ff((i: Int) => me(i).active.vpu || me(i).active.vgu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
-      val sel = mreadfn(first, (me: MasterSeqEntry) => me.active.vgu)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
+      val sel = mread(first, (me: MasterSeqEntry) => me.active.vgu)
       val op = {
         val out = new SeqVPUOp
         out.reg := regfn(first)
@@ -447,44 +516,11 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       }
     }
 
-    val vidu = new {
-      val first = ff((i: Int) => me(i).active.vidu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
-
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
-      val ready = io.dila.available
-      def fires(n: Int) = valids(n) && ready
-      val fire = valids.reduce(_ || _) && ready
-
-      def logic = {
-        io.dila.cnt := strip_to_bcnt(strip)
-        io.dila.reserve := fire
-      }
-    }
-
-    val vfdu = new {
-      val first = ff((i: Int) => me(i).active.vfdu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
-
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
-      val ready = io.dfla.available
-      def fires(n: Int) = valids(n) && ready
-      val fire = valids.reduce(_ || _) && ready
-
-      def logic = {
-        io.dfla.cnt := strip_to_bcnt(strip)
-        io.dfla.reserve := fire
-      }
-    }
-
+    // helpers for the main scheduled port
     val vgu = new {
       val first = ff((i: Int) => me(i).active.vgu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
       val cnt = strip_to_bcnt(strip)
 
@@ -499,52 +535,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       }
     }
 
-    val vcu = new {
-      val first = ff((i: Int) => me(i).active.vcu)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val strip = stripfn(vlen, Bool(false), fn)
-      val mcmd = DecodedMemCommand(fn.vmu().cmd)
-
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
-      val readys = Vec((0 until nSeq) map { case i =>
-        io.vmu.pala.available &&
-        (!mcmd.read || io.mocheck(i).load && io.lreq.available) &&
-        (!mcmd.write || io.mocheck(i).store && io.sreq.available) })
-      def fires(n: Int) = valids(n) && readys(n)
-      val fire = (valids zip readys) map { case (v, r) => v && r } reduce(_ || _)
-
-      def logic = {
-        io.vmu.pala.cnt := strip
-        io.vmu.pala.reserve := fire
-        io.lreq.cnt := strip
-        io.lreq.reserve := fire && mcmd.read
-        io.sreq.cnt := strip
-        io.sreq.reserve := fire && mcmd.store
-      }
-    }
-
-    val vlu = new {
-      val first = ff((i: Int) => me(i).active.vlu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
-
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
-      val ready = io.lla.available
-      def fires(n: Int) = valids(n) && ready
-      val fire = valids.reduce(_ || _) && ready
-
-      def logic = {
-        io.lla.cnt := strip
-        io.lla.reserve := fire
-      }
-    }
-
     val vsu = new {
       val first = ff((i: Int) => me(i).active.vsu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
 
       val ready = io.sla.available
@@ -558,8 +552,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
 
     val vqu = new {
       val first = ff((i: Int) => me(i).active.vqu)
-      val vlen = readfn(first, (e: SeqEntry) => e.vlen)
-      val fn = mreadfn(first, (me: MasterSeqEntry) => me.fn)
+      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
       val strip = stripfn(vlen, Bool(false), fn)
       val cnt = strip_to_bcnt(strip)
 
@@ -580,21 +574,13 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     }
 
     def logic = {
-      exp.logic
-      vipu.logic
-      vidu.logic
-      vfdu.logic
-      vpu.logic
-      vgu.logic
-      vcu.logic
-      vlu.logic
-      vsu.logic
-      vqu.logic
+      vidu.logic; vfdu.logic; vrpu.logic; vrfu.logic; vcu.logic; vlu.logic
+      exp.logic; vipu.logic; vpu.logic
+      vgu.logic; vsu.logic; vqu.logic
 
       def fires(n: Int) =
-        exp.fires(n) || vipu.fires(n) ||
-        vidu.fires(n) || vfdu.fires(n) ||
-        vpu.fires(n) || vcu.fires(n) || vlu.fires(n)
+        vidu.fires(n) || vfdu.fires(n) || vrpu.fires(n) || vrfu.fires(n) || vcu.fires(n) || vlu.fires(n) ||
+        exp.fires(n) || vipu.fires(n) || vpu.fires(n)
 
       def update_reg(i: Int, fn: RegFn, pfn: PRegIdFn) = {
         when (fn(me(i).base).valid) {
@@ -634,8 +620,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     }
 
     def debug = {
-      vpu.debug
       exp.debug
+      vpu.debug
     }
   }
 

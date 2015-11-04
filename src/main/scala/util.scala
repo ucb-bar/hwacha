@@ -77,6 +77,12 @@ abstract trait SeqLogic extends SeqParameters {
     }
     out
   }
+
+  def mreadfn[T <: Data](sched: Vec[Bool], me: Vec[MasterSeqEntry], rfn: MasterSeqEntry=>T) =
+    rfn(me(0)).clone.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
+
+  def readfn[T <: Data](sched: Vec[Bool], e: Vec[SeqEntry], rfn: SeqEntry=>T) =
+    rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
 }
 
 object DataGating {

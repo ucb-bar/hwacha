@@ -39,15 +39,18 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
       val mem = Vec.fill(nBanks){new BWQIO}
       val fu = Vec.fill(nBanks){new BWQIO}
     }
-    val dpla = new CounterLookAheadIO().flip
-    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip
-    val dila = new CounterLookAheadIO().flip
-    val dfla = new CounterLookAheadIO().flip
-    val gpla = new CounterLookAheadIO().flip
-    val gqla = new CounterLookAheadIO().flip
-    val pla = new BPQLookAheadIO().flip
-    val lla = new CounterLookAheadIO().flip
-    val sla = new BRQLookAheadIO().flip
+    val dpla = new CounterLookAheadIO().flip // DCC LPQ counter
+    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // DCC LRQ counter
+    val didla = new CounterLookAheadIO().flip // idiv counter
+    val dfdla = new CounterLookAheadIO().flip // fdiv counter
+    val drpla = new CounterLookAheadIO().flip // reduction pred counter
+    val drfla = new CounterLookAheadIO().flip // reduction first counter
+    val gpla = new CounterLookAheadIO().flip // VGU LPQ counter
+    val gqla = new CounterLookAheadIO().flip // VGU LRQ counter
+    val pla = new BPQLookAheadIO().flip // VPU BPQ counter
+    val lla = new CounterLookAheadIO().flip // VLU BWQ counter
+    val sla = new BRQLookAheadIO().flip // VSU BRQ counter
+    val red = new ReduceResultIO
     val vmu = new VMUIO
   }
 
@@ -77,13 +80,16 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   vdu.io.op.bits := io.op.bits
   vdu.io.pla <> io.dpla
   vdu.io.qla <> io.dqla
-  vdu.io.ila <> io.dila
-  vdu.io.fla <> io.dfla
+  vdu.io.idla <> io.didla
+  vdu.io.fdla <> io.dfdla
+  vdu.io.rpla <> io.drpla
+  vdu.io.rfla <> io.drfla
   vdu.io.lpq <> io.lpqs(0)
   vdu.io.lrqs(0) <> io.lrqs(0)
   vdu.io.lrqs(1) <> io.lrqs(1)
   io.ack <> vdu.io.ack
   io.bwqs.fu <> vdu.io.bwqs
+  io.red <> vdu.io.red
 
   vgu.io.op.valid := fire(mask_vgu_ready, io.op.bits.active.enq_vgu())
   vgu.io.op.bits := io.op.bits

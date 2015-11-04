@@ -39,10 +39,15 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val nVRegs = p(HwachaNVectorRegs)
   val nPRegs = p(HwachaNPredRegs)
 
-  val bSDest = math.max(log2Up(nARegs), log2Up(nSRegs))
+  val bARegs = log2Up(nARegs)
+  val bSRegs = log2Up(nSRegs)
+  val bVRegs = log2Up(nVRegs)
+  val bPRegs = log2Up(nPRegs)
+  val bfVRegs = log2Down(nVRegs) + 1
+  val bfPRegs = log2Down(nPRegs) + 1
 
-  val bVRegs = log2Down(nVRegs) + 1
-  val bPRegs = log2Down(nPRegs) + 1
+  val bRegs = List(bARegs, bSRegs, bVRegs).max
+  val bSDest = List(bARegs, bSRegs).max
 
   val regLen = p(HwachaRegLen)
 
@@ -93,8 +98,9 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   val rocc = Module(new RoCCUnit)
   val scalar = Module(new ScalarUnit)
-  val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
   val mseq = Module(new MasterSequencer)
+  val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
+  val rpred = Module(new RPredMaster)
   val smu = Module(new SMU)
   val mou = Module(new MemOrderingUnit)
   val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
@@ -228,6 +234,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vu.io.issue.vmu.bits <> scalar.io.vmu.bits
     vu.io.mseq.state <> mseq.io.master.state
     vu.io.mseq.update <> mseq.io.master.update
+    vu.io.mseq.reduce <> mseq.io.master.reduce
+    rpred.io.lane(i) <> vu.io.red.pred
 
     dtlb.io <> vu.io.tlb
     dtlb.io.ptw.req.ready := Bool(true)
@@ -237,4 +245,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
     io.dmem(i) <> vu.io.dmem
   }
+
+  rpred.io.op <> mseq.io.reduce.pred
+  scalar.io.red.pred <> rpred.io.result
 }

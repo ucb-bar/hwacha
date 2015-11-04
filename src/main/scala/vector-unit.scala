@@ -12,6 +12,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
     }
     val mseq = new MasterSequencerIO().flip
     val mocheck = Vec.fill(nSeq){new MOCheck}.asInput
+    val red = new ReduceResultIO
     val tlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO
     val pending = new MRTPending().asOutput
@@ -37,6 +38,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
   mrt.io.sreq <> vxu.io.mrt.sreq
   mrt.io.sret <> vmu.io.sret
 
+  io.red <> vxu.io.red
   io.tlb <> vmu.io.tlb
   io.dmem <> memif.io.dmem
   io.pending <> mrt.io.pending

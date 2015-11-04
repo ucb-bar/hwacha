@@ -68,16 +68,24 @@ class UpdateSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
   val reg = Vec.fill(nSeq){new PhysicalRegisterIds}
 }
 
+class ReduceSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
+  val pred = Vec.fill(nSeq){Bool()}
+}
+
 class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val state = new MasterSequencerState().asOutput
   val update = new UpdateSequencerState().asOutput
+  val reduce = new ReduceSequencerState().asOutput
   val clear = Vec.fill(nSeq){Bool()}.asInput
 }
 
-class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
+class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic {
   val io = new Bundle {
     val op = Decoupled(new IssueOpBase).flip
     val master = new MasterSequencerIO
+    val reduce = new Bundle {
+      val pred = Valid(new VRPUFn)
+    }
     val busy = Bool(OUTPUT)
 
     val debug = new Bundle {
@@ -268,8 +276,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
 
       val fn_identity = (d: IssueOpBase) => d.fn.union
       val fn_vqu = (d: IssueOpBase) => {
-        assert(d.active.vidiv || d.active.vfdiv, "vqu should only be issued for idiv/fdiv")
-        Cat(d.active.vidiv || d.fn.vfdu().op_is(FD_DIV), Bool(true))
+        assert(d.active.vidiv || d.active.vfdiv || d.active.vrpred || d.active.vrfirst,
+          "vqu should only be issued for idiv/fdiv/rpred/rfirst")
+        Cat(d.active.vidiv || d.active.vfdiv && d.fn.vfdu().op_is(FD_DIV),
+            d.active.vidiv || d.active.vfdiv || d.active.vrfirst)
       }
 
       def viu(n: UInt) = active(n, (a: SeqType) => a.viu, fn_identity)
@@ -280,6 +290,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
       def vfdu(n: UInt) = active(n, (a: SeqType) => a.vfdu, fn_identity)
       def vfcu(n: UInt) = active(n, (a: SeqType) => a.vfcu, fn_identity)
       def vfvu(n: UInt) = active(n, (a: SeqType) => a.vfvu, fn_identity)
+      def vrpu(n: UInt) = active(n, (a: SeqType) => a.vrpu, fn_identity)
+      def vrfu(n: UInt) = active(n, (a: SeqType) => a.vrfu, fn_identity)
       def vpu(n: UInt) = active(n, (a: SeqType) => a.vpu, fn_identity)
       def vgu(n: UInt) = active(n, (a: SeqType) => a.vgu, fn_identity)
       def vcu(n: UInt) = active(n, (a: SeqType) => a.vcu, fn_identity)
@@ -360,7 +372,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
       val a = io.op.bits.active
 
       (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
-      (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
+      (empty >= UInt(2)) && (a.vidiv || a.vfdiv || a.vrpred || a.vrfirst) ||
       (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
       (empty >= UInt(4)) && (a.vamo)
     }
@@ -393,6 +405,12 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
         retire(head)
         set.head(head + UInt(1))
       }
+
+      val ff_rpred = find_first(v, head, (i: Int) => e(i).active.vrpu)
+      io.master.reduce.pred := ff_rpred
+      val vrpus = (ff_rpred zip io.master.clear) map { case (f, c) => f && c }
+      io.reduce.pred.valid := vrpus.reduce(_ || _)
+      io.reduce.pred.bits := mreadfn(ff_rpred, e, (e: MasterSeqEntry) => e.fn.vrpu())
 
       io.busy := v.reduce(_ || _)
 
@@ -474,6 +492,20 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
                  { import bhazard.set._; rwports(t0, stagesFConv); }
       stop(t1); }
 
+    def vrpred = {
+      start(t0); { import iwindow.set._; vqu(t0); vp(t0); }
+                 { import bhazard.set._; rports(t0); }
+      start(t1); { import iwindow.set._; vrpu(t1); }
+                 { import bhazard.set._; noports(t1); }
+      stop(t2); }
+
+    def vrfirst = {
+      start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); }
+                 { import bhazard.set._; rports(t0); }
+      start(t1); { import iwindow.set._; vrfu(t1); }
+                 { import bhazard.set._; noports(t1); }
+      stop(t2); }
+
     def vamo = {
       start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs1(t0); }
                  { import bhazard.set._; rport_vs1(t0); }
@@ -539,6 +571,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) {
         when (io.op.bits.active.vfdiv) { vfdiv }
         when (io.op.bits.active.vfcmp) { vfcmp }
         when (io.op.bits.active.vfconv) { vfconv }
+        when (io.op.bits.active.vrpred) { vrpred }
+        when (io.op.bits.active.vrfirst) { vrfirst }
         when (io.op.bits.active.vamo) { vamo }
         when (io.op.bits.active.vldx) { vldx }
         when (io.op.bits.active.vstx) { vstx }

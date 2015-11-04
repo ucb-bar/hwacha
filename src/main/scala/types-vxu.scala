@@ -63,6 +63,15 @@ class VQUFn(implicit p: Parameters) extends VXUBundle()(p) {
   val latch = Bits(width = 2)
 }
 
+class VRPUFn(implicit p: Parameters) extends VXUBundle()(p) {
+  val op = UInt(width = SZ_VRPU_OP)
+  def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
+}
+
+class VRFUFn(implicit p: Parameters) extends VXUBundle()(p) {
+  val srd = UInt(width = log2Up(nSRegs))
+}
+
 class VFn(implicit p: Parameters) extends VXUBundle()(p) {
   val union = Bits(width = List(
     new VIUFn().toBits.getWidth,
@@ -74,7 +83,9 @@ class VFn(implicit p: Parameters) extends VXUBundle()(p) {
     new VFCUFn().toBits.getWidth,
     new VFVUFn().toBits.getWidth,
     new VMUFn().toBits.getWidth,
-    new VQUFn().toBits.getWidth).reduceLeft((x, y) => if (x > y) x else y)
+    new VQUFn().toBits.getWidth,
+    new VRPUFn().toBits.getWidth,
+    new VRFUFn().toBits.getWidth).max
   )
 
   def viu(d: Int = 0) = new VIUFn().fromBits(this.union)
@@ -85,6 +96,8 @@ class VFn(implicit p: Parameters) extends VXUBundle()(p) {
   def vfdu(d: Int = 0) = new VFDUFn().fromBits(this.union)
   def vfcu(d: Int = 0) = new VFCUFn().fromBits(this.union)
   def vfvu(d: Int = 0) = new VFVUFn().fromBits(this.union)
+  def vrpu(d: Int = 0) = new VRPUFn().fromBits(this.union)
+  def vrfu(d: Int = 0) = new VRFUFn().fromBits(this.union)
   def vmu(d: Int = 0) = new VMUFn().fromBits(this.union)
   def vqu(d: Int = 0) = new VQUFn().fromBits(this.union)
 }
@@ -183,13 +196,15 @@ class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
   val vfdiv = Bool()
   val vfcmp = Bool()
   val vfconv = Bool()
+  val vrpred = Bool()
+  val vrfirst = Bool()
   val vamo = Bool()
   val vldx = Bool()
   val vstx = Bool()
   val vld = Bool()
   val vst = Bool()
 
-  def enq_vdu(dummy: Int = 0) = vidiv || vfdiv
+  def enq_vdu(dummy: Int = 0) = vidiv || vfdiv || vrpred || vrfirst
   def enq_vgu(dummy: Int = 0) = vamo || vldx || vstx
   def enq_vpu(dummy: Int = 0) = vamo || vldx || vstx || vld || vst
   def enq_vlu(dummy: Int = 0) = vamo || vldx || vld
@@ -255,6 +270,8 @@ class SeqType(implicit p: Parameters) extends VXUBundle()(p) {
   val vfdu = Bool()
   val vfcu = Bool()
   val vfvu = Bool()
+  val vrpu = Bool()
+  val vrfu = Bool()
   val vpu = Bool()
   val vgu = Bool()
   val vcu = Bool()

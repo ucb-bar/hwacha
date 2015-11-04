@@ -12,25 +12,24 @@ class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val killx = Bool(OUTPUT)
   val stallw = Bool(OUTPUT)
 
-  val inst = Bits(INPUT, 64)
-  val ex_inst = Bits(INPUT, 64)
-  val wb_inst = Bits(INPUT, 64)
+  val id_inst = Bits(INPUT, 64)
   val fire_vf = Bool(OUTPUT)
 
   val id_ctrl = new IntCtrlSigs().asOutput()
-  val ex_ctrl = new IntCtrlSigs().asOutput()
-  val wb_ctrl = new IntCtrlSigs().asOutput()
 
   // f/d signals
   val sren = Vec.fill(3)(Bool(OUTPUT))
   val aren = Vec.fill(2)(Bool(OUTPUT))
 
   // x signals
-  val ex_waddr = Bits(INPUT, log2Up(nSRegs))
-  val bypass = Vec.fill(3){Bool(OUTPUT)}
+  val ex_valid = Bool(OUTPUT)
+  val ex_ctrl = new IntCtrlSigs().asOutput()
+  val ex_br_taken = Bool(OUTPUT)
+  val ex_bypass = Vec.fill(3){Bool(OUTPUT)}
 
   // w signals
   val wb_valid = Bool(OUTPUT)
+  val wb_ctrl = new IntCtrlSigs().asOutput()
   val wb_wen = Bool(OUTPUT)
   val wb_dmem_load_valid = Bool(OUTPUT)
   val wb_fpu_valid  = Bool(OUTPUT)
@@ -64,9 +63,10 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       val resp = Decoupled(new rocket.FPResult()).flip
     }
     val smu = new SMUIO
-    val mocheck = new MOCheck().asInput
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
+    val mocheck = new MOCheck().asInput
+    val red = new ReduceResultIO().flip
 
     val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
@@ -109,6 +109,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val pending_fpu_typ = Reg(init=Bits(width=2))
   val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
   val pending_smu = Reg(init=Bool(false))
+  val pending_cbranch = Reg(init=Bool(false))
 
   io.vf_active := vf_active
   io.dpath.vf_active := vf_active
@@ -144,17 +145,15 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.cmdq.rd.ready  := fire_cmdq(mask_rd_valid, deq_rd)
 
   // FETCH
-  io.imem.req.valid := io.dpath.fire_vf
+  io.imem.req.valid := io.dpath.fire_vf || io.dpath.ex_br_taken
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
   io.imem.resp.ready := !io.dpath.stalld
 
   // DECODE
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
-  val id_ctrl = new IntCtrlSigs().decode(io.dpath.inst, decode_table)
+  val id_ctrl = new IntCtrlSigs().decode(io.dpath.id_inst, decode_table)
   io.dpath.id_ctrl := id_ctrl
-  io.dpath.ex_ctrl := ex_ctrl
-  io.dpath.wb_ctrl := wb_ctrl
 
   when (fire_cmdq(null, decode_vsetcfg)) {
     (0 until nLanes) map { case i =>
@@ -205,58 +204,52 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_scalar_src2 = id_ctrl.vs2_val && (id_ctrl.vs2_type === REG_SHR || id_ctrl.vs2_type === REG_ADDR)
   val id_scalar_src3 = id_ctrl.vs3_val && (id_ctrl.vs3_type === REG_SHR || id_ctrl.vs3_type === REG_ADDR)
   val id_scalar_inst =
+    !id_ctrl.vrfu_val &&
     (!id_ctrl.vd_val || id_scalar_dest) && (!id_ctrl.vs1_val || id_scalar_src1) &&
     (!id_ctrl.vs2_val || id_scalar_src2) && (!id_ctrl.vs3_val || id_scalar_src3)
+  val id_branch_inst = id_ctrl.vrpu_val
+  val id_vector_inst = !id_scalar_inst || id_branch_inst
 
   val id_val = io.imem.resp.valid && id_ctrl.ival
 
-  // TOOD: update riscv-opcodes to export these numbers as constants
-  val id_waddr = io.dpath.inst(23,16)
-  val id_raddrs1 = io.dpath.inst(31,24)
-  val id_raddrs2 = io.dpath.inst(40,33)
-  val id_raddrs3 = io.dpath.inst(48,41)
-  val id_paddr   = io.dpath.inst(15,12)
-
   // only look at shared reg because addr reg can't be written during vf block
-  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_waddr =/= UInt(0)
-  val id_ctrl_rens1_not0 = sren1 && id_raddrs1 =/= UInt(0)
-  val id_ctrl_rens2_not0 = sren2 && id_raddrs2 =/= UInt(0)
-  val id_ctrl_rens3_not0 = sren3 && id_raddrs3 =/= UInt(0)
+  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_ctrl.vd =/= UInt(0)
+  val id_ctrl_rens1_not0 = sren1 && id_ctrl.vs1 =/= UInt(0)
+  val id_ctrl_rens2_not0 = sren2 && id_ctrl.vs2 =/= UInt(0)
+  val id_ctrl_rens3_not0 = sren3 && id_ctrl.vs3 =/= UInt(0)
 
   // stall for RAW hazards on non scalar integer pipes
-  val id_can_bypass = id_scalar_inst && !id_ctrl.fpu_val && !id_ctrl.vmu_val && !id_ctrl.smu_val
+  val id_can_bypass = id_scalar_inst && !id_branch_inst && !id_ctrl.fpu_val && !id_ctrl.smu_val
   val data_hazard_ex = Vec(
-    id_ctrl_rens1_not0 && id_raddrs1 === io.dpath.ex_waddr,
-    id_ctrl_rens2_not0 && id_raddrs2 === io.dpath.ex_waddr,
-    id_ctrl_rens3_not0 && id_raddrs3 === io.dpath.ex_waddr)
+    id_ctrl_rens1_not0 && id_ctrl.vs1 === ex_ctrl.vd,
+    id_ctrl_rens2_not0 && id_ctrl.vs2 === ex_ctrl.vd,
+    id_ctrl_rens3_not0 && id_ctrl.vs3 === ex_ctrl.vd)
   val id_ex_hazard = !id_can_bypass && ex_reg_valid && data_hazard_ex.reduce(_||_)
 
   // stall on RAW/WAW hazards on loads/fpu until data returns
   val id_sboard_hazard = 
-    id_ctrl_rens1_not0 && sboard.read(id_raddrs1) ||
-    id_ctrl_rens2_not0 && sboard.read(id_raddrs2) ||
-    id_ctrl_rens3_not0 && sboard.read(id_raddrs3) ||
-    id_ctrl_wen_not0 && sboard.read(id_waddr)
+    id_ctrl_rens1_not0 && sboard.read(id_ctrl.vs1) ||
+    id_ctrl_rens2_not0 && sboard.read(id_ctrl.vs2) ||
+    id_ctrl_rens3_not0 && sboard.read(id_ctrl.vs3) ||
+    id_ctrl_wen_not0 && sboard.read(id_ctrl.vd)
 
   // only set sboard if we were able to send the req
   val id_smu_load = id_ctrl.fn_smu().cmd === SM_L
   val id_smu_store = id_ctrl.fn_smu().cmd === SM_S
   val id_set_sboard = io.fpu.req.fire() || io.smu.req.fire() && id_smu_load
-  sboard.set(id_set_sboard, id_waddr)
-
-  io.dpath.bypass := data_hazard_ex.map(ex_reg_valid && _)
+  sboard.set(id_set_sboard, id_ctrl.vd)
 
   io.lreq.cnt := UInt(1)
   io.sreq.cnt := UInt(1)
  
-  val enq_fpu = id_val && id_scalar_dest && id_ctrl.fpu_val
-  val enq_vxu = id_val && !id_scalar_inst
+  val enq_vxu = id_val && id_vector_inst
   val enq_vmu = id_val && id_ctrl.vmu_val
+  val enq_fpu = id_val && id_scalar_inst && id_ctrl.fpu_val
   val enq_smu = id_val && id_ctrl.smu_val
 
-  val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
   val mask_vxu_ready = !enq_vxu || io.vxu.ready
   val mask_vmu_ready = !enq_vmu || io.vmu.ready
+  val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
   val mask_smu_ready = !enq_smu || io.smu.req.ready
   val mask_smu_load_ok = !enq_smu || !id_smu_load || io.mocheck.load && io.lreq.available
   val mask_smu_store_ok = !enq_smu || !id_smu_store || io.mocheck.store && io.sreq.available
@@ -265,27 +258,30 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
 
   val ctrl_stalld_common =
-    !vf_active || id_ex_hazard || id_sboard_hazard || stall_pending_fpu || stall_pending_smu
+    !vf_active || id_ex_hazard || id_sboard_hazard ||
+    stall_pending_fpu || stall_pending_smu
+
+  val ctrl_fire_common =
+    io.imem.resp.valid && id_ctrl.ival && !io.dpath.ex_br_taken
+
+  assert(!vf_active || !io.imem.resp.valid || id_ctrl.ival, "illegal instruction exception!")
 
   def fire_decode(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(!ctrl_stalld_common,
-      mask_fpu_ready, mask_vxu_ready,
-      mask_vmu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok)
+    val rvs = Seq(!ctrl_stalld_common, ctrl_fire_common,
+      mask_vxu_ready, mask_vmu_ready,
+      mask_fpu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   // stall fetch/decode if we aren't ready to issue the op being decoded
-  io.dpath.stalld := !fire_decode(null) || io.dpath.stallx || io.dpath.stallw
+  io.dpath.stalld := !fire_decode(ctrl_fire_common) || io.dpath.stallx || io.dpath.stallw
   io.dpath.killd :=
-    !io.imem.resp.valid || io.dpath.stalld ||
-    fire_decode(null, !id_scalar_inst || enq_fpu || enq_smu)
+    !ctrl_fire_common || io.dpath.stalld ||
+    id_vector_inst && !id_branch_inst || enq_fpu || enq_smu
 
   // use rm in inst unless its dynamic then take rocket rm
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
-  val _rm = io.dpath.inst(52, 50)
-  val rm = Mux(_rm === Bits("b111"), UInt(0), _rm)
-  val in_fmt = io.dpath.inst(54,53)
-  val out_fmt = io.dpath.inst(56,55)
+  val rm = Mux(id_ctrl.rm === Bits("b111"), UInt(0), id_ctrl.rm)
 
   // to FPU
   io.fpu.req.bits <> id_ctrl.fpu_fn
@@ -295,8 +291,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.dpath.pending_fpu_fn := pending_fpu_fn
   when (io.fpu.req.fire()) {
     pending_fpu := Bool(true)
-    pending_fpu_typ := Mux(id_ctrl.fpu_fn.fromint, in_fmt, out_fmt)
-    pending_fpu_reg := id_waddr
+    pending_fpu_typ := Mux(id_ctrl.fpu_fn.fromint, id_ctrl.in_fmt, id_ctrl.out_fmt)
+    pending_fpu_reg := id_ctrl.vd
     pending_fpu_fn := id_ctrl.fpu_fn
   }
 
@@ -311,6 +307,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.active.vfdiv := id_ctrl.active_vfdiv()
   io.vxu.bits.active.vfcmp := id_ctrl.active_vfcmp()
   io.vxu.bits.active.vfconv := id_ctrl.active_vfconv()
+  io.vxu.bits.active.vrpred := id_ctrl.active_vrpred()
+  io.vxu.bits.active.vrfirst := id_ctrl.active_vrfirst()
   io.vxu.bits.active.vamo := id_ctrl.active_vamo()
   io.vxu.bits.active.vldx := id_ctrl.active_vldx()
   io.vxu.bits.active.vstx := id_ctrl.active_vstx()
@@ -326,6 +324,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       id_ctrl.vfdu_val -> id_ctrl.fn_vfdu(rm).toBits,
       id_ctrl.vfcu_val -> id_ctrl.fn_vfcu(rm).toBits,
       id_ctrl.vfvu_val -> id_ctrl.fn_vfvu(rm).toBits,
+      id_ctrl.vrpu_val -> id_ctrl.fn_vrpu().toBits,
+      id_ctrl.vrfu_val -> id_ctrl.fn_vrfu().toBits,
       id_ctrl.vmu_val  -> id_ctrl.fn_vmu().toBits
     ))
   io.vxu.bits.base.vs1.valid := id_ctrl.vs1_val
@@ -340,14 +340,16 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.base.vs2.pred := id_ctrl.vs2_type === REG_PRED
   io.vxu.bits.base.vs3.pred := id_ctrl.vs3_type === REG_PRED
   io.vxu.bits.base.vd.pred := id_ctrl.vd_type === REG_PRED
-  io.vxu.bits.base.vs1.id := id_raddrs1
-  io.vxu.bits.base.vs2.id := id_raddrs2
-  io.vxu.bits.base.vs3.id := id_raddrs3
-  io.vxu.bits.base.vd.id := id_waddr
+  io.vxu.bits.base.vs1.id := id_ctrl.vs1
+  io.vxu.bits.base.vs2.id := id_ctrl.vs2
+  io.vxu.bits.base.vs3.id := id_ctrl.vs3
+  io.vxu.bits.base.vd.id := id_ctrl.vd
   io.vxu.bits.base.vp.valid := id_ctrl.vp_val
   io.vxu.bits.base.vp.pred := Bool(true)
   io.vxu.bits.base.vp.neg() := id_ctrl.vp_neg
-  io.vxu.bits.base.vp.id := id_paddr
+  io.vxu.bits.base.vp.id := id_ctrl.vp
+  when (fire_decode(null, id_branch_inst)) { pending_cbranch := Bool(true) }
+  when (io.red.pred.valid) { pending_cbranch := Bool(false) }
 
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
@@ -375,9 +377,18 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
   val ex_stall_smu = ex_reg_valid && io.smu.resp.valid && !io.smu.resp.bits.store
+  val ex_br_taken = io.red.pred.valid && io.red.pred.bits.cond
+  val ex_br_not_taken = io.red.pred.valid && !io.red.pred.bits.cond
 
-  io.dpath.stallx := ex_stall_fpu || ex_stall_smu || io.dpath.stallw
-  io.dpath.killx := !ex_reg_valid || io.dpath.stallx
+  io.dpath.stallx :=
+    pending_cbranch && !io.red.pred.valid ||
+    ex_stall_fpu || ex_stall_smu || io.dpath.stallw
+  io.dpath.killx := !ex_reg_valid || ex_br_not_taken || io.dpath.stallx
+
+  io.dpath.ex_valid := ex_reg_valid
+  io.dpath.ex_ctrl := ex_ctrl
+  io.dpath.ex_br_taken := ex_br_taken
+  io.dpath.ex_bypass := data_hazard_ex.map(ex_reg_valid && !ex_br_not_taken && _)
 
   // give fixed priority to fpu -> mem -> alu
   io.fpu.resp.ready := Bool(true)
@@ -398,6 +409,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.dpath.stallw := Bool(false)
 
   io.dpath.wb_valid := wb_reg_valid
+  io.dpath.wb_ctrl := wb_ctrl
   io.dpath.wb_wen := wb_fpu_valid || wb_dmem_load_valid || wb_reg_valid
   io.dpath.wb_fpu_valid := wb_fpu_valid
   io.dpath.wb_dmem_load_valid := wb_dmem_load_valid
