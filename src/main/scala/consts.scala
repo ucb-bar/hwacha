@@ -78,10 +78,9 @@ trait DecodeConstants {
 
   val SZ_I = 2
   val IMM_X = BitPat("b??")
-  val IMM_0 = UInt(0, SZ_I)
-  val IMM_I = UInt(1, SZ_I)
-  val IMM_S = UInt(2, SZ_I)
-  val IMM_U = UInt(3, SZ_I)
+  val IMM_I = UInt(0, SZ_I)
+  val IMM_L = UInt(1, SZ_I)
+  val IMM_U = UInt(2, SZ_I)
 
   val DW__ = BitPat("b?")
   val DW32 = UInt(0, 1)
@@ -102,10 +101,9 @@ trait DecodeConstants {
   val A1_PC   = UInt(2, 2)
 
   val A2_X    = BitPat("b??")
-  val A2_ZERO = UInt(0, 2)
-  val A2_8    = UInt(1, 2)
-  val A2_RS2  = UInt(2, 2)
-  val A2_IMM  = UInt(3, 2)
+  val A2_8    = UInt(0, 2)
+  val A2_RS2  = UInt(1, 2)
+  val A2_IMM  = UInt(2, 2)
 
   val DW_X  = X
   val DW_32 = N

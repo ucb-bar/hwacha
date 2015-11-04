@@ -82,8 +82,8 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     val sign = inst(63).toSInt
     val b30_3 = inst(62,35)
     val b2_0 = Mux(sel === IMM_I, inst(34,32), Bits(0))
-
-    Cat(sign, b30_3, b2_0).toSInt
+    val out = Cat(sign, b30_3, b2_0).toSInt
+    Mux(sel === IMM_L, Cat(out, UInt(0, 32)).toSInt, out)
   }
 
   io.ctrl.id_inst := id_inst
@@ -145,13 +145,13 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
 
   val ex_imm = imm(ex_ctrl.sel_imm, ex_reg_inst)
   val ex_op1 = MuxLookup(ex_ctrl.alu_sel1, SInt(0), Seq(
-    A1_RS1 -> ex_srs(0).toSInt,
-    A1_PC -> ex_reg_pc.toSInt))
+    A1_ZERO -> SInt(0),
+    A1_RS1  -> ex_srs(0).toSInt,
+    A1_PC   -> ex_reg_pc.toSInt))
   val ex_op2 = MuxLookup(ex_ctrl.alu_sel2, SInt(0), Seq(
-    A2_ZERO -> SInt(0),
-    A2_8 -> SInt(8),
-    A2_RS2 -> ex_srs(1).toSInt,
-    A2_IMM -> ex_imm))
+    A2_8    -> SInt(8),
+    A2_RS2  -> ex_srs(1).toSInt,
+    A2_IMM  -> ex_imm))
 
   val alu = Module(new rocket.ALU)
   alu.io.dw := ex_ctrl.alu_dw
