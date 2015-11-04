@@ -57,7 +57,8 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val pglen_next = pglen.zext - step_max
   val pglen_end = (pglen_next <= SInt(0))
   val pglen_skip = Mux(lead, io.op.bits.base(bPgIdx-1, 0), UInt(0))
-  val pglen_max = (UInt(pgSize) - pglen_skip) >> io.op.bits.mt.shift()
+  val pglen_shift = Mux(lead, io.op.bits.mt.shift(), op.mt.shift())
+  val pglen_max = (UInt(pgSize) - pglen_skip) >> pglen_shift
   val pglen_final = Reg(Bool())
   val pglen_reset = Bool()
   pglen_reset := Bool(false)
@@ -133,9 +134,11 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
         op.vlen := vlen_next
         when (vlen_end) {
           state := s_idle
-          io.op.ready := Bool(true)
           assert(!op.mode.unit || pglen_end,
             "PBox0: desynchronized vlen and pglen counters");
+
+          io.op.ready := Bool(true)
+          pglen_reset := Bool(true)
         }
       }
     }
@@ -152,8 +155,8 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   when (io.op.fire()) { /* initialization */
     state := s_busy
     op := io.op.bits
-    lead := Bool(true)
     index := UInt(0)
+    lead := Bool(true)
   }
 }
 
