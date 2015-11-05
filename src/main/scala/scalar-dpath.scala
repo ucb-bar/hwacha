@@ -2,8 +2,6 @@ package hwacha
 
 import Chisel._
 import cde.Parameters
-import DataGating._
-import HardFloatHelper._
 
 class Write(implicit p: Parameters) extends HwachaBundle()(p) {
   val rd  = Bits(width = bSDest)
@@ -98,11 +96,6 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
   io.fpu.req.bits.in2 := id_sreads(1)
   io.fpu.req.bits.in3 := id_sreads(2)
 
-  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
-  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
-  val unrec_fpu_resp = Mux(io.ctrl.pending_fpu_typ === UInt(0),
-               Cat(Fill(32,unrec_s(31)),unrec_s), unrec_d)
-
   //Memory requests - COLIN FIXME: check for critical path (need reg?)
   val addr_stride =
     MuxLookup(id_ctrl.mt, UInt(0),Seq(
@@ -169,37 +162,24 @@ class ScalarDpath(implicit p: Parameters) extends HwachaModule()(p) {
     wb_reg_inst := ex_reg_inst
     wb_reg_wdata := alu.io.out
   }
-  val wb_ll_wdata = Reg(next=
-    Mux(io.fpu.resp.valid,
-      Mux(io.ctrl.pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp),
-        io.smu.resp.bits.data))
 
-  val awrite_valid = io.ctrl.awrite
-  val swrite_valid = io.ctrl.swrite
-  val aswrite_rd   = io.cmdq.rd.bits
-  val aswrite_imm  = io.cmdq.imm.bits
+  assert(!(io.ctrl.wb_wen && io.ctrl.swrite), "Cannot write vmss and scalar dest")
+  assert(!(io.ctrl.wb_wen && io.ctrl.awrite), "Cannot write vmsa and scalar dest")
 
-  assert(!(io.ctrl.wb_wen && swrite_valid), "Cannot write vmss and scalar dest")
-  assert(!(io.ctrl.wb_wen && awrite_valid), "Cannot write vmsa and scalar dest")
+  val wb_waddr =
+    Mux(io.ctrl.swrite, io.cmdq.rd.bits,
+      Mux(io.ctrl.wb_ll_valid, io.ctrl.wb_ll_waddr, wb_ctrl.vd))
+  val wb_wdata =
+    Mux(io.ctrl.swrite, io.cmdq.imm.bits,
+      Mux(io.ctrl.wb_ll_valid, io.ctrl.wb_ll_wdata, wb_reg_wdata))
 
-  val wb_waddr = 
-    Mux(io.ctrl.wb_fpu_valid, io.ctrl.pending_fpu_reg,
-    Mux(io.ctrl.wb_dmem_load_valid, io.ctrl.wb_dmem_waddr,
-      wb_reg_inst(23,16)))
-
-  val wb_wdata = Mux(io.ctrl.wb_fpu_valid || io.ctrl.wb_dmem_load_valid, wb_ll_wdata, wb_reg_wdata)
-  when (io.ctrl.wb_wen) {
+  when (io.ctrl.wb_wen || io.ctrl.swrite) {
     srf.write(wb_waddr, wb_wdata)
     if (commit_log) printf("H: write_srf %d %x\n", wb_waddr, wb_wdata)
   }
-
-  when (swrite_valid) {
-    srf.write(aswrite_rd, aswrite_imm)
-    if (commit_log) printf("H: write_srf %d %x\n", aswrite_rd, aswrite_imm)
-  }
-  when (awrite_valid) {
-    arf(aswrite_rd) := aswrite_imm
-    if (commit_log) printf("H: write_arf %d %x\n", aswrite_rd, aswrite_imm)
+  when (io.ctrl.awrite) {
+    arf(io.cmdq.rd.bits) := io.cmdq.imm.bits
+    if (commit_log) printf("H: write_arf %d %x\n", io.cmdq.rd.bits, io.cmdq.imm.bits)
   }
 
   // to VXU

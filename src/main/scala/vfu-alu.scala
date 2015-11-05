@@ -5,7 +5,7 @@ import cde.Parameters
 
 class ALUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn
-  val eidx = Bits(width = bVLen)
+  val eidx = Bits(width = bMLVLen)
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
 }

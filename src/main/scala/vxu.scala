@@ -17,7 +17,7 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   val seq = Module(new LaneSequencer)
   val exp = Module(new Expander)
   val lane = Module(new Lane(id))
-  val dcc = Module(new DecoupledCluster)
+  val dcc = Module(new DecoupledCluster(id))
 
   seq.io.cfg <> io.cfg
   lane.io.cfg <> io.cfg
@@ -53,10 +53,8 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
 
   dcc.io.dpla <> seq.io.dpla
   dcc.io.dqla <> seq.io.dqla
-  dcc.io.didla <> seq.io.didla
-  dcc.io.dfdla <> seq.io.dfdla
-  dcc.io.drpla <> seq.io.drpla
-  dcc.io.drfla <> seq.io.drfla
+  dcc.io.dila <> seq.io.dila
+  dcc.io.dfla <> seq.io.dfla
   dcc.io.gpla <> seq.io.gpla
   dcc.io.gqla <> seq.io.gqla
   dcc.io.pla <> seq.io.pla
@@ -68,7 +66,6 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   dcc.io.bpqs <> lane.io.bpqs
   dcc.io.brqs <> lane.io.brqs
   lane.io.bwqs <> dcc.io.bwqs
-  io.red <> seq.io.red
   io.red <> dcc.io.red
 
   io.vmu <> seq.io.vmu

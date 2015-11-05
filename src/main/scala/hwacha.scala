@@ -101,6 +101,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val mseq = Module(new MasterSequencer)
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
   val rpred = Module(new RPredMaster)
+  val rfirst = Module(new RFirstMaster)
   val smu = Module(new SMU)
   val mou = Module(new MemOrderingUnit)
   val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
@@ -191,14 +192,21 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   ptlb.io.ptw.invalidate := Bool(false)
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
-  val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
+  val enq_rpred = scalar.io.vxu.bits.active.vrpred
+  val enq_rfirst = scalar.io.vxu.bits.active.vrfirst
   val mask_vxus_ready = (0 until nLanes) map { i => !enq_vxus(i) || vus(i).io.issue.vxu.ready }
-  val mask_vmus_ready = (0 until nLanes) map { i => !enq_vmus(i) || vus(i).io.issue.vmu.ready }
+  val mask_rpred_ready = !enq_rpred || rpred.io.op.ready
+  val mask_rfirst_ready = !enq_rfirst || rfirst.io.op.ready
 
   def fire_vxu(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(scalar.io.vxu.valid, mseq.io.op.ready) ++ mask_vxus_ready
+    val rvs = Seq(
+      scalar.io.vxu.valid, mseq.io.op.ready,
+      mask_rpred_ready, mask_rfirst_ready) ++ mask_vxus_ready
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
+
+  val enq_vmus = scalar.io.vmu.bits.lane.map(_.active)
+  val mask_vmus_ready = (0 until nLanes) map { i => !enq_vmus(i) || vus(i).io.issue.vmu.ready }
 
   def fire_vmu(exclude: Bool, include: Bool*) = {
     val rvs = Seq(scalar.io.vmu.valid) ++ mask_vmus_ready
@@ -214,6 +222,14 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
   }
   scalar.io.busy_mseq := mseq.io.busy
+
+  rpred.io.op.valid := fire_vxu(mask_rpred_ready, enq_rpred)
+  rpred.io.op.bits <> scalar.io.vxu.bits
+  scalar.io.red.pred <> rpred.io.result
+
+  rfirst.io.op.valid := fire_vxu(mask_rfirst_ready, enq_rfirst)
+  rfirst.io.op.bits <> scalar.io.vxu.bits
+  scalar.io.red.first <> rfirst.io.result
 
   mou.io.cfg <> rocc.io.cfg
   mou.io.mseq <> mseq.io.master.state
@@ -234,8 +250,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vu.io.issue.vmu.bits <> scalar.io.vmu.bits
     vu.io.mseq.state <> mseq.io.master.state
     vu.io.mseq.update <> mseq.io.master.update
-    vu.io.mseq.reduce <> mseq.io.master.reduce
     rpred.io.lane(i) <> vu.io.red.pred
+    rfirst.io.lane(i) <> vu.io.red.first
 
     dtlb.io <> vu.io.tlb
     dtlb.io.ptw.req.ready := Bool(true)
@@ -245,7 +261,4 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
     io.dmem(i) <> vu.io.dmem
   }
-
-  rpred.io.op <> mseq.io.reduce.pred
-  scalar.io.red.pred <> rpred.io.result
 }

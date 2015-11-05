@@ -19,7 +19,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
          2 + 1 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
   val maxStrip = nBanks * (wBank / SZ_B)
-  val bStrip = log2Down(maxStrip) + 1
+  val bfStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(tlDataBits / SZ_B, nStrip)
   val bLookAhead = log2Down(maxLookAhead) + 1
 
@@ -68,14 +68,9 @@ class UpdateSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
   val reg = Vec.fill(nSeq){new PhysicalRegisterIds}
 }
 
-class ReduceSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
-  val pred = Vec.fill(nSeq){Bool()}
-}
-
 class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val state = new MasterSequencerState().asOutput
   val update = new UpdateSequencerState().asOutput
-  val reduce = new ReduceSequencerState().asOutput
   val clear = Vec.fill(nSeq){Bool()}.asInput
 }
 
@@ -83,9 +78,6 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
   val io = new Bundle {
     val op = Decoupled(new IssueOpBase).flip
     val master = new MasterSequencerIO
-    val reduce = new Bundle {
-      val pred = Valid(new VRPUFn)
-    }
     val busy = Bool(OUTPUT)
 
     val debug = new Bundle {
@@ -290,8 +282,6 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       def vfdu(n: UInt) = active(n, (a: SeqType) => a.vfdu, fn_identity)
       def vfcu(n: UInt) = active(n, (a: SeqType) => a.vfcu, fn_identity)
       def vfvu(n: UInt) = active(n, (a: SeqType) => a.vfvu, fn_identity)
-      def vrpu(n: UInt) = active(n, (a: SeqType) => a.vrpu, fn_identity)
-      def vrfu(n: UInt) = active(n, (a: SeqType) => a.vrfu, fn_identity)
       def vpu(n: UInt) = active(n, (a: SeqType) => a.vpu, fn_identity)
       def vgu(n: UInt) = active(n, (a: SeqType) => a.vgu, fn_identity)
       def vcu(n: UInt) = active(n, (a: SeqType) => a.vcu, fn_identity)
@@ -406,12 +396,6 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         set.head(head + UInt(1))
       }
 
-      val ff_rpred = find_first(v, head, (i: Int) => e(i).active.vrpu)
-      io.master.reduce.pred := ff_rpred
-      val vrpus = (ff_rpred zip io.master.clear) map { case (f, c) => f && c }
-      io.reduce.pred.valid := vrpus.reduce(_ || _)
-      io.reduce.pred.bits := mreadfn(ff_rpred, e, (e: MasterSeqEntry) => e.fn.vrpu())
-
       io.busy := v.reduce(_ || _)
 
       retired = true
@@ -495,16 +479,12 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def vrpred = {
       start(t0); { import iwindow.set._; vqu(t0); vp(t0); }
                  { import bhazard.set._; rports(t0); }
-      start(t1); { import iwindow.set._; vrpu(t1); }
-                 { import bhazard.set._; noports(t1); }
-      stop(t2); }
+      stop(t1); }
 
     def vrfirst = {
       start(t0); { import iwindow.set._; vqu(t0); vp(t0); vs1(t0); }
                  { import bhazard.set._; rports(t0); }
-      start(t1); { import iwindow.set._; vrfu(t1); }
-                 { import bhazard.set._; noports(t1); }
-      stop(t2); }
+      stop(t1); }
 
     def vamo = {
       start(t0); { import iwindow.set._; vgu(t0); vp(t0); vs1(t0); }

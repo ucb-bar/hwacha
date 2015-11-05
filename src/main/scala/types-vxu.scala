@@ -69,7 +69,7 @@ class VRPUFn(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class VRFUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val srd = UInt(width = log2Up(nSRegs))
+  val sd = UInt(width = bSRegs)
 }
 
 class VFn(implicit p: Parameters) extends VXUBundle()(p) {
@@ -238,7 +238,7 @@ class IssueOpML(implicit p: Parameters) extends IssueOpBase()(p) with MultiLaneV
 //-------------------------------------------------------------------------\\
 
 trait LaneOp extends VXUBundle {
-  val strip = UInt(width = bStrip)
+  val strip = UInt(width = bfStrip)
 }
 
 trait BankPred extends VXUBundle {

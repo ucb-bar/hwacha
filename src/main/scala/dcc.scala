@@ -27,7 +27,7 @@ class DCCIssueIO(implicit p: Parameters) extends Bundle {
   val op = Decoupled(new DCCOp).flip
 }
 
-class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
+class DecoupledCluster(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
@@ -41,10 +41,8 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
     }
     val dpla = new CounterLookAheadIO().flip // DCC LPQ counter
     val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // DCC LRQ counter
-    val didla = new CounterLookAheadIO().flip // idiv counter
-    val dfdla = new CounterLookAheadIO().flip // fdiv counter
-    val drpla = new CounterLookAheadIO().flip // reduction pred counter
-    val drfla = new CounterLookAheadIO().flip // reduction first counter
+    val dila = new CounterLookAheadIO().flip // idiv counter
+    val dfla = new CounterLookAheadIO().flip // fdiv counter
     val gpla = new CounterLookAheadIO().flip // VGU LPQ counter
     val gqla = new CounterLookAheadIO().flip // VGU LRQ counter
     val pla = new BPQLookAheadIO().flip // VPU BPQ counter
@@ -54,7 +52,7 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
     val vmu = new VMUIO
   }
 
-  val vdu = Module(new VDU)
+  val vdu = Module(new VDU(id))
   val vgu = Module(new VGU)
   val vpu = Module(new VPU)
   val vlu = Module(new VLU)
@@ -80,10 +78,8 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   vdu.io.op.bits := io.op.bits
   vdu.io.pla <> io.dpla
   vdu.io.qla <> io.dqla
-  vdu.io.idla <> io.didla
-  vdu.io.fdla <> io.dfdla
-  vdu.io.rpla <> io.drpla
-  vdu.io.rfla <> io.drfla
+  vdu.io.ila <> io.dila
+  vdu.io.fla <> io.dfla
   vdu.io.lpq <> io.lpqs(0)
   vdu.io.lrqs(0) <> io.lrqs(0)
   vdu.io.lrqs(1) <> io.lrqs(1)

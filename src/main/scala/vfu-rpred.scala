@@ -4,8 +4,8 @@ import Chisel._
 import cde.Parameters
 
 class RPredOperand(implicit p: Parameters) extends VXUBundle()(p) {
-  val pred = Bits(width = nSlices)
   val active = Bits(width = nSlices)
+  val pred = Bits(width = nSlices)
 }
 
 class RPredResult(implicit p: Parameters) extends VXUBundle()(p) {
@@ -15,8 +15,7 @@ class RPredResult(implicit p: Parameters) extends VXUBundle()(p) {
 class RPredIO(implicit p: Parameters) extends VXUBundle()(p) {
   val op = Valid(new VRPUFn)
   val req = Decoupled(new RPredOperand)
-  val consumed = Bool(INPUT)
-  val result = Valid(new RPredResult).flip
+  val result = Decoupled(new RPredResult).flip
 }
 
 class RPredLane(implicit p: Parameters) extends VXUModule()(p) {
@@ -37,23 +36,54 @@ class RPredLane(implicit p: Parameters) extends VXUModule()(p) {
     when (fn.op_is(FR_ANY)) { cond := cond | (io.req.bits.pred & io.req.bits.active).orR }
   }
 
-  io.consumed := io.req.fire()
-  // io.result.valid gets populated by LaneSequencer
   io.result.bits.cond := cond
 }
 
 class RPredMaster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
-    val op = Valid(new VRPUFn).flip
-    val lane = Vec.fill(nLanes){Valid(new RPredResult)}.flip
-    val result = Valid(new RPredResult)
+    val op = Decoupled(new IssueOpML).flip
+    val lane = Vec.fill(nLanes){Decoupled(new RPredResult)}.flip
+    val result = Decoupled(new RPredResult)
+  }
+
+  val opq = Module(new Queue(new IssueOpML, 2))
+  opq.io.enq <> io.op
+
+  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
+  val state = Reg(init = s_idle)
+  val deq_lane = Vec.fill(nLanes){Reg(Bool())}
+  val fn = Reg(new VRPUFn)
+
+  val mask_lane_valid = (deq_lane zip io.lane) map { case (deq, lane) => !deq || lane.valid }
+
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(state === s_busy, io.result.ready) ++ mask_lane_valid
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  io.result.valid := fire(io.result.ready)
+  (io.lane zipWithIndex) map { case (lane, i) =>
+    lane.ready := fire(mask_lane_valid(i), deq_lane(i)) }
+
+  opq.io.deq.ready := Bool(false)
+
+  switch (state) {
+    is (s_idle) {
+      opq.io.deq.ready := Bool(true)
+      when (opq.io.deq.valid) {
+        state := s_busy
+        deq_lane := Vec(opq.io.deq.bits.lane.map(_.active))
+        fn := opq.io.deq.bits.fn.vrpu()
+      }
+    }
+    is (s_busy) {
+      when (fire(null)) { state := s_idle }
+    }
   }
 
   val cond =
-    io.op.bits.op_is(FR_ALL) && io.lane.map(r => r.bits.cond | ~r.valid).reduce(_ && _) ||
-    io.op.bits.op_is(FR_ANY) && io.lane.map(r => r.bits.cond & r.valid).reduce(_ || _)
+    fn.op_is(FR_ALL) && io.lane.map(r => r.bits.cond | ~r.valid).reduce(_ && _) ||
+    fn.op_is(FR_ANY) && io.lane.map(r => r.bits.cond & r.valid).reduce(_ || _)
 
-  // register result to cut combinational path
-  io.result.valid := Reg(next=io.op.valid)
-  io.result.bits.cond := RegEnable(cond, io.op.valid)
+  io.result.bits.cond := cond
 }

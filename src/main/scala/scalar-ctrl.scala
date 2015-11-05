@@ -4,6 +4,7 @@ import Chisel._
 import cde.Parameters
 import rocket.ALU._
 import ScalarFPUDecode._
+import HardFloatHelper._
 
 class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val stalld = Bool(OUTPUT)
@@ -31,18 +32,18 @@ class CtrlDpathIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val wb_valid = Bool(OUTPUT)
   val wb_ctrl = new IntCtrlSigs().asOutput()
   val wb_wen = Bool(OUTPUT)
-  val wb_dmem_load_valid = Bool(OUTPUT)
-  val wb_fpu_valid  = Bool(OUTPUT)
-  val wb_dmem_waddr = UInt(OUTPUT,log2Up(nSRegs))
+  val wb_ll_valid = Bool(OUTPUT)
+  val wb_ll_waddr = UInt(OUTPUT, bSRegs)
+  val wb_ll_wdata = UInt(OUTPUT, regLen)
   val swrite = Bool(OUTPUT)
   val awrite = Bool(OUTPUT)
 
-  // long-latency signals
-  val pending_fpu_reg = UInt(OUTPUT,log2Up(nSRegs))
-  val pending_fpu_typ = UInt(OUTPUT,2)
-  val pending_fpu_fn = new rocket.FPUCtrlSigs().asOutput()
-
   val vf_active = Bool(OUTPUT)
+}
+
+class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
+  val addr = UInt(width = bSRegs)
+  val data = UInt(width = regLen)
 }
 
 class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
@@ -208,6 +209,7 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     (!id_ctrl.vd_val || id_scalar_dest) && (!id_ctrl.vs1_val || id_scalar_src1) &&
     (!id_ctrl.vs2_val || id_scalar_src2) && (!id_ctrl.vs3_val || id_scalar_src3)
   val id_branch_inst = id_ctrl.vrpu_val
+  val id_first_inst = id_ctrl.vrfu_val
   val id_vector_inst = !id_scalar_inst || id_branch_inst
 
   val id_val = io.imem.resp.valid && id_ctrl.ival
@@ -236,7 +238,8 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // only set sboard if we were able to send the req
   val id_smu_load = id_ctrl.fn_smu().cmd === SM_L
   val id_smu_store = id_ctrl.fn_smu().cmd === SM_S
-  val id_set_sboard = io.fpu.req.fire() || io.smu.req.fire() && id_smu_load
+  val id_set_sboard =
+    io.vxu.fire() && id_first_inst || io.fpu.req.fire() || io.smu.req.fire() && id_smu_load
   sboard.set(id_set_sboard, id_ctrl.vd)
 
   io.lreq.cnt := UInt(1)
@@ -286,9 +289,6 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // to FPU
   io.fpu.req.bits <> id_ctrl.fpu_fn
   io.fpu.req.valid := fire_decode(mask_fpu_ready, enq_fpu)
-  io.dpath.pending_fpu_reg := pending_fpu_reg
-  io.dpath.pending_fpu_typ := pending_fpu_typ
-  io.dpath.pending_fpu_fn := pending_fpu_fn
   when (io.fpu.req.fire()) {
     pending_fpu := Bool(true)
     pending_fpu_typ := Mux(id_ctrl.fpu_fn.fromint, id_ctrl.in_fmt, id_ctrl.out_fmt)
@@ -349,7 +349,6 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.base.vp.neg() := id_ctrl.vp_neg
   io.vxu.bits.base.vp.id := id_ctrl.vp
   when (fire_decode(null, id_branch_inst)) { pending_cbranch := Bool(true) }
-  when (io.red.pred.valid) { pending_cbranch := Bool(false) }
 
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
@@ -375,13 +374,19 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     ex_ctrl := id_ctrl
   }
 
+  io.red.pred.ready := Bool(true)
+
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
   val ex_stall_smu = ex_reg_valid && io.smu.resp.valid && !io.smu.resp.bits.store
-  val ex_br_taken = io.red.pred.valid && io.red.pred.bits.cond
-  val ex_br_not_taken = io.red.pred.valid && !io.red.pred.bits.cond
+  val ex_stall_rfirst = ex_reg_valid && io.red.first.valid
+  val ex_br_resolved = io.red.pred.fire()
+  val ex_br_taken = ex_br_resolved && io.red.pred.bits.cond
+  val ex_br_not_taken = ex_br_resolved && !io.red.pred.bits.cond
+
+  when (ex_br_resolved) { pending_cbranch := Bool(false) }
 
   io.dpath.stallx :=
-    pending_cbranch && !io.red.pred.valid ||
+    pending_cbranch && !ex_br_resolved ||
     ex_stall_fpu || ex_stall_smu || io.dpath.stallw
   io.dpath.killx := !ex_reg_valid || ex_br_not_taken || io.dpath.stallx
 
@@ -390,16 +395,36 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.dpath.ex_br_taken := ex_br_taken
   io.dpath.ex_bypass := data_hazard_ex.map(ex_reg_valid && !ex_br_not_taken && _)
 
-  // give fixed priority to fpu -> mem -> alu
+  val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 3))
+
+  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
+  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
+  val unrec_fpu_resp =
+    Mux(pending_fpu_typ === UInt(0), Cat(Fill(32,unrec_s(31)), unrec_s), unrec_d)
+
+  ll_warb.io.in(0).valid := io.fpu.resp.valid
+  ll_warb.io.in(0).bits.addr := pending_fpu_reg
+  ll_warb.io.in(0).bits.data :=
+    Mux(pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp)
+  assert(!io.fpu.resp.valid || ll_warb.io.in(0).ready, "fpu port should always have priority")
   io.fpu.resp.ready := Bool(true)
-  io.smu.resp.ready := !io.fpu.resp.valid
-  val ex_dmem_valid = io.smu.resp.valid && !io.fpu.resp.valid
+
+  ll_warb.io.in(1).valid := io.smu.resp.valid && !io.smu.resp.bits.store
+  ll_warb.io.in(1).bits.addr := io.smu.resp.bits.tag
+  ll_warb.io.in(1).bits.data := io.smu.resp.bits.data
+  io.smu.resp.ready := ll_warb.io.in(1).ready
+
+  ll_warb.io.in(2).valid := io.red.first.valid
+  ll_warb.io.in(2).bits.addr := io.red.first.bits.sd
+  ll_warb.io.in(2).bits.data := io.red.first.bits.first
+  io.red.first.ready := ll_warb.io.in(2).ready
+
+  ll_warb.io.out.ready := Bool(true) // long-latency write port always wins
 
   // WRITEBACK
-  val wb_fpu_valid = Reg(next=io.fpu.resp.valid)
-  val wb_dmem_valid = Reg(next=ex_dmem_valid)
-  val wb_dmem_load_valid = wb_dmem_valid && RegEnable(!io.smu.resp.bits.store, ex_dmem_valid)
-  val wb_dmem_waddr = RegEnable(io.smu.resp.bits.tag, ex_dmem_valid)
+  val wb_ll_valid = Reg(next=ll_warb.io.out.valid)
+  val wb_ll_waddr = RegEnable(ll_warb.io.out.bits.addr, ll_warb.io.out.valid)
+  val wb_ll_wdata = RegEnable(ll_warb.io.out.bits.data, ll_warb.io.out.valid)
 
   when (!io.dpath.stallw) {
     wb_reg_valid := !io.dpath.killx
@@ -410,21 +435,13 @@ class ScalarCtrl(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   io.dpath.wb_valid := wb_reg_valid
   io.dpath.wb_ctrl := wb_ctrl
-  io.dpath.wb_wen := wb_fpu_valid || wb_dmem_load_valid || wb_reg_valid
-  io.dpath.wb_fpu_valid := wb_fpu_valid
-  io.dpath.wb_dmem_load_valid := wb_dmem_load_valid
-  io.dpath.wb_dmem_waddr := wb_dmem_waddr
+  io.dpath.wb_wen := wb_ll_valid || wb_reg_valid
+  io.dpath.wb_ll_valid := wb_ll_valid
+  io.dpath.wb_ll_waddr := wb_ll_waddr
+  io.dpath.wb_ll_wdata := wb_ll_wdata
 
-  // clear ll sb at cycle of wb not the cycle result returned
-  val clear_fpu = wb_fpu_valid
-  val clear_mem = wb_dmem_load_valid
+  sboard.clear(wb_ll_valid, wb_ll_waddr)
+  when (wb_ll_valid) { pending_fpu := Bool(false) }
 
-  val sboard_clear_addr = Mux(clear_fpu, pending_fpu_reg, wb_dmem_waddr)
-  sboard.clear(clear_mem || clear_fpu, sboard_clear_addr)
-
-  // TODO: this is conservative in that we might be able to get an fpu resp and send out the req in the same cycle rather than waiting 1 cycle (see fpu.req.valid)
-  when (clear_fpu) { pending_fpu := Bool(false) }
-
-  assert(!(wb_dmem_load_valid && wb_reg_valid), "load result and scalar wb conflict")
-  assert(!(wb_fpu_valid && wb_reg_valid), "fpu result and scalar wb conflict")
+  assert(!(wb_ll_valid && wb_reg_valid), "long latency and scalar wb conflict")
 }

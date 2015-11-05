@@ -22,10 +22,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
 
     val dpla = new CounterLookAheadIO
     val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}
-    val didla = new CounterLookAheadIO
-    val dfdla = new CounterLookAheadIO
-    val drpla = new CounterLookAheadIO
-    val drfla = new CounterLookAheadIO
+    val dila = new CounterLookAheadIO
+    val dfla = new CounterLookAheadIO
     val gpla = new CounterLookAheadIO
     val gqla = new CounterLookAheadIO
     val pla = new BPQLookAheadIO
@@ -34,7 +32,6 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
 
-    val red = new ReduceResultIO
     val lpred = Decoupled(Bits(width=nStrip))
     val spred = Decoupled(Bits(width=nStrip))
 
@@ -306,9 +303,6 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         }
         io.master.clear(r) := !v(r) || !next_v(r)
       }
-      val vrpus = (v zip io.master.reduce.pred) map { case (valid, vrpu) => valid && vrpu } 
-      io.red.pred.valid := vrpus.reduce(_ || _)
-      // io.red.pred.bits get populated by RPredLane
     }
 
     def debug = {
@@ -365,10 +359,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       }
     }
 
-    val vidu = new vdu((a: SeqType) => a.vidu, io.didla)
-    val vfdu = new vdu((a: SeqType) => a.vfdu, io.dfdla)
-    val vrpu = new vdu((a: SeqType) => a.vrpu, io.drpla)
-    val vrfu = new vdu((a: SeqType) => a.vrfu, io.drfla)
+    val vidu = new vdu((a: SeqType) => a.vidu, io.dila)
+    val vfdu = new vdu((a: SeqType) => a.vfdu, io.dfla)
 
     val vcu = new {
       val first = ff((i: Int) => me(i).active.vcu)
@@ -574,12 +566,12 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     }
 
     def logic = {
-      vidu.logic; vfdu.logic; vrpu.logic; vrfu.logic; vcu.logic; vlu.logic
+      vidu.logic; vfdu.logic; vcu.logic; vlu.logic
       exp.logic; vipu.logic; vpu.logic
       vgu.logic; vsu.logic; vqu.logic
 
       def fires(n: Int) =
-        vidu.fires(n) || vfdu.fires(n) || vrpu.fires(n) || vrfu.fires(n) || vcu.fires(n) || vlu.fires(n) ||
+        vidu.fires(n) || vfdu.fires(n) || vcu.fires(n) || vlu.fires(n) ||
         exp.fires(n) || vipu.fires(n) || vpu.fires(n)
 
       def update_reg(i: Int, fn: RegFn, pfn: PRegIdFn) = {
