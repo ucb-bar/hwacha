@@ -102,7 +102,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
       val left_mask = left_found && (!right_found || left_min)
       val right_mask = right_found && (!left_found || !left_min)
       assert(!left_mask || !right_mask, "left and right can't be turned on at the same time")
-      return (Cat(dgate(left_mask, left._1), dgate(right_mask, right._1)),
+      return (Cat(dgate(right_mask, right._1), dgate(left_mask, left._1)),
               Mux(left_mask, left._2, right._2))
     }
   }
