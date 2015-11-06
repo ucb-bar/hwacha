@@ -58,6 +58,8 @@ class DefaultHwachaConfig extends Config (
     case HwachaStagesFConv => 2
     case HwachaStagesFCmp => 1
 
+    case HwachaNSeqEntries => 8
+
     case HwachaNVVAQEntries => 4
     case HwachaNVPAQEntries => 24
     case HwachaNVSDQEntries => 4

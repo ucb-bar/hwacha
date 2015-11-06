@@ -1,12 +1,14 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import cde.{Parameters, Field}
 import DataGating._
+
+case object HwachaNSeqEntries extends Field[Int]
 
 abstract trait SeqParameters extends UsesHwachaParameters
   with LaneParameters with MemParameters {
-  val nSeq = 8
+  val nSeq = p(HwachaNSeqEntries)
   val nRPorts = 3
   val bRPorts = log2Down(nRPorts) + 1
   val expLatency = 1
@@ -88,15 +90,14 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     val debug = new Bundle {
       val head = UInt(OUTPUT, log2Up(nSeq))
       val tail = UInt(OUTPUT, log2Up(nSeq))
-      val full = Bool(OUTPUT)
+      val maybe_full = Bool(OUTPUT)
+      val empty = UInt(OUTPUT, log2Down(nSeq)+1)
     }
   }
 
-  require(isPow2(nSeq))
-
   val v = Vec.fill(nSeq){Reg(init=Bool(false))}
   val e = Vec.fill(nSeq){Reg(new MasterSeqEntry)}
-  val full = Reg(init = Bool(false))
+  val maybe_full = Reg(init = Bool(false))
   val head = Reg(init = UInt(0, log2Up(nSeq)))
   val tail = Reg(init = UInt(0, log2Up(nSeq)))
 
@@ -362,8 +363,13 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     }
 
     def ready = {
-      val count = Cat(full && head === tail, tail - head)
-      val empty = UInt(nSeq) - count
+      val empty = if (isPow2(nSeq)) {
+          Cat(!maybe_full && (head === tail), head - tail)
+        } else {
+          Mux(maybe_full && (head === tail), UInt(0),
+            Mux(head > tail, head - tail, UInt(nSeq) - (tail - head)))
+        }
+      io.debug.empty := empty
       val a = io.op.bits.active
 
       (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv || a.vrpred || a.vrfirst) ||
@@ -387,18 +393,18 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def logic = {
       io.op.ready := ready
 
-      when (update_head) { head := next_head }
-      when (update_tail) { tail := next_tail }
-      when (update_head && !update_tail) {
-        full := Bool(false)
-      }
       when (update_tail) {
-        full := next_head === next_tail
+        tail := next_tail
+        maybe_full := Bool(true)
+      }
+      when (update_head) {
+        head := next_head
+        maybe_full := Bool(false)
       }
 
       when (v(head) && io.master.clear(head)) {
         retire(head)
-        set.head(head + UInt(1))
+        set.head(step(head, 1))
       }
 
       val vcus = (v zip e) map { case (valid, e) => valid && e.active.vcu }
@@ -418,7 +424,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     }
 
     def debug = {
-      io.debug.full := full
+      io.debug.maybe_full := maybe_full
       io.debug.head := head
       io.debug.tail := tail
     }
@@ -429,10 +435,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
   val issue = new {
     val t0 = tail
-    val t1 = tail + UInt(1)
-    val t2 = tail + UInt(2)
-    val t3 = tail + UInt(3)
-    val t4 = tail + UInt(4)
+    val t1 = step(tail, 1)
+    val t2 = step(tail, 2)
+    val t3 = step(tail, 3)
+    val t4 = step(tail, 4)
 
     def start(n: UInt) = iwindow.set.entry(n)
     def stop(n: UInt) = iwindow.set.tail(n)
