@@ -366,8 +366,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val empty = UInt(nSeq) - count
       val a = io.op.bits.active
 
-      (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv) ||
-      (empty >= UInt(2)) && (a.vidiv || a.vfdiv || a.vrpred || a.vrfirst) ||
+      (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv || a.vrpred || a.vrfirst) ||
+      (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
       (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
       (empty >= UInt(4)) && (a.vamo)
     }
