@@ -41,7 +41,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       val mseq = new SequencerPending().asInput
       val mrt = new Bundle {
         val su = new MRTPending().asOutput
-        val vu = Vec.fill(nLanes){new MRTPending}.asInput
+        val vus = Vec.fill(nLanes){new MRTPending}.asInput
       }
     }
   }
