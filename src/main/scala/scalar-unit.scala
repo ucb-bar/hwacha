@@ -36,14 +36,19 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val mocheck = new MOCheck().asInput
     val red = new ReduceResultIO().flip
 
-    val busy_mseq = Bool(INPUT)
     val vf_active = Bool(OUTPUT)
-    val pending = new MRTPending().asOutput
+    val pending = new Bundle {
+      val mseq = new SequencerPending().asInput
+      val mrt = new Bundle {
+        val su = new MRTPending().asOutput
+        val vu = Vec.fill(nLanes){new MRTPending}.asInput
+      }
+    }
   }
 
   val vf_active = Reg(init=Bool(false))
   val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
-  val pipe_busy = Bool()
+  val busy_scalar = Bool()
 
   io.vf_active := vf_active
 
@@ -67,10 +72,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
 
-  // TODO: we could fire all cmd but vf* without busy_mseq being clear
+  // TODO: we could fire all cmd but vf* without pending.mseq being clear
   def fire_cmdq(exclude: Bool, include: Bool*) = {
   val rvs = Seq(
-      !vf_active, !pipe_busy, !io.busy_mseq, !pending_smu, !pending_fpu,
+      !vf_active, !busy_scalar, !io.pending.mseq.all, !pending_smu, !pending_fpu,
       io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -152,11 +157,12 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
 
-  io.pending := mrt.io.pending
-  // we need to delay io.pending.all by one cycle
+  io.pending.mrt.su := mrt.io.pending
+  // we need to delay io.pending.mrt.su.all by one cycle
   // because writeback in the scalar unit is delayed by one cycle
   val sboard_marked = (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
-  assert(!(!vf_active && !Reg(next=io.pending.all) && sboard_marked), "vf should not end with non empty scoreboard")
+  assert(!(!vf_active && !Reg(next=io.pending.mrt.su.all) && sboard_marked),
+    "vf should not end with non empty scoreboard")
 
   val ex_reg_valid = Reg(Bool())
   val ex_reg_ctrl = Reg(new IntCtrlSigs)
@@ -172,7 +178,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val wb_reg_inst = Reg(Bits())
   val wb_reg_wdata = Reg(Bits())
 
-  pipe_busy := ex_reg_valid || wb_reg_valid
+  busy_scalar := ex_reg_valid || wb_reg_valid
 
   // WIRES
   val stalld = Bool()
@@ -271,10 +277,13 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val stall_pending_fpu = (id_ctrl.decode_stop || enq_fpu) && pending_fpu
   val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
+  val stall_pending_fence = id_ctrl.decode_fence && (
+    io.pending.mseq.mem ||
+    io.pending.mrt.su.all || io.pending.mrt.vus.map(_.all).reduce(_ || _))
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_pending_fpu || stall_pending_smu
+    stall_pending_fpu || stall_pending_smu || stall_pending_fence
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken

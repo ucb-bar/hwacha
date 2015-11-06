@@ -116,8 +116,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
-  rocc.io.busy_mseq := mseq.io.busy
-  rocc.io.pending_mrt := scalar.io.pending.all || vus.map(_.io.pending.all).reduce(_||_)
+  rocc.io.pending.mseq := mseq.io.pending.all
+  rocc.io.pending.mrt := scalar.io.pending.mrt.su.all || vus.map(_.io.pending.all).reduce(_||_)
   rocc.io.vf_active := scalar.io.vf_active
   rocc.io.cmdq <> scalar.io.cmdq
   scalar.io.cfg <> rocc.io.cfg
@@ -221,7 +221,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   (mseq.io.master.clear zipWithIndex) map { case (c, r) =>
     c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
   }
-  scalar.io.busy_mseq := mseq.io.busy
+  scalar.io.pending.mseq <> mseq.io.pending
 
   rpred.io.op.valid := fire_vxu(mask_rpred_ready, enq_rpred)
   rpred.io.op.bits <> scalar.io.vxu.bits
@@ -233,10 +233,11 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   mou.io.cfg <> rocc.io.cfg
   mou.io.mseq <> mseq.io.master.state
-  mou.io.pending.scalar <> scalar.io.pending
+  mou.io.pending.su <> scalar.io.pending.mrt.su
   (mou.io.pending.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
-  scalar.io.mocheck <> mou.io.check.scalar
+  scalar.io.mocheck <> mou.io.check.su
   (vus zip mou.io.check.vus) map { case (vu, mocheck) => vu.io.mocheck <> mocheck }
+  (scalar.io.pending.mrt.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
 
   (vus zipWithIndex) map { case (vu, i) =>
     val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))

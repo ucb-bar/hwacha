@@ -13,11 +13,11 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
     val cfg = new HwachaConfigIO().flip
     val mseq = new MasterSequencerState().asInput
     val pending = new Bundle {
-      val scalar = new MRTPending().asInput
+      val su = new MRTPending().asInput
       val vus = Vec.fill(nLanes){new MRTPending}.asInput
     }
     val check = new Bundle {
-      val scalar = new MOCheck().asOutput
+      val su = new MOCheck().asOutput
       val vus = Vec.fill(nLanes){Vec.fill(nSeq){new MOCheck}}.asOutput
     }
   }
@@ -32,8 +32,8 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
   // scalar stores can go through when memory orderig is relaxed or
   // when no pending vector loads & stores
 
-  io.check.scalar.load := (io.cfg.morelax || !vus_pending_store(null))
-  io.check.scalar.store := (io.cfg.morelax || !vus_pending_all(null))
+  io.check.su.load := (io.cfg.morelax || !vus_pending_store(null))
+  io.check.su.store := (io.cfg.morelax || !vus_pending_all(null))
 
   // vector loads can go through when memory ordering is relaxed or
   // when no pending scalar stores and when either of these conditions are met
@@ -48,10 +48,10 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
 
   (0 until nLanes) map { l => (0 until nSeq) map { s =>
     io.check.vus(l)(s).load :=
-      io.cfg.morelax || !io.pending.scalar.store &&
+      io.cfg.morelax || !io.pending.su.store &&
       (first(s) || !vus_pending_store(io.pending.vus(l).store))
     io.check.vus(l)(s).store :=
-      io.cfg.morelax || !io.pending.scalar.all &&
+      io.cfg.morelax || !io.pending.su.all &&
       (first(s) || !vus_pending_all(io.pending.vus(l).all))
   } }
 }

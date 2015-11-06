@@ -74,11 +74,16 @@ class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val clear = Vec.fill(nSeq){Bool()}.asInput
 }
 
+class SequencerPending(implicit p: Parameters) extends VXUBundle()(p) {
+  val mem = Bool()
+  val all = Bool()
+}
+
 class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic {
   val io = new Bundle {
     val op = Decoupled(new IssueOpBase).flip
     val master = new MasterSequencerIO
-    val busy = Bool(OUTPUT)
+    val pending = new SequencerPending().asOutput
 
     val debug = new Bundle {
       val head = UInt(OUTPUT, log2Up(nSeq))
@@ -396,7 +401,9 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         set.head(head + UInt(1))
       }
 
-      io.busy := v.reduce(_ || _)
+      val vcus = (v zip e) map { case (valid, e) => valid && e.active.vcu }
+      io.pending.mem := vcus.reduce(_ || _)
+      io.pending.all := v.reduce(_ || _)
 
       retired = true
     }
