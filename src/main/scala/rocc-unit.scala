@@ -77,8 +77,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
     val cfg = new HwachaConfigIO
 
-    val cmdq = new CMDQIO
-    val vrucmdq = new CMDQIO
+    val cmdqs = new Bundle {
+      val vu = new CMDQIO
+      val vru = new CMDQIO
+    }
   }
 
   // Cofiguration state
@@ -241,15 +243,15 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   respq.io.enq.bits.rd := io.rocc.cmd.bits.inst.rd
 
   // hookup output ports
-  io.cmdq.cmd <> cmdq.io.deq.cmd
-  io.cmdq.imm <> cmdq.io.deq.imm
-  io.cmdq.rd <> cmdq.io.deq.rd
+  io.cmdqs.vu.cmd <> cmdq.io.deq.cmd
+  io.cmdqs.vu.imm <> cmdq.io.deq.imm
+  io.cmdqs.vu.rd <> cmdq.io.deq.rd
 
   io.rocc.resp <> respq.io.deq
 
-  io.vrucmdq.cmd <> vrucmdq.io.deq.cmd
-  io.vrucmdq.imm <> vrucmdq.io.deq.imm
-  io.vrucmdq.rd <> vrucmdq.io.deq.rd
+  io.cmdqs.vru.cmd <> vrucmdq.io.deq.cmd
+  io.cmdqs.vru.imm <> vrucmdq.io.deq.imm
+  io.cmdqs.vru.rd <> vrucmdq.io.deq.rd
 
  // COLIN FIXME: update keepcfg
   keepcfg :=

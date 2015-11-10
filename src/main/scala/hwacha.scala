@@ -119,7 +119,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.pending.mseq := mseq.io.pending.all
   rocc.io.pending.mrt := scalar.io.pending.mrt.su.all || vus.map(_.io.pending.all).reduce(_||_)
   rocc.io.vf_active := scalar.io.vf_active
-  rocc.io.cmdq <> scalar.io.cmdq
+  rocc.io.cmdqs.vu <> scalar.io.cmdq
   scalar.io.cfg <> rocc.io.cfg
 
   // Connect ScalarUnit to Rocket's FPU
@@ -155,7 +155,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.CacheName => "HwI"})))
     icache.io.vxu <> scalar.io.imem
     val vru = Module(new VRU)
-    vru.io.cmdqio <> rocc.io.vrucmdq 
+    vru.io.cmdqio <> rocc.io.cmdqs.vru
     icache.io.vru <> vru.io.toicache
     //inputs for fake delayed vru, TODO: remove
     vru.io.fromscalar_active := scalar.io.imem.active
@@ -168,10 +168,10 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   } else {
     val icache = Module(new rocket.Frontend()(p.alterPartial({case uncore.CacheName => "HwI"})))
     // vru plumbing in RoCCUnit should be automatically optimized out
-    rocc.io.vrucmdq.cmd.ready := Bool(true)
-    rocc.io.vrucmdq.imm.ready := Bool(true)
-    rocc.io.vrucmdq.rd.ready := Bool(true)
-    rocc.io.vrucmdq.cnt.ready := Bool(true)
+    rocc.io.cmdqs.vru.cmd.ready := Bool(true)
+    rocc.io.cmdqs.vru.imm.ready := Bool(true)
+    rocc.io.cmdqs.vru.rd.ready := Bool(true)
+    rocc.io.cmdqs.vru.cnt.ready := Bool(true)
 
     icache.io.cpu.req <> scalar.io.imem.req
     scalar.io.imem.resp <> icache.io.cpu.resp
