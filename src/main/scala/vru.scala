@@ -57,5 +57,9 @@ class VRU(implicit p: Parameters) extends Module {
   }
 
 
+  // now:
+  // take a vf block
+  // load and decode unit strided loads/stores
+
 
 }
