@@ -78,6 +78,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     val cfg = new HwachaConfigIO
 
     val cmdq = new CMDQIO
+    val vrucmdq = new CMDQIO
   }
 
   // Cofiguration state
@@ -107,6 +108,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val flush_kill = this.reset 
   val cmdq = Module(new CMDQ(resetSignal = flush_kill))
 
+  // TODO: probably want to change the length of queues in here
+  val vrucmdq = Module(new CMDQ(resetSignal = flush_kill))
   val respq = Module(new Queue(io.rocc.resp.bits, 2))
 
   val (inst_val: Bool) :: (inst_priv: Bool) :: (enq_cmd_ : Bool) :: sel_cmd :: rd_type :: sel_imm :: cs0 = cs
@@ -129,17 +132,37 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val enq_cnt = Bool(false)
   val enq_resp = mask_vl && enq_resp_
 
-  val mask_cmd_ready = !enq_cmd || cmdq.io.enq.cmd.ready
-  val mask_imm_ready = !enq_imm || cmdq.io.enq.imm.ready
-  val mask_rd_ready = !enq_rd || cmdq.io.enq.rd.ready
-  val mask_cnt_ready = !enq_cnt || cmdq.io.enq.cnt.ready
+  val vru_insts_wanted = !(sel_cmd === CMD_VMSS)
+  val vru_enq_cmd = enq_cmd && vru_insts_wanted
+  val vru_enq_imm = enq_imm && vru_insts_wanted
+  val vru_enq_rd = enq_rd && vru_insts_wanted
+  val vru_enq_cnt = Bool(false)
+
+  val mask_vxu_cmd_ready = !enq_cmd || cmdq.io.enq.cmd.ready
+  val mask_vxu_imm_ready = !enq_imm || cmdq.io.enq.imm.ready
+  val mask_vxu_rd_ready = !enq_rd || cmdq.io.enq.rd.ready
+  val mask_vxu_cnt_ready = !enq_cnt || cmdq.io.enq.cnt.ready
   val mask_resp_ready = !enq_resp || respq.io.enq.ready
+
+  val mask_vru_cmd_ready = !vru_enq_cmd || vrucmdq.io.enq.cmd.ready
+  val mask_vru_imm_ready = !vru_enq_imm || vrucmdq.io.enq.imm.ready
+  val mask_vru_rd_ready = !vru_enq_rd || vrucmdq.io.enq.rd.ready
+  val mask_vru_cnt_ready = !vru_enq_cnt || vrucmdq.io.enq.cnt.ready
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       !stall, mask_vcfg,
       io.rocc.cmd.valid,
-      mask_cmd_ready, mask_imm_ready, mask_rd_ready, mask_cnt_ready, mask_resp_ready)
+      mask_vxu_cmd_ready, 
+      mask_vxu_imm_ready, 
+      mask_vxu_rd_ready, 
+      mask_vxu_cnt_ready, 
+      mask_resp_ready,
+      mask_vru_cmd_ready, 
+      mask_vru_imm_ready, 
+      mask_vru_rd_ready, 
+      mask_vru_cnt_ready
+    )
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -179,21 +202,34 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // Hookup ready port of RoCC cmd queue
   //COLIN FIXME: we use the exception flag to set a sticky bit that causes to always be ready after exceptions
   io.rocc.cmd.ready := fire(io.rocc.cmd.valid)
-  cmdq.io.enq.cmd.valid := fire(mask_cmd_ready, enq_cmd)
-  cmdq.io.enq.imm.valid := fire(mask_imm_ready, enq_imm)
-  cmdq.io.enq.rd.valid := fire(mask_rd_ready, enq_rd)
-  cmdq.io.enq.cnt.valid := fire(mask_cnt_ready, enq_cnt)
+  cmdq.io.enq.cmd.valid := fire(mask_vxu_cmd_ready, enq_cmd)
+  cmdq.io.enq.imm.valid := fire(mask_vxu_imm_ready, enq_imm)
+  cmdq.io.enq.rd.valid := fire(mask_vxu_rd_ready, enq_rd)
+  cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
 
+  vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd)
+  vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm)
+  vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd)
+  vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt)
+
   // cmdq dpath
-  cmdq.io.enq.cmd.bits := sel_cmd
-  cmdq.io.enq.imm.bits :=
+  val cmd_out = sel_cmd
+  val imm_out = 
     MuxLookup(sel_imm, Bits(0), Array(
       IMM_VLEN -> new_vl,
       IMM_RS1  -> io.rocc.cmd.bits.rs1,
       IMM_ADDR -> (io.rocc.cmd.bits.rs1 + rocc_split_imm12.toSInt).toUInt
     ))
-  cmdq.io.enq.rd.bits := Mux(rd_type === VRT_S, rocc_srd, rocc_rd)
+  val rd_out = Mux(rd_type === VRT_S, rocc_srd, rocc_rd)
+  cmdq.io.enq.cmd.bits := cmd_out
+  cmdq.io.enq.imm.bits := imm_out
+  cmdq.io.enq.rd.bits := rd_out
+
+  vrucmdq.io.enq.cmd.bits := cmd_out
+  vrucmdq.io.enq.imm.bits := imm_out
+  vrucmdq.io.enq.rd.bits := rd_out
+
 
   // respq dpath
   respq.io.enq.bits.data :=
@@ -208,9 +244,14 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   io.cmdq.cmd <> cmdq.io.deq.cmd
   io.cmdq.imm <> cmdq.io.deq.imm
   io.cmdq.rd <> cmdq.io.deq.rd
+
   io.rocc.resp <> respq.io.deq
 
-  // COLIN FIXME: update keepcfg
+  io.vrucmdq.cmd <> vrucmdq.io.deq.cmd
+  io.vrucmdq.imm <> vrucmdq.io.deq.imm
+  io.vrucmdq.rd <> vrucmdq.io.deq.rd
+
+ // COLIN FIXME: update keepcfg
   keepcfg :=
     cmdq.io.deq.cmd.valid ||
     io.vf_active || io.pending.mseq
