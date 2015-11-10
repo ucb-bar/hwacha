@@ -167,14 +167,14 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
 
   io.agu.in.valid := Bool(false)
   io.agu.in.bits.base := op.base
-  io.agu.in.bits.offset := Cat(io.op.bits.stride, UInt(0, log2Ceil(nStrip)))
+  io.agu.in.bits.offset := Cat(io.op.bits.stride, UInt(0, bStrip))
   io.agu.in.bits.shift := io.cfg.lstride + shift
 
   val ecnt_max = io.cfg.lstrip
   val eidx_next = op.eidx + ecnt_max
   val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))
-  val ecnt = Mux(vlen_end, op.vlen(log2Up(nStrip), 0), ecnt_max)
+  val ecnt = Mux(vlen_end, op.vlen(bStrip, 0), ecnt_max)
 
   val enq = io.span(io.issue.map { case deq =>
     val q = Module(new Queue(new VMUDecodedOp, 2))

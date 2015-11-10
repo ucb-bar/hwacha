@@ -17,9 +17,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
 
   val op = Reg(new VMUDecodedOp)
 
-  private val lgpreds = log2Up(nStrip)
-
-  val index = Reg(UInt(width = lgpreds))
+  val index = Reg(UInt(width = bStrip))
   val head = io.ingress.bits.pred >> index
   val step_max = UInt(nStrip) - index
 
@@ -31,7 +29,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
    *      Operations," in Proc. 27th Annual International Symp. on
    *      Computer Architecture, New York, NY, 2000, pp. 260-269.
    */
-  private val scan = (1 to log2Down(nStrip)).scanLeft(
+  private val scan = (1 to bStrip).scanLeft(
     (0, Bool(true))) {
       case ((j, zero_tail), i) =>
         val m = (1 << i)
@@ -69,7 +67,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
 
   val ecnt_u_page = pred_u || pglen_end
   val ecnt_u = Mux(ecnt_u_page, pglen, step_max)
-  val step_u = Mux(pglen_end, pglen(lgpreds, 0), step_max)
+  val step_u = Mux(pglen_end, pglen(bStrip, 0), step_max)
   val ecnt = Mux(op.mode.unit, ecnt_u, ecnt_n)
 
   val step = Mux(op.mode.unit, step_u, step_n)

@@ -50,7 +50,7 @@ abstract trait Packing extends LaneParameters {
 abstract trait BankLogic extends LaneParameters {
   def strip_to_bcnt(strip: UInt) = {
     val stripp1 = strip + UInt(1)
-    if (nSlices > 1) stripp1 >> UInt(log2Up(nSlices)) else strip
+    if (nSlices > 1) stripp1 >> UInt(bSlices) else strip
   }
 
   def strip_to_bmask(strip: UInt) = {

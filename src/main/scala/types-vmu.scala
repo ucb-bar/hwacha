@@ -138,7 +138,7 @@ class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
     val page = Bool() /* Entry is final for current page */
   }
   val nonunit = new Bundle {
-    val shift = UInt(width = log2Up(nStrip))
+    val shift = UInt(width = bStrip)
   }
 }
 class VMUMaskIO_0(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_0()(p))

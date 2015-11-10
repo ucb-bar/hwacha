@@ -33,7 +33,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
-  val slice = Reg(UInt(width = log2Up(nSlices)))
+  val slice = Reg(UInt(width = bSlices))
 
   // FIXME: I didn't have time to generalize, logic explained below
   require(nSlices == 2)
@@ -202,10 +202,6 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     val pred = Decoupled(Bits(width = nStrip)).flip
   }
 
-  private val lgslices = log2Up(nSlices)
-  private val lgbanks = log2Up(nBanks)
-  private val lgstrip = log2Up(nStrip)
-
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.io.enq <> io.op
   opq.io.deq.ready := Bool(false)
@@ -219,21 +215,21 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
   /* Maximum number of active BRQs per VSDQ entry */
   val qcnts = mtb.map { sz =>
-    val b = sz << lgslices
+    val b = sz << bSlices
     require(tlDataBits % b == 0)
     math.min(tlDataBits / b, nBanks)
   }
   val qcnt_max = Mux1H(mts, qcnts.map(UInt(_)))
-  val ecnt_max = Cat(qcnt_max, UInt(0, lgslices))
+  val ecnt_max = Cat(qcnt_max, UInt(0, bSlices))
 
   val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))
-  val ecnt = Mux(vlen_end, op.vlen(lgstrip, 0), ecnt_max)
-  val qcnt = Ceil(ecnt, lgslices)
+  val ecnt = Mux(vlen_end, op.vlen(bStrip, 0), ecnt_max)
+  val qcnt = Ceil(ecnt, bSlices)
 
-  val index = Reg(UInt(width = lgbanks))
+  val index = Reg(UInt(width = bBanks))
   val index_next = index + qcnt_max
-  val index_end = (index_next(lgbanks-1, 0) === UInt(0))
+  val index_end = (index_next(bBanks-1, 0) === UInt(0))
 
   //--------------------------------------------------------------------\\
   // predication / masking
@@ -305,10 +301,10 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     require(sz <= regLen)
     val elts = for (q <- brqs; i <- (0 until wBank by regLen))
       yield q.bits.data(sz-1+i, i)
-    val sets = elts.grouped(qcnt << lgslices).map(xs =>
+    val sets = elts.grouped(qcnt << bSlices).map(xs =>
       Cat(xs.reverse)).toIterable
     if (sets.size > 1) {
-      val sel = index(lgbanks-1, log2Ceil(qcnt))
+      val sel = index(bBanks-1, log2Ceil(qcnt))
       Vec(sets)(sel)
     } else sets.head
   }
@@ -377,10 +373,6 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val cfg = new HwachaConfigIO().flip
   }
 
-  private val lgbanks = log2Up(nBanks)
-  private val lgslices = log2Up(nSlices)
-  private val lgstrip = log2Up(nStrip)
-
   private val vldq = io.vldq
   private val meta = vldq.bits.meta
 
@@ -420,11 +412,11 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val mt = DecodedMemType(op_load.fn.vmu().mt)
   private val mts = Seq(mt.d, mt.w, mt.h, mt.b)
 
-  val rcnt = Ceil(io.la.cnt, lgstrip)
+  val rcnt = Ceil(io.la.cnt, bStrip)
   val rcnt_pulse = Mux(io.la.reserve, rcnt, UInt(0))
-  val rcnt_residue = io.la.cnt(lgstrip-1, 0)
+  val rcnt_residue = io.la.cnt(bStrip-1, 0)
 
-  private val bbias = bVLen - lgstrip + 1
+  private val bbias = bVLen - bStrip + 1
   val bias = Reg(Vec(nVLU, SInt(width = bbias)))
   val bias_in = Vec(nVLU, SInt())
   val bias_next = Vec(bias_in.map(_ + rcnt_pulse))
@@ -432,7 +424,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   bias := bias_next
 
   val bias_tail = Reg(init = SInt(0, bbias))
-  val vlen_tail = Ceil(opq.io.deq.bits.vlen, lgstrip)
+  val vlen_tail = Ceil(opq.io.deq.bits.vlen, bStrip)
   val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
   bias_tail := (bias_tail + rcnt_pulse) - bias_tail_sub
   assert(bias_tail <= SInt(0), "VLU: positive bias_tail")
@@ -452,7 +444,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   predq.io.enq <> io.pred
   val pred_fire = predq.io.deq.fire()
 
-  private val bpcnt = bVLen - lgstrip + log2Ceil(nVLU)
+  private val bpcnt = bVLen - bStrip + log2Ceil(nVLU)
   val pcnt = Reg(init = UInt(0, bpcnt))
   val pcnt_end = (pcnt === UInt(0))
   val pcnt_add = Mux(issue, vlen_tail, UInt(0))
@@ -460,7 +452,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   pcnt := pcnt_next
   assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
-  private val maxpidx = (szwb >> lgstrip) - 1
+  private val maxpidx = (szwb >> bStrip) - 1
   val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
   val pidx_end = (pidx === UInt(maxpidx))
   val pidx_next = (pidx.zext + pred_fire.toUInt) - rcnt_pulse
@@ -470,7 +462,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   assert(pidx_next >= SInt(0), "VLU: pidx underflow")
 
   val pred = Mux(pred_fire, ~predq.io.deq.bits, UInt(0))
-  val pred_shift = Cat(pidx, UInt(0, lgstrip))
+  val pred_shift = Cat(pidx, UInt(0, bStrip))
   val wb_pred = pred << pred_shift
   predq.io.deq.ready := !(pcnt_end || pidx_end)
 
@@ -485,15 +477,15 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   // permutation network
   //--------------------------------------------------------------------\\
 
-  val eidx_slice = meta.eidx(lgslices-1, 0)
-  val eidx_strip = meta.eidx(lgstrip-1, 0)
-  val eidx_bank = meta.eidx(lgstrip-1, lgslices)
-  val eidx_reg = meta.eidx(bVLen-1, lgstrip)
+  val eidx_slice = meta.eidx(bSlices-1, 0)
+  val eidx_strip = meta.eidx(bStrip-1, 0)
+  val eidx_bank = meta.eidx(bStrip-1, bSlices)
+  val eidx_reg = meta.eidx(bVLen-1, bStrip)
   val eidx_reg_next = eidx_reg + UInt(1)
 
   require(tlDataBytes == (nStrip << 1))
-  val epad_msb = meta.epad(lgstrip)
-  val epad_eff = meta.epad(lgstrip-1, 0)
+  val epad_msb = meta.epad(bStrip)
+  val epad_eff = meta.epad(bStrip-1, 0)
 
   val rotamt = eidx_strip - epad_eff
 
@@ -590,10 +582,10 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
-    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << lgslices,lgstrip))
+    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << bSlices, bStrip))
     wb_update(i) := wb_mask << wb_shift
 
-    val max = (szwb + (nStrip-1)) >> lgstrip
+    val max = (szwb + (nStrip-1)) >> bStrip
     val s = "VLU: BWQ " + i
     assert(!deq.valid || (wb_offset >= SInt(0)), s+": wb_offset underflow")
     assert(!deq.valid || (wb_offset < SInt(max)), s+": wb_offset overflow")
@@ -632,7 +624,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   assert(wb_sets.reduce(_ & _) === Bits(0), "VLU: wb bitmap collision")
 
   val wb_merge = wb_sets.reduce(_ | _)
-  val wb_shift = Cat(rcnt_pulse, UInt(0, lgstrip))
+  val wb_shift = Cat(rcnt_pulse, UInt(0, bStrip))
   val wb_next = wb_merge >> wb_shift
   wb := wb_next
 

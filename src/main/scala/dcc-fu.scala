@@ -5,7 +5,7 @@ import cde.Parameters
 import DataGating._
 
 class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
-  val bank = UInt(width = log2Up(nBanks))
+  val bank = UInt(width = bBanks)
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
   val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
@@ -116,7 +116,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   val s_idle :: s_busy :: s_wait :: Nil = Enum(UInt(), 3)
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
-  val bank = Reg(UInt(width = log2Up(nBanks)))
+  val bank = Reg(UInt(width = bBanks))
   val slice_idx = Reg(UInt(width = bfLStrip))
   val strip_idx = Reg(UInt(width = bMLVLen))
 
