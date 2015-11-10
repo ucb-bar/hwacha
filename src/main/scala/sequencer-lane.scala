@@ -78,9 +78,9 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
   val v = Vec.fill(nSeq){Reg(init=Bool(false))}
   val e = Vec.fill(nSeq){Reg(new SeqEntry)}
 
-  def stripfn(vl: UInt, vcu: Bool, fn: VFn) = {
-    val max_strip = Mux(vcu, UInt(nStrip << 1), UInt(nStrip))
-    Mux(vl > max_strip, max_strip, vl)
+  def stripfn(vl: UInt, fn: VFn) = {
+    val max_strip = UInt(nStrip)
+    Mux(vl > max_strip, max_strip, vl(bStrip, 0))
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
     val check =
       (0 until nSeq) map { r =>
         val op_idx = me(r).rports + UInt(expLatency, bRPorts+1)
-        val strip = stripfn(e(r).vlen, Bool(false), me(r).fn)
+        val strip = stripfn(e(r).vlen, me(r).fn)
         val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
         val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << me(r).wport.sram, maxWPortLatency+nBanks-1)
         val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << me(r).wport.pred, maxPredWPortLatency+nBanks-1)
@@ -348,7 +348,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => afn(me(i).active))
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = la.available
@@ -368,7 +368,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => me(i).active.vcu)
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
@@ -393,7 +393,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => me(i).active.vlu)
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = io.lla.available
@@ -434,7 +434,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         out.rports := mread(sched, (me: MasterSeqEntry) => me.rports)
         out.wport.sram := mread(sched, (me: MasterSeqEntry) => me.wport.sram)
         out.wport.pred := mread(sched, (me: MasterSeqEntry) => me.wport.pred)
-        out.strip := stripfn(vlen, Bool(false), out.fn)
+        out.strip := stripfn(vlen, out.fn)
         out
       }
 
@@ -468,7 +468,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         val out = new SeqVIPUOp
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
-        out.strip := stripfn(vlen, Bool(false), out.fn)
+        out.strip := stripfn(vlen, out.fn)
         out
       }
 
@@ -489,7 +489,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val op = {
         val out = new SeqVPUOp
         out.reg := regfn(first)
-        out.strip := stripfn(vlen, Bool(false), fn)
+        out.strip := stripfn(vlen, fn)
         out
       }
 
@@ -515,7 +515,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => me(i).active.vgu)
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
       val cnt = strip_to_bcnt(strip)
 
       val ready = io.pla.available && io.gpla.available && io.gqla.available
@@ -533,7 +533,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => me(i).active.vsu)
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
 
       val ready = io.sla.available
       (0 until nSeq) map { i => exp.vsu_consider(i) := first(i) && ready }
@@ -548,7 +548,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       val first = ff((i: Int) => me(i).active.vqu)
       val vlen = read(first, (e: SeqEntry) => e.vlen)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, Bool(false), fn)
+      val strip = stripfn(vlen, fn)
       val cnt = strip_to_bcnt(strip)
 
       val readys = Vec((0 until nSeq) map { case i =>
@@ -588,7 +588,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       }
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(e(i).vlen, Bool(false), me(i).fn)
+        val strip = stripfn(e(i).vlen, me(i).fn)
         assert (io.cfg.lstride === UInt(0), "need to fix sequencing logic otherwise")
         when (mv(i) && v(i)) {
           when (fires(i)) {
