@@ -589,11 +589,11 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
 
       for (i <- 0 until nSeq) {
         val strip = stripfn(e(i).vlen, Bool(false), me(i).fn)
-        assert (io.cfg.lstride === UInt(3), "need to fix sequencing logic otherwise")
+        assert (io.cfg.lstride === UInt(0), "need to fix sequencing logic otherwise")
         when (mv(i) && v(i)) {
           when (fires(i)) {
             e(i).vlen := e(i).vlen - strip
-            e(i).eidx := e(i).eidx + (UInt(1) << io.cfg.lstride) * UInt(nLanes)
+            e(i).eidx := e(i).eidx + UInt(1)
             update_reg(i, reg_vp, pregid_vp)
             update_reg(i, reg_vs1, pregid_vs1)
             update_reg(i, reg_vs2, pregid_vs2)

@@ -117,7 +117,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
   val bank = Reg(UInt(width = log2Up(nBanks)))
-  val slice_idx = Reg(UInt(width = bfStrip))
+  val slice_idx = Reg(UInt(width = bfLStrip))
   val strip_idx = Reg(UInt(width = bMLVLen))
 
   val fire = Bool()
@@ -128,7 +128,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   val vlen_next = op.vlen - ecnt
   val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).toBits
   val idiv_active = op.active.vidiv
-  val lstrip = UInt(1) << io.cfg.lstride
+  val lstrip = io.cfg.lstrip
   val slice_idx_next = slice_idx + UInt(nSlices)
 
   opq.io.deq.ready := Bool(false)

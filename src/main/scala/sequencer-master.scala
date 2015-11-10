@@ -20,8 +20,6 @@ abstract trait SeqParameters extends UsesHwachaParameters
     List(stagesPLU, 2 + 1 + stagesALU,
          2 + 1 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
-  val maxStrip = nBanks * (wBank / SZ_B)
-  val bfStrip = log2Down(maxStrip) + 1
   val maxLookAhead = math.max(tlDataBits / SZ_B, nStrip)
   val bLookAhead = log2Down(maxLookAhead) + 1
 

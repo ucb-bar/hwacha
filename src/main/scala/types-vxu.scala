@@ -238,7 +238,7 @@ class IssueOpML(implicit p: Parameters) extends IssueOpBase()(p) with MultiLaneV
 //-------------------------------------------------------------------------\\
 
 trait LaneOp extends VXUBundle {
-  val strip = UInt(width = bfStrip)
+  val strip = UInt(width = bfLStrip)
 }
 
 trait BankPred extends VXUBundle {
@@ -294,8 +294,8 @@ class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p) with HasBa
 
 class SeqEntry(implicit p: Parameters) extends VXUBundle()(p) with HasPhysRegIds {
   val vlen = UInt(width = bVLen)
-  val eidx = UInt(width = bVLen)
-  val age = UInt(width = log2Up(nBanks))
+  val eidx = UInt(width = bVLen - bStrip)
+  val age = UInt(width = bBanks)
 }
 
 class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
@@ -305,7 +305,7 @@ class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
 class SeqOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp {
   val active = new SeqType
   val select = new SeqSelect
-  val eidx = UInt(width = bVLen)
+  val eidx = UInt(width = bVLen - bStrip)
   val rports = UInt(width = bRPorts)
   val wport = new Bundle {
     val sram = UInt(width = bWPortLatency)

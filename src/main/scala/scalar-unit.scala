@@ -127,22 +127,21 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val awrite = fire_cmdq(null, decode_vmsa)
 
   when (fire_cmdq(null, decode_vsetcfg)) {
-    (0 until nLanes) map { case i =>
+    (0 until nLanes) map { i =>
       vl(i).active := Bool(false)
       vl(i).vlen := UInt(0)
     }
   }
   when (fire_cmdq(null, decode_vsetvl)) {
-    val lgStrip = io.cfg.lstride
-    val lgLane = log2Floor(nLanes)
-    val nStrip = UInt(1) << lgStrip
+    val mask_strip = io.cfg.lstrip - UInt(1)
+    val mask_base = ~Cat(UInt(0, bMLVLen - bfLStrip), mask_strip)
     val vlen_ml = io.cmdq.imm.bits
-    val vlen_base = (vlen_ml >> (UInt(0, lgStrip.getWidth+1) + UInt(lgLane) + lgStrip)) << lgStrip
-    val vlen_lane = (vlen_ml >> lgStrip)(lgLane-1, 0)
-    val vlen_strip = vlen_ml & (nStrip - UInt(1))
-    (0 until nLanes) map { case i =>
+    val vlen_base = (vlen_ml >> UInt(bLanes)) & mask_base
+    val vlen_lane = ((vlen_ml >> UInt(bStrip)) >> io.cfg.lstride)(bLanes-1, 0)
+    val vlen_strip = (vlen_ml & mask_strip)(bfLStrip-1, 0)
+    (0 until nLanes) map { i =>
       val vlen_fringe =
-        Mux(vlen_lane > UInt(i), nStrip,
+        Mux(vlen_lane > UInt(i), io.cfg.lstrip,
           Mux(vlen_lane === UInt(i), vlen_strip, UInt(0)))
       val vlen = if (nLanes == 1) vlen_ml else vlen_base + vlen_fringe
       vl(i).active := vlen.orR

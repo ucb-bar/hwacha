@@ -6,7 +6,7 @@ import cde.Parameters
 class AGUOperand(implicit p: Parameters) extends VMUBundle()(p) {
   val base = UInt(width = bVAddrExtended)
   val offset = UInt(width = bVAddrExtended)
-  val shift = UInt(width = log2Up(nStrip * nLanes))
+  val shift = UInt(width = math.max(bLStride + bLanes, bStrip))
 }
 class AGUResult(implicit p: Parameters) extends VVAQEntry()(p)
 class AGUIO(implicit p: Parameters) extends VMUBundle()(p) {

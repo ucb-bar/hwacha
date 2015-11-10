@@ -163,14 +163,14 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   } else (null, null)
 
   val shift = UInt(width = io.agu.in.bits.shift.getWidth)
-  shift := UInt(log2Ceil(nLanes))
+  shift := UInt(bLanes)
 
   io.agu.in.valid := Bool(false)
   io.agu.in.bits.base := op.base
-  io.agu.in.bits.offset := io.op.bits.stride
+  io.agu.in.bits.offset := Cat(io.op.bits.stride, UInt(0, log2Ceil(nStrip)))
   io.agu.in.bits.shift := io.cfg.lstride + shift
 
-  val ecnt_max = UInt(1) << io.cfg.lstride
+  val ecnt_max = io.cfg.lstrip
   val eidx_next = op.eidx + ecnt_max
   val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))

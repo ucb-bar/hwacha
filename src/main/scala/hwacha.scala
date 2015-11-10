@@ -62,6 +62,14 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   require(isPow2(nLanes))
   require(isPow2(nBanks))
   require(isPow2(nSlices))
+  val bLanes = log2Ceil(nLanes)
+  val bBanks = log2Ceil(nBanks)
+  val bSlices = log2Ceil(nSlices)
+  val bStrip = bBanks + bSlices
+
+  val maxLStride = 0
+  val bLStride = log2Floor(maxLStride) + 1
+  val bfLStrip = maxLStride + bStrip + 1
 
   val maxVLen = p(HwachaMaxVLen)
   val bVLen = log2Down(maxVLen) + 1
