@@ -155,7 +155,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.CacheName => "HwI"})))
     icache.io.vxu <> scalar.io.imem
     val vru = Module(new VRU)
-    vru.io.cmdqio <> rocc.io.cmdqs.vru
+    vru.io.cmdq <> rocc.io.cmdqs.vru
     icache.io.vru <> vru.io.toicache
     //inputs for fake delayed vru, TODO: remove
     vru.io.fromscalar_active := scalar.io.imem.active
