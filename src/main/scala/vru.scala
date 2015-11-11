@@ -5,11 +5,17 @@ import cde.Parameters
 
 class VRU(implicit p: Parameters) extends Module {
   import Commands._
+  import uncore._
 
   val io = new Bundle {
     val toicache = new FrontendIO // checked, matches vxu, icache has .flip
     val cmdq = new CMDQIO().flip 
+    val dmem = new ClientUncachedTileLinkIO
   }
+
+  // dummy l2 connections:
+  io.dmem.acquire.valid := Bool(false)
+  io.dmem.grant.ready := Bool(false)
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
@@ -23,8 +29,8 @@ class VRU(implicit p: Parameters) extends Module {
   val decode_vf      = io.cmdq.cmd.bits === CMD_VF
   val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
 
-  val deq_imm = decode_vmss || decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
-  val deq_rd  = decode_vmss || decode_vmsa
+  val deq_imm = decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
+  val deq_rd  = decode_vmsa
 
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid

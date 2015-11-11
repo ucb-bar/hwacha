@@ -157,9 +157,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     val vru = Module(new VRU)
     icache.io.vru <> vru.io.toicache
     vru.io.cmdq <> rocc.io.cmdqs.vru
-
-    imemarb.io.in(2).acquire.valid := Bool(false) // FIXME
-    imemarb.io.in(2).grant.ready := Bool(false) // FIXME
+    vru.io.dmem <> imemarb.io.in(2)
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
