@@ -175,10 +175,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vruicache.io.cpu.invalidate := vru.io.toicache.invalidate
 //    io.iptw <> icache.io.ptw
 
-    //inputs for fake delayed vru, TODO: remove
-    vru.io.fromscalar_active := scalar.io.imem.active
-    vru.io.fromscalar_req := scalar.io.imem.req
-
     //io.iptw <> icache.io.ptw
     imemarb.io.in(0) <> icache.io.mem
     imemarb.io.in(2) <> vruicache.io.mem

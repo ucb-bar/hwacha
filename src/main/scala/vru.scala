@@ -8,16 +8,8 @@ class VRU(implicit p: Parameters) extends Module {
 
   val io = new Bundle {
     val toicache = new FrontendIO // checked, matches vxu, icache has .flip
-    val fromscalar_active = Bool(INPUT) 
-    val fromscalar_req = Valid(new FrontendReq).flip
     val cmdq = new CMDQIO().flip 
   }
-
-  val delay = 4
-  val vru_req = ShiftRegister(io.fromscalar_req,delay)
-  io.toicache.req := vru_req
-  io.toicache.active := ShiftRegister(io.fromscalar_active, delay)
-  io.toicache.resp.ready := Bool(true)
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
