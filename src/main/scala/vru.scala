@@ -14,6 +14,8 @@ class VRU(implicit p: Parameters) extends Module {
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
 
+  val vf_active = Reg(init=Bool(false)) 
+
   val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
   val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
   val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
@@ -31,6 +33,7 @@ class VRU(implicit p: Parameters) extends Module {
 
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
+      !vf_active,
       io.cmdq.cmd.valid,
       mask_imm_valid,
       mask_rd_valid)
@@ -70,7 +73,6 @@ class VRU(implicit p: Parameters) extends Module {
   // handle vf
 
   val fire_vf = fire_cmdq(null, decode_vf)
-  val vf_active = Reg(init=Bool(false)) 
 
   when (fire_vf) {
     printf("VF:\n")
