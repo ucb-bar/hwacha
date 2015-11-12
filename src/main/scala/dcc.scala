@@ -27,7 +27,7 @@ class DCCIssueIO(implicit p: Parameters) extends Bundle {
   val op = Decoupled(new DCCOp).flip
 }
 
-class DecoupledCluster(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
+class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
@@ -52,7 +52,7 @@ class DecoupledCluster(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     val vmu = new VMUIO
   }
 
-  val vdu = Module(new VDU(id))
+  val vdu = Module(new VDU)
   val vgu = Module(new VGU)
   val vpu = Module(new VPU)
   val vlu = Module(new VLU)

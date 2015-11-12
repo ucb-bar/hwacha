@@ -64,6 +64,7 @@ class TickerIO(implicit p: Parameters) extends VXUBundle()(p) {
 
 class Expander(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
+    val cfg = new HwachaConfigIO().flip
     val seq = new SequencerIO().flip
     val lane = new LaneOpIO
     val ticker = new TickerIO
@@ -193,6 +194,8 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.valid := Bool(true)
             e.bits.addr := fn(seq_exp.reg).id
             e.bits.strip := seq_exp.strip
+            e.bits.pack.prec := fn(seq_exp.reg).prec
+            e.bits.pack.idx := seq_exp.eidx
             mark_opl(read_idx, idx)
           }
         }
@@ -255,7 +258,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           assert(seq_exp.reg.vp.valid && seq_exp.reg.vp.is_pred(), "gread with no guard predicate")
           val p = tick_pred_gread.s(read_idx)
           p.valid := Bool(true)
-          p.bits.off := Bool(false)
+          p.bits.off := io.cfg.unpred
           p.bits.neg := seq_exp.reg.vp.neg()
           p.bits.addr := seq_exp.reg.vp.id
           p.bits.strip := seq_exp.strip
@@ -287,6 +290,8 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.bits.selg := Bool(true)
             e.bits.wsel := UInt(1)
           }
+          e.bits.pack.prec := seq_exp.reg.vd.prec
+          e.bits.pack.idx := seq_exp.eidx
         }
         when (seq_exp.reg.vd.is_pred()) {
           check_assert("pred write", tick_pred_write, seq_exp.wport.pred)
@@ -453,7 +458,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       check_assert("pred pread", tick_pred_pread, UInt(0))
       assert(seq_vpu.reg.vp.valid && seq_vpu.reg.vp.is_pred(), "pread with no guard predicate")
       tick_pred_pread.s(0).valid := Bool(true)
-      tick_pred_pread.s(0).bits.off := Bool(false)
+      tick_pred_pread.s(0).bits.off := io.cfg.unpred
       tick_pred_pread.s(0).bits.neg := seq_vpu.reg.vp.neg()
       tick_pred_pread.s(0).bits.addr := seq_vpu.reg.vp.id
       tick_pred_pread.s(0).bits.strip := seq_vpu.strip

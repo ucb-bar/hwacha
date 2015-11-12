@@ -4,7 +4,8 @@ import Chisel._
 import cde.Parameters
 import DataGating._
 
-class VDUTag(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
+class VDUTag(implicit p: Parameters) extends VXUBundle()(p)
+  with BankPred with BankPack {
   val bank = UInt(width = bBanks)
   val selff = Bool() // select ff if true
   val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
@@ -16,7 +17,7 @@ class ReduceResultIO(implicit p: Parameters) extends VXUBundle()(p) {
   val first = Decoupled(new RFirstResult)
 }
 
-class VDU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
+class VDU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
@@ -30,7 +31,7 @@ class VDU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     val red = new ReduceResultIO
   }
 
-  val ctrl = Module(new VDUCtrl(id))
+  val ctrl = Module(new VDUCtrl)
 
   ctrl.io.op <> io.op
   ctrl.io.ila <> io.ila
@@ -79,7 +80,7 @@ class VDU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   io.bwqs <> ctrl.io.bwqs
 }
 
-class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ila = new CounterLookAheadIO().flip
@@ -116,20 +117,32 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   val s_idle :: s_busy :: s_wait :: Nil = Enum(UInt(), 3)
   val state = Reg(init = s_idle)
   val op = Reg(new DCCOp)
-  val bank = Reg(UInt(width = bBanks))
-  val slice_idx = Reg(UInt(width = bfLStrip))
-  val strip_idx = Reg(UInt(width = bMLVLen))
+
+  val slice_idx = Reg(UInt(width = bfLStrip - bSlices))
+  val strip_idx = Reg(UInt(width = bVLen - bStrip))
+  val slice_idx_next = slice_idx + UInt(1)
+  val lstrip = io.cfg.lstrip >> UInt(bSlices)
+  val bank = slice_idx(bBanks-1, 0)
+
+  val pack = new PackInfo
+  val (vd_update, vd_stride) = if (confprec) {
+    pack.prec := op.vd.prec
+    pack.idx := slice_idx >> UInt(bBanks)
+    confprec_step(pack.prec, pack.idx, io.cfg)
+  } else {
+    pack.prec := PREC_D
+    pack.idx := UInt(0)
+    (Bool(true), io.cfg.vstride.d)
+  }
 
   val fire = Bool()
   val fire_div = Bool()
   val fire_first = Bool()
   val fire_reduce = Bool()
-  val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen)
+  val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen(bSlices, 0))
   val vlen_next = op.vlen - ecnt
   val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).toBits
   val idiv_active = op.active.vidiv
-  val lstrip = io.cfg.lstrip
-  val slice_idx_next = slice_idx + UInt(nSlices)
 
   opq.io.deq.ready := Bool(false)
   io.rpred.result.valid := Bool(false)
@@ -143,7 +156,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
         op := opq.io.deq.bits
         bank := UInt(0)
         slice_idx := UInt(0)
-        strip_idx := lstrip * UInt(id)
+        strip_idx := UInt(0)
       }
     }
     is (s_busy) {
@@ -154,16 +167,16 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
         }
       }
       when (fire_div) {
-        bank := bank + UInt(1)
-        when (bank === UInt(nBanks-1)) {
-          op.vd.id := op.vd.id + io.cfg.vstride
+        slice_idx := slice_idx_next
+        when (vd_update && (bank === UInt(nBanks-1))) {
+          op.vd.id := op.vd.id + vd_stride
         }
       }
       when (fire_first) {
         slice_idx := slice_idx_next
         when (slice_idx_next === lstrip) {
           slice_idx := UInt(0)
-          strip_idx := strip_idx + lstrip * UInt(nLanes)
+          strip_idx := strip_idx + UInt(1)
         }
       }
     }
@@ -243,6 +256,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   tagq.io.enq.bits.selff := Bool(false) // FIXME
   tagq.io.enq.bits.addr := op.vd.id
   tagq.io.enq.bits.fusel := op.active.vidiv
+  tagq.io.enq.bits.pack := pack
 
   io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
     idiv.req.valid := fire_idiv(mask_idivs_req_ready(i), enq_idivs_req(i)) }
@@ -271,7 +285,7 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   io.rfirst.fu.req.valid := fire_rfirst(io.rfirst.fu.req.ready)
   io.rfirst.fu.req.bits.active := pred
   io.rfirst.fu.req.bits.pred := io.lpq.bits.pred
-  io.rfirst.fu.req.bits.eidx := strip_idx + slice_idx
+  io.rfirst.fu.req.bits.lsidx := strip_idx
   io.rfirst.fu.req.bits.in := Vec((0 until nSlices) map { unpack_slice(io.lrqs.q(0).bits.data, _) })
 
   val deq_idivs_resp = (0 until nSlices).map {  tagq.io.deq.bits.fusel.toBool && tagq.io.deq.bits.pred(_) }
@@ -297,12 +311,18 @@ class VDUCtrl(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packi
   io.bwqs.zipWithIndex.map { case (bwq, i) =>
     bwq.valid := fire_bwq(mask_bwqs_ready(i), enq_bwqs(i)) }
 
+  val wraw = new BankDataPredEntry
+  wraw.pred := tagq.io.deq.bits.pred
+  wraw.data := Mux(tagq.io.deq.bits.fusel.toBool,
+    repack_slice(io.idiv.fus.map(_.resp.bits.out)),
+    repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
+  val wpack = repack_bank(tagq.io.deq.bits.pack, wraw)
+
   io.bwqs.map { bwq =>
     bwq.bits.selff := tagq.io.deq.bits.selff
     bwq.bits.addr := tagq.io.deq.bits.addr
-    bwq.bits.data := Mux(tagq.io.deq.bits.fusel.toBool, repack_slice(io.idiv.fus.map(_.resp.bits.out)),
-                                                        repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
-    bwq.bits.mask := FillInterleaved(regLen/8, tagq.io.deq.bits.pred)
+    bwq.bits.data := wpack.data
+    bwq.bits.mask := wpack.mask
   }
 
   io.idiv.ack.valid := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)

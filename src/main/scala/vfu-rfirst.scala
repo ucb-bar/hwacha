@@ -7,13 +7,13 @@ import DataGating._
 class RFirstOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val active = Bits(width = nSlices)
   val pred = Bits(width = nSlices)
-  val eidx = Bits(width = bMLVLen)
+  val lsidx = UInt(width = bVLen - bStrip)
   val in = Vec.fill(nSlices){Bits(width = SZ_D)}
 }
 
 class RFirstResult(implicit p: Parameters) extends VXUBundle()(p) {
   val found = Bool()
-  val eidx = Bits(width = bMLVLen)
+  val lsidx = Bits(width = bVLen - bStrip)
   val first = Bits(width = SZ_D)
   val sd = UInt(width = bSRegs)
 }
@@ -39,7 +39,7 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
   val found = pred.reduce(_ || _)
   when (io.req.fire() && !result.found && found) {
     result.found := Bool(true)
-    result.eidx := io.req.bits.eidx
+    result.lsidx := io.req.bits.lsidx
     result.first := Mux1H(pred, io.req.bits.in)
   }
 
@@ -90,7 +90,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
 
   def find_min(n: Int, s: Int): Tuple2[UInt, UInt] = {
     if (n == 1) {
-      return (io.lane(s).valid && io.lane(s).bits.found, io.lane(s).bits.eidx)
+      return (io.lane(s).valid && io.lane(s).bits.found, io.lane(s).bits.lsidx)
     } else {
       require(isPow2(n))
       val half = n/2
@@ -98,7 +98,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
       val right = find_min(half, s+half)
       val left_found = left._1.orR
       val right_found = right._1.orR
-      val left_min = left._2 < right._2
+      val left_min = (left._2 <= right._2)
       val left_mask = left_found && (!right_found || left_min)
       val right_mask = right_found && (!left_found || !left_min)
       assert(!left_mask || !right_mask, "left and right can't be turned on at the same time")
@@ -109,7 +109,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
 
   val m = find_min(nLanes, 0)
   io.result.bits.found := m._1.orR
-  io.result.bits.eidx := m._2 // approximate
+  io.result.bits.lsidx := m._2 // approximate eidx
   io.result.bits.first :=
     (m._1.toBools zip io.lane.map(_.bits.first)) map { case (v, f) => dgate(v, f) } reduce(_ | _)
   io.result.bits.sd := fn.sd

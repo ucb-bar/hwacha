@@ -71,7 +71,7 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
 
   // ALU
   val outs = (0 until nSlices) map { i =>
-    val alu = Module(new ALUSlice(lid, bid*nSlices+i))
+    val alu = Module(new ALUSlice(bid*nSlices+i))
     alu.io.cfg <> io.cfg
     alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i) && rf.io.local.pdl(0).pred(i)
     alu.io.req.bits.fn := io.op.viu.bits.fn

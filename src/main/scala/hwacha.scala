@@ -67,7 +67,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val bSlices = log2Ceil(nSlices)
   val bStrip = bBanks + bSlices
 
-  val maxLStride = 0
+  val maxLStride = 2
   val bLStride = log2Floor(maxLStride) + 1
   val bfLStrip = maxLStride + bStrip + 1
 
@@ -82,7 +82,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
   val confvru = false
-  val confprec = false
+  val confprec = true
 
   val confvcmdq = new {
     val ncmd = 16

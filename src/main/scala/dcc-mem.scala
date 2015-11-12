@@ -355,14 +355,12 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 }
 
 class VLUEntry(implicit p: Parameters) extends VXUBundle()(p)
-  with VLUSelect {
+  with VLUSelect with BankData with BankPred {
   val eidx = UInt(width = bVLen - log2Up(nStrip))
-  val data = Bits(width = wBank)
-  val mask = Bits(width = nSlices)
 }
 
 class VLU(implicit p: Parameters) extends VXUModule()(p)
-  with MemParameters {
+  with MemParameters with PackLogic {
   val io = new DCCIssueIO {
     val vldq = new VLDQIO().flip
     val pred = Decoupled(Bits(width = nStrip)).flip
@@ -576,9 +574,9 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     bwq.io.enq.bits.vidx := meta.vidx
     bwq.io.enq.bits.eidx := Mux(eidx_step(i), eidx_reg_next, eidx_reg)
     bwq.io.enq.bits.data := bwqs_data(i)
-    bwq.io.enq.bits.mask := bwqs_mask(i)
+    bwq.io.enq.bits.pred := bwqs_mask(i)
 
-    val wb_mask = Mux(bwq.io.deq.fire(), bwq.io.deq.bits.mask, Bits(0))
+    val wb_mask = Mux(bwq.io.deq.fire(), bwq.io.deq.bits.pred, Bits(0))
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
@@ -593,10 +591,23 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready
 
+    val vd = op(wb_vidx).vd
+    val addr = vd.id + (if (confprec) {
+        val prec = confprec_decode(vd.prec)
+        val stride = confprec_stride(prec, io.cfg)
+        val shift = Mux1H(prec.reverse, (0 until prec.size).map(i => UInt(i)))
+        (wb_eidx >> shift) * stride
+      } else (wb_eidx * io.cfg.vstride.d))
+
+    val pack = new PackInfo
+    pack.prec := vd.prec
+    pack.idx := wb_eidx
+    val out = repack_bank(pack, bwq.io.deq.bits)
+
     deq.bits.selff := Bool(false) // FIXME
-    deq.bits.addr := op(wb_vidx).vd.id + (wb_eidx * io.cfg.vstride)
-    deq.bits.data := bwq.io.deq.bits.data
-    deq.bits.mask := FillInterleaved(regLen >> 3, bwq.io.deq.bits.mask)
+    deq.bits.addr := addr
+    deq.bits.data := out.data
+    deq.bits.mask := out.mask
 
     bwq.io.enq
   }

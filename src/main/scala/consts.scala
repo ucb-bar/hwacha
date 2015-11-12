@@ -5,6 +5,7 @@ import Chisel._
 object HwachaConstants extends HwachaConstants
 trait HwachaConstants
   extends MachineConstants
+  with PrecisionConstants
   with DecodeConstants
   with VIUConstants
   with VIPUConstants
@@ -23,6 +24,15 @@ trait MachineConstants {
   val SZ_W = 32
   val SZ_H = 16
   val SZ_B = 8
+}
+
+trait PrecisionConstants {
+  val SZ_PREC = 2
+
+  val PREC_X = BitPat("b??")
+  val PREC_D = UInt(0, SZ_PREC)
+  val PREC_W = UInt(1, SZ_PREC)
+  val PREC_H = UInt(2, SZ_PREC)
 }
 
 trait HwachaDecodeConstants {

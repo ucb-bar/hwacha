@@ -32,19 +32,25 @@ abstract trait Packing extends LaneParameters {
   def repack_h(n: Seq[Bits]) = _repack(n, SZ_D/SZ_H)
   def repack_b(n: Seq[Bits]) = _repack(n, SZ_D/SZ_B)
 
-  def _unpack(n: Bits, idx: Int, width: Int, limit: Int) = {
-    require((idx+1)*width <= limit)
-    n((idx+1)*width-1, idx*width)
+  def _unpack(n: Bits, idx: Int, extent: Int, period: Int, width: Int): Bits = {
+    require((idx+1)*period <= extent)
+    val base = idx*period
+    n(width+base-1, base)
   }
+  def _unpack(n: Bits, idx: Int, extent: Int, period: Int): Bits =
+    _unpack(n, idx, extent, period, period)
 
   def unpack_d(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_D)
-  def unpack_w(n: Bits, idx: Int) = _unpack(n, idx, SZ_W, SZ_D)
-  def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_H, SZ_D)
-  def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_B, SZ_D)
+  def unpack_w(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_W)
+  def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_H)
+  def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_B)
 
   def splat_slice(n: Bits) = Fill(nSlices, n.toUInt)
   def repack_slice(n: Seq[Bits]) = _repack(n, nSlices)
-  def unpack_slice(n: Bits, idx: Int) = _unpack(n, idx, p(HwachaRegLen), wBank)
+  def unpack_slice(n: Bits, idx: Int) =
+    _unpack(n, idx, wBank, p(HwachaRegLen))
+  def unpack_slice(n: Bits, idx: Int, width: Int) =
+    _unpack(n, idx, wBank, p(HwachaRegLen), width)
 }
 
 abstract trait BankLogic extends LaneParameters {

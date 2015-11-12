@@ -122,8 +122,12 @@ class RegInfo(bId: Int)(implicit p: Parameters) extends RegId(bId)(p) {
   def neg(d: Int = 0) = scalar
 }
 
+trait RegPrec extends Bundle {
+  val prec = Bits(width = SZ_PREC)
+}
+
 class BasePRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPredRegBits))(p)
-class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegBits))(p)
+class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegBits))(p) with RegPrec
 
 class BaseRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val vp = new BasePRegInfo
@@ -136,7 +140,7 @@ class BaseRegisters(implicit p: Parameters) extends VXUBundle()(p) {
 class PhysicalPRegId(implicit p: Parameters) extends RegId(p(HwachaPRFAddrBits))(p)
 class PhysicalRegId(implicit p: Parameters) extends RegId(p(HwachaRFAddrBits))(p)
 class PhysicalPRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPRFAddrBits))(p)
-class PhysicalRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRFAddrBits))(p)
+class PhysicalRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRFAddrBits))(p) with RegPrec
 
 class PhysicalRegisterIds(implicit p: Parameters) extends VXUBundle()(p) {
   val vp = new PhysicalPRegId
@@ -225,7 +229,8 @@ trait MultiLaneVLen extends HwachaBundle {
   val lane = Vec.fill(nLanes){new VLenEntry}
 }
 
-class IssueOpBase(implicit p: Parameters) extends DecodedInst()(p) with HasBaseRegs {
+class IssueOpBase(implicit p: Parameters) extends DecodedInst()(p)
+  with HasBaseRegs with HasPhysRegIds {
   val active = new IssueType
 }
 
@@ -256,6 +261,17 @@ trait BankData extends VXUBundle {
 }
 
 trait MicroOp extends BankPred
+
+//-------------------------------------------------------------------------\\
+// confprec
+//-------------------------------------------------------------------------\\
+
+class PackInfo(implicit p: Parameters) extends VXUBundle()(p) with RegPrec {
+  val idx = UInt(width = 2)
+}
+trait BankPack extends VXUBundle {
+  val pack = new PackInfo
+}
 
 //-------------------------------------------------------------------------\\
 // sequencer op
@@ -294,7 +310,10 @@ class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p) with HasBa
 
 class SeqEntry(implicit p: Parameters) extends VXUBundle()(p) with HasPhysRegIds {
   val vlen = UInt(width = bVLen)
-  val eidx = UInt(width = bVLen - bStrip)
+  val eidx = new Bundle {
+    val major = UInt(width = bMLVLen - bStrip)
+    val minor = UInt(width = (1 << maxLStride) - 1)
+  }
   val age = UInt(width = bBanks)
 }
 
@@ -305,7 +324,7 @@ class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
 class SeqOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp {
   val active = new SeqType
   val select = new SeqSelect
-  val eidx = UInt(width = bVLen - bStrip)
+  val eidx = UInt(width = bMLVLen - bStrip)
   val rports = UInt(width = bRPorts)
   val wport = new Bundle {
     val sram = UInt(width = bWPortLatency)
@@ -323,11 +342,11 @@ class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysReg
 // lane, micro op
 //-------------------------------------------------------------------------\\
 
-class SRAMRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
+class SRAMRFReadOp(implicit p: Parameters) extends VXUBundle()(p) with BankPack {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class SRAMRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
+class SRAMRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) with BankPack {
   val addr = UInt(width = log2Up(nSRAM))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
@@ -476,6 +495,7 @@ class PredRFWriteExpEntry(implicit p: Parameters) extends PredRFWriteLaneOp()(p)
 class BankPredEntry(implicit p: Parameters) extends BankPred
 class BankDataEntry(implicit p: Parameters) extends BankData
 class BankDataPredEntry(implicit p: Parameters) extends BankData with BankPred
+class BankDataMaskEntry(implicit p: Parameters) extends BankData with BankMask
 
 //-------------------------------------------------------------------------\\
 // micro op
@@ -533,7 +553,7 @@ class DCCOp(implicit p: Parameters) extends VXUBundle()(p) {
   val vlen = UInt(width = bVLen)
   val active = new IssueType
   val fn = new VFn
-  val vd = new RegInfo(bRFAddr)
+  val vd = new PhysicalRegInfo
 }
 
 class LPQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankPred

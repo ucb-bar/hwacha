@@ -8,7 +8,7 @@ class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData w
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) {
+class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val io = new Bundle {
     val op = new BankOpIO().flip
     val global = new BankRWIO
@@ -76,6 +76,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   // SRAM RF read port
   val sram_raddr = io.op.sram.read.bits.addr
   val sram_rdata = sram_rf.read(sram_raddr, io.op.sram.read.valid && gpred.active()).toBits
+  val sram_rpack = unpack_bank(Reg(next = io.op.sram.read.bits), sram_rdata)
 
   // SRAM RF write port
   val sram_warb = Module(new Arbiter(new RFWritePort, 3))
@@ -85,11 +86,12 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       MuxLookup(io.op.sram.write.bits.wsel, Bits(0), (0 until nWSel) map {
         i => UInt(i) -> io.global.wdata(i).toBits }),
       io.local.wdata.toBits))
+  val sram_wpack = repack_bank(io.op.sram.write.bits, sram_wdata)
 
   sram_warb.io.in(0).valid := io.op.sram.write.valid && sram_wdata.active()
   sram_warb.io.in(0).bits.addr := io.op.sram.write.bits.addr
-  sram_warb.io.in(0).bits.data := sram_wdata.data
-  sram_warb.io.in(0).bits.mask := FillInterleaved(regLen/8, io.op.sram.write.bits.pred & sram_wdata.pred)
+  sram_warb.io.in(0).bits.data := sram_wpack.data
+  sram_warb.io.in(0).bits.mask := sram_wpack.mask
   assert(!io.op.sram.write.valid || sram_warb.io.in(0).ready, "this sram write port should always be ready")
 
   sram_warb.io.in(1).valid := io.global.bwq.mem.valid && !io.global.bwq.mem.bits.selff
@@ -111,7 +113,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     sram_rf.write(waddr, wdata, wmask)
 
     if (commit_log) {
-      val wdata = toDWords(sram_warb.io.out.bits.data)
+      val wdata = toDWords(sram_warb.io.out.bits.data) // FIXME
       (0 until nSlices) foreach { case i =>
         when (wmask(8*i)) {
           printf("H: write_vrf %d %d %d %d %x\n", UInt(lid), UInt(bid), waddr, UInt(i), wdata(i))
@@ -171,7 +173,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     when (io.op.opl.global(i).valid && s1_gpred.active()) {
       gopl.write(
         UInt(i),
-        toDWords(Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata)),
+        toDWords(Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
         (io.op.opl.global(i).bits.pred & s1_gpred.pred).toBools)
     }
     io.global.opl(i).data :=
@@ -181,7 +183,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     when (io.op.opl.local(i).valid && s1_gpred.active()) {
       lopl.write(
         UInt(i),
-        toDWords(Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rdata)),
+        toDWords(Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
         (io.op.opl.local(i).bits.pred & s1_gpred.pred).toBools)
     }
     io.local.opl(i).data := lopl(i).toBits

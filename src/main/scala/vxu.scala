@@ -14,12 +14,13 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     val mrt = new LaneMRTIO
   }
 
-  val seq = Module(new LaneSequencer)
+  val seq = Module(new LaneSequencer(id))
   val exp = Module(new Expander)
   val lane = Module(new Lane(id))
-  val dcc = Module(new DecoupledCluster(id))
+  val dcc = Module(new DecoupledCluster)
 
   seq.io.cfg <> io.cfg
+  exp.io.cfg <> io.cfg
   lane.io.cfg <> io.cfg
   dcc.io.cfg <> io.cfg
 

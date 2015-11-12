@@ -5,7 +5,7 @@ import cde.Parameters
 
 class ALUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn
-  val eidx = Bits(width = bVLen - bStrip)
+  val eidx = Bits(width = bMLVLen - bStrip)
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
 }
@@ -15,7 +15,7 @@ class ALUResult extends Bundle {
   val cmp = Bool()
 }
 
-class ALUSlice(lid: Int, aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val req = Valid(new ALUOperand).flip
@@ -72,7 +72,7 @@ class ALUSlice(lid: Int, aid: Int)(implicit p: Parameters) extends VXUModule()(p
 
   val s0_result64 = MuxCase(
     Bits(0, SZ_D), Array(
-      fn.op_is(I_IDX) -> Cat(eidx, UInt(lid, bLanes), UInt(aid, bStrip)),
+      fn.op_is(I_IDX) -> Cat(eidx, UInt(aid, bStrip)),
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,

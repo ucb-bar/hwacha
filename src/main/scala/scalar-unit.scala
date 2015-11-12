@@ -16,7 +16,7 @@ class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
-  with Packing with VMUParameters {
+  with Packing with SeqParameters {
   import Commands._
 
   val io = new Bundle {
@@ -314,6 +314,26 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
   val rm = Mux(id_ctrl.rm === Bits("b111"), UInt(0), id_ctrl.rm)
 
+  val vbias_w = io.cfg.vbase.w - io.cfg.vident.d
+  val vbias_h = io.cfg.vbase.h - io.cfg.vident.dw
+
+  private def vregid(fn: RegVFn, pfn: PRegIdFn, id: UInt) {
+    val base = fn(io.vxu.bits.base)
+    val reg = pfn(io.vxu.bits.reg)
+    if (confprec) {
+      val (d, dw) = (id < io.cfg.vident.d, id < io.cfg.vident.dw)
+      val sel = Seq(d, !d && dw, !d && !dw)
+      val bias = Mux1H(sel, Seq(UInt(0), vbias_w, vbias_h))
+      reg.id := id + Mux(base.is_vector(), bias, UInt(0))
+      base.id := id
+      base.prec := Mux1H(sel, Seq(PREC_D, PREC_W, PREC_H))
+    } else {
+      reg.id := id
+      base.id := id
+      base.prec := PREC_D
+    }
+  }
+
   // to VXU
   io.vxu.valid := fire_decode(mask_vxu_ready, enq_vxu)
   io.vxu.bits.lane := vl
@@ -333,7 +353,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.active.vld := id_ctrl.active_vld()
   io.vxu.bits.active.vst := id_ctrl.active_vst()
   io.vxu.bits.fn.union :=
-    MuxCase(Bits(0), Array(
+    Mux1H(Seq(
       id_ctrl.viu_val  -> id_ctrl.fn_viu().toBits,
       id_ctrl.vipu_val -> id_ctrl.fn_vipu().toBits,
       id_ctrl.vimu_val -> id_ctrl.fn_vimu().toBits,
@@ -365,10 +385,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.base.vs2.id := id_ctrl.vs2
   io.vxu.bits.base.vs3.id := id_ctrl.vs3
   io.vxu.bits.base.vd.id := id_ctrl.vd
+  vregid(reg_vs1, pregid_vs1, id_ctrl.vs1)
+  vregid(reg_vs2, pregid_vs2, id_ctrl.vs2)
+  vregid(reg_vs3, pregid_vs3, id_ctrl.vs3)
+  vregid(reg_vd, pregid_vd, id_ctrl.vd)
   io.vxu.bits.base.vp.valid := id_ctrl.vp_val
   io.vxu.bits.base.vp.pred := Bool(true)
   io.vxu.bits.base.vp.neg() := id_ctrl.vp_neg
   io.vxu.bits.base.vp.id := id_ctrl.vp
+  io.vxu.bits.reg.vp.id := id_ctrl.vp
   when (fire_decode(null, id_branch_inst)) { pending_cbranch := Bool(true) }
 
   // to VMU

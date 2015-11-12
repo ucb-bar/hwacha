@@ -10,7 +10,8 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vpu = Valid(new SeqVPUOp)
 }
 
-class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic with BankLogic {
+class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
+  with SeqLogic with BankLogic with PrecLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = Valid(new IssueOp).flip
@@ -300,7 +301,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
           set.valid(UInt(r))
           e(r).reg := io.master.update.reg(r)
           e(r).vlen := io.op.bits.vlen
-          e(r).eidx := UInt(0)
+          e(r).eidx.major := UInt(lid) << io.cfg.lstride
+          e(r).eidx.minor := UInt(0)
           e(r).age := UInt(0)
         }
         io.master.clear(r) := !v(r) || !next_v(r)
@@ -430,7 +432,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         out.sreg := mread(sched, (me: MasterSeqEntry) => me.sreg)
         out.active := mread(sched, (me: MasterSeqEntry) => me.active)
         out.select := selectfn(sched)
-        out.eidx := read(sched, (e: SeqEntry) => e.eidx)
+        out.eidx := read(sched, (e: SeqEntry) => e.eidx.major) +
+          read(sched, (e: SeqEntry) => e.eidx.minor)
         out.rports := mread(sched, (me: MasterSeqEntry) => me.rports)
         out.wport.sram := mread(sched, (me: MasterSeqEntry) => me.wport.sram)
         out.wport.pred := mread(sched, (me: MasterSeqEntry) => me.wport.pred)
@@ -576,29 +579,51 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         vidu.fires(n) || vfdu.fires(n) || vcu.fires(n) || vlu.fires(n) ||
         exp.fires(n) || vipu.fires(n) || vpu.fires(n)
 
-      def update_reg(i: Int, fn: RegFn, pfn: PRegIdFn) = {
-        when (fn(me(i).base).valid) {
-          when (fn(me(i).base).is_vector()) {
-            pfn(e(i).reg).id := pfn(e(i).reg).id + io.cfg.vstride
-          }
-          when (fn(me(i).base).is_pred()) {
-            pfn(e(i).reg).id := pfn(e(i).reg).id + io.cfg.pstride
-          }
+      def update_eidx(i: Int) {
+        val strip = io.cfg.lstrip >> UInt(bStrip)
+        val minor = Cat(UInt(0,1), e(i).eidx.minor) + UInt(1)
+        when (minor === strip) {
+          e(i).eidx.minor := UInt(0)
+          e(i).eidx.major := e(i).eidx.major + Cat(strip, UInt(0, bLanes))
+        } .otherwise {
+          e(i).eidx.minor := minor
         }
       }
 
+      def update_vp(i: Int, fn: RegPFn, pfn: PRegIdFn) {
+        val info = fn(me(i).base)
+        val id = pfn(e(i).reg).id
+        when (info.valid && info.is_pred()) {
+          id := id + io.cfg.pstride
+        }
+      }
+      def update_vs(i: Int, fn: RegVFn, pfn: PRegIdFn) {
+        val info = fn(me(i).base)
+        val id = pfn(e(i).reg).id
+
+        val (update, stride) = if (confprec)
+            confprec_step(info.prec, e(i).eidx.minor, io.cfg)
+          else (Bool(true), io.cfg.vstride.d)
+
+        when (info.valid) {
+          id := id + MuxCase(UInt(0), Seq(
+            (info.is_vector() && update) -> stride,
+            (info.is_pred()) -> io.cfg.pstride))
+        }
+      }
+      def update_vd = update_vs _
+
       for (i <- 0 until nSeq) {
         val strip = stripfn(e(i).vlen, me(i).fn)
-        assert (io.cfg.lstride === UInt(0), "need to fix sequencing logic otherwise")
         when (mv(i) && v(i)) {
           when (fires(i)) {
             e(i).vlen := e(i).vlen - strip
-            e(i).eidx := e(i).eidx + UInt(1)
-            update_reg(i, reg_vp, pregid_vp)
-            update_reg(i, reg_vs1, pregid_vs1)
-            update_reg(i, reg_vs2, pregid_vs2)
-            update_reg(i, reg_vs3, pregid_vs3)
-            update_reg(i, reg_vd, pregid_vd)
+            update_eidx(i)
+            update_vp(i, reg_vp, pregid_vp)
+            update_vs(i, reg_vs1, pregid_vs1)
+            update_vs(i, reg_vs2, pregid_vs2)
+            update_vs(i, reg_vs3, pregid_vs3)
+            update_vd(i, reg_vd, pregid_vd)
             when (e(i).vlen === strip) {
               iwindow.clear.valid(UInt(i))
             }

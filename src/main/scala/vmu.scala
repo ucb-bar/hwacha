@@ -174,7 +174,7 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val eidx_next = op.eidx + ecnt_max
   val vlen_next = op.vlen.zext - ecnt_max
   val vlen_end = (vlen_next <= SInt(0))
-  val ecnt = Mux(vlen_end, op.vlen(bStrip, 0), ecnt_max)
+  val ecnt = Mux(vlen_end, op.vlen(bfLStrip-1, 0), ecnt_max)
 
   val enq = io.span(io.issue.map { case deq =>
     val q = Module(new Queue(new VMUDecodedOp, 2))

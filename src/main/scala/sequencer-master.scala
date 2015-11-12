@@ -31,6 +31,8 @@ abstract trait SeqParameters extends UsesHwachaParameters
          stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) y else x) >= 1)
 
   type RegFn = BaseRegisters => RegInfo
+  type RegPFn = BaseRegisters => BasePRegInfo
+  type RegVFn = BaseRegisters => BaseRegInfo
   val reg_vp  = (reg: BaseRegisters) => reg.vp
   val reg_vs1 = (reg: BaseRegisters) => reg.vs1
   val reg_vs2 = (reg: BaseRegisters) => reg.vs2
@@ -296,40 +298,41 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       def vp(n: UInt) = {
         when (io.op.bits.base.vp.valid) {
           e(n).base.vp := io.op.bits.base.vp
-          io.master.update.reg(n).vp.id := io.op.bits.base.vp.id
+          io.master.update.reg(n).vp.id := io.op.bits.reg.vp.id
         }
         dhazard.set.raw_vp(n)
       }
-      def vs(n: UInt, e_vsfn: RegFn, e_pvsfn: PRegIdFn, op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
+      def vs(n: UInt, e_vsfn: RegFn, e_pvsfn: PRegIdFn, op_pvsfn: PRegIdFn,
+             op_vsfn: RegFn, e_ssfn: SRegFn, op_ssfn: SRegFn) = {
         when (op_vsfn(io.op.bits.base).valid) {
           e_vsfn(e(n).base) := op_vsfn(io.op.bits.base)
-          e_pvsfn(io.master.update.reg(n)).id := op_vsfn(io.op.bits.base).id
+          e_pvsfn(io.master.update.reg(n)).id := op_pvsfn(io.op.bits.reg).id
           when (op_vsfn(io.op.bits.base).is_scalar()) {
             e_ssfn(e(n).sreg) := op_ssfn(io.op.bits.sreg)
           }
         }
       }
       def vs1(n: UInt) = {
-        vs(n, reg_vs1, pregid_vs1, reg_vs1, sreg_ss1, sreg_ss1)
+        vs(n, reg_vs1, pregid_vs1, pregid_vs1, reg_vs1, sreg_ss1, sreg_ss1)
         dhazard.set.raw_vs1(n)
       }
       def vs2(n: UInt) = {
-        vs(n, reg_vs2, pregid_vs2, reg_vs2, sreg_ss2, sreg_ss2)
+        vs(n, reg_vs2, pregid_vs2, pregid_vs2, reg_vs2, sreg_ss2, sreg_ss2)
         dhazard.set.raw_vs2(n)
       }
       def vs3(n: UInt) = {
-        vs(n, reg_vs3, pregid_vs3, reg_vs3, sreg_ss3, sreg_ss3)
+        vs(n, reg_vs3, pregid_vs3, pregid_vs3, reg_vs3, sreg_ss3, sreg_ss3)
         dhazard.set.raw_vs3(n)
       }
       def vs2_as_vs1(n: UInt) = {
-        vs(n, reg_vs1, pregid_vs1, reg_vs2, sreg_ss1, sreg_ss2)
+        vs(n, reg_vs1, pregid_vs1, pregid_vs2, reg_vs2, sreg_ss1, sreg_ss2)
         dhazard.set.raw_vs2(n)
       }
       def vd_as_vs1(n: UInt) = {
         assert(!io.op.bits.base.vd.valid || !io.op.bits.base.vd.is_scalar(), "iwindow.set.vd_as_vs1: vd should always be vector")
         when (io.op.bits.base.vd.valid) {
           e(n).base.vs1 := io.op.bits.base.vd
-          io.master.update.reg(n).vs1.id := io.op.bits.base.vd.id
+          io.master.update.reg(n).vs1.id := io.op.bits.reg.vd.id
         }
         dhazard.set.raw_vd(n)
       }
@@ -337,7 +340,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         assert(!io.op.bits.base.vd.valid || !io.op.bits.base.vd.is_scalar(), "iwindow.set.vd: vd should always be vector")
         when (io.op.bits.base.vd.valid) {
           e(n).base.vd := io.op.bits.base.vd
-          io.master.update.reg(n).vd.id := io.op.bits.base.vd.id
+          io.master.update.reg(n).vd.id := io.op.bits.reg.vd.id
         }
         dhazard.set.war_vd(n)
         dhazard.set.waw_vd(n)
