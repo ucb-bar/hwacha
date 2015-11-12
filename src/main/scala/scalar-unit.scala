@@ -153,9 +153,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val srf = new SRegFile // doesn't have vs0
-  val arf = Mem(UInt(width = 64), 32)
+  val arf = Mem(UInt(width = regLen), nARegs)
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
+  val muldiv = Module(new rocket.MulDiv(width = regLen, nXpr = nSRegs, unroll = 8, earlyOut = true))
 
   io.pending.mrt.su := mrt.io.pending
   // we need to delay io.pending.mrt.su.all by one cycle
@@ -257,13 +258,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_smu_load = id_ctrl.fn_smu().cmd === SM_L
   val id_smu_store = id_ctrl.fn_smu().cmd === SM_S
   val id_set_sboard =
-    io.vxu.fire() && id_first_inst || io.fpu.req.fire() || io.smu.req.fire() && id_smu_load
+    io.vxu.fire() && id_first_inst ||
+    io.fpu.req.fire() || io.smu.req.fire() && id_smu_load || muldiv.io.req.fire()
   sboard.set(id_set_sboard, id_ctrl.vd)
 
   val enq_vxu = id_val && id_vector_inst
   val enq_vmu = id_val && id_ctrl.vmu_val
   val enq_fpu = id_val && id_scalar_inst && id_ctrl.fpu_val
   val enq_smu = id_val && id_ctrl.smu_val
+  val enq_muldiv = id_val && id_scalar_inst && (id_ctrl.vimu_val || id_ctrl.vidu_val)
 
   mrt.io.lreq.cnt := UInt(1)
   mrt.io.sreq.cnt := UInt(1)
@@ -274,6 +277,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val mask_smu_ready = !enq_smu || io.smu.req.ready
   val mask_smu_load_ok = !enq_smu || !id_smu_load || io.mocheck.load && mrt.io.lreq.available
   val mask_smu_store_ok = !enq_smu || !id_smu_store || io.mocheck.store && mrt.io.sreq.available
+  val mask_muldiv_ready = !enq_muldiv || muldiv.io.req.ready
 
   val stall_pending_fpu = (id_ctrl.decode_stop || enq_fpu) && pending_fpu
   val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
@@ -293,7 +297,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, ctrl_fire_common,
       mask_vxu_ready, mask_vmu_ready,
-      mask_fpu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok)
+      mask_fpu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok, mask_muldiv_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -416,6 +420,25 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (io.smu.req.fire()) { pending_smu := Bool(true) }
   when (io.smu.confirm) { pending_smu := Bool(false) }
 
+  // to MUL
+  muldiv.io.req.valid := fire_decode(mask_muldiv_ready, enq_muldiv)
+  muldiv.io.req.bits.dw :=
+    Mux(id_ctrl.alu_dw === DW32, RocketConstants.DW_32, RocketConstants.DW_64)
+  muldiv.io.req.bits.fn :=
+    Mux(id_ctrl.vimu_val,
+      Mux(id_ctrl.vimu_fn === IM_M,    rocket.ALU.FN_MUL,
+      Mux(id_ctrl.vimu_fn === IM_MH,   rocket.ALU.FN_MULH,
+      Mux(id_ctrl.vimu_fn === IM_MHU,  rocket.ALU.FN_MULHU,
+                                       rocket.ALU.FN_MULHSU))),
+      Mux(id_ctrl.vidu_fn === ID_DIV,  rocket.ALU.FN_DIV,
+      Mux(id_ctrl.vidu_fn === ID_DIVU, rocket.ALU.FN_DIVU,
+      Mux(id_ctrl.vidu_fn === ID_REM,  rocket.ALU.FN_REM,
+                                       rocket.ALU.FN_REMU))))
+  muldiv.io.req.bits.in1 := id_sreads(0)
+  muldiv.io.req.bits.in2 := id_sreads(1)
+  muldiv.io.req.bits.tag := id_ctrl.vd
+  muldiv.io.kill := Bool(false)
+
   // to MRT
   mrt.io.lreq.reserve := fire_decode(null, enq_smu, id_smu_load)
   mrt.io.sreq.reserve := fire_decode(null, enq_smu, id_smu_store)
@@ -423,6 +446,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // EXECUTE
   val ex_stall_fpu = ex_reg_valid && io.fpu.resp.valid
   val ex_stall_smu = ex_reg_valid && io.smu.resp.valid && !io.smu.resp.bits.store
+  val ex_stall_muldiv = ex_reg_valid && muldiv.io.resp.valid
   val ex_stall_rfirst = ex_reg_valid && io.red.first.valid
 
   io.red.pred.ready := Bool(true)
@@ -433,7 +457,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   stallx :=
     pending_cbranch && !ex_br_resolved ||
-    ex_stall_fpu || ex_stall_smu || ex_stall_rfirst || stallw
+    ex_stall_fpu || ex_stall_smu || ex_stall_muldiv || ex_stall_rfirst || stallw
   killx := !ex_reg_valid || ex_br_not_taken || stallx
 
   when (!stallx) {
@@ -484,7 +508,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   alu.io.in2 := ex_op2.toUInt
   alu.io.in1 := ex_op1
 
-  val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 3))
+  val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 4))
 
   val unrec_s = ieee_sp(io.fpu.resp.bits.data)
   val unrec_d = ieee_dp(io.fpu.resp.bits.data)
@@ -508,10 +532,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   mrt.io.sret.cnt := UInt(1)
   mrt.io.sret.update := io.smu.resp.fire() && io.smu.resp.bits.store
 
-  ll_warb.io.in(2).valid := io.red.first.valid
-  ll_warb.io.in(2).bits.addr := io.red.first.bits.sd
-  ll_warb.io.in(2).bits.data := io.red.first.bits.first
-  io.red.first.ready := ll_warb.io.in(2).ready
+  ll_warb.io.in(2).valid := muldiv.io.resp.valid
+  ll_warb.io.in(2).bits.addr := muldiv.io.resp.bits.tag
+  ll_warb.io.in(2).bits.data := muldiv.io.resp.bits.data
+  muldiv.io.resp.ready := ll_warb.io.in(2).ready
+
+  ll_warb.io.in(3).valid := io.red.first.valid
+  ll_warb.io.in(3).bits.addr := io.red.first.bits.sd
+  ll_warb.io.in(3).bits.data := io.red.first.bits.first
+  io.red.first.ready := ll_warb.io.in(3).ready
 
   ll_warb.io.out.ready := Bool(true) // long-latency write port always wins
 

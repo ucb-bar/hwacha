@@ -289,7 +289,6 @@ object VectorArithmeticDecode extends VFDecodeTable {
     VSRA      ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_SRA, DW64,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_SRA, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VOR       ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_OR,  DW64,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_OR,  N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VAND      ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_AND, DW64,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_AND, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
-    // FIXME START
     VMUL      ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    Y,IM_M,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VMULH     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    Y,IM_MH,  N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VMULHSU   ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    Y,IM_MHSU,N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
@@ -298,19 +297,16 @@ object VectorArithmeticDecode extends VFDecodeTable {
     VDIVU     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_DIVU,N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VREM      ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_REM, N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VREMU     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW64,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_REMU,N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
-    // FIXME END
     VADDW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_ADD, DW32,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_ADD, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VSUBW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_SUB, DW32,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_SUB, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VSLLW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_SL,  DW32,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_SLL, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VSRLW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_SR,  DW32,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_SRL, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VSRAW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_SRA, DW32,A1_RS1, A2_RS2, N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, Y,I_SRA, N,    N,IM_X,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
-    // FIXME START
     VMULW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW32,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    Y,IM_M,   N,ID_X,   N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VDIVW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW32,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_DIV, N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VDIVUW    ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW32,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_DIVU,N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VREMW     ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW32,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_REM, N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
     VREMUW    ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,N,RX,N,Y,IMM_X,FN_X,   DW32,A1_X,   A2_X,   N,FP_,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   Y,ID_REMU,N,FM_X,    N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FX),
-    // FIXME END
 
     VFMADD_D  ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,Y,RX,Y,Y,IMM_X,FN_X,   DW__,A1_X,   A2_X,   Y,FPD,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   Y,FM_MADD, N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FMADD_D),
     VFMSUB_D  ->(List[BitPat](Y,N,N,N,Y,RX,Y,Y,RX,Y,Y,RX,Y,Y,RX,Y,Y,IMM_X,FN_X,   DW__,A1_X,   A2_X,   Y,FPD,N,VM_X,M_X,      N,SM_X,MT_X, N,I_X,   N,    N,IM_X,   N,ID_X,   Y,FM_MSUB, N,FD_X,   N,FC_X,    N,FV_X,    N,N) ++ FMSUB_D),
