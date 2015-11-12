@@ -222,9 +222,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     !id_ctrl.vrfu_val &&
     (!id_ctrl.vd_val || id_scalar_dest) && (!id_ctrl.vs1_val || id_scalar_src1) &&
     (!id_ctrl.vs2_val || id_scalar_src2) && (!id_ctrl.vs3_val || id_scalar_src3)
+  val id_fpu_inst = id_ctrl.fpu_val
+  val id_smem_inst = id_ctrl.smu_val
+  val id_mul_inst = id_ctrl.vimu_val
+  val id_muldiv_inst = id_mul_inst || id_ctrl.vidu_val
   val id_branch_inst = id_ctrl.vrpu_val
   val id_first_inst = id_ctrl.vrfu_val
   val id_vector_inst = !id_scalar_inst || id_branch_inst
+  val id_vmem_inst = id_ctrl.vmu_val
 
   val id_val = io.imem.resp.valid && id_ctrl.ival
 
@@ -235,7 +240,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_ctrl_rens3_not0 = sren(2) && id_ctrl.vs3 =/= UInt(0)
 
   // stall for RAW hazards on non scalar integer pipes
-  val id_can_bypass = id_scalar_inst && !id_branch_inst && !id_ctrl.fpu_val && !id_ctrl.smu_val
+  val id_can_bypass =
+    id_scalar_inst && !id_branch_inst && !id_fpu_inst && !id_smem_inst && !id_muldiv_inst
   val id_data_hazard_ex = Vec(
     id_ctrl_rens1_not0 && id_ctrl.vs1 === ex_reg_ctrl.vd,
     id_ctrl_rens2_not0 && id_ctrl.vs2 === ex_reg_ctrl.vd,
@@ -258,10 +264,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   sboard.set(id_set_sboard, id_ctrl.vd)
 
   val enq_vxu = id_val && id_vector_inst
-  val enq_vmu = id_val && id_ctrl.vmu_val
-  val enq_fpu = id_val && id_scalar_inst && id_ctrl.fpu_val
-  val enq_smu = id_val && id_ctrl.smu_val
-  val enq_muldiv = id_val && id_scalar_inst && (id_ctrl.vimu_val || id_ctrl.vidu_val)
+  val enq_vmu = id_val && id_vmem_inst
+  val enq_fpu = id_val && id_scalar_inst && id_fpu_inst
+  val enq_smu = id_val && id_smem_inst
+  val enq_muldiv = id_val && id_scalar_inst && id_muldiv_inst
 
   mrt.io.lreq.cnt := UInt(1)
   mrt.io.sreq.cnt := UInt(1)
@@ -297,7 +303,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   stalld := !fire_decode(ctrl_fire_common) || stallx || stallw
   killd :=
     !ctrl_fire_common || stalld ||
-    id_vector_inst && !id_branch_inst || enq_fpu || enq_smu
+    id_vector_inst && !id_branch_inst || enq_fpu || enq_smu || enq_muldiv
 
   // use rm in inst unless its dynamic then take rocket rm
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
@@ -417,7 +423,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   muldiv.io.req.bits.dw :=
     Mux(id_ctrl.alu_dw === DW32, RocketConstants.DW_32, RocketConstants.DW_64)
   muldiv.io.req.bits.fn :=
-    Mux(id_ctrl.vimu_val,
+    Mux(id_mul_inst,
       Mux(id_ctrl.vimu_fn === IM_M,    rocket.ALU.FN_MUL,
       Mux(id_ctrl.vimu_fn === IM_MH,   rocket.ALU.FN_MULH,
       Mux(id_ctrl.vimu_fn === IM_MHU,  rocket.ALU.FN_MULHU,
