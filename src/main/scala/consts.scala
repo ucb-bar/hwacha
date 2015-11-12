@@ -108,7 +108,6 @@ trait DecodeConstants {
   val DW_X  = X
   val DW_32 = N
   val DW_64 = Y
-  val DW_XPR = Y
 
   //riscv-opcode fields
   val OPC_VD  = UInt(63)
