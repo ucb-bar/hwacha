@@ -317,7 +317,9 @@ class PBox(implicit p: Parameters) extends VMUModule()(p) {
   pbox1.io.op <> io.op(1)
   pbox1.io.ingress <> predq1.io.deq
 
-  io.mask.ante <> pbox0.io.sample
+  val anteq = Module(new Queue(pbox0.io.sample.bits, 2))
+  anteq.io.enq <> pbox0.io.sample
+  io.mask.ante <> anteq.io.deq
   io.mask.post <> pbox1.io.sample
 }
 
