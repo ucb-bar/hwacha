@@ -46,74 +46,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     }
   }
 
-  val vf_active = Reg(init=Bool(false))
-  val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
-  val busy_scalar = Bool()
-
-  io.vf_active := vf_active
-
-  val pending_fpu = Reg(init=Bool(false))
-  val pending_fpu_reg = Reg(init=UInt(width=log2Up(nSRegs)))
-  val pending_fpu_typ = Reg(init=Bits(width=2))
-  val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
-  val pending_smu = Reg(init=Bool(false))
-  val pending_cbranch = Reg(init=Bool(false))
-
-  val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
-  val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
-  val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
-  val decode_vsetvl  = io.cmdq.cmd.bits === CMD_VSETVL
-  val decode_vf      = io.cmdq.cmd.bits === CMD_VF
-  val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
-
-  val deq_imm = decode_vmss || decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
-  val deq_rd  = decode_vmss || decode_vmsa
-
-  val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
-  val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
-
-  // TODO: we could fire all cmd but vf* without pending.mseq being clear
-  def fire_cmdq(exclude: Bool, include: Bool*) = {
-  val rvs = Seq(
-      !vf_active, !busy_scalar, !io.pending.mseq.all, !pending_smu, !pending_fpu,
-      io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
-    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
-  }
-
-  io.cmdq.cmd.ready := fire_cmdq(io.cmdq.cmd.valid)
-  io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
-  io.cmdq.rd.ready  := fire_cmdq(mask_rd_valid, deq_rd)
-
-  val swrite = fire_cmdq(null, decode_vmss)
-  val awrite = fire_cmdq(null, decode_vmsa)
-
-  when (fire_cmdq(null, decode_vsetcfg)) {
-    (0 until nLanes) map { case i =>
-      vl(i).active := Bool(false)
-      vl(i).vlen := UInt(0)
-    }
-  }
-  when (fire_cmdq(null, decode_vsetvl)) {
-    val lgStrip = io.cfg.lstride
-    val lgLane = log2Floor(nLanes)
-    val nStrip = UInt(1) << lgStrip
-    val vlen_ml = io.cmdq.imm.bits
-    val vlen_base = (vlen_ml >> (UInt(0, lgStrip.getWidth+1) + UInt(lgLane) + lgStrip)) << lgStrip
-    val vlen_lane = (vlen_ml >> lgStrip)(lgLane-1, 0)
-    val vlen_strip = vlen_ml & (nStrip - UInt(1))
-    (0 until nLanes) map { case i =>
-      val vlen_fringe =
-        Mux(vlen_lane > UInt(i), nStrip,
-          Mux(vlen_lane === UInt(i), vlen_strip, UInt(0)))
-      val vlen = if (nLanes == 1) vlen_ml else vlen_base + vlen_fringe
-      vl(i).active := vlen.orR
-      vl(i).vlen := vlen
-    }
-  }
-
-  val fire_vf = fire_cmdq(null, decode_vf)
-  when (fire_vf) { vf_active := Bool(true) }
-
   // STATE
   class SRegFile {
     private val rf = Mem(UInt(width = regLen), nSRegs-1)
@@ -159,11 +91,74 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val muldiv = Module(new rocket.MulDiv(width = regLen, nXpr = nSRegs, unroll = 8, earlyOut = true))
 
   io.pending.mrt.su := mrt.io.pending
-  // we need to delay io.pending.mrt.su.all by one cycle
-  // because writeback in the scalar unit is delayed by one cycle
-  val sboard_marked = (0 until nSRegs).map(i => sboard.read(UInt(i))).reduce(_||_)
-  assert(!(!vf_active && !Reg(next=io.pending.mrt.su.all) && sboard_marked),
-    "vf should not end with non empty scoreboard")
+
+  val vf_active = Reg(init=Bool(false))
+  val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
+  val busy_scalar = Bool()
+
+  io.vf_active := vf_active
+
+  val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
+  val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
+  val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
+  val decode_vsetvl  = io.cmdq.cmd.bits === CMD_VSETVL
+  val decode_vf      = io.cmdq.cmd.bits === CMD_VF
+  val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
+
+  val deq_imm = decode_vmss || decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
+  val deq_rd  = decode_vmss || decode_vmsa
+
+  val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
+  val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
+
+  // TODO: we could fire all cmd but vf* without pending.mseq being clear
+  def fire_cmdq(exclude: Bool, include: Bool*) = {
+  val rvs = Seq(
+      !vf_active, !busy_scalar, !decode_vmss || !sboard.read(io.cmdq.rd.bits), !io.pending.mseq.all,
+      io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  io.cmdq.cmd.ready := fire_cmdq(io.cmdq.cmd.valid)
+  io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
+  io.cmdq.rd.ready  := fire_cmdq(mask_rd_valid, deq_rd)
+
+  val swrite = fire_cmdq(null, decode_vmss)
+  val awrite = fire_cmdq(null, decode_vmsa)
+
+  when (fire_cmdq(null, decode_vsetcfg)) {
+    (0 until nLanes) map { case i =>
+      vl(i).active := Bool(false)
+      vl(i).vlen := UInt(0)
+    }
+  }
+  when (fire_cmdq(null, decode_vsetvl)) {
+    val lgStrip = io.cfg.lstride
+    val lgLane = log2Floor(nLanes)
+    val nStrip = UInt(1) << lgStrip
+    val vlen_ml = io.cmdq.imm.bits
+    val vlen_base = (vlen_ml >> (UInt(0, lgStrip.getWidth+1) + UInt(lgLane) + lgStrip)) << lgStrip
+    val vlen_lane = (vlen_ml >> lgStrip)(lgLane-1, 0)
+    val vlen_strip = vlen_ml & (nStrip - UInt(1))
+    (0 until nLanes) map { case i =>
+      val vlen_fringe =
+        Mux(vlen_lane > UInt(i), nStrip,
+          Mux(vlen_lane === UInt(i), vlen_strip, UInt(0)))
+      val vlen = if (nLanes == 1) vlen_ml else vlen_base + vlen_fringe
+      vl(i).active := vlen.orR
+      vl(i).vlen := vlen
+    }
+  }
+
+  val fire_vf = fire_cmdq(null, decode_vf)
+  when (fire_vf) { vf_active := Bool(true) }
+
+  val pending_fpu = Reg(init=Bool(false))
+  val pending_fpu_reg = Reg(init=UInt(width=log2Up(nSRegs)))
+  val pending_fpu_typ = Reg(init=Bits(width=2))
+  val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
+  val pending_smu = Reg(init=Bool(false))
+  val pending_cbranch = Reg(init=Bool(false))
 
   val ex_reg_valid = Reg(Bool())
   val ex_reg_ctrl = Reg(new IntCtrlSigs)
@@ -279,15 +274,12 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val mask_smu_store_ok = !enq_smu || !id_smu_store || io.mocheck.store && mrt.io.sreq.available
   val mask_muldiv_ready = !enq_muldiv || muldiv.io.req.ready
 
-  val stall_pending_fpu = (id_ctrl.decode_stop || enq_fpu) && pending_fpu
-  val stall_pending_smu = (id_ctrl.decode_stop || enq_smu) && pending_smu
   val stall_pending_fence = id_ctrl.decode_fence && (
     io.pending.mseq.mem ||
     io.pending.mrt.su.all || io.pending.mrt.vus.map(_.all).reduce(_ || _))
 
   val ctrl_stalld_common =
-    !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_pending_fpu || stall_pending_smu || stall_pending_fence
+    !vf_active || id_ex_hazard || id_sboard_hazard || stall_pending_fence
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
@@ -584,7 +576,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   assert(!(wb_ll_valid && wb_wen), "long latency and scalar wb conflict")
   assert(!((wb_ll_valid || wb_wen) && swrite), "Cannot write vmss and scalar dest")
-  assert(!((wb_ll_valid || wb_wen) && awrite), "Cannot write vmsa and scalar dest")
+  assert(!(swrite && sboard.read(wb_waddr)), "Cannot write scalar dest when sboard is set")
 
   when(vf_active || wb_reg_valid) {
     printf("H: [%x] pc=[%x] SW[r%d=%x][%d] SR[r%d=%x] SR[r%d=%x] inst=[%x] DASM(%x)\n",
