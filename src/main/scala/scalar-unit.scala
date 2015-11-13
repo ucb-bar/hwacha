@@ -269,33 +269,39 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val enq_smu = id_val && id_smem_inst
   val enq_muldiv = id_val && id_scalar_inst && id_muldiv_inst
 
+  val stall_fpu = enq_fpu && pending_fpu
+
   mrt.io.lreq.cnt := UInt(1)
   mrt.io.sreq.cnt := UInt(1)
 
-  val mask_vxu_ready = !enq_vxu || io.vxu.ready
-  val mask_vmu_ready = !enq_vmu || io.vmu.ready
-  val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
-  val mask_smu_ready = !enq_smu || io.smu.req.ready
-  val mask_smu_load_ok = !enq_smu || !id_smu_load || io.mocheck.load && mrt.io.lreq.available
-  val mask_smu_store_ok = !enq_smu || !id_smu_store || io.mocheck.store && mrt.io.sreq.available
-  val mask_muldiv_ready = !enq_muldiv || muldiv.io.req.ready
+  val stall_smu =
+    pending_smu ||
+    enq_smu && id_smu_load && (!io.mocheck.load || !mrt.io.lreq.available) ||
+    enq_smu && id_smu_store && (!io.mocheck.store || !mrt.io.sreq.available)
 
   val stall_pending_fence = id_ctrl.decode_fence && (
     io.pending.mseq.mem ||
     io.pending.mrt.su.all || io.pending.mrt.vus.map(_.all).reduce(_ || _))
 
   val ctrl_stalld_common =
-    !vf_active || id_ex_hazard || id_sboard_hazard || stall_pending_fence
+    !vf_active || id_ex_hazard || id_sboard_hazard ||
+    stall_fpu || stall_smu || stall_pending_fence
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
 
   assert(!vf_active || !io.imem.resp.valid || id_ctrl.ival, "illegal instruction exception!")
 
+  val mask_vxu_ready = !enq_vxu || io.vxu.ready
+  val mask_vmu_ready = !enq_vmu || io.vmu.ready
+  val mask_fpu_ready = !enq_fpu || io.fpu.req.ready
+  val mask_smu_ready = !enq_smu || io.smu.req.ready
+  val mask_muldiv_ready = !enq_muldiv || muldiv.io.req.ready
+
   def fire_decode(exclude: Bool, include: Bool*) = {
     val rvs = Seq(!ctrl_stalld_common, ctrl_fire_common,
       mask_vxu_ready, mask_vmu_ready,
-      mask_fpu_ready, mask_smu_ready, mask_smu_load_ok, mask_smu_store_ok, mask_muldiv_ready)
+      mask_fpu_ready, mask_smu_ready, mask_muldiv_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
