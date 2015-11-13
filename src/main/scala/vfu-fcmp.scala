@@ -64,14 +64,18 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     }
 
   val results =
-    List(expand_float_d _, expand_float_s _, expand_float_h _) zip cmps zip classifys map {
-      case ((expand, cmp), classify) => {
+    List((unpack_d _, expand_float_d _),
+         (unpack_w _, expand_float_s _),
+         (unpack_h _, expand_float_h _)) zip cmps zip classifys map {
+      case (((unpack, expand), cmp), classify) => {
         val less = cmp.a_lt_b
         val want_min = fn.op_is(FC_MIN)
         val in0_nan = classify._1(8) || classify._1(9) // isNaN, 8: sNaN, 9: qNaN
         val in1_nan = classify._2(8) || classify._2(9) // isNaN, 8: sNaN, 9: qNaN
+        val in0_minmax = expand(unpack(in0, 0))
+        val in1_minmax = expand(unpack(in1, 0))
         val minmax =
-          Mux(in1_nan || !in0_nan && (want_min === less), expand(in0), expand(in1))
+          Mux(in1_nan || !in0_nan && (want_min === less), in0_minmax, in1_minmax)
         val sel = List(FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
         val in = List(
           minmax,        // FC_MIN
