@@ -188,6 +188,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
       use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
     val use_mask_sreg_global = io.ticker.sreg.global map { use_mask_lop_valid(_) }
     val use_mask_xbar = io.ticker.xbar map { use_mask_lop_valid(_) }
+    val use_mask_pxbar = io.ticker.pxbar map { use_mask_lop_valid(_) }
     val use_mask_vimu = use_mask_lop_valid(io.ticker.vimu)
     val use_mask_vfmu = io.ticker.vfmu map { use_mask_lop_valid(_) }
     val use_mask_vfcu = use_mask_lop_valid(io.ticker.vfcu)
@@ -214,16 +215,17 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic
         val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << me(r).wport.pred, maxPredWPortLatency+nBanks-1)
         def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
         def chk_op_shazard(use_mask: Bits) = chk_shazard(use_mask, ask_op_mask)
+        def chk_gpred(i: Int) = chk_op_shazard(use_mask_pxbar(i))
         def chk_rport(fn: RegFn, i: Int) =
           fn(me(r).base).valid && (
             fn(me(r).base).is_vector() && chk_op_shazard(use_mask_xbar(i)) ||
             fn(me(r).base).is_scalar() && chk_op_shazard(use_mask_sreg_global(i)))
-        val chk_rport_0_1 = chk_rport(reg_vs1, 0) || chk_rport(reg_vs2, 1)
+        val chk_rport_0_1 = chk_gpred(0) || chk_rport(reg_vs1, 0) || chk_rport(reg_vs2, 1)
         val chk_rport_0_1_2 = chk_rport_0_1 || chk_rport(reg_vs3, 2)
-        val chk_rport_2 = chk_rport(reg_vs1, 2)
-        val chk_rport_3_4 = chk_rport(reg_vs1, 3) || chk_rport(reg_vs2, 4)
+        val chk_rport_2 = chk_gpred(1) || chk_rport(reg_vs1, 2)
+        val chk_rport_3_4 = chk_gpred(2) || chk_rport(reg_vs1, 3) || chk_rport(reg_vs2, 4)
         val chk_rport_3_4_5 = chk_rport_3_4 || chk_rport(reg_vs3, 5)
-        val chk_rport_5 = chk_rport(reg_vs1, 5)
+        val chk_rport_5 = chk_gpred(3) || chk_rport(reg_vs1, 5)
         def chk_wport_sram(i: Int) =
           me(r).base.vd.valid && chk_shazard(use_mask_wport_sram(i), ask_wport_sram_mask)
         val chk_wport_sram_0 = chk_wport_sram(0)
