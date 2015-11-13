@@ -550,6 +550,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // WRITEBACK
   val wb_ll_valid = Reg(next=ll_warb.io.out.valid)
+  val wb_ll_fpu = RegEnable(ll_warb.io.in(0).fire(), ll_warb.io.out.valid)
   val wb_ll_waddr = RegEnable(ll_warb.io.out.bits.addr, ll_warb.io.out.valid)
   val wb_ll_wdata = RegEnable(ll_warb.io.out.bits.data, ll_warb.io.out.valid)
 
@@ -584,7 +585,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   sboard.clear(wb_ll_valid, wb_ll_waddr)
-  when (wb_ll_valid) { pending_fpu := Bool(false) }
+  when (wb_ll_valid && wb_ll_fpu) { pending_fpu := Bool(false) }
 
   assert(!(wb_ll_valid && wb_wen), "long latency and scalar wb conflict")
   assert(!((wb_ll_valid || wb_wen) && swrite), "Cannot write vmss and scalar dest")
