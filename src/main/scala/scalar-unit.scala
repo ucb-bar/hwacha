@@ -16,7 +16,7 @@ class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
-  with VMUParameters {
+  with Packing with VMUParameters {
   import Commands._
 
   val io = new Bundle {
@@ -517,7 +517,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val unrec_s = ieee_sp(io.fpu.resp.bits.data)
   val unrec_d = ieee_dp(io.fpu.resp.bits.data)
   val unrec_fpu_resp =
-    Mux(pending_fpu_typ === UInt(0), Cat(Fill(32,unrec_s(31)), unrec_s), unrec_d)
+    Mux(pending_fpu_typ === UInt(0), expand_float_s(unrec_s), unrec_d)
 
   ll_warb.io.in(0).valid := io.fpu.resp.valid
   ll_warb.io.in(0).bits.addr := pending_fpu_reg
