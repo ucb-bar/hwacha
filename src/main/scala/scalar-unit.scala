@@ -285,7 +285,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_fpu || stall_smu || stall_pending_fence
+    stall_fpu || stall_smu || stall_pending_fence || stallx || stallw
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
@@ -306,7 +306,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   // stall fetch/decode if we aren't ready to issue the op being decoded
-  stalld := !fire_decode(ctrl_fire_common) || stallx || stallw
+  stalld := !fire_decode(ctrl_fire_common)
   killd :=
     !ctrl_fire_common || stalld ||
     id_vector_inst && !id_branch_inst || enq_fpu || enq_smu || enq_muldiv
