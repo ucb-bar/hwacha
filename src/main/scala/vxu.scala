@@ -41,6 +41,7 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   dcc.io.op.bits.active := io.issue.bits.active
   dcc.io.op.bits.fn := io.issue.bits.fn
   dcc.io.op.bits.vd := io.issue.bits.base.vd
+  dcc.io.op.bits.vd.id := io.issue.bits.reg.vd.id
 
   seq.io.master <> io.mseq
   seq.io.mocheck <> io.mocheck
