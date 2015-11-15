@@ -26,9 +26,9 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val in0 = dgate(io.req.valid, io.req.bits.in0)
   val in1 = dgate(io.req.valid, io.req.bits.in1)
 
-  val wdp = (52, 12)
-  val wsp = (23, 9)
-  val whp = (10, 6)
+  val wdp = (11, 53)
+  val wsp = (8, 24)
+  val whp = (5, 11)
 
   val val_cmp = fn.op_is(FC_CEQ,FC_CLT,FC_CLE,FC_MIN,FC_MAX)
 
@@ -46,19 +46,20 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   val cmps =
     ins zip List(wdp, wsp, whp) map {
-      case ((input0, input1), (sig, exp)) => {
-        val comp = Module(new hardfloat.recodedFloatNCompare(sig, exp))
+      case ((input0, input1), (exp, sig)) => {
+        val comp = Module(new hardfloat.CompareRecFN(exp, sig))
         comp.io.a := input0
         comp.io.b := input1
+        comp.io.signaling := Bool(true)
         comp.io
       }
     }
 
   val classifys =
     ins zip List(wdp, wsp, whp) map {
-      case ((input0, input1), (sig, exp)) => {
-        val c0 = hardfloat.recodedFloatNClassify(input0, sig, exp)
-        val c1 = hardfloat.recodedFloatNClassify(input1, sig, exp)
+      case ((input0, input1), (exp, sig)) => {
+        val c0 = rocket.ClassifyRecFN(exp, sig, input0)
+        val c1 = rocket.ClassifyRecFN(exp, sig, input1)
         (c0, c1)
       }
     }
@@ -68,7 +69,7 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (unpack_w _, expand_float_s _),
          (unpack_h _, expand_float_h _)) zip cmps zip classifys map {
       case (((unpack, expand), cmp), classify) => {
-        val less = cmp.a_lt_b
+        val less = cmp.lt
         val want_min = fn.op_is(FC_MIN)
         val in0_nan = classify._1(8) || classify._1(9) // isNaN, 8: sNaN, 9: qNaN
         val in1_nan = classify._2(8) || classify._2(9) // isNaN, 8: sNaN, 9: qNaN
@@ -88,8 +89,8 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val cmp_results =
     List(expand_float_d _, expand_float_s _, expand_float_h _) zip cmps zip classifys map {
       case ((expand, cmp), classify) => {
-        val less = cmp.a_lt_b
-        val equal = cmp.a_eq_b
+        val less = cmp.lt
+        val equal = cmp.eq
         val sel = List(FC_CEQ,FC_CLT,FC_CLE).map(fn.op_is(_))
         val in = List(
           equal,         // FC_CEQ

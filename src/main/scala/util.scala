@@ -106,12 +106,12 @@ object DataGating {
 }
 
 object HardFloatHelper {
-  def recode_dp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 52, 12)
-  def recode_sp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 23, 9)
-  def recode_hp(n: Bits) = hardfloat.floatNToRecodedFloatN(n.toUInt, 10, 6)
-  def ieee_dp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 52, 12)
-  def ieee_sp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 23, 9)
-  def ieee_hp(n: Bits) = hardfloat.recodedFloatNToFloatN(n.toUInt, 10, 6)
+  def recode_dp(n: Bits) = hardfloat.recFNFromFN(11, 53, n.toUInt)
+  def recode_sp(n: Bits) = hardfloat.recFNFromFN(8, 24, n.toUInt)
+  def recode_hp(n: Bits) = hardfloat.recFNFromFN(5, 11, n.toUInt)
+  def ieee_dp(n: Bits) = hardfloat.fNFromRecFN(11, 53, n.toUInt)
+  def ieee_sp(n: Bits) = hardfloat.fNFromRecFN(8, 24, n.toUInt)
+  def ieee_hp(n: Bits) = hardfloat.fNFromRecFN(5, 11, n.toUInt)
 }
 
 class MaskStall[T <: Data](data: => T) extends Module {

@@ -37,12 +37,16 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   // stage0
   val ins = List(io.req.bits.in0, io.req.bits.in1) map { in =>
     val dp = recode_dp(in)
-    val sp = hardfloat.recodedFloatNToRecodedFloatM(recode_sp(in), io.req.bits.fn.rm, 23, 9, 52, 12)
-    val hp = hardfloat.recodedFloatNToRecodedFloatM(recode_hp(in), io.req.bits.fn.rm, 10, 6, 52, 12)
+    val sp = Module(new hardfloat.RecFNToRecFN(8, 24, 11, 53))
+    val hp = Module(new hardfloat.RecFNToRecFN(5, 11, 11, 53))
+    sp.io.in := recode_sp(in)
+    sp.io.roundingMode := io.req.bits.fn.rm
+    hp.io.in := recode_hp(in)
+    hp.io.roundingMode := io.req.bits.fn.rm
     val out = Mux(io.req.bits.fn.fp_is(FPD), dp,
-              Mux(io.req.bits.fn.fp_is(FPS), sp._1, hp._1)) 
+              Mux(io.req.bits.fn.fp_is(FPS), sp.io.out, hp.io.out))
     val exc = Mux(io.req.bits.fn.fp_is(FPD), Bits(0),
-              Mux(io.req.bits.fn.fp_is(FPS), sp._2, hp._2))
+              Mux(io.req.bits.fn.fp_is(FPS), sp.io.exceptionFlags, hp.io.exceptionFlags))
     (out, exc)
   }
 
@@ -65,7 +69,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     in0q.io.enq.ready && (!s0_op_div || in1q.io.enq.ready)
 
   // stage1
-  val div = Module(new hardfloat.divSqrtRecodedFloat64)
+  val div = Module(new hardfloat.DivSqrtRecF64)
   val outtagq = Module(new Queue(new FDivTag, nDecoupledUnitWBQueue))
 
   val s1_op_div = intagq.io.deq.bits.fn.op_is(FD_DIV)
@@ -103,14 +107,19 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val rq = Module(new Queue(new FDivResult, nDecoupledUnitWBQueue))
 
   val s1_result_dp = ieee_dp(s1_result_out)
-  val s1_result_sp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 23, 9)
-  val s1_result_hp = hardfloat.recodedFloatNToRecodedFloatM(s1_result_out, outtagq.io.deq.bits.fn.rm, 52, 12, 10, 6)
+  val s1_result_sp = Module(new hardfloat.RecFNToRecFN(11, 53, 8, 24))
+  val s1_result_hp = Module(new hardfloat.RecFNToRecFN(11, 53, 5, 11))
+  s1_result_sp.io.in := s1_result_out
+  s1_result_sp.io.roundingMode := outtagq.io.deq.bits.fn.rm
+  s1_result_hp.io.in := s1_result_out
+  s1_result_hp.io.roundingMode := outtagq.io.deq.bits.fn.rm
 
   val s1_out = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), s1_result_dp,
-               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp._1)),
-                                                      expand_float_h(ieee_hp(s1_result_hp._1))))
+               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp.io.out)),
+                                                      expand_float_h(ieee_hp(s1_result_hp.io.out))))
   val s1_exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), Bits(0),
-               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp._2, s1_result_hp._2))
+               Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp.io.exceptionFlags,
+                                                      s1_result_hp.io.exceptionFlags))
 
   rq.io.enq.valid := s1_result_valid
   outtagq.io.deq.ready := s1_result_valid

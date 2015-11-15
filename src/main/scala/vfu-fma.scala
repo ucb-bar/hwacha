@@ -54,15 +54,15 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     ))
 
   val results =
-    List((SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (52, 12)),
-         (SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (23, 9)),
-         (SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (10, 6))) map {
-      case (sz, fp, recode, unpack, ieee, repack, expand, (sig, exp)) => {
+    List((SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (11, 53)),
+         (SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (8, 24)),
+         (SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (5, 11))) map {
+      case (sz, fp, recode, unpack, ieee, repack, expand, (exp, sig)) => {
         val outs = new ArrayBuffer[Bits]
         val excs = new ArrayBuffer[Bits]
         for (i <- 0 until (SZ_D/sz)) {
           if (confprec || i == 0) {
-            val fma = Module(new hardfloat.mulAddSubRecodedFloatN(sig, exp))
+            val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
             val valid = fn.fp_is(fp)
             fma.io.op := dgate(valid, fma_op)
             fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))

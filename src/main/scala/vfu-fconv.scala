@@ -26,18 +26,18 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   val op_int2float = MuxCase(
     Bits(0), Array(
-      fn.op_is(FV_CLTF)  -> hardfloat.consts.type_int64,
-      fn.op_is(FV_CLUTF) -> hardfloat.consts.type_uint64,
-      fn.op_is(FV_CWTF)  -> hardfloat.consts.type_int32,
-      fn.op_is(FV_CWUTF) -> hardfloat.consts.type_uint32
+      fn.op_is(FV_CLTF)  -> UInt("b11"),
+      fn.op_is(FV_CLUTF) -> UInt("b10"),
+      fn.op_is(FV_CWTF)  -> UInt("b01"),
+      fn.op_is(FV_CWUTF) -> UInt("b00")
     ))
 
   val op_float2int = MuxCase(
     Bits(0), Array(
-      fn.op_is(FV_CFTL)  -> hardfloat.consts.type_int64,
-      fn.op_is(FV_CFTLU) -> hardfloat.consts.type_uint64,
-      fn.op_is(FV_CFTW)  -> hardfloat.consts.type_int32,
-      fn.op_is(FV_CFTWU) -> hardfloat.consts.type_uint32
+      fn.op_is(FV_CFTL)  -> UInt("b11"),
+      fn.op_is(FV_CFTLU) -> UInt("b10"),
+      fn.op_is(FV_CFTW)  -> UInt("b01"),
+      fn.op_is(FV_CFTWU) -> UInt("b00")
     ))
 
   val val_int2float = fn.op_is(FV_CLTF,FV_CLUTF,FV_CWTF,FV_CWUTF)
@@ -45,21 +45,30 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val val_float2int64 = fn.op_is(FV_CFTL,FV_CFTLU)
   val val_float2int = val_float2int32 || val_float2int64
 
-  val wdp = (52, 12)
-  val wsp = (23, 9)
-  val whp = (10, 6)
+  val wdp = (11, 53)
+  val wsp = (8, 24)
+  val whp = (5, 11)
 
   val results_int2float =
     List((FPD, ieee_dp _, expand_float_d _, wdp),
          (FPS, ieee_sp _, expand_float_s _, wsp),
          (FPH, ieee_hp _, expand_float_h _, whp)) map {
-      case (fp, ieee, expand, (sig, exp)) => {
+      case (fp, ieee, expand, (exp, sig)) => {
         val valid = fn.fp_is(fp) && val_int2float
         val input = dgate(valid, in)
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_int2float)
-        val result = hardfloat.anyToRecodedFloatN(input, rm, op, sig, exp, SZ_D)
-        (expand(ieee(result._1)), result._2)
+        val l2fp = Module(new hardfloat.INToRecFN(SZ_D, exp, sig))
+        val w2fp = Module(new hardfloat.INToRecFN(SZ_W, exp, sig))
+        l2fp.io.signedIn := op(0)
+        l2fp.io.in := input
+        l2fp.io.roundingMode := rm
+        w2fp.io.signedIn := op(0)
+        w2fp.io.in := input
+        w2fp.io.roundingMode := rm
+        val output = Mux(op(1), l2fp.io.out, w2fp.io.out)
+        val exc = Mux(op(1), l2fp.io.exceptionFlags, w2fp.io.exceptionFlags)
+        (expand(ieee(output)), exc)
       }
     }
 
@@ -67,13 +76,22 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     List((FPD, recode_dp _, unpack_d _, wdp),
          (FPS, recode_sp _, unpack_w _, wsp),
          (FPH, recode_hp _, unpack_h _, whp)) map {
-      case (fp, recode, unpack, (sig, exp)) => {
+      case (fp, recode, unpack, (exp, sig)) => {
         val valid = fn.fp_is(fp) && val_float2int
         val input = recode(dgate(valid, unpack(in, 0)))
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_float2int)
-        val result = hardfloat.recodedFloatNToAny(input, rm, op, sig, exp, SZ_D)
-        (Mux(val_float2int32, expand_w(result._1(31, 0)), result._1), result._2)
+        val fp2l = Module(new hardfloat.RecFNToIN(exp, sig, SZ_D))
+        val fp2w = Module(new hardfloat.RecFNToIN(exp, sig, SZ_W))
+        fp2l.io.signedOut := op(0)
+        fp2l.io.in := input
+        fp2l.io.roundingMode := rm
+        fp2w.io.signedOut := op(0)
+        fp2w.io.in := input
+        fp2w.io.roundingMode := rm
+        val output = Mux(op(1), fp2l.io.out, expand_w(fp2w.io.out))
+        val iexc = Mux(op(1), fp2l.io.intExceptionFlags, fp2w.io.intExceptionFlags)
+        (output, Cat(iexc(2, 1).orR, UInt(0, 3), iexc(0)))
       }
     }
 
@@ -84,12 +102,14 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FV_CHTS, recode_hp _, unpack_h _, ieee_sp _, expand_float_s _, whp, wsp),
          (FV_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp),
          (FV_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp)) map {
-      case (op, recode, unpack, ieee, expand, (sigs, exps), (sigd, expd)) => {
+      case (op, recode, unpack, ieee, expand, (exps, sigs), (expd, sigd)) => {
         val valid = fn.op_is(op)
         val input = recode(dgate(valid, unpack(in, 0)))
         val rm = dgate(valid, fn.rm)
-        val result = hardfloat.recodedFloatNToRecodedFloatM(input, rm, sigs, exps, sigd, expd)
-        (expand(ieee(result._1)), result._2)
+        val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
+        fp2fp.io.in := input
+        fp2fp.io.roundingMode := rm
+        (expand(ieee(fp2fp.io.out)), fp2fp.io.exceptionFlags)
       }
     }
 
