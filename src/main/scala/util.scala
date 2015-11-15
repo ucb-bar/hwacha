@@ -18,9 +18,9 @@ abstract trait Packing extends LaneParameters {
   def expand_w(n: Bits) = _expand(n, n(SZ_W-1), SZ_W)
   def expand_h(n: Bits) = _expand(n, n(SZ_H-1), SZ_H)
   def expand_b(n: Bits) = _expand(n, n(SZ_B-1), SZ_B)
-  def expand_float_d(n: Bits) = n
-  def expand_float_s(n: Bits) = _expand(n, Bits(1), SZ_W)
-  def expand_float_h(n: Bits) = _expand(n, Bits(1), SZ_H)
+  def expand_float_d(n: Bits) = expand_d(n)
+  def expand_float_s(n: Bits) = expand_w(n)
+  def expand_float_h(n: Bits) = expand_h(n)
 
   def _repack(n: Seq[Bits], len: Int) = {
     require(n.length == len)

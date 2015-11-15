@@ -61,7 +61,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val outs = new ArrayBuffer[Bits]
         val excs = new ArrayBuffer[Bits]
         for (i <- 0 until (SZ_D/sz)) {
-          if (confprec || i == 0) {
+          if (/*confprec ||*/ i == 0) {
             val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
             val valid = fn.fp_is(fp)
             fma.io.op := dgate(valid, fma_op)
@@ -73,7 +73,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
             excs += fma.io.exceptionFlags
           }
         }
-        (if (confprec) repack(outs) else expand(outs(0)), excs.reduce(_|_))
+        (/*if (confprec) repack(outs) else*/ expand(outs(0)), excs.reduce(_|_))
       }
     }
 
