@@ -44,12 +44,12 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
 
   val s2_stall = !io.front.req.valid && (io.front.resp.valid && !io.front.resp.ready || !io.front.active)
   val s1_stall = !io.front.req.valid && s2_stall
-  val s0_stall = !io.front.req.valid && (s1_stall || !io.back.s0_req.ready)
+  val s0_stall = !io.front.req.valid && s1_stall
   val s1_kill = io.front.req.valid || icmiss || s1_replay || s1_stall
   val s0_npc = s1_pc + UInt(coreInstBytes)
   val s0_same_block =
     !s1_kill && ((s0_npc & UInt(rowBytes)) === (s1_pc & UInt(rowBytes)))
-  val s0_kill = s0_stall && !s0_same_block
+  val s0_kill = s0_stall && !s0_same_block && io.back.s0_req.ready
 
   io.back.s0_req.valid := !s0_kill && !s0_same_block
   io.back.s0_req.bits.pc :=
