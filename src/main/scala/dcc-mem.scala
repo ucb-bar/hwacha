@@ -434,6 +434,17 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   map.io.free := vlen_end
 
+  val (vd_stride, vd_shift) = if (confprec) {
+    val stride = Reg(Vec(nVLU, UInt()))
+    val shift = Reg(Vec(nVLU, UInt()))
+    val prec = confprec_decode(opq.io.deq.bits.vd.prec)
+    when (issue) {
+      stride(vidx_tail) := confprec_stride(prec, io.cfg)
+      shift(vidx_tail) := Mux1H(prec.reverse, (0 until prec.size).map(i => UInt(i)))
+    }
+    (stride, shift)
+  } else (Vec.fill(nVLU)(io.cfg.vstride.d), Vec.fill(nVLU)(UInt(0)))
+
   //--------------------------------------------------------------------\\
   // predication
   //--------------------------------------------------------------------\\
@@ -592,12 +603,9 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     bwq.io.deq.ready := deq.ready
 
     val vd = op(wb_vidx).vd
-    val addr = vd.id + (if (confprec) {
-        val prec = confprec_decode(vd.prec)
-        val stride = confprec_stride(prec, io.cfg)
-        val shift = Mux1H(prec.reverse, (0 until prec.size).map(i => UInt(i)))
-        (wb_eidx >> shift) * stride
-      } else (wb_eidx * io.cfg.vstride.d))
+    val addr = vd.id + (if (confprec)
+        (wb_eidx >> vd_shift(wb_vidx)) * vd_stride(wb_vidx)
+      else (wb_eidx * io.cfg.vstride.d))
 
     val pack = new PackInfo
     pack.prec := vd.prec
