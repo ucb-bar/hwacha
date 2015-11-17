@@ -12,8 +12,10 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   class Systolic[T <: LaneOp](in: ValidIO[T]) {
     val in_overflow = in.bits.strip > UInt(nSlices)
     val in_next_valid = in.valid && in_overflow
-    val in_pred = Vec((0 until nSlices).map(UInt(_) < in.bits.strip)).toBits
-    val in_popcnt = Mux(in_overflow, UInt(nSlices), in.bits.strip)
+    val in_pred = Vec(
+      for (i <- (0 until nPack); j <- (0 until nSlices))
+        yield UInt((i * nStrip) + j) < in.bits.strip).toBits
+    val in_popcnt = Mux(in_overflow, UInt(nSlices), in.bits.strip(bSlices, 0))
 
     val out = Valid(in.bits.clone).asDirectionless
     out.valid := Reg(next=in_next_valid, init=Bool(false))

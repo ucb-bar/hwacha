@@ -186,7 +186,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   io.spred.valid := fire(mask_spred_ready, enq_spred)
 
   val pred = Vec((bpqs_deq zipWithIndex) map { case (bpq, i) =>
-    dgate(deq_bpqs(i), bpq.bits.pred) }).toBits
+    dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).toBits
   io.pred.bits := pred
   io.lpred.bits := pred
   io.spred.bits := pred

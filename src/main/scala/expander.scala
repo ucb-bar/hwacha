@@ -273,6 +273,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           check_assert("sram write", tick_sram_write, seq_exp.wport.sram)
           val e = tick_sram_write.s(seq_exp.wport.sram)
           e.valid := Bool(true)
+          e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
           e.bits.selg := Bool(false)
@@ -290,6 +291,8 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.bits.selg := Bool(true)
             e.bits.wsel := UInt(1)
           }
+          e.bits.sidx := seq_exp.sidx
+          e.bits.rate := seq_exp.rate
           e.bits.pack.prec := seq_exp.reg.vd.prec
           e.bits.pack.idx := seq_exp.eidx
         }
@@ -298,6 +301,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           assert(seq_exp.active.viu || seq_exp.active.vfcu, "check pred write logic")
           val e = tick_pred_write.s(seq_exp.wport.pred)
           e.valid := Bool(true)
+          e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
           when (seq_exp.active.viu) {
@@ -307,6 +311,8 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           when (seq_exp.active.vfcu) {
             e.bits.selg := Bool(true) // plu bit doesn't matter
           }
+          e.bits.sidx := seq_exp.sidx
+          e.bits.rate := seq_exp.rate
         }
       }
     }

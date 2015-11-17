@@ -50,6 +50,13 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val stagesFCmp = p(HwachaStagesFCmp)
 
   require(nVRegs <= nSRAM)
+
+  val bPack = if (confprec) log2Floor(regLen/SZ_H) else 0
+  val nPack = 1 << bPack
+  val bRate = log2Up(bPack + 1)
+
+  val wPred = nSlices << bPack
+  require(nPred % nPack == 0)
 }
 
 class LaneOpIO(implicit p: Parameters) extends VXUBundle()(p) {
