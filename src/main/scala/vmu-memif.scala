@@ -120,19 +120,19 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
   private val grant = io.dmem.grant
 
   val cmd = DecodedMemCommand(req.bits.fn.cmd)
-  assert(!req.valid || cmd.load || cmd.store || cmd.amo || cmd.pf,
+  assert(!req.valid || cmd.load || cmd.store || cmd.amo,
     "memif: unknown memory command")
 
   req.ready := acquire.ready
   acquire.valid := req.valid
 
-  val acq_type = Mux1H(Seq(cmd.load, cmd.store, cmd.amo, cmd.pf),
-    Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType, Acquire.prefetchType))
+  val acq_type = Mux1H(Seq(cmd.load, cmd.store, cmd.amo),
+    Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType))
 
   val acq_shift = req.bits.addr(tlByteAddrBits-1, 0)
   val acq_union_amo = Cat(acq_shift, req.bits.fn.mt, req.bits.fn.cmd)
   val acq_union = Cat(Mux1H(Seq(
-      (cmd.load || cmd.pf, req.bits.fn.cmd),
+      (cmd.load, req.bits.fn.cmd),
       (cmd.store, req.bits.mask),
       (cmd.amo, acq_union_amo))),
     Bool(true))
@@ -142,8 +142,7 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
     a_type = acq_type,
     client_xact_id = req.bits.tag,
     addr_block = req.bits.addr(bPAddr-1, tlBlockAddrOffset),
-    addr_beat = Mux(cmd.pf, UInt(0),
-      req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits)),
+    addr_beat = req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits),
     data = req.bits.data,
     union = acq_union)
 
