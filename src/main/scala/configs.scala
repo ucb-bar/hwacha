@@ -54,7 +54,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaStagesALU => 1
     case HwachaStagesPLU => 0
     case HwachaStagesIMul => 3
-    case HwachaStagesFMA => 3
+    case HwachaStagesFMA => 4
     case HwachaStagesFConv => 2
     case HwachaStagesFCmp => 1
 
