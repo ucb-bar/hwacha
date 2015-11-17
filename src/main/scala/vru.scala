@@ -230,13 +230,12 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // TODO: calculate width
   val pf_ip_counter = Reg(init = UInt(0, width=20))
 
-  val throttleAmt = 1
-  val throttle = Reg(init=UInt(throttleAmt, width=4))
+  val throttleAmt = 16
+  val throttle = Reg(init=UInt(throttleAmt, width=6))
 
   assert(throttle <= UInt(throttleAmt), "THROTTLE TOO LARGE\n")
 
-//  io.dmem.acquire.bits := Get(tag_count, req_addr+pf_ip_counter, UInt(0))
-  io.dmem.acquire.bits := GetPrefetch(tag_count, req_addr+pf_ip_counter)
+  io.dmem.acquire.bits := Mux(req_ls === UInt(0), GetPrefetch(tag_count, req_addr+pf_ip_counter), PutPrefetch(tag_count, req_addr+pf_ip_counter))
 
   io.dmem.acquire.valid := Bool(false)
   decl2q.io.deq.ready := Bool(false)

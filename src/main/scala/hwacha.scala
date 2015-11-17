@@ -81,7 +81,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
-  val confvru = false
+  val confvru = true
   val confprec = true
 
   val confvcmdq = new {
