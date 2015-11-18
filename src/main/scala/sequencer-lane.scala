@@ -488,6 +488,8 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         val out = new SeqVIPUOp
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
+        out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
+        out.sidx := read(sched, (e: SeqEntry) => e.sidx)
         out.strip := stripfn(sched)
         out
       }

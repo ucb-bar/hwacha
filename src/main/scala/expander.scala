@@ -454,9 +454,11 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       check_assert("pred write", tick_pred_write, UInt(wport))
       assert(seq_vipu.reg.vd.valid, "pred op with no predicate")
       tick_pred_write.s(wport).valid := Bool(true)
+      tick_pred_write.s(wport).bits.id := seq_vipu.base.vd.id
       tick_pred_write.s(wport).bits.addr := seq_vipu.reg.vd.id
       tick_pred_write.s(wport).bits.selg := Bool(false)
       tick_pred_write.s(wport).bits.plu := Bool(true)
+      tick_pred_write.s(wport).bits.sidx := seq_vipu.sidx
       tick_pred_write.s(wport).bits.strip := seq_vipu.strip
     }
 

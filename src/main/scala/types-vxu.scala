@@ -347,7 +347,13 @@ class SeqOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs wi
 }
 
 class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
-class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
+
+class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp {
+  val sidx = UInt(width = bVLen - bStrip)
+  val base = new Bundle {
+    val vd = new BaseRegId
+  }
+}
 
 
 //-------------------------------------------------------------------------\\
