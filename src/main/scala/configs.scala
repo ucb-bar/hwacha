@@ -7,8 +7,8 @@ import rocket._
 
 class DefaultHwachaConfig extends Config (
   (pname,site,here) => pname match {
-    case NSets => site(CacheName) match { case "HwI" => 128 }
-    case NWays => site(CacheName) match { case "HwI" => 1 }
+    case NSets => site(CacheName) match { case "HwI" => 64 }
+    case NWays => site(CacheName) match { case "HwI" => 2 }
     case RowBits => site(CacheName) match { case "HwI" => 2*site(CoreInstBits) }
     case NTLBEntries => site(CacheName) match { case "HwI" => 8 }
     case FetchWidth => 1
