@@ -13,12 +13,10 @@ abstract trait SeqParameters extends UsesHwachaParameters
   val bRPorts = log2Down(nRPorts) + 1
   val expLatency = 1
   val maxWPortLatency = nRPorts + 1 + expLatency +
-    List(stagesALU, stagesIMul, stagesFMA,
-         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
+    List(stagesALU, stagesIMul, stagesFMA, stagesFConv, stagesFCmp).max
   val bWPortLatency = log2Down(maxWPortLatency) + 1
   val maxPredWPortLatency = expLatency +
-    List(stagesPLU, 2 + 1 + stagesALU,
-         2 + 1 + stagesFCmp).reduceLeft((x, y) => if (x > y) x else y)
+    List(stagesPLU, 2 + 1 + stagesALU, 2 + 1 + stagesFCmp).max
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
   val maxLookAhead = math.max(tlDataBits / SZ_B, nStrip)
   val bLookAhead = log2Down(maxLookAhead) + 1
@@ -26,9 +24,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
   // the following needs to hold in order to simplify dhazard_war checking
   // otherwise, you need to check reg_vd against sram read ticker
   require(nRPorts <= 3)
-  require(
-    List(stagesALU, stagesIMul, stagesFMA,
-         stagesFConv, stagesFCmp).reduceLeft((x, y) => if (x > y) y else x) >= 1)
+  require(List(stagesALU, stagesIMul, stagesFMA, stagesFConv, stagesFCmp).min >= 1)
 
   type RegFn = BaseRegisters => RegInfo
   type RegPFn = BaseRegisters => BasePRegInfo
@@ -230,8 +226,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       def rport_vd(n: UInt) = mark_rports(n, nrport_vd)
       def rports(n: UInt) = mark_rports(n, nrports)
       def rwports(n: UInt, latency: Int) = {
+        require(bWPortLatency >= bPredWPortLatency)
         mark_rports(n, nrports)
-        mark_wport(n, nrports + UInt(expLatency+latency))
+        // XXX: Chisel bit-width weirdness
+        mark_wport(n, UInt(0, bWPortLatency) + nrports + UInt(expLatency+latency))
       }
     }
   }
