@@ -33,7 +33,11 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     val toicache = new FrontendIO
     val cmdq = new CMDQIO().flip 
     val dmem = new ClientUncachedTileLinkIO
+    val scalar_unit_vfcount = UInt(INPUT)
   }
+
+  // vfs retired counter
+  val vru_vfs_decoded = Reg(init=UInt(0, width=20))
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
@@ -121,6 +125,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   decl2q.io.enq.bits.opwidth := UInt(0) // set in when
   decl2q.io.enq.bits.ls := UInt(0) // set in when
 
+  when (!decl2q.io.enq.ready) {
+    printf("VRU internal queue overflow\n")
+  }
+
   // hacky match against insts
   // TODO: do this right with IntCtrlSigs
   when (io.toicache.resp.valid && vf_active) {
@@ -130,6 +138,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     when (loaded_inst === HwachaElementInstructions.VSTOP) {
       vf_active := Bool(false)
       printf("REACHED END OF VF BLOCK\n")
+      vru_vfs_decoded := vru_vfs_decoded + UInt(1)
     }
 
     when (loaded_inst === HwachaElementInstructions.VLD) {
@@ -235,6 +244,9 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   assert(throttle <= UInt(throttleAmt), "THROTTLE TOO LARGE\n")
 
+  val vf_throttleAmt = 200
+  val vf_throttle = (vru_vfs_decoded - io.scalar_unit_vfcount) > UInt(vf_throttleAmt)
+
   io.dmem.acquire.bits := Mux(req_ls === UInt(0), GetPrefetch(tag_count, req_addr+pf_ip_counter), PutPrefetch(tag_count, req_addr+pf_ip_counter))
 
   io.dmem.acquire.valid := Bool(false)
@@ -245,7 +257,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     pf_ip_counter := UInt(0)
   }
 
-  val movecond1 = prefetch_ip && pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0)
+  val movecond1 = prefetch_ip && pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0) && !vf_throttle
 
 
   when (movecond1) {
@@ -260,7 +272,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     }
   }
 
-  val movecond2 = prefetch_ip && pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0)
+  val movecond2 = prefetch_ip && pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0) && !vf_throttle
 
   when (movecond2) {
     printf("SENDING PREFETCH TO L2\n")
@@ -276,8 +288,13 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     }
   }
 
+  when (vf_throttle) {
+    printf("VRU ran too far ahead. waiting...\n")
+  }
+
+
   // do not put acquire.ready in this, it's not necessary
-  io.dmem.acquire.valid := prefetch_ip && throttle > UInt(0)
+  io.dmem.acquire.valid := prefetch_ip && throttle > UInt(0) && !vf_throttle
   io.dmem.grant.ready := Bool(true)
   when (io.dmem.grant.valid) {
     when (!(movecond1 || movecond2)) {
