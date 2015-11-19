@@ -610,7 +610,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val pack = new PackInfo
     pack.prec := vd.prec
     pack.idx := wb_eidx
-    val out = repack_bank(pack, bwq.io.deq.bits)
+    val out = repack_bank(pack, UInt(0), bwq.io.deq.bits)
 
     deq.bits.selff := Bool(false) // FIXME
     deq.bits.addr := addr

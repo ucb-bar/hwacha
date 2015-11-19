@@ -248,10 +248,6 @@ trait BankPred extends VXUBundle {
   val pred = Bits(width = wPred)
   def active(dummy: Int = 0) = pred.orR
   def neg(cond: Bool) = Mux(cond, ~pred, pred)
-  def pred_slice(i: Int): Vec[Bool] = {
-    require(i <= nSlices)
-    Vec((0 until wPred by nSlices).map(j => this.pred(i + j)))
-  }
 }
 
 trait BankMask extends VXUBundle {

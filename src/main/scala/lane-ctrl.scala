@@ -63,8 +63,10 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
     val in_next_valid = overflow
     val valid = in.valid || reg_valid
     val bits = Mux(in.valid, in.bits, reg_bits)
-    val pred = Vec((0 until nSlices).map(UInt(_) < strip)).toBits
-    val popcnt = Mux(overflow, UInt(nSlices), strip)
+    val pred = Vec(
+      for (i <- (0 until nPack); j <- (0 until nSlices))
+        yield UInt((i * nStrip) + j) < strip).toBits
+    val popcnt = Mux(overflow, UInt(nSlices), strip(bSlices, 0))
 
     reg_valid := in_next_valid
     when (in.valid && overflow) {

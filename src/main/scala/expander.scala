@@ -194,6 +194,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.valid := Bool(true)
             e.bits.addr := fn(seq_exp.reg).id
             e.bits.strip := seq_exp.strip
+            e.bits.rate := seq_exp.rate
             e.bits.pack.prec := fn(seq_exp.reg).prec
             e.bits.pack.idx := seq_exp.pack.idx
             mark_opl(read_idx, idx)

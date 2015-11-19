@@ -21,7 +21,7 @@ class FMAResult extends Bundle {
 class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val req = new LaneValidIO(new FMAOperand).flip
-    val resp = new LaneValidIO(new FMAResult)
+    val resp = Valid(new FMAResult)
   }
 
   val active = io.req.active()
@@ -63,7 +63,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val outs = new ArrayBuffer[Bits](n)
         val excs = new ArrayBuffer[Bits](n)
         val valid_fp = fn.fp_is(fp)
-        for (i <- 0 until n) {
+        for (i <- (0 until n)) {
           if (confprec || i == 0) {
             val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
             val valid = valid_fp && io.req.valid(i)
@@ -76,7 +76,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
             excs += fma.io.exceptionFlags
           }
         }
-        val out_solo = expand(outs(0))
+        val out_solo = expand(outs.head)
         val out = if (confprec) {
           val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
           Mux(rmatch, repack(outs), out_solo)
@@ -90,6 +90,5 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   result.out := Mux1H(fpmatch, results.map { _._1 })
   result.exc := Mux1H(fpmatch, results.map { _._2 })
 
-  io.resp.valid := ShiftRegister(io.req.valid, stagesFMA)
-  io.resp.bits := Pipe(active, result, stagesFMA)
+  io.resp := Pipe(active, result, stagesFMA)
 }
