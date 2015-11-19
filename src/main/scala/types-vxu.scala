@@ -122,10 +122,8 @@ class RegInfo(bId: Int)(implicit p: Parameters) extends RegId(bId)(p) {
   def neg(d: Int = 0) = scalar
 }
 
-trait RegPrec extends Bundle {
-  val prec = Bits(width = SZ_PREC)
-}
-
+class BasePRegId(implicit p: Parameters) extends RegId(p(HwachaPredRegBits))(p)
+class BaseRegId(implicit p: Parameters) extends RegId(p(HwachaRegBits))(p)
 class BasePRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPredRegBits))(p)
 class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegBits))(p) with RegPrec
 
@@ -242,12 +240,12 @@ class IssueOpML(implicit p: Parameters) extends IssueOpBase()(p) with MultiLaneV
 // traits
 //-------------------------------------------------------------------------\\
 
-trait LaneOp extends VXUBundle {
-  val strip = UInt(width = bfLStrip)
+trait LaneOp extends VXUBundle with Rate {
+  val strip = UInt(width = bStrip + bPack + 1)
 }
 
 trait BankPred extends VXUBundle {
-  val pred = Bits(width = nSlices)
+  val pred = Bits(width = wPred)
   def active(dummy: Int = 0) = pred.orR
   def neg(cond: Bool) = Mux(cond, ~pred, pred)
 }
@@ -260,17 +258,32 @@ trait BankData extends VXUBundle {
   val data = Bits(width = wBank)
 }
 
-trait MicroOp extends BankPred
+trait MicroOp extends BankPred with Rate
 
 //-------------------------------------------------------------------------\\
 // confprec
 //-------------------------------------------------------------------------\\
 
-class PackInfo(implicit p: Parameters) extends VXUBundle()(p) with RegPrec {
-  val idx = UInt(width = 2)
+trait Rate extends VXUBundle {
+  val rate = UInt(width = bRate)
 }
+
+trait RegPrec extends Bundle {
+  val prec = Bits(width = SZ_PREC)
+}
+
+trait RegSelect extends VXUBundle {
+  val idx = UInt(width = math.max(bPack, 1))
+}
+
+class PackInfo(implicit p: Parameters) extends VXUBundle()(p) with RegPrec with RegSelect
+class PredPackInfo(implicit p: Parameters) extends VXUBundle()(p) with RegSelect
+
 trait BankPack extends VXUBundle {
   val pack = new PackInfo
+}
+trait PredPack extends VXUBundle {
+  val pack = new PredPackInfo
 }
 
 //-------------------------------------------------------------------------\\
@@ -296,7 +309,8 @@ class SeqType(implicit p: Parameters) extends VXUBundle()(p) {
   val vqu = Bool()
 }
 
-class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p) with HasBaseRegs {
+class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p)
+  with HasBaseRegs with Rate {
   val active = new SeqType
   val raw = Vec.fill(nSeq){Bool()}
   val war = Vec.fill(nSeq){Bool()}
@@ -308,12 +322,14 @@ class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p) with HasBa
   }
 }
 
-class SeqEntry(implicit p: Parameters) extends VXUBundle()(p) with HasPhysRegIds {
+class SeqEntry(implicit p: Parameters) extends VXUBundle()(p)
+  with HasPhysRegIds with PredPack {
   val vlen = UInt(width = bVLen)
   val eidx = new Bundle {
     val major = UInt(width = bMLVLen - bStrip)
     val minor = UInt(width = (1 << maxLStride) - 1)
   }
+  val sidx = UInt(width = bVLen - bStrip)
   val age = UInt(width = bBanks)
 }
 
@@ -321,32 +337,49 @@ class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
   val vfmu = UInt(width = log2Up(nVFMU))
 }
 
-class SeqOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp {
+class SeqOp(implicit p: Parameters) extends DecodedInst()(p)
+  with HasPhysRegs with LaneOp with PredPack {
   val active = new SeqType
   val select = new SeqSelect
   val eidx = UInt(width = bMLVLen - bStrip)
+  val sidx = UInt(width = bVLen - bStrip)
   val rports = UInt(width = bRPorts)
   val wport = new Bundle {
     val sram = UInt(width = bWPortLatency)
     val pred = UInt(width = bPredWPortLatency)
   }
+  val base = new Bundle {
+    val vd = new BaseRegId
+  }
 
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
-class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
-class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
+class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p)
+  with HasPhysRegs with LaneOp with PredPack
+
+class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p)
+  with HasPhysRegs with LaneOp with PredPack {
+  val sidx = UInt(width = bVLen - bStrip)
+  val base = new Bundle {
+    val vd = new BaseRegId
+  }
+}
 
 
 //-------------------------------------------------------------------------\\
 // lane, micro op
 //-------------------------------------------------------------------------\\
 
+abstract class RFWriteOp(implicit p: Parameters) extends BaseRegId()(p) {
+  val sidx = UInt(width = bVLen - bStrip)
+}
+
 class SRAMRFReadOp(implicit p: Parameters) extends VXUBundle()(p) with BankPack {
   val addr = UInt(width = log2Up(nSRAM))
 }
 
-class SRAMRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) with BankPack {
+class SRAMRFWriteOp(implicit p: Parameters) extends RFWriteOp()(p) with BankPack {
   val addr = UInt(width = log2Up(nSRAM))
   val selg = Bool()
   val wsel = UInt(width = log2Up(nWSel))
@@ -362,7 +395,7 @@ class FFRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
   val wsel = UInt(width = log2Up(nWSel))
 }
 
-class PredRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
+class PredRFReadOp(implicit p: Parameters) extends VXUBundle()(p) with PredPack {
   val addr = UInt(width = log2Up(nPred))
 }
 
@@ -371,7 +404,7 @@ class PredRFGatedReadOp(implicit p: Parameters) extends PredRFReadOp()(p) {
   val neg = Bool()
 }
 
-class PredRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
+class PredRFWriteOp(implicit p: Parameters) extends RFWriteOp()(p) with PredPack {
   val addr = UInt(width = log2Up(nPred))
   val selg = Bool()
   val plu = Bool()

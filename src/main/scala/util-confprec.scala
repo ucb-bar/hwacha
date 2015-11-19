@@ -13,52 +13,66 @@ trait PrecLogic {
     val sel = confprec_decode(prec)
     val stride = confprec_stride(sel, cfg)
     val update = Bool(true) +:
-      (1 until sel.size).map(i => idx(i-1, 0).andR)
+      (1 until sel.size).map(i => idx(i-1, 0) === UInt(0))
     (Mux1H(sel, update.reverse), stride)
   }
 }
 
+trait RateLogic extends LaneParameters {
+  def unpack_pred(n: UInt, i: Int, rate: UInt): Vec[Bool] = {
+    require(i <= nSlices)
+    val sel = (0 to bPack).map(r => rate === UInt(r))
+    val shift = UInt(i) << rate
+    val mask = Mux1H(sel.zipWithIndex.map {
+      case (s, j) => s -> Fill(1 << j, Bool(true))
+    })
+    ((n >> shift) & mask)(nPack-1, 0).toBools
+  }
+}
+
 trait PackLogic extends PrecLogic with Packing {
-  private def _prologue(pack: PackInfo) = {
-    val prec = confprec_decode(pack.prec).zipWithIndex
-    val shift = Mux1H(prec.map { case (s, i) =>
+  private def _prologue(pack: PackInfo, rate: UInt) = {
+    val prec = confprec_decode(pack.prec)
+    val fast = (rate =/= UInt(0))
+    val sel = (prec.init.map(_ && !fast) :+ (prec.last || fast)).zipWithIndex
+    val shift = Mux1H(sel.map { case (s, i) =>
       s -> Cat(pack.idx, UInt(0, i))(prec.size-2, 0)
     })
-    (prec, shift)
+    (prec, sel, shift)
   }
 
-  def unpack_bank(pack: PackInfo, in: BankData) = {
+  def unpack_bank(pack: PackInfo, rate: UInt, in: BankData) = {
     val out = new BankDataEntry
     if (confprec) {
-      val (prec, shift) = _prologue(pack)
+      val (_, sel, shift) = _prologue(pack, rate)
       val data = in.data >> Cat(shift, UInt(0, bSlices + 4))
       val fn = Seq(
         (unpack_h _, expand_h _),
         (unpack_w _, expand_w _))
-      out.data := Mux1H((prec.init.zip(fn).map {
+      out.data := Mux1H((sel.init.zip(fn).map {
         case ((s, _), (ufn, efn)) =>
           s -> Vec((0 until nSlices).map(k => efn(ufn(data, k)))).toBits
-        }) :+ (prec.last._1, in.data)) /* passthrough */
+        }) :+ (sel.last._1, in.data)) /* passthrough */
     } else {
       out.data := in.data
     }
     out
   }
-  def unpack_bank(op: BankPack, in: Bits): BankDataEntry =
-    unpack_bank(op.pack, new BankDataEntry().fromBits(in))
+  def unpack_bank(op: BankPack with Rate, in: Bits): BankDataEntry =
+    unpack_bank(op.pack, op.rate, new BankDataEntry().fromBits(in))
 
-  def repack_bank(pack: PackInfo, in: BankData with BankPred) = {
+  def repack_bank(pack: PackInfo, rate: UInt, in: BankData with BankPred) = {
     val out = new BankDataMaskEntry
     if (confprec) {
-      val (prec, shift) = _prologue(pack)
+      val (prec, sel, shift) = _prologue(pack, rate)
       val shift_data = Cat(shift, UInt(0, bSlices + 4))
       val shift_mask = Cat(shift, UInt(0, bSlices))
-      val data = Mux1H(prec.map { case (s, i) =>
+      val data = Mux1H(sel.map { case (s, i) =>
         val sz = (1 << i) * SZ_H
         s -> Vec((0 until nSlices).map(
           unpack_slice(in.data, _, sz))).toBits
       })
-      val _mask = Mux1H(prec.map { case (s, i) =>
+      val _mask = Mux1H(prec.zipWithIndex.map { case (s, i) =>
         s -> FillInterleaved(1 << i, in.pred)
       })
       val mask = (_mask << shift_mask)((nSlices<<2)-1, 0)
@@ -75,6 +89,6 @@ trait PackLogic extends PrecLogic with Packing {
     val tmp = new BankDataPredEntry
     tmp.data := in.data
     tmp.pred := op.pred & in.pred
-    repack_bank(op.pack, tmp)
+    repack_bank(op.pack, op.rate, tmp)
   }
 }

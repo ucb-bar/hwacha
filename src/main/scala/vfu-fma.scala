@@ -6,7 +6,7 @@ import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
 
-class FMAOperand(implicit p: Parameters) extends VXUBundle()(p) {
+class FMAOperand(implicit p: Parameters) extends VXUBundle()(p) with Rate {
   val fn = new VFMUFn
   val in0 = Bits(width = SZ_D)
   val in1 = Bits(width = SZ_D)
@@ -20,14 +20,15 @@ class FMAResult extends Bundle {
 
 class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
-    val req = Valid(new FMAOperand).flip
+    val req = new LaneValidIO(new FMAOperand).flip
     val resp = Valid(new FMAResult)
   }
 
-  val fn = io.req.bits.fn.dgate(io.req.valid)
-  val in0 = dgate(io.req.valid, io.req.bits.in0)
-  val in1 = dgate(io.req.valid, io.req.bits.in1)
-  val in2 = dgate(io.req.valid, io.req.bits.in2)
+  val active = io.req.active()
+  val fn = io.req.bits.fn.dgate(active)
+  val in0 = dgate(active, io.req.bits.in0)
+  val in1 = dgate(active, io.req.bits.in1)
+  val in2 = dgate(active, io.req.bits.in2)
 
   val fma_op = MuxCase(
     Bits("b00",2), Array(
@@ -58,12 +59,14 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (8, 24)),
          (SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (5, 11))) map {
       case (sz, fp, recode, unpack, ieee, repack, expand, (exp, sig)) => {
-        val outs = new ArrayBuffer[Bits]
-        val excs = new ArrayBuffer[Bits]
-        for (i <- 0 until (SZ_D/sz)) {
-          if (/*confprec ||*/ i == 0) {
+        val n = SZ_D / sz
+        val outs = new ArrayBuffer[Bits](n)
+        val excs = new ArrayBuffer[Bits](n)
+        val valid_fp = fn.fp_is(fp)
+        for (i <- (0 until n)) {
+          if (confprec || i == 0) {
             val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
-            val valid = fn.fp_is(fp)
+            val valid = valid_fp && io.req.valid(i)
             fma.io.op := dgate(valid, fma_op)
             fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))
             fma.io.b := recode(dgate(valid, unpack(fma_multiplier, i)))
@@ -73,7 +76,12 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
             excs += fma.io.exceptionFlags
           }
         }
-        (/*if (confprec) repack(outs) else*/ expand(outs(0)), excs.reduce(_|_))
+        val out_solo = expand(outs.head)
+        val out = if (confprec) {
+          val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
+          Mux(rmatch, repack(outs), out_solo)
+        } else out_solo
+        (out, excs.reduce(_|_))
       }
     }
 
@@ -82,5 +90,5 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   result.out := Mux1H(fpmatch, results.map { _._1 })
   result.exc := Mux1H(fpmatch, results.map { _._2 })
 
-  io.resp := Pipe(io.req.valid, result, stagesFMA)
+  io.resp := Pipe(active, result, stagesFMA)
 }

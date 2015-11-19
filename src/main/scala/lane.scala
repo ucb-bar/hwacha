@@ -50,6 +50,13 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val stagesFCmp = p(HwachaStagesFCmp)
 
   require(nVRegs <= nSRAM)
+
+  val bPack = if (confprec) log2Floor(regLen/SZ_H) else 0
+  val nPack = 1 << bPack
+  val bRate = log2Up(bPack + 1)
+
+  val wPred = nSlices << bPack
+  require(nPred % nPack == 0)
 }
 
 class LaneOpIO(implicit p: Parameters) extends VXUBundle()(p) {
@@ -118,7 +125,13 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
 class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
 class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
 
-class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class LaneValidIO[T <: Data](gen: T)(implicit p: Parameters) extends VXUBundle()(p) {
+  val valid = Vec(nPack, Bool(OUTPUT))
+  val bits = gen.cloneType.asOutput
+  def active(dummy: Int = 0) = valid.reduce(_ || _)
+}
+
+class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
@@ -207,17 +220,18 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   }
 
   val vfmus = (0 until nVFMU) map { v =>
-    val vfmu_pred = predicate(2*v)
+    val vfmu_pred = Mux(ctrl.io.uop.vfmu(v).valid, ctrl.io.uop.vfmu(v).bits.pred & predicate(2*v).pred, UInt(0))
     val vfmu_operands = operands("vfmu"+v, ctrl.io.uop.vfmu(v), 3, 3*v)
-    (0 until nSlices) map { i =>
+    ((0 until nSlices) map { i =>
       val vfmu = Module(new FMASlice)
-      vfmu.io.req.valid := ctrl.io.uop.vfmu(v).valid && ctrl.io.uop.vfmu(v).bits.pred(i) && vfmu_pred.pred(i)
+      vfmu.io.req.valid := unpack_pred(vfmu_pred, i, vfmu.io.req.bits.rate)
       vfmu.io.req.bits.fn := ctrl.io.uop.vfmu(v).bits.fn
       vfmu.io.req.bits.in0 := unpack_slice(vfmu_operands(0), i)
       vfmu.io.req.bits.in1 := unpack_slice(vfmu_operands(1), i)
       vfmu.io.req.bits.in2 := unpack_slice(vfmu_operands(2), i)
-      vfmu.io.resp
-    }
+      vfmu.io.req.bits.rate := ctrl.io.uop.vfmu(v).bits.rate
+      vfmu.io.resp.bits
+    }, ShiftRegister(vfmu_pred, stagesFMA))
   }
 
   val vfcu_pred = predicate(2)
@@ -244,17 +258,17 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   require(nVFMU == 2)
 
   val vimu_vals = Vec(vimus.map(_.valid)).toBits
-  val vfmu_vals = vfmus map { vfmu => Vec(vfmu.map(_.valid)).toBits }
+  val vfmu_vals = vfmus.map(_._2)
   val vfcu_vals = Vec(vfcus.map(_.valid)).toBits
   val vfvu_vals = Vec(vfvus.map(_.valid)).toBits
 
   val wdata = List(
     MuxCase(Bits(0), Array(
       vimu_vals.orR -> repack_slice(vimus.map(_.bits.out)),
-      vfmu_vals(0).orR -> repack_slice(vfmus(0).map(_.bits.out)),
+      vfmu_vals(0).orR -> repack_slice(vfmus(0)._1.map(_.out)),
       vfvu_vals.orR -> repack_slice(vfvus.map(_.bits.out)))),
     MuxCase(Bits(0), Array(
-      vfmu_vals(1).orR -> repack_slice(vfmus(1).map(_.bits.out)),
+      vfmu_vals(1).orR -> repack_slice(vfmus(1)._1.map(_.out)),
       vfcu_vals.orR -> repack_slice(vfcus.map(_.bits.out)))))
 
   val wdata_pred = List(

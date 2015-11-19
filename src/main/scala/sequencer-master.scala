@@ -251,6 +251,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
       def entry(n: UInt) = {
         valid(n)
+        e(n).rate := UInt(0)
         e(n).base.vp.valid := Bool(false)
         e(n).base.vs1.valid := Bool(false)
         e(n).base.vs2.valid := Bool(false)

@@ -194,8 +194,9 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.valid := Bool(true)
             e.bits.addr := fn(seq_exp.reg).id
             e.bits.strip := seq_exp.strip
+            e.bits.rate := seq_exp.rate
             e.bits.pack.prec := fn(seq_exp.reg).prec
-            e.bits.pack.idx := seq_exp.eidx
+            e.bits.pack.idx := seq_exp.pack.idx
             mark_opl(read_idx, idx)
           }
         }
@@ -262,6 +263,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           p.bits.neg := seq_exp.reg.vp.neg()
           p.bits.addr := seq_exp.reg.vp.id
           p.bits.strip := seq_exp.strip
+          p.bits.pack.idx := seq_exp.pack.idx
           mark_pdl(read_idx, idx)
         }
       }
@@ -273,6 +275,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           check_assert("sram write", tick_sram_write, seq_exp.wport.sram)
           val e = tick_sram_write.s(seq_exp.wport.sram)
           e.valid := Bool(true)
+          e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
           e.bits.selg := Bool(false)
@@ -290,14 +293,17 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.bits.selg := Bool(true)
             e.bits.wsel := UInt(1)
           }
+          e.bits.sidx := seq_exp.sidx
+          e.bits.rate := seq_exp.rate
           e.bits.pack.prec := seq_exp.reg.vd.prec
-          e.bits.pack.idx := seq_exp.eidx
+          e.bits.pack.idx := seq_exp.pack.idx
         }
         when (seq_exp.reg.vd.is_pred()) {
           check_assert("pred write", tick_pred_write, seq_exp.wport.pred)
           assert(seq_exp.active.viu || seq_exp.active.vfcu, "check pred write logic")
           val e = tick_pred_write.s(seq_exp.wport.pred)
           e.valid := Bool(true)
+          e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
           when (seq_exp.active.viu) {
@@ -307,6 +313,9 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           when (seq_exp.active.vfcu) {
             e.bits.selg := Bool(true) // plu bit doesn't matter
           }
+          e.bits.sidx := seq_exp.sidx
+          e.bits.rate := seq_exp.rate
+          e.bits.pack.idx := seq_exp.pack.idx
         }
       }
     }
@@ -399,6 +408,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         check_assert(name, tick, op_idx)
         tick.s(op_idx).valid := Bool(true)
         tick.s(op_idx).bits.strip := seq_exp.strip
+        tick.s(op_idx).bits.rate := seq_exp.rate
         fn(tick.s(op_idx).bits)
       }
     }
@@ -437,6 +447,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         e.valid := Bool(true)
         e.bits.addr := fn(seq_vipu.reg).id
         e.bits.strip := seq_vipu.strip
+        e.bits.pack := seq_vipu.pack
       }
 
       check_assert("vipu", tick_vipu, UInt(1))
@@ -448,10 +459,14 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       check_assert("pred write", tick_pred_write, UInt(wport))
       assert(seq_vipu.reg.vd.valid, "pred op with no predicate")
       tick_pred_write.s(wport).valid := Bool(true)
+      tick_pred_write.s(wport).bits.id := seq_vipu.base.vd.id
       tick_pred_write.s(wport).bits.addr := seq_vipu.reg.vd.id
       tick_pred_write.s(wport).bits.selg := Bool(false)
       tick_pred_write.s(wport).bits.plu := Bool(true)
+      tick_pred_write.s(wport).bits.sidx := seq_vipu.sidx
+      tick_pred_write.s(wport).bits.rate := seq_vipu.rate
       tick_pred_write.s(wport).bits.strip := seq_vipu.strip
+      tick_pred_write.s(wport).bits.pack := seq_vipu.pack
     }
 
     def mark_vpu = {
@@ -462,6 +477,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       tick_pred_pread.s(0).bits.neg := seq_vpu.reg.vp.neg()
       tick_pred_pread.s(0).bits.addr := seq_vpu.reg.vp.id
       tick_pred_pread.s(0).bits.strip := seq_vpu.strip
+      tick_pred_pread.s(0).bits.pack := seq_vpu.pack
 
       check_assert("vpu", tick_vpu, UInt(1))
       tick_vpu.s(1).valid := Bool(true)

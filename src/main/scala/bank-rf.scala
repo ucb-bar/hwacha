@@ -21,25 +21,30 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       val wdata = new BankDataPredEntry().asInput
     }
   }
-
   val sram_rf = SeqMem(Vec(Bits(width = 8), wBank/8), nSRAM)
   val ff_rf = Mem(Vec(Bits(width = 8), wBank/8), nFF)
-  val pred_rf = Mem(Vec(Bool(), nSlices), nPred)
+  val pred_rf = Mem(Vec(Bool(), wPred), nPred)
 
   val gopl = Mem(Vec(Bits(width = regLen), nSlices), nGOPL)
   val lopl = Mem(Vec(Bits(width = regLen), nSlices), nLOPL)
-  val gpdl = Mem(Bits(width = nSlices), nGPDL)
-  val lpdl = Mem(Bits(width = nSlices), nLPDL)
+  val gpdl = Mem(Bits(width = wPred), nGPDL)
+  val lpdl = Mem(Bits(width = wPred), nLPDL)
 
   def read_gpdl(addr: UInt) = new BankPredEntry().fromBits(gpdl(addr))
 
   def toBytes(bits: UInt) = Vec.tabulate(wBank/8)(i => bits(8*(i+1)-1, 8*i))
   def toDWords(bits: UInt) = Vec.tabulate(nSlices)(i => bits(regLen*(i+1)-1, regLen*i))
 
+  def pred_shift(idx: UInt) = if (confprec) Cat(idx, UInt(0, bSlices)) else UInt(0)
+  def pred_read(op: ValidIO[PredRFReadOp]) = {
+    val addr = dgate(op.valid, op.bits.addr)
+    val idx = dgate(op.valid, op.bits.pack.idx)
+    pred_rf(addr).toBits >> pred_shift(idx)
+  }
+
   // Predicate RF gated read port
   val pred_gated_op = IndexedSeq(io.op.pred.gread, io.op.pred.pread)
-  val pred_gated_raddr = pred_gated_op map { op => dgate(op.valid, op.bits.addr) }
-  val pred_gated_rdata_raw = pred_gated_raddr map { addr => pred_rf(addr).toBits }
+  val pred_gated_rdata_raw = pred_gated_op.map(op => pred_read(op))
   val pred_gated_rdata = (pred_gated_op zip pred_gated_rdata_raw) map { case (op, rdata) =>
     new BankPredEntry().fromBits(
       Mux(op.bits.off, op.bits.pred, op.bits.pred & Mux(op.bits.neg, ~rdata, rdata))) }
@@ -49,20 +54,21 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   io.local.ppred := RegEnable(ppred, io.op.pred.pread.valid)
 
   // Predicate RF read port
-  val pred_raddr = io.op.pred.read map { op => dgate(op.valid, op.bits.addr) }
-  val pred_rdata = pred_raddr map { addr => pred_rf(addr).toBits }
+  val pred_rdata = io.op.pred.read.map(op => pred_read(op))
   (io.op.pred.read zip io.local.rpred zip pred_rdata) map { case ((op, rpred), rdata) =>
     rpred := RegEnable(new BankPredEntry().fromBits(op.bits.pred & rdata), op.valid) }
 
   // Predicate RF write port
   when (io.op.pred.write.valid) {
     val waddr = io.op.pred.write.bits.addr
-    val wdata =
+    val shift = pred_shift(io.op.pred.write.bits.pack.idx)
+    val wdata_base =
       Mux(io.op.pred.write.bits.selg, io.global.wpred.pred,
-        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred)).toBools
-    val wmask = io.op.pred.write.bits.pred.toBools
+        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred))
+    val wdata = (wdata_base << shift)(wPred-1, 0)
+    val wmask = (io.op.pred.write.bits.pred << shift)(wPred-1, 0)
 
-    pred_rf.write(waddr, wdata, wmask)
+    pred_rf.write(waddr, ((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools)
 
     if (commit_log) {
       (0 until nSlices) foreach { case i =>

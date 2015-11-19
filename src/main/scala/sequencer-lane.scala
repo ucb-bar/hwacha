@@ -79,10 +79,16 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
   val v = Vec.fill(nSeq){Reg(init=Bool(false))}
   val e = Vec.fill(nSeq){Reg(new SeqEntry)}
 
-  def stripfn(vl: UInt, fn: VFn) = {
-    val max_strip = UInt(nStrip)
-    Mux(vl > max_strip, max_strip, vl(bStrip, 0))
-  }
+  val me_rate = Vec(me.map(UInt(1) << _.rate))
+
+  val e_sidx_next = Vec((0 until nSeq) map { r => e(r).sidx + me_rate(r) })
+  val e_strip = Vec((0 until nSeq) map { r =>
+    val vl = e(r).vlen
+    val strip_max = if (confprec) Cat(me_rate(r), UInt(0, bStrip)) else UInt(nStrip)
+    Mux(vl > strip_max, strip_max, vl(bStrip+bPack, 0))
+  })
+  def stripfn(sched: Vec[Bool]) = Mux1H(sched, e_strip)
+
 
   ///////////////////////////////////////////////////////////////////////////
   // data hazard checking helpers
@@ -91,24 +97,38 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val vlen_check_ok =
       Vec((0 until nSeq).map { r =>
         Vec((0 until nSeq).map { c =>
-          if (r != c) e(UInt(r)).vlen > e(UInt(c)).vlen
+          if (r != c) e_sidx_next(r) <= e(c).sidx
           else Bool(true) }) })
 
+    val wsram_mat_sidx = Vec(e_sidx_next.map { s =>
+      Vec(io.ticker.sram.write.map { t =>
+        (t.bits.sidx < s) && (s <= (t.bits.sidx + (UInt(1) << t.bits.rate)))
+      }) })
     def wsram_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
         Vec((0 until maxWPortLatency) map { l =>
-          io.ticker.sram.write(l).valid && fn(me(r).base).valid && fn(me(r).base).is_vector() &&
-          io.ticker.sram.write(l).bits.addr === pfn(e(r).reg).id }) }
+          val t = io.ticker.sram.write(l)
+          t.valid && fn(me(r).base).valid && fn(me(r).base).is_vector() && (
+            if (confprec) (t.bits.id === fn(me(r).base).id) && wsram_mat_sidx(r)(l)
+            else t.bits.addr === pfn(e(r).reg).id )
+          }) }
     val wsram_mat_vs1 = wsram_mat(reg_vs1, pregid_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
     val wsram_mat_vs2 = wsram_mat(reg_vs2, pregid_vs2) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
     val wsram_mat_vs3 = wsram_mat(reg_vs3, pregid_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
     val wsram_mat_vd = wsram_mat(reg_vd, pregid_vd)
 
+    val wpred_mat_sidx = Vec(e_sidx_next.map { s =>
+      Vec(io.ticker.pred.write.map { t =>
+        (t.bits.sidx < s) && (s <= (t.bits.sidx + (UInt(1) << t.bits.rate)))
+      }) })
     def wpred_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
         Vec((0 until maxPredWPortLatency) map { l =>
-          io.ticker.pred.write(l).valid && fn(me(r).base).valid && fn(me(r).base).is_pred() &&
-          io.ticker.pred.write(l).bits.addr === pfn(e(r).reg).id }) }
+          val t = io.ticker.pred.write(l)
+          t.valid && fn(me(r).base).valid && fn(me(r).base).is_pred() && (
+            if (confprec) (t.bits.id === fn(me(r).base).id) && wpred_mat_sidx(r)(l)
+            else t.bits.addr === pfn(e(r).reg).id )
+          }) }
     val wpred_mat_vp = wpred_mat(reg_vp, pregid_vp) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
     val wpred_mat_vs1 = wpred_mat(reg_vs1, pregid_vs1) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
     val wpred_mat_vs2 = wpred_mat(reg_vs2, pregid_vs2) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
@@ -210,7 +230,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val check =
       (0 until nSeq) map { r =>
         val op_idx = me(r).rports + UInt(expLatency, bRPorts+1)
-        val strip = stripfn(e(r).vlen, me(r).fn)
+        val strip = e_strip(r)
         val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
         val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << me(r).wport.sram, maxWPortLatency+nBanks-1)
         val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << me(r).wport.pred, maxPredWPortLatency+nBanks-1)
@@ -303,7 +323,9 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           e(r).vlen := io.op.bits.vlen
           e(r).eidx.major := UInt(lid) << io.cfg.lstride
           e(r).eidx.minor := UInt(0)
+          e(r).sidx := UInt(0)
           e(r).age := UInt(0)
+          e(r).pack.idx := UInt(0)
         }
         io.master.clear(r) := !v(r) || !next_v(r)
       }
@@ -348,9 +370,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     // independent ports that don't go to the expander
     class vdu(afn: SeqType=>Bool, la: CounterLookAheadIO) {
       val first = ff((i: Int) => afn(me(i).active))
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
+      val strip = stripfn(first)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = la.available
@@ -368,9 +388,8 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val vcu = new {
       val first = ff((i: Int) => me(i).active.vcu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
+      val strip = stripfn(first)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
@@ -393,9 +412,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val vlu = new {
       val first = ff((i: Int) => me(i).active.vlu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
+      val strip = stripfn(first)
 
       val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = io.lla.available
@@ -424,20 +441,23 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
-      val vlen = read(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqOp
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
+        out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
         out.sreg := mread(sched, (me: MasterSeqEntry) => me.sreg)
         out.active := mread(sched, (me: MasterSeqEntry) => me.active)
         out.select := selectfn(sched)
         out.eidx := read(sched, (e: SeqEntry) => e.eidx.major) +
           read(sched, (e: SeqEntry) => e.eidx.minor)
+        out.sidx := read(sched, (e: SeqEntry) => e.sidx)
         out.rports := mread(sched, (me: MasterSeqEntry) => me.rports)
         out.wport.sram := mread(sched, (me: MasterSeqEntry) => me.wport.sram)
         out.wport.pred := mread(sched, (me: MasterSeqEntry) => me.wport.pred)
-        out.strip := stripfn(vlen, out.fn)
+        out.strip := stripfn(sched)
+        out.rate := mread(sched, (me: MasterSeqEntry) => me.rate)
+        out.pack := read(sched, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -466,12 +486,15 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
-      val vlen = read(sched, (e: SeqEntry) => e.vlen)
       val op = {
         val out = new SeqVIPUOp
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
-        out.strip := stripfn(vlen, out.fn)
+        out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
+        out.sidx := read(sched, (e: SeqEntry) => e.sidx)
+        out.strip := stripfn(sched)
+        out.rate := mread(sched, (me: MasterSeqEntry) => me.rate)
+        out.pack := read(sched, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -486,13 +509,12 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val vpu = new {
       val first = ff((i: Int) => me(i).active.vpu || me(i).active.vgu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
       val sel = mread(first, (me: MasterSeqEntry) => me.active.vgu)
       val op = {
         val out = new SeqVPUOp
         out.reg := regfn(first)
-        out.strip := stripfn(vlen, fn)
+        out.strip := stripfn(first)
+        out.pack := read(first, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -516,9 +538,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     // helpers for the main scheduled port
     val vgu = new {
       val first = ff((i: Int) => me(i).active.vgu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
+      val strip = stripfn(first)
       val cnt = strip_to_bcnt(strip)
 
       val ready = io.pla.available && io.gpla.available && io.gqla.available
@@ -534,9 +554,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val vsu = new {
       val first = ff((i: Int) => me(i).active.vsu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
+      val strip = stripfn(first)
 
       val ready = io.sla.available
       (0 until nSeq) map { i => exp.vsu_consider(i) := first(i) && ready }
@@ -549,9 +567,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val vqu = new {
       val first = ff((i: Int) => me(i).active.vqu)
-      val vlen = read(first, (e: SeqEntry) => e.vlen)
-      val fn = mread(first, (me: MasterSeqEntry) => me.fn)
-      val strip = stripfn(vlen, fn)
+      val strip = stripfn(first)
       val cnt = strip_to_bcnt(strip)
 
       val readys = Vec((0 until nSeq) map { case i =>
@@ -581,7 +597,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
       def update_eidx(i: Int) {
         val strip = io.cfg.lstrip >> UInt(bStrip)
-        val minor = Cat(UInt(0,1), e(i).eidx.minor) + UInt(1)
+        val minor = Cat(UInt(0), e(i).eidx.minor) + me_rate(i)
         when (minor === strip) {
           e(i).eidx.minor := UInt(0)
           e(i).eidx.major := e(i).eidx.major + Cat(strip, UInt(0, bLanes))
@@ -589,11 +605,22 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           e(i).eidx.minor := minor
         }
       }
+      def update_sidx(i: Int) {
+        e(i).sidx := e_sidx_next(i)
+      }
 
+      val e_pack_idx_next = Vec((0 until nSeq).map(i =>
+        e(i).pack.idx + me_rate(i)))
+      def update_pack(i: Int) {
+        if (confprec) e(i).pack.idx := e_pack_idx_next(i)
+      }
+
+      def step_pstride(i: Int) =
+        if (confprec) (e_pack_idx_next(i)(bPack-1, 0) === UInt(0)) else Bool(true)
       def update_vp(i: Int, fn: RegPFn, pfn: PRegIdFn) {
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
-        when (info.valid && info.is_pred()) {
+        when (info.valid && info.is_pred() && step_pstride(i)) {
           id := id + io.cfg.pstride
         }
       }
@@ -601,24 +628,26 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
 
-        val (update, stride) = if (confprec)
-            confprec_step(info.prec, e(i).eidx.minor, io.cfg)
+        val (step_vstride, vstride) = if (confprec)
+            confprec_step(info.prec, e_pack_idx_next(i), io.cfg)
           else (Bool(true), io.cfg.vstride.d)
 
         when (info.valid) {
           id := id + MuxCase(UInt(0), Seq(
-            (info.is_vector() && update) -> stride,
-            (info.is_pred()) -> io.cfg.pstride))
+            (info.is_vector() && step_vstride) -> vstride,
+            (info.is_pred() && step_pstride(i)) -> io.cfg.pstride))
         }
       }
       def update_vd = update_vs _
 
       for (i <- 0 until nSeq) {
-        val strip = stripfn(e(i).vlen, me(i).fn)
+        val strip = e_strip(i)
         when (mv(i) && v(i)) {
           when (fires(i)) {
             e(i).vlen := e(i).vlen - strip
             update_eidx(i)
+            update_sidx(i)
+            update_pack(i)
             update_vp(i, reg_vp, pregid_vp)
             update_vs(i, reg_vs1, pregid_vs1)
             update_vs(i, reg_vs2, pregid_vs2)

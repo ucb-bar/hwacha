@@ -128,7 +128,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val (vd_update, vd_stride) = if (confprec) {
     pack.prec := op.vd.prec
     pack.idx := slice_idx >> UInt(bBanks)
-    confprec_step(pack.prec, pack.idx, io.cfg)
+    confprec_step(pack.prec, slice_idx_next >> UInt(bBanks), io.cfg)
   } else {
     pack.prec := PREC_D
     pack.idx := UInt(0)
@@ -316,7 +316,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   wraw.data := Mux(tagq.io.deq.bits.fusel.toBool,
     repack_slice(io.idiv.fus.map(_.resp.bits.out)),
     repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
-  val wpack = repack_bank(tagq.io.deq.bits.pack, wraw)
+  val wpack = repack_bank(tagq.io.deq.bits.pack, UInt(0), wraw)
 
   io.bwqs.map { bwq =>
     bwq.bits.selff := tagq.io.deq.bits.selff
