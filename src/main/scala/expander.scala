@@ -314,6 +314,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           }
           e.bits.sidx := seq_exp.sidx
           e.bits.rate := seq_exp.rate
+          e.bits.pack.idx := seq_exp.pack.idx
         }
       }
     }
@@ -463,6 +464,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       tick_pred_write.s(wport).bits.sidx := seq_vipu.sidx
       tick_pred_write.s(wport).bits.rate := seq_vipu.rate
       tick_pred_write.s(wport).bits.strip := seq_vipu.strip
+      tick_pred_write.s(wport).bits.pack := seq_vipu.pack
     }
 
     def mark_vpu = {
@@ -473,6 +475,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       tick_pred_pread.s(0).bits.neg := seq_vpu.reg.vp.neg()
       tick_pred_pread.s(0).bits.addr := seq_vpu.reg.vp.id
       tick_pred_pread.s(0).bits.strip := seq_vpu.strip
+      tick_pred_pread.s(0).bits.pack := seq_vpu.pack
 
       check_assert("vpu", tick_vpu, UInt(1))
       tick_vpu.s(1).valid := Bool(true)

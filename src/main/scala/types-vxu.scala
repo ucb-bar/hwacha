@@ -355,7 +355,8 @@ class SeqOp(implicit p: Parameters) extends DecodedInst()(p)
   def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
 }
 
-class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p) with HasPhysRegs with LaneOp
+class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p)
+  with HasPhysRegs with LaneOp with PredPack
 
 class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p)
   with HasPhysRegs with LaneOp with PredPack {

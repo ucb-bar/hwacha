@@ -493,6 +493,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
         out.sidx := read(sched, (e: SeqEntry) => e.sidx)
         out.strip := stripfn(sched)
+        out.rate := mread(sched, (me: MasterSeqEntry) => me.rate)
         out.pack := read(sched, (e: SeqEntry) => e.pack)
         out
       }
@@ -513,6 +514,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         val out = new SeqVPUOp
         out.reg := regfn(first)
         out.strip := stripfn(first)
+        out.pack := read(first, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -614,7 +616,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       }
 
       def step_pstride(i: Int) =
-        if (confprec) (e_pack_idx_next(i) === UInt(0)) else Bool(true)
+        if (confprec) (e_pack_idx_next(i)(bPack-1, 0) === UInt(0)) else Bool(true)
       def update_vp(i: Int, fn: RegPFn, pfn: PRegIdFn) {
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
