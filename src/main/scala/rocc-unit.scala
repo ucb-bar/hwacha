@@ -235,9 +235,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       MuxCase(UInt(fn(0)), sel.zip(sel.size until 0 by -1).map {
         case (s, i) => s -> UInt(fn(i))
       })
-    val mask = lookup(i => (1 << i) - 1)
-    val n = mask.getWidth
-    val _epb = Cat(epb_base >> UInt(n), epb_base(n-1, 0) & ~mask)
+    val _epb = Cat(epb_base >> UInt(bPack), UInt(0, bPack))
     (_epb, lookup(i => i))
   } else (epb_base, cfg_reg_lstride)
 

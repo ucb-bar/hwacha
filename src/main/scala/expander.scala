@@ -195,7 +195,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
             e.bits.addr := fn(seq_exp.reg).id
             e.bits.strip := seq_exp.strip
             e.bits.pack.prec := fn(seq_exp.reg).prec
-            e.bits.pack.idx := seq_exp.eidx
+            e.bits.pack.idx := seq_exp.pack.idx
             mark_opl(read_idx, idx)
           }
         }
@@ -262,6 +262,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           p.bits.neg := seq_exp.reg.vp.neg()
           p.bits.addr := seq_exp.reg.vp.id
           p.bits.strip := seq_exp.strip
+          p.bits.pack.idx := seq_exp.pack.idx
           mark_pdl(read_idx, idx)
         }
       }
@@ -294,7 +295,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           e.bits.sidx := seq_exp.sidx
           e.bits.rate := seq_exp.rate
           e.bits.pack.prec := seq_exp.reg.vd.prec
-          e.bits.pack.idx := seq_exp.eidx
+          e.bits.pack.idx := seq_exp.pack.idx
         }
         when (seq_exp.reg.vd.is_pred()) {
           check_assert("pred write", tick_pred_write, seq_exp.wport.pred)
@@ -443,6 +444,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         e.valid := Bool(true)
         e.bits.addr := fn(seq_vipu.reg).id
         e.bits.strip := seq_vipu.strip
+        e.bits.pack := seq_vipu.pack
       }
 
       check_assert("vipu", tick_vipu, UInt(1))
@@ -459,6 +461,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       tick_pred_write.s(wport).bits.selg := Bool(false)
       tick_pred_write.s(wport).bits.plu := Bool(true)
       tick_pred_write.s(wport).bits.sidx := seq_vipu.sidx
+      tick_pred_write.s(wport).bits.rate := seq_vipu.rate
       tick_pred_write.s(wport).bits.strip := seq_vipu.strip
     }
 

@@ -13,7 +13,7 @@ trait PrecLogic {
     val sel = confprec_decode(prec)
     val stride = confprec_stride(sel, cfg)
     val update = Bool(true) +:
-      (1 until sel.size).map(i => idx(i-1, 0).andR)
+      (1 until sel.size).map(i => idx(i-1, 0) === UInt(0))
     (Mux1H(sel, update.reverse), stride)
   }
 }

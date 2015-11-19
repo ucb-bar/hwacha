@@ -325,6 +325,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           e(r).eidx.minor := UInt(0)
           e(r).sidx := UInt(0)
           e(r).age := UInt(0)
+          e(r).pack.idx := UInt(0)
         }
         io.master.clear(r) := !v(r) || !next_v(r)
       }
@@ -456,6 +457,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         out.wport.pred := mread(sched, (me: MasterSeqEntry) => me.wport.pred)
         out.strip := stripfn(sched)
         out.rate := mread(sched, (me: MasterSeqEntry) => me.rate)
+        out.pack := read(sched, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -491,6 +493,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
         out.sidx := read(sched, (e: SeqEntry) => e.sidx)
         out.strip := stripfn(sched)
+        out.pack := read(sched, (e: SeqEntry) => e.pack)
         out
       }
 
@@ -592,7 +595,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
       def update_eidx(i: Int) {
         val strip = io.cfg.lstrip >> UInt(bStrip)
-        val minor = Cat(UInt(0,1), e(i).eidx.minor) + UInt(1) // FIXME
+        val minor = Cat(UInt(0), e(i).eidx.minor) + me_rate(i)
         when (minor === strip) {
           e(i).eidx.minor := UInt(0)
           e(i).eidx.major := e(i).eidx.major + Cat(strip, UInt(0, bLanes))
@@ -604,10 +607,18 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         e(i).sidx := e_sidx_next(i)
       }
 
+      val e_pack_idx_next = Vec((0 until nSeq).map(i =>
+        e(i).pack.idx + me_rate(i)))
+      def update_pack(i: Int) {
+        if (confprec) e(i).pack.idx := e_pack_idx_next(i)
+      }
+
+      def step_pstride(i: Int) =
+        if (confprec) (e_pack_idx_next(i) === UInt(0)) else Bool(true)
       def update_vp(i: Int, fn: RegPFn, pfn: PRegIdFn) {
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
-        when (info.valid && info.is_pred()) {
+        when (info.valid && info.is_pred() && step_pstride(i)) {
           id := id + io.cfg.pstride
         }
       }
@@ -615,14 +626,14 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
 
-        val (update, stride) = if (confprec)
-            confprec_step(info.prec, e(i).eidx.minor, io.cfg)
+        val (step_vstride, vstride) = if (confprec)
+            confprec_step(info.prec, e_pack_idx_next(i), io.cfg)
           else (Bool(true), io.cfg.vstride.d)
 
         when (info.valid) {
           id := id + MuxCase(UInt(0), Seq(
-            (info.is_vector() && update) -> stride,
-            (info.is_pred()) -> io.cfg.pstride))
+            (info.is_vector() && step_vstride) -> vstride,
+            (info.is_pred() && step_pstride(i)) -> io.cfg.pstride))
         }
       }
       def update_vd = update_vs _
@@ -634,6 +645,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
             e(i).vlen := e(i).vlen - strip
             update_eidx(i)
             update_sidx(i)
+            update_pack(i)
             update_vp(i, reg_vp, pregid_vp)
             update_vs(i, reg_vs1, pregid_vs1)
             update_vs(i, reg_vs2, pregid_vs2)

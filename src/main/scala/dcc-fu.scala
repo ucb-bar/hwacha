@@ -128,7 +128,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val (vd_update, vd_stride) = if (confprec) {
     pack.prec := op.vd.prec
     pack.idx := slice_idx >> UInt(bBanks)
-    confprec_step(pack.prec, pack.idx, io.cfg)
+    confprec_step(pack.prec, slice_idx_next >> UInt(bBanks), io.cfg)
   } else {
     pack.prec := PREC_D
     pack.idx := UInt(0)
