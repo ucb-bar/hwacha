@@ -125,6 +125,12 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
 class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
 class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
 
+class LaneValidIO[T <: Data](gen: T)(implicit p: Parameters) extends VXUBundle()(p) {
+  val valid = Vec(nPack, Bool(OUTPUT))
+  val bits = gen.cloneType.asOutput
+  def active(dummy: Int = 0) = valid.reduce(_ || _)
+}
+
 class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
@@ -218,11 +224,13 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     val vfmu_operands = operands("vfmu"+v, ctrl.io.uop.vfmu(v), 3, 3*v)
     (0 until nSlices) map { i =>
       val vfmu = Module(new FMASlice)
-      vfmu.io.req.valid := ctrl.io.uop.vfmu(v).valid && ctrl.io.uop.vfmu(v).bits.pred(i) && vfmu_pred.pred(i)
+      vfmu.io.req.valid := (ctrl.io.uop.vfmu(v).bits.pred_slice(i) zip vfmu_pred.pred_slice(i)).map(
+        p => ctrl.io.uop.vfmu(v).valid && p._1 && p._2)
       vfmu.io.req.bits.fn := ctrl.io.uop.vfmu(v).bits.fn
       vfmu.io.req.bits.in0 := unpack_slice(vfmu_operands(0), i)
       vfmu.io.req.bits.in1 := unpack_slice(vfmu_operands(1), i)
       vfmu.io.req.bits.in2 := unpack_slice(vfmu_operands(2), i)
+      vfmu.io.req.bits.rate := ctrl.io.uop.vfmu(v).bits.rate
       vfmu.io.resp
     }
   }

@@ -407,6 +407,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         check_assert(name, tick, op_idx)
         tick.s(op_idx).valid := Bool(true)
         tick.s(op_idx).bits.strip := seq_exp.strip
+        tick.s(op_idx).bits.rate := seq_exp.rate
         fn(tick.s(op_idx).bits)
       }
     }
