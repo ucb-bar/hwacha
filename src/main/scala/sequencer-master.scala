@@ -443,6 +443,15 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def start(n: UInt) = iwindow.set.entry(n)
     def stop(n: UInt) = iwindow.set.tail(n)
 
+    def prec(fn: RegVFn) = {
+      val info = fn(io.op.bits.base)
+      Seq(PREC_D, PREC_W, PREC_H).map(p => !info.valid || (p === info.prec))
+    }
+    val vs1_d :: vs1_w :: vs1_h :: Nil = prec(reg_vs1)
+    val vs2_d :: vs2_w :: vs2_h :: Nil = prec(reg_vs2)
+    val vs3_d :: vs3_w :: vs3_h :: Nil = prec(reg_vs3)
+    val vd_d :: vd_w :: vd_h :: Nil = prec(reg_vd)
+
     def vint = {
       start(t0); { import iwindow.set._; viu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesALU); }
@@ -469,6 +478,11 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def vfma = {
       start(t0); { import iwindow.set._; vfmu(t0); vp(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesFMA); }
+                 if (confprec) {
+                   val fn = io.op.bits.fn.vfmu()
+                   e(t0).rate := MuxCase(UInt(0), Seq(
+                     (fn.fp_is(FPH) && vs1_h && vs2_h && vs3_h && vd_h) -> UInt(2),
+                     (fn.fp_is(FPS) && vs1_w && vs2_w && vs3_w && vd_w) -> UInt(1))) }
       stop(t1); }
 
     def vfdiv = {
