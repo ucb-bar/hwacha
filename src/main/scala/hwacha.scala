@@ -21,6 +21,7 @@ case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
+case object HwachaBuildVRU extends Field[Boolean]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(clock, _reset)
@@ -81,7 +82,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
 
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
-  val confvru = true
+  val confvru = p(HwachaBuildVRU)
   val confprec = true
 
   val confvcmdq = new {
@@ -166,7 +167,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.vru <> vru.io.toicache
     vru.io.cmdq <> rocc.io.cmdqs.vru
     vru.io.dmem <> imemarb.io.in(2)
-    vru.io.scalar_unit_vfcount <> scalar.io.vru_vfcount
+//    vru.io.from_scalar_pop_message := scalar.io.vru_pop_message
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
