@@ -168,6 +168,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vru.io.cmdq <> rocc.io.cmdqs.vru
     vru.io.dmem <> imemarb.io.in(2)
 //    vru.io.from_scalar_pop_message := scalar.io.vru_pop_message
+    vru.io.scalar_unit_vfcount <> scalar.io.vru_vfcount
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
