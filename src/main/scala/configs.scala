@@ -67,6 +67,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaNVLTEntries => 32
 
     case HwachaNSMUEntries => 2
+    case HwachaBuildVRU => Knob("HWACHA_BUILD_VRU")
 
     // +2 comes from the overhead of tagging for the arbitration
     case RoccMaxTaggedMemXacts =>
@@ -79,5 +80,6 @@ class DefaultHwachaConfig extends Config (
 {
   override val knobValues:Any=>Any = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
+    case "HWACHA_BUILD_VRU" => true
   }
 }
