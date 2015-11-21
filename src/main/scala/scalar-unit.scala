@@ -6,17 +6,13 @@ import rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
 
-class HwachaFPInput extends rocket.FPInput {
-  val in_fmt = UInt(width = 2)
-}
-
 class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
   val addr = UInt(width = bSRegs)
   val data = UInt(width = regLen)
 }
 
 class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
-  with Packing with SeqParameters {
+  with SeqParameters {
   import Commands._
 
   val io = new Bundle {
@@ -28,7 +24,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
       val req = Decoupled(new HwachaFPInput)
-      val resp = Decoupled(new rocket.FPResult()).flip
+      val resp = Decoupled(new HwachaFPResult).flip
     }
     val smu = new SMUIO
     val lreq = new CounterLookAheadIO
@@ -155,10 +151,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val fire_vf = fire_cmdq(null, decode_vf)
   when (fire_vf) { vf_active := Bool(true) }
 
-  val pending_fpu = Reg(init=Bool(false))
-  val pending_fpu_reg = Reg(init=UInt(width=log2Up(nSRegs)))
-  val pending_fpu_typ = Reg(init=Bits(width=2))
-  val pending_fpu_fn = Reg(new rocket.FPUCtrlSigs())
   val pending_smu = Reg(init=Bool(false))
   val pending_cbranch = Reg(init=Bool(false))
 
@@ -278,8 +270,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val enq_smu = id_val && id_smem_inst
   val enq_muldiv = id_val && id_scalar_inst && id_muldiv_inst
 
-  val stall_fpu = enq_fpu && pending_fpu
-
   mrt.io.lreq.cnt := UInt(1)
   mrt.io.sreq.cnt := UInt(1)
 
@@ -294,7 +284,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_fpu || stall_smu || stall_pending_fence || stallx || stallw
+    stall_smu || stall_pending_fence || stallx || stallw
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
@@ -442,12 +432,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.fpu.req.bits.in1 := id_sreads(0)
   io.fpu.req.bits.in2 := id_sreads(1)
   io.fpu.req.bits.in3 := id_sreads(2)
-  when (io.fpu.req.fire()) {
-    pending_fpu := Bool(true)
-    pending_fpu_typ := Mux(id_ctrl.fpu_fn.fromint, id_ctrl.in_fmt, id_ctrl.out_fmt)
-    pending_fpu_reg := id_ctrl.vd
-    pending_fpu_fn := id_ctrl.fpu_fn
-  }
+  io.fpu.req.bits.tag := id_ctrl.vd
 
   // to SMU
   io.smu.req.valid := fire_decode(mask_smu_ready, enq_smu)
@@ -548,15 +533,9 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 4))
 
-  val unrec_s = ieee_sp(io.fpu.resp.bits.data)
-  val unrec_d = ieee_dp(io.fpu.resp.bits.data)
-  val unrec_fpu_resp =
-    Mux(pending_fpu_typ === UInt(0), expand_float_s(unrec_s), unrec_d)
-
   ll_warb.io.in(0).valid := io.fpu.resp.valid
-  ll_warb.io.in(0).bits.addr := pending_fpu_reg
-  ll_warb.io.in(0).bits.data :=
-    Mux(pending_fpu_fn.toint, io.fpu.resp.bits.data(63, 0), unrec_fpu_resp)
+  ll_warb.io.in(0).bits.addr := io.fpu.resp.bits.tag
+  ll_warb.io.in(0).bits.data := io.fpu.resp.bits.data
   assert(!io.fpu.resp.valid || ll_warb.io.in(0).ready, "fpu port should always have priority")
   io.fpu.resp.ready := Bool(true)
 
@@ -584,7 +563,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // WRITEBACK
   val wb_ll_valid = Reg(next=ll_warb.io.out.valid)
-  val wb_ll_fpu = RegEnable(ll_warb.io.in(0).fire(), ll_warb.io.out.valid)
   val wb_ll_waddr = RegEnable(ll_warb.io.out.bits.addr, ll_warb.io.out.valid)
   val wb_ll_wdata = RegEnable(ll_warb.io.out.bits.data, ll_warb.io.out.valid)
 
@@ -619,7 +597,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   sboard.clear(wb_ll_valid, wb_ll_waddr)
-  when (wb_ll_valid && wb_ll_fpu) { pending_fpu := Bool(false) }
 
   assert(!(wb_ll_valid && wb_wen), "long latency and scalar wb conflict")
   assert(!((wb_ll_valid || wb_wen) && swrite), "Cannot write vmss and scalar dest")
