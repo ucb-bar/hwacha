@@ -345,6 +345,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         t(i).s(op_idx).valid := Bool(true)
         t(i).s(op_idx).bits.operand := sfn(seq_exp.sreg)
         t(i).s(op_idx).bits.strip := seq_exp.strip
+        t(i).s(op_idx).bits.rate := seq_exp.rate
       }
     }
     def mark_sreg_global(i: Int, fn: PRegFn, sfn: SRegFn) =

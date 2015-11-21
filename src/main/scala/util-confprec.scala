@@ -28,6 +28,12 @@ trait RateLogic extends LaneParameters {
     })
     ((n >> shift) & mask)(nPack-1, 0).toBools
   }
+
+  def splat_scalar(uop: SRegMicroOp) =
+    if (confprec) Mux1H((0 to bPack).map(i =>
+      (uop.rate === UInt(i)) ->
+        Fill(nSlices << i, uop.operand((regLen >> i)-1, 0))))
+    else Fill(nSlices, uop.operand)
 }
 
 trait PackLogic extends PrecLogic with Packing {
