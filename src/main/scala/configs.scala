@@ -7,11 +7,13 @@ import rocket._
 
 class DefaultHwachaConfig extends Config (
   (pname,site,here) => pname match {
-    case NSets => site(CacheName) match { case "HwI" => 64 }
-    case NWays => site(CacheName) match { case "HwI" => 2 }
-    case RowBits => site(CacheName) match { case "HwI" => 2*site(CoreInstBits) }
-    case NTLBEntries => site(CacheName) match { case "HwI" => 8 }
-    case CacheIdBits => site(CacheName) match { case "HwI" => 0 }
+    case "HwI" => {
+      case NSets => 64
+      case NWays => 2
+      case RowBits => 2 * site(CoreInstBits)
+      case NTLBEntries => 8
+      case CacheIdBits => 0
+    }:PartialFunction[Any, Any]
     case FetchWidth => 1
     case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
@@ -79,11 +81,8 @@ class DefaultHwachaConfig extends Config (
 
     case HwachaConfPrec => true
     case HwachaVRUThrottle => 20
-  }
-) 
-{
-  override val knobValues:Any=>Any = {
+  },
+  knobValues = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
     case "HWACHA_BUILD_VRU" => true
-  }
-}
+  })
