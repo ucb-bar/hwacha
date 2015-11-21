@@ -50,7 +50,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   io.uop.bank.foldLeft(io.op.opl.local)((lops, bio) => gen_vec_systolic(lops, bio.opl.local))
   io.uop.bank.foldLeft(io.op.pdl.global)((lops, bio) => gen_vec_systolic(lops, bio.pdl.global, true))
   io.uop.bank.foldLeft(io.op.pdl.local)((lops, bio) => gen_vec_systolic(lops, bio.pdl.local))
-  io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg))
+  io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg, true))
   io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar, true))
   io.uop.bank.foldLeft(io.op.pxbar)((lops, bio) => gen_vec_systolic(lops, bio.pxbar, true))
   io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
@@ -89,7 +89,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
     }
   }
 
-  val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i)) }
+  val sreg = (0 until nGOPL).map { i => new Shared(io.op.sreg.global(i), true) }
   val vqu = new Shared(io.op.vqu)
   val vgu = new Shared(io.op.vgu)
   val vimu = new Shared(io.op.vimu)
@@ -100,6 +100,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   (io.uop.sreg zip sreg) foreach { case (u, s) =>
     u.valid := s.valid
     u.bits.operand := s.bits.operand
+    u.bits.rate := s.bits.rate
     u.bits.pred := s.pred
   }
 

@@ -171,7 +171,7 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     (0 until n) map { i =>
       val ri = rbase+i
       assert(!uop.valid || !uop.bits.sreg(i) || ctrl.io.uop.sreg(ri).valid, "check sreg sched logic "+name+"_"+i)
-      Mux(uop.bits.sreg(i), splat_slice(ctrl.io.uop.sreg(ri).bits.operand), opls(ri))
+      Mux(uop.bits.sreg(i), splat_scalar(ctrl.io.uop.sreg(ri).bits), opls(ri))
     }
   }
 
