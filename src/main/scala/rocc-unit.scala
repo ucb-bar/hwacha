@@ -216,18 +216,20 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // Logic to handle vector length calculation
   val cfg = new DecodeConfig().fromBits(rocc_imm12 | io.rocc.cmd.bits.rs1)
   val cfg_nvvdw = cfg.nvvd + cfg.nvvw
-  val cfg_nvv = cfg_nvvdw + cfg.nvvh
+  val cfg_nvv = cfg.nvvh + (
+    if (confprec) (cfg.nvvd << UInt(2)) + (cfg.nvvw << UInt(1))
+    else cfg_nvvdw)
 
   // vector length lookup
-  // TODO: Reformulate for reduced precision registers
-  val lookup_tbl_nvv = (0 to nVRegs).toArray map { n =>
-    (UInt(n), UInt(if (n < 2) (nSRAM) else (nSRAM / n), width = log2Down(nSRAM)+1)) }
+  val lookup_tbl_nvv = (0 to (nVRegs << bPack)).toArray map { n =>
+    (UInt(n), UInt(if (n < 2) (nSRAM) else math.min((nSRAM << bPack) / n, maxVLen),
+      width = log2Down(nSRAM)+bPack+1)) }
   val lookup_tbl_nvp = (0 to nPRegs).toArray map { n =>
     (UInt(n), UInt(if (n < 2) (nPred) else (nPred / n), width = log2Down(nPred)+1)) }
 
   // epb: elements per bank
   val epb_nvv = Lookup(cfg_nvv, lookup_tbl_nvv.last._2, lookup_tbl_nvv)
-  val epb_nvp = Lookup(cfg.nvp, lookup_tbl_nvp.last._2, lookup_tbl_nvp)
+  val epb_nvp = Lookup(cfg.nvp, lookup_tbl_nvp.last._2, lookup_tbl_nvp) << UInt(bPack)
   val epb_base = min(epb_nvv, epb_nvp)
   val (epb, cfg_lstride) = if (confprec) {
     val sel = Seq(cfg.nvvh =/= UInt(0), cfg.nvvw =/= UInt(0))
@@ -235,7 +237,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       MuxCase(UInt(fn(0)), sel.zip(sel.size until 0 by -1).map {
         case (s, i) => s -> UInt(fn(i))
       })
-    val _epb = Cat(epb_base >> UInt(bPack), UInt(0, bPack))
+    val mask = lookup(i => (1 << i) - 1)
+    val n = mask.getWidth
+    val _epb = Cat(epb_base >> UInt(n), epb_base(n-1, 0) & ~mask)
     (_epb, lookup(i => i))
   } else (epb_base, cfg_reg_lstride)
 
@@ -280,8 +284,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_unpred := (cfg.nvp === UInt(0))
     cfg_reg_nvvdw := cfg_nvvdw
     if (!confprec) cfg_reg_vstride := cfg_nvv
-    printf("H: VSETCFG[nlanes=%d][nvv=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d]\n",
-      UInt(nLanes), cfg_nvv, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl)
+    printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d]\n",
+      UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl)
   }
   when (fire_vsetvl) {
     cfg_reg_vl := cfg_vl
