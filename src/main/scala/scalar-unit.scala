@@ -117,7 +117,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // TODO: we could fire all cmd but vf* without pending.mseq being clear
   def fire_cmdq(exclude: Bool, include: Bool*) = {
   val rvs = Seq(
-      !vf_active, !busy_scalar, !decode_vmss || !sboard.read(io.cmdq.rd.bits), !io.pending.mseq.all,
+      !vf_active, !busy_scalar, !decode_vmss || !sboard.read(io.cmdq.rd.bits),
       io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
