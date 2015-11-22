@@ -245,28 +245,29 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     vfcu.io.resp
   }
 
-  val vfvu_pred = predicate(1)
+  val vfvu_pred = Mux(ctrl.io.uop.vfvu.valid, ctrl.io.uop.vfvu.bits.pred & predicate(1).pred, UInt(0))
   val vfvu_operands = operands("vfvu", ctrl.io.uop.vfvu, 1, 2)
-  val vfvus = (0 until nSlices) map { i =>
+  val vfvus = ((0 until nSlices) map { i =>
     val vfvu = Module(new FConvSlice)
-    vfvu.io.req.valid := ctrl.io.uop.vfvu.valid && ctrl.io.uop.vfvu.bits.pred(i) && vfvu_pred.pred(i)
+    vfvu.io.req.valid := unpack_pred(vfvu_pred, i, vfvu.io.req.bits.rate)
     vfvu.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
     vfvu.io.req.bits.in := unpack_slice(vfvu_operands(0), i)
-    vfvu.io.resp
-  }
+    vfvu.io.req.bits.rate := ctrl.io.uop.vfvu.bits.rate
+    vfvu.io.resp.bits
+  }, ShiftRegister(vfvu_pred, stagesFConv))
 
   require(nVFMU == 2)
 
   val vimu_vals = Vec(vimus.map(_.valid)).toBits
   val vfmu_vals = vfmus.map(_._2)
   val vfcu_vals = Vec(vfcus.map(_.valid)).toBits
-  val vfvu_vals = Vec(vfvus.map(_.valid)).toBits
+  val vfvu_vals = vfvus._2
 
   val wdata = List(
     MuxCase(Bits(0), Array(
       vimu_vals.orR -> repack_slice(vimus.map(_.bits.out)),
       vfmu_vals(0).orR -> repack_slice(vfmus(0)._1.map(_.out)),
-      vfvu_vals.orR -> repack_slice(vfvus.map(_.bits.out)))),
+      vfvu_vals.orR -> repack_slice(vfvus._1.map(_.out)))),
     MuxCase(Bits(0), Array(
       vfmu_vals(1).orR -> repack_slice(vfmus(1)._1.map(_.out)),
       vfcu_vals.orR -> repack_slice(vfcus.map(_.bits.out)))))

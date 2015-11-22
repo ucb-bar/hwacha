@@ -4,8 +4,9 @@ import Chisel._
 import cde.Parameters
 import DataGating._
 import HardFloatHelper._
+import scala.collection.mutable.ArrayBuffer
 
-class FConvOperand(implicit p: Parameters) extends VXUBundle()(p) {
+class FConvOperand(implicit p: Parameters) extends VXUBundle()(p) with Rate {
   val fn = new VFVUFn
   val in = Bits(width = SZ_D)
 }
@@ -17,12 +18,13 @@ class FConvResult extends Bundle {
 
 class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
-    val req = Valid(new FConvOperand).flip
+    val req = new LaneValidIO(new FConvOperand).flip
     val resp = Valid(new FConvResult)
   }
 
-  val fn = io.req.bits.fn.dgate(io.req.valid)
-  val in = dgate(io.req.valid, io.req.bits.in)
+  val active = io.req.active()
+  val fn = io.req.bits.fn.dgate(active)
+  val in = io.req.bits.in
 
   val op_int2float = MuxCase(
     Bits(0), Array(
@@ -54,7 +56,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FPS, ieee_sp _, expand_float_s _, wsp),
          (FPH, ieee_hp _, expand_float_h _, whp)) map {
       case (fp, ieee, expand, (exp, sig)) => {
-        val valid = fn.fp_is(fp) && val_int2float
+        val valid = fn.fp_is(fp) && val_int2float && io.req.valid(0)
         val input = dgate(valid, in)
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_int2float)
@@ -77,7 +79,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FPS, recode_sp _, unpack_w _, wsp),
          (FPH, recode_hp _, unpack_h _, whp)) map {
       case (fp, recode, unpack, (exp, sig)) => {
-        val valid = fn.fp_is(fp) && val_float2int
+        val valid = fn.fp_is(fp) && val_float2int && io.req.valid(0)
         val input = recode(dgate(valid, unpack(in, 0)))
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_float2int)
@@ -103,13 +105,27 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FV_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp),
          (FV_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp)) map {
       case (op, recode, unpack, ieee, expand, (exps, sigs), (expd, sigd)) => {
-        val valid = fn.op_is(op)
-        val input = recode(dgate(valid, unpack(in, 0)))
-        val rm = dgate(valid, fn.rm)
-        val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
-        fp2fp.io.in := input
-        fp2fp.io.roundingMode := rm
-        (expand(ieee(fp2fp.io.out)), fp2fp.io.exceptionFlags)
+        val (szs, szd) = (exps + sigs, expd + sigd)
+        val sz = math.max(szs, szd)
+        val (m, n) = (math.max(szd / szs, 1), regLen / sz)
+        val outs = new ArrayBuffer[Bits](n)
+        val excs = new ArrayBuffer[Bits](n)
+        val valid_op = fn.op_is(op)
+        for (i <- (0 until n)) {
+          if (confprec || i == 0) {
+            val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
+            val valid = valid_op && io.req.valid(i)
+            fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
+            fp2fp.io.roundingMode := dgate(valid, fn.rm)
+            outs += expand(ieee(fp2fp.io.out))
+            excs += fp2fp.io.exceptionFlags
+          }
+        }
+        val output = if (confprec) {
+          val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
+          Mux(rmatch, Vec(outs.map(_(sz-1, 0))).toBits, outs.head)
+        } else outs.head
+        (output, excs.reduce(_|_))
       }
     }
 
@@ -140,5 +156,5 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   result.out := Mux1H(fpmatch, outs)
   result.exc := Mux1H(fpmatch, excs)
 
-  io.resp := Pipe(io.req.valid, result, stagesFConv)
+  io.resp := Pipe(active, result, stagesFConv)
 }

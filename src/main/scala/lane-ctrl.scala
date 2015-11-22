@@ -95,7 +95,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   val vimu = new Shared(io.op.vimu)
   val vfmu = (0 until nVFMU) map { i => new Shared(io.op.vfmu(i), true) }
   val vfcu = new Shared(io.op.vfcu)
-  val vfvu = new Shared(io.op.vfvu)
+  val vfvu = new Shared(io.op.vfvu, true)
 
   (io.uop.sreg zip sreg) foreach { case (u, s) =>
     u.valid := s.valid
