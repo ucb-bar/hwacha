@@ -26,9 +26,9 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   val active = io.req.active()
   val fn = io.req.bits.fn.dgate(active)
-  val in0 = dgate(active, io.req.bits.in0)
-  val in1 = dgate(active, io.req.bits.in1)
-  val in2 = dgate(active, io.req.bits.in2)
+  val in0 = io.req.bits.in0
+  val in1 = io.req.bits.in1
+  val in2 = io.req.bits.in2
 
   val fma_op = MuxCase(
     Bits("b00",2), Array(
