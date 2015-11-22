@@ -78,6 +78,7 @@ class DefaultHwachaConfig extends Config (
       Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
 
     case HwachaConfPrec => true
+    case HwachaVRUThrottle => 20
   }
 ) 
 {

@@ -376,7 +376,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // TODO: calculate width
   val pf_ip_counter = Reg(init = UInt(0, width=20))
 
-  val throttleAmt = 20 // approximately 1/3 of the units
+  val throttleAmt = p(HwachaVRUThrottle) // approximately 1/3 of the units
+  printf("VRU THROTTLE AMT: %d\n", UInt(throttleAmt))
   val throttle = Reg(init=UInt(throttleAmt, width=6))
 
   assert(throttle <= UInt(throttleAmt), "VRU: THROTTLE TOO LARGE\n")

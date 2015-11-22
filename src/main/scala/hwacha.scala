@@ -23,6 +23,7 @@ case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaBuildVRU extends Field[Boolean]
 case object HwachaConfPrec extends Field[Boolean]
+case object HwachaVRUThrottle extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(clock, _reset)
