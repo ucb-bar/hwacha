@@ -101,7 +101,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   private val hreq = reqq.io.deq.bits
 
-  val enq_rocc = !(hreq.cmd === FCMD_CVT_FF && !hreq.wen)
+  val enq_rocc = !(hreq.cmd === FCMD_CVT_FF && !hreq.wen && !hreq.toint && !hreq.fromint)
   val mask_rocc_req_ready = !enq_rocc || io.rocc.req.ready
   val mask_respq_enq_ready = enq_rocc || respq.io.enq.ready
 
@@ -130,9 +130,11 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
     }
 
   io.rocc.req.bits <> hreq
+
+  val rec_s_in1 = Cat(SInt(-1,32), recode_sp(hreq.in1))
   io.rocc.req.bits.in1 :=
     Mux(hreq.fromint, hreq.in1,
-      Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in1)),
+      Mux(hreq.in_fmt === UInt(0), rec_s_in1,
         Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in1),
           h2s(0))))
   io.rocc.req.bits.in2 :=
@@ -147,7 +149,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
   when (fire(null, !enq_rocc)) {
-    respq.io.enq.bits.data := h2s(0)
+    respq.io.enq.bits.data := Mux(hreq.in_fmt === UInt(0), rec_s_in1, h2s(0))
   }
 
   respq.io.deq.ready := io.hwacha.resp.ready
@@ -165,7 +167,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   s2h.io.roundingMode := pending_fpu_req.rm
   // XXX: use s2h.io.exceptionFlags
 
-  val unrec_h = ieee_hp(rresp.data)
+  val unrec_h = ieee_hp(s2h.io.out)
   val unrec_s = ieee_sp(rresp.data)
   val unrec_d = ieee_dp(rresp.data)
   val unrec_fpu_resp =
