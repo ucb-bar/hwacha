@@ -18,35 +18,10 @@ class DecL2Q(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaMod
     val deq = Decoupled(new DecL2IO)
   }
   
-  io.deq <> Queue(io.enq, 20)
+  io.deq <> Queue(io.enq, 10)
 }
 
 
-/*
- * This module
- * 1) Holds a queue that stores # loads and stores per vf block in flight
- * 2) automatically manages the global load/store counter
- *
- *
- * Accepts vf block info entries from VRU frontside
- * Input vf_done signal from vxu 
- *
- * outputs stall signal for sending prefetches to L2. should be combined with
- * # outstanding requests signal
- *
- * DOES NOT MANAGE # of outstanding requests, should be handled separately
- *
- * TODO: queue overflow = VRU too far ahead, so can slow down everything
- * I think it's okay to put backpressure here, because each entry represents
- * one VF command and it means that we're really far ahead...
- *
- * It's measuring the distance between the # load stores decoded by the vru
- * versus the number of loads and stores COMPLETED by the vxu. So the queue
- * in here cannot get jammed up by slow/behind prefetching.
- *
- * queue underflow = VRU too far behind
- *
- */
 class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
   val throttleQueueDepth = 10
@@ -58,6 +33,12 @@ class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
     val vf_done_vxu = Bool(INPUT)
     val stall_prefetch = Bool(OUTPUT)
   }
+
+
+  // TODO: this can fall behind and lock things up
+  //
+  // When handling the fall-behind case, make sure to ignore the initial 
+  // vector fetch blocks that we're skipping
 
   val ls_per_vf_q = Queue(io.enq, throttleQueueDepth)
   val global_ls_count = Reg(init=UInt(0, width=20))
@@ -175,9 +156,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   }
 
   // handle vf
-
+  // skip prefetching the first two VF blocks so that we can get ahead
+  // being close to the VXU when doing mem ops is bad
   val skipcount = Reg(init=UInt(0, width=4))
-  val skipamt = 2
+  val skipamt = 2 
 
   val actually_fire_cmd = skipcount
 
@@ -363,7 +345,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // TODO: calculate width
   val pf_ip_counter = Reg(init = UInt(0, width=20))
 
-  val throttleAmt = 20
+  val throttleAmt = 20 // approximately 1/3 of the units
   val throttle = Reg(init=UInt(throttleAmt, width=6))
 
   assert(throttle <= UInt(throttleAmt), "VRU: THROTTLE TOO LARGE\n")
