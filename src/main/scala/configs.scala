@@ -11,6 +11,7 @@ class DefaultHwachaConfig extends Config (
     case NWays => site(CacheName) match { case "HwI" => 2 }
     case RowBits => site(CacheName) match { case "HwI" => 2*site(CoreInstBits) }
     case NTLBEntries => site(CacheName) match { case "HwI" => 8 }
+    case CacheIdBits => site(CacheName) match { case "HwI" => 0 }
     case FetchWidth => 1
     case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
