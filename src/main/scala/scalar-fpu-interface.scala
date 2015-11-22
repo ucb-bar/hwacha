@@ -26,6 +26,7 @@ object ScalarFPUDecode {
   val FCVT_WU_D= List(FCMD_CVT_IF, N,N,Y,N,N,N,X,N,N,Y,N,N,N,N,Y,Y)
   val FCVT_L_D = List(FCMD_CVT_IF, N,N,Y,N,N,N,X,N,N,Y,N,N,N,N,Y,Y)
   val FCVT_LU_D= List(FCMD_CVT_IF, N,N,Y,N,N,N,X,N,N,Y,N,N,N,N,Y,Y)
+  val FCVT_S_S = List(FCMD_CVT_FF, N,N,Y,N,N,N,X,Y,N,N,Y,N,N,N,Y,Y) // special op
   val FCVT_S_D = List(FCMD_CVT_FF, N,Y,Y,N,N,N,X,Y,N,N,Y,N,N,N,Y,Y)
   val FCVT_D_S = List(FCMD_CVT_FF, N,Y,Y,N,N,N,X,N,N,N,Y,N,N,N,Y,Y)
   val FEQ_S    = List(FCMD_CMP,    N,N,Y,Y,N,N,N,Y,N,Y,N,N,N,N,N,Y)
@@ -94,33 +95,60 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   val pending_fpu_typ = Reg(Bits(width=2))
 
   val reqq = Module(new Queue(new HwachaFPInput, 2))
-  reqq.io.enq <> io.hwacha.req
+  val respq = Module(new Queue(new rocket.FPResult, 2))
 
-  reqq.io.deq.ready := !pending_fpu && io.rocc.req.ready
-  io.rocc.req.valid := !pending_fpu && reqq.io.deq.valid
+  reqq.io.enq <> io.hwacha.req
 
   private val hreq = reqq.io.deq.bits
 
-  when (reqq.io.deq.fire()) {
+  val enq_rocc = !(hreq.cmd === FCMD_CVT_FF && !hreq.wen)
+  val mask_rocc_req_ready = !enq_rocc || io.rocc.req.ready
+  val mask_respq_enq_ready = enq_rocc || respq.io.enq.ready
+
+  def fire(exclude: Bool, include: Bool*) = {
+    val rvs = Seq(!pending_fpu,
+      reqq.io.deq.valid, mask_rocc_req_ready, mask_respq_enq_ready)
+    (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
+  }
+
+  reqq.io.deq.ready := fire(reqq.io.deq.valid)
+  io.rocc.req.valid := fire(mask_rocc_req_ready, enq_rocc)
+
+  when (fire(null)) {
     pending_fpu := Bool(true)
     pending_fpu_req := hreq
     pending_fpu_typ := Mux(hreq.fromint, hreq.in_fmt, hreq.typ)
   }
 
+  val h2s =
+    List(hreq.in1, hreq.in2, hreq.in3) map { case in =>
+      val h2s = Module(new hardfloat.RecFNToRecFN(5, 11, 8, 24))
+      h2s.io.in := recode_hp(in)
+      h2s.io.roundingMode := hreq.rm
+      // XXX: use h2s.io.exceptionFlags
+      h2s.io.out
+    }
+
   io.rocc.req.bits <> hreq
   io.rocc.req.bits.in1 :=
     Mux(hreq.fromint, hreq.in1,
-      Mux(hreq.in_fmt === UInt(0),
-        Cat(SInt(-1,32), recode_sp(hreq.in1)), recode_dp(hreq.in1)))
+      Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in1)),
+        Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in1),
+          h2s(0))))
   io.rocc.req.bits.in2 :=
-    Mux(hreq.in_fmt === UInt(0),
-      Cat(SInt(-1,32), recode_sp(hreq.in2)), recode_dp(hreq.in2))
+    Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in2)),
+      Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in2),
+        h2s(1)))
   io.rocc.req.bits.in3 :=
-     Mux(hreq.in_fmt === UInt(0),
-     Cat(SInt(-1,32), recode_sp(hreq.in3)), recode_dp(hreq.in3))
+    Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in3)),
+      Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in3),
+        h2s(2)))
 
-  val respq = Module(new Queue(new rocket.FPResult, 2))
-  respq.io.enq <> io.rocc.resp
+  respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
+  respq.io.enq.bits := io.rocc.resp.bits
+  when (fire(null, !enq_rocc)) {
+    respq.io.enq.bits.data := h2s(0)
+  }
 
   respq.io.deq.ready := io.hwacha.resp.ready
   io.hwacha.resp.valid := respq.io.deq.valid
@@ -132,10 +160,18 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   private val rresp = respq.io.deq.bits
   private val hresp = io.hwacha.resp.bits
 
+  val s2h = Module(new hardfloat.RecFNToRecFN(8, 24, 5, 11))
+  s2h.io.in := rresp.data
+  s2h.io.roundingMode := pending_fpu_req.rm
+  // XXX: use s2h.io.exceptionFlags
+
+  val unrec_h = ieee_hp(rresp.data)
   val unrec_s = ieee_sp(rresp.data)
   val unrec_d = ieee_dp(rresp.data)
   val unrec_fpu_resp =
-    Mux(pending_fpu_typ === UInt(0), expand_float_s(unrec_s), unrec_d)
+    Mux(pending_fpu_typ === UInt(0), expand_float_s(unrec_s),
+      Mux(pending_fpu_typ === UInt(1), unrec_d,
+        expand_float_h(unrec_h)))
 
   hresp.tag := pending_fpu_req.tag
   hresp.data :=
