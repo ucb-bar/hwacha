@@ -22,11 +22,14 @@ class DecL2Q(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaMod
 }
 
 
-class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
+class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
   val throttleQueueDepth = 10
   val entrywidth = 10
-  val MAX_RUNAHEAD = 2000 // # loads + stores we're allowed to run ahead
+
+  // TODO: should probably ideally be: (L2 size / vector length) * factor (like 1/2, 
+  // to use 1/2 of the L2 for prefetching)
+  val MAX_RUNAHEAD = 128 // # loads + stores we're allowed to run ahead
 
   val io = new Bundle {
     val enq = Decoupled(UInt(width=entrywidth)).flip
@@ -34,21 +37,36 @@ class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
     val stall_prefetch = Bool(OUTPUT)
   }
 
+  val shim = Decoupled(UInt(width=entrywidth)).flip
+
+  // TODO counter overflow
+  val runbehind_counter = Reg(init = SInt(-skipamt, width=32))
+
+  printf("VRU: runbehind_counter: %d\n", runbehind_counter)
 
   // TODO: this can fall behind and lock things up
   //
   // When handling the fall-behind case, make sure to ignore the initial 
   // vector fetch blocks that we're skipping
 
-  val ls_per_vf_q = Queue(io.enq, throttleQueueDepth)
+  val ls_per_vf_q = Queue(shim, throttleQueueDepth)
   val global_ls_count = Reg(init=UInt(0, width=20))
   io.stall_prefetch := global_ls_count > UInt(MAX_RUNAHEAD)
+
+  shim.valid := io.enq.valid && !(io.vf_done_vxu && !ls_per_vf_q.valid && runbehind_counter >= SInt(0)) && !(runbehind_counter > UInt(0))
+  io.enq.ready := shim.ready
+  shim.bits := io.enq.bits
+
+
+  when (runbehind_counter > SInt(0) && !io.vf_done_vxu && io.enq.valid) {
+    runbehind_counter := runbehind_counter - SInt(1)
+  }
 
   printf("VRU: global_ls count %d\n", global_ls_count)
 
   // SO, we assume that if io.enq.ready  is not true, we are not 
   // accepting the value
-  val increment_counter_necessary = io.enq.valid && io.enq.ready
+  val increment_counter_necessary = shim.valid && shim.ready
 
   // TODO, ignoring the underflow case for now...
   // overflow is not possible
@@ -56,21 +74,34 @@ class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 
 
   when (increment_counter_necessary) {
-    printf("VRU: adding to q: %d\n", io.enq.bits)
+    printf("VRU: adding to q: %d\n", shim.bits)
   }
 
   when (decrement_counter_necessary) {
     printf("VRU: popping off: %d\n", ls_per_vf_q.bits)
   } .elsewhen (io.vf_done_vxu) {
+
+    // here we handle the case where have a done message from vxu but we haven't seen the vf block yet
+
+    // 1. we simultaneously have a valid input, just discard it
+    // shim ready is &= with io.vf_done_vxu && !ls_per_vf_q.valid
+    // handled above
+
+    // 2. we don't, so increment runbehind_counter by one
+    when (!io.enq.valid || runbehind_counter < SInt(0)) {
+      runbehind_counter := runbehind_counter + SInt(1)
+    }
+
+
     printf("VRU: NO QUEUE ENTRY PRESENT\n")
   }
 
   ls_per_vf_q.ready := io.vf_done_vxu
 
   when (increment_counter_necessary && decrement_counter_necessary) {
-    global_ls_count := global_ls_count + io.enq.bits - ls_per_vf_q.bits
+    global_ls_count := global_ls_count + shim.bits - ls_per_vf_q.bits
   } .elsewhen (increment_counter_necessary) {
-    global_ls_count := global_ls_count + io.enq.bits
+    global_ls_count := global_ls_count + shim.bits
   } .elsewhen (decrement_counter_necessary) {
     global_ls_count := global_ls_count - ls_per_vf_q.bits
   }
@@ -84,6 +115,9 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   // TODOs - use bundles to make types
   // style-wise, data flows right to left in <>
+
+  // skip prefetching for the first skipamt VF blocks to get ahead 
+  val skipamt = 2 
 
   val io = new Bundle {
     val toicache = new FrontendIO
@@ -114,7 +148,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   val vlen = Reg(init=UInt(0, bMLVLen))
 
-  val throttleman = Module(new ThrottleManager)
+  val throttleman = Module(new ThrottleManager(skipamt))
 
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
@@ -159,9 +193,6 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // skip prefetching the first two VF blocks so that we can get ahead
   // being close to the VXU when doing mem ops is bad
   val skipcount = Reg(init=UInt(0, width=4))
-  val skipamt = 2 
-
-  val actually_fire_cmd = skipcount
 
   val fire_vf = fire_cmdq(null, decode_vf)
 
