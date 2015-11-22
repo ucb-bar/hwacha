@@ -37,7 +37,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
     val stall_prefetch = Bool(OUTPUT)
   }
 
-  val shim = Decoupled(UInt(width=entrywidth)).flip
+  val shim = Decoupled(UInt(width=entrywidth)).asDirectionless()
 
   // TODO counter overflow
   val runbehind_counter = Reg(init = SInt(-skipamt, width=32))
