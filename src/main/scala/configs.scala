@@ -76,6 +76,8 @@ class DefaultHwachaConfig extends Config (
     case RoccNMemChannels => site(HwachaNLanes)
     case BuildRoCC => Some((p: Parameters) => 
       Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
+
+    case HwachaConfPrec => true
   }
 ) 
 {

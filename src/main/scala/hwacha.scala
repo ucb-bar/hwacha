@@ -22,6 +22,7 @@ case object HwachaNPTLB extends Field[Int]
 case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaBuildVRU extends Field[Boolean]
+case object HwachaConfPrec extends Field[Boolean]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(clock, _reset)
@@ -83,7 +84,7 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
   val confvru = p(HwachaBuildVRU)
-  val confprec = true
+  val confprec = p(HwachaConfPrec)
 
   val confvcmdq = new {
     val ncmd = 32
