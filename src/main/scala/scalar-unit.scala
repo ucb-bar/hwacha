@@ -41,8 +41,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       }
     }
 
-    val vru_vfcount = UInt(OUTPUT)
-
+    val vru_pop_message = Bool(OUTPUT)
   }
 
   // STATE
@@ -168,10 +167,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val wb_reg_inst = Reg(Bits())
   val wb_reg_wdata = Reg(Bits())
 
-  // vf counter to send to vru
-  val vfs_decoded = Reg(init=UInt(0, width=20))
-  io.vru_vfcount := vfs_decoded
-
   busy_scalar := ex_reg_valid || wb_reg_valid
 
   // WIRES
@@ -197,9 +192,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = new IntCtrlSigs().decode(id_inst, decode_table)
+  io.vru_pop_message := Bool(false)
   when (!killd && id_ctrl.decode_stop) { 
     vf_active := Bool(false) 
-    vfs_decoded := vfs_decoded + UInt(1)
+    io.vru_pop_message := Bool(true)
   }
 
   val sren = Vec(

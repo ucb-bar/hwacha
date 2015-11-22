@@ -86,9 +86,9 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val confprec = true
 
   val confvcmdq = new {
-    val ncmd = 16
-    val nimm = 16
-    val nrd = 16
+    val ncmd = 32
+    val nimm = 32
+    val nrd = 32
     val ncnt = nBanks
   }
 
@@ -152,8 +152,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.vru <> vru.io.toicache
     vru.io.cmdq <> rocc.io.cmdqs.vru
     vru.io.dmem <> imemarb.io.in(2)
-//    vru.io.from_scalar_pop_message := scalar.io.vru_pop_message
-    vru.io.scalar_unit_vfcount <> scalar.io.vru_vfcount
+    vru.io.from_scalar_pop_message := scalar.io.vru_pop_message
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)

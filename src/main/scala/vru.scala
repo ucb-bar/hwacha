@@ -18,8 +18,83 @@ class DecL2Q(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaMod
     val deq = Decoupled(new DecL2IO)
   }
   
-  io.deq <> Queue(io.enq, 5)
+  io.deq <> Queue(io.enq, 20)
 }
+
+
+/*
+ * This module
+ * 1) Holds a queue that stores # loads and stores per vf block in flight
+ * 2) automatically manages the global load/store counter
+ *
+ *
+ * Accepts vf block info entries from VRU frontside
+ * Input vf_done signal from vxu 
+ *
+ * outputs stall signal for sending prefetches to L2. should be combined with
+ * # outstanding requests signal
+ *
+ * DOES NOT MANAGE # of outstanding requests, should be handled separately
+ *
+ * TODO: queue overflow = VRU too far ahead, so can slow down everything
+ * I think it's okay to put backpressure here, because each entry represents
+ * one VF command and it means that we're really far ahead...
+ *
+ * It's measuring the distance between the # load stores decoded by the vru
+ * versus the number of loads and stores COMPLETED by the vxu. So the queue
+ * in here cannot get jammed up by slow/behind prefetching.
+ *
+ * queue underflow = VRU too far behind
+ *
+ */
+class ThrottleManager(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
+
+  val throttleQueueDepth = 10
+  val entrywidth = 10
+  val MAX_RUNAHEAD = 2000 // # loads + stores we're allowed to run ahead
+
+  val io = new Bundle {
+    val enq = Decoupled(UInt(width=entrywidth)).flip
+    val vf_done_vxu = Bool(INPUT)
+    val stall_prefetch = Bool(OUTPUT)
+  }
+
+  val ls_per_vf_q = Queue(io.enq, throttleQueueDepth)
+  val global_ls_count = Reg(init=UInt(0, width=20))
+  io.stall_prefetch := global_ls_count > UInt(MAX_RUNAHEAD)
+
+  printf("VRU: global_ls count %d\n", global_ls_count)
+
+  // SO, we assume that if io.enq.ready  is not true, we are not 
+  // accepting the value
+  val increment_counter_necessary = io.enq.valid && io.enq.ready
+
+  // TODO, ignoring the underflow case for now...
+  // overflow is not possible
+  val decrement_counter_necessary = ls_per_vf_q.valid && io.vf_done_vxu
+
+
+  when (increment_counter_necessary) {
+    printf("VRU: adding to q: %d\n", io.enq.bits)
+  }
+
+  when (decrement_counter_necessary) {
+    printf("VRU: popping off: %d\n", ls_per_vf_q.bits)
+  } .elsewhen (io.vf_done_vxu) {
+    printf("VRU: NO QUEUE ENTRY PRESENT\n")
+  }
+
+  ls_per_vf_q.ready := io.vf_done_vxu
+
+  when (increment_counter_necessary && decrement_counter_necessary) {
+    global_ls_count := global_ls_count + io.enq.bits - ls_per_vf_q.bits
+  } .elsewhen (increment_counter_necessary) {
+    global_ls_count := global_ls_count + io.enq.bits
+  } .elsewhen (decrement_counter_necessary) {
+    global_ls_count := global_ls_count - ls_per_vf_q.bits
+  }
+}
+
 
 class VRU(implicit p: Parameters) extends HwachaModule()(p)
   with MemParameters {
@@ -33,19 +108,16 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     val toicache = new FrontendIO
     val cmdq = new CMDQIO().flip 
     val dmem = new ClientUncachedTileLinkIO
-    val scalar_unit_vfcount = UInt(INPUT)
+    val from_scalar_pop_message = Bool(INPUT)
   }
-
-  // vfs retired counter
-  val vru_vfs_decoded = Reg(init=UInt(0, width=20))
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
 
+  // queue of load/store/addr/len to L2 prefetching stage
   val decl2q = Module(new DecL2Q)
 
   val vf_active = Reg(init=Bool(false)) 
-
   val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
   val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
   val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
@@ -60,6 +132,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
 
   val vlen = Reg(init=UInt(0, bMLVLen))
+
+  val throttleman = Module(new ThrottleManager)
 
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
@@ -79,36 +153,46 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   // handle vmsa
   when (fire_cmdq(null, decode_vmsa)) {
-    printf("VMSA:\n")
-    printf("CMD: 0x%x\n", io.cmdq.cmd.bits)
-    printf("IMM: 0x%x\n", io.cmdq.imm.bits)
-    printf("RD:  0x%x\n", io.cmdq.rd.bits)
+    printf("VRU: VMSA:\n")
+    printf("VRU: CMD: 0x%x\n", io.cmdq.cmd.bits)
+    printf("VRU: IMM: 0x%x\n", io.cmdq.imm.bits)
+    printf("VRU: RD:  0x%x\n", io.cmdq.rd.bits)
     arf(io.cmdq.rd.bits) := io.cmdq.imm.bits
   }
 
   // handle vsetcfg
   when (fire_cmdq(null, decode_vsetcfg)) {
-    printf("VSETCFG:\n")
-    printf("CMD: 0x%x\n", io.cmdq.cmd.bits)
-    printf("IMM: 0x%x\n", io.cmdq.imm.bits)
+    printf("VRU: VSETCFG:\n")
+    printf("VRU: CMD: 0x%x\n", io.cmdq.cmd.bits)
+    printf("VRU: IMM: 0x%x\n", io.cmdq.imm.bits)
   }
 
   // handle vsetvl
   when (fire_cmdq(null, decode_vsetvl)) {
-    printf("VSETVL:\n")
-    printf("Setting VL = 0x%x\n", io.cmdq.imm.bits)
+    printf("VRU: VSETVL:\n")
+    printf("VRU: Setting VL = 0x%x\n", io.cmdq.imm.bits)
     vlen := io.cmdq.imm.bits
   }
 
   // handle vf
 
+  val skipcount = Reg(init=UInt(0, width=4))
+  val skipamt = 2
+
+  val actually_fire_cmd = skipcount
+
   val fire_vf = fire_cmdq(null, decode_vf)
 
   when (fire_vf) {
-    printf("VF:\n")
-    printf("CMD: 0x%x\n", io.cmdq.cmd.bits)
-    printf("IMM: 0x%x\n", io.cmdq.imm.bits)
-    vf_active := Bool(true)
+    printf("VRU: VF:\n")
+    printf("VRU: CMD: 0x%x\n", io.cmdq.cmd.bits)
+    printf("VRU: IMM: 0x%x\n", io.cmdq.imm.bits)
+    when (skipcount < UInt(skipamt)) {
+      printf("SKIPPING at startup %d\n", skipcount)
+      skipcount := skipcount + UInt(1)
+    } .otherwise {
+      vf_active := Bool(true)
+    }
   }
 
   // do a fetch 
@@ -118,6 +202,11 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   io.toicache.invalidate := Bool(false)
   io.toicache.resp.ready := Bool(true) // for now...
 
+  throttleman.io.vf_done_vxu := io.from_scalar_pop_message
+  throttleman.io.enq.valid := Bool(false)
+  val current_ls_count = Reg(init=UInt(0, width=throttleman.entrywidth))
+  throttleman.io.enq.bits := current_ls_count
+
   val loaded_inst = io.toicache.resp.bits.data(0)
   decl2q.io.enq.valid := Bool(false)
   decl2q.io.enq.bits.addr := arf(loaded_inst(28, 24))
@@ -125,97 +214,132 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   decl2q.io.enq.bits.opwidth := UInt(0) // set in when
   decl2q.io.enq.bits.ls := UInt(0) // set in when
 
-  when (!decl2q.io.enq.ready) {
-    printf("VRU internal queue overflow\n")
+  val wait_to_queue = Reg(init=Bool(false))
+
+  when (decl2q.io.enq.valid && !decl2q.io.enq.ready) {
+    printf("VRU: internal queue overflow\n")
+  }
+
+  when (vf_active && wait_to_queue) {
+    // we're stalling waiting to enqueue information about the vf block we 
+    // just processed
+    printf("VRU: STALLING ON AMT Q\n")
+    throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch
+    when (throttleman.io.enq.ready && !throttleman.io.stall_prefetch) {
+      vf_active := Bool(false)
+      wait_to_queue := Bool(false)
+      current_ls_count := UInt(0)
+    }
   }
 
   // hacky match against insts
   // TODO: do this right with IntCtrlSigs
-  when (io.toicache.resp.valid && vf_active) {
-    printf("INST PC  recv'd: 0x%x\n", io.toicache.resp.bits.pc)
-    printf("INST VAL recv'd: 0x%x\n", loaded_inst)
+  when (io.toicache.resp.valid && vf_active && !wait_to_queue) {
+    printf("VRU: INST PC  recv'd: 0x%x\n", io.toicache.resp.bits.pc)
+    printf("VRU: INST VAL recv'd: 0x%x\n", loaded_inst)
 
     when (loaded_inst === HwachaElementInstructions.VSTOP) {
-      vf_active := Bool(false)
-      printf("REACHED END OF VF BLOCK\n")
-      vru_vfs_decoded := vru_vfs_decoded + UInt(1)
+      printf("VRU: REACHED END OF VF BLOCK\n")
+
+      throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch
+      when (throttleman.io.enq.ready && !throttleman.io.stall_prefetch) {
+        vf_active := Bool(false)
+        current_ls_count := UInt(0)
+      } .otherwise {
+        wait_to_queue := Bool(true)
+      }
     }
 
     when (loaded_inst === HwachaElementInstructions.VLD) {
-      printf("GOT VLD.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d double elements.\n", 
+      printf("VRU: GOT VLD.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d double elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
 
       decl2q.io.enq.bits.opwidth := UInt(3)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
     }
 
     when (loaded_inst === HwachaElementInstructions.VSD) {
-      printf("GOT VSD.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d double elements.\n", 
+      printf("VRU: GOT VSD.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d double elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
 
       decl2q.io.enq.bits.opwidth := UInt(3)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VLW || 
           loaded_inst === HwachaElementInstructions.VLWU) {
-      printf("GOT VLW/VLWU.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d single elements.\n", 
+      printf("VRU: GOT VLW/VLWU.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d single elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(2)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VSW) {
-      printf("GOT VSW.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d single elements.\n", 
+      printf("VRU: GOT VSW.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d single elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(2)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VLH || 
           loaded_inst === HwachaElementInstructions.VLHU) {
-      printf("GOT VLH/VLHU.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d half elements.\n", 
+      printf("VRU: GOT VLH/VLHU.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d half elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(1)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VSH) {
-      printf("GOT VSH.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d half elements.\n", 
+      printf("VRU: GOT VSH.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d half elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(1)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VLB || 
           loaded_inst === HwachaElementInstructions.VLBU) {
-      printf("GOT VLB/VLBU.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d byte elements.\n", 
+      printf("VRU: GOT VLB/VLBU.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d byte elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(0)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
     when (loaded_inst === HwachaElementInstructions.VSB) {
-      printf("GOT VSB.\n")
-      printf("Will issue prefetch at arf(0x%x) = 0x%x of\n%d byte elements.\n", 
+      printf("VRU: GOT VSB.\n")
+      printf("VRU: Will issue prefetch at arf(0x%x) = 0x%x of\n%d byte elements.\n", 
         loaded_inst(28, 24), arf(loaded_inst(28, 24)), vlen)
       decl2q.io.enq.bits.opwidth := UInt(0)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
+      current_ls_count := current_ls_count + UInt(1)
+
     }
 
   }
@@ -239,13 +363,13 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // TODO: calculate width
   val pf_ip_counter = Reg(init = UInt(0, width=20))
 
-  val throttleAmt = 16
+  val throttleAmt = 20
   val throttle = Reg(init=UInt(throttleAmt, width=6))
 
-  assert(throttle <= UInt(throttleAmt), "THROTTLE TOO LARGE\n")
+  assert(throttle <= UInt(throttleAmt), "VRU: THROTTLE TOO LARGE\n")
 
-  val vf_throttleAmt = 200
-  val vf_throttle = (vru_vfs_decoded - io.scalar_unit_vfcount) > UInt(vf_throttleAmt)
+  // TODO
+  val vf_throttle = throttleman.io.stall_prefetch
 
   io.dmem.acquire.bits := Mux(req_ls === UInt(0), GetPrefetch(tag_count, req_addr+pf_ip_counter), PutPrefetch(tag_count, req_addr+pf_ip_counter))
 
@@ -261,9 +385,9 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
 
   when (movecond1) {
-    printf("SENDING PREFETCH TO L2\n")
-    printf("addr 0x%x tag 0x%x\n", req_addr + pf_ip_counter, tag_count)
-    printf("from 0x%x\n", decl2q.io.deq.bits.addr)
+    printf("VRU: SENDING PREFETCH TO L2\n")
+    printf("VRU: addr 0x%x tag 0x%x\n", req_addr + pf_ip_counter, tag_count)
+    printf("VRU: from 0x%x\n", decl2q.io.deq.bits.addr)
 
     pf_ip_counter := pf_ip_counter + UInt(1)
     tag_count := tag_count + UInt(1)
@@ -275,9 +399,9 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   val movecond2 = prefetch_ip && pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0) && !vf_throttle
 
   when (movecond2) {
-    printf("SENDING PREFETCH TO L2\n")
-    printf("addr 0x%x tag 0x%x\n", req_addr + pf_ip_counter, tag_count)
-    printf("from 0x%x\n", decl2q.io.deq.bits.addr)
+    printf("VRU: SENDING PREFETCH TO L2\n")
+    printf("VRU: addr 0x%x tag 0x%x\n", req_addr + pf_ip_counter, tag_count)
+    printf("VRU: from 0x%x\n", decl2q.io.deq.bits.addr)
 
     pf_ip_counter := UInt(0)
     prefetch_ip := Bool(false)
@@ -289,7 +413,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   }
 
   when (vf_throttle) {
-    printf("VRU ran too far ahead. waiting...\n")
+    printf("VRU: ran too far ahead. waiting...\n")
   }
 
 
@@ -300,6 +424,6 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     when (!(movecond1 || movecond2)) {
       throttle := throttle + UInt(1)
     }
-    printf("PREFETCH ACK id 0x%x\n", io.dmem.grant.bits.client_xact_id)
+    printf("VRU: PREFETCH ACK id 0x%x\n", io.dmem.grant.bits.client_xact_id)
   }
 }
