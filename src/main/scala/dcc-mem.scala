@@ -440,7 +440,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val prec = confprec_decode(opq.io.deq.bits.vd.prec)
     when (issue) {
       stride(vidx_tail) := confprec_stride(prec, io.cfg)
-      shift(vidx_tail) := Mux1H(prec.reverse, (0 until prec.size).map(i => UInt(i)))
+      shift(vidx_tail) := Mux1H(prec.map(p => p._1 -> UInt(p._2)))
     }
     (stride, shift)
   } else (Vec.fill(nVLU)(io.cfg.vstride.d), Vec.fill(nVLU)(UInt(0)))

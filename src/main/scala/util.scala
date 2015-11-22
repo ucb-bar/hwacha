@@ -49,8 +49,6 @@ abstract trait Packing extends LaneParameters {
   def repack_slice(n: Seq[Bits]) = _repack(n, nSlices)
   def unpack_slice(n: Bits, idx: Int) =
     _unpack(n, idx, wBank, p(HwachaRegLen))
-  def unpack_slice(n: Bits, idx: Int, width: Int) =
-    _unpack(n, idx, wBank, p(HwachaRegLen), width)
 }
 
 abstract trait BankLogic extends LaneParameters {
