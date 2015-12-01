@@ -75,9 +75,10 @@ class DefaultHwachaConfig extends Config (
     // +2 comes from the overhead of tagging for the arbitration
     case RoccMaxTaggedMemXacts =>
       math.max(site(HwachaNVLTEntries), site(HwachaNSMUEntries))
-    case RoccNMemChannels => site(HwachaNLanes)
-    case BuildRoCC => Some((p: Parameters) => 
+    case RoccAcceleratorMemChannels => Seq(site(HwachaNLanes))
+    case BuildRoCC => Seq((p: Parameters) => 
       Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" }))))
+    case RoccOpcodes => Seq(OpcodeSet.custom0 | OpcodeSet.custom1)
 
     case HwachaConfPrec => true
     case HwachaVRUThrottle => 20
