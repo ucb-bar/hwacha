@@ -53,6 +53,10 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val wsp = (8, 24)
   val whp = (5, 11)
 
+  private def pipe[T <: Data](in: T) = Pipe(active, in, stagesFConv).bits
+  private def pipe(valid: Bool, out: Bits, exc: Bits, fn: Bits=>Bits = identity) =
+    (fn(Pipe(valid, out, stagesFConv).bits), Pipe(valid, exc, stagesFConv).bits)
+
   val results_int2float =
     List((FPD, ieee_dp _, expand_float_d _, wdp),
          (FPS, ieee_sp _, expand_float_s _, wsp),
@@ -72,7 +76,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         w2fp.io.roundingMode := rm
         val output = Mux(op(1), l2fp.io.out, w2fp.io.out)
         val exc = Mux(op(1), l2fp.io.exceptionFlags, w2fp.io.exceptionFlags)
-        (expand(ieee(output)), exc)
+        pipe(valid, ieee(output), exc, expand)
       }
     }
 
@@ -95,7 +99,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         fp2w.io.roundingMode := rm
         val output = Mux(op(1), fp2l.io.out, expand_w(fp2w.io.out))
         val iexc = Mux(op(1), fp2l.io.intExceptionFlags, fp2w.io.intExceptionFlags)
-        (output, Cat(iexc(2, 1).orR, UInt(0, 3), iexc(0)))
+        pipe(valid, output, Cat(iexc(2, 1).orR, UInt(0, 3), iexc(0)))
       }
     }
 
@@ -110,53 +114,44 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val (szs, szd) = (exps + sigs, expd + sigd)
         val sz = math.max(szs, szd)
         val (m, n) = (math.max(szd / szs, 1), regLen / sz)
-        val outs = new ArrayBuffer[Bits](n)
-        val excs = new ArrayBuffer[Bits](n)
-        val valid_op = fn.op_is(op)
-        for (i <- (0 until n)) {
-          if (confprec || i == 0) {
-            val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
-            val valid = valid_op && pred(i)
-            fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
-            fp2fp.io.roundingMode := dgate(valid, fn.rm)
-            outs += expand(ieee(fp2fp.io.out))
-            excs += fp2fp.io.exceptionFlags
-          }
+        val val_op = fn.op_is(op)
+        val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
+          val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
+          val valid = pred(i) && val_op
+          fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
+          fp2fp.io.roundingMode := dgate(valid, fn.rm)
+          pipe(valid, ieee(fp2fp.io.out), fp2fp.io.exceptionFlags, expand)
         }
-        val output = if (confprec) {
+        val valid = active && val_op
+        val output = if (results.size > 1) {
           val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
-          Mux(rmatch, Vec(outs.map(_(sz-1, 0))).toBits, outs.head)
-        } else outs.head
-        (output, excs.reduce(_|_))
+          Mux(Pipe(valid, rmatch, stagesFConv).bits,
+            Vec(results.map(_._1(sz-1, 0))).toBits, results.head._1)
+        } else results.head._1
+        (output, results.map(_._2).reduce(_|_))
       }
     }
 
-  val outs =
+  val val_int2float_pipe = pipe(val_int2float)
+  val val_float2int_pipe = pipe(val_float2int)
+  val fn_pipe = pipe(fn)
+
+  val results =
     List((FV_CSTD, FV_CHTD), (FV_CDTS, FV_CHTS), (FV_CDTH, FV_CSTH)).zipWithIndex.map {
-      case ((op0, op1), i) =>
-        MuxCase(Bits(0), Array(
-          val_int2float -> results_int2float(i)._1,
-          val_float2int -> results_float2int(i)._1,
-          fn.op_is(op0) -> results_float2float(2*i)._1,
-          fn.op_is(op1) -> results_float2float(2*i+1)._1
-        ))
+      case ((op0, op1), i) => Mux1H(Seq(
+        val_int2float_pipe -> results_int2float(i),
+        val_float2int_pipe -> results_float2int(i),
+        fn_pipe.op_is(op0) -> results_float2float(2*i),
+        fn_pipe.op_is(op1) -> results_float2float(2*i+1)
+      ) map { case (sel, (out, exc)) =>
+        val result = new FConvResult
+        result.out := out
+        result.exc := exc
+        sel -> result
+      })
     }
 
-  val excs =
-    List((FV_CSTD, FV_CHTD), (FV_CDTS, FV_CHTS), (FV_CDTH, FV_CSTH)).zipWithIndex.map {
-      case ((op0, op1), i) =>
-        MuxCase(Bits(0), Array(
-          val_int2float -> results_int2float(i)._2,
-          val_float2int -> results_float2int(i)._2,
-          fn.op_is(op0) -> results_float2float(2*i)._2,
-          fn.op_is(op1) -> results_float2float(2*i+1)._2
-        ))
-    }
-
-  val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
-  val result = new FConvResult
-  result.out := Mux1H(fpmatch, outs)
-  result.exc := Mux1H(fpmatch, excs)
-
-  io.resp := Pipe(active, result, stagesFConv)
+  val fpmatch = Seq(FPD, FPS, FPH).map(fn_pipe.fp_is(_))
+  io.resp.valid := ShiftRegister(active, stagesFConv)
+  io.resp.bits := Mux1H(fpmatch, results)
 }
