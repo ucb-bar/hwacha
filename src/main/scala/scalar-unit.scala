@@ -96,15 +96,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   io.vf_active := vf_active
 
-  val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
-  val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
+  val decode_vmcs    = io.cmdq.cmd.bits === CMD_VMCS
+  val decode_vmca    = io.cmdq.cmd.bits === CMD_VMCA
   val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
   val decode_vsetvl  = io.cmdq.cmd.bits === CMD_VSETVL
   val decode_vf      = io.cmdq.cmd.bits === CMD_VF
   val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
 
-  val deq_imm = decode_vmss || decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
-  val deq_rd  = decode_vmss || decode_vmsa
+  val deq_imm = decode_vmcs || decode_vmca || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
+  val deq_rd  = decode_vmcs || decode_vmca
 
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
@@ -112,7 +112,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // TODO: we could fire all cmd but vf* without pending.mseq being clear
   def fire_cmdq(exclude: Bool, include: Bool*) = {
   val rvs = Seq(
-      !vf_active, !busy_scalar, !decode_vmss || !sboard.read(io.cmdq.rd.bits),
+      !vf_active, !busy_scalar, !decode_vmcs || !sboard.read(io.cmdq.rd.bits),
       io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -121,8 +121,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
   io.cmdq.rd.ready  := fire_cmdq(mask_rd_valid, deq_rd)
 
-  val swrite = fire_cmdq(null, decode_vmss)
-  val awrite = fire_cmdq(null, decode_vmsa)
+  val swrite = fire_cmdq(null, decode_vmcs)
+  val awrite = fire_cmdq(null, decode_vmca)
 
   when (fire_cmdq(null, decode_vsetcfg)) {
     (0 until nLanes) map { i =>
@@ -595,7 +595,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   sboard.clear(wb_ll_valid, wb_ll_waddr)
 
   assert(!(wb_ll_valid && wb_wen), "long latency and scalar wb conflict")
-  assert(!((wb_ll_valid || wb_wen) && swrite), "Cannot write vmss and scalar dest")
+  assert(!((wb_ll_valid || wb_wen) && swrite), "Cannot write vmcs and scalar dest")
   assert(!(swrite && sboard.read(wb_waddr)), "Cannot write scalar dest when sboard is set")
 
   when(vf_active || wb_reg_valid) {

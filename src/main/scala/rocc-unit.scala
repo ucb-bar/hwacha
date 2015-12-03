@@ -70,8 +70,8 @@ object HwachaDecodeTable extends HwachaDecodeConstants {
     VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_VL,    N,N,N),
     VF         -> List(Y, N, Y, CMD_VF,      VRT_X, IMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
     VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, IMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
-    VMSA       -> List(Y, N, Y, CMD_VMSA,    VRT_A, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
-    VMSS       -> List(Y, N, Y, CMD_VMSS,    VRT_S, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
+    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
+    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
     // Exception and save/restore instructions
     VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_CAUSE, N,N,N),
     VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_AUX,   N,N,N),
@@ -176,7 +176,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val enq_cnt = Bool(false)
   val enq_resp = mask_vl && enq_resp_
 
-  val vru_insts_wanted = !(sel_cmd === CMD_VMSS)
+  val vru_insts_wanted = !(sel_cmd === CMD_VMCS)
   val vru_enq_cmd = enq_cmd && vru_insts_wanted
   val vru_enq_imm = enq_imm && vru_insts_wanted
   val vru_enq_rd = enq_rd && vru_insts_wanted

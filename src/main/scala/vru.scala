@@ -133,15 +133,15 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   val decl2q = Module(new DecL2Q)
 
   val vf_active = Reg(init=Bool(false)) 
-  val decode_vmss    = io.cmdq.cmd.bits === CMD_VMSS
-  val decode_vmsa    = io.cmdq.cmd.bits === CMD_VMSA
+  val decode_vmcs    = io.cmdq.cmd.bits === CMD_VMCS
+  val decode_vmca    = io.cmdq.cmd.bits === CMD_VMCA
   val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
   val decode_vsetvl  = io.cmdq.cmd.bits === CMD_VSETVL
   val decode_vf      = io.cmdq.cmd.bits === CMD_VF
   val decode_vft     = io.cmdq.cmd.bits === CMD_VFT
 
-  val deq_imm = decode_vmsa || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
-  val deq_rd  = decode_vmsa
+  val deq_imm = decode_vmca || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
+  val deq_rd  = decode_vmca
 
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
@@ -163,12 +163,12 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
   io.cmdq.rd.ready := fire_cmdq(mask_rd_valid, deq_rd)
 
-  // should never get a vmss
-  assert(!fire_cmdq(null, decode_vmss), "VRU should not receive VMSS")
+  // should never get a vmcs
+  assert(!fire_cmdq(null, decode_vmcs), "VRU should not receive VMCS")
 
-  // handle vmsa
-  when (fire_cmdq(null, decode_vmsa)) {
-    printf("VRU: VMSA:\n")
+  // handle vmca
+  when (fire_cmdq(null, decode_vmca)) {
+    printf("VRU: VMCA:\n")
     printf("VRU: CMD: 0x%x\n", io.cmdq.cmd.bits)
     printf("VRU: IMM: 0x%x\n", io.cmdq.imm.bits)
     printf("VRU: RD:  0x%x\n", io.cmdq.rd.bits)

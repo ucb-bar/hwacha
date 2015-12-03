@@ -264,6 +264,6 @@ trait Commands {
   val CMD_VSETVL  = UInt(1,3)
   val CMD_VF      = UInt(2,3)
   val CMD_VFT     = UInt(3,3)
-  val CMD_VMSA    = UInt(4,3)
-  val CMD_VMSS    = UInt(5,3)
+  val CMD_VMCA    = UInt(4,3)
+  val CMD_VMCS    = UInt(5,3)
 }
