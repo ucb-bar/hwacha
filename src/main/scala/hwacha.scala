@@ -167,7 +167,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   }
   imemarb.io.in(0) <> icache.io.mem
   imemarb.io.in(1) <> smu.io.dmem
-  io.imem <> imemarb.io.out
+  io.autl <> imemarb.io.out
   io.iptw <> icache.io.ptw
 
   // Connect supporting Hwacha memory modules to external ports
@@ -251,6 +251,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     dtlb.io.ptw.status := io.dptw.status
     dtlb.io.ptw.invalidate := Bool(false)
 
-    io.dmem(i) <> vu.io.dmem
+    io.utl(i) <> vu.io.dmem
   }
 }
