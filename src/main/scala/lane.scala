@@ -16,7 +16,9 @@ case object HwachaPRFAddrBits extends Field[Int]
 case object HwachaStagesALU extends Field[Int]
 case object HwachaStagesPLU extends Field[Int]
 case object HwachaStagesIMul extends Field[Int]
-case object HwachaStagesFMA extends Field[Int]
+case object HwachaStagesDFMA extends Field[Int]
+case object HwachaStagesSFMA extends Field[Int]
+case object HwachaStagesHFMA extends Field[Int]
 case object HwachaStagesFConv extends Field[Int]
 case object HwachaStagesFCmp extends Field[Int]
 
@@ -45,7 +47,9 @@ abstract trait LaneParameters extends UsesHwachaParameters {
   val stagesALU = p(HwachaStagesALU)
   val stagesPLU = p(HwachaStagesPLU)
   val stagesIMul = p(HwachaStagesIMul)
-  val stagesFMA = p(HwachaStagesFMA)
+  val stagesDFMA = p(HwachaStagesDFMA)
+  val stagesSFMA = p(HwachaStagesSFMA)
+  val stagesHFMA = p(HwachaStagesHFMA)
   val stagesFConv = p(HwachaStagesFConv)
   val stagesFCmp = p(HwachaStagesFCmp)
 
@@ -125,10 +129,9 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
 class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
 class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
 
-class LaneValidIO[T <: Data](gen: T)(implicit p: Parameters) extends VXUBundle()(p) {
-  val valid = Vec(nPack, Bool(OUTPUT))
-  val bits = gen.cloneType.asOutput
-  def active(dummy: Int = 0) = valid.reduce(_ || _)
+trait LanePred extends VXUBundle {
+  val pred = Bits(width = nPack)
+  def active(dummy: Int = 0) = pred.orR
 }
 
 class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
@@ -175,6 +178,9 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     }
   }
 
+  def valids(valid: Bool, pred: Bits, latency: Int) =
+    ShiftRegister(Mux(valid, pred, Bits(0)), Bits(0), latency)
+
   require(nLRQ == 3)
 
   // VIMU:  predicate(0), operands(0, 1)
@@ -220,18 +226,29 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   }
 
   val vfmus = (0 until nVFMU) map { v =>
-    val vfmu_pred = Mux(ctrl.io.uop.vfmu(v).valid, ctrl.io.uop.vfmu(v).bits.pred & predicate(2*v).pred, UInt(0))
+    val vfmu_val = ctrl.io.uop.vfmu(v).valid
+    val vfmu_pred = ctrl.io.uop.vfmu(v).bits.pred & predicate(2*v).pred
     val vfmu_operands = operands("vfmu"+v, ctrl.io.uop.vfmu(v), 3, 3*v)
+    val vfmu_fn = ctrl.io.uop.vfmu(v).bits.fn
     ((0 until nSlices) map { i =>
       val vfmu = Module(new FMASlice)
-      vfmu.io.req.valid := unpack_pred(vfmu_pred, i, vfmu.io.req.bits.rate)
-      vfmu.io.req.bits.fn := ctrl.io.uop.vfmu(v).bits.fn
+      vfmu.io.req.valid := vfmu_val
+      vfmu.io.req.bits.fn := vfmu_fn
       vfmu.io.req.bits.in0 := unpack_slice(vfmu_operands(0), i)
       vfmu.io.req.bits.in1 := unpack_slice(vfmu_operands(1), i)
       vfmu.io.req.bits.in2 := unpack_slice(vfmu_operands(2), i)
       vfmu.io.req.bits.rate := ctrl.io.uop.vfmu(v).bits.rate
+      vfmu.io.req.bits.pred := unpack_pred(vfmu_pred, i, vfmu.io.req.bits.rate)
       vfmu.io.resp.bits
-    }, ShiftRegister(vfmu_pred, stagesFMA))
+    }, {
+      val stages = Seq(stagesDFMA, stagesSFMA, stagesHFMA)
+      val pipe = (0 until stages.max).scanRight(Bits(0)){
+        case (_, in) => RegNext(next=in, init=Bits(0, wPred)) }
+      for ((fp, i) <- Seq(FPD, FPS, FPH).zip(stages)) {
+        when (vfmu_val && vfmu_fn.fp_is(fp)) { pipe(i-1) := vfmu_pred }
+      }
+      pipe.head
+    })
   }
 
   val vfcu_pred = predicate(2)
@@ -245,16 +262,17 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     vfcu.io.resp
   }
 
-  val vfvu_pred = Mux(ctrl.io.uop.vfvu.valid, ctrl.io.uop.vfvu.bits.pred & predicate(1).pred, UInt(0))
+  val vfvu_pred = ctrl.io.uop.vfvu.bits.pred & predicate(1).pred
   val vfvu_operands = operands("vfvu", ctrl.io.uop.vfvu, 1, 2)
   val vfvus = ((0 until nSlices) map { i =>
     val vfvu = Module(new FConvSlice)
-    vfvu.io.req.valid := unpack_pred(vfvu_pred, i, vfvu.io.req.bits.rate)
+    vfvu.io.req.valid := ctrl.io.uop.vfvu.valid
     vfvu.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
     vfvu.io.req.bits.in := unpack_slice(vfvu_operands(0), i)
     vfvu.io.req.bits.rate := ctrl.io.uop.vfvu.bits.rate
+    vfvu.io.req.bits.pred := unpack_pred(vfvu_pred, i, vfvu.io.req.bits.rate)
     vfvu.io.resp.bits
-  }, ShiftRegister(vfvu_pred, stagesFConv))
+  }, valids(ctrl.io.uop.vfvu.valid, vfvu_pred, stagesFConv))
 
   require(nVFMU == 2)
 

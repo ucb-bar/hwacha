@@ -13,7 +13,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
   val bRPorts = log2Down(nRPorts) + 1
   val expLatency = 1
   val maxWPortLatency = nRPorts + 1 + expLatency +
-    List(stagesALU, stagesIMul, stagesFMA, stagesFConv, stagesFCmp).max
+    List(stagesALU, stagesIMul, stagesDFMA, stagesSFMA, stagesHFMA, stagesFConv, stagesFCmp).max
   val bWPortLatency = log2Down(maxWPortLatency) + 1
   val maxPredWPortLatency = expLatency +
     List(stagesPLU, 2 + 1 + stagesALU, 2 + 1 + stagesFCmp).max
@@ -24,7 +24,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
   // the following needs to hold in order to simplify dhazard_war checking
   // otherwise, you need to check reg_vd against sram read ticker
   require(nRPorts <= 3)
-  require(List(stagesALU, stagesIMul, stagesFMA, stagesFConv, stagesFCmp).min >= 1)
+  require(List(stagesALU, stagesIMul, stagesDFMA, stagesSFMA, stagesHFMA, stagesFConv, stagesFCmp).min >= 1)
 
   type RegFn = BaseRegisters => RegInfo
   type RegPFn = BaseRegisters => BasePRegInfo
@@ -225,12 +225,14 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       def rport_vs2(n: UInt) = mark_rports(n, nrport_vs2)
       def rport_vd(n: UInt) = mark_rports(n, nrport_vd)
       def rports(n: UInt) = mark_rports(n, nrports)
-      def rwports(n: UInt, latency: Int) = {
+      def rwports(n: UInt, latency: UInt) {
         require(bWPortLatency >= bPredWPortLatency)
         mark_rports(n, nrports)
         // XXX: Chisel bit-width weirdness
-        mark_wport(n, UInt(0, bWPortLatency) + nrports + UInt(expLatency+latency))
+        mark_wport(n, UInt(0, bWPortLatency) + nrports + latency)
       }
+      def rwports(n: UInt, latency: Int) { rwports(n, rwlatency(latency)) }
+      def rwlatency(latency: Int) = UInt(expLatency + latency)
     }
   }
 
@@ -477,13 +479,17 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       stop(t2); }
 
     def vfma = {
+      val fn = io.op.bits.fn.vfmu()
+      val fp = Seq(FPD, FPS, FPH).map(fn.fp_is(_))
+      val fp_d :: fp_s :: fp_h :: Nil = fp
       start(t0); { import iwindow.set._; vfmu(t0); vp(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
-                 { import bhazard.set._; rwports(t0, stagesFMA); }
+                 { import bhazard.set._;
+                   val stages = Seq(stagesDFMA, stagesSFMA, stagesHFMA)
+                   rwports(t0, Mux1H(fp, stages.map(rwlatency(_)))) }
                  if (confprec) {
-                   val fn = io.op.bits.fn.vfmu()
                    e(t0).rate := MuxCase(UInt(0), Seq(
-                     (fn.fp_is(FPH) && vs1_h && vs2_h && vs3_h && vd_h) -> UInt(2),
-                     (fn.fp_is(FPS) && vs1_w && vs2_w && vs3_w && vd_w) -> UInt(1))) }
+                     (fp_h && vs1_h && vs2_h && vs3_h && vd_h) -> UInt(2),
+                     (fp_s && vs1_w && vs2_w && vs3_w && vd_w) -> UInt(1))) }
       stop(t1); }
 
     def vfdiv = {

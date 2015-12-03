@@ -22,12 +22,12 @@ trait RateLogic extends LaneParameters {
   def rate_decode(rate: UInt): Seq[(Bool, Int)] =
     (0 to bPack).map(r => rate === UInt(r)).zipWithIndex
 
-  def unpack_pred(n: UInt, i: Int, rate: UInt): Vec[Bool] = {
+  def unpack_pred(n: UInt, i: Int, rate: UInt): Bits = {
     require(i <= nSlices)
     val shift = UInt(i) << rate
     val mask = Mux1H(rate_decode(rate).map { case (r, k) =>
       r -> Fill(1 << k, Bool(true)) })
-    ((n >> shift) & mask)(nPack-1, 0).toBools
+    ((n >> shift) & mask)(nPack-1, 0)
   }
 
   def splat_scalar(uop: SRegMicroOp) =

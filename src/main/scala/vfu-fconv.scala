@@ -6,7 +6,8 @@ import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
 
-class FConvOperand(implicit p: Parameters) extends VXUBundle()(p) with Rate {
+class FConvOperand(implicit p: Parameters) extends VXUBundle()(p)
+  with LanePred with Rate {
   val fn = new VFVUFn
   val in = Bits(width = SZ_D)
 }
@@ -18,11 +19,12 @@ class FConvResult extends Bundle {
 
 class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
-    val req = new LaneValidIO(new FConvOperand).flip
+    val req = Valid(new FConvOperand).flip
     val resp = Valid(new FConvResult)
   }
 
-  val active = io.req.active()
+  val pred = Mux(io.req.valid, io.req.bits.pred, Bits(0))
+  val active = io.req.valid && io.req.bits.active()
   val fn = io.req.bits.fn.dgate(active)
   val in = io.req.bits.in
 
@@ -56,7 +58,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FPS, ieee_sp _, expand_float_s _, wsp),
          (FPH, ieee_hp _, expand_float_h _, whp)) map {
       case (fp, ieee, expand, (exp, sig)) => {
-        val valid = fn.fp_is(fp) && val_int2float && io.req.valid(0)
+        val valid = fn.fp_is(fp) && val_int2float && pred(0)
         val input = dgate(valid, in)
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_int2float)
@@ -79,7 +81,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
          (FPS, recode_sp _, unpack_w _, wsp),
          (FPH, recode_hp _, unpack_h _, whp)) map {
       case (fp, recode, unpack, (exp, sig)) => {
-        val valid = fn.fp_is(fp) && val_float2int && io.req.valid(0)
+        val valid = fn.fp_is(fp) && val_float2int && pred(0)
         val input = recode(dgate(valid, unpack(in, 0)))
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_float2int)
@@ -114,7 +116,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         for (i <- (0 until n)) {
           if (confprec || i == 0) {
             val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
-            val valid = valid_op && io.req.valid(i)
+            val valid = valid_op && pred(i)
             fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
             fp2fp.io.roundingMode := dgate(valid, fn.rm)
             outs += expand(ieee(fp2fp.io.out))
