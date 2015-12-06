@@ -447,7 +447,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
     def prec(fn: RegVFn) = {
       val info = fn(io.op.bits.base)
-      val ignore = !info.valid || info.is_scalar()
+      val ignore = !(info.valid && info.is_vector())
       Seq(PREC_D, PREC_W, PREC_H).map(p => ignore || (p === info.prec))
     }
     val vs1_d :: vs1_w :: vs1_h :: Nil = prec(reg_vs1)
@@ -468,6 +468,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def vipred = {
       start(t0); { import iwindow.set._; vipu(t0); vs1(t0); vs2(t0); vs3(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesPLU); }
+                 if (confprec) { e(t0).rate := UInt(bPack) }
       stop(t1); }
 
     def vimul = {

@@ -71,7 +71,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     pred_rf.write(waddr, ((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools)
 
     if (commit_log) {
-      (0 until nSlices) foreach { case i =>
+      (0 until wPred) foreach { case i =>
         when (wmask(i)) {
           printf("H: write_prf %d %d %d %d %d\n", UInt(lid), UInt(bid), waddr, UInt(i), wdata(i))
         }

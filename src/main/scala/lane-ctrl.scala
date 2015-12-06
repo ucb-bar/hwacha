@@ -46,7 +46,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   io.uop.bank.foldLeft(io.op.pred.gread)((lop, bio) => gen_systolic(lop, bio.pred.gread))
   io.uop.bank.foldLeft(io.op.pred.pread)((lop, bio) => gen_systolic(lop, bio.pred.pread, false))
   io.uop.bank.foldLeft(io.op.pred.read)((lops, bio) => gen_vec_systolic(lops, bio.pred.read))
-  io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write, false))
+  io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write))
   io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global))
   io.uop.bank.foldLeft(io.op.opl.local)((lops, bio) => gen_vec_systolic(lops, bio.opl.local))
   io.uop.bank.foldLeft(io.op.pdl.global)((lops, bio) => gen_vec_systolic(lops, bio.pdl.global))
@@ -55,7 +55,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar))
   io.uop.bank.foldLeft(io.op.pxbar)((lops, bio) => gen_vec_systolic(lops, bio.pxbar))
   io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
-  io.uop.bank.foldLeft(io.op.vipu)((lop, bio) => gen_systolic(lop, bio.vipu, false))
+  io.uop.bank.foldLeft(io.op.vipu)((lop, bio) => gen_systolic(lop, bio.vipu))
   io.uop.bank.foldLeft(io.op.vpu)((lop, bio) => gen_systolic(lop, bio.vpu, false))
   io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu, false))
 

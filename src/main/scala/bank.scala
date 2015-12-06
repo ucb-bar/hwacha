@@ -92,7 +92,7 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
   }, valids(io.op.viu.valid, alu_pred, stagesALU))
 
   // PLU: Predicate Logic Unit
-  val plus = (0 until nSlices) map { i =>
+  val plus = (0 until wPred) map { i =>
     val plu = Module(new PLUSlice)
     plu.io.req.valid := io.op.vipu.valid && io.op.vipu.bits.pred(i)
     plu.io.req.bits.fn := io.op.vipu.bits.fn
