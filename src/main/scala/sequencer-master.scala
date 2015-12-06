@@ -458,6 +458,11 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def vint = {
       start(t0); { import iwindow.set._; viu(t0); vp(t0); vs1(t0); vs2(t0); vd(t0); }
                  { import bhazard.set._; rwports(t0, stagesALU); }
+                 if (confprec) {
+                   val fn = io.op.bits.fn.viu()
+                   e(t0).rate := MuxCase(UInt(0), Seq(
+                     (fn.op_is(I_ADD,I_ADDU,I_SUB,I_SLL,I_SRL,I_SRA,I_OR,I_AND,I_XOR)
+                      && vs1_w && vs2_w && vd_w) -> UInt(1))) }
       stop(t1); }
 
     def vipred = {

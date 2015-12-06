@@ -53,7 +53,7 @@ class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   }
 }
 
-class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
   val io = new Bundle {
     val cfg = new HwachaConfigIO().flip
     val op = new BankOpIO().flip
@@ -69,21 +69,27 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
   rf.io.op <> io.op
   rf.io.global <> io.rw
 
+  def valids(valid: Bool, pred: Bits, latency: Int) =
+    ShiftRegister(Mux(valid, pred, Bits(0)), Bits(0), latency)
+
   // ALU
-  val outs = (0 until nSlices) map { i =>
+  val alu_pred = io.op.viu.bits.pred & rf.io.local.pdl(0).pred
+  val alus = ((0 until nSlices) map { i =>
     val alu = Module(new ALUSlice(bid*nSlices+i))
     alu.io.cfg <> io.cfg
-    alu.io.req.valid := io.op.viu.valid && io.op.viu.bits.pred(i) && rf.io.local.pdl(0).pred(i)
+    alu.io.req.valid := io.op.viu.valid
     alu.io.req.bits.fn := io.op.viu.bits.fn
     alu.io.req.bits.eidx := io.op.viu.bits.eidx
     alu.io.req.bits.in0 :=
-      Mux(io.op.sreg(0).valid, io.op.sreg(0).bits.operand,
+      Mux(io.op.sreg(0).valid, splat_scalar(io.op.sreg(0).bits),
                                unpack_slice(rf.io.local.opl(0).data, i))
     alu.io.req.bits.in1 :=
-      Mux(io.op.sreg(1).valid, io.op.sreg(1).bits.operand,
+      Mux(io.op.sreg(1).valid, splat_scalar(io.op.sreg(1).bits),
                                unpack_slice(rf.io.local.opl(1).data, i))
-    alu.io.resp
-  }
+    alu.io.req.bits.rate := io.op.viu.bits.rate
+    alu.io.req.bits.pred := unpack_pred(alu_pred, i, alu.io.req.bits.rate)
+    alu.io.resp.bits
+  }, valids(io.op.viu.valid, alu_pred, stagesALU))
 
   // PLU: Predicate Logic Unit
   val plus = (0 until nSlices) map { i =>
@@ -96,10 +102,10 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
     plu.io.resp
   }
 
-  rf.io.local.wpred(0).pred := Vec(outs.map(_.bits.cmp)).toBits
+  rf.io.local.wpred(0).pred := Vec(alus._1.map(_.cmp)).toBits
   rf.io.local.wpred(1).pred := Vec(plus.map(_.bits.out)).toBits
-  rf.io.local.wdata.data := repack_slice(outs.map(_.bits.out))
-  rf.io.local.wdata.pred := Vec(outs.map(_.valid)).toBits
+  rf.io.local.wdata.data := repack_slice(alus._1.map(_.out))
+  rf.io.local.wdata.pred := alus._2
 
   // BPQ
   io.rw.bpq.valid := io.op.vpu.valid
@@ -116,6 +122,6 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
   assert(!io.op.vsu.valid || io.rw.brq.ready, "brq enabled when not ready; check brq counters")
 
   // ACK
-  io.ack.viu.valid := outs.map(_.valid).reduce(_|_)
-  io.ack.viu.bits.pred := Vec(outs.map(_.valid)).toBits
+  io.ack.viu.valid := alus._2.orR
+  io.ack.viu.bits.pred := alus._2
 }

@@ -19,7 +19,8 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
 
     if (confprec && !multirate)
       assert(!in.valid || (in.bits.strip <= UInt(nStrip)),
-        "check strip count for single-rate systolic laneop")
+        "check strip count for single-rate systolic laneop: " +
+        in.bits.getClass.getName)
 
     val out = Valid(in.bits.clone).asDirectionless
     out.valid := Reg(next=in_next_valid, init=Bool(false))
@@ -28,7 +29,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   def gen_systolic[T <: LaneOp, S <: MicroOp]
-    (lop: ValidIO[T], uop: ValidIO[S], mr: Boolean = false) = {
+    (lop: ValidIO[T], uop: ValidIO[S], mr: Boolean = true) = {
       val sys = new Systolic(lop, mr)
       uop <> lop
       uop.bits.pred := sys.in_pred
@@ -36,27 +37,27 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   def gen_vec_systolic[T <: LaneOp, S <: MicroOp]
-    (lops: Iterable[ValidIO[T]], uops: Iterable[ValidIO[S]], mr: Boolean = false) = {
+    (lops: Iterable[ValidIO[T]], uops: Iterable[ValidIO[S]], mr: Boolean = true) = {
       Vec((lops zip uops) map { case (lop, uop) => gen_systolic(lop, uop, mr) })
   }
 
-  io.uop.bank.foldLeft(io.op.sram.read)((lop, bio) => gen_systolic(lop, bio.sram.read, true))
-  io.uop.bank.foldLeft(io.op.sram.write)((lop, bio) => gen_systolic(lop, bio.sram.write, true))
-  io.uop.bank.foldLeft(io.op.pred.gread)((lop, bio) => gen_systolic(lop, bio.pred.gread, true))
-  io.uop.bank.foldLeft(io.op.pred.pread)((lop, bio) => gen_systolic(lop, bio.pred.pread))
-  io.uop.bank.foldLeft(io.op.pred.read)((lops, bio) => gen_vec_systolic(lops, bio.pred.read, true))
-  io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write))
-  io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global, true))
+  io.uop.bank.foldLeft(io.op.sram.read)((lop, bio) => gen_systolic(lop, bio.sram.read))
+  io.uop.bank.foldLeft(io.op.sram.write)((lop, bio) => gen_systolic(lop, bio.sram.write))
+  io.uop.bank.foldLeft(io.op.pred.gread)((lop, bio) => gen_systolic(lop, bio.pred.gread))
+  io.uop.bank.foldLeft(io.op.pred.pread)((lop, bio) => gen_systolic(lop, bio.pred.pread, false))
+  io.uop.bank.foldLeft(io.op.pred.read)((lops, bio) => gen_vec_systolic(lops, bio.pred.read))
+  io.uop.bank.foldLeft(io.op.pred.write)((lop, bio) => gen_systolic(lop, bio.pred.write, false))
+  io.uop.bank.foldLeft(io.op.opl.global)((lops, bio) => gen_vec_systolic(lops, bio.opl.global))
   io.uop.bank.foldLeft(io.op.opl.local)((lops, bio) => gen_vec_systolic(lops, bio.opl.local))
-  io.uop.bank.foldLeft(io.op.pdl.global)((lops, bio) => gen_vec_systolic(lops, bio.pdl.global, true))
+  io.uop.bank.foldLeft(io.op.pdl.global)((lops, bio) => gen_vec_systolic(lops, bio.pdl.global))
   io.uop.bank.foldLeft(io.op.pdl.local)((lops, bio) => gen_vec_systolic(lops, bio.pdl.local))
-  io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg, true))
-  io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar, true))
-  io.uop.bank.foldLeft(io.op.pxbar)((lops, bio) => gen_vec_systolic(lops, bio.pxbar, true))
+  io.uop.bank.foldLeft(io.op.sreg.local)((lops, bio) => gen_vec_systolic(lops, bio.sreg))
+  io.uop.bank.foldLeft(io.op.xbar)((lops, bio) => gen_vec_systolic(lops, bio.xbar))
+  io.uop.bank.foldLeft(io.op.pxbar)((lops, bio) => gen_vec_systolic(lops, bio.pxbar))
   io.uop.bank.foldLeft(io.op.viu)((lop, bio) => gen_systolic(lop, bio.viu))
-  io.uop.bank.foldLeft(io.op.vipu)((lop, bio) => gen_systolic(lop, bio.vipu))
-  io.uop.bank.foldLeft(io.op.vpu)((lop, bio) => gen_systolic(lop, bio.vpu))
-  io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu))
+  io.uop.bank.foldLeft(io.op.vipu)((lop, bio) => gen_systolic(lop, bio.vipu, false))
+  io.uop.bank.foldLeft(io.op.vpu)((lop, bio) => gen_systolic(lop, bio.vpu, false))
+  io.uop.bank.foldLeft(io.op.vsu)((lop, bio) => gen_systolic(lop, bio.vsu, false))
 
   class Shared[T <: LaneOp](in: ValidIO[T], multirate: Boolean = false) {
     val reg_valid = Reg(Bool())
@@ -74,7 +75,8 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
 
     if (confprec && !multirate)
       assert(!in.valid || (in.bits.strip <= UInt(nStrip)),
-        "check strip count for single-rate shared laneop")
+        "check strip count for single-rate shared laneop: " +
+        in.bits.getClass.getName)
 
     reg_valid := in_next_valid
     when (in.valid && overflow) {

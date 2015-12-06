@@ -3,7 +3,8 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
-class ALUOperand(implicit p: Parameters) extends VXUBundle()(p) {
+class ALUOperand(implicit p: Parameters) extends VXUBundle()(p)
+  with LanePred with Rate {
   val fn = new VIUFn
   val eidx = Bits(width = bMLVLen - bStrip)
   val in0 = Bits(width = SZ_D)
@@ -26,33 +27,55 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
   val eidx = io.req.bits.eidx
   val in0 = io.req.bits.in0
   val in1 = io.req.bits.in1
+  val (in0_hi, in0_lo) = (in0(63, 32), in0(31, 0))
+  val (in1_hi, in1_lo) = (in1(63, 32), in1(31, 0))
 
-  val sub = MuxCase(
-    Bits(0, 1), Array(
-      fn.op_is(I_ADD) -> Bits(0, 1),
-      fn.op_is(I_ADDU) -> Bits(0, 1),
-      fn.op_is(I_SUB) -> Bits(1, 1)
-    ))
+  // TODO: Support x4 rate with halfwords
+  val rate_x2 = if (confprec) (io.req.bits.rate === UInt(1)) else Bool(false)
 
-  val adder_out =
-    (Cat(in0(63, 0), sub).toUInt +
-     Cat(in1(63, 0) ^ Fill(64, sub), sub).toUInt)(64, 1)
+  val sub = fn.op_is(I_SUB)
+  class Adder(in0: UInt, in1: UInt, cin: UInt, w: Int = SZ_W) {
+    private val bits =
+      Cat(UInt(0, 1), in0, cin).toUInt +
+      Cat(UInt(0, 1), in1 ^ Fill(w, sub), cin).toUInt
+    val (cout, out) = (bits(w+1), bits(w, 1))
+  }
+  val adder_out = if (confprec) {
+    val lo = new Adder(in0_lo, in1_lo, sub)
+    val hi = new Adder(in0_hi, in1_hi, Mux(rate_x2, sub, lo.cout))
+    Cat(hi.out, lo.out)
+  } else new Adder(in0, in1, sub, SZ_D).out
 
   // SLL, SRL, SRA
   val sra = fn.op_is(I_SRA)
   val shamt = Cat(in1(5) & fn.dw_is(DW64), in1(4,0)).toUInt
   val shright = sra || fn.op_is(I_SRL)
-  val shin_hi_32 = Mux(sra, Fill(32, in0(31)), UInt(0,32))
-  val shin_hi = Mux(fn.dw_is(DW64), in0(63,32), shin_hi_32)
-  val shin_r = Cat(shin_hi, in0(31,0))
+  val shfill_hi = sra & in0(63)
+  val shfill_lo = sra & in0(31)
+  val shin_hi = Mux(fn.dw_is(DW32) && !rate_x2, Fill(32, shfill_lo), in0_hi)
+  val shin_r = Cat(shin_hi, in0_lo)
   val shin = Mux(shright, shin_r, Reverse(shin_r))
-  val shout_r = (Cat(sra & shin_r(63), shin).toSInt >> shamt)(63,0)
+  val shout_r = (0 to 5).foldLeft(shin) { case (bits, i) =>
+    val n = 1 << i
+    val pad_hi = Fill(n, shfill_hi)
+    val pad_lo = Mux(rate_x2, Fill(n, shfill_lo), bits(31+n, 32))
+    Mux(shamt(i), Cat(pad_hi, bits(63, 32+n), pad_lo, bits(31, n)), bits)
+  }
   val shift_out = Mux(fn.op_is(I_SLL), Reverse(shout_r), shout_r)
 
-  val ltu = (in0.toUInt < in1.toUInt)
-  val lt = (in0(63) === in1(63)) && ltu || in0(63) && ~in1(63)
-
-  val comp = fn.op_is(I_SLT) & lt | fn.op_is(I_SLTU) & ltu
+  val slt = fn.op_is(I_SLT)
+  val sltu = fn.op_is(I_SLTU)
+  trait CmpResult {
+    val ltu, lt, eq: Bool
+    val set = (slt && lt) || (sltu && ltu)
+  }
+  class Comparator(in0: UInt, in1: UInt, w: Int = SZ_W) extends {
+    private val (neg0, neg1) = (in0(w-1), in1(w-1))
+    val ltu = (in0 < in1)
+    val lt = ((neg0 === neg1) && ltu) || (neg0 && !neg1)
+    val eq = (in0 === in1)
+  } with CmpResult
+  val cmp = new Comparator(in0, in1, SZ_D)
 
   val in0_sp = unpack_w(in0, 0)
   val in1_sp = unpack_w(in1, 0)
@@ -70,13 +93,12 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
     fn.op_is(I_FSJN) & ~in1_dp(63) |
     fn.op_is(I_FSJX) & (in1_dp(63) ^ in0_dp(63))
 
-  val s0_result64 = MuxCase(
-    Bits(0, SZ_D), Array(
+  val s0_result64 = Mux1H(Seq(
       fn.op_is(I_IDX) -> Cat(eidx, UInt(aid, bStrip)),
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
-      fn.op_is(I_SLT,I_SLTU) -> comp,
+      fn.op_is(I_SLT,I_SLTU) -> cmp.set,
       fn.op_is(I_AND) -> (in0 & in1),
       fn.op_is(I_OR) -> (in0 | in1),
       fn.op_is(I_XOR) -> (in0 ^ in1),
@@ -86,20 +108,19 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
 
   val s0_result = MuxCase(
     Bits(0, SZ_D), Array(
-      fn.dw_is(DW64) -> s0_result64,
+      (fn.dw_is(DW64) || rate_x2) -> s0_result64,
       fn.dw_is(DW32) -> expand_w(s0_result64(31,0))
     ))
 
-  val s0_cmp = MuxCase(
-    Bool(false), Array(
-      fn.op_is(I_CEQ) -> (in0 === in1),
-      fn.op_is(I_CLT) -> lt,
-      fn.op_is(I_CLTU) -> ltu
+  val s0_cmp = Mux1H(Seq(
+      fn.op_is(I_CEQ) -> cmp.eq,
+      fn.op_is(I_CLT) -> cmp.lt,
+      fn.op_is(I_CLTU) -> cmp.ltu
     ))
 
   val result = new ALUResult
   result.out := s0_result
   result.cmp := s0_cmp
 
-  io.resp := Pipe(io.req.valid, result, stagesALU)
+  io.resp := Pipe(io.req.valid && io.req.bits.active(), result, stagesALU)
 }
