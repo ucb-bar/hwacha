@@ -461,7 +461,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
                  if (confprec) {
                    val fn = io.op.bits.fn.viu()
                    e(t0).rate := MuxCase(UInt(0), Seq(
-                     (fn.op_is(I_ADD,I_ADDU,I_SUB,I_SLL,I_SRL,I_SRA,I_OR,I_AND,I_XOR)
+                     (fn.op_is(I_ADD,I_ADDU,I_SUB,I_SLL,I_SRL,I_SRA,I_OR,I_AND,I_XOR,
+                               I_SLT,I_SLTU,I_CEQ,I_CLT,I_CLTU)
                       && vs1_w && vs2_w && vd_w) -> UInt(1))) }
       stop(t1); }
 

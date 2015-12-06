@@ -24,11 +24,19 @@ trait RateLogic extends LaneParameters {
 
   def unpack_pred(n: UInt, i: Int, rate: UInt): Bits = {
     require(i <= nSlices)
-    val shift = UInt(i) << rate
-    val mask = Mux1H(rate_decode(rate).map { case (r, k) =>
-      r -> Fill(1 << k, Bool(true)) })
-    ((n >> shift) & mask)(nPack-1, 0)
+    if (confprec) {
+      val shift = UInt(i) << rate
+      val mask = Mux1H(rate_decode(rate).map { case (r, k) =>
+        r -> Fill(1 << k, Bool(true)) })
+      ((n >> shift) & mask)(nPack-1, 0)
+    } else n(i)
   }
+  def repack_pred(n: Bits, rate: UInt): Bits =
+    if (confprec)
+      Mux1H(rate_decode(rate).map { case (r, i) =>
+        val w = (1 << i) - 1
+        r -> Vec((0 until wPred by nPack).map(k => n(w+k, k))).toBits })
+    else n
 
   def splat_scalar(uop: SRegMicroOp) =
     if (confprec)

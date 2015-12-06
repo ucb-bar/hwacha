@@ -11,9 +11,9 @@ class ALUOperand(implicit p: Parameters) extends VXUBundle()(p)
   val in1 = Bits(width = SZ_D)
 }
 
-class ALUResult extends Bundle {
+class ALUResult(implicit p: Parameters) extends VXUBundle()(p) {
   val out = Bits(width = SZ_D)
-  val cmp = Bool()
+  val cmp = Bits(width = nPack)
 }
 
 class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
@@ -75,7 +75,17 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
     val lt = ((neg0 === neg1) && ltu) || (neg0 && !neg1)
     val eq = (in0 === in1)
   } with CmpResult
-  val cmp = new Comparator(in0, in1, SZ_D)
+  val cmp_lo = new Comparator(in0_lo, in1_lo)
+  val cmp_hi = new Comparator(in0_hi, in1_hi)
+  val cmp_d = new {
+    private val _ltu = cmp_hi.eq && cmp_lo.ltu
+    val ltu = cmp_hi.ltu || _ltu
+    val lt = cmp_hi.lt || _ltu
+    val eq = cmp_hi.eq && cmp_lo.eq
+  } with CmpResult
+  private def cmp(fn: CmpResult => Bool) =
+    Mux(rate_x2, Cat(fn(cmp_hi), fn(cmp_lo)), fn(cmp_d))
+  val set = cmp(_.set)
 
   val in0_sp = unpack_w(in0, 0)
   val in1_sp = unpack_w(in1, 0)
@@ -98,7 +108,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
-      fn.op_is(I_SLT,I_SLTU) -> cmp.set,
+      fn.op_is(I_SLT,I_SLTU) -> Cat(set(1), UInt(0, 31), set(0)),
       fn.op_is(I_AND) -> (in0 & in1),
       fn.op_is(I_OR) -> (in0 | in1),
       fn.op_is(I_XOR) -> (in0 ^ in1),
@@ -113,9 +123,9 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
     ))
 
   val s0_cmp = Mux1H(Seq(
-      fn.op_is(I_CEQ) -> cmp.eq,
-      fn.op_is(I_CLT) -> cmp.lt,
-      fn.op_is(I_CLTU) -> cmp.ltu
+      fn.op_is(I_CEQ) -> cmp(_.eq),
+      fn.op_is(I_CLT) -> cmp(_.lt),
+      fn.op_is(I_CLTU) -> cmp(_.ltu)
     ))
 
   val result = new ALUResult

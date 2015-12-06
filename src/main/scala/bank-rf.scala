@@ -65,7 +65,8 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     val wdata_base =
       Mux(io.op.pred.write.bits.selg, io.global.wpred.pred,
         Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred))
-    val wdata = (wdata_base << shift)(wPred-1, 0)
+    val wdata_pack = repack_pred(wdata_base, io.op.pred.write.bits.rate)
+    val wdata = (wdata_pack << shift)(wPred-1, 0)
     val wmask = (io.op.pred.write.bits.pred << shift)(wPred-1, 0)
 
     pred_rf.write(waddr, ((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools)

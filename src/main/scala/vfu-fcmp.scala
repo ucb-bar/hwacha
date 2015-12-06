@@ -11,9 +11,9 @@ class FCmpOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val in1 = Bits(width = SZ_D)
 }
 
-class FCmpResult extends Bundle {
-  val out = Bits(OUTPUT, SZ_D)
-  val cmp = Bool()
+class FCmpResult(implicit p: Parameters) extends VXUBundle()(p) {
+  val out = Bits(width = SZ_D)
+  val cmp = Bits(width = nPack)
 }
 
 class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
