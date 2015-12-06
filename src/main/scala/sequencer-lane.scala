@@ -100,9 +100,10 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           if (r != c) e_sidx_next(r) <= e(c).sidx
           else Bool(true) }) })
 
-    val wsram_mat_sidx = Vec(e_sidx_next.map { s =>
+    val wsram_mat_sidx = Vec((0 until nSeq).map { r =>
       Vec(io.ticker.sram.write.map { t =>
-        (t.bits.sidx < s) && (s <= (t.bits.sidx + (UInt(1) << t.bits.rate)))
+        (e(r).sidx >= t.bits.sidx) ||
+        (e_sidx_next(r) >= (t.bits.sidx + (UInt(1) << t.bits.rate)))
       }) })
     def wsram_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
@@ -117,9 +118,10 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val wsram_mat_vs3 = wsram_mat(reg_vs3, pregid_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
     val wsram_mat_vd = wsram_mat(reg_vd, pregid_vd)
 
-    val wpred_mat_sidx = Vec(e_sidx_next.map { s =>
+    val wpred_mat_sidx = Vec((0 until nSeq).map { r =>
       Vec(io.ticker.pred.write.map { t =>
-        (t.bits.sidx < s) && (s <= (t.bits.sidx + (UInt(1) << t.bits.rate)))
+        (e(r).sidx >= t.bits.sidx) ||
+        (e_sidx_next(r) >= (t.bits.sidx + (UInt(1) << t.bits.rate)))
       }) })
     def wpred_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
