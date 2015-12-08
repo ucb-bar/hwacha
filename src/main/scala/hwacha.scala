@@ -101,8 +101,8 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   require(confvcmdq.nimm >= nBanks)
   require(confvcmdq.nrd >= nBanks)
 
-  val nvsreq = 128
-  val nvlreq = 128
+  val nvsreq = 256
+  val nvlreq = 256
 }
 
 class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaParameters
