@@ -86,6 +86,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
   private def cmp(fn: CmpResult => Bool) =
     Mux(rate_x2, Cat(fn(cmp_hi), fn(cmp_lo)), fn(cmp_d))
   val set = cmp(_.set)
+  val set_out = if (confprec) Cat(set(1), UInt(0, 31), set(0)) else cmp_d.set
 
   val in0_sp = unpack_w(in0, 0)
   val in1_sp = unpack_w(in1, 0)
@@ -108,7 +109,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
       fn.op_is(I_MOV0) -> in0,
       fn.op_is(I_ADD,I_ADDU,I_SUB) -> adder_out,
       fn.op_is(I_SLL,I_SRL,I_SRA) -> shift_out,
-      fn.op_is(I_SLT,I_SLTU) -> Cat(set(1), UInt(0, 31), set(0)),
+      fn.op_is(I_SLT,I_SLTU) -> set_out,
       fn.op_is(I_AND) -> (in0 & in1),
       fn.op_is(I_OR) -> (in0 | in1),
       fn.op_is(I_XOR) -> (in0 ^ in1),
