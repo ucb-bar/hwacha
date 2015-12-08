@@ -86,9 +86,16 @@ class DefaultHwachaConfig extends Config (
         useFPU = true))
 
     case HwachaConfPrec => true
-    case HwachaVRUThrottle => 20
+    case HwachaVRUThrottle => Knob("HWACHA_VRU_THROTTLE")
+    case HwachaVRUEarlyIgnore => Knob("HWACHA_VRU_EARLY_IGNORE")
+    case HwachaVRUDistThrottle => Knob("HWACHA_VRU_DIST_THROTTLE")
+    case HwachaCMDQLen => Knob("HWACHA_CMDQ_LEN")
   },
   knobValues = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
     case "HWACHA_BUILD_VRU" => true
+    case "HWACHA_VRU_THROTTLE" => 20 // try 8, 16, 20, 32, 64
+    case "HWACHA_VRU_EARLY_IGNORE" => 2 // try 0, 1, 2, 3, 4
+    case "HWACHA_VRU_DIST_THROTTLE" => 128 // try 8, 16, 32, 64, 128, 256, 512, 2048
+    case "HWACHA_CMDQ_LEN" => 32 // try 8, 16, 32, 64, 128
   })

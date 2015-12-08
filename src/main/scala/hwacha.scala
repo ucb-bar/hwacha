@@ -24,6 +24,9 @@ case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaBuildVRU extends Field[Boolean]
 case object HwachaConfPrec extends Field[Boolean]
 case object HwachaVRUThrottle extends Field[Int]
+case object HwachaVRUEarlyIgnore extends Field[Int]
+case object HwachaVRUDistThrottle extends Field[Int]
+case object HwachaCMDQLen extends Field[Int]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(clock, _reset)
@@ -88,9 +91,9 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val confprec = p(HwachaConfPrec)
 
   val confvcmdq = new {
-    val ncmd = 32
-    val nimm = 32
-    val nrd = 32
+    val ncmd = p(HwachaCMDQLen)
+    val nimm = p(HwachaCMDQLen)
+    val nrd = p(HwachaCMDQLen)
     val ncnt = nBanks
   }
 

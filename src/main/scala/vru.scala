@@ -29,7 +29,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
 
   // TODO: should probably ideally be: (L2 size / vector length) * factor (like 1/2, 
   // to use 1/2 of the L2 for prefetching)
-  val MAX_RUNAHEAD = 128 // # loads + stores we're allowed to run ahead
+  val MAX_RUNAHEAD = p(HwachaVRUDistThrottle) // # loads + stores we're allowed to run ahead
 
   val io = new Bundle {
     val enq = Decoupled(UInt(width=entrywidth)).flip
@@ -117,7 +117,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // style-wise, data flows right to left in <>
 
   // skip prefetching for the first skipamt VF blocks to get ahead 
-  val skipamt = 2 
+  val skipamt = p(HwachaVRUEarlyIgnore)
 
   val io = new Bundle {
     val toicache = new FrontendIO
