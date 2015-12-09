@@ -100,17 +100,24 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           if (r != c) e_sidx_next(r) <= e(c).sidx
           else Bool(true) }) })
 
-    val wsram_mat_sidx = Vec((0 until nSeq).map { r =>
-      Vec(io.ticker.sram.write.map { t =>
-        (e(r).sidx >= t.bits.sidx) ||
-        (e_sidx_next(r) >= (t.bits.sidx + (UInt(1) << t.bits.rate)))
-      }) })
+    def scmp_mat[T <: RFWriteOp with Rate](ticker: Vec[ValidIO[T]]) = {
+      val t_range = ticker.map(t =>
+        (t.bits.sidx, t.bits.sidx + (UInt(1) << t.bits.rate)))
+      Vec((0 until nSeq).map { r =>
+        val s = (e(r).sidx, e_sidx_next(r))
+        Vec(t_range.map { t =>
+          ((s._1 <= t._1) && (t._2 <= s._2)) ||
+          ((t._1 <= s._1) && (s._2 <= t._2))
+        }) })
+    }
+
+    val wsram_mat_scmp = scmp_mat(io.ticker.sram.write)
     def wsram_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
         Vec((0 until maxWPortLatency) map { l =>
           val t = io.ticker.sram.write(l)
           t.valid && fn(me(r).base).valid && fn(me(r).base).is_vector() && (
-            if (confprec) (t.bits.id === fn(me(r).base).id) && wsram_mat_sidx(r)(l)
+            if (confprec) (t.bits.id === fn(me(r).base).id) && wsram_mat_scmp(r)(l)
             else t.bits.addr === pfn(e(r).reg).id )
           }) }
     val wsram_mat_vs1 = wsram_mat(reg_vs1, pregid_vs1) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
@@ -118,17 +125,13 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val wsram_mat_vs3 = wsram_mat(reg_vs3, pregid_vs3) map { m => Vec(m.slice(expLatency, maxWPortLatency)) }
     val wsram_mat_vd = wsram_mat(reg_vd, pregid_vd)
 
-    val wpred_mat_sidx = Vec((0 until nSeq).map { r =>
-      Vec(io.ticker.pred.write.map { t =>
-        (e(r).sidx >= t.bits.sidx) ||
-        (e_sidx_next(r) >= (t.bits.sidx + (UInt(1) << t.bits.rate)))
-      }) })
+    val wpred_mat_scmp = scmp_mat(io.ticker.pred.write)
     def wpred_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
         Vec((0 until maxPredWPortLatency) map { l =>
           val t = io.ticker.pred.write(l)
           t.valid && fn(me(r).base).valid && fn(me(r).base).is_pred() && (
-            if (confprec) (t.bits.id === fn(me(r).base).id) && wpred_mat_sidx(r)(l)
+            if (confprec) (t.bits.id === fn(me(r).base).id) && wpred_mat_scmp(r)(l)
             else t.bits.addr === pfn(e(r).reg).id )
           }) }
     val wpred_mat_vp = wpred_mat(reg_vp, pregid_vp) map { m => Vec(m.slice(expLatency, maxPredWPortLatency)) }
