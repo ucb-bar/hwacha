@@ -8,7 +8,7 @@ abstract trait DCCParameters extends UsesHwachaParameters {
   val nDCCPredQ = 2
   val nVDUOperands = 2
 
-  val nBPQ = 2
+  val nBPQ = 2*nBanks
   val nBRQ = 2
   val nBWQ = 2
 
