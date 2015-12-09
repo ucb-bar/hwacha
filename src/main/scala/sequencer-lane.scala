@@ -101,13 +101,15 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           else Bool(true) }) })
 
     def scmp_mat[T <: RFWriteOp with Rate](ticker: Vec[ValidIO[T]]) = {
+      def cmp(x: UInt, y: UInt) = { val z = (x <= y); (z, !z || (x === y)) }
       val t_range = ticker.map(t =>
         (t.bits.sidx, t.bits.sidx + (UInt(1) << t.bits.rate)))
       Vec((0 until nSeq).map { r =>
         val s = (e(r).sidx, e_sidx_next(r))
         Vec(t_range.map { t =>
-          ((s._1 <= t._1) && (t._2 <= s._2)) ||
-          ((t._1 <= s._1) && (s._2 <= t._2))
+          val (s1_lte_t1, t1_lte_s1) = cmp(s._1, t._1)
+          val (s2_lte_t2, t2_lte_s2) = cmp(s._2, t._2)
+          (s1_lte_t1 && t2_lte_s2) || (t1_lte_s1 && s2_lte_t2)
         }) })
     }
 
