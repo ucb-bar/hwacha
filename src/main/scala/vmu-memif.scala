@@ -126,10 +126,6 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
   req.ready := acquire.ready
   acquire.valid := req.valid
 
-   when(acquire.fire()) {
-    printf("FIRED: addr: 0x%x id: 0x%x\n", acquire.bits.addr_block, acquire.bits.client_xact_id)
-  }
-
   val acq_type = Mux1H(Seq(cmd.load, cmd.store, cmd.amo),
     Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType))
 
@@ -152,10 +148,6 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
 
   val resp_en = grant.bits.hasData() || resp.bits.store
   grant.ready := !resp_en || resp.ready
-
-  when(grant.fire()) {
-    printf("ACK id 0x%x\n", grant.bits.client_xact_id)
-  }
 
   resp.valid := grant.valid && resp_en
   resp.bits.tag := grant.bits.client_xact_id

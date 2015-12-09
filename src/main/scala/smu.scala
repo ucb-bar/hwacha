@@ -140,10 +140,6 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
 
     is (s_mem) {
       acquire.valid := fire(acquire.ready)
-      when(fire(acquire.ready)) {
-        printf("FIRED: addr: 0x%x\n", addr_block)
-        printf("BEAT       : 0x%x\n", addr_beat)
-      }
       tw.valid := fire(tw.ready)
       when (fire(null)) {
         state := s_idle
