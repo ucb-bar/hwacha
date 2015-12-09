@@ -69,7 +69,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaNVPAQEntries => 24
     case HwachaNVSDQEntries => 4
     case HwachaNVLDQEntries => 4
-    case HwachaNVLTEntries => 32
+    case HwachaNVLTEntries => 64
 
     case HwachaNSMUEntries => 2
     case HwachaBuildVRU => Knob("HWACHA_BUILD_VRU")
