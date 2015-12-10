@@ -42,16 +42,14 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
   val s2_replay = icmiss
   val s1_replay = s1_valid && !s1_same_block && !s1_req_valid
 
-  val s2_stall = !io.front.req.valid && (io.front.resp.valid && !io.front.resp.ready || !io.front.active)
-  val s1_stall = !io.front.req.valid && s2_stall
-  val s0_stall = !io.front.req.valid && s1_stall
-  val s1_kill = io.front.req.valid || icmiss || s1_replay || s1_stall
+  val stall = !io.front.req.valid && (io.front.resp.valid && !io.front.resp.ready || !io.front.active)
+  val s1_kill = io.front.req.valid || icmiss || s1_replay
   val s0_npc = s1_pc + UInt(coreInstBytes)
   val s0_same_block =
     !s1_kill && ((s0_npc & UInt(rowBytes)) === (s1_pc & UInt(rowBytes)))
-  val s0_kill = s0_stall && !s0_same_block && io.back.s0_req.ready
+  val s0_req_valid = !stall && !s0_same_block
 
-  io.back.s0_req.valid := !s0_kill && !s0_same_block
+  io.back.s0_req.valid := s0_req_valid
   io.back.s0_req.bits.pc :=
     Mux(io.front.req.valid, io.front.req.bits.pc,
       Mux(s2_replay, s2_pc,
@@ -59,24 +57,21 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
           s0_npc)))
   io.back.s1_kill := s1_req_valid && s1_kill
 
-  when (!s1_stall) {
-    s1_valid := !s0_kill
-  }
-  when (!s0_kill) {
+  when (!stall) {
+    s1_valid := s0_req_valid
     s1_pc_ := io.back.s0_req.bits.pc
     s1_same_block := s0_same_block && !(s1_req_valid && io.back.s1_tlb.miss)
-  }
-  when (!s2_stall) {
+
     s2_valid := !s1_kill
-  }
-  when (!s1_kill) {
-    s2_pc := s1_pc
-    s2_xcpt_if := s1_req_valid && io.back.s1_tlb.xcpt_if
+    when (!s1_kill) {
+      s2_pc := s1_pc
+      s2_xcpt_if := s1_req_valid && io.back.s1_tlb.xcpt_if
+    }
   }
 
   s2_line.io.enq.bits := io.back.s1_resp.bits
   s2_line.io.enq.valid := s1_req_valid && io.back.s1_resp.valid
-  s2_line.io.deq.ready := !s2_stall && !(s1_valid && s1_same_block)
+  s2_line.io.deq.ready := !stall && !(s1_valid && s1_same_block)
 
   io.front.resp.valid := s2_valid && (s2_line.io.deq.valid || s2_xcpt_if)
   io.front.resp.bits.pc := s2_pc
@@ -109,8 +104,8 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   vxu.io.front <> io.vxu
   vru.io.front <> io.vru
 
-  req_arb.io.in(0) <> vxu.io.back.s0_req
-  req_arb.io.in(1) <> vru.io.back.s0_req
+  req_arb.io.in(1) <> vxu.io.back.s0_req
+  req_arb.io.in(0) <> vru.io.back.s0_req
   private val req = req_arb.io.out
 
   icache.io.req.valid := req.valid
