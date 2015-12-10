@@ -27,6 +27,7 @@ case object HwachaVRUThrottle extends Field[Int]
 case object HwachaVRUEarlyIgnore extends Field[Int]
 case object HwachaVRUDistThrottle extends Field[Int]
 case object HwachaCMDQLen extends Field[Int]
+case object HwachaVSETVLCompress extends Field[Boolean]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(clock, _reset)

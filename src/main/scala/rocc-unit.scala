@@ -287,25 +287,31 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d]\n",
       UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl)
   }
-  when (fire_vsetvl) {
+
+  val ignore_dup_vsetvl = Bool(p(HwachaVSETVLCompress)) && (decode_vsetvl && (cfg_reg_vl === cfg_vl))
+
+  when (fire_vsetvl && !ignore_dup_vsetvl) {
     cfg_reg_vl := cfg_vl
     printf("H: VSETVL[maxvl=%d][vl=%d]\n",
+      cfg_reg_maxvl, cfg_vl)
+  } .elsewhen (fire_vsetvl && ignore_dup_vsetvl) {
+    printf("H: IGNORED REPEAT VSETVL[maxvl=%d][vl=%d]\n",
       cfg_reg_maxvl, cfg_vl)
   }
 
   // Hookup ready port of RoCC cmd queue
   //COLIN FIXME: we use the exception flag to set a sticky bit that causes to always be ready after exceptions
   io.rocc.cmd.ready := fire(io.rocc.cmd.valid)
-  cmdq.io.enq.cmd.valid := fire(mask_vxu_cmd_ready, enq_cmd)
-  cmdq.io.enq.imm.valid := fire(mask_vxu_imm_ready, enq_imm)
-  cmdq.io.enq.rd.valid := fire(mask_vxu_rd_ready, enq_rd)
-  cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt)
+  cmdq.io.enq.cmd.valid := fire(mask_vxu_cmd_ready, enq_cmd, !ignore_dup_vsetvl)
+  cmdq.io.enq.imm.valid := fire(mask_vxu_imm_ready, enq_imm, !ignore_dup_vsetvl)
+  cmdq.io.enq.rd.valid := fire(mask_vxu_rd_ready, enq_rd, !ignore_dup_vsetvl)
+  cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt, !ignore_dup_vsetvl)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
 
-  vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd)
-  vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm)
-  vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd)
-  vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt)
+  vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd, !ignore_dup_vsetvl)
+  vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm, !ignore_dup_vsetvl)
+  vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd, !ignore_dup_vsetvl)
+  vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt, ignore_dup_vsetvl)
 
   // cmdq dpath
   val cmd_out = sel_cmd

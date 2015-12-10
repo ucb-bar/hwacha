@@ -90,6 +90,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaVRUEarlyIgnore => Knob("HWACHA_VRU_EARLY_IGNORE")
     case HwachaVRUDistThrottle => Knob("HWACHA_VRU_DIST_THROTTLE")
     case HwachaCMDQLen => Knob("HWACHA_CMDQ_LEN")
+    case HwachaVSETVLCompress => Knob("HWACHA_VSETVL_COMPRESS")
   },
   knobValues = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
@@ -98,4 +99,5 @@ class DefaultHwachaConfig extends Config (
     case "HWACHA_VRU_EARLY_IGNORE" => 2 // try 0, 1, 2, 3, 4
     case "HWACHA_VRU_DIST_THROTTLE" => 128 // try 8, 16, 32, 64, 128, 256, 512, 2048
     case "HWACHA_CMDQ_LEN" => 32 // try 8, 16, 32, 64, 128
+    case "HWACHA_VSETVL_COMPRESS" => true
   })
