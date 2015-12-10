@@ -82,6 +82,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     val op = Decoupled(new IssueOpBase).flip
     val master = new MasterSequencerIO
     val pending = new SequencerPending().asOutput
+    val vf = new Bundle {
+      val stop = Bool(INPUT)
+      val last = Bool(OUTPUT)
+    }
 
     val debug = new Bundle {
       val head = UInt(OUTPUT, log2Up(nSeq))
@@ -265,12 +269,17 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
           dhazard.clear.war(n, UInt(i))
           dhazard.clear.waw(n, UInt(i))
         }
+        e(n).last := Bool(false)
         io.master.update.valid(n) := Bool(true)
       }
 
       def active(n: UInt, afn: SeqType=>Bool, fn: IssueOpBase=>Bits) = {
         afn(e(n).active) := Bool(true)
         e(n).fn.union := fn(io.op.bits)
+      }
+
+      def last(n: UInt) = {
+        e(n).last := Bool(true)
       }
 
       val fn_identity = (d: IssueOpBase) => d.fn.union
@@ -404,9 +413,18 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         maybe_full := Bool(false)
       }
 
+      val tailm1 = step(tail, nSeq-1)
+      val headp1 = step(head, 1)
+
+      when (io.vf.stop) {
+        set.last(tailm1)
+      }
+
+      io.vf.last := Bool(false)
       when (v(head) && io.master.clear(head)) {
         retire(head)
-        set.head(step(head, 1))
+        set.head(headp1)
+        io.vf.last := e(head).last || io.vf.stop && (headp1 === tail)
       }
 
       val vcus = (v zip e) map { case (valid, e) => valid && e.active.vcu }

@@ -158,7 +158,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.vru <> vru.io.toicache
     vru.io.cmdq <> rocc.io.cmdqs.vru
     vru.io.dmem <> imemarb.io.in(2)
-    vru.io.from_scalar_pop_message := scalar.io.vru_pop_message
+    vru.io.from_scalar_pop_message := Bool(false)
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
@@ -217,6 +217,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
   }
   scalar.io.pending.mseq <> mseq.io.pending
+  mseq.io.vf.stop := scalar.io.vf_stop
 
   rpred.io.op.valid := fire_vxu(mask_rpred_ready, enq_rpred)
   rpred.io.op.bits <> scalar.io.vxu.bits

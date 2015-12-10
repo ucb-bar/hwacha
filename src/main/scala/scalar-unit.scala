@@ -33,6 +33,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val red = new ReduceResultIO().flip
 
     val vf_active = Bool(OUTPUT)
+    val vf_stop = Bool(OUTPUT)
     val pending = new Bundle {
       val mseq = new SequencerPending().asInput
       val mrt = new Bundle {
@@ -40,8 +41,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
         val vus = Vec.fill(nLanes){new MRTPending}.asInput
       }
     }
-
-    val vru_pop_message = Bool(OUTPUT)
   }
 
   // STATE
@@ -192,11 +191,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = new IntCtrlSigs().decode(id_inst, decode_table)
-  io.vru_pop_message := Bool(false)
   when (!killd && id_ctrl.decode_stop) { 
     vf_active := Bool(false) 
-    io.vru_pop_message := Bool(true)
   }
+  io.vf_stop := io.imem.resp.fire() && id_ctrl.decode_stop
 
   val sren = Vec(
     id_ctrl.vs1_val && id_ctrl.vs1_type === REG_SHR,

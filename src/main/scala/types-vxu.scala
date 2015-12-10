@@ -315,6 +315,7 @@ class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p)
   val raw = Vec.fill(nSeq){Bool()}
   val war = Vec.fill(nSeq){Bool()}
   val waw = Vec.fill(nSeq){Bool()}
+  val last = Bool()
   val rports = UInt(width = bRPorts)
   val wport = new Bundle {
     val sram = UInt(width = bWPortLatency)
