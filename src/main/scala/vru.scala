@@ -244,8 +244,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     // we're stalling waiting to enqueue information about the vf block we 
     // just processed
     //printf("VRU: STALLING ON AMT Q\n")
-    throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch && (current_ls_count =/= UInt(0))
-    when ((throttleman.io.enq.ready && !throttleman.io.stall_prefetch) || current_ls_count === UInt(0)) {
+    throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch
+    when (throttleman.io.enq.ready && !throttleman.io.stall_prefetch) {
       vf_active := Bool(false)
       wait_to_queue := Bool(false)
       current_ls_count := UInt(0)
@@ -260,9 +260,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
     when (loaded_inst === HwachaElementInstructions.VSTOP) {
       //printf("VRU: REACHED END OF VF BLOCK\n")
-
-      throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch
-      when (throttleman.io.enq.ready && !throttleman.io.stall_prefetch) {
+      throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch && (current_ls_count =/= UInt(0))
+      when ((throttleman.io.enq.ready && !throttleman.io.stall_prefetch) || current_ls_count === UInt(0)) {
         vf_active := Bool(false)
         current_ls_count := UInt(0)
       } .otherwise {
