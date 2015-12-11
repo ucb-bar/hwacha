@@ -214,10 +214,12 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     }
   }
 
+  val wait_to_queue = Reg(init=Bool(false))
+
   // do a fetch 
   io.toicache.req.valid := fire_vf
   io.toicache.req.bits.pc := io.cmdq.imm.bits
-  io.toicache.active := vf_active 
+  io.toicache.active := vf_active && !wait_to_queue
   io.toicache.invalidate := Bool(false)
   io.toicache.resp.ready := Bool(true) // for now...
 
@@ -233,7 +235,6 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   decl2q.io.enq.bits.opwidth := UInt(0) // set in when
   decl2q.io.enq.bits.ls := UInt(0) // set in when
 
-  val wait_to_queue = Reg(init=Bool(false))
 
   when (decl2q.io.enq.valid && !decl2q.io.enq.ready) {
     //printf("VRU: internal queue overflow\n")
@@ -243,8 +244,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     // we're stalling waiting to enqueue information about the vf block we 
     // just processed
     //printf("VRU: STALLING ON AMT Q\n")
-    throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch
-    when (throttleman.io.enq.ready && !throttleman.io.stall_prefetch) {
+    throttleman.io.enq.valid := Bool(true) && !throttleman.io.stall_prefetch && (current_ls_count =/= UInt(0))
+    when ((throttleman.io.enq.ready && !throttleman.io.stall_prefetch) || current_ls_count === UInt(0)) {
       vf_active := Bool(false)
       wait_to_queue := Bool(false)
       current_ls_count := UInt(0)
