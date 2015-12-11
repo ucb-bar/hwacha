@@ -25,7 +25,7 @@ class DecL2Q(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaMod
 class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
   val throttleQueueDepth = 10
-  val entrywidth = 10
+  val entrywidth = 20
 
   // TODO: should probably ideally be: (L2 size / vector length) * factor (like 1/2, 
   // to use 1/2 of the L2 for prefetching)
@@ -50,7 +50,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
   // vector fetch blocks that we're skipping
 
   val ls_per_vf_q = Queue(shim, throttleQueueDepth)
-  val global_ls_count = Reg(init=UInt(0, width=20))
+  val global_ls_count = Reg(init=UInt(0, width=32))
   io.stall_prefetch := global_ls_count > UInt(MAX_RUNAHEAD)
 
   shim.valid := io.enq.valid && !(io.vf_done_vxu && !ls_per_vf_q.valid && runbehind_counter >= SInt(0)) && !(runbehind_counter > UInt(0))
@@ -124,7 +124,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     val cmdq = new CMDQIO().flip 
     val dmem = new ClientUncachedTileLinkIO
     val from_scalar_pop_message = Bool(INPUT)
+    val vmu_memop_complete = Bool(INPUT) // TODO expand for multiple lanes
   }
+
+  //printf("complete memop: %d\n", io.vmu_memop_complete)
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
@@ -149,13 +152,16 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   val vlen = Reg(init=UInt(0, bMLVLen))
 
   val throttleman = Module(new ThrottleManager(skipamt))
+//  val vf_allowed = !(decode_vf && throttleman.io.stall_prefetch)
 
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       !vf_active,
       io.cmdq.cmd.valid,
       mask_imm_valid,
-      mask_rd_valid)
+      mask_rd_valid
+//      vf_allowed
+    )
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
  
@@ -271,7 +277,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(3)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(8)*vlen
     }
 
     when (loaded_inst === HwachaElementInstructions.VSD) {
@@ -282,7 +288,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(3)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(8)*vlen
 
     }
 
@@ -294,7 +300,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(2)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(4)*vlen
 
     }
 
@@ -305,8 +311,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(2)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
-
+      current_ls_count := current_ls_count + UInt(4)*vlen
     }
 
     when (loaded_inst === HwachaElementInstructions.VLH || 
@@ -317,7 +322,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(1)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(2)*vlen
 
     }
 
@@ -328,7 +333,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(1)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(2)*vlen
 
     }
 
@@ -340,7 +345,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(0)
       decl2q.io.enq.bits.ls := UInt(0)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(1)*vlen
 
     }
 
@@ -351,7 +356,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
       decl2q.io.enq.bits.opwidth := UInt(0)
       decl2q.io.enq.bits.ls := UInt(1)
       decl2q.io.enq.valid := Bool(true)
-      current_ls_count := current_ls_count + UInt(1)
+      current_ls_count := current_ls_count + UInt(1)*vlen
 
     }
 
@@ -378,11 +383,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   val throttleAmt = p(HwachaVRUThrottle) // approximately 1/3 of the units
   //printf("VRU THROTTLE AMT: %d\n", UInt(throttleAmt))
-  val throttle = Reg(init=UInt(throttleAmt, width=6))
+  val throttle = Reg(init=UInt(throttleAmt, width=10))
 
   assert(throttle <= UInt(throttleAmt), "VRU: THROTTLE TOO LARGE\n")
 
-  // TODO
   val vf_throttle = throttleman.io.stall_prefetch
 
   io.dmem.acquire.bits := Mux(req_ls === UInt(0), GetPrefetch(tag_count, req_addr+pf_ip_counter), PutPrefetch(tag_count, req_addr+pf_ip_counter))
@@ -395,7 +399,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     pf_ip_counter := UInt(0)
   }
 
-  val movecond1 = prefetch_ip && pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0) && !vf_throttle
+  val movecond1 = prefetch_ip && 
+                  pf_ip_counter < (num_blocks_pf-UInt(1)) && 
+                  io.dmem.acquire.ready && throttle > UInt(0) && 
+                  !vf_throttle
 
 
   when (movecond1) {
@@ -410,7 +417,11 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     }
   }
 
-  val movecond2 = prefetch_ip && pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && throttle > UInt(0) && !vf_throttle
+  val movecond2 = prefetch_ip && 
+                  pf_ip_counter === (num_blocks_pf - UInt(1)) && 
+                  io.dmem.acquire.ready && 
+                  throttle > UInt(0) && 
+                  !vf_throttle
 
   when (movecond2) {
     //printf("VRU: SENDING PREFETCH TO L2\n")
