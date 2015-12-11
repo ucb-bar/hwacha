@@ -71,7 +71,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaNVLDQEntries => 4
     case HwachaNVLTEntries => 64
 
-    case HwachaNSMUEntries => 2
+    case HwachaNSMUEntries => 16
     case HwachaBuildVRU => Knob("HWACHA_BUILD_VRU")
 
     // +2 comes from the overhead of tagging for the arbitration
