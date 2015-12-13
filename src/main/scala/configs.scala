@@ -59,7 +59,7 @@ class DefaultHwachaConfig extends Config (
     case HwachaStagesIMul => 3
     case HwachaStagesDFMA => 4
     case HwachaStagesSFMA => 3
-    case HwachaStagesHFMA => 2
+    case HwachaStagesHFMA => 3
     case HwachaStagesFConv => 2
     case HwachaStagesFCmp => 1
 
