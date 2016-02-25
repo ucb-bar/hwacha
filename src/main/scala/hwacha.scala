@@ -173,19 +173,14 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   imemarb.io.in(0) <> icache.io.mem
   imemarb.io.in(1) <> smu.io.dmem
   io.autl <> imemarb.io.out
-  io.iptw <> icache.io.ptw
+  io.ptw(0) <> icache.io.ptw
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
-  io.dptw.req.valid := Bool(false)
-  io.pptw.req.valid := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
   ptlb.io <> smu.io.tlb
-  ptlb.io.ptw.req.ready := Bool(true)
-  ptlb.io.ptw.resp.valid := Bool(false)
-  ptlb.io.ptw.status := io.pptw.status
-  ptlb.io.ptw.invalidate := Bool(false)
+  io.ptw(1) <> ptlb.io.ptw
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_rpred = scalar.io.vxu.bits.active.vrpred
@@ -252,10 +247,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     rfirst.io.lane(i) <> vu.io.red.first
 
     dtlb.io <> vu.io.tlb
-    dtlb.io.ptw.req.ready := Bool(true)
-    dtlb.io.ptw.resp.valid := Bool(false)
-    dtlb.io.ptw.status := io.dptw.status
-    dtlb.io.ptw.invalidate := Bool(false)
+    io.ptw(2 + i) <> dtlb.io.ptw
 
     io.utl(i) <> vu.io.dmem
   }

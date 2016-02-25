@@ -83,6 +83,7 @@ class DefaultHwachaConfig extends Config (
         generator = (p: Parameters) =>
           (Module(new Hwacha()(p.alterPartial({ case CoreName => "Hwacha" })))),
         nMemChannels = site(HwachaNLanes),
+        nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
         useFPU = true))
 
     case HwachaConfPrec => true
