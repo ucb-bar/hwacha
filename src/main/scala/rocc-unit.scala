@@ -154,6 +154,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   // TODO: probably want to change the length of queues in here
   val vrucmdq = Module(new CMDQ(resetSignal = flush_kill))
   val respq = Module(new Queue(io.rocc.resp.bits, 2))
+  val vru_enable = Reg(init=Bool(false))
 
   val (inst_val: Bool) :: (inst_priv: Bool) :: (enq_cmd_ : Bool) :: sel_cmd :: rd_type :: sel_imm :: cs0 = cs
   val (check_vl: Bool) :: (enq_rd_ : Bool) :: (enq_imm_ : Bool) :: (enq_vcnt_ : Bool) :: cs1 = cs0
@@ -188,10 +189,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val mask_vxu_cnt_ready = !enq_cnt || cmdq.io.enq.cnt.ready
   val mask_resp_ready = !enq_resp || respq.io.enq.ready
 
-  val mask_vru_cmd_ready = !vru_enq_cmd || vrucmdq.io.enq.cmd.ready
-  val mask_vru_imm_ready = !vru_enq_imm || vrucmdq.io.enq.imm.ready
-  val mask_vru_rd_ready = !vru_enq_rd || vrucmdq.io.enq.rd.ready
-  val mask_vru_cnt_ready = !vru_enq_cnt || vrucmdq.io.enq.cnt.ready
+  val mask_vru_cmd_ready = !vru_enq_cmd || vrucmdq.io.enq.cmd.ready || !vru_enable
+  val mask_vru_imm_ready = !vru_enq_imm || vrucmdq.io.enq.imm.ready || !vru_enable
+  val mask_vru_rd_ready = !vru_enq_rd || vrucmdq.io.enq.rd.ready || !vru_enable
+  val mask_vru_cnt_ready = !vru_enq_cnt || vrucmdq.io.enq.cnt.ready || !vru_enable
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
@@ -284,8 +285,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_unpred := (cfg.nvp === UInt(0))
     cfg_reg_nvvdw := cfg_nvvdw
     if (!confprec) cfg_reg_vstride := cfg_nvv
-    printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d]\n",
-      UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl)
+    val vru_switch_on = Bool(io.rocc.cmd.bits.rs1(63))
+    printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
+      UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on)
+    vru_enable := vru_switch_on
   }
 
   val ignore_dup_vsetvl = Bool(p(HwachaVSETVLCompress)) && (decode_vsetvl && (cfg_reg_vl === cfg_vl))
@@ -308,10 +311,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt, !ignore_dup_vsetvl)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
 
-  vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd, !ignore_dup_vsetvl)
-  vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm, !ignore_dup_vsetvl)
-  vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd, !ignore_dup_vsetvl)
-  vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt, ignore_dup_vsetvl)
+  vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd, !ignore_dup_vsetvl, vru_enable)
+  vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm, !ignore_dup_vsetvl, vru_enable)
+  vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd, !ignore_dup_vsetvl, vru_enable)
+  vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt, !ignore_dup_vsetvl, vru_enable)
 
   // cmdq dpath
   val cmd_out = sel_cmd
