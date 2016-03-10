@@ -23,8 +23,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
-      val req = Decoupled(new HwachaFPInput)
-      val resp = Decoupled(new HwachaFPResult).flip
+      val req = Decoupled(new HwachaFPRequest)
+      val resp = Decoupled(new HwachaFPResponse).flip
     }
     val smu = new SMUIO
     val lreq = new CounterLookAheadIO
@@ -419,10 +419,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // to FPU
   io.fpu.req.valid := fire_decode(mask_fpu_ready, enq_fpu)
-  io.fpu.req.bits <> id_ctrl.fpu_fn
+  io.fpu.req.bits.op := id_ctrl.fop
   io.fpu.req.bits.rm := rm
-  io.fpu.req.bits.typ := id_ctrl.out_fmt
-  io.fpu.req.bits.in_fmt := id_ctrl.in_fmt
+  io.fpu.req.bits.ftyp := id_ctrl.in_fmt
+  io.fpu.req.bits.ityp := id_ctrl.out_fmt
   io.fpu.req.bits.in1 := id_sreads(0)
   io.fpu.req.bits.in2 := id_sreads(1)
   io.fpu.req.bits.in3 := id_sreads(2)

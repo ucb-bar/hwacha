@@ -84,8 +84,6 @@ abstract trait UsesHwachaParameters extends UsesParameters {
   val maxMLVLen = nLanes * maxVLen
   val bMLVLen = log2Down(maxMLVLen) + 1
 
-  val local_sfpu = p(HwachaLocalScalarFPU)
-
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
   val confvru = p(HwachaBuildVRU)
@@ -127,7 +125,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.cmd <> io.cmd
   rocc.io.rocc.resp <> io.resp
   rocc.io.rocc.busy <> io.busy
-  rocc.io.rocc.s <> io.s
+  rocc.io.rocc.status <> io.status
   rocc.io.rocc.interrupt <> io.interrupt
   rocc.io.rocc.exception <> io.exception
 
@@ -139,17 +137,10 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   scalar.io.cfg <> rocc.io.cfg
 
   // Connect ScalarUnit to Rocket's FPU
-  if (local_sfpu) {
-    val sfpu = Module(new ScalarFPU)
-    scalar.io.fpu <> sfpu.io
-    io.fpu_req.valid := Bool(false)
-  } else {
-    val sfpu = Module(new ScalarFPUInterface)
-    sfpu.io.hwacha.req <> scalar.io.fpu.req
-    io.fpu_req <> sfpu.io.rocc.req
-    sfpu.io.rocc.resp <> io.fpu_resp
-    scalar.io.fpu.resp <> sfpu.io.hwacha.resp
-  }
+  val sfpu = Module(new ScalarFPUInterface)
+  sfpu.io.hwacha.req <> scalar.io.fpu.req
+  scalar.io.fpu.resp <> sfpu.io.hwacha.resp
+  io.fpu <> sfpu.io.rocc
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
