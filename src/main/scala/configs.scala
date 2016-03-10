@@ -13,6 +13,7 @@ class DefaultHwachaConfig extends Config (
       case RowBits => 2 * site(CoreInstBits)
       case NTLBEntries => 8
       case CacheIdBits => 0
+      case SplitMetadata => false
     }:PartialFunction[Any, Any]
     case FetchWidth => 1
     case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
