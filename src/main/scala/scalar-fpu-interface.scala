@@ -65,43 +65,39 @@ object ScalarFPUDecode {
   val FSQRT_D  = List(FCMD_SQRT,   N,Y,Y,N,N,Y,X,N,N,N,N,N,N,Y,Y,Y)
 }
 
-class HwachaFPInput(implicit p: Parameters) extends rocket.FPInput {
+class HwachaFPRequest(implicit p: Parameters) extends rocket.FPRequest {
   val bSRegs = log2Up(p(HwachaNScalarRegs))
-  val in_fmt = UInt(width = 2)
   val tag = UInt(width = bSRegs)
-  override def cloneType = new HwachaFPInput()(p).asInstanceOf[this.type]
+  override def cloneType = new HwachaFPRequest()(p).asInstanceOf[this.type]
 }
 
-class HwachaFPResult(implicit p: Parameters) extends rocket.FPResult {
+class HwachaFPResponse(implicit p: Parameters) extends rocket.FPResponse {
   val bSRegs = log2Up(p(HwachaNScalarRegs))
   val tag = UInt(width = bSRegs)
-  override def cloneType = new HwachaFPResult()(p).asInstanceOf[this.type]
+  override def cloneType = new HwachaFPResponse()(p).asInstanceOf[this.type]
 }
 
 class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing {
   val io = new Bundle {
     val hwacha = new Bundle {
-      val req = Decoupled(new HwachaFPInput).flip
-      val resp = Decoupled(new HwachaFPResult)
+      val req = Decoupled(new HwachaFPRequest).flip
+      val resp = Decoupled(new HwachaFPResponse)
     }
-    val rocc = new Bundle {
-      val req = Decoupled(new rocket.FPInput)
-      val resp = Decoupled(new rocket.FPResult).flip
-    }
+    val rocc = new rocket.FPSideIO
   }
 
   val pending_fpu = Reg(init=Bool(false))
-  val pending_fpu_req = Reg(new HwachaFPInput)
-  val pending_fpu_typ = Reg(Bits(width=2))
+  val pending_fpu_req = Reg(new HwachaFPRequest)
 
-  val reqq = Module(new Queue(new HwachaFPInput, 2))
-  val respq = Module(new Queue(new rocket.FPResult, 2))
+  val reqq = Module(new Queue(new HwachaFPRequest, 2))
+  val respq = Module(new Queue(new rocket.FPResponse, 2))
 
   reqq.io.enq <> io.hwacha.req
 
   private val hreq = reqq.io.deq.bits
 
-  val enq_rocc = !(hreq.cmd === FCMD_CVT_FF && !hreq.wen && !hreq.toint && !hreq.fromint)
+  val enq_rocc = !(hreq.op === OP_FCVT_FF &&
+    (hreq.ftyp === FTYP_H || hreq.ityp === FTYP_H))
   val mask_rocc_req_ready = !enq_rocc || io.rocc.req.ready
   val mask_respq_enq_ready = enq_rocc || respq.io.enq.ready
 
@@ -117,7 +113,6 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   when (fire(null)) {
     pending_fpu := Bool(true)
     pending_fpu_req := hreq
-    pending_fpu_typ := Mux(hreq.fromint, hreq.in_fmt, hreq.typ)
   }
 
   val h2s =
@@ -126,30 +121,22 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
       h2s.io.in := recode_hp(in)
       h2s.io.roundingMode := hreq.rm
       // XXX: use h2s.io.exceptionFlags
-      h2s.io.out
+      ieee_sp(h2s.io.out)
     }
 
-  io.rocc.req.bits <> hreq
+  // determine whether or not we need to upconvert from half to single-precision
+  val input_hp = (hreq.op =/= OP_FCVT_FI && hreq.ftyp === FTYP_H)
 
-  val rec_s_in1 = Cat(SInt(-1,32), recode_sp(hreq.in1))
-  io.rocc.req.bits.in1 :=
-    Mux(hreq.fromint, hreq.in1,
-      Mux(hreq.in_fmt === UInt(0), rec_s_in1,
-        Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in1),
-          h2s(0))))
-  io.rocc.req.bits.in2 :=
-    Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in2)),
-      Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in2),
-        h2s(1)))
-  io.rocc.req.bits.in3 :=
-    Mux(hreq.in_fmt === UInt(0), Cat(SInt(-1,32), recode_sp(hreq.in3)),
-      Mux(hreq.in_fmt === UInt(1), recode_dp(hreq.in3),
-        h2s(2)))
+  io.rocc.req.bits <> hreq
+  io.rocc.req.bits.in1 := Mux(input_hp, h2s(0), hreq.in1)
+  io.rocc.req.bits.in2 := Mux(input_hp, h2s(1), hreq.in2)
+  io.rocc.req.bits.in3 := Mux(input_hp, h2s(2), hreq.in3)
+  io.rocc.req.bits.id := UInt(0)
 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
   when (fire(null, !enq_rocc)) {
-    respq.io.enq.bits.data := Mux(hreq.in_fmt === UInt(0), rec_s_in1, h2s(0))
+    respq.io.enq.bits.data := Mux(input_hp, h2s(0), hreq.in1)
   }
 
   respq.io.deq.ready := io.hwacha.resp.ready
@@ -162,20 +149,18 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   private val rresp = respq.io.deq.bits
   private val hresp = io.hwacha.resp.bits
 
+  // determine whether we need to downcovert from single to half-precision
+  val output_hp = (pending_fpu_req.op =/= OP_FCVT_IF &&
+                   pending_fpu_req.op =/= OP_FCVT_FI &&
+                   pending_fpu_req.ityp === FTYP_H) ||
+                  (pending_fpu_req.op === OP_FCVT_FI &&
+                   pending_fpu_req.ftyp === FTYP_H)
+
   val s2h = Module(new hardfloat.RecFNToRecFN(8, 24, 5, 11))
-  s2h.io.in := rresp.data
+  s2h.io.in := recode_sp(rresp.data)
   s2h.io.roundingMode := pending_fpu_req.rm
   // XXX: use s2h.io.exceptionFlags
 
-  val unrec_h = ieee_hp(s2h.io.out)
-  val unrec_s = ieee_sp(rresp.data)
-  val unrec_d = ieee_dp(rresp.data)
-  val unrec_fpu_resp =
-    Mux(pending_fpu_typ === UInt(0), expand_float_s(unrec_s),
-      Mux(pending_fpu_typ === UInt(1), unrec_d,
-        expand_float_h(unrec_h)))
-
   hresp.tag := pending_fpu_req.tag
-  hresp.data :=
-    Mux(pending_fpu_req.toint, rresp.data(63, 0), unrec_fpu_resp)
+  hresp.data := Mux(output_hp, ieee_hp(s2h.io.out), rresp.data)
 }
