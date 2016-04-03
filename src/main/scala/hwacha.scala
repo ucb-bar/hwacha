@@ -23,9 +23,9 @@ case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaBuildVRU extends Field[Boolean]
 case object HwachaConfPrec extends Field[Boolean]
-case object HwachaVRUThrottle extends Field[Int]
+case object HwachaVRUMaxOutstandingPrefetches extends Field[Int]
 case object HwachaVRUEarlyIgnore extends Field[Int]
-case object HwachaVRUDistThrottle extends Field[Int]
+case object HwachaVRUMaxRunaheadBytes extends Field[Int]
 case object HwachaCMDQLen extends Field[Int]
 case object HwachaVSETVLCompress extends Field[Boolean]
 
@@ -155,11 +155,10 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   icache.io.vxu <> scalar.io.imem
   if (confvru) {
     val vru = Module(new VRU)
-    icache.io.vru <> vru.io.toicache
+    icache.io.vru <> vru.io.imem
     vru.io.cmdq <> rocc.io.cmdqs.vru
     vru.io.dmem <> imemarb.io.in(2)
-    vru.io.from_scalar_pop_message := mseq.io.vf.last
-    vru.io.vmu_memop_complete := vus(0).io.complete_memop // TODO, account for nLanes > 1
+    vru.io.vf_complete_ack := mseq.io.vf.last
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
