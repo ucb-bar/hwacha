@@ -88,9 +88,9 @@ class DefaultHwachaConfig extends Config (
         useFPU = true))
 
     case HwachaConfPrec => true
-    case HwachaVRUThrottle => Knob("HWACHA_VRU_THROTTLE")
+    case HwachaVRUMaxOutstandingPrefetches => Knob("HWACHA_VRU_THROTTLE")
     case HwachaVRUEarlyIgnore => Knob("HWACHA_VRU_EARLY_IGNORE")
-    case HwachaVRUDistThrottle => Knob("HWACHA_VRU_DIST_THROTTLE")
+    case HwachaVRUMaxRunaheadBytes => Knob("HWACHA_VRU_DIST_THROTTLE")
     case HwachaCMDQLen => Knob("HWACHA_CMDQ_LEN")
     case HwachaVSETVLCompress => Knob("HWACHA_VSETVL_COMPRESS")
   },
