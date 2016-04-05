@@ -77,7 +77,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   val skipamt = p(HwachaVRUEarlyIgnore)
   val runahead_vf_count = Reg(init = SInt(0, width=32))
 
-  io.vf_skip := runahead_vf_count < UInt(skipamt)
+  io.vf_skip := runahead_vf_count < SInt(skipamt)
 
   // number of bytes the VRU can runahead
   val MAX_RUNAHEAD = p(HwachaVRUMaxRunaheadBytes)
@@ -104,7 +104,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 
   // only one of these can be true at a time
   val skipped_block = io.vf_fire && io.vf_skip
-  val accepted_block = shim.valid && shim.ready
+  val accepted_block = io.enq.fire()
   assert(!(skipped_block && accepted_block), "VRU attempted to simultaneously enqueue and skip VF block")
   val increment_vf_count = skipped_block || accepted_block
 
@@ -132,17 +132,17 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
   import uncore._
 
   val io = new Bundle {
-    val decoded_memop_dequeue = Decoupled(new DecodedMemOp).flip
+    val memop = Decoupled(new DecodedMemOp).flip
     val dmem = new ClientUncachedTileLinkIO
   }
 
   val tag_count = Reg(init = UInt(0, tlClientXactIdBits))
 
   val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
-  val req_addr = io.decoded_memop_dequeue.bits.addr(bPAddr-1, tlBlockAddrOffset)
-  val req_vlen = io.decoded_memop_dequeue.bits.curr_vlen // vector len
-  val req_opwidth = io.decoded_memop_dequeue.bits.opwidth // byte = 0 ... double = 3
-  val req_ls = io.decoded_memop_dequeue.bits.ls // load = 0, store = 1
+  val req_addr = io.memop.bits.addr(bPAddr-1, tlBlockAddrOffset)
+  val req_vlen = io.memop.bits.curr_vlen // vector len
+  val req_opwidth = io.memop.bits.opwidth // byte = 0 ... double = 3
+  val req_ls = io.memop.bits.ls // load = 0, store = 1
   val prefetch_ip = Reg(init=Bool(false))
 
   val vec_len_bytes = req_vlen << req_opwidth
@@ -157,19 +157,21 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
 
   assert(remaining_allowed_prefetches <= MAX_OUTSTANDING_PREFETCHES, "VRU: THROTTLE TOO LARGE\n")
 
-  io.dmem.acquire.bits := Mux(req_ls === UInt(0), GetPrefetch(tag_count, req_addr+pf_ip_counter), PutPrefetch(tag_count, req_addr+pf_ip_counter))
+  io.dmem.acquire.bits := Mux(req_ls === UInt(0), 
+    GetPrefetch(tag_count, req_addr+pf_ip_counter), 
+    PutPrefetch(tag_count, req_addr+pf_ip_counter))
 
   io.dmem.acquire.valid := Bool(false)
-  io.decoded_memop_dequeue.ready := Bool(false)
+  io.memop.ready := Bool(false)
 
-  when (io.decoded_memop_dequeue.valid && !prefetch_ip && io.dmem.acquire.ready) {
+  when (io.memop.valid && !prefetch_ip && io.dmem.acquire.ready) {
     prefetch_ip := Bool(true)
     pf_ip_counter := UInt(0)
   }
 
   val movecond1 = prefetch_ip && 
-                  pf_ip_counter < (num_blocks_pf-UInt(1)) && 
-                  io.dmem.acquire.ready && remaining_allowed_prefetches > UInt(0)
+    pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.acquire.ready && 
+    remaining_allowed_prefetches > UInt(0)
 
 
   when (movecond1) {
@@ -181,15 +183,14 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
   }
 
   val movecond2 = prefetch_ip && 
-                  pf_ip_counter === (num_blocks_pf - UInt(1)) && 
-                  io.dmem.acquire.ready && 
-                  remaining_allowed_prefetches > UInt(0)
+    pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && 
+    remaining_allowed_prefetches > UInt(0)
 
   when (movecond2) {
     pf_ip_counter := UInt(0)
     prefetch_ip := Bool(false)
     tag_count := tag_count + UInt(1)
-    io.decoded_memop_dequeue.ready := Bool(true)
+    io.memop.ready := Bool(true)
     when (!io.dmem.grant.valid) {
       remaining_allowed_prefetches := remaining_allowed_prefetches - UInt(1)
     }
@@ -223,7 +224,7 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
  * until the runahead manager determines that it is okay to continue
  *
  */
-class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
+class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
   val io = new Bundle {
     val imem = new FrontendIO
@@ -233,14 +234,11 @@ class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends Hw
     val vf_active = Bool(OUTPUT)
     val vf_complete_ack = Bool(INPUT)
 
-    val decoded_memop_enqueue = Decoupled(new DecodedMemOp)
+    val memop = Decoupled(new DecodedMemOp)
     val vlen = UInt(INPUT)
 
-    // better way to do this?
-    val addr_reg_from_instr = UInt(OUTPUT)
-    val addr_val_from_arf = UInt(INPUT)
-
-    val stall_prefetch = Bool(OUTPUT)
+    val aaddr = UInt(OUTPUT)
+    val adata = UInt(INPUT)
   }
 
   val vf_active = Reg(init=Bool(false)) 
@@ -248,7 +246,6 @@ class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends Hw
 
   val runaheadman = Module(new RunaheadManager)
   runaheadman.io.vf_done_vxu := io.vf_complete_ack
-  io.stall_prefetch := runaheadman.io.stall_prefetch
   runaheadman.io.vf_fire := io.fire_vf
 
   /* Process the VF block if the runaheadmanager has not told us to skip it
@@ -279,9 +276,9 @@ class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends Hw
   io.imem.invalidate := Bool(false)
 
   val loaded_inst = io.imem.resp.bits.data(0)
-  io.addr_reg_from_instr := loaded_inst(28, 24)
-  io.decoded_memop_enqueue.bits.addr := io.addr_val_from_arf
-  io.decoded_memop_enqueue.bits.curr_vlen := io.vlen
+  io.aaddr := loaded_inst(28, 24)
+  io.memop.bits.addr := io.adata
+  io.memop.bits.curr_vlen := io.vlen
 
   // decode logic from table
   val logic = rocket.DecodeLogic(loaded_inst, VRUDecodeTable.default, VRUDecodeTable.table)
@@ -297,9 +294,9 @@ class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends Hw
   // as long as we're not stopped at a VSTOP (see above), accept instruction
   io.imem.resp.ready := !stop || (stop && !stop_at_VSTOP)
 
-  io.decoded_memop_enqueue.bits.opwidth := opwidth
-  io.decoded_memop_enqueue.bits.ls := ls
-  io.decoded_memop_enqueue.valid := prefetchable && imem_use_resp
+  io.memop.bits.opwidth := opwidth
+  io.memop.bits.ls := ls
+  io.memop.valid := prefetchable && imem_use_resp
 
   val current_ls_bytes = Reg(init=UInt(0, width=runaheadman.entrywidth))
   current_ls_bytes := Mux(prefetchable && imem_use_resp, 
@@ -315,25 +312,24 @@ class VFFetchDecode(resetSignal: Bool = null)(implicit p: Parameters) extends Hw
   }
 }
 
-class VRU(implicit p: Parameters) extends HwachaModule()(p)
-  with MemParameters {
+
+class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
   import Commands._
-  import uncore._
 
   val io = new Bundle {
-    // to is implicit, -> imem
-    val imem = new FrontendIO
-    val cmdq = new CMDQIO().flip 
-    val dmem = new ClientUncachedTileLinkIO
-    // shorten names
-    val vf_complete_ack = Bool(INPUT)
+    val cmdq = new CMDQIO().flip
+    val fire_vf = Bool(OUTPUT)
+    val vf_active = Bool(INPUT)
+    val vlen = UInt(OUTPUT)
+    val aaddr = UInt(INPUT)
+    val adata = UInt(OUTPUT)
   }
 
   // addr regfile
   val arf = Mem(UInt(width = 64), 32)
-
-  // queue of load/store/addr/len to L2 prefetching stage
-  val decodedMemOpQueue = Module(new Queue(new DecodedMemOp, 10))
+  val vlen = Reg(init=UInt(0, bMLVLen))
+  io.vlen := vlen
+  io.adata := arf(io.aaddr)
 
   val decode_vmca    = io.cmdq.cmd.bits === CMD_VMCA
   val decode_vsetcfg = io.cmdq.cmd.bits === CMD_VSETCFG
@@ -347,19 +343,17 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
 
-  val vlen = Reg(init=UInt(0, bMLVLen))
-
-  val vf_decode_unit = Module(new VFFetchDecode)
-
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
-      !vf_decode_unit.io.vf_active,
+      !io.vf_active,
       io.cmdq.cmd.valid,
       mask_imm_valid,
       mask_rd_valid
     )
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
+
+  io.fire_vf := fire_cmdq(null, decode_vf)
 
   io.cmdq.cmd.ready := fire_cmdq(io.cmdq.cmd.valid)
   io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
@@ -377,17 +371,43 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     vlen := io.cmdq.imm.bits
   }
 
-  // wire up vec inst decode unit
-  vf_decode_unit.io.imem <> io.imem
-  vf_decode_unit.io.fire_vf := fire_cmdq(null, decode_vf)
-  vf_decode_unit.io.fetch_pc := io.cmdq.imm.bits
-  vf_decode_unit.io.decoded_memop_enqueue <> decodedMemOpQueue.io.enq
-  vf_decode_unit.io.vf_complete_ack := io.vf_complete_ack
-  vf_decode_unit.io.vlen := vlen
-  vf_decode_unit.io.addr_val_from_arf := arf(vf_decode_unit.io.addr_reg_from_instr)
+}
+
+
+class VRU(implicit p: Parameters) extends HwachaModule()(p)
+  with MemParameters {
+  import Commands._
+  import uncore._
+
+  val io = new Bundle {
+    // to is implicit, -> imem
+    val imem = new FrontendIO
+    val cmdq = new CMDQIO().flip 
+    val dmem = new ClientUncachedTileLinkIO
+    // shorten names
+    val vf_complete_ack = Bool(INPUT)
+  }
+
+  val vru_frontend = Module(new VRUFrontend)
+  val vru_rocc_unit = Module(new VRURoCCUnit)
+
+  // queue of load/store/addr/len to L2 prefetching stage
+  val decodedMemOpQueue = Module(new Queue(new DecodedMemOp, 10))
+
+  // wire up vru_rocc_unit, vec inst decode unit
+  vru_rocc_unit.io.cmdq <> io.cmdq
+  vru_rocc_unit.io.aaddr := vru_frontend.io.aaddr
+  vru_rocc_unit.io.vf_active := vru_frontend.io.vf_active
+  vru_frontend.io.imem <> io.imem
+  vru_frontend.io.fire_vf := vru_rocc_unit.io.fire_vf
+  vru_frontend.io.fetch_pc := io.cmdq.imm.bits
+  vru_frontend.io.memop <> decodedMemOpQueue.io.enq
+  vru_frontend.io.vf_complete_ack := io.vf_complete_ack
+  vru_frontend.io.vlen := vru_rocc_unit.io.vlen
+  vru_frontend.io.adata := vru_rocc_unit.io.adata
 
   // prefetch unit
   val prefetch_unit = Module(new PrefetchUnit)
-  prefetch_unit.io.decoded_memop_dequeue <> decodedMemOpQueue.io.deq
+  prefetch_unit.io.memop <> decodedMemOpQueue.io.deq
   io.dmem <> prefetch_unit.io.dmem
 }
