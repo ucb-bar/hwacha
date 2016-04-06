@@ -362,7 +362,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
-  val init = Bool()
+  val init = Wire(Bool())
   init := Bool(false)
 
   switch (state) {

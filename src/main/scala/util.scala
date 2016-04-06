@@ -24,7 +24,7 @@ abstract trait Packing extends LaneParameters {
 
   def _repack(n: Seq[Bits], len: Int) = {
     require(n.length == len)
-    Vec(n).toBits
+    Cat(n.reverse)
   }
 
   def repack_d(n: Seq[Bits]) = _repack(n, SZ_D/SZ_D)
@@ -69,13 +69,13 @@ abstract trait MinMax {
 
 abstract trait SeqLogic extends SeqParameters {
   def find_first(v: Vec[Bool], head: UInt, fn: Int=>Bool) = {
-    val internal = Vec.fill(2*nSeq){Bool()}
+    val internal = Wire(Vec(2*nSeq, Bool()))
     for (i <- 0 until nSeq) {
       internal(i+nSeq) := v(i) && fn(i)
       internal(i) := internal(i+nSeq) && (UInt(i) >= head)
     }
     val priority_oh = PriorityEncoderOH(internal)
-    val out = Vec.fill(nSeq){Bool()}
+    val out = Wire(Vec(nSeq, Bool()))
     for (i <- 0 until nSeq) {
       out(i) := priority_oh(i) | priority_oh(i+nSeq)
     }

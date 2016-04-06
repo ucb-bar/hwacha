@@ -105,7 +105,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     if (cond) Reg(outType=None, next=None, init=Some(x), clock=None) else y
 
   // Configuration defaults
-  val cfg_init = new DecodeConfig
+  val cfg_init = Wire(new DecodeConfig)
   cfg_init.nvvd := UInt(256)
   cfg_init.nvvw := UInt(0)
   cfg_init.nvvh := UInt(0)
@@ -161,13 +161,13 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val (enq_resp_ : Bool) :: sel_resp :: (decode_save: Bool) :: (decode_rest: Bool) :: (decode_kill: Bool) :: Nil = cs1
 
   val stall_hold = Reg(init=Bool(false))
-  val stall_vsetcfg = Bool()
+  val stall_vsetcfg = Wire(Bool())
   val stall = stall_hold || stall_vsetcfg
 
   val decode_vsetcfg = enq_cmd_ && (sel_cmd === CMD_VSETCFG)
   val decode_vsetvl = enq_cmd_ && (sel_cmd === CMD_VSETVL)
 
-  val keepcfg = Bool()
+  val keepcfg = Wire(Bool())
   val mask_vsetcfg = !decode_vsetcfg || !keepcfg
 
   val mask_vl = !check_vl || (cfg_reg_vl =/= UInt(0))

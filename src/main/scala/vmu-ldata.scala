@@ -21,7 +21,7 @@ class Table[T <: Data](n: Int, gen: => T) extends Module {
   }
 
   val valid = Reg(init = Bits(0, n))
-  val array = Mem(gen, n)
+  val array = Mem(n, gen)
 
   io.w.ready := !valid.andR
 

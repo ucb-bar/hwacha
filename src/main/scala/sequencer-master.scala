@@ -95,8 +95,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     }
   }
 
-  val v = Vec.fill(nSeq){Reg(init=Bool(false))}
-  val e = Vec.fill(nSeq){Reg(new MasterSeqEntry)}
+  val v = Reg(init = Vec.fill(nSeq){Bool(false)})
+  val e = Reg(Vec(nSeq, new MasterSeqEntry))
   val maybe_full = Reg(init = Bool(false))
   val head = Reg(init = UInt(0, log2Up(nSeq)))
   val tail = Reg(init = UInt(0, log2Up(nSeq)))
@@ -111,10 +111,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
   // data hazard checking helpers
 
   val dhazard = new {
-    val next_update = Vec.fill(nSeq){Bool()}
-    val next_raw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
-    val next_war = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
-    val next_waw = Vec.fill(nSeq){Vec.fill(nSeq){Bool()}}
+    val next_update = Wire(Vec(nSeq, Bool()))
+    val next_raw = Wire(Vec(nSeq, Vec(nSeq, Bool())))
+    val next_war = Wire(Vec(nSeq, Vec(nSeq, Bool())))
+    val next_waw = Wire(Vec(nSeq, Vec(nSeq, Bool())))
 
     val set = new {
       def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
@@ -244,10 +244,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
   // issue window helpers
 
   val iwindow = new {
-    val update_head = Bool()
-    val update_tail = Bool()
-    val next_head = UInt(width = log2Up(nSeq))
-    val next_tail = UInt(width = log2Up(nSeq))
+    val update_head = Wire(Bool())
+    val update_tail = Wire(Bool())
+    val next_head = Wire(UInt(width = log2Up(nSeq)))
+    val next_tail = Wire(UInt(width = log2Up(nSeq)))
 
     val set = new {
       def head(n: UInt) = { update_head := Bool(true); next_head := n }
@@ -420,7 +420,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         set.last(tailm1)
       }
 
-      val vf_last = Bool()
+      val vf_last = Wire(Bool())
 
       vf_last := Bool(false)
       when (v(head) && io.master.clear(head)) {

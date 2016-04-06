@@ -144,7 +144,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         fn_pipe.op_is(op0) -> results_float2float(2*i),
         fn_pipe.op_is(op1) -> results_float2float(2*i+1)
       ) map { case (sel, (out, exc)) =>
-        val result = new FConvResult
+        val result = Wire(new FConvResult)
         result.out := out
         result.exc := exc
         sel -> result

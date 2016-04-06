@@ -103,7 +103,7 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
   }
 
   rf.io.local.wpred(0).pred := Vec(alus._1.map(_.cmp)).toBits
-  rf.io.local.wpred(1).pred := Vec(plus.map(_.bits.out)).toBits
+  rf.io.local.wpred(1).pred := Cat(plus.map(_.bits.out).reverse)
   rf.io.local.wdata.data := repack_slice(alus._1.map(_.out))
   rf.io.local.wdata.pred := alus._2
 

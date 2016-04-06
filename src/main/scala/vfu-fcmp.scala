@@ -102,7 +102,7 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
 
   val fpmatch = List(FPD, FPS, FPH).map { fn.fp_is(_) }
-  val result = new FCmpResult
+  val result = Wire(new FCmpResult)
   result.out := Mux1H(fpmatch, results)
   result.cmp := Mux1H(fpmatch, cmp_results)
 

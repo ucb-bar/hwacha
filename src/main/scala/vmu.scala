@@ -65,7 +65,7 @@ class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) with VMUMetaIndex 
 
 object VMUDecodedOp extends HwachaConstants {
   def apply(op: VMUOp)(implicit p: Parameters): VMUDecodedOp = {
-    val dec = new VMUDecodedOp
+    val dec = Wire(new VMUDecodedOp)
     dec.fn := op.fn
     dec.vlen := op.vlen
     dec.base := op.base
@@ -90,7 +90,7 @@ class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   val issue = Vec(4, Decoupled(new VMUDecodedOp))
 
   def span(sink: DecoupledIO[VMUDecodedOp]*) = {
-    val src = Decoupled(new VMUDecodedOp).asDirectionless()
+    val src = Wire(Decoupled(new VMUDecodedOp).asDirectionless())
     val rvs = (src.ready, src.valid) +: sink.map(x => (x.valid, x.ready))
     rvs.foreach { case (x, y) =>
       x := rvs.map(_._2).filter(_ ne y).reduce(_ && _)

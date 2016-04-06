@@ -42,7 +42,7 @@ class IMulSlice(implicit p: Parameters) extends VXUModule()(p) {
 
   val mul_result = lhs.toSInt * rhs.toSInt //TODO:130 bits
 
-  val result = new IMulResult
+  val result = Wire(new IMulResult)
   result.out := MuxCase(
     Bits(0), Array(
       fn.is(DW64, IM_M)    -> mul_result(63,0),

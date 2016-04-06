@@ -45,12 +45,12 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // STATE
   class SRegFile {
-    private val rf = Mem(UInt(width = regLen), nSRegs-1)
+    private val rf = Mem(nSRegs-1, UInt(width = regLen))
     private val reads = collection.mutable.ArrayBuffer[(UInt,UInt)]()
     private var canRead = true
     def read(addr: UInt) = {
       require(canRead)
-      reads += addr -> UInt()
+      reads += addr -> Wire(UInt())
       reads.last._2 := Mux(addr =/= UInt(0), rf(~addr), UInt(0))
       reads.last._2
     }
@@ -82,7 +82,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val srf = new SRegFile // doesn't have vs0
-  val arf = Mem(UInt(width = regLen), nARegs)
+  val arf = Mem(nARegs, UInt(width = regLen))
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
   val muldiv = Module(new rocket.MulDiv(width = regLen, nXpr = nSRegs, unroll = 8, earlyOut = true))
@@ -91,7 +91,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val vf_active = Reg(init=Bool(false))
   val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
-  val busy_scalar = Bool()
+  val busy_scalar = Wire(Bool())
 
   io.vf_active := vf_active
 
@@ -156,9 +156,9 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_reg_ctrl = Reg(new IntCtrlSigs)
   val ex_reg_pc = Reg(UInt())
   val ex_reg_inst = Reg(Bits())
-  val ex_reg_bypass = Vec.fill(3){Reg(Bool())}
-  val ex_reg_srs = Vec.fill(3){Reg(Bits())}
-  val ex_reg_ars = Vec.fill(2){Reg(Bits())}
+  val ex_reg_bypass = Reg(Vec(3, Bool()))
+  val ex_reg_srs = Reg(Vec(3, Bits()))
+  val ex_reg_ars = Reg(Vec(2, Bits()))
 
   val wb_reg_valid = Reg(Bool())
   val wb_reg_ctrl = Reg(new IntCtrlSigs)
@@ -169,15 +169,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   busy_scalar := ex_reg_valid || wb_reg_valid
 
   // WIRES
-  val stalld = Bool()
-  val killd = Bool()
-  val stallx = Bool()
-  val killx = Bool()
-  val stallw = Bool()
-  val ex_br_resolved = Bool()
-  val ex_br_taken = Bool()
-  val ex_br_not_taken = Bool()
-  val ex_br_taken_pc = UInt()
+  val stalld = Wire(Bool())
+  val killd = Wire(Bool())
+  val stallx = Wire(Bool())
+  val killx = Wire(Bool())
+  val stallw = Wire(Bool())
+  val ex_br_resolved = Wire(Bool())
+  val ex_br_taken = Wire(Bool())
+  val ex_br_not_taken = Wire(Bool())
+  val ex_br_taken_pc = Wire(UInt())
 
   // FETCH
   io.imem.req.valid := fire_vf || ex_br_taken
@@ -190,7 +190,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_pc = io.imem.resp.bits.pc
   val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
-  val id_ctrl = new IntCtrlSigs().decode(id_inst, decode_table)
+  val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
   when (!killd && id_ctrl.decode_stop) { 
     vf_active := Bool(false) 
   }

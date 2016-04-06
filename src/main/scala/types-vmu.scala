@@ -40,7 +40,7 @@ class DecodedMemCommand extends Bundle {
 
 object DecodedMemCommand {
   def apply[T <: UInt](cmd: T): DecodedMemCommand = {
-    val dec = new DecodedMemCommand
+    val dec = Wire(new DecodedMemCommand)
     dec.load := (cmd === M_XRD)
     dec.store := (cmd === M_XWR)
     dec.amo := isAMO(cmd)
@@ -72,7 +72,7 @@ object DecodedMemType {
     val hu = (mt === MT_HU)
     val wu = (mt === MT_WU)
 
-    val dec = new DecodedMemType
+    val dec = Wire(new DecodedMemType)
     dec.b := (b || bu)
     dec.h := (h || hu)
     dec.w := (w || wu)
@@ -164,6 +164,7 @@ class CInt(n: Int) extends Bundle {
     raw := x
   }
   def decode(dummy: Int = 0): UInt = Cat(raw === UInt(0), raw)
+  override def cloneType = new CInt(n).asInstanceOf[this.type]
 }
 
 trait VMUMetaCount extends VMUBundle {

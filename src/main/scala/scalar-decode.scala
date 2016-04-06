@@ -74,7 +74,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
 
   def decode(inst: UInt, table: Iterable[(BitPat, List[BitPat])]) = {
     val decoder = rocket.DecodeLogic(inst, ScalarDecode.default, table)
-    Vec(ival, decode_scalar, decode_fence, decode_stop,
+    val sigs = Seq(ival, decode_scalar, decode_fence, decode_stop,
         vd_val, vd_t, vd_dyn, vs1_val, vs1_t, vs1_dyn,
         vs2_val, vs2_t, vs2_dyn, vs3_val, vs3_t, vs3_dyn,
         vp_val,
@@ -95,7 +95,8 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
         vrpu_val,
         vrfu_val,
         fpu_fn.cmd, fpu_fn.ldst, fpu_fn.wen, fpu_fn.ren1, fpu_fn.ren2, fpu_fn.ren3, fpu_fn.swap12, fpu_fn.swap23, fpu_fn.single, fpu_fn.fromint,
-        fpu_fn.toint, fpu_fn.fastpipe, fpu_fn.fma, fpu_fn.div, fpu_fn.sqrt, fpu_fn.round, fpu_fn.wflags) := decoder
+        fpu_fn.toint, fpu_fn.fastpipe, fpu_fn.fma, fpu_fn.div, fpu_fn.sqrt, fpu_fn.round, fpu_fn.wflags)
+    sigs zip decoder map {case(s,d) => s := d}
     vd_type := reg_type(vd_t, vd_dyn, inst(OPC_VD))
     vs1_type := reg_type(vs1_t, vs1_dyn, inst(OPC_VS1))
     vs2_type := reg_type(vs2_t, vs2_dyn, inst(OPC_VS2))

@@ -416,7 +416,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   private val bbias = bVLen - bStrip + 1
   val bias = Reg(Vec(nVLU, SInt(width = bbias)))
-  val bias_in = Vec(nVLU, SInt())
+  val bias_in = Wire(Vec(nVLU, SInt()))
   val bias_next = Vec(bias_in.map(_ + rcnt_pulse))
   bias_in := bias
   bias := bias_next
@@ -500,7 +500,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
     val rot = Module(new Rotator(gen, in.size, nStrip))
-    val out = Vec.fill(nStrip)(gen.clone)
+    val out = Wire(Vec(nStrip, gen.clone))
     rot.io.sel := rotamt
     rot.io.in := in
     out := rot.io.out
@@ -550,7 +550,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val slice_conflict = slice_used && meta.mask(nStrip-1)
   val tick_next = !(slice_conflict && tick)
 
-  val bwqs_fire = Bool()
+  val bwqs_fire = Wire(Bool())
   when (bwqs_fire) {
     tick := tick_next
   }
@@ -577,7 +577,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val bwqs_mask = merge(mask)
   val bwqs_en = bwqs_mask.map(_.orR)
 
-  val wb_update = Vec(nBanks, Bits(width = szwb))
+  val wb_update = Wire(Vec(nBanks, Bits(width = szwb)))
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nBWQ))
@@ -607,7 +607,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
         (wb_eidx >> vd_shift(wb_vidx)) * vd_stride(wb_vidx)
       else (wb_eidx * io.cfg.vstride.d))
 
-    val pack = new PackInfo
+    val pack = Wire(new PackInfo)
     pack.prec := vd.prec
     pack.idx := wb_eidx
     val out = repack_bank(pack, UInt(0), bwq.io.deq.bits)

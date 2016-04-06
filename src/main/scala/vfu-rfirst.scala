@@ -58,7 +58,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
-  val deq_lane = Vec.fill(nLanes){Reg(Bool())}
+  val deq_lane = Reg(Vec(nLanes, Bool()))
   val fn = Reg(new VRFUFn)
 
   val mask_lane_valid = (deq_lane zip io.lane) map { case (deq, lane) => !deq || lane.valid }

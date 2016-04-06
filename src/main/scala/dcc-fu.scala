@@ -124,7 +124,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val lstrip = io.cfg.lstrip >> UInt(bSlices)
   val bank = slice_idx(bBanks-1, 0)
 
-  val pack = new PackInfo
+  val pack = Wire(new PackInfo)
   val (vd_update, vd_stride) = if (confprec) {
     pack.prec := op.vd.prec
     pack.idx := slice_idx >> UInt(bBanks)
@@ -135,10 +135,10 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     (Bool(true), io.cfg.vstride.d)
   }
 
-  val fire = Bool()
-  val fire_div = Bool()
-  val fire_first = Bool()
-  val fire_reduce = Bool()
+  val fire = Wire(Bool())
+  val fire_div = Wire(Bool())
+  val fire_first = Wire(Bool())
+  val fire_reduce = Wire(Bool())
   val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen(bSlices, 0))
   val vlen_next = op.vlen - ecnt
   val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).toBits
@@ -311,7 +311,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   io.bwqs.zipWithIndex.map { case (bwq, i) =>
     bwq.valid := fire_bwq(mask_bwqs_ready(i), enq_bwqs(i)) }
 
-  val wraw = new BankDataPredEntry
+  val wraw = Wire(new BankDataPredEntry)
   wraw.pred := tagq.io.deq.bits.pred
   wraw.data := Mux(tagq.io.deq.bits.fusel.toBool,
     repack_slice(io.idiv.fus.map(_.resp.bits.out)),

@@ -129,7 +129,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
       fn.op_is(I_CLTU) -> cmp(_.ltu)
     ))
 
-  val result = new ALUResult
+  val result = Wire(new ALUResult)
   result.out := s0_result
   result.cmp := s0_cmp
 

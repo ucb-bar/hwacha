@@ -92,7 +92,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 
   /* Store acknowledgement */
   val sret_req = abox.bits.meta.ecnt
-  val sret_resp = new CInt(tlByteAddrBits-1)
+  val sret_resp = Wire(new CInt(tlByteAddrBits-1))
   sret_resp.raw := resp.bits.tag
 
   val sret_req_en = fire(null, cmd.store, !pred)

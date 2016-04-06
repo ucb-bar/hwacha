@@ -37,7 +37,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
     val stall_prefetch = Bool(OUTPUT)
   }
 
-  val shim = Decoupled(UInt(width=entrywidth)).asDirectionless()
+  val shim = Wire(Decoupled(UInt(width=entrywidth)).asDirectionless())
 
   // TODO counter overflow
   val runbehind_counter = Reg(init = SInt(-skipamt, width=32))
@@ -130,7 +130,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   //printf("complete memop: %d\n", io.vmu_memop_complete)
 
   // addr regfile
-  val arf = Mem(UInt(width = 64), 32)
+  val arf = Mem(32, UInt(width = 64))
 
   // queue of load/store/addr/len to L2 prefetching stage
   val decl2q = Module(new DecL2Q)

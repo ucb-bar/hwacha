@@ -54,7 +54,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
   }
 
   def unpack_bank(pack: PackInfo, rate: UInt, in: BankData) = {
-    val out = new BankDataEntry
+    val out = Wire(new BankDataEntry)
     if (confprec) {
       val (selp, selr, shift) = _prologue(pack, rate)
       val data = in.data >> Cat(shift, UInt(0, bSlices + 4))
@@ -82,7 +82,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
     unpack_bank(op.pack, op.rate, new BankDataEntry().fromBits(in))
 
   def repack_bank(pack: PackInfo, rate: UInt, in: BankData with BankPred) = {
-    val out = new BankDataMaskEntry
+    val out = Wire(new BankDataMaskEntry)
     if (confprec) {
       val (selp, selr, shift) = _prologue(pack, rate)
       val shift_data = Cat(shift, UInt(0, bSlices + 4))
@@ -110,7 +110,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
   }
   def repack_bank(op: MicroOp with BankPack, in: BankData with BankPred)
     : BankDataMaskEntry = {
-    val tmp = new BankDataPredEntry
+    val tmp = Wire(new BankDataPredEntry)
     tmp.data := in.data
     tmp.pred := op.pred & in.pred
     repack_bank(op.pack, op.rate, tmp)

@@ -48,7 +48,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt_n = UInt(1) << lgecnt_n
   val step_n = ecnt_n
 
-  val lead = Bool()
+  val lead = Wire(Bool())
   lead := Bool(false)
 
   val pglen = Reg(UInt(width = bPgIdx + 1))
@@ -58,7 +58,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val pglen_shift = Mux(lead, io.op.bits.mt.shift(), op.mt.shift())
   val pglen_max = (UInt(pgSize) - pglen_skip) >> pglen_shift
   val pglen_final = Reg(Bool())
-  val pglen_reset = Bool()
+  val pglen_reset = Wire(Bool())
   pglen_reset := Bool(false)
 
   val head_mask = EnableDecoder(pglen, nStrip)
@@ -193,7 +193,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
     hold := io.ingress.bits.pred(nStrip-1, nStrip-limit+1)
   }
 
-  val surplus = Bool()
+  val surplus = Wire(Bool())
   val pred = Mux(surplus, Bits(0), io.ingress.bits.pred)
   val preds = (0 until nStrip).map(pred(_)).toSeq
 

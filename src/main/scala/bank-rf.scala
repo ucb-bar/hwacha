@@ -21,14 +21,14 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       val wdata = new BankDataPredEntry().asInput
     }
   }
-  val sram_rf = SeqMem(Vec(Bits(width = 8), wBank/8), nSRAM)
-  val ff_rf = Mem(Vec(Bits(width = 8), wBank/8), nFF)
-  val pred_rf = Mem(Vec(Bool(), wPred), nPred)
+  val sram_rf = SeqMem(nSRAM, Vec(wBank/8, Bits(width = 8)))
+  val ff_rf = Mem(nFF, Vec(wBank/8, Bits(width = 8)))
+  val pred_rf = Mem(nPred, Vec(wPred, Bool()))
 
-  val gopl = Mem(Vec(Bits(width = regLen), nSlices), nGOPL)
-  val lopl = Mem(Vec(Bits(width = regLen), nSlices), nLOPL)
-  val gpdl = Mem(Bits(width = wPred), nGPDL)
-  val lpdl = Mem(Bits(width = wPred), nLPDL)
+  val gopl = Mem(nGOPL, Vec(nSlices, Bits(width = regLen)))
+  val lopl = Mem(nLOPL, Vec(nSlices, Bits(width = regLen)))
+  val gpdl = Mem(nGPDL, Bits(width = wPred))
+  val lpdl = Mem(nLPDL, Bits(width = wPred))
 
   def read_gpdl(addr: UInt) = new BankPredEntry().fromBits(gpdl(addr))
 

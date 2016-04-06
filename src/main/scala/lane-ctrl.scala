@@ -22,7 +22,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
         "check strip count for single-rate systolic laneop: " +
         in.bits.getClass.getName)
 
-    val out = Valid(in.bits.clone).asDirectionless
+    val out = Wire(Valid(in.bits.clone).asDirectionless)
     out.valid := Reg(next=in_next_valid, init=Bool(false))
     out.bits := RegEnable(in.bits, in_next_valid)
     out.bits.strip := RegEnable(in.bits.strip - in_popcnt, in_next_valid)

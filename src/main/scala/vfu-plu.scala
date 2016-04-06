@@ -25,8 +25,11 @@ class PLUSlice(implicit p: Parameters) extends VXUModule()(p) {
   val s1 = Mux(io.req.bits.in1, s2(3,2), s2(1,0))
   val s0 = Mux(io.req.bits.in0, s1(1), s1(0))
 
-  val result = new PLUResult
+  val result = Wire(new PLUResult)
   result.out := s0
 
-  io.resp := Pipe(io.req.valid, result, stagesPLU)
+  //io.resp := Pipe(io.req.valid, result, stagesPLU)
+  //TODO COLIN FIXME: Bug in chisel Pipe falsely? generating chisel3 compat error
+  io.resp.valid := io.req.valid
+  io.resp.bits := result
 }

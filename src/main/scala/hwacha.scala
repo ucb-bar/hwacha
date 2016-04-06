@@ -36,7 +36,7 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends UsesParameters {
+abstract trait UsesHwachaParameters {
   implicit val p: Parameters
 
   val commit_log = p(HwachaCommitLog)
@@ -127,7 +127,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   rocc.io.rocc.cmd <> io.cmd
   rocc.io.rocc.resp <> io.resp
   rocc.io.rocc.busy <> io.busy
-  rocc.io.rocc.s <> io.s
+  rocc.io.rocc.status <> io.status
   rocc.io.rocc.interrupt <> io.interrupt
   rocc.io.rocc.exception <> io.exception
 

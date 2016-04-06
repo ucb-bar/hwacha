@@ -76,8 +76,8 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
   val me = io.master.state.e
   val head = io.master.state.head
 
-  val v = Vec.fill(nSeq){Reg(init=Bool(false))}
-  val e = Vec.fill(nSeq){Reg(new SeqEntry)}
+  val v = Reg(init = Vec.fill(nSeq){Bool(false)})
+  val e = Reg(Vec(nSeq, new SeqEntry))
 
   val me_rate = Vec(me.map(UInt(1) << _.rate))
 
@@ -232,7 +232,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         io.ticker.pred.write,
         (lop: ValidIO[PredRFWriteOp]) => lop.valid && lop.bits.selg)
 
-    val select = Vec.fill(nSeq){new SeqSelect}
+    val select = Wire(Vec(nSeq, new SeqSelect))
 
     val check =
       (0 until nSeq) map { r =>
@@ -295,8 +295,8 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
   // issue window helpers
 
   val iwindow = new {
-    val next_update = Vec.fill(nSeq){Bool()}
-    val next_v = Vec.fill(nSeq){Bool()}
+    val next_update = Wire(Vec(nSeq, Bool()))
+    val next_v = Wire(Vec(nSeq, Bool()))
 
     val set = new {
       def valid(n: UInt) = {
@@ -358,7 +358,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       new SeqSelect().fromBits(Mux1H(sched, shazard.select.map(_.toBits)))
 
     def regfn(sched: Vec[Bool]) = {
-      val out = new PhysicalRegisters
+      val out = Wire(new PhysicalRegisters)
       List((preg_vp, reg_vp, pregid_vp),
            (preg_vs1, reg_vs1, pregid_vs1),
            (preg_vs2, reg_vs2, pregid_vs2),
@@ -434,9 +434,9 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     // scheduled ports that go to the expander
     val exp = new {
-      val vgu_consider = Vec.fill(nSeq){Bool()}
-      val vsu_consider = Vec.fill(nSeq){Bool()}
-      val vqu_consider = Vec.fill(nSeq){Bool()}
+      val vgu_consider = Wire(Vec(nSeq, Bool()))
+      val vsu_consider = Wire(Vec(nSeq, Bool()))
+      val vqu_consider = Wire(Vec(nSeq, Bool()))
 
       val consider = (i: Int) => nohazards(i) && (
         me(i).active.viu || me(i).active.vimu ||
@@ -449,7 +449,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
       val op = {
-        val out = new SeqOp
+        val out = Wire(new SeqOp)
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
         out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
@@ -494,7 +494,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
       val op = {
-        val out = new SeqVIPUOp
+        val out = Wire(new SeqVIPUOp)
         out.fn := mread(sched, (me: MasterSeqEntry) => me.fn)
         out.reg := regfn(sched)
         out.base.vd := mread(sched, (me: MasterSeqEntry) => me.base.vd)
@@ -518,7 +518,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       val first = ff((i: Int) => me(i).active.vpu || me(i).active.vgu)
       val sel = mread(first, (me: MasterSeqEntry) => me.active.vgu)
       val op = {
-        val out = new SeqVPUOp
+        val out = Wire(new SeqVPUOp)
         out.reg := regfn(first)
         out.strip := stripfn(first)
         out.pack := read(first, (e: SeqEntry) => e.pack)
