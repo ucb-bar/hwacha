@@ -82,12 +82,10 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   // number of bytes the VRU can runahead
   val MAX_RUNAHEAD = p(HwachaVRUMaxRunaheadBytes)
 
-  val shim = Decoupled(UInt(width=entrywidth)).asDirectionless()
-
   // this queue tracks the number of bytes loaded/stored per vf block
   // in flight (where in-flight = sent to prefetch stage, but not acked by 
   // vxu)
-  val bytes_per_vf_queue = Queue(shim, throttleQueueDepth)
+  val bytesq = Module(new Queue(UInt(width=entrywidth), throttleQueueDepth))
 
   // the number of bytes the prefetcher is ahead of the vxu
   val runahead_bytes_count = Reg(init=UInt(0, width=32))
@@ -98,9 +96,9 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 
   // queue does not need to worry about ignoring entries when we fall behind,
   // because the vf blocks will never enter decode
-  shim.valid := io.enq.valid && !(io.vf_done_vxu && !bytes_per_vf_queue.valid)
-  io.enq.ready := shim.ready
-  shim.bits := io.enq.bits
+  bytesq.io.enq.valid := io.enq.valid && !(io.vf_done_vxu && !bytesq.io.deq.valid)
+  io.enq.ready := bytesq.io.enq.ready
+  bytesq.io.enq.bits := io.enq.bits
 
   // only one of these can be true at a time
   val skipped_block = io.vf_fire && io.vf_skip
@@ -110,13 +108,13 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 
   runahead_vf_count := runahead_vf_count + UInt(increment_vf_count) - UInt(io.vf_done_vxu)
 
-  val increment_bytes_necessary = shim.valid && shim.ready
-  val decrement_bytes_necessary = bytes_per_vf_queue.valid && io.vf_done_vxu
+  val increment_bytes_necessary = bytesq.io.enq.valid && bytesq.io.enq.ready
+  val decrement_bytes_necessary = bytesq.io.deq.valid && io.vf_done_vxu
 
-  bytes_per_vf_queue.ready := io.vf_done_vxu
+  bytesq.io.deq.ready := io.vf_done_vxu
 
-  val next_increment_bytes_value = Mux(increment_bytes_necessary, shim.bits, UInt(0))
-  val next_decrement_bytes_value = Mux(decrement_bytes_necessary, bytes_per_vf_queue.bits, UInt(0))
+  val next_increment_bytes_value = Mux(increment_bytes_necessary, bytesq.io.enq.bits, UInt(0))
+  val next_decrement_bytes_value = Mux(decrement_bytes_necessary, bytesq.io.deq.bits, UInt(0))
   runahead_bytes_count := runahead_bytes_count + next_increment_bytes_value - next_decrement_bytes_value
 }
 
