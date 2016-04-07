@@ -222,7 +222,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   val qcnt_max = Mux1H(mts, qcnts.map(UInt(_)))
   val ecnt_max = Cat(qcnt_max, UInt(0, bSlices))
 
-  val vlen_next = op.vlen.zext - ecnt_max
+  val vlen_next = op.vlen.zext - ecnt_max.zext
   val vlen_end = (vlen_next <= SInt(0))
   val ecnt = Mux(vlen_end, op.vlen(bStrip, 0), ecnt_max)
   val qcnt = Ceil(ecnt, bSlices)
@@ -302,7 +302,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     val elts = for (q <- brqs; i <- (0 until wBank by regLen))
       yield q.bits.data(sz-1+i, i)
     val sets = elts.grouped(qcnt << bSlices).map(xs =>
-      Cat(xs.reverse)).toIterable
+      Cat(xs.reverse)).toSeq
     if (sets.size > 1) {
       val sel = index(bBanks-1, log2Ceil(qcnt))
       Vec(sets)(sel)
@@ -417,18 +417,18 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   private val bbias = bVLen - bStrip + 1
   val bias = Reg(Vec(nVLU, SInt(width = bbias)))
   val bias_in = Wire(Vec(nVLU, SInt()))
-  val bias_next = Vec(bias_in.map(_ + rcnt_pulse))
+  val bias_next = Vec(bias_in.map(_ + rcnt_pulse.zext))
   bias_in := bias
   bias := bias_next
 
   val bias_tail = Reg(init = SInt(0, bbias))
   val vlen_tail = Ceil(opq.io.deq.bits.vlen, bStrip)
   val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
-  bias_tail := (bias_tail + rcnt_pulse) - bias_tail_sub
+  bias_tail := (bias_tail + rcnt_pulse.zext) - bias_tail_sub.zext
   assert(bias_tail <= SInt(0), "VLU: positive bias_tail")
 
   val vlen_next = bias_next(vidx)
-  val vlen_end = (vlen_next === op_head.vlen)
+  val vlen_end = (vlen_next === op_head.vlen.zext)
   assert(!io.la.reserve || vlen_end || (rcnt_residue === UInt(0)),
     "VLU: retire count not a strip multiple")
 
@@ -457,14 +457,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val pcnt = Reg(init = UInt(0, bpcnt))
   val pcnt_end = (pcnt === UInt(0))
   val pcnt_add = Mux(issue, vlen_tail, UInt(0))
-  val pcnt_next = (pcnt.zext + pcnt_add) - pred_fire.toUInt
+  val pcnt_next = (pcnt.zext + pcnt_add.zext) - pred_fire.zext
   pcnt := pcnt_next
   assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
   private val maxpidx = (szwb >> bStrip) - 1
   val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
   val pidx_end = (pidx === UInt(maxpidx))
-  val pidx_next = (pidx.zext + pred_fire.toUInt) - rcnt_pulse
+  val pidx_next = (pidx.zext + pred_fire.zext) - rcnt_pulse.zext
   pidx := pidx_next
   /* NOTE: Predicates should always arrive before the corresponding
      load due to VMU latency, thus precluding this race condition */
@@ -498,9 +498,9 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val rotamt = eidx_strip - epad_eff
 
-  private def rotate[T <: Data](gen: T, in: Iterable[T]) = {
+  private def rotate[T <: Data](gen: T, in: Seq[T]) = {
     val rot = Module(new Rotator(gen, in.size, nStrip))
-    val out = Wire(Vec(nStrip, gen.clone))
+    val out = Wire(Vec(nStrip, gen))
     rot.io.sel := rotamt
     rot.io.in := in
     out := rot.io.out
@@ -570,7 +570,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   // bank write queues
   //--------------------------------------------------------------------\\
 
-  private def merge[T <: Data](in: Seq[T]): Seq[Bits] =
+  private def merge[T <: Bits](in: Seq[T]): Seq[Bits] =
     in.grouped(nSlices).map(xs => Cat(xs.reverse)).toSeq
 
   val bwqs_data = merge(data)

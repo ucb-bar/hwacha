@@ -27,7 +27,7 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
 
   val s1_valid = Reg(init=Bool(false))
   val s1_pc_ = Reg(UInt())
-  val s1_pc = s1_pc_ & SInt(-coreInstBytes)
+  val s1_pc = ~(~s1_pc_ | UInt(coreInstBytes-1)) // discard PC LSBS (this propagates down the pipeline)
   val s1_same_block = Reg(init=Bool(false))
   val s1_req_valid = Reg(init=Bool(false))
 
@@ -111,8 +111,8 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   icache.io.req.valid := req.valid
   icache.io.req.bits.idx := req.bits.pc
   icache.io.invalidate := Bool(false)
-  icache.io.req.bits.ppn := tlb.io.resp.ppn
-  icache.io.req.bits.kill :=
+  icache.io.s1_ppn := tlb.io.resp.ppn
+  icache.io.s1_kill :=
     vxu.io.back.s1_kill || vru.io.back.s1_kill ||
     tlb.io.resp.miss || tlb.io.resp.xcpt_if || io.ptw.invalidate
 

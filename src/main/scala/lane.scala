@@ -179,7 +179,7 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   }
 
   def valids(valid: Bool, pred: Bits, latency: Int) =
-    ShiftRegister(Mux(valid, pred, Bits(0)), Bits(0), latency)
+    ShiftRegister(Mux(valid, pred, Bits(0)), latency)
 
   require(nLRQ == 3)
 

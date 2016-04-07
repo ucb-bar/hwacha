@@ -243,8 +243,8 @@ trait VMUConstants {
   val VM_S = UInt(1, SZ_VMU_MODE) // constant-stride
   val VM_I = UInt(2, SZ_VMU_MODE) // indexed
 
-  def vmu_unit(mode: Bits): Bool = (mode === VM_U)
-  def vmu_indexed(mode: Bits): Bool = mode(1)
+  def vmu_unit(mode: UInt): Bool = (mode === VM_U)
+  def vmu_indexed(mode: UInt): Bool = mode(1)
 }
 
 trait SMUConstants {

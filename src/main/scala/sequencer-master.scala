@@ -359,7 +359,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
     val clear = new {
       def valid(n: UInt) = { v(n) := Bool(false) }
-      def active(n: UInt) = { e(n).active := e(0).active.clone().fromBits(Bits(0)) }
+      def active(n: UInt) = { e(n).active := e(0).active.cloneType.fromBits(Bits(0)) }
     }
 
     def retire(n: UInt) = {

@@ -63,7 +63,7 @@ class DecodedMemType extends Bundle {
 }
 
 object DecodedMemType {
-  def apply[T <: Data](mt: T): DecodedMemType = {
+  def apply[T <: UInt](mt: T): DecodedMemType = {
     val b = (mt === MT_B)
     val h = (mt === MT_H)
     val w = (mt === MT_W)

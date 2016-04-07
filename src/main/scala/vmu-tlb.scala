@@ -46,7 +46,7 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
     val irq = new IRQIO
   }
 
-  val arb = Wire(new TLBIO().asDirectionless())
+  val arb = Wire(new TLBIO())
   io.outer.bridge(arb)
 
   /* Priority mux */

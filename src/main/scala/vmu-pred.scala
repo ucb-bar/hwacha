@@ -52,7 +52,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   lead := Bool(false)
 
   val pglen = Reg(UInt(width = bPgIdx + 1))
-  val pglen_next = pglen.zext - step_max
+  val pglen_next = pglen.zext - step_max.zext
   val pglen_end = (pglen_next <= SInt(0))
   val pglen_skip = Mux(lead, io.op.bits.base(bPgIdx-1, 0), UInt(0))
   val pglen_shift = Mux(lead, io.op.bits.mt.shift(), op.mt.shift())
@@ -71,7 +71,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt = Mux(op.mode.unit, ecnt_u, ecnt_n)
 
   val step = Mux(op.mode.unit, step_u, step_n)
-  val vlen_next = op.vlen.zext - step
+  val vlen_next = op.vlen.zext - step.zext
   val vlen_end = (vlen_next <= SInt(0))
 
   io.sample.bits.pred := pred

@@ -32,12 +32,12 @@ abstract trait Packing extends LaneParameters {
   def repack_h(n: Seq[Bits]) = _repack(n, SZ_D/SZ_H)
   def repack_b(n: Seq[Bits]) = _repack(n, SZ_D/SZ_B)
 
-  def _unpack(n: Bits, idx: Int, extent: Int, period: Int, width: Int): Bits = {
+  def _unpack(n: Bits, idx: Int, extent: Int, period: Int, width: Int): UInt = {
     require((idx+1)*period <= extent)
     val base = idx*period
     n(width+base-1, base)
   }
-  def _unpack(n: Bits, idx: Int, extent: Int, period: Int): Bits =
+  def _unpack(n: Bits, idx: Int, extent: Int, period: Int): UInt =
     _unpack(n, idx, extent, period, period)
 
   def unpack_d(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_D)
@@ -83,10 +83,10 @@ abstract trait SeqLogic extends SeqParameters {
   }
 
   def mreadfn[T <: Data](sched: Vec[Bool], me: Vec[MasterSeqEntry], rfn: MasterSeqEntry=>T) =
-    rfn(me(0)).clone.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
+    rfn(me(0)).cloneType.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
 
   def readfn[T <: Data](sched: Vec[Bool], e: Vec[SeqEntry], rfn: SeqEntry=>T) =
-    rfn(e(0)).clone.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
+    rfn(e(0)).cloneType.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
 
   def step(ptr: UInt, n: Int): UInt = {
     require(n < nSeq)
@@ -100,7 +100,7 @@ abstract trait SeqLogic extends SeqParameters {
 }
 
 object DataGating {
-  def dgate(valid: Bool, b: Bits) = Fill(b.getWidth, valid) & b
+  def dgate(valid: Bool, b: UInt) = Fill(b.getWidth, valid) & b
 }
 
 object HardFloatHelper {
@@ -126,7 +126,7 @@ class MaskStall[T <: Data](data: => T) extends Module {
 
 object MaskStall {
   def apply[T <: Data](deq: DecoupledIO[T], stall: Bool) = {
-    val ms = Module(new MaskStall(deq.bits.clone))
+    val ms = Module(new MaskStall(deq.bits.cloneType))
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output

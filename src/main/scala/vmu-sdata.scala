@@ -15,7 +15,7 @@ class VMUStoreMeta(implicit p: Parameters) extends VMUMetaStore with VMUMetaCoun
   val offset = UInt(width = tlByteAddrBits)
 }
 class VMUStoreIO(implicit p: Parameters) extends VSDQIO()(p) {
-  val meta = new VMUStoreMeta().asInput()
+  val meta = new VMUStoreMeta().asInput
 }
 
 class SBox(implicit p: Parameters) extends VMUModule()(p) {

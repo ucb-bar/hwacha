@@ -204,7 +204,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt_u = saturate(ecnt_u_max)
   val ecnt_max = Mux(op.mode.unit, ecnt_u, UInt(1))
 
-  val vlen_next = op.vlen.zext - ecnt_max
+  val vlen_next = op.vlen.zext - ecnt_max.zext
   val vlen_end = (vlen_next <= SInt(0))
   val ecnt_test = Mux(vlen_end, offset(op.vlen), ecnt_max)
 

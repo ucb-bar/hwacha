@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import cde.{Parameters, Field}
 
 case object FastMulDiv extends Field[Boolean]
 

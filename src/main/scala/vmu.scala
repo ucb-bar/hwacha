@@ -90,7 +90,7 @@ class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   val issue = Vec(4, Decoupled(new VMUDecodedOp))
 
   def span(sink: DecoupledIO[VMUDecodedOp]*) = {
-    val src = Wire(Decoupled(new VMUDecodedOp).asDirectionless())
+    val src = Wire(Decoupled(new VMUDecodedOp))
     val rvs = (src.ready, src.valid) +: sink.map(x => (x.valid, x.ready))
     rvs.foreach { case (x, y) =>
       x := rvs.map(_._2).filter(_ ne y).reduce(_ && _)
@@ -172,7 +172,7 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
 
   val ecnt_max = io.cfg.lstrip
   val eidx_next = op.eidx + ecnt_max
-  val vlen_next = op.vlen.zext - ecnt_max
+  val vlen_next = op.vlen.zext - ecnt_max.zext
   val vlen_end = (vlen_next <= SInt(0))
   val ecnt = Mux(vlen_end, op.vlen(bfLStrip-1, 0), ecnt_max)
 

@@ -9,9 +9,9 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
   require(n == (1 << lgn))
 
   val io = new Bundle {
-    val in0 = Vec.fill(n){ gen.clone.asInput }
-    val in1 = Vec.fill(n){ gen.clone.asInput } // left-shift input
-    val out = Vec.fill(n){ gen.clone.asOutput }
+    val in0 = Vec(n, gen.cloneType.asInput)
+    val in1 = Vec(n, gen.cloneType.asInput) // left-shift input
+    val out = Vec(n, gen.cloneType.asOutput)
     val shift = SInt(INPUT, lgn + 1)
   }
 
@@ -34,8 +34,8 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
 class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module {
   require(n <= m)
   val io = new Bundle {
-    val in = Vec.fill(n)(gen.clone.asInput())
-    val out = Vec.fill(m)(gen.clone.asOutput())
+    val in = Vec(n, gen.cloneType.asInput)
+    val out = Vec(m, gen.cloneType.asOutput)
     val sel = UInt(INPUT, log2Up(m))
   }
 
@@ -60,7 +60,7 @@ class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends M
 }
 
 object EnableDecoder {
-  def apply[T <: UInt](in: T, n: Int): Bits = {
+  def apply[T <: UInt](in: T, n: Int): UInt = {
     val lgn = log2Up(n)
     val lut = Vec(
       (0 until n).map(i => Bits((1 << i) - 1, n)) ++
@@ -78,7 +78,7 @@ object Ceil {
 
 /* Count trailing zeroes */
 object CTZ {
-  private def mux[T <: Data](in: Iterable[(Bool, T)]): (Bool, T) = {
+  private def mux[T <: Data](in: Seq[(Bool, T)]): (Bool, T) = {
     /* Returns the last (lowest-priority) item if none are selected */
     val elt = in.init.foldRight(in.last._2) {
       case ((sel, elt0), elt1) => Mux(sel, elt0, elt1)
@@ -87,7 +87,7 @@ object CTZ {
     (sel, elt)
   }
 
-  private def tree[T <: Data](in: Iterable[(Bool, T)]): Iterable[(Bool, T)] = {
+  private def tree[T <: Data](in: Seq[(Bool, T)]): Seq[(Bool, T)] = {
     val stage = in.grouped(2).map(mux(_)).toSeq
     if (stage.size > 1) tree(stage) else stage
   }

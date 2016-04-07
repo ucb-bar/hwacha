@@ -10,7 +10,7 @@ class TableWIO[T <: Data](gen: => T, sztag: Int)
 
 class TableRIO[T <: Data](gen: => T, sztag: Int)
   extends ValidIO(UInt(width = sztag)) {
-  val record = gen.asInput()
+  val record = gen.asInput
 }
 
 class Table[T <: Data](n: Int, gen: => T) extends Module {

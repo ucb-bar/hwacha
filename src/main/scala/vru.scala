@@ -37,7 +37,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
     val stall_prefetch = Bool(OUTPUT)
   }
 
-  val shim = Wire(Decoupled(UInt(width=entrywidth)).asDirectionless())
+  val shim = Wire(Decoupled(UInt(width=entrywidth)))
 
   // TODO counter overflow
   val runbehind_counter = Reg(init = SInt(-skipamt, width=32))
@@ -53,7 +53,7 @@ class ThrottleManager(skipamt: Int, resetSignal: Bool = null)(implicit p: Parame
   val global_ls_count = Reg(init=UInt(0, width=32))
   io.stall_prefetch := global_ls_count > UInt(MAX_RUNAHEAD)
 
-  shim.valid := io.enq.valid && !(io.vf_done_vxu && !ls_per_vf_q.valid && runbehind_counter >= SInt(0)) && !(runbehind_counter > UInt(0))
+  shim.valid := io.enq.valid && !(io.vf_done_vxu && !ls_per_vf_q.valid && runbehind_counter >= SInt(0)) && !(runbehind_counter > SInt(0))
   io.enq.ready := shim.ready
   shim.bits := io.enq.bits
 

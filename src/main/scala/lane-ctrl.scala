@@ -22,7 +22,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
         "check strip count for single-rate systolic laneop: " +
         in.bits.getClass.getName)
 
-    val out = Wire(Valid(in.bits.clone).asDirectionless)
+    val out = Wire(Valid(in.bits.cloneType))
     out.valid := Reg(next=in_next_valid, init=Bool(false))
     out.bits := RegEnable(in.bits, in_next_valid)
     out.bits.strip := RegEnable(in.bits.strip - in_popcnt, in_next_valid)
@@ -37,7 +37,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   def gen_vec_systolic[T <: LaneOp, S <: MicroOp]
-    (lops: Iterable[ValidIO[T]], uops: Iterable[ValidIO[S]], mr: Boolean = true) = {
+    (lops: Seq[ValidIO[T]], uops: Seq[ValidIO[S]], mr: Boolean = true) = {
       Vec((lops zip uops) map { case (lop, uop) => gen_systolic(lop, uop, mr) })
   }
 
@@ -61,7 +61,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
 
   class Shared[T <: LaneOp](in: ValidIO[T], multirate: Boolean = false) {
     val reg_valid = Reg(Bool())
-    val reg_bits = Reg(in.bits.clone)
+    val reg_bits = Reg(in.bits.cloneType)
 
     val strip = Mux(in.valid, in.bits.strip, reg_bits.strip)
     val overflow = strip > UInt(nSlices)

@@ -69,8 +69,8 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
   rf.io.op <> io.op
   rf.io.global <> io.rw
 
-  def valids(valid: Bool, pred: Bits, latency: Int) =
-    ShiftRegister(Mux(valid, pred, Bits(0)), Bits(0), latency)
+  def valids(valid: Bool, pred: UInt, latency: Int) =
+    ShiftRegister(Mux(valid, pred, Bits(0)), latency)
 
   // ALU
   val alu_pred = io.op.viu.bits.pred & rf.io.local.pdl(0).pred
