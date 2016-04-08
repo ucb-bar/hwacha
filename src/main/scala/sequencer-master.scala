@@ -416,13 +416,14 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val tailm1 = step(tail, nSeq-1)
       val headp1 = step(head, 1)
 
-      when (io.vf.stop) {
-        set.last(tailm1)
-      }
-
       val vf_last = Wire(Bool())
 
       vf_last := Bool(false)
+      when (io.vf.stop) {
+        set.last(tailm1)
+        vf_last := !io.pending.all
+      }
+
       when (v(head) && io.master.clear(head)) {
         retire(head)
         set.head(headp1)
