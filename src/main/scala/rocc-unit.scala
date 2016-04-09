@@ -52,7 +52,35 @@ class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModul
   io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
 }
 
-object HwachaDecodeTable extends HwachaDecodeConstants {
+class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
+  val inst_val = Bool() // TODO: unused
+  val inst_priv = Bool() // TODO: unused
+  val enq_cmd_  = Bool()
+  val sel_cmd = Bits(width = CMD_X.getWidth)
+  val rd_type = Bits(width = VRT_X.getWidth)
+  val sel_imm = Bits(width = RIMM_X.getWidth)
+  val check_vl = Bool()
+  val enq_rd_ = Bool()
+  val enq_imm_ = Bool()
+  val enq_vcnt_ = Bool() // TODO: unused
+  val enq_resp_ = Bool()
+  val sel_resp = Bits(width= RESP_X.getWidth)
+  val decode_save = Bool() // TODO: unused
+  val decode_rest = Bool() // TODO: unused
+  val decode_kill = Bool() // TODO: unused
+
+  def decode(inst: UInt) = {
+    val decoder = rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
+    val sigs = Seq(inst_val, inst_priv, enq_cmd_, sel_cmd, rd_type, sel_imm,
+        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_resp_, sel_resp, decode_save,
+        decode_rest, decode_kill)
+    sigs zip decoder map {case(s,d) => s := d}
+
+    this
+  }
+}
+
+object HwachaDecodeTable {
   import HwachaInstructions._
   val default: List[BitPat] =
                 // * means special case decode code below     checkvl?             
@@ -61,23 +89,23 @@ object HwachaDecodeTable extends HwachaDecodeConstants {
                 //     |  |  vmcd_val                         | | imm?    |             | |
                 //     |  |  |  cmd          rtype  imm       | | | vcnt? | resptype    | | kill
                 //     |  |  |  |            |      |         | | | |     | |           | | |
-                  List(N, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     N,N,N)
+                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,N,N)
   val table: Array[(BitPat, List[BitPat])] = Array(
     // General instructions
-    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, IMM_VLEN, N,N,Y,N,    N,RESP_X,     N,N,N), //* set maxvl register
-    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, IMM_VLEN, N,N,Y,N,    Y,RESP_NVL,   N,N,N), //* set vl register
-    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_CFG,   N,N,N),
-    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_VL,    N,N,N),
-    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, IMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
-    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, IMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
-    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
-    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, IMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
+    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,    N,RESP_X,     N,N,N), //* set maxvl register
+    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,    Y,RESP_NVL,   N,N,N), //* set vl register
+    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_CFG,   N,N,N),
+    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_VL,    N,N,N),
+    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
+    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
+    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
+    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
     // Exception and save/restore instructions
-    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_CAUSE, N,N,N),
-    VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    Y,RESP_AUX,   N,N,N),
-    VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     Y,N,N),
-    VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     N,Y,N),
-    VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, IMM_X,    N,N,N,N,    N,RESP_X,     N,N,Y)
+    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_CAUSE, N,N,N),
+    VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_AUX,   N,N,N),
+    VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     Y,N,N),
+    VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,Y,N),
+    VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,N,Y)
   )
 }
 
@@ -142,13 +170,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val rocc_rd = rocc_inst(11, 7)
   val rocc_srd = Cat(rocc_inst(22, 20), rocc_rd)
 
-  val logic = rocket.DecodeLogic(rocc_inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
-  val cs = logic.map {
-    case b if b.inputs.head.getClass == classOf[Bool] => b.toBool
-    case u => u
-  }
+  val ctrl = Wire(new RoCCCtrlSigs()).decode(rocc_inst)
 
-  val flush_kill = this.reset 
+  val flush_kill = this.reset
   val cmdq = Module(new CMDQ(resetSignal = flush_kill))
 
   // TODO: probably want to change the length of queues in here
@@ -156,28 +180,24 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val respq = Module(new Queue(io.rocc.resp.bits, 2))
   val vru_enable = Reg(init=Bool(false))
 
-  val (inst_val: Bool) :: (inst_priv: Bool) :: (enq_cmd_ : Bool) :: sel_cmd :: rd_type :: sel_imm :: cs0 = cs
-  val (check_vl: Bool) :: (enq_rd_ : Bool) :: (enq_imm_ : Bool) :: (enq_vcnt_ : Bool) :: cs1 = cs0
-  val (enq_resp_ : Bool) :: sel_resp :: (decode_save: Bool) :: (decode_rest: Bool) :: (decode_kill: Bool) :: Nil = cs1
-
   val stall_hold = Reg(init=Bool(false))
   val stall_vsetcfg = Wire(Bool())
   val stall = stall_hold || stall_vsetcfg
 
-  val decode_vsetcfg = enq_cmd_ && (sel_cmd === CMD_VSETCFG)
-  val decode_vsetvl = enq_cmd_ && (sel_cmd === CMD_VSETVL)
+  val decode_vsetcfg = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETCFG)
+  val decode_vsetvl = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETVL)
 
   val keepcfg = Wire(Bool())
   val mask_vsetcfg = !decode_vsetcfg || !keepcfg
 
-  val mask_vl = !check_vl || (cfg_reg_vl =/= UInt(0))
-  val enq_cmd = mask_vl && enq_cmd_
-  val enq_imm = mask_vl && enq_imm_
-  val enq_rd = mask_vl && enq_rd_
+  val mask_vl = !ctrl.check_vl || (cfg_reg_vl =/= UInt(0))
+  val enq_cmd = mask_vl && ctrl.enq_cmd_
+  val enq_imm = mask_vl && ctrl.enq_imm_
+  val enq_rd = mask_vl && ctrl.enq_rd_
   val enq_cnt = Bool(false)
-  val enq_resp = mask_vl && enq_resp_
+  val enq_resp = mask_vl && ctrl.enq_resp_
 
-  val vru_insts_wanted = !(sel_cmd === CMD_VMCS)
+  val vru_insts_wanted = !(ctrl.sel_cmd === CMD_VMCS)
   val vru_enq_cmd = enq_cmd && vru_insts_wanted
   val vru_enq_imm = enq_imm && vru_insts_wanted
   val vru_enq_rd = enq_rd && vru_insts_wanted
@@ -317,14 +337,14 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt, !ignore_dup_vsetvl, vru_enable)
 
   // cmdq dpath
-  val cmd_out = sel_cmd
+  val cmd_out = ctrl.sel_cmd
   val imm_out = 
-    MuxLookup(sel_imm, Bits(0), Array(
-      IMM_VLEN -> cfg_vl,
-      IMM_RS1  -> io.rocc.cmd.bits.rs1,
-      IMM_ADDR -> (io.rocc.cmd.bits.rs1 + rocc_split_imm12.toSInt).toUInt
+    MuxLookup(ctrl.sel_imm, Bits(0), Array(
+      RIMM_VLEN -> cfg_vl,
+      RIMM_RS1  -> io.rocc.cmd.bits.rs1,
+      RIMM_ADDR -> (io.rocc.cmd.bits.rs1 + rocc_split_imm12.toSInt).toUInt
     ))
-  val rd_out = Mux(rd_type === VRT_S, rocc_srd, rocc_rd)
+  val rd_out = Mux(ctrl.rd_type === VRT_S, rocc_srd, rocc_rd)
   cmdq.io.enq.cmd.bits := cmd_out
   cmdq.io.enq.imm.bits := imm_out
   cmdq.io.enq.rd.bits := rd_out
@@ -336,7 +356,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   // respq dpath
   respq.io.enq.bits.data :=
-    MuxLookup(sel_resp, Bits(0), Array(
+    MuxLookup(ctrl.sel_resp, Bits(0), Array(
       RESP_NVL -> cfg_vl,
       RESP_CFG -> cfg_reg.toBits,
       RESP_VL  -> cfg_reg_vl

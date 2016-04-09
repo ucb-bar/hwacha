@@ -6,6 +6,7 @@ object HwachaConstants extends HwachaConstants
 trait HwachaConstants
   extends MachineConstants
   with PrecisionConstants
+  with HwachaDecodeConstants
   with DecodeConstants
   with VIUConstants
   with VIPUConstants
@@ -36,10 +37,6 @@ trait PrecisionConstants {
 }
 
 trait HwachaDecodeConstants {
-  val Y = BitPat("b1")
-  val N = BitPat("b0")
-  val X = BitPat("b?")
-
   val VRT_X = BitPat("b?")
   val VRT_S = UInt(0, 1)
   val VRT_A = UInt(1, 1)
@@ -48,11 +45,11 @@ trait HwachaDecodeConstants {
   val VR_RS1 = UInt(0, 1)
   val VR_RD  = UInt(1, 1)
 
-  val IMM_X    = BitPat("b???")
-  val IMM_VLEN = UInt(0,3)
-  val IMM_RS1  = UInt(1,3)
-  val IMM_RS2  = UInt(2,3)
-  val IMM_ADDR = UInt(3,3)
+  val RIMM_X    = BitPat("b???")
+  val RIMM_VLEN = UInt(0,3)
+  val RIMM_RS1  = UInt(1,3)
+  val RIMM_RS2  = UInt(2,3)
+  val RIMM_ADDR = UInt(3,3)
 
   val RESP_X     = BitPat("b???")
   val RESP_NVL   = UInt(0,3)
