@@ -249,8 +249,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     (UInt(n), UInt(if (n < 2) (nPred) else (nPred / n), width = log2Down(nPred)+1)) }
 
   // epb: elements per bank
-  val epb_nvv = Lookup(cfg_nvv, lookup_tbl_nvv.last._2, lookup_tbl_nvv)
-  val epb_nvp = Lookup(cfg.nvp, lookup_tbl_nvp.last._2, lookup_tbl_nvp) << UInt(bPack)
+  val epb_nvv = MuxLookup(cfg_nvv, lookup_tbl_nvv.last._2, lookup_tbl_nvv)
+  val epb_nvp = MuxLookup(cfg.nvp, lookup_tbl_nvp.last._2, lookup_tbl_nvp) << UInt(bPack)
   val epb_base = min(epb_nvv, epb_nvp)
   val (epb, cfg_lstride) = if (confprec) {
     val sel = Seq(cfg.nvvh =/= UInt(0), cfg.nvvw =/= UInt(0))
@@ -305,7 +305,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_unpred := (cfg.nvp === UInt(0))
     cfg_reg_nvvdw := cfg_nvvdw
     if (!confprec) cfg_reg_vstride := cfg_nvv
-    val vru_switch_on = Bool(io.rocc.cmd.bits.rs1(63))
+    val vru_switch_on = io.rocc.cmd.bits.rs1(63).toBool
     printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
       UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on)
     vru_enable := vru_switch_on
@@ -338,11 +338,11 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   // cmdq dpath
   val cmd_out = ctrl.sel_cmd
-  val imm_out = 
+  val imm_out =
     MuxLookup(ctrl.sel_imm, Bits(0), Array(
       RIMM_VLEN -> cfg_vl,
       RIMM_RS1  -> io.rocc.cmd.bits.rs1,
-      RIMM_ADDR -> (io.rocc.cmd.bits.rs1 + rocc_split_imm12.toSInt).toUInt
+      RIMM_ADDR -> (io.rocc.cmd.bits.rs1.zext + rocc_split_imm12.asSInt).toUInt
     ))
   val rd_out = Mux(ctrl.rd_type === VRT_S, rocc_srd, rocc_rd)
   cmdq.io.enq.cmd.bits := cmd_out

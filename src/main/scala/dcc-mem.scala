@@ -575,7 +575,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val bwqs_data = merge(data)
   val bwqs_mask = merge(mask)
-  val bwqs_en = bwqs_mask.map(_.orR)
+  val bwqs_en = bwqs_mask.map(_.asUInt.orR)
 
   val wb_update = Wire(Vec(nBanks, Bits(width = szwb)))
 

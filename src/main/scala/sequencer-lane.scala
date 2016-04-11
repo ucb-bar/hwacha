@@ -208,7 +208,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
       val mask =
         (lops zipWithIndex) map { case (lop, i) =>
-          dgate(fn(lop), UInt(strip_to_bmask(lop.bits.strip) << UInt(i), lops.size+nBanks-1))
+          dgate(fn(lop), Wire(UInt(width = lops.size+nBanks-1), init = strip_to_bmask(lop.bits.strip) << UInt(i)))
         } reduce(_|_)
       mask >> UInt(1) // shift right by one because we are looking one cycle in the future
     }
@@ -238,10 +238,10 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
       (0 until nSeq) map { r =>
         val op_idx = me(r).rports + UInt(expLatency, bRPorts+1)
         val strip = e_strip(r)
-        val ask_op_mask = UInt(strip_to_bmask(strip) << op_idx, maxXbarTicks+nBanks-1)
-        val ask_wport_sram_mask = UInt(strip_to_bmask(strip) << me(r).wport.sram, maxWPortLatency+nBanks-1)
-        val ask_wport_pred_mask = UInt(strip_to_bmask(strip) << me(r).wport.pred, maxPredWPortLatency+nBanks-1)
-        def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask & ask_mask).orR
+        val ask_op_mask = Wire(UInt(width = maxXbarTicks+nBanks-1), init = strip_to_bmask(strip) << op_idx)
+        val ask_wport_sram_mask = Wire(UInt(width = maxWPortLatency+nBanks-1), init = strip_to_bmask(strip) << me(r).wport.sram)
+        val ask_wport_pred_mask = Wire(UInt(width = maxPredWPortLatency+nBanks-1), init = strip_to_bmask(strip) << me(r).wport.pred)
+        def chk_shazard(use_mask: Bits, ask_mask: Bits) = (use_mask.asUInt & ask_mask.asUInt).orR
         def chk_op_shazard(use_mask: Bits) = chk_shazard(use_mask, ask_op_mask)
         def chk_gpred(i: Int) = chk_op_shazard(use_mask_pxbar(i))
         def chk_rport(fn: RegFn, i: Int) =

@@ -285,13 +285,13 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     MuxCase(Bits(0), Array(
       vimu_vals.orR -> repack_slice(vimus.map(_.bits.out)),
       vfmu_vals(0).orR -> repack_slice(vfmus(0)._1.map(_.out)),
-      vfvu_vals.orR -> repack_slice(vfvus._1.map(_.out)))),
+      vfvu_vals.asUInt.orR -> repack_slice(vfvus._1.map(_.out)))),
     MuxCase(Bits(0), Array(
       vfmu_vals(1).orR -> repack_slice(vfmus(1)._1.map(_.out)),
       vfcu_vals.orR -> repack_slice(vfcus.map(_.bits.out)))))
 
   val wdata_pred = List(
-    vimu_vals | vfmu_vals(0) | vfvu_vals,
+    vimu_vals | vfmu_vals(0) | vfvu_vals.asUInt,
     vfmu_vals(1) | vfcu_vals)
 
   banksrw.map { b =>
@@ -311,7 +311,7 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   io.ack.vgu.valid := ctrl.io.uop.vgu.valid
   io.ack.vimu.valid := vimu_vals.orR
   io.ack.vfcu.valid := vfcu_vals.orR
-  io.ack.vfvu.valid := vfvu_vals.orR
+  io.ack.vfvu.valid := vfvu_vals.asUInt.orR
 
   io.ack.vqu.bits.pred := ctrl.io.uop.vqu.bits.pred
   io.ack.vgu.bits.pred := ctrl.io.uop.vgu.bits.pred

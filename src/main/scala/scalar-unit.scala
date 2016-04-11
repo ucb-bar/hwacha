@@ -497,7 +497,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_srs = for (i <- 0 until id_sreads.size)
     yield Mux(ex_reg_bypass(i), wb_reg_wdata, ex_reg_srs(i))
 
-  def imm(sel: Bits, inst: Bits) = {
+  def imm(sel: UInt, inst: Bits) = {
     val sign = inst(63).toSInt
     val b30_3 = inst(62,35)
     val b2_0 = Mux(sel === IMM_I, inst(34,32), Bits(0))
