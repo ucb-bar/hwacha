@@ -11,6 +11,21 @@ import cde.Parameters
  * - vmcs assert
  */
 
+class VRUCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
+  val opwidth = Bits(width = 3)
+  val ls = Bool()
+  val prefetchable = Bool()
+  val stop = Bool()
+
+  def decode(inst: UInt) = {
+    val decoder = rocket.DecodeLogic(inst, VRUDecodeTable.default, VRUDecodeTable.table)
+    val sigs = Seq(opwidth, ls, prefetchable, stop)
+    sigs zip decoder map {case(s,d) => s := d}
+
+    this
+  }
+}
+
 object VRUDecodeTable {
   import HwachaElementInstructions._
 
@@ -106,7 +121,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   assert(!(skipped_block && accepted_block), "VRU attempted to simultaneously enqueue and skip VF block")
   val increment_vf_count = skipped_block || accepted_block
 
-  runahead_vf_count := runahead_vf_count + UInt(increment_vf_count) - UInt(io.vf_done_vxu)
+  runahead_vf_count := runahead_vf_count + increment_vf_count.toSInt - io.vf_done_vxu.toSInt
 
   val increment_bytes_necessary = bytesq.io.enq.valid && bytesq.io.enq.ready
   val decrement_bytes_necessary = bytesq.io.deq.valid && io.vf_done_vxu
@@ -279,33 +294,27 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
   io.memop.bits.curr_vlen := io.vlen
 
   // decode logic from table
-  val logic = rocket.DecodeLogic(loaded_inst, VRUDecodeTable.default, VRUDecodeTable.table)
-  val cs = logic.map {
-    case b if b.inputs.head.getClass == classOf[Bool] => b.toBool
-    case u => u
-  }
-
-  val (opwidth: UInt) :: (ls: Bool) :: (prefetchable: Bool) :: (stop: Bool) :: Nil = cs
+  val ctrl = Wire(new VRUCtrlSigs()).decode(loaded_inst)
 
   val imem_use_resp = io.imem.resp.valid && vf_active
 
   // as long as we're not stopped at a VSTOP (see above), accept instruction
-  io.imem.resp.ready := !stop || (stop && !stop_at_VSTOP)
+  io.imem.resp.ready := !ctrl.stop || (ctrl.stop && !stop_at_VSTOP)
 
-  io.memop.bits.opwidth := opwidth
-  io.memop.bits.ls := ls
-  io.memop.valid := prefetchable && imem_use_resp
+  io.memop.bits.opwidth := ctrl.opwidth
+  io.memop.bits.ls := ctrl.ls
+  io.memop.valid := ctrl.prefetchable && imem_use_resp
 
   val current_ls_bytes = Reg(init=UInt(0, width=runaheadman.entrywidth))
-  current_ls_bytes := Mux(prefetchable && imem_use_resp, 
-    current_ls_bytes + (io.vlen << opwidth), 
-    Mux(stop && !stop_at_VSTOP && imem_use_resp, UInt(0), current_ls_bytes)
+  current_ls_bytes := Mux(ctrl.prefetchable && imem_use_resp,
+    current_ls_bytes + (io.vlen << ctrl.opwidth),
+    Mux(ctrl.stop && !stop_at_VSTOP && imem_use_resp, UInt(0), current_ls_bytes)
   )
 
   runaheadman.io.enq.bits := current_ls_bytes
-  runaheadman.io.enq.valid := stop && !runaheadman.io.stall_prefetch && imem_use_resp
+  runaheadman.io.enq.valid := ctrl.stop && !runaheadman.io.stall_prefetch && imem_use_resp
 
-  when (stop && !stop_at_VSTOP && imem_use_resp) {
+  when (ctrl.stop && !stop_at_VSTOP && imem_use_resp) {
       vf_active := Bool(false)
   }
 }
