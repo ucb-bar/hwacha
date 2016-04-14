@@ -181,7 +181,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       gopl.write(
         UInt(i),
         toDWords(Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
-        (io.op.opl.global(i).bits.pred & s1_gpred.pred).toBools)
+        (io.op.opl.global(i).bits.pred & s1_gpred.pred)(1,0).toBools)
     }
     io.global.opl(i).data :=
       dgate(io.op.xbar(i).valid && read_gpdl(io.op.xbar(i).bits.pdladdr).active(), gopl(i).toBits)
@@ -191,7 +191,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       lopl.write(
         UInt(i),
         toDWords(Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
-        (io.op.opl.local(i).bits.pred & s1_gpred.pred).toBools)
+        (io.op.opl.local(i).bits.pred & s1_gpred.pred)(1,0).toBools)
     }
     io.local.opl(i).data := lopl(i).toBits
   }

@@ -134,7 +134,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val mask_base = ~Cat(UInt(0, bMLVLen - bfLStrip), mask_strip)
     val vlen_ml = io.cmdq.imm.bits
     val vlen_base = (vlen_ml >> UInt(bLanes)) & mask_base
-    val vlen_lane = ((vlen_ml >> UInt(bStrip)) >> io.cfg.lstride)(bLanes-1, 0)
+    val vlen_lane = if(nLanes == 1) UInt(0) else ((vlen_ml >> UInt(bStrip)) >> io.cfg.lstride)(bLanes-1, 0)
     val vlen_strip = (vlen_ml & mask_strip)(bfLStrip-1, 0)
     (0 until nLanes) map { i =>
       val vlen_fringe =
@@ -508,7 +508,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // vcjalr has vs1_val set, so take the base address from register
   // vcjal doesn't have vs1_val set, so take pc as base address
-  ex_br_taken_pc := Mux(ex_reg_ctrl.vs1_val, ex_srs(0).toSInt, ex_reg_pc.toSInt) + ex_imm
+  ex_br_taken_pc := (Mux(ex_reg_ctrl.vs1_val, ex_srs(0).toSInt, ex_reg_pc.toSInt) + ex_imm).toUInt
 
   val ex_op1 = MuxLookup(ex_reg_ctrl.alu_sel1, SInt(0), Seq(
     A1_ZERO -> SInt(0),
@@ -523,7 +523,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   alu.io.dw := ex_reg_ctrl.alu_dw
   alu.io.fn := ex_reg_ctrl.alu_fn
   alu.io.in2 := ex_op2.toUInt
-  alu.io.in1 := ex_op1
+  alu.io.in1 := ex_op1.toUInt
 
   val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 4))
 

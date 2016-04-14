@@ -345,7 +345,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
         }
 
         index := index_next
-        op.vlen := vlen_next
+        op.vlen := vlen_next.toUInt
         when (vlen_end) {
           state := s_idle
         }
@@ -458,14 +458,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val pcnt_end = (pcnt === UInt(0))
   val pcnt_add = Mux(issue, vlen_tail, UInt(0))
   val pcnt_next = (pcnt.zext + pcnt_add.zext) - pred_fire.zext
-  pcnt := pcnt_next
+  pcnt := pcnt_next.toUInt
   assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
   private val maxpidx = (szwb >> bStrip) - 1
   val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
   val pidx_end = (pidx === UInt(maxpidx))
   val pidx_next = (pidx.zext + pred_fire.zext) - rcnt_pulse.zext
-  pidx := pidx_next
+  pidx := pidx_next.toUInt
   /* NOTE: Predicates should always arrive before the corresponding
      load due to VMU latency, thus precluding this race condition */
   assert(pidx_next >= SInt(0), "VLU: pidx underflow")
@@ -508,14 +508,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   }
 
   private def extend[T <: Bits](in: T, sz: Int) =
-    if (sz < regLen) Cat(Fill(regLen-sz, in(sz-1) && mt.signed), in) else in
+    if (sz < regLen) Cat(Fill(regLen-sz, (in(sz-1) && mt.signed).toUInt), in) else in
 
   private def rotate_data[T <: Bits](data: T, sz: Int) = {
     val w = data.getWidth
     require(w > 0)
     val in = (0 until w by sz).map(i => data(i+sz-1, i))
     require(in.size <= nStrip)
-    val out = rotate(Bits(), in)
+    val out = rotate(UInt(width = sz), in)
     Vec(out.map(extend(_, sz)))
   }
 
@@ -667,7 +667,9 @@ trait VLUSelect extends DCCParameters {
   val vidx = UInt(width = bVLU)
 }
 class VLUSelectIO(implicit p: Parameters)
-  extends DecoupledIO(new VXUBundle()(p) with VLUSelect)
+  extends DecoupledIO(new VXUBundle()(p) with VLUSelect) {
+  override def cloneType = new VLUSelectIO().asInstanceOf[this.type]
+}
 
 class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {

@@ -15,16 +15,19 @@ class AGUIO(implicit p: Parameters) extends VMUBundle()(p) {
 }
 
 class AGU(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
-  val io = Vec(n, new AGUIO).flip
+// COLIN TODO FIXME: report issue in Chisel3 that io can't just equal Vec
+  val io = new Bundle {
+    val ports = Vec(n, new AGUIO).flip
+  }
 
-  val in = io.init.foldRight(io.last.in.bits) { case (a, b) =>
+  val in = io.ports.init.foldRight(io.ports.last.in.bits) { case (a, b) =>
     Mux(a.in.valid, a.in.bits, b) /* Priority mux */
   }
   val offset = in.offset << in.shift
   val addr = in.base + offset
 
-  val mask = io.init.map(!_.in.valid).scanLeft(Bool(true))(_ && _)
-  io.zip(mask).foreach { case (x, m) =>
+  val mask = io.ports.init.map(!_.in.valid).scanLeft(Bool(true))(_ && _)
+  io.ports.zip(mask).foreach { case (x, m) =>
     x.out.valid := x.in.valid && m
     x.out.bits.addr := addr
   }
@@ -35,7 +38,9 @@ class VMUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val addr = UInt(width = bPAddr - tlByteAddrBits)
   val meta = new VMUMetaAddr
 }
-class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p))
+class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p)) {
+  override def cloneType = new VMUPipeIO().asInstanceOf[this.type]
+}
 
 
 class VVAQ(implicit p: Parameters) extends VMUModule()(p) {
@@ -290,7 +295,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
           when (op.mode.unit && blkidx_update) {
             blkidx := blkidx_next
           }
-          op.vlen := vlen_next
+          op.vlen := vlen_next.toUInt
           when (end) {
             state := s_idle
             io.op.ready := Bool(true)

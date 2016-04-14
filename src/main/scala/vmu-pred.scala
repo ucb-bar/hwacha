@@ -123,13 +123,13 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
           when (pred_u) {
             sample_en := Bool(false)
           }
-          pglen := pglen_next
+          pglen := pglen_next.toUInt
           when (pglen_end) {
             pglen_reset := Bool(true)
           }
         }
 
-        op.vlen := vlen_next
+        op.vlen := vlen_next.toUInt
         when (vlen_end) {
           state := s_idle
           assert(!op.mode.unit || pglen_end,

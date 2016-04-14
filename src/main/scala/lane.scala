@@ -126,8 +126,12 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vfvu = Valid(new VFVUAck)
 }
 
-class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p))
-class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p))
+class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p)) {
+  override def cloneType = new LPQIO().asInstanceOf[this.type]
+}
+class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p)) {
+  override def cloneType = new LRQIO().asInstanceOf[this.type]
+}
 
 trait LanePred extends VXUBundle {
   val pred = Bits(width = nPack)

@@ -6,11 +6,15 @@ import cde.Parameters
 class TableWIO[T <: Data](gen: => T, sztag: Int)
   extends DecoupledIO(gen) {
   val tag = UInt(INPUT, sztag)
+
+  override def cloneType = new TableWIO(gen, sztag).asInstanceOf[this.type]
 }
 
 class TableRIO[T <: Data](gen: => T, sztag: Int)
   extends ValidIO(UInt(width = sztag)) {
   val record = gen.asInput
+
+  override def cloneType = new TableRIO(gen, sztag).asInstanceOf[this.type]
 }
 
 class Table[T <: Data](n: Int, gen: => T) extends Module {

@@ -59,7 +59,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
     val n = 1 << i
     val pad_hi = Fill(n, shfill_hi)
     val pad_lo = Mux(rate_x2, Fill(n, shfill_lo), bits(31+n, 32))
-    Mux(shamt(i), Cat(pad_hi, bits(63, 32+n), pad_lo, bits(31, n)), bits)
+    Mux(shamt(i), if(n == 32) Cat(pad_hi, pad_lo) else Cat(pad_hi, bits(63, 32+n), pad_lo, bits(31, n)), bits)
   }
   val shift_out = Mux(fn.op_is(I_SLL), Reverse(shout_r), shout_r)
 

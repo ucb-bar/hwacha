@@ -35,9 +35,15 @@ class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vsu = Valid(new VSUMicroOp)
 }
 
-class BPQIO(implicit p: Parameters) extends DecoupledIO(new BPQEntry()(p))
-class BRQIO(implicit p: Parameters) extends DecoupledIO(new BRQEntry()(p))
-class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p))
+class BPQIO(implicit p: Parameters) extends DecoupledIO(new BPQEntry()(p)) {
+  override def cloneType = new BPQIO().asInstanceOf[this.type]
+}
+class BRQIO(implicit p: Parameters) extends DecoupledIO(new BRQEntry()(p)) {
+  override def cloneType = new BRQIO().asInstanceOf[this.type]
+}
+class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p)) {
+  override def cloneType = new BWQIO().asInstanceOf[this.type]
+}
 
 class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   val pdl = Vec.fill(nGPDL){new BankPredEntry().asOutput}

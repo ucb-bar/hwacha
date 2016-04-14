@@ -266,7 +266,7 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
 
   ibox.io.op <> io.op
   ibox.io.cfg <> io.cfg
-  if (confml) agu.io(1) <> ibox.io.agu
+  if (confml) agu.io.ports(1) <> ibox.io.agu
 
   pbox.io.op <> ibox.io.pbox
   pbox.io.pred.bits.pred := io.lane.pred.bits
@@ -278,7 +278,7 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
   abox.io.xcpt <> io.xcpt
   abox.io.la <> io.lane.pala
   abox.io.load <> io.lane.vlu
-  agu.io(0) <> abox.io.agu
+  agu.io.ports(0) <> abox.io.agu
 
   tbox.io.inner(0) <> abox.io.tlb
   io.tlb <> tbox.io.outer

@@ -129,8 +129,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     }
   }
 
-  private def _reg[U <: Data](cond: Boolean, x: U)(y: U = x) =
-    if (cond) Reg(outType=None, next=None, init=Some(x), clock=None) else y
+  // COLIN TODO FIXME: make these types play nice with chisel3
+  //private def _reg[U <: Data](cond: Boolean, x: U)(y: U = x) =
+    //if (cond) Reg(init=x) else y
 
   // Configuration defaults
   val cfg_init = Wire(new DecodeConfig)
@@ -148,8 +149,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val cfg_reg_lstride = Reg(init=UInt(0, bLStride))
   val cfg_reg_unpred = Reg(init=Bool(false))
   val cfg_reg_nvvdw = Reg(init=cfg_init_nvvdw)
-  val cfg_reg_vbase = _reg(confprec, new HwachaConfigBase().fromBits(Bits(0)))()
-  val cfg_reg_vstride = _reg(!confprec, cfg_init_nvv)(cfg_reg.nvvd)
+  val cfg_reg_vbase = if(confprec) Reg(init=new HwachaConfigBase().fromBits(Bits(0))) else
+                                   new HwachaConfigBase().fromBits(Bits(0))
+  val cfg_reg_vstride = if(!confprec) Reg(init=cfg_init_nvv) else
+                                      cfg_reg.nvvd
 
   io.cfg.morelax := Bool(false)
   io.cfg.unpred := cfg_reg_unpred

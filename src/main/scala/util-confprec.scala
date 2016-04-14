@@ -27,7 +27,7 @@ trait RateLogic extends LaneParameters {
     if (confprec) {
       val shift = UInt(i) << rate
       val mask = Mux1H(rate_decode(rate).map { case (r, k) =>
-        r -> Fill(1 << k, Bool(true)) })
+        r -> Fill(1 << k, UInt(1,1)) })
       ((n >> shift) & mask)(nPack-1, 0)
     } else n(i)
   }
@@ -49,7 +49,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
   private def _prologue(pack: PackInfo, rate: UInt) = {
     val selp = confprec_decode(pack.prec)
     val shift = Mux1H(selp.map { case (p, i) =>
-      p -> Cat(pack.idx, UInt(0, bPack-i))(bPack-1, 0) })
+      p -> (pack.idx << bPack-i)(bPack-1, 0) })
     (selp, rate_decode(rate), shift)
   }
 

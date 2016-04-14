@@ -607,7 +607,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
         val minor = Cat(UInt(0), e(i).eidx.minor) + me_rate(i)
         when (minor === strip) {
           e(i).eidx.minor := UInt(0)
-          e(i).eidx.major := e(i).eidx.major + Cat(strip, UInt(0, bLanes))
+          e(i).eidx.major := e(i).eidx.major + strip << UInt(bLanes)
         } .otherwise {
           e(i).eidx.minor := minor
         }
