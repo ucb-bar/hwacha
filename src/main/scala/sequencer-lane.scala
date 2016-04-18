@@ -16,13 +16,13 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val cfg = new HwachaConfigIO().flip
     val op = Valid(new IssueOp).flip
     val master = new MasterSequencerIO().flip
-    val mocheck = Vec.fill(nSeq){new MOCheck}.asInput
+    val mocheck = Vec(nSeq, new MOCheck).asInput
     val seq = new SequencerIO
     val vmu = new VMUIO
     val ticker = new TickerIO().flip
 
     val dpla = new CounterLookAheadIO
-    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}
+    val dqla = Vec(nVDUOperands, new CounterLookAheadIO)
     val dila = new CounterLookAheadIO
     val dfla = new CounterLookAheadIO
     val gpla = new CounterLookAheadIO
@@ -40,35 +40,35 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     val dack = new DCCAckIO().flip
 
     val debug = new Bundle {
-      val valid = Vec.fill(nSeq){Bool(OUTPUT)}
-      val e = Vec.fill(nSeq){new SeqEntry}.asOutput
-      val dhazard_raw_vlen = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_pred_vp = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_pred_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_pred_vs2 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_pred_vs3 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_vs1 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_vs2 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_raw_vs3 = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_war = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard_waw = Vec.fill(nSeq){Bool(OUTPUT)}
-      val dhazard = Vec.fill(nSeq){Bool(OUTPUT)}
-      val bhazard = Vec.fill(nSeq){Bool(OUTPUT)}
-      val shazard = Vec.fill(nSeq){Bool(OUTPUT)}
-      val use_mask_sreg_global = Vec.fill(nGOPL){Bits(OUTPUT, maxSRegGlobalTicks+nBanks-1)}
-      val use_mask_xbar = Vec.fill(nGOPL){Bits(OUTPUT, maxXbarTicks+nBanks-1)}
+      val valid = Vec(nSeq, Bool(OUTPUT))
+      val e = Vec(nSeq, new SeqEntry).asOutput
+      val dhazard_raw_vlen = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_pred_vp = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_pred_vs1 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_pred_vs2 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_pred_vs3 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_vs1 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_vs2 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_raw_vs3 = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_war = Vec(nSeq, Bool(OUTPUT))
+      val dhazard_waw = Vec(nSeq, Bool(OUTPUT))
+      val dhazard = Vec(nSeq, Bool(OUTPUT))
+      val bhazard = Vec(nSeq, Bool(OUTPUT))
+      val shazard = Vec(nSeq, Bool(OUTPUT))
+      val use_mask_sreg_global = Vec(nGOPL, Bits(OUTPUT, maxSRegGlobalTicks+nBanks-1))
+      val use_mask_xbar = Vec(nGOPL, Bits(OUTPUT, maxXbarTicks+nBanks-1))
       val use_mask_vimu = Bits(OUTPUT, maxVIMUTicks+nBanks-1)
-      val use_mask_vfmu = Vec.fill(nVFMU){Bits(OUTPUT, maxVFMUTicks+nBanks-1)}
+      val use_mask_vfmu = Vec(nVFMU, Bits(OUTPUT, maxVFMUTicks+nBanks-1))
       val use_mask_vfcu = Bits(OUTPUT, maxVFCUTicks+nBanks-1)
       val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
       val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
       val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
-      val use_mask_wport_sram = Vec.fill(nWSel){Bits(OUTPUT, maxWPortLatency+nBanks-1)}
+      val use_mask_wport_sram = Vec(nWSel, Bits(OUTPUT, maxWPortLatency+nBanks-1))
       val use_mask_wport_pred = Bits(OUTPUT, maxPredWPortLatency+nBanks-1)
-      val pred_first = Vec.fill(nSeq){Bool(OUTPUT)}
-      val consider = Vec.fill(nSeq){Bool(OUTPUT)}
-      val first_sched = Vec.fill(nSeq){Bool(OUTPUT)}
-      val second_sched = Vec.fill(nSeq){Bool(OUTPUT)}
+      val pred_first = Vec(nSeq, Bool(OUTPUT))
+      val consider = Vec(nSeq, Bool(OUTPUT))
+      val first_sched = Vec(nSeq, Bool(OUTPUT))
+      val second_sched = Vec(nSeq, Bool(OUTPUT))
     }
   }
 

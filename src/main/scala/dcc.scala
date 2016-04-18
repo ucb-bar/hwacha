@@ -31,16 +31,16 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
-    val lpqs = Vec.fill(nLPQ){new LPQIO}.flip
-    val lrqs = Vec.fill(nLRQ){new LRQIO}.flip
-    val bpqs = Vec.fill(nBanks){new BPQIO}.flip
-    val brqs = Vec.fill(nBanks)(new BRQIO).flip
+    val lpqs = Vec(nLPQ, new LPQIO).flip
+    val lrqs = Vec(nLRQ, new LRQIO).flip
+    val bpqs = Vec(nBanks, new BPQIO).flip
+    val brqs = Vec(nBanks, new BRQIO).flip
     val bwqs = new Bundle {
-      val mem = Vec.fill(nBanks){new BWQIO}
-      val fu = Vec.fill(nBanks){new BWQIO}
+      val mem = Vec(nBanks, new BWQIO)
+      val fu = Vec(nBanks, new BWQIO)
     }
     val dpla = new CounterLookAheadIO().flip // DCC LPQ counter
-    val dqla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // DCC LRQ counter
+    val dqla = Vec(nVDUOperands, new CounterLookAheadIO).flip // DCC LRQ counter
     val dila = new CounterLookAheadIO().flip // idiv counter
     val dfla = new CounterLookAheadIO().flip // fdiv counter
     val gpla = new CounterLookAheadIO().flip // VGU LPQ counter

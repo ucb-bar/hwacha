@@ -41,7 +41,7 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
 
 class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
-    val inner = Vec.fill(n)(new TLBIO().flip)
+    val inner = Vec(n, new TLBIO().flip)
     val outer = new RTLBIO
     val irq = new IRQIO
   }

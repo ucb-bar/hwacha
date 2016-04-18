@@ -105,8 +105,8 @@ class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
     val op = Decoupled(new VMUOp).flip
     val cfg = new HwachaConfigIO().flip
     val agu = new AGUIO
-    val abox = Vec.fill(3)(Decoupled(new VMUDecodedOp))
-    val pbox = Vec.fill(2)(Decoupled(new VMUDecodedOp))
+    val abox = Vec(3, Decoupled(new VMUDecodedOp))
+    val pbox = Vec(2, Decoupled(new VMUDecodedOp))
   }
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))

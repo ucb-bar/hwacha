@@ -35,31 +35,31 @@ abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
 
 class TickerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {
-    val read = Vec.fill(maxSRAMReadTicks){Valid(new SRAMRFReadExpEntry)}
-    val write = Vec.fill(maxSRAMWriteTicks){Valid(new SRAMRFWriteExpEntry)}
+    val read = Vec(maxSRAMReadTicks, Valid(new SRAMRFReadExpEntry))
+    val write = Vec(maxSRAMWriteTicks, Valid(new SRAMRFWriteExpEntry))
   }
   val pred = new Bundle {
-    val gread = Vec.fill(maxSRAMReadTicks){Valid(new PredRFReadExpEntry)}
-    val pread = Vec.fill(maxPredReadTicks){Valid(new PredRFGatedReadLaneOp)}
-    val read = Vec.fill(nPredRPorts){Vec.fill(maxPredReadTicks){Valid(new PredRFReadLaneOp)}}
-    val write = Vec.fill(maxPredWriteTicks){Valid(new PredRFWriteExpEntry)}
+    val gread = Vec(maxSRAMReadTicks, Valid(new PredRFReadExpEntry))
+    val pread = Vec(maxPredReadTicks, Valid(new PredRFGatedReadLaneOp))
+    val read = Vec(nPredRPorts, Vec(maxPredReadTicks, Valid(new PredRFReadLaneOp)))
+    val write = Vec(maxPredWriteTicks, Valid(new PredRFWriteExpEntry))
   }
   val sreg = new Bundle {
-    val global = Vec.fill(nGOPL){Vec.fill(maxSRegGlobalTicks){Valid(new SRegLaneOp)}}
-    val local = Vec.fill(nLOPL){Vec.fill(maxSRegLocalTicks){Valid(new SRegLaneOp)}}
+    val global = Vec(nGOPL, Vec(maxSRegGlobalTicks, Valid(new SRegLaneOp)))
+    val local = Vec(nLOPL, Vec(maxSRegLocalTicks, Valid(new SRegLaneOp)))
   }
-  val xbar = Vec.fill(nGOPL){Vec.fill(maxXbarTicks){Valid(new XBarLaneOp)}}
-  val pxbar = Vec.fill(nGPDL){Vec.fill(maxPXbarTicks){Valid(new PXBarLaneOp)}}
-  val viu = Vec.fill(maxVIUTicks){Valid(new VIULaneOp)}
-  val vipu = Vec.fill(maxVIPUTicks){Valid(new VIPULaneOp)}
-  val vpu = Vec.fill(maxVPUTicks){Valid(new VPULaneOp)}
-  val vsu = Vec.fill(maxVSUTicks){Valid(new VSULaneOp)}
-  val vqu = Vec.fill(maxVQUTicks){Valid(new VQULaneOp)}
-  val vgu = Vec.fill(maxVGUTicks){Valid(new VGULaneOp)}
-  val vimu = Vec.fill(maxVIMUTicks){Valid(new VIMULaneOp)}
-  val vfmu = Vec.fill(nVFMU){Vec.fill(maxVFMUTicks){Valid(new VFMULaneOp)}}
-  val vfcu = Vec.fill(maxVFCUTicks){Valid(new VFCULaneOp)}
-  val vfvu = Vec.fill(maxVFVUTicks){Valid(new VFVULaneOp)}
+  val xbar = Vec(nGOPL, Vec(maxXbarTicks, Valid(new XBarLaneOp)))
+  val pxbar = Vec(nGPDL, Vec(maxPXbarTicks, Valid(new PXBarLaneOp)))
+  val viu = Vec(maxVIUTicks, Valid(new VIULaneOp))
+  val vipu = Vec(maxVIPUTicks, Valid(new VIPULaneOp))
+  val vpu = Vec(maxVPUTicks, Valid(new VPULaneOp))
+  val vsu = Vec(maxVSUTicks, Valid(new VSULaneOp))
+  val vqu = Vec(maxVQUTicks, Valid(new VQULaneOp))
+  val vgu = Vec(maxVGUTicks, Valid(new VGULaneOp))
+  val vimu = Vec(maxVIMUTicks, Valid(new VIMULaneOp))
+  val vfmu = Vec(nVFMU, Vec(maxVFMUTicks, Valid(new VFMULaneOp)))
+  val vfcu = Vec(maxVFCUTicks, Valid(new VFCULaneOp))
+  val vfvu = Vec(maxVFVUTicks, Valid(new VFVULaneOp))
 }
 
 class Expander(implicit p: Parameters) extends VXUModule()(p) {

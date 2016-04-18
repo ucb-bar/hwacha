@@ -8,7 +8,7 @@ class RFirstOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val active = Bits(width = nSlices)
   val pred = Bits(width = nSlices)
   val lsidx = UInt(width = bVLen - bStrip)
-  val in = Vec.fill(nSlices){Bits(width = SZ_D)}
+  val in = Vec(nSlices, Bits(width = SZ_D))
 }
 
 class RFirstResult(implicit p: Parameters) extends VXUBundle()(p) {
@@ -49,7 +49,7 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
 class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new IssueOpML).flip
-    val lane = Vec.fill(nLanes){Decoupled(new RFirstResult)}.flip
+    val lane = Vec(nLanes, Decoupled(new RFirstResult)).flip
     val result = Decoupled(new RFirstResult)
   }
 

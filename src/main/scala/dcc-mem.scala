@@ -111,7 +111,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
 class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new DCCIssueIO {
     val la = new BPQLookAheadIO().flip
-    val bpqs = Vec.fill(nBanks)(new BPQIO).flip
+    val bpqs = Vec(nBanks, new BPQIO).flip
     val pred = Decoupled(Bits(width = nStrip))
     val lpred = Decoupled(Bits(width = nStrip))
     val spred = Decoupled(Bits(width = nStrip))
@@ -196,7 +196,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   with MemParameters {
   val io = new DCCIssueIO {
     val la = new BRQLookAheadIO().flip
-    val brqs = Vec.fill(nBanks)(new BRQIO).flip
+    val brqs = Vec(nBanks, new BRQIO).flip
     val vsdq = new VSDQIO
 
     val pred = Decoupled(Bits(width = nStrip)).flip
@@ -364,7 +364,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val io = new DCCIssueIO {
     val vldq = new VLDQIO().flip
     val pred = Decoupled(Bits(width = nStrip)).flip
-    val bwqs = Vec.fill(nBanks)(new BWQIO)
+    val bwqs = Vec(nBanks, new BWQIO)
     val la = new CounterLookAheadIO().flip
 
     val map = new VLUSelectIO

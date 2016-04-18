@@ -224,11 +224,11 @@ class VLenEntry(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 trait MultiLaneVLen extends HwachaBundle {
-  val lane = Vec.fill(nLanes){new VLenEntry}
+  val lane = Vec(nLanes, new VLenEntry)
 }
 
 class IssueOpBase(implicit p: Parameters) extends DecodedInst()(p)
-  with HasBaseRegs with HasPhysRegIds {
+    with HasBaseRegs with HasPhysRegIds {
   val active = new IssueType
 }
 
@@ -312,9 +312,9 @@ class SeqType(implicit p: Parameters) extends VXUBundle()(p) {
 class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p)
   with HasBaseRegs with Rate {
   val active = new SeqType
-  val raw = Vec.fill(nSeq){Bool()}
-  val war = Vec.fill(nSeq){Bool()}
-  val waw = Vec.fill(nSeq){Bool()}
+  val raw = Vec(nSeq, Bool())
+  val war = Vec(nSeq, Bool())
+  val waw = Vec(nSeq, Bool())
   val last = Bool()
   val rports = UInt(width = bRPorts)
   val wport = new Bundle {
@@ -437,7 +437,7 @@ class VIPUOp(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 case class SharedLLOp(nOperands: Int)(implicit p: Parameters) extends VXUBundle()(p) {
-  val sreg = Vec.fill(nOperands){Bool()}
+  val sreg = Vec(nOperands, Bool())
 }
 
 class VIMUOp(implicit p: Parameters) extends SharedLLOp(2)(p) {

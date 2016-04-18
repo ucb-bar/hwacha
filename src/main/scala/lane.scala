@@ -69,29 +69,29 @@ class LaneOpIO(implicit p: Parameters) extends VXUBundle()(p) {
     val write = Valid(new SRAMRFWriteLaneOp)
   }
   val ff = new Bundle {
-    val read = Vec.fill(nFFRPorts){Valid(new FFRFReadLaneOp)}
+    val read = Vec(nFFRPorts, Valid(new FFRFReadLaneOp))
     val write = Valid(new FFRFWriteLaneOp)
   }
   val pred = new Bundle {
     val gread = Valid(new PredRFGatedReadLaneOp) // gated read
     val pread = Valid(new PredRFGatedReadLaneOp) // vpu read
-    val read = Vec.fill(nPredRPorts){Valid(new PredRFReadLaneOp)} // plu read
+    val read = Vec(nPredRPorts, Valid(new PredRFReadLaneOp)) // plu read
     val write = Valid(new PredRFWriteLaneOp)
   }
   val opl = new Bundle {
-    val global = Vec.fill(nGOPL){Valid(new OPLLaneOp)}
-    val local = Vec.fill(nLOPL){Valid(new OPLLaneOp)}
+    val global = Vec(nGOPL, Valid(new OPLLaneOp))
+    val local = Vec(nLOPL, Valid(new OPLLaneOp))
   }
   val pdl = new Bundle {
-    val global = Vec.fill(nGPDL){Valid(new PDLLaneOp)}
-    val local = Vec.fill(nLPDL){Valid(new PDLLaneOp)}
+    val global = Vec(nGPDL, Valid(new PDLLaneOp))
+    val local = Vec(nLPDL, Valid(new PDLLaneOp))
   }
   val sreg = new Bundle {
-    val global = Vec.fill(nGOPL){Valid(new SRegLaneOp)}
-    val local = Vec.fill(nLOPL){Valid(new SRegLaneOp)}
+    val global = Vec(nGOPL, Valid(new SRegLaneOp))
+    val local = Vec(nLOPL, Valid(new SRegLaneOp))
   }
-  val xbar = Vec.fill(nGOPL){Valid(new XBarLaneOp)}
-  val pxbar = Vec.fill(nGPDL){Valid(new PXBarLaneOp)}
+  val xbar = Vec(nGOPL, Valid(new XBarLaneOp))
+  val pxbar = Vec(nGPDL, Valid(new PXBarLaneOp))
   val viu = Valid(new VIULaneOp)
   val vipu = Valid(new VIPULaneOp)
   val vpu = Valid(new VPULaneOp)
@@ -99,29 +99,29 @@ class LaneOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vqu = Valid(new VQULaneOp)
   val vgu = Valid(new VGULaneOp)
   val vimu = Valid(new VIMULaneOp)
-  val vfmu = Vec.fill(nVFMU){Valid(new VFMULaneOp)}
+  val vfmu = Vec(nVFMU, Valid(new VFMULaneOp))
   val vfcu = Valid(new VFCULaneOp)
   val vfvu = Valid(new VFVULaneOp)
 }
 
 class MicroOpIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val bank = Vec.fill(nBanks){new BankOpIO}
-  val sreg = Vec.fill(nGOPL){Valid(new SRegMicroOp)}
+  val bank = Vec(nBanks, new BankOpIO)
+  val sreg = Vec(nGOPL, Valid(new SRegMicroOp))
   val vqu = Valid(new VQUMicroOp)
   val vgu = Valid(new VGUMicroOp)
   val vimu = Valid(new VIMUMicroOp)
-  val vfmu = Vec.fill(nVFMU){Valid(new VFMUMicroOp)}
+  val vfmu = Vec(nVFMU, Valid(new VFMUMicroOp))
   val vfcu = Valid(new VFCUMicroOp)
   val vfvu = Valid(new VFVUMicroOp)
 }
 
 class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val viu = Vec.fill(nBanks){Valid(new VIUAck)}
-  val vipu = Vec.fill(nBanks){Valid(new VIPUAck)}
+  val viu = Vec(nBanks, Valid(new VIUAck))
+  val vipu = Vec(nBanks, Valid(new VIPUAck))
   val vqu = Valid(new VQUAck)
   val vgu = Valid(new VGUAck)
   val vimu = Valid(new VIMUAck)
-  val vfmu = Vec.fill(nVFMU){Valid(new VFMUAck)}
+  val vfmu = Vec(nVFMU, Valid(new VFMUAck))
   val vfcu = Valid(new VFCUAck)
   val vfvu = Valid(new VFVUAck)
 }
@@ -143,13 +143,13 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO
-    val lpqs = Vec.fill(nLPQ){new LPQIO}
-    val lrqs = Vec.fill(nLRQ){new LRQIO}
-    val bpqs = Vec.fill(nBanks){new BPQIO}
-    val brqs = Vec.fill(nBanks){new BRQIO}
+    val lpqs = Vec(nLPQ, new LPQIO)
+    val lrqs = Vec(nLRQ, new LRQIO)
+    val bpqs = Vec(nBanks, new BPQIO)
+    val brqs = Vec(nBanks, new BRQIO)
     val bwqs = new Bundle {
-      val mem = Vec.fill(nBanks){new BWQIO}.flip
-      val fu = Vec.fill(nBanks){new BWQIO}.flip
+      val mem = Vec(nBanks, new BWQIO).flip
+      val fu = Vec(nBanks, new BWQIO).flip
     }
   }
 

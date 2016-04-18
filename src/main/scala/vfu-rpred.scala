@@ -42,7 +42,7 @@ class RPredLane(implicit p: Parameters) extends VXUModule()(p) {
 class RPredMaster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
     val op = Decoupled(new IssueOpML).flip
-    val lane = Vec.fill(nLanes){Decoupled(new RPredResult)}.flip
+    val lane = Vec(nLanes, Decoupled(new RPredResult)).flip
     val result = Decoupled(new RPredResult)
   }
 

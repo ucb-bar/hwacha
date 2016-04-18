@@ -22,12 +22,12 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
     val cfg = new HwachaConfigIO().flip
     val ack = new DCCAckIO
     val pla = new CounterLookAheadIO().flip // lpq entry
-    val qla = Vec.fill(nVDUOperands){new CounterLookAheadIO}.flip // lrq entries
+    val qla = Vec(nVDUOperands, new CounterLookAheadIO).flip // lrq entries
     val ila = new CounterLookAheadIO().flip // idiv output entries
     val fla = new CounterLookAheadIO().flip // fdiv output entries
     val lpq = new LPQIO().flip
-    val lrqs = Vec.fill(nVDUOperands){new LRQIO}.flip
-    val bwqs = Vec.fill(nBanks){new BWQIO}
+    val lrqs = Vec(nVDUOperands, new LRQIO).flip
+    val bwqs = Vec(nBanks, new BWQIO)
     val red = new ReduceResultIO
   }
 
@@ -87,16 +87,16 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     val fla = new CounterLookAheadIO().flip
     val lpq = new LPQIO().flip
     val lrqs = new Bundle {
-      val q = Vec.fill(nVDUOperands){new LRQIO}.flip
-      val update = Vec.fill(nVDUOperands){Bool(OUTPUT)}
+      val q = Vec(nVDUOperands, new LRQIO).flip
+      val update = Vec(nVDUOperands, Bool(OUTPUT))
     }
 
     val idiv = new Bundle {
-      val fus = Vec.fill(nSlices){new IDivIO}
+      val fus = Vec(nSlices, new IDivIO)
       val ack = Valid(new VIDUAck)
     }
     val fdiv = new Bundle {
-      val fus = Vec.fill(nSlices){new FDivIO}
+      val fus = Vec(nSlices, new FDivIO)
       val ack = Valid(new VFDUAck)
     }
     val rpred = new Bundle {
@@ -108,7 +108,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
       val result = Decoupled(new RFirstResult)
     }
 
-    val bwqs = Vec.fill(nBanks){new BWQIO}
+    val bwqs = Vec(nBanks, new BWQIO)
   }
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))

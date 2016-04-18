@@ -56,20 +56,20 @@ abstract trait SeqParameters extends UsesHwachaParameters
 }
 
 class MasterSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
-  val valid = Vec.fill(nSeq){Bool()}
-  val e = Vec.fill(nSeq){new MasterSeqEntry}
+  val valid = Vec(nSeq, Bool())
+  val e = Vec(nSeq, new MasterSeqEntry)
   val head = UInt(OUTPUT, log2Up(nSeq))
 }
 
 class UpdateSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
-  val valid = Vec.fill(nSeq){Bool()}
-  val reg = Vec.fill(nSeq){new PhysicalRegisterIds}
+  val valid = Vec(nSeq, Bool())
+  val reg = Vec(nSeq, new PhysicalRegisterIds)
 }
 
 class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val state = new MasterSequencerState().asOutput
   val update = new UpdateSequencerState().asOutput
-  val clear = Vec.fill(nSeq){Bool()}.asInput
+  val clear = Vec(nSeq, Bool()).asInput
 }
 
 class SequencerPending(implicit p: Parameters) extends VXUBundle()(p) {

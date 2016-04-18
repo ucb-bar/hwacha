@@ -11,7 +11,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
       val vmu = Decoupled(new VMUOp).flip
     }
     val mseq = new MasterSequencerIO().flip
-    val mocheck = Vec.fill(nSeq){new MOCheck}.asInput
+    val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
     val tlb = new RTLBIO
     val dmem = new uncore.ClientUncachedTileLinkIO

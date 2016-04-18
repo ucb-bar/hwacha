@@ -9,26 +9,26 @@ class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
     val write = Valid(new SRAMRFWriteMicroOp)
   }
   val ff = new Bundle {
-    val read = Vec.fill(nFFRPorts){Valid(new FFRFReadMicroOp)}
+    val read = Vec(nFFRPorts, Valid(new FFRFReadMicroOp))
     val write = Valid(new FFRFWriteMicroOp)
   }
   val pred = new Bundle {
     val gread = Valid(new PredRFGatedReadMicroOp)
     val pread = Valid(new PredRFGatedReadMicroOp)
-    val read = Vec.fill(nPredRPorts){Valid(new PredRFReadMicroOp)}
+    val read = Vec(nPredRPorts, Valid(new PredRFReadMicroOp))
     val write = Valid(new PredRFWriteMicroOp)
   }
   val opl = new Bundle {
-    val global = Vec.fill(nGOPL){Valid(new OPLMicroOp)}
-    val local = Vec.fill(nLOPL){Valid(new OPLMicroOp)}
+    val global = Vec(nGOPL, Valid(new OPLMicroOp))
+    val local = Vec(nLOPL, Valid(new OPLMicroOp))
   }
   val pdl = new Bundle {
-    val global = Vec.fill(nGPDL){Valid(new PDLMicroOp)}
-    val local = Vec.fill(nLPDL){Valid(new PDLMicroOp)}
+    val global = Vec(nGPDL, Valid(new PDLMicroOp))
+    val local = Vec(nLPDL, Valid(new PDLMicroOp))
   }
-  val sreg = Vec.fill(nLOPL){Valid(new SRegMicroOp)}
-  val xbar = Vec.fill(nGOPL){Valid(new XBarMicroOp)}
-  val pxbar = Vec.fill(nGPDL){Valid(new PXBarMicroOp)}
+  val sreg = Vec(nLOPL, Valid(new SRegMicroOp))
+  val xbar = Vec(nGOPL, Valid(new XBarMicroOp))
+  val pxbar = Vec(nGPDL, Valid(new PXBarMicroOp))
   val viu = Valid(new VIUMicroOp)
   val vipu = Valid(new VIPUMicroOp)
   val vpu = Valid(new VPUMicroOp)
@@ -46,10 +46,10 @@ class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p)) {
 }
 
 class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val pdl = Vec.fill(nGPDL){new BankPredEntry().asOutput}
-  val opl = Vec.fill(nGOPL){new BankDataEntry().asOutput}
+  val pdl = Vec(nGPDL, new BankPredEntry().asOutput)
+  val opl = Vec(nGOPL, new BankDataEntry().asOutput)
   val wpred = new BankPredEntry().asInput
-  val wdata = Vec.fill(nWSel){new BankDataPredEntry().asInput}
+  val wdata = Vec(nWSel, new BankDataPredEntry().asInput)
 
   val bpq = new BPQIO
   val brq = new BRQIO

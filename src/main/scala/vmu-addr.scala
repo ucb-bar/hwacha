@@ -405,7 +405,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
 
 class ABox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
-    val op = Vec.fill(3)(Decoupled(new VMUDecodedOp).flip)
+    val op = Vec(3, Decoupled(new VMUDecodedOp).flip)
     val lane = new VVAQIO().flip
     val mem = new VMUAddrIO
 

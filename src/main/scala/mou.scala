@@ -14,11 +14,11 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
     val mseq = new MasterSequencerState().asInput
     val pending = new Bundle {
       val su = new MRTPending().asInput
-      val vus = Vec.fill(nLanes){new MRTPending}.asInput
+      val vus = Vec(nLanes, new MRTPending).asInput
     }
     val check = new Bundle {
       val su = new MOCheck().asOutput
-      val vus = Vec.fill(nLanes){Vec.fill(nSeq){new MOCheck}}.asOutput
+      val vus = Vec(nLanes, Vec(nSeq, new MOCheck)).asOutput
     }
   }
 

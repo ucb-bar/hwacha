@@ -13,11 +13,11 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     val op = new BankOpIO().flip
     val global = new BankRWIO
     val local = new Bundle {
-      val pdl = Vec.fill(nLPDL){new BankPredEntry().asOutput}
-      val opl = Vec.fill(nLOPL){new BankDataEntry().asOutput}
+      val pdl = Vec(nLPDL, new BankPredEntry().asOutput)
+      val opl = Vec(nLOPL, new BankDataEntry().asOutput)
       val ppred = new BankPredEntry().asOutput
-      val rpred = Vec.fill(nPredRPorts){new BankPredEntry().asOutput}
-      val wpred = Vec.fill(2){new BankPredEntry().asInput}
+      val rpred = Vec(nPredRPorts, new BankPredEntry().asOutput)
+      val wpred = Vec(2, new BankPredEntry().asInput)
       val wdata = new BankDataPredEntry().asInput
     }
   }
