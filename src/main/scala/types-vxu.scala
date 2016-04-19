@@ -74,18 +74,18 @@ class VRFUFn(implicit p: Parameters) extends VXUBundle()(p) {
 
 class VFn(implicit p: Parameters) extends VXUBundle()(p) {
   val union = Bits(width = List(
-    new VIUFn().toBits.getWidth,
-    new VIPUFn().toBits.getWidth,
-    new VIMUFn().toBits.getWidth,
-    new VIDUFn().toBits.getWidth,
-    new VFMUFn().toBits.getWidth,
-    new VFDUFn().toBits.getWidth,
-    new VFCUFn().toBits.getWidth,
-    new VFVUFn().toBits.getWidth,
-    new VMUFn().toBits.getWidth,
-    new VQUFn().toBits.getWidth,
-    new VRPUFn().toBits.getWidth,
-    new VRFUFn().toBits.getWidth).max
+    new VIUFn().getWidth,
+    new VIPUFn().getWidth,
+    new VIMUFn().getWidth,
+    new VIDUFn().getWidth,
+    new VFMUFn().getWidth,
+    new VFDUFn().getWidth,
+    new VFCUFn().getWidth,
+    new VFVUFn().getWidth,
+    new VMUFn().getWidth,
+    new VQUFn().getWidth,
+    new VRPUFn().getWidth,
+    new VRFUFn().getWidth).max
   )
 
   def viu(d: Int = 0) = new VIUFn().fromBits(this.union)
