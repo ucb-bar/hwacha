@@ -90,7 +90,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.pending.mrt.su := mrt.io.pending
 
   val vf_active = Reg(init=Bool(false))
-  val vl = Vec.fill(nLanes){Reg(new VLenEntry)}
+  val vl = Reg(Vec(nLanes, new VLenEntry))
   val busy_scalar = Wire(Bool())
 
   io.vf_active := vf_active
