@@ -67,7 +67,9 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
   dcc.io.lrqs <> lane.io.lrqs
   dcc.io.bpqs <> lane.io.bpqs
   dcc.io.brqs <> lane.io.brqs
-  lane.io.bwqs <> dcc.io.bwqs
+  lane.io.bwqs.mem <> dcc.io.bwqs.mem
+  lane.io.bwqs.fu <> dcc.io.bwqs.fu
+  //lane.io.bwqs <> dcc.io.bwqs
   io.red <> dcc.io.red
 
   io.vmu <> seq.io.vmu
