@@ -178,7 +178,9 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.mem.req.valid := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
-  ptlb.io <> smu.io.tlb
+  //ptlb.io <> smu.io.tlb
+  ptlb.io.req <> smu.io.tlb.req
+  ptlb.io.resp <> smu.io.tlb.resp
   io.ptw(1) <> ptlb.io.ptw
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
@@ -245,7 +247,9 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     rpred.io.lane(i) <> vu.io.red.pred
     rfirst.io.lane(i) <> vu.io.red.first
 
-    dtlb.io <> vu.io.tlb
+    //dtlb.io <> vu.io.tlb
+    dtlb.io.req <> vu.io.tlb.req
+    dtlb.io.resp <> vu.io.tlb.resp
     io.ptw(2 + i) <> dtlb.io.ptw
 
     io.utl(i) <> vu.io.dmem
