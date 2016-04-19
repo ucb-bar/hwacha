@@ -92,7 +92,8 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   private def mts(mt: DecodedMemType) = Seq(mt.b, mt.h, mt.w, mt.d)
   private def mask(mt: DecodedMemType) =
     Mux1H(mts(mt).zipWithIndex.map { case (s, i) =>
-      (s, Fill((1 << i) - 1, Bool(true)))
+      // TODO FIXME COLIN: this is a workaround for zero width wires in chisel3
+      if(i == 0) (s, UInt(0, width=1)) else (s, Fill((1 << i) - 1, UInt(1, width=1)))
     })
 
   val req_mask_base = Cat(mask(req_mt), Bool(true))
