@@ -112,7 +112,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val io = new DCCIssueIO {
     val la = new BPQLookAheadIO().flip
     val bpqs = Vec(nBanks, new BPQIO).flip
-    val pred = Decoupled(Bits(width = nStrip))
+    val pred = Decoupled(new PredEntry)
     val lpred = Decoupled(Bits(width = nStrip))
     val spred = Decoupled(Bits(width = nStrip))
   }
@@ -187,7 +187,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 
   val pred = Vec((bpqs_deq zipWithIndex) map { case (bpq, i) =>
     dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).toBits
-  io.pred.bits := pred
+  io.pred.bits.pred := pred
   io.lpred.bits := pred
   io.spred.bits := pred
 }

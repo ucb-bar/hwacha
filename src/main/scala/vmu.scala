@@ -47,7 +47,7 @@ class VMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vsdq = new VSDQIO
   val vldq = new VLDQIO().flip
 
-  val pred = Decoupled(Bits(width = nStrip))
+  val pred = Decoupled(new PredEntry)
   val pala = new CounterLookAheadIO
   val vlu = new VLUSelectIO
 }
@@ -269,7 +269,6 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
   if (confml) agu.io.ports(1) <> ibox.io.agu
 
   pbox.io.op <> ibox.io.pbox
-  pbox.io.pred.bits.pred := io.lane.pred.bits
   pbox.io.pred <> io.lane.pred
 
   abox.io.op <> ibox.io.abox
