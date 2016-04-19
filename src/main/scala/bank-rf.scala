@@ -21,6 +21,12 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
       val wdata = new BankDataPredEntry().asInput
     }
   }
+  // FF RF write port
+  val ff_warb = Module(new Arbiter(new RFWritePort, 3))
+
+  // SRAM RF write port //TODO: FIXME: MOVE BACK DOWN
+  val sram_warb = Module(new Arbiter(new RFWritePort, 3))
+
   val sram_rf = SeqMem(nSRAM, Vec(wBank/8, Bits(width = 8)))
   val ff_rf = Mem(nFF, Vec(wBank/8, Bits(width = 8)))
   val pred_rf = Mem(nPred, Vec(wPred, Bool()))
@@ -85,9 +91,6 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   val sram_rdata = sram_rf.read(sram_raddr, io.op.sram.read.valid && gpred.active()).toBits
   val sram_rpack = unpack_bank(Reg(next = io.op.sram.read.bits), sram_rdata)
 
-  // SRAM RF write port
-  val sram_warb = Module(new Arbiter(new RFWritePort, 3))
-
   val sram_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.sram.write.bits.selg,
       MuxLookup(io.op.sram.write.bits.wsel, Bits(0), (0 until nWSel) map {
@@ -132,9 +135,6 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   // FF RF read port
   val ff_raddr = io.op.ff.read map { op => dgate(op.valid && gpred.active(), op.bits.addr) }
   val ff_rdata = ff_raddr map { addr => ff_rf(addr).toBits }
-
-  // FF RF write port
-  val ff_warb = Module(new Arbiter(new RFWritePort, 3))
 
   val ff_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.ff.write.bits.selg,
