@@ -125,17 +125,17 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
-  rocc.io.rocc.resp <> io.resp
-  rocc.io.rocc.busy <> io.busy
+  io.resp <> rocc.io.rocc.resp
+  io.busy <> rocc.io.rocc.busy
   rocc.io.rocc.status <> io.status
-  rocc.io.rocc.interrupt <> io.interrupt
+  io.interrupt <> rocc.io.rocc.interrupt
   rocc.io.rocc.exception <> io.exception
 
   // Connect RoccUnit to ScalarUnit
   rocc.io.pending.mseq := mseq.io.pending.all
   rocc.io.pending.mrt := scalar.io.pending.mrt.su.all || vus.map(_.io.pending.all).reduce(_||_)
   rocc.io.vf_active := scalar.io.vf_active
-  rocc.io.cmdqs.vu <> scalar.io.cmdq
+  scalar.io.cmdq <> rocc.io.cmdqs.vu
   scalar.io.cfg <> rocc.io.cfg
 
   // Connect ScalarUnit to Rocket's FPU
@@ -157,7 +157,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     val vru = Module(new VRU)
     icache.io.vru <> vru.io.imem
     vru.io.cmdq <> rocc.io.cmdqs.vru
-    vru.io.dmem <> imemarb.io.in(2)
+    imemarb.io.in(2) <> vru.io.dmem
     vru.io.vf_complete_ack := mseq.io.vf.last
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
@@ -180,7 +180,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   smu.io.scalar <> scalar.io.smu
   //ptlb.io <> smu.io.tlb
   ptlb.io.req <> smu.io.tlb.req
-  ptlb.io.resp <> smu.io.tlb.resp
+  smu.io.tlb.resp  <> ptlb.io.resp
   io.ptw(1) <> ptlb.io.ptw
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
@@ -249,7 +249,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
     //dtlb.io <> vu.io.tlb
     dtlb.io.req <> vu.io.tlb.req
-    dtlb.io.resp <> vu.io.tlb.resp
+    vu.io.tlb.resp <> dtlb.io.resp
     io.ptw(2 + i) <> dtlb.io.ptw
 
     io.utl(i) <> vu.io.dmem

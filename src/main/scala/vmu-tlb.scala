@@ -58,7 +58,8 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val ready = io.inner.init.map(!_.req.valid).scanLeft(arb.req.ready)(_ && _)
   io.inner.zip(ready).foreach { case (i, r) =>
     i.req.ready := r
-    i.resp := arb.resp
+    i.resp.ppn <> arb.resp.ppn
+    i.resp.xcpt <> arb.resp.xcpt
   }
 
   /* Misalignment */

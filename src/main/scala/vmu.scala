@@ -286,11 +286,11 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
 
   sbox.io.ctrl <> abox.io.store
   sbox.io.lane <> io.lane.vsdq
-  lbox.io.lane <> io.lane.vldq
+  io.lane.vldq <> lbox.io.lane
 
   mbox.io.inner.abox <> abox.io.mem
   mbox.io.inner.sbox <> sbox.io.mem
-  mbox.io.inner.lbox <> lbox.io.mem
+  lbox.io.mem <> mbox.io.inner.lbox
   io.sret <> mbox.io.sret
 
   io.memif <> mbox.io.outer

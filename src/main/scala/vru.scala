@@ -405,10 +405,10 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   vru_rocc_unit.io.cmdq <> io.cmdq
   vru_rocc_unit.io.aaddr := vru_frontend.io.aaddr
   vru_rocc_unit.io.vf_active := vru_frontend.io.vf_active
-  vru_frontend.io.imem <> io.imem
+  io.imem <> vru_frontend.io.imem
   vru_frontend.io.fire_vf := vru_rocc_unit.io.fire_vf
   vru_frontend.io.fetch_pc := io.cmdq.imm.bits
-  vru_frontend.io.memop <> decodedMemOpQueue.io.enq
+  decodedMemOpQueue.io.enq <> vru_frontend.io.memop
   vru_frontend.io.vf_complete_ack := io.vf_complete_ack
   vru_frontend.io.vlen := vru_rocc_unit.io.vlen
   vru_frontend.io.adata := vru_rocc_unit.io.adata
