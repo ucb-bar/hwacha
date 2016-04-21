@@ -132,7 +132,7 @@ class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
   val io = new IBoxIO
 
-  val mask = Reg(init = Bits(0, io.issue.size))
+  val mask = Reg(init = Vec.fill(io.issue.size){Bool(false)})
   io.issue.zipWithIndex.map { case (box, i) =>
     val _mask = mask(i)
     box.bits := io.op.bits
@@ -141,9 +141,9 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
     _mask := _mask || fire
   }
 
-  io.op.ready := mask.andR
+  io.op.ready := mask.toBits.andR
   when (io.op.ready) {
-    mask := Bits(0)
+    mask.map(_ := Bool(false))
   }
 }
 

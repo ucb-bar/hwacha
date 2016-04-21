@@ -227,7 +227,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val en = !valve_off || xcpt
   val end = vlen_end || valve_end
 
-  val blkidx = op.base(bPgIdx-1, tlByteAddrBits)
+  val blkidx = Reg(UInt())
   val blkidx_next = blkidx + UInt(1)
   val blkidx_update = !op.mt.b || beat_1
   val blkidx_end = (blkidx_update && (blkidx_next === UInt(0)))
@@ -308,6 +308,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   when (io.op.fire()) { /* initialization */
     state := s_busy
     op := io.op.bits
+    blkidx := io.op.bits.base(bPgIdx-1, tlByteAddrBits)
     shift := io.op.bits.mt.shift()
     beat := io.op.bits.base(tlByteAddrBits-1)
     lead := Bool(true)

@@ -154,7 +154,6 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
-        bank := UInt(0)
         slice_idx := UInt(0)
         strip_idx := UInt(0)
       }
