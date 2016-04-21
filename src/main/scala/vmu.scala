@@ -124,9 +124,9 @@ class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   agent.io.op.valid := opq.io.deq.valid
   opq.io.deq.ready := agent.io.op.ready
 
-  val issue = Vec(io.abox(0), io.pbox(0),
+  val issue = Seq(io.abox(0), io.pbox(0),
     agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
-  issue <> agent.io.issue
+  issue zip agent.io.issue map {case(s,d) => s <> d}
 }
 
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
