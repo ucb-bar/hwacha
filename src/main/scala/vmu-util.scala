@@ -9,9 +9,9 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
   require(n == (1 << lgn))
 
   val io = new Bundle {
-    val in0 = Vec(n, gen.cloneType.asInput)
-    val in1 = Vec(n, gen.cloneType.asInput) // left-shift input
-    val out = Vec(n, gen.cloneType.asOutput)
+    val in0 = Vec(n, gen.cloneType).asInput
+    val in1 = Vec(n, gen.cloneType).asInput // left-shift input
+    val out = Vec(n, gen.cloneType).asOutput
     val shift = SInt(INPUT, lgn + 1)
   }
 
@@ -34,8 +34,8 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
 class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module {
   require(n <= m)
   val io = new Bundle {
-    val in = Vec(n, gen.cloneType.asInput)
-    val out = Vec(m, gen.cloneType.asOutput)
+    val in = Vec(n, gen.cloneType).asInput
+    val out = Vec(m, gen.cloneType).asOutput
     val sel = UInt(INPUT, log2Up(m))
   }
 

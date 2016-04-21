@@ -23,7 +23,7 @@ class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
 
 class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new rocket.TLBReq)
-  val resp = new rocket.TLBRespNoHitIndex().flip
+  val resp = (new rocket.TLBRespNoHitIndex()).flip
 
   def bridge(client: TLBIO) {
     this.req.bits.vpn := client.vpn()
@@ -41,7 +41,7 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
 
 class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
-    val inner = Vec(n, new TLBIO().flip)
+    val inner = Vec(n, new TLBIO()).flip
     val outer = new RTLBIO
     val irq = new IRQIO
   }

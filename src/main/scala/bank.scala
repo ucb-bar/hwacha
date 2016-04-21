@@ -46,10 +46,10 @@ class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p)) {
 }
 
 class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val pdl = Vec(nGPDL, new BankPredEntry().asOutput)
-  val opl = Vec(nGOPL, new BankDataEntry().asOutput)
+  val pdl = Vec(nGPDL, new BankPredEntry()).asOutput
+  val opl = Vec(nGOPL, new BankDataEntry()).asOutput
   val wpred = new BankPredEntry().asInput
-  val wdata = Vec(nWSel, new BankDataPredEntry().asInput)
+  val wdata = Vec(nWSel, new BankDataPredEntry()).asInput
 
   val bpq = new BPQIO
   val brq = new BRQIO

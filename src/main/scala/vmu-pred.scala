@@ -291,7 +291,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 
 class PBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
-    val op = Vec(2, Decoupled(new VMUDecodedOp).flip)
+    val op = Vec(2, Decoupled(new VMUDecodedOp)).flip
     val pred = Decoupled(new PredEntry).flip
     val mask = new VMUMaskIO
   }
