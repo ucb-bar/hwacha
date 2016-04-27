@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.{Config, Parameters, Knob}
+import cde.{Config, Parameters, Knob, CDEMatchError}
 import uncore._
 import rocket._
 
@@ -93,6 +93,8 @@ class DefaultHwachaConfig extends Config (
     case HwachaVRUMaxRunaheadBytes => Knob("HWACHA_VRU_DIST_THROTTLE")
     case HwachaCMDQLen => Knob("HWACHA_CMDQ_LEN")
     case HwachaVSETVLCompress => Knob("HWACHA_VSETVL_COMPRESS")
+    case _ => throw new CDEMatchError
+
   },
   knobValues = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
@@ -102,4 +104,5 @@ class DefaultHwachaConfig extends Config (
     case "HWACHA_VRU_DIST_THROTTLE" => 16777216 // try 8, 16, 32, 64, 128, 256, 512, 2048
     case "HWACHA_CMDQ_LEN" => 32 // try 8, 16, 32, 64, 128
     case "HWACHA_VSETVL_COMPRESS" => true
+    case _ => throw new CDEMatchError
   })
