@@ -121,7 +121,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   assert(!(skipped_block && accepted_block), "VRU attempted to simultaneously enqueue and skip VF block")
   val increment_vf_count = skipped_block || accepted_block
 
-  runahead_vf_count := runahead_vf_count + increment_vf_count.toSInt - io.vf_done_vxu.toSInt
+  runahead_vf_count := runahead_vf_count + increment_vf_count.zext - io.vf_done_vxu.zext
 
   val increment_bytes_necessary = bytesq.io.enq.valid && bytesq.io.enq.ready
   val decrement_bytes_necessary = bytesq.io.deq.valid && io.vf_done_vxu
