@@ -71,7 +71,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   class Ticker[T <: Data](gen: T, n: Int) {
-    val s = Vec.fill(n){Reg(Valid(gen.cloneType))}
+    val s = Reg(Vec(n,Valid(gen.cloneType)))
 
     (0 until n).reverse.foreach(i => ({
       val step_en = if (i == n-1) Bool(false) else s(i+1).valid
