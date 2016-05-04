@@ -442,8 +442,9 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
   abox1.io.op <> io.op(1)
   abox1.io.mask <> io.mask.post
   abox1.io.vpaq <> vpaq.io.deq
-  abox1.io.xcpt <> io.xcpt
-  abox1.io.la <> io.la
+  abox1.io.xcpt.prop.top.stall :=  io.xcpt.prop.top.stall
+  abox1.io.la.cnt := io.la.cnt
+  abox1.io.la.reserve := io.la.reserve
 
   val pipe = Module(new Queue(abox1.io.pipe.bits, 2))
   pipe.io.enq <> abox1.io.pipe

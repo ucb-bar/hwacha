@@ -67,13 +67,15 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 
   val rpred = Module(new RPredLane)
   rpred.io <> ctrl.io.rpred.fu
-  io.red.pred <> ctrl.io.rpred.result
-  io.red.pred <> rpred.io.result
+  io.red.pred.bits.cond := rpred.io.result.bits.cond
+  io.red.pred.valid := ctrl.io.rpred.result.valid
+  ctrl.io.rpred.result.ready := io.red.pred.ready
 
   val rfirst = Module(new RFirstLane)
   rfirst.io <> ctrl.io.rfirst.fu
-  io.red.first <> ctrl.io.rfirst.result
-  io.red.first <> rfirst.io.result
+  io.red.first.bits <> rfirst.io.result.bits
+  io.red.first.valid := ctrl.io.rfirst.result.valid
+  ctrl.io.rfirst.result.ready := io.red.first.ready
 
   io.ack.vidu <> ctrl.io.idiv.ack
   io.ack.vfdu <> ctrl.io.fdiv.ack
