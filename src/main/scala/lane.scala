@@ -246,7 +246,7 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
       vfmu.io.resp.bits
     }, {
       val stages = Seq(stagesDFMA, stagesSFMA, stagesHFMA)
-      val pipe = (0 until stages.max).scanRight(Bits(0)){
+      val pipe = (0 until stages.max).scanRight(Bits(0, wPred)){
         case (_, in) => RegNext(next=in, init=Bits(0, wPred)) }
       for ((fp, i) <- Seq(FPD, FPS, FPH).zip(stages)) {
         when (vfmu_val && vfmu_fn.fp_is(fp)) { pipe(i-1) := vfmu_pred }
