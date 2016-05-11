@@ -12,7 +12,7 @@ class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
 class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new TLBRequest)
   val resp = new Bundle {
-    val ppn = UInt(INPUT, bPgIdx)
+    val ppn = UInt(INPUT, bPPN)
     val xcpt = Bool(INPUT)
   }
 
