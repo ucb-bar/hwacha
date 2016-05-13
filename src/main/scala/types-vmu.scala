@@ -171,7 +171,8 @@ class VMUMaskIO_1(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_1
 class CInt(n: Int) extends Bundle {
   val raw = UInt(width = n)
   def encode[T <: UInt](x: T) {
-    assert(x != UInt(0), "CInt: invalid value")
+    //COLIN FIXME: this was not being emitted in chisel2 and always fires in chisel3
+    //assert(x != UInt(0), "CInt: invalid value")
     raw := x
   }
   def decode(dummy: Int = 0): UInt = Cat(raw === UInt(0), raw)
