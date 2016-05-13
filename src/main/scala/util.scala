@@ -133,7 +133,7 @@ object MaskStall {
   }
 }
 
-class QCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null) extends Module(_reset = resetSignal) {
+class QCounter(reset_cnt: Int, max_cnt: Int) extends Module() {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
     val inc = Bool(INPUT)
