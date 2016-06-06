@@ -162,7 +162,7 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
     (Vec(_lut.map(UInt(_))), _setup)
   } else (null, null)
 
-  val shift = UInt(width = io.agu.in.bits.shift.getWidth)
+  val shift = Wire(UInt(width = io.agu.in.bits.shift.getWidth))
   shift := UInt(bLanes)
 
   io.agu.in.valid := Bool(false)
@@ -214,7 +214,7 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
         unless (indexed) {
           op.base := io.agu.out.bits.addr
         }
-        op.vlen := vlen_next
+        op.vlen := vlen_next.asUInt()
         op.eidx := eidx_next
         op.first := Bool(false)
         when (vlen_end) {
