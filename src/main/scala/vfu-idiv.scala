@@ -25,6 +25,11 @@ class IDivIO(implicit p: Parameters) extends VXUBundle()(p) {
 class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   val io = new IDivIO().flip
 
+  implicit def BitPatToUInt(x: BitPat): UInt = {
+    require(x.mask == (BigInt(1) << x.getWidth)-1)
+    UInt(x.value, x.getWidth)
+  }
+
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
 
   qcnt.io.dec := io.req.fire()

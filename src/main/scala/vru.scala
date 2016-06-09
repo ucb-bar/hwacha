@@ -28,6 +28,7 @@ class VRUCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
 
 object VRUDecodeTable {
   import HwachaElementInstructions._
+  import rocket.Util._ //implicit uint to bitpat
 
   /* list contains: 
    * opwidth (2 bits, stored as 2^opwidth)

@@ -109,7 +109,7 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   private val req = req_arb.io.out
 
   icache.io.req.valid := req.valid
-  icache.io.req.bits.idx := req.bits.pc
+  icache.io.req.bits.addr := req.bits.pc
   icache.io.invalidate := Bool(false)
   icache.io.s1_ppn := tlb.io.resp.ppn
   icache.io.s1_kill :=

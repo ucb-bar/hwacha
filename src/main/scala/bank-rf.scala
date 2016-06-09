@@ -69,7 +69,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     val wdata = (wdata_pack << shift)(wPred-1, 0)
     val wmask = (io.op.pred.write.bits.pred << shift)(wPred-1, 0)
 
-    pred_rf.write(waddr, ((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools)
+    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools))
 
     if (commit_log) {
       (0 until wPred) foreach { case i =>

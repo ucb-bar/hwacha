@@ -437,6 +437,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (io.smu.req.fire()) { pending_smu := Bool(true) }
   when (io.smu.confirm) { pending_smu := Bool(false) }
 
+  implicit def BitPatToUInt(x: BitPat): UInt = {
+    require(x.mask == (BigInt(1) << x.getWidth)-1)
+    UInt(x.value, x.getWidth)
+  }
   // to MUL
   muldiv.io.req.valid := fire_decode(mask_muldiv_ready, enq_muldiv)
   muldiv.io.req.bits.dw :=

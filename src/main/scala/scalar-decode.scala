@@ -4,6 +4,7 @@ import Chisel._
 import cde.Parameters
 import HwachaElementInstructions._
 import rocket.ALU._
+import rocket.Util._
 import ScalarFPUDecode._
 
 class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
