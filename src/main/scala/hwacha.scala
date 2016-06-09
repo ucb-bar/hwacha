@@ -176,6 +176,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
+  io.mem.invalidate_lr := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
   //ptlb.io <> smu.io.tlb
