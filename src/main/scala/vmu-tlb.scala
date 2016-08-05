@@ -23,12 +23,11 @@ class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
 
 class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new rocket.TLBReq)
-  val resp = (new rocket.TLBRespNoHitIndex()).flip
+  val resp = (new rocket.TLBResp()).flip
 
   def bridge(client: TLBIO) {
     this.req.bits.vpn := client.vpn()
     this.req.bits.store := client.req.bits.store
-    this.req.bits.asid := UInt(0)
     this.req.bits.passthrough := Bool(false)
     this.req.bits.instruction := Bool(false)
 

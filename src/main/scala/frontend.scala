@@ -82,9 +82,7 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
     if (fetchWidth * coreInstBytes == rowBytes) s2_line.io.deq.bits.datablock
     else s2_line.io.deq.bits.datablock >> (s2_pc(log2Up(rowBytes)-1,log2Up(fetchWidth*coreInstBytes)) << log2Up(fetchWidth*coreInstBits))
 
-  for (i <- 0 until fetchWidth) {
-    io.front.resp.bits.data(i) := fetch_data(i*coreInstBits+coreInstBits-1, i*coreInstBits)
-  }
+    io.front.resp.bits.data := fetch_data
 }
 
 class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket.HasL1CacheParameters {
@@ -92,10 +90,10 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
     val vxu = new FrontendIO().flip
     val vru = new FrontendIO().flip
     val ptw = new rocket.TLBPTWIO()
-    val mem = new uncore.ClientUncachedTileLinkIO
+    val mem = new uncore.tilelink.ClientUncachedTileLinkIO
   }
 
-  val icache = Module(new rocket.ICache)
+  val icache = Module(new rocket.ICache(latency = 1))
   val tlb = Module(new rocket.TLB)
   val vxu = Module(new MiniFrontend)
   val vru = Module(new MiniFrontend)
@@ -115,10 +113,10 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   icache.io.s1_kill :=
     vxu.io.back.s1_kill || vru.io.back.s1_kill ||
     tlb.io.resp.miss || tlb.io.resp.xcpt_if || io.ptw.invalidate
+  icache.io.s2_kill := Bool(false)
 
   tlb.io.req.valid := Reg(next=req.valid)
   tlb.io.req.bits.vpn := RegEnable(req.bits.pc, req.valid) >> UInt(pgIdxBits)
-  tlb.io.req.bits.asid := UInt(0)
   tlb.io.req.bits.passthrough := Bool(false)
   tlb.io.req.bits.instruction := Bool(true)
   tlb.io.req.bits.store := Bool(false)

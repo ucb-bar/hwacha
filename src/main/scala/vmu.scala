@@ -10,7 +10,7 @@ case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVLTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
-  with uncore.HasTileLinkParameters {
+  with uncore.tilelink.HasTileLinkParameters {
   val bVAddr = p(junctions.VAddrBits)
   val bPAddr = p(junctions.PAddrBits)
   val bVAddrExtended = bVAddr + (if (bVAddr < regLen) 1 else 0)

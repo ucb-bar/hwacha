@@ -105,7 +105,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
-  import uncore._
+  import uncore.tilelink._
 
   val io = new Bundle {
     val vmu = new VMUMemIO().flip

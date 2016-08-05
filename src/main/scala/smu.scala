@@ -51,7 +51,7 @@ class SMUEntry(implicit p: Parameters) extends SMUBundle()(p)
 
 class SMU(implicit p: Parameters) extends HwachaModule()(p)
   with SMUParameters {
-  import uncore._
+  import uncore.tilelink._
 
   val io = new Bundle {
     val scalar = new SMUIO().flip
@@ -106,7 +106,7 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   tw.bits.offset := addr_offset
 
   acquire.bits := Mux(req_store,
-    Put(tw.tag, addr_block, addr_beat, req_data, req_mask),
+    Put(tw.tag, addr_block, addr_beat, req_data, Some(req_mask)),
     Get(tw.tag, addr_block, addr_beat))
 
   private def fire(exclude: Bool, include: Bool*) = {

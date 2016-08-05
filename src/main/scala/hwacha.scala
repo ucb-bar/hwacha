@@ -112,7 +112,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   import Commands._
 
   val rocc = Module(new RoCCUnit)
-  val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.CacheName => "HwI"})))
+  val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.agents.CacheName => "HwI"})))
   val scalar = Module(new ScalarUnit)
   val mseq = Module(new MasterSequencer)
   val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
@@ -121,13 +121,12 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val smu = Module(new SMU)
   val mou = Module(new MemOrderingUnit)
   val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
-  val imemarb = Module(new uncore.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
+  val imemarb = Module(new uncore.tilelink.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
   io.resp <> rocc.io.rocc.resp
   io.busy <> rocc.io.rocc.busy
-  rocc.io.rocc.status <> io.status
   io.interrupt <> rocc.io.rocc.interrupt
   rocc.io.rocc.exception <> io.exception
 

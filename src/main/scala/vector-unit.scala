@@ -14,7 +14,7 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
     val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
     val tlb = new RTLBIO
-    val dmem = new uncore.ClientUncachedTileLinkIO
+    val dmem = new uncore.tilelink.ClientUncachedTileLinkIO
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
@@ -33,9 +33,9 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
 
   vmu.io.cfg <> io.cfg
   vmu.io.lane <> vxu.io.vmu
-  memif.io.vmu <> vmu.io.memif 
+  memif.io.vmu <> vmu.io.memif
 
-  io.complete_memop := vmu.io.memif.resp.ready && vmu.io.memif.resp.valid 
+  io.complete_memop := vmu.io.memif.resp.ready && vmu.io.memif.resp.valid
 
   mrt.io.lreq <> vxu.io.mrt.lreq
   mrt.io.lret <> vxu.io.mrt.lret

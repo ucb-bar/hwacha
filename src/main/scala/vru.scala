@@ -143,7 +143,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
  */
 class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) 
   with MemParameters {
-  import uncore._
+  import uncore.tilelink._
 
   val io = new Bundle {
     val memop = Decoupled(new DecodedMemOp).flip
@@ -289,7 +289,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false)
 
-  val loaded_inst = io.imem.resp.bits.data(0)
+  val loaded_inst = io.imem.resp.bits.data; require(p(rocket.FetchWidth) == 1)
   io.aaddr := loaded_inst(28, 24)
   io.memop.bits.addr := io.adata
   io.memop.bits.curr_vlen := io.vlen
@@ -385,7 +385,7 @@ class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
 class VRU(implicit p: Parameters) extends HwachaModule()(p)
   with MemParameters {
   import Commands._
-  import uncore._
+  import uncore.tilelink._
 
   val io = new Bundle {
     // to is implicit, -> imem

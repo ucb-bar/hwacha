@@ -188,11 +188,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // DECODE
   val id_pc = io.imem.resp.bits.pc
-  val id_inst = io.imem.resp.bits.data(0).toBits; require(p(rocket.FetchWidth) == 1)
+  val id_inst = io.imem.resp.bits.data; require(p(rocket.FetchWidth) == 1)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
-  when (!killd && id_ctrl.decode_stop) { 
-    vf_active := Bool(false) 
+  when (!killd && id_ctrl.decode_stop) {
+    vf_active := Bool(false)
   }
   io.vf_stop := io.imem.resp.fire() && id_ctrl.decode_stop
 

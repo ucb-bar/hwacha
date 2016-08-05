@@ -2,7 +2,8 @@ package hwacha
 
 import Chisel._
 import cde.{Config, Parameters, Knob, CDEMatchError}
-import uncore._
+import uncore.tilelink._
+import uncore.agents._
 import rocket._
 
 class DefaultHwachaConfig extends Config (
@@ -15,8 +16,8 @@ class DefaultHwachaConfig extends Config (
       case CacheIdBits => 0
       case SplitMetadata => false
     }:PartialFunction[Any, Any]
-    case FetchWidth => 1
-    case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else 32
+    case FetchWidth => if (site(CoreName) == "Hwacha") 1 else throw new CDEMatchError
+    case CoreInstBits => if (site(CoreName) == "Hwacha") 64 else throw new CDEMatchError
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
 
     case HwachaCommitLog => true
