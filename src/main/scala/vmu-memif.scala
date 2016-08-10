@@ -82,7 +82,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
   req.bits.pred := pred
-  req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.ecnt.raw)
+  req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.tag)
   require(tlByteAddrBits-1 <= bVMUTag)
 
   /* Response */
@@ -93,10 +93,13 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   /* Store acknowledgement */
   val sret_req = abox.bits.meta.ecnt
   val sret_resp = Wire(new CInt(tlByteAddrBits-1))
-  sret_resp.raw := resp.bits.tag
+  sret_resp.raw := resp.bits.tag(tlByteAddrBits-1, 0)
+  abox.memif.resp.bits.tag := resp.bits.tag(bVMUTag - 1, tlByteAddrBits - 1)
 
   val sret_req_en = fire(null, cmd.store, !pred)
+  abox.memif.req := fire(null, cmd.store, pred)
   val sret_resp_en = resp.fire() && resp.bits.store
+  abox.memif.resp.valid := sret_resp_en
 
   io.sret.update := Bool(true)
   io.sret.cnt :=
