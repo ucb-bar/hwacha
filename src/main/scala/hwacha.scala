@@ -172,6 +172,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   imemarb.io.in(1) <> smu.io.dmem
   io.autl <> imemarb.io.out
   io.ptw(0) <> icache.io.ptw
+  icache.io.ptw.status := rocc.io.vf_status
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
@@ -182,6 +183,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   ptlb.io.req <> smu.io.tlb.req
   smu.io.tlb.resp  <> ptlb.io.resp
   io.ptw(1) <> ptlb.io.ptw
+  ptlb.io.ptw.status := rocc.io.vf_status
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_rpred = scalar.io.vxu.bits.active.vrpred
@@ -251,6 +253,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     dtlb.io.req <> vu.io.tlb.req
     vu.io.tlb.resp <> dtlb.io.resp
     io.ptw(2 + i) <> dtlb.io.ptw
+    dtlb.io.ptw.status := rocc.io.vf_status
 
     io.utl(i) <> vu.io.dmem
   }

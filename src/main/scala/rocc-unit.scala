@@ -121,6 +121,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       val mseq = Bool(INPUT)
       val mrt = Bool(INPUT)
     }
+    val vf_status = new rocket.MStatus().asOutput
 
     val cfg = new HwachaConfigIO
 
@@ -190,6 +191,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   val decode_vsetcfg = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETCFG)
   val decode_vsetvl = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETVL)
+  val decode_vf = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VF || ctrl.sel_cmd === CMD_VFT)
 
   val keepcfg = Wire(Bool())
   val mask_vsetcfg = !decode_vsetcfg || !keepcfg
@@ -237,6 +239,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val _fire = fire(null)
   val fire_vsetcfg = _fire && decode_vsetcfg
   val fire_vsetvl = _fire && decode_vsetvl
+  val fire_vf = _fire && decode_vf
 
   // Logic to handle vector length calculation
   val cfg = new DecodeConfig().fromBits(rocc_imm12 | io.rocc.cmd.bits.rs1)
@@ -389,6 +392,13 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     io.vf_active || io.pending.mseq || io.pending.mrt
 
   io.rocc.busy := busy
+
+  // Keep track of most recent VF status field
+  val current_status = Reg(new rocket.MStatus())
+  when(fire_vf) {
+    current_status := io.rocc.cmd.bits.status
+  }
+  io.vf_status := current_status
 
   // Setup interrupt
   io.rocc.interrupt := Bool(false)
