@@ -89,6 +89,16 @@ trait DecodeConstants {
   val IMM_L = UInt(1, SZ_I)
   val IMM_U = UInt(2, SZ_I)
 
+  val MT_SZ = 3
+  val MT_X  = BitPat("b???")
+  val MT_B  = UInt("b000")
+  val MT_H  = UInt("b001")
+  val MT_W  = UInt("b010")
+  val MT_D  = UInt("b011")
+  val MT_BU = UInt("b100")
+  val MT_HU = UInt("b101")
+  val MT_WU = UInt("b110")
+
   val DW__ = BitPat("b?")
   val DW32 = UInt(0, 1)
   val DW64 = UInt(1, 1)
