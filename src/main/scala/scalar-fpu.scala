@@ -23,12 +23,12 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   req.in2 := Mux(io.req.bits.swap23, io.req.bits.in3, io.req.bits.in2)
   req.in3 := Mux(io.req.bits.swap23, io.req.bits.in2, io.req.bits.in3)
 
-  val sfma = Module(new rocket.FPUFMAPipe(p(rocket.SFMALatency), 23, 9))
+  val sfma = Module(new rocket.FPUFMAPipe(p(rocket.FPUKey).getOrElse(rocket.FPUConfig()).sfmaLatency, 23, 9))
   sfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       io.req.bits.single
   sfma.io.in.bits := req
 
-  val dfma = Module(new rocket.FPUFMAPipe(p(rocket.DFMALatency), 52, 12))
+  val dfma = Module(new rocket.FPUFMAPipe(p(rocket.FPUKey).getOrElse(rocket.FPUConfig()).dfmaLatency, 52, 12))
   dfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       !io.req.bits.single
   dfma.io.in.bits := req

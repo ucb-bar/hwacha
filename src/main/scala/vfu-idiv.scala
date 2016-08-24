@@ -35,7 +35,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
 
-  val div = Module(new rocket.MulDiv(width = p(HwachaRegLen), unroll = 8, earlyOut = true))
+  val div = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
 
   div.io.req.valid := io.req.valid
   io.req.ready := !qcnt.io.empty && div.io.req.ready

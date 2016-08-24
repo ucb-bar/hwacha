@@ -36,7 +36,7 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters {
+abstract trait UsesHwachaParameters extends rocket.HasCoreParameters {
   implicit val p: Parameters
 
   val commit_log = p(HwachaCommitLog)

@@ -85,7 +85,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val arf = Mem(nARegs, UInt(width = regLen))
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
-  val muldiv = Module(new rocket.MulDiv(width = regLen, nXpr = nSRegs, unroll = 8, earlyOut = true))
+  val muldiv = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
 
   io.pending.mrt.su := mrt.io.pending
 

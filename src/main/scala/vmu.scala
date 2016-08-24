@@ -11,13 +11,13 @@ case object HwachaNVLTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
   with uncore.tilelink.HasTileLinkParameters {
-  val bVAddr = p(junctions.VAddrBits)
-  val bPAddr = p(junctions.PAddrBits)
+  val bVAddr = vaddrBits
+  val bPAddr = paddrBits
   val bVAddrExtended = bVAddr + (if (bVAddr < regLen) 1 else 0)
 
-  val bVPN = p(junctions.VPNBits)
-  val bPPN = p(junctions.PPNBits)
-  val bPgIdx = p(junctions.PgIdxBits)
+  val bVPN = vpnBits
+  val bPPN = ppnBits
+  val bPgIdx = pgIdxBits
   val pgSize = 1 << bPgIdx
 
   require((tlDataBits & (regLen - 1)) == 0)
