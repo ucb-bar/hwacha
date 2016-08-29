@@ -101,7 +101,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   // stage output+1
   val s1_result_valid = Reg(next=s0_result_valid)
-  val s1_result_out = RegEnable(div.io.out, s0_result_valid).toUInt
+  val s1_result_out = RegEnable(div.io.out, s0_result_valid).asUInt
   val s1_result_exc = RegEnable(div.io.exceptionFlags, s0_result_valid)
 
   val rq = Module(new Queue(new FDivResult, nDecoupledUnitWBQueue))

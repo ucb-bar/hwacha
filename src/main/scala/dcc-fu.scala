@@ -143,7 +143,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val fire_reduce = Wire(Bool())
   val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen(bSlices, 0))
   val vlen_next = op.vlen - ecnt
-  val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).toBits
+  val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).asUInt
   val idiv_active = op.active.vidiv
 
   opq.io.deq.ready := Bool(false)

@@ -147,33 +147,33 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
 
     val raw =
       (0 until nSeq).map { r =>
-        (me(r).raw.toBits & ~vlen_check_ok(r).toBits).orR ||
-        wpred_mat_vp(r).toBits.orR ||
-        wpred_mat_vs1(r).toBits.orR || wsram_mat_vs1(r).toBits.orR ||
-        wpred_mat_vs2(r).toBits.orR || wsram_mat_vs2(r).toBits.orR ||
-        wpred_mat_vs3(r).toBits.orR || wsram_mat_vs3(r).toBits.orR }
+        (me(r).raw.asUInt & ~vlen_check_ok(r).asUInt).orR ||
+        wpred_mat_vp(r).asUInt.orR ||
+        wpred_mat_vs1(r).asUInt.orR || wsram_mat_vs1(r).asUInt.orR ||
+        wpred_mat_vs2(r).asUInt.orR || wsram_mat_vs2(r).asUInt.orR ||
+        wpred_mat_vs3(r).asUInt.orR || wsram_mat_vs3(r).asUInt.orR }
     val war =
       (0 until nSeq).map { r =>
-        (me(r).war.toBits & ~vlen_check_ok(r).toBits).orR }
+        (me(r).war.asUInt & ~vlen_check_ok(r).asUInt).orR }
     val waw =
       (0 until nSeq).map { r =>
-        (me(r).waw.toBits & ~vlen_check_ok(r).toBits).orR ||
-        wport_lookup(wpred_mat_vd(r), me(r).wport.pred).toBits.orR ||
-        wport_lookup(wsram_mat_vd(r), me(r).wport.sram).toBits.orR }
+        (me(r).waw.asUInt & ~vlen_check_ok(r).asUInt).orR ||
+        wport_lookup(wpred_mat_vd(r), me(r).wport.pred).asUInt.orR ||
+        wport_lookup(wsram_mat_vd(r), me(r).wport.sram).asUInt.orR }
 
     val check =
       (0 until nSeq).map { r =>
         raw(r) || war(r) || waw(r) }
 
     def debug = {
-      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (me(r).raw.toBits & ~vlen_check_ok(r).toBits).orR })
-      io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_mat_vp(r).toBits.orR })
-      io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_mat_vs1(r).toBits.orR })
-      io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_mat_vs2(r).toBits.orR })
-      io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_mat_vs3(r).toBits.orR })
-      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_mat_vs1(r).toBits.orR })
-      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_mat_vs2(r).toBits.orR })
-      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_mat_vs3(r).toBits.orR })
+      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (me(r).raw.asUInt & ~vlen_check_ok(r).asUInt).orR })
+      io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_mat_vp(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_mat_vs1(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_mat_vs2(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_mat_vs3(r).asUInt.orR })
+      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_mat_vs1(r).asUInt.orR })
+      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_mat_vs2(r).asUInt.orR })
+      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_mat_vs3(r).asUInt.orR })
       io.debug.dhazard_war := war
       io.debug.dhazard_waw := waw
       io.debug.dhazard := check
@@ -355,7 +355,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
     def read[T <: Data](sched: Vec[Bool], rfn: SeqEntry=>T) = readfn(sched, e, rfn)
 
     def selectfn(sched: Vec[Bool]) =
-      new SeqSelect().fromBits(Mux1H(sched, shazard.select.map(_.toBits)))
+      new SeqSelect().fromBits(Mux1H(sched, shazard.select.map(_.asUInt)))
 
     def regfn(sched: Vec[Bool]) = {
       val out = Wire(new PhysicalRegisters)

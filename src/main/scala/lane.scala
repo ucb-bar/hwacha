@@ -280,9 +280,9 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
 
   require(nVFMU == 2)
 
-  val vimu_vals = Vec(vimus.map(_.valid)).toBits
+  val vimu_vals = Vec(vimus.map(_.valid)).asUInt
   val vfmu_vals = vfmus.map(_._2)
-  val vfcu_vals = Vec(vfcus.map(_.valid)).toBits
+  val vfcu_vals = Vec(vfcus.map(_.valid)).asUInt
   val vfvu_vals = vfvus._2
 
   val wdata = List(
@@ -299,7 +299,7 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
     vfmu_vals(1) | vfcu_vals)
 
   banksrw.map { b =>
-    b.wpred.pred := Vec(vfcus.map(_.bits.cmp)).toBits
+    b.wpred.pred := Vec(vfcus.map(_.bits.cmp)).asUInt
     (b.wdata zipWithIndex) map { case (bwdata, i) =>
       bwdata.data := wdata(i)
       bwdata.pred := wdata_pred(i)

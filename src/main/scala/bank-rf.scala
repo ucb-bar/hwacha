@@ -39,7 +39,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   def pred_read(op: ValidIO[PredRFReadOp]) = {
     val addr = dgate(op.valid, op.bits.addr)
     val idx = dgate(op.valid, op.bits.pack.idx)
-    pred_rf(addr).toBits >> pred_shift(idx)
+    pred_rf(addr).asUInt >> pred_shift(idx)
   }
 
   // Predicate RF gated read port
@@ -69,7 +69,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
     val wdata = (wdata_pack << shift)(wPred-1, 0)
     val wmask = (io.op.pred.write.bits.pred << shift)(wPred-1, 0)
 
-    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).toBits & ~wmask)).toBools))
+    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).asUInt & ~wmask)).toBools))
 
     if (commit_log) {
       (0 until wPred) foreach { case i =>
@@ -82,7 +82,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
 
   // SRAM RF read port
   val sram_raddr = io.op.sram.read.bits.addr
-  val sram_rdata = sram_rf.read(sram_raddr, io.op.sram.read.valid && gpred.active()).toBits
+  val sram_rdata = sram_rf.read(sram_raddr, io.op.sram.read.valid && gpred.active()).asUInt
   val sram_rpack = unpack_bank(Reg(next = io.op.sram.read.bits), sram_rdata)
 
   // SRAM RF write port
@@ -91,8 +91,8 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   val sram_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.sram.write.bits.selg,
       MuxLookup(io.op.sram.write.bits.wsel, Bits(0), (0 until nWSel) map {
-        i => UInt(i) -> io.global.wdata(i).toBits }),
-      io.local.wdata.toBits))
+        i => UInt(i) -> io.global.wdata(i).asUInt }),
+      io.local.wdata.asUInt))
   val sram_wpack = repack_bank(io.op.sram.write.bits, sram_wdata)
 
   sram_warb.io.in(0).valid := io.op.sram.write.valid && sram_wdata.active()
@@ -131,7 +131,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
 
   // FF RF read port
   val ff_raddr = io.op.ff.read map { op => dgate(op.valid && gpred.active(), op.bits.addr) }
-  val ff_rdata = ff_raddr map { addr => ff_rf(addr).toBits }
+  val ff_rdata = ff_raddr map { addr => ff_rf(addr).asUInt }
 
   // FF RF write port
   val ff_warb = Module(new Arbiter(new RFWritePort, 3))
@@ -139,8 +139,8 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
   val ff_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.ff.write.bits.selg,
       MuxLookup(io.op.ff.write.bits.wsel, Bits(0), (0 until nWSel) map {
-        i => UInt(i) -> io.global.wdata(i).toBits }),
-      io.local.wdata.toBits))
+        i => UInt(i) -> io.global.wdata(i).asUInt }),
+      io.local.wdata.asUInt))
 
   ff_warb.io.in(0).valid := io.op.ff.write.valid && ff_wdata.active()
   ff_warb.io.in(0).bits.addr := io.op.ff.write.bits.addr
@@ -184,7 +184,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
         (io.op.opl.global(i).bits.pred & s1_gpred.pred)(1,0).toBools)
     }
     io.global.opl(i).data :=
-      dgate(io.op.xbar(i).valid && read_gpdl(io.op.xbar(i).bits.pdladdr).active(), gopl(i).toBits)
+      dgate(io.op.xbar(i).valid && read_gpdl(io.op.xbar(i).bits.pdladdr).active(), gopl(i).asUInt)
   }
   (0 until nLOPL) foreach { i =>
     when (io.op.opl.local(i).valid && s1_gpred.active()) {
@@ -193,7 +193,7 @@ class BankRegfile(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule(
         toDWords(Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
         (io.op.opl.local(i).bits.pred & s1_gpred.pred)(1,0).toBools)
     }
-    io.local.opl(i).data := lopl(i).toBits
+    io.local.opl(i).data := lopl(i).asUInt
   }
 
   // Predicate Latches (PDL)

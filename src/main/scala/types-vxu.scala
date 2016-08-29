@@ -17,7 +17,7 @@ class VIUFn(implicit p: Parameters) extends VXUBundle()(p) {
   val fp = Bits(width = SZ_FP)
   val op = Bits(width = SZ_VIU_OP)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.toBits))
+  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
 
   def dw_is(_dw: UInt) = dw === _dw
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
@@ -32,7 +32,7 @@ class VIXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val dw = UInt(width = SZ_DW)
   val op = UInt(width = sz_op)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.toBits))
+  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
 
   def dw_is(_dw: UInt) = dw === _dw
   def op_is(ops: UInt*): Bool = op_is(ops.toList)
@@ -48,7 +48,7 @@ class VFXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val rm = UInt(width = rocket.FPConstants.RM_SZ)
   val op = UInt(width = sz_op)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.toBits))
+  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
 
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)

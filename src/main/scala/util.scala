@@ -5,13 +5,13 @@ import cde.Parameters
 import scala.math._
 
 abstract trait Packing extends LaneParameters {
-  def splat_d(n: Bits) = Fill(SZ_D/SZ_D, n.toUInt)
-  def splat_w(n: Bits) = Fill(SZ_D/SZ_W, n.toUInt)
-  def splat_h(n: Bits) = Fill(SZ_D/SZ_H, n.toUInt)
-  def splat_b(n: Bits) = Fill(SZ_D/SZ_B, n.toUInt)
+  def splat_d(n: Bits) = Fill(SZ_D/SZ_D, n.asUInt)
+  def splat_w(n: Bits) = Fill(SZ_D/SZ_W, n.asUInt)
+  def splat_h(n: Bits) = Fill(SZ_D/SZ_H, n.asUInt)
+  def splat_b(n: Bits) = Fill(SZ_D/SZ_B, n.asUInt)
 
   def _expand(n: Bits, s: Bits, width: Int) = {
-    Cat(Fill(SZ_D - width, s.toUInt), n)
+    Cat(Fill(SZ_D - width, s.asUInt), n)
   }
 
   def expand_d(n: Bits) = n
@@ -45,7 +45,7 @@ abstract trait Packing extends LaneParameters {
   def unpack_h(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_H)
   def unpack_b(n: Bits, idx: Int) = _unpack(n, idx, SZ_D, SZ_B)
 
-  def splat_slice(n: Bits) = Fill(nSlices, n.toUInt)
+  def splat_slice(n: Bits) = Fill(nSlices, n.asUInt)
   def repack_slice(n: Seq[Bits]) = _repack(n, nSlices)
   def unpack_slice(n: Bits, idx: Int) =
     _unpack(n, idx, wBank, p(HwachaRegLen))
@@ -58,7 +58,7 @@ abstract trait BankLogic extends LaneParameters {
   }
 
   def strip_to_bmask(strip: UInt) = {
-    EnableDecoder(strip_to_bcnt(strip), nBanks).toBits
+    EnableDecoder(strip_to_bcnt(strip), nBanks).asUInt
   }
 }
 
@@ -83,10 +83,10 @@ abstract trait SeqLogic extends SeqParameters {
   }
 
   def mreadfn[T <: Data](sched: Vec[Bool], me: Vec[MasterSeqEntry], rfn: MasterSeqEntry=>T) =
-    rfn(me(0)).cloneType.fromBits(Mux1H(sched, me.map(rfn(_).toBits)))
+    rfn(me(0)).cloneType.fromBits(Mux1H(sched, me.map(rfn(_).asUInt)))
 
   def readfn[T <: Data](sched: Vec[Bool], e: Vec[SeqEntry], rfn: SeqEntry=>T) =
-    rfn(e(0)).cloneType.fromBits(Mux1H(sched, e.map(rfn(_).toBits)))
+    rfn(e(0)).cloneType.fromBits(Mux1H(sched, e.map(rfn(_).asUInt)))
 
   def step(ptr: UInt, n: Int): UInt = {
     require(n < nSeq)
@@ -104,12 +104,12 @@ object DataGating {
 }
 
 object HardFloatHelper {
-  def recode_dp(n: Bits) = hardfloat.recFNFromFN(11, 53, n.toUInt)
-  def recode_sp(n: Bits) = hardfloat.recFNFromFN(8, 24, n.toUInt)
-  def recode_hp(n: Bits) = hardfloat.recFNFromFN(5, 11, n.toUInt)
-  def ieee_dp(n: Bits) = hardfloat.fNFromRecFN(11, 53, n.toUInt)
-  def ieee_sp(n: Bits) = hardfloat.fNFromRecFN(8, 24, n.toUInt)
-  def ieee_hp(n: Bits) = hardfloat.fNFromRecFN(5, 11, n.toUInt)
+  def recode_dp(n: Bits) = hardfloat.recFNFromFN(11, 53, n.asUInt)
+  def recode_sp(n: Bits) = hardfloat.recFNFromFN(8, 24, n.asUInt)
+  def recode_hp(n: Bits) = hardfloat.recFNFromFN(5, 11, n.asUInt)
+  def ieee_dp(n: Bits) = hardfloat.fNFromRecFN(11, 53, n.asUInt)
+  def ieee_sp(n: Bits) = hardfloat.fNFromRecFN(8, 24, n.asUInt)
+  def ieee_hp(n: Bits) = hardfloat.fNFromRecFN(5, 11, n.asUInt)
 }
 
 class MaskStall[T <: Data](data: => T) extends Module {

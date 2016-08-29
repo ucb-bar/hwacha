@@ -295,7 +295,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
           when (op.mode.unit && blkidx_update) {
             blkidx := blkidx_next
           }
-          op.vlen := vlen_next.toUInt
+          op.vlen := vlen_next.asUInt
           when (end) {
             state := s_idle
             io.op.ready := Bool(true)

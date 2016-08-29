@@ -59,7 +59,7 @@ class DecodedMemType extends Bundle {
   val signed = Bool()
 
   def shift(dummy: Int = 0): UInt =
-    Cat(this.w || this.d, this.h || this.d).toUInt
+    Cat(this.w || this.d, this.h || this.d).asUInt
 }
 
 object DecodedMemType {

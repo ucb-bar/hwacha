@@ -348,17 +348,17 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.active.vst := id_ctrl.active_vst()
   io.vxu.bits.fn.union :=
     Mux1H(Seq(
-      id_ctrl.viu_val  -> id_ctrl.fn_viu().toBits,
-      id_ctrl.vipu_val -> id_ctrl.fn_vipu().toBits,
-      id_ctrl.vimu_val -> id_ctrl.fn_vimu().toBits,
-      id_ctrl.vidu_val -> id_ctrl.fn_vidu().toBits,
-      id_ctrl.vfmu_val -> id_ctrl.fn_vfmu(rm).toBits,
-      id_ctrl.vfdu_val -> id_ctrl.fn_vfdu(rm).toBits,
-      id_ctrl.vfcu_val -> id_ctrl.fn_vfcu(rm).toBits,
-      id_ctrl.vfvu_val -> id_ctrl.fn_vfvu(rm).toBits,
-      id_ctrl.vrpu_val -> id_ctrl.fn_vrpu().toBits,
-      id_ctrl.vrfu_val -> id_ctrl.fn_vrfu().toBits,
-      id_ctrl.vmu_val  -> id_ctrl.fn_vmu().toBits
+      id_ctrl.viu_val  -> id_ctrl.fn_viu().asUInt,
+      id_ctrl.vipu_val -> id_ctrl.fn_vipu().asUInt,
+      id_ctrl.vimu_val -> id_ctrl.fn_vimu().asUInt,
+      id_ctrl.vidu_val -> id_ctrl.fn_vidu().asUInt,
+      id_ctrl.vfmu_val -> id_ctrl.fn_vfmu(rm).asUInt,
+      id_ctrl.vfdu_val -> id_ctrl.fn_vfdu(rm).asUInt,
+      id_ctrl.vfcu_val -> id_ctrl.fn_vfcu(rm).asUInt,
+      id_ctrl.vfvu_val -> id_ctrl.fn_vfvu(rm).asUInt,
+      id_ctrl.vrpu_val -> id_ctrl.fn_vrpu().asUInt,
+      id_ctrl.vrfu_val -> id_ctrl.fn_vrfu().asUInt,
+      id_ctrl.vmu_val  -> id_ctrl.fn_vmu().asUInt
     ))
   io.vxu.bits.sreg.ss1 := id_sreads(0)
   io.vxu.bits.sreg.ss2 := id_sreads(1)
@@ -512,7 +512,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // vcjalr has vs1_val set, so take the base address from register
   // vcjal doesn't have vs1_val set, so take pc as base address
-  ex_br_taken_pc := (Mux(ex_reg_ctrl.vs1_val, ex_srs(0).toSInt, ex_reg_pc.toSInt) + ex_imm).toUInt
+  ex_br_taken_pc := (Mux(ex_reg_ctrl.vs1_val, ex_srs(0).toSInt, ex_reg_pc.toSInt) + ex_imm).asUInt
 
   val ex_op1 = MuxLookup(ex_reg_ctrl.alu_sel1, SInt(0), Seq(
     A1_ZERO -> SInt(0),
@@ -526,8 +526,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val alu = Module(new rocket.ALU)
   alu.io.dw := ex_reg_ctrl.alu_dw
   alu.io.fn := ex_reg_ctrl.alu_fn
-  alu.io.in2 := ex_op2.toUInt
-  alu.io.in1 := ex_op1.toUInt
+  alu.io.in2 := ex_op2.asUInt
+  alu.io.in1 := ex_op1.asUInt
 
   val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 4))
 

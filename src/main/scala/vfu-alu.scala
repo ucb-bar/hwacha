@@ -36,8 +36,8 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
   val sub = fn.op_is(I_SUB)
   class Adder(in0: UInt, in1: UInt, cin: UInt, w: Int = SZ_W) {
     private val bits =
-      Cat(UInt(0, 1), in0, cin).toUInt +
-      Cat(UInt(0, 1), in1 ^ Fill(w, sub), cin).toUInt
+      Cat(UInt(0, 1), in0, cin).asUInt +
+      Cat(UInt(0, 1), in1 ^ Fill(w, sub), cin).asUInt
     val (cout, out) = (bits(w+1), bits(w, 1))
   }
   val adder_out = if (confprec) {
@@ -48,7 +48,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
 
   // SLL, SRL, SRA
   val sra = fn.op_is(I_SRA)
-  val shamt = Cat(in1(5) & fn.dw_is(DW64), in1(4,0)).toUInt
+  val shamt = Cat(in1(5) & fn.dw_is(DW64), in1(4,0)).asUInt
   val shright = sra || fn.op_is(I_SRL)
   val shfill_hi = sra & in0(63)
   val shfill_lo = sra & in0(31)

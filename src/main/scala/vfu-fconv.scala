@@ -126,7 +126,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val output = if (results.size > 1) {
           val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
           Mux(Pipe(valid, rmatch, stagesFConv).bits,
-            Vec(results.map(_._1(sz-1, 0))).toBits, results.head._1)
+            Vec(results.map(_._1(sz-1, 0))).asUInt, results.head._1)
         } else results.head._1
         (output, results.map(_._2).reduce(_.asUInt | _.asUInt ))
       }

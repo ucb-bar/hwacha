@@ -35,7 +35,7 @@ trait RateLogic extends LaneParameters {
     if (confprec)
       Mux1H(rate_decode(rate).map { case (r, i) =>
         val w = (1 << i) - 1
-        r -> Vec((0 until wPred by nPack).map(k => n(w+k, k))).toBits })
+        r -> Vec((0 until wPred by nPack).map(k => n(w+k, k))).asUInt })
     else n
 
   def splat_scalar(uop: SRegMicroOp) =
@@ -70,7 +70,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
         } yield (p && r) -> {
           val msb = (regLen >> i) - 1
           Vec((0 until (nSlices << i)).map(k =>
-            expand(unpack(data, k))(msb, 0))).toBits }
+            expand(unpack(data, k))(msb, 0))).asUInt }
 
       out.data := Mux1H((pass.reduce(_ || _), in.data) +: opts)
     } else {
@@ -93,7 +93,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
         yield (p && r) -> {
           val (width, period) = (regLen >> n, regLen >> i)
           Vec((0 until (nSlices << i)).map(k =>
-            _unpack(in.data, k, wBank, period, width))).toBits }
+            _unpack(in.data, k, wBank, period, width))).asUInt }
       val data = Mux1H((pass.reduce(_ || _), in.data) +: opts)
 
       val _mask = Mux1H(selp.map { case (p, i) =>

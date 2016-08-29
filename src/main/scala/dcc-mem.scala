@@ -186,7 +186,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   io.spred.valid := fire(mask_spred_ready, enq_spred)
 
   val pred = Vec((bpqs_deq zipWithIndex) map { case (bpq, i) =>
-    dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).toBits
+    dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).asUInt
   io.pred.bits.pred := pred
   io.lpred.bits := pred
   io.spred.bits := pred
@@ -345,7 +345,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
         }
 
         index := index_next
-        op.vlen := vlen_next.toUInt
+        op.vlen := vlen_next.asUInt
         when (vlen_end) {
           state := s_idle
         }
@@ -458,14 +458,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val pcnt_end = (pcnt === UInt(0))
   val pcnt_add = Mux(issue, vlen_tail, UInt(0))
   val pcnt_next = (pcnt.zext + pcnt_add.zext) - pred_fire.zext
-  pcnt := pcnt_next.toUInt
+  pcnt := pcnt_next.asUInt
   assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
 
   private val maxpidx = (szwb >> bStrip) - 1
   val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
   val pidx_end = (pidx === UInt(maxpidx))
   val pidx_next = (pidx.zext + pred_fire.zext) - rcnt_pulse.zext
-  pidx := pidx_next.toUInt
+  pidx := pidx_next.asUInt
   /* NOTE: Predicates should always arrive before the corresponding
      load due to VMU latency, thus precluding this race condition */
   assert(pidx_next >= SInt(0), "VLU: pidx underflow")
@@ -508,7 +508,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   }
 
   private def extend[T <: Bits](in: T, sz: Int) =
-    if (sz < regLen) Cat(Fill(regLen-sz, (in(sz-1) && mt.signed).toUInt), in) else in
+    if (sz < regLen) Cat(Fill(regLen-sz, (in(sz-1) && mt.signed).asUInt), in) else in
 
   private def rotate_data[T <: Bits](data: T, sz: Int) = {
     val w = data.getWidth

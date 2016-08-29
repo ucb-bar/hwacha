@@ -141,7 +141,7 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
     _mask := _mask || fire
   }
 
-  io.op.ready := mask.toBits.andR
+  io.op.ready := mask.asUInt.andR
   when (io.op.ready) {
     mask.map(_ := Bool(false))
   }

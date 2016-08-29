@@ -169,7 +169,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   io.cfg.vident.dw := cfg_reg_nvvdw
 
   // Decode
-  val rocc_inst = io.rocc.cmd.bits.inst.toBits
+  val rocc_inst = io.rocc.cmd.bits.inst.asUInt
   val rocc_imm12 = rocc_inst(31, 20)
   val rocc_split_imm12 = Cat(rocc_inst(31, 25), rocc_inst(11, 7))
   val rocc_rd = rocc_inst(11, 7)
@@ -349,7 +349,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     MuxLookup(ctrl.sel_imm, Bits(0), Array(
       RIMM_VLEN -> cfg_vl,
       RIMM_RS1  -> io.rocc.cmd.bits.rs1,
-      RIMM_ADDR -> (io.rocc.cmd.bits.rs1.zext + rocc_split_imm12.asSInt).toUInt
+      RIMM_ADDR -> (io.rocc.cmd.bits.rs1.zext + rocc_split_imm12.asSInt).asUInt
     ))
   val rd_out = Mux(ctrl.rd_type === VRT_S, rocc_srd, rocc_rd)
   cmdq.io.enq.cmd.bits := cmd_out
@@ -365,7 +365,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   respq.io.enq.bits.data :=
     MuxLookup(ctrl.sel_resp, Bits(0), Array(
       RESP_NVL -> cfg_vl,
-      RESP_CFG -> cfg_reg.toBits,
+      RESP_CFG -> cfg_reg.asUInt,
       RESP_VL  -> cfg_reg_vl
     ))
   respq.io.enq.bits.rd := io.rocc.cmd.bits.inst.rd

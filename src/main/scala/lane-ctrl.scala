@@ -14,7 +14,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
     val in_next_valid = in.valid && in_overflow
     val in_pred = Vec(
       for (i <- (0 until (if (multirate) nPack else 1)); j <- (0 until nSlices))
-        yield UInt((i * nStrip) + j) < in.bits.strip).toBits
+        yield UInt((i * nStrip) + j) < in.bits.strip).asUInt
     val in_popcnt = Mux(in_overflow, UInt(nSlices), in.bits.strip(bSlices, 0))
 
     if (confprec && !multirate)
@@ -70,7 +70,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
     val bits = Mux(in.valid, in.bits, reg_bits)
     val pred = Vec(
       for (i <- (0 until (if (multirate) nPack else 1)); j <- (0 until nSlices))
-        yield UInt((i * nStrip) + j) < strip).toBits
+        yield UInt((i * nStrip) + j) < strip).asUInt
     val popcnt = Mux(overflow, UInt(nSlices), strip(bSlices, 0))
 
     if (confprec && !multirate)
