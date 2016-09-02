@@ -23,6 +23,7 @@ class VMUOpBase(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
   val base = UInt(width = bVAddrExtended)
   val stride = UInt(width = regLen)
+  val status = new rocket.MStatus
 }
 
 class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen

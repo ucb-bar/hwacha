@@ -39,6 +39,7 @@ class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val imm = Decoupled(Bits(width = regLen))
   val rd  = Decoupled(Bits(width = bSDest))
   val cnt = Decoupled(Bits(width = bMLVLen))
+  val status = Decoupled(new rocket.MStatus())
 }
 
 class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
@@ -51,6 +52,7 @@ class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModul
   io.deq.imm <> Queue(io.enq.imm, confvcmdq.nimm)
   io.deq.rd <> Queue(io.enq.rd, confvcmdq.nrd)
   io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
+  io.deq.status <> Queue(io.enq.status, confvcmdq.nstatus)
 }
 
 class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -64,6 +66,7 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val enq_rd_ = Bool()
   val enq_imm_ = Bool()
   val enq_vcnt_ = Bool() // TODO: unused
+  val enq_status_ = Bool()
   val enq_resp_ = Bool()
   val sel_resp = Bits(width= RESP_X.getWidth)
   val decode_save = Bool() // TODO: unused
@@ -73,7 +76,7 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   def decode(inst: UInt) = {
     val decoder = rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
     val sigs = Seq(inst_val, inst_priv, enq_cmd_, sel_cmd, rd_type, sel_imm,
-        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_resp_, sel_resp, decode_save,
+        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp, decode_save,
         decode_rest, decode_kill)
     sigs zip decoder map {case(s,d) => s := d}
 
@@ -84,29 +87,29 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
 object HwachaDecodeTable {
   import HwachaInstructions._
   val default: List[BitPat] =
-                // * means special case decode code below     checkvl?             
-                //     inst_val                               |                         save
-                //     |  priv                                | vrd?      resp?         | restore
-                //     |  |  vmcd_val                         | | imm?    |             | |
-                //     |  |  |  cmd          rtype  imm       | | | vcnt? | resptype    | | kill
-                //     |  |  |  |            |      |         | | | |     | |           | | |
-                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,N,N)
+                // * means special case decode code below      checkvl?
+                //     inst_val                                |                               save
+                //     |  priv                                 | vrd?            resp?         | restore
+                //     |  |  vmcd_val                          | | imm?          |             | |
+                //     |  |  |  cmd          rtype  imm        | | | vcnt?       | resptype    | | kill
+                //     |  |  |  |            |      |          | | | | status    | |           | | |
+                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,        N,RESP_X,     N,N,N)
   val table: Array[(BitPat, List[BitPat])] = Array(
     // General instructions
-    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,    N,RESP_X,     N,N,N), //* set maxvl register
-    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,    Y,RESP_NVL,   N,N,N), //* set vl register
-    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_CFG,   N,N,N),
-    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_VL,    N,N,N),
-    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
-    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,    N,RESP_X,     N,N,N),
-    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
-    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,    N,RESP_X,     N,N,N),
+    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,N,    N,RESP_X,     N,N,N), //* set maxvl register
+    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,N,    Y,RESP_NVL,   N,N,N), //* set vl register
+    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N,N,N),
+    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N,N,N),
+    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N,N),
+    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N,N),
+    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N,N),
+    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N,N),
     // Exception and save/restore instructions
-    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_CAUSE, N,N,N),
-    VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    Y,RESP_AUX,   N,N,N),
-    VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     Y,N,N),
-    VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,Y,N),
-    VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,    N,RESP_X,     N,N,Y)
+    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N,N,N),
+    VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_AUX,   N,N,N),
+    VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y,N,N),
+    VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,Y,N),
+    VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,N,Y)
   )
 }
 
@@ -121,7 +124,6 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       val mseq = Bool(INPUT)
       val mrt = Bool(INPUT)
     }
-    val vf_status = new rocket.MStatus().asOutput
 
     val cfg = new HwachaConfigIO
 
@@ -201,6 +203,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val enq_imm = mask_vl && ctrl.enq_imm_
   val enq_rd = mask_vl && ctrl.enq_rd_
   val enq_cnt = Bool(false)
+  val enq_status = mask_vl && ctrl.enq_status_
   val enq_resp = mask_vl && ctrl.enq_resp_
 
   val vru_insts_wanted = !(ctrl.sel_cmd === CMD_VMCS)
@@ -208,31 +211,36 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val vru_enq_imm = enq_imm && vru_insts_wanted
   val vru_enq_rd = enq_rd && vru_insts_wanted
   val vru_enq_cnt = Bool(false)
+  val vru_enq_status = enq_status && vru_insts_wanted
 
   val mask_vxu_cmd_ready = !enq_cmd || cmdq.io.enq.cmd.ready
   val mask_vxu_imm_ready = !enq_imm || cmdq.io.enq.imm.ready
   val mask_vxu_rd_ready = !enq_rd || cmdq.io.enq.rd.ready
   val mask_vxu_cnt_ready = !enq_cnt || cmdq.io.enq.cnt.ready
+  val mask_vxu_status_ready = !enq_status || cmdq.io.enq.status.ready
   val mask_resp_ready = !enq_resp || respq.io.enq.ready
 
   val mask_vru_cmd_ready = !vru_enq_cmd || vrucmdq.io.enq.cmd.ready || !vru_enable
   val mask_vru_imm_ready = !vru_enq_imm || vrucmdq.io.enq.imm.ready || !vru_enable
   val mask_vru_rd_ready = !vru_enq_rd || vrucmdq.io.enq.rd.ready || !vru_enable
   val mask_vru_cnt_ready = !vru_enq_cnt || vrucmdq.io.enq.cnt.ready || !vru_enable
+  val mask_vru_status_ready = !vru_enq_status || vrucmdq.io.enq.status.ready || !vru_enable
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       !stall, mask_vsetcfg,
       io.rocc.cmd.valid,
-      mask_vxu_cmd_ready, 
-      mask_vxu_imm_ready, 
-      mask_vxu_rd_ready, 
-      mask_vxu_cnt_ready, 
+      mask_vxu_cmd_ready,
+      mask_vxu_imm_ready,
+      mask_vxu_rd_ready,
+      mask_vxu_cnt_ready,
+      mask_vxu_status_ready,
       mask_resp_ready,
-      mask_vru_cmd_ready, 
-      mask_vru_imm_ready, 
-      mask_vru_rd_ready, 
-      mask_vru_cnt_ready
+      mask_vru_cmd_ready,
+      mask_vru_imm_ready,
+      mask_vru_rd_ready,
+      mask_vru_cnt_ready,
+      mask_vru_status_ready
     )
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -336,12 +344,14 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   cmdq.io.enq.imm.valid := fire(mask_vxu_imm_ready, enq_imm, !ignore_dup_vsetvl)
   cmdq.io.enq.rd.valid := fire(mask_vxu_rd_ready, enq_rd, !ignore_dup_vsetvl)
   cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt, !ignore_dup_vsetvl)
+  cmdq.io.enq.status.valid := fire(mask_vxu_status_ready, enq_status, !ignore_dup_vsetvl)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
 
   vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd, !ignore_dup_vsetvl, vru_enable)
   vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm, !ignore_dup_vsetvl, vru_enable)
   vrucmdq.io.enq.rd.valid := fire(mask_vru_rd_ready, vru_enq_rd, !ignore_dup_vsetvl, vru_enable)
   vrucmdq.io.enq.cnt.valid := fire(mask_vru_cnt_ready, vru_enq_cnt, !ignore_dup_vsetvl, vru_enable)
+  vrucmdq.io.enq.status.valid := fire(mask_vru_status_ready, vru_enq_status, !ignore_dup_vsetvl, vru_enable)
 
   // cmdq dpath
   val cmd_out = ctrl.sel_cmd
@@ -355,10 +365,12 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   cmdq.io.enq.cmd.bits := cmd_out
   cmdq.io.enq.imm.bits := imm_out
   cmdq.io.enq.rd.bits := rd_out
+  cmdq.io.enq.status.bits := io.rocc.cmd.bits.status
 
   vrucmdq.io.enq.cmd.bits := cmd_out
   vrucmdq.io.enq.imm.bits := imm_out
   vrucmdq.io.enq.rd.bits := rd_out
+  vrucmdq.io.enq.status.bits := io.rocc.cmd.bits.status
 
 
   // respq dpath
@@ -374,12 +386,14 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   io.cmdqs.vu.cmd <> cmdq.io.deq.cmd
   io.cmdqs.vu.imm <> cmdq.io.deq.imm
   io.cmdqs.vu.rd <> cmdq.io.deq.rd
+  io.cmdqs.vu.status <> cmdq.io.deq.status
 
   io.rocc.resp <> respq.io.deq
 
   io.cmdqs.vru.cmd <> vrucmdq.io.deq.cmd
   io.cmdqs.vru.imm <> vrucmdq.io.deq.imm
   io.cmdqs.vru.rd <> vrucmdq.io.deq.rd
+  io.cmdqs.vru.status <> vrucmdq.io.deq.status
 
  // COLIN FIXME: update keepcfg
   keepcfg :=
@@ -392,13 +406,6 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     io.vf_active || io.pending.mseq || io.pending.mrt
 
   io.rocc.busy := busy
-
-  // Keep track of most recent VF status field
-  val current_status = Reg(new rocket.MStatus())
-  when(fire_vf) {
-    current_status := io.rocc.cmd.bits.status
-  }
-  io.vf_status := current_status
 
   // Setup interrupt
   io.rocc.interrupt := Bool(false)

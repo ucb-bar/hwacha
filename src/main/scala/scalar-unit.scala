@@ -104,21 +104,24 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   val deq_imm = decode_vmcs || decode_vmca || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
   val deq_rd  = decode_vmcs || decode_vmca
+  val deq_status = decode_vf || decode_vft
 
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
+  val mask_status_valid  = !deq_status  || io.cmdq.status.valid
 
   // TODO: we could fire all cmd but vf* without pending.mseq being clear
   def fire_cmdq(exclude: Bool, include: Bool*) = {
   val rvs = Seq(
       !vf_active, !busy_scalar, !decode_vmcs || !sboard.read(io.cmdq.rd.bits),
-      io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid)
+      io.cmdq.cmd.valid, mask_imm_valid, mask_rd_valid, mask_status_valid)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   io.cmdq.cmd.ready := fire_cmdq(io.cmdq.cmd.valid)
   io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
   io.cmdq.rd.ready  := fire_cmdq(mask_rd_valid, deq_rd)
+  io.cmdq.status.ready  := fire_cmdq(mask_status_valid, deq_status)
 
   val swrite = fire_cmdq(null, decode_vmcs)
   val awrite = fire_cmdq(null, decode_vmca)
@@ -147,7 +150,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val fire_vf = fire_cmdq(null, decode_vf)
-  when (fire_vf) { vf_active := Bool(true) }
+  val id_status = Reg(new rocket.MStatus)
+  when (fire_vf) {
+    vf_active := Bool(true)
+    id_status := io.cmdq.status.bits
+  }
 
   val pending_smu = Reg(init=Bool(false))
   val pending_cbranch = Reg(init=Bool(false))
@@ -182,6 +189,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // FETCH
   io.imem.req.valid := fire_vf || ex_br_taken
   io.imem.req.bits.pc := Mux(ex_br_taken, ex_br_taken_pc, io.cmdq.imm.bits)
+  io.imem.req.bits.status := Mux(ex_br_taken, id_status, io.cmdq.status.bits)
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
   io.imem.resp.ready := !stalld
@@ -396,6 +404,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.bits.fn.cmd := id_ctrl.vmu_cmd
   io.vmu.bits.fn.mt := id_ctrl.mt
   io.vmu.bits.lane := vl
+  io.vmu.bits.status := id_status
 
   val addr_stride =
     MuxLookup(id_ctrl.mt, UInt(0),Seq(
@@ -434,6 +443,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.smu.req.bits.addr := Mux(aren(0), id_areads(0), id_sreads(0))
   io.smu.req.bits.data := id_sreads(1)
   io.smu.req.bits.tag := id_ctrl.vd
+  io.smu.req.bits.status := id_status
   when (io.smu.req.fire()) { pending_smu := Bool(true) }
   when (io.smu.confirm) { pending_smu := Bool(false) }
 

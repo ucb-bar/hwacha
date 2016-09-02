@@ -5,6 +5,7 @@ import cde.Parameters
 
 class FrontendReq(implicit p: Parameters) extends rocket.CoreBundle()(p) {
   val pc = UInt(width = vaddrBits+1)
+  val status = new rocket.MStatus
 }
 
 class FrontendIO(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -27,12 +28,14 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
 
   val s1_valid = Reg(init=Bool(false))
   val s1_pc_ = Reg(UInt())
+  val s1_status = Reg(new rocket.MStatus)
   val s1_pc = ~(~s1_pc_ | UInt(coreInstBytes-1)) // discard PC LSBS (this propagates down the pipeline)
   val s1_same_block = Reg(init=Bool(false))
   val s1_req_valid = Reg(init=Bool(false))
 
   val s2_valid = Reg(init=Bool(false))
   val s2_pc = Reg(UInt())
+  val s2_status = Reg(new rocket.MStatus)
   val s2_xcpt_if = Reg(init=Bool(false))
   val s2_line = Module(new Queue(new rocket.ICacheResp, 1, pipe=true))
 
@@ -50,6 +53,11 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
   val s0_req_valid = !stall && !s0_same_block
 
   io.back.s0_req.valid := s0_req_valid
+  io.back.s0_req.bits.status :=
+    Mux(io.front.req.valid, io.front.req.bits.status,
+      Mux(s2_replay, s2_status,
+        Mux(s1_replay, s1_status,
+          s1_status)))// next status is same as last status w/o new req
   io.back.s0_req.bits.pc :=
     Mux(io.front.req.valid, io.front.req.bits.pc,
       Mux(s2_replay, s2_pc,
@@ -60,11 +68,13 @@ class MiniFrontend(implicit p: Parameters) extends HwachaModule()(p) with rocket
   when (!stall) {
     s1_valid := s0_req_valid
     s1_pc_ := io.back.s0_req.bits.pc
+    s1_status := io.back.s0_req.bits.status
     s1_same_block := s0_same_block && !(s1_req_valid && io.back.s1_tlb.miss)
 
     s2_valid := !s1_kill
     when (!s1_kill) {
       s2_pc := s1_pc
+      s2_status := s1_status
       s2_xcpt_if := s1_req_valid && io.back.s1_tlb.xcpt_if
     }
   }
@@ -130,5 +140,6 @@ class HwachaFrontend(implicit p: Parameters) extends HwachaModule()(p) with rock
   vru.io.back.s1_tlb <> tlb.io.resp
 
   io.ptw <> tlb.io.ptw
+  tlb.io.ptw.status := req.bits.status
   io.mem <> icache.io.mem
 }

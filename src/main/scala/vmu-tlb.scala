@@ -7,6 +7,7 @@ class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
     val addr = UInt(width = bVAddrExtended)
     val store = Bool()
     val mt = new DecodedMemType
+    val status = new rocket.MStatus
 }
 
 class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
@@ -21,8 +22,12 @@ class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   def paddr(dummy: Int = 0): UInt = Cat(this.resp.ppn, this.pgidx())
 }
 
+class RTLBReqWithStatus(implicit p: Parameters) extends rocket.TLBReq()(p) {
+  val status = new rocket.MStatus
+}
+
 class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
-  val req = Decoupled(new rocket.TLBReq)
+  val req = Decoupled(new RTLBReqWithStatus)
   val resp = (new rocket.TLBResp()).flip
 
   def bridge(client: TLBIO) {
@@ -30,6 +35,7 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
     this.req.bits.store := client.req.bits.store
     this.req.bits.passthrough := Bool(false)
     this.req.bits.instruction := Bool(false)
+    this.req.bits.status := client.req.bits.status
 
     this.req.valid := client.req.valid
     client.req.ready := this.req.ready && !this.resp.miss

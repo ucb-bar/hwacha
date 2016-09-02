@@ -96,11 +96,13 @@ abstract trait UsesHwachaParameters extends rocket.HasCoreParameters {
     val nimm = p(HwachaCMDQLen)
     val nrd = p(HwachaCMDQLen)
     val ncnt = nBanks
+    val nstatus = p(HwachaCMDQLen)
   }
 
   require(confvcmdq.ncmd >= nBanks)
   require(confvcmdq.nimm >= nBanks)
   require(confvcmdq.nrd >= nBanks)
+  require(confvcmdq.nstatus >= nBanks)
 
   val nvsreq = 512
   val nvlreq = 512
@@ -164,6 +166,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     rocc.io.cmdqs.vru.imm.ready := Bool(true)
     rocc.io.cmdqs.vru.rd.ready := Bool(true)
     rocc.io.cmdqs.vru.cnt.ready := Bool(true)
+    rocc.io.cmdqs.vru.status.ready := Bool(true)
 
     icache.io.vru.req.valid := Bool(false)
     icache.io.vru.active := Bool(false)
@@ -172,7 +175,6 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   imemarb.io.in(1) <> smu.io.dmem
   io.autl <> imemarb.io.out
   io.ptw(0) <> icache.io.ptw
-  icache.io.ptw.status := rocc.io.vf_status
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
@@ -183,7 +185,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   ptlb.io.req <> smu.io.tlb.req
   smu.io.tlb.resp  <> ptlb.io.resp
   io.ptw(1) <> ptlb.io.ptw
-  ptlb.io.ptw.status := rocc.io.vf_status
+  ptlb.io.ptw.status := smu.io.tlb.req.bits.status
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_rpred = scalar.io.vxu.bits.active.vrpred
@@ -253,7 +255,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     dtlb.io.req <> vu.io.tlb.req
     vu.io.tlb.resp <> dtlb.io.resp
     io.ptw(2 + i) <> dtlb.io.ptw
-    dtlb.io.ptw.status := rocc.io.vf_status
+    dtlb.io.ptw.status := vu.io.tlb.req.bits.status
 
     io.utl(i) <> vu.io.dmem
   }

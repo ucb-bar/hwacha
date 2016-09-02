@@ -29,6 +29,7 @@ class SMUReq(implicit p: Parameters) extends SMUBundle()(p)
   with SMUData {
   val fn = new SMUFn
   val addr = UInt(width = bVAddrExtended)
+  val status = new rocket.MStatus
 }
 
 class SMUResp(implicit p: Parameters) extends SMUBundle()(p)
@@ -80,6 +81,7 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   tlb.req.bits.addr := req.addr
   tlb.req.bits.store := req_store
   tlb.req.bits.mt := req_mt
+  tlb.req.bits.status := req.status
   io.tlb <> tbox.io.outer
   io.irq <> tbox.io.irq
 

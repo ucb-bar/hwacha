@@ -70,6 +70,7 @@ object VMUDecodedOp extends HwachaConstants {
     dec.vlen := op.vlen
     dec.base := op.base
     dec.stride := op.stride
+    dec.status := op.status
 
     dec.mode.unit := vmu_unit(op.fn.mode)
     dec.mode.indexed := vmu_indexed(op.fn.mode)
@@ -186,6 +187,7 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   enq.bits.base := op.base
   enq.bits.eidx := op.eidx
   enq.bits.first := op.first
+  enq.bits.status := op.status
 
   io.op.ready := Bool(false)
   enq.valid := Bool(false)

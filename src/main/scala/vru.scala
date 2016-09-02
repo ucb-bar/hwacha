@@ -245,6 +245,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
 
     val fire_vf = Bool(INPUT)
     val fetch_pc = UInt(INPUT)
+    val fetch_status = new rocket.MStatus().asInput
     val vf_active = Bool(OUTPUT)
     val vf_complete_ack = Bool(INPUT)
 
@@ -286,6 +287,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
   // do a fetch 
   io.imem.req.valid := io.fire_vf && !runaheadman.io.vf_skip //fixed
   io.imem.req.bits.pc := io.fetch_pc
+  io.imem.req.bits.status := io.fetch_status
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false)
 
@@ -347,16 +349,19 @@ class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
 
   val deq_imm = decode_vmca || decode_vf || decode_vft || decode_vsetvl || decode_vsetcfg
   val deq_rd  = decode_vmca
+  val deq_status = decode_vf || decode_vft
 
   val mask_imm_valid = !deq_imm || io.cmdq.imm.valid
   val mask_rd_valid  = !deq_rd  || io.cmdq.rd.valid
+  val mask_status_valid  = !deq_status  || io.cmdq.status.valid
 
   def fire_cmdq(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
       !io.vf_active,
       io.cmdq.cmd.valid,
       mask_imm_valid,
-      mask_rd_valid
+      mask_rd_valid,
+      mask_status_valid
     )
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
@@ -366,6 +371,7 @@ class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
   io.cmdq.cmd.ready := fire_cmdq(io.cmdq.cmd.valid)
   io.cmdq.imm.ready := fire_cmdq(mask_imm_valid, deq_imm)
   io.cmdq.rd.ready := fire_cmdq(mask_rd_valid, deq_rd)
+  io.cmdq.status.ready := fire_cmdq(mask_status_valid, deq_status)
 
   when (fire_cmdq(null, decode_vmca)) {
     arf(io.cmdq.rd.bits) := io.cmdq.imm.bits
@@ -409,6 +415,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   io.imem <> vru_frontend.io.imem
   vru_frontend.io.fire_vf := vru_rocc_unit.io.fire_vf
   vru_frontend.io.fetch_pc := io.cmdq.imm.bits
+  vru_frontend.io.fetch_status := io.cmdq.status.bits
   decodedMemOpQueue.io.enq <> vru_frontend.io.memop
   vru_frontend.io.vf_complete_ack := io.vf_complete_ack
   vru_frontend.io.vlen := vru_rocc_unit.io.vlen

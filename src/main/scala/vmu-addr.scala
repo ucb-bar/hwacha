@@ -86,6 +86,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   io.tlb.req.bits.addr := addr
   io.tlb.req.bits.store := op.cmd.write
   io.tlb.req.bits.mt := op.mt
+  io.tlb.req.bits.status := op.status
   io.vpaq.bits.addr := io.tlb.paddr()
   io.vcu.bits.ecnt := mask.ecnt
 
