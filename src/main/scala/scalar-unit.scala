@@ -512,25 +512,25 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     yield Mux(ex_reg_bypass(i), wb_reg_wdata, ex_reg_srs(i))
 
   def imm(sel: UInt, inst: Bits) = {
-    val sign = inst(63).toSInt
+    val sign = inst(63).asSInt
     val b30_3 = inst(62,35)
     val b2_0 = Mux(sel === IMM_I, inst(34,32), Bits(0))
-    val out = Cat(sign, b30_3, b2_0).toSInt
-    Mux(sel === IMM_L, Cat(out, UInt(0, 32)).toSInt, out)
+    val out = Cat(sign, b30_3, b2_0).asSInt
+    Mux(sel === IMM_L, Cat(out, UInt(0, 32)).asSInt, out)
   }
   val ex_imm = imm(ex_reg_ctrl.sel_imm, ex_reg_inst)
 
   // vcjalr has vs1_val set, so take the base address from register
   // vcjal doesn't have vs1_val set, so take pc as base address
-  ex_br_taken_pc := (Mux(ex_reg_ctrl.vs1_val, ex_srs(0).toSInt, ex_reg_pc.toSInt) + ex_imm).asUInt
+  ex_br_taken_pc := (Mux(ex_reg_ctrl.vs1_val, ex_srs(0).asSInt, ex_reg_pc.asSInt) + ex_imm).asUInt
 
   val ex_op1 = MuxLookup(ex_reg_ctrl.alu_sel1, SInt(0), Seq(
     A1_ZERO -> SInt(0),
-    A1_RS1  -> ex_srs(0).toSInt,
-    A1_PC   -> ex_reg_pc.toSInt))
+    A1_RS1  -> ex_srs(0).asSInt,
+    A1_PC   -> ex_reg_pc.asSInt))
   val ex_op2 = MuxLookup(ex_reg_ctrl.alu_sel2, SInt(0), Seq(
     A2_8    -> SInt(8),
-    A2_RS2  -> ex_srs(1).toSInt,
+    A2_RS2  -> ex_srs(1).asSInt,
     A2_IMM  -> ex_imm))
 
   val alu = Module(new rocket.ALU)
