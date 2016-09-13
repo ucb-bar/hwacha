@@ -154,6 +154,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   respq.io.deq.ready := io.hwacha.resp.ready
   io.hwacha.resp.valid := respq.io.deq.valid
+  io.rocc.resp.ready := respq.io.enq.ready
 
   when (respq.io.deq.fire()) {
     pending_fpu := Bool(false)
