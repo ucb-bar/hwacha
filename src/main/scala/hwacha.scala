@@ -5,6 +5,8 @@ import cde.{Parameters, Field}
 import junctions.ParameterizedBundle
 import rocket.NTLBEntries
 
+case object DecoupledRoCC extends Field[Boolean]
+case object RoCCQueueDepth extends Field[Int]
 case object HwachaCommitLog extends Field[Boolean]
 case object HwachaNLanes extends Field[Int]
 case object HwachaNBanks extends Field[Int]

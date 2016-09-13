@@ -93,15 +93,27 @@ class DefaultHwachaConfig extends Config (
       TestGeneration.addVariable("DISASM_EXTENSION", "--extension=hwacha")
       Seq(RoccParameters(
         opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
-        generator = (p: Parameters) =>
-          (Module(new Hwacha()(p.alterPartial({
+        generator = (p: Parameters) => {
+          val h = Module(new Hwacha()(p.alterPartial({
           case FetchWidth => 1
           case CoreInstBits => 64
-          })))),
+          })))
+          if(p(DecoupledRoCC)) {
+            val decoupler = Module(new RoccBusyDecoupler(
+            Seq(HwachaInstructions.VF, HwachaInstructions.VFT), 10)(p))
+            decoupler.connect(h.io, p(RoCCQueueDepth))
+
+            // Hwacha takes a cycle of decode to become busy
+            decoupler.io.delayTwoPhase := ShiftRegister(decoupler.io.twoPhase, p(RoCCQueueDepth) + 1)
+            decoupler
+          } else h
+          },
         nMemChannels = site(HwachaNLanes),
         nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
         useFPU = true))
     }
+    case DecoupledRoCC => false
+    case RoCCQueueDepth => 1
     // Set TL network to 128bits wide
     case TLKey("L1toL2") => site(TLKey("DefaultL1toL2")).copy(dataBeats = 4)
     case TLKey("L2toMC") => site(TLKey("DefaultL2toMC")).copy(dataBeats = 4)
