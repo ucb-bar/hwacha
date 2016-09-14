@@ -3,8 +3,9 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
-class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
+class VXU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
+    val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val issue = Decoupled(new IssueOp).flip
     val mseq = new MasterSequencerIO().flip
@@ -14,14 +15,16 @@ class VXU(id: Int)(implicit p: Parameters) extends VXUModule()(p) {
     val mrt = new LaneMRTIO
   }
 
-  val seq = Module(new LaneSequencer(id))
+  val seq = Module(new LaneSequencer)
   val exp = Module(new Expander)
-  val lane = Module(new Lane(id))
+  val lane = Module(new Lane)
   val dcc = Module(new DecoupledCluster)
 
   seq.io.cfg <> io.cfg
+  seq.io.lid := io.id
   exp.io.cfg <> io.cfg
   lane.io.cfg <> io.cfg
+  lane.io.id := io.id
   dcc.io.cfg <> io.cfg
 
   val enq_dcc = io.issue.bits.active.enq_dcc()

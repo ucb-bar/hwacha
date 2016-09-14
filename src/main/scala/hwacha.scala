@@ -119,7 +119,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.agents.CacheName => "HwI"})))
   val scalar = Module(new ScalarUnit)
   val mseq = Module(new MasterSequencer)
-  val vus = (0 until nLanes) map { i => Module(new VectorUnit(i)) }
+  val vus = Seq.fill(nLanes) {Module(new VectorUnit())}
   val rpred = Module(new RPredMaster)
   val rfirst = Module(new RFirstMaster)
   val smu = Module(new SMU)
@@ -239,6 +239,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   (scalar.io.pending.mrt.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
 
   (vus zipWithIndex) map { case (vu, i) =>
+    vu.io.id := UInt(i)
     val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
 
     vu.io.cfg <> rocc.io.cfg

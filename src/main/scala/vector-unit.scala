@@ -3,8 +3,9 @@ package hwacha
 import Chisel._
 import cde.Parameters
 
-class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with SeqParameters {
+class VectorUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqParameters {
   val io = new Bundle {
+    val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val issue = new Bundle {
       val vxu = Decoupled(new IssueOp).flip
@@ -20,17 +21,19 @@ class VectorUnit(id: Int)(implicit p: Parameters) extends HwachaModule()(p) with
     val complete_memop = Bool(OUTPUT)
   }
 
-  val vxu = Module(new VXU(id))
-  val vmu = Module(new VMU(id))
+  val vxu = Module(new VXU)
+  val vmu = Module(new VMU)
   val memif = Module(new VMUTileLink)
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
 
+  vxu.io.id := io.id
   vxu.io.cfg <> io.cfg
   vxu.io.issue <> io.issue.vxu
   vxu.io.mseq <> io.mseq
   vxu.io.mocheck <> io.mocheck
   vmu.io.op <> io.issue.vmu
 
+  vmu.io.id := io.id
   vmu.io.cfg <> io.cfg
   vmu.io.lane <> vxu.io.vmu
   memif.io.vmu <> vmu.io.memif

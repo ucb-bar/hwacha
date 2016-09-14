@@ -101,8 +101,9 @@ class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   }
 }
 
-class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
+class IBox(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
+    val id = UInt(INPUT)
     val op = Decoupled(new VMUOp).flip
     val cfg = new HwachaConfigIO().flip
     val agu = new AGUIO
@@ -115,7 +116,8 @@ class IBox(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val op = VMUDecodedOp(opq.io.deq.bits)
 
   val agent = if (nLanes > 1) {
-      val _agent = Module(new IBoxML(id))
+      val _agent = Module(new IBoxML)
+      _agent.io.id := io.id
       _agent.io.cfg <> io.cfg
       io.agu <> _agent.io.agu
       _agent
@@ -148,8 +150,9 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
   }
 }
 
-class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
+class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   val io = new IBoxIO {
+    val id = UInt(INPUT, width = bLanes)
     val cfg = new HwachaConfigIO().flip
     val agu = new AGUIO
   }
@@ -157,11 +160,15 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val op = Reg(new VMUDecodedOp)
   val indexed = io.op.bits.mode.indexed
 
-  val (lut, setup) = if (id != 0) {
-    val _lut = (0 to log2Up(id)).filter(i => (id & (1 << i)) != 0)
-    val _setup = Reg(UInt(width = log2Up(_lut.size)))
-    (Vec(_lut.map(UInt(_))), _setup)
-  } else (null, null)
+  val idMask = Reg(UInt(width = bLanes))
+
+  // Each bit position of id is put into priority mux with priority of its bit position
+  // whether its requested in the queue is dependent on the value at that bit position
+  // we keep track of which was the most recent position issued and mask any higher bit positions off
+  val pMux = PriorityMux(
+    Reverse(io.id) & Reverse(idMask),
+    ((bLanes - 1) to 0 by -1).map(UInt(_)))
+
 
   val shift = Wire(UInt(width = io.agu.in.bits.shift.getWidth))
   shift := UInt(bLanes)
@@ -199,10 +206,10 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
     is (s_idle) {
       when (io.op.valid) {
         op := io.op.bits
-        if (id != 0) {
-          setup := UInt(lut.size - 1)
+        when(io.id =/= UInt(0)) {
+          idMask := ~UInt(0, bLanes)
           state := Mux(indexed, s_busy, s_setup)
-        } else {
+        } .otherwise {
           state := s_busy
         }
       }
@@ -227,13 +234,14 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
     }
 
     is (s_setup) {
-      if (id != 0) {
-        shift := lut(setup)
+      when (io.id =/= UInt(0)) {
+        shift := pMux
         io.agu.in.valid := Bool(true)
         when (io.agu.out.valid) {
           op.base := io.agu.out.bits.addr
-          setup := setup - UInt(1)
-          when (setup === UInt(0)) {
+          val newMask = idMask & ((UInt(1) << pMux) - UInt(1))
+          idMask := newMask
+          when (newMask === UInt(0) || !((newMask & io.id).orR)) {
             state := s_busy
           }
         }
@@ -242,9 +250,10 @@ class IBoxML(id: Int)(implicit p: Parameters) extends VMUModule()(p) {
   }
 }
 
-class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
+class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   extends VMUModule(_reset = resetSignal)(p) {
   val io = new Bundle {
+    val id = UInt(INPUT)
     val op = Decoupled(new VMUOp).flip
     val cfg = new HwachaConfigIO().flip
     val lane = new VMUIO().flip
@@ -257,7 +266,7 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
   }
 
   private val confml = (nLanes > 1)
-  val ibox = Module(new IBox(id))
+  val ibox = Module(new IBox)
   val pbox = Module(new PBox)
   val abox = Module(new ABox)
   val tbox = Module(new TBox(1))
@@ -266,6 +275,7 @@ class VMU(id: Int, resetSignal: Bool = null)(implicit p: Parameters)
   val mbox = Module(new MBox)
   val agu = Module(new AGU(if (confml) 2 else 1))
 
+  ibox.io.id := io.id
   ibox.io.op <> io.op
   ibox.io.cfg <> io.cfg
   if (confml) agu.io.ports(1) <> ibox.io.agu

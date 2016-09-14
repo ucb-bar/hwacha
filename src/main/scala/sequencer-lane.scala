@@ -10,9 +10,10 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val vpu = Valid(new SeqVPUOp)
 }
 
-class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
+class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
   with SeqLogic with BankLogic with PrecLogic {
   val io = new Bundle {
+    val lid = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val op = Valid(new IssueOp).flip
     val master = new MasterSequencerIO().flip
@@ -328,7 +329,7 @@ class LaneSequencer(lid: Int)(implicit p: Parameters) extends VXUModule()(p)
           set.valid(UInt(r))
           e(r).reg := io.master.update.reg(r)
           e(r).vlen := io.op.bits.vlen
-          e(r).eidx.major := UInt(lid) << io.cfg.lstride
+          e(r).eidx.major := io.lid << io.cfg.lstride
           e(r).eidx.minor := UInt(0)
           e(r).sidx := UInt(0)
           e(r).age := UInt(0)

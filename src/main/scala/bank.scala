@@ -59,8 +59,9 @@ class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   }
 }
 
-class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
+class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
   val io = new Bundle {
+    val lid = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val op = new BankOpIO().flip
     val ack = new Bundle {
@@ -70,8 +71,9 @@ class Bank(lid: Int, bid: Int)(implicit p: Parameters) extends VXUModule()(p) wi
     val rw = new BankRWIO
   }
 
-  val rf = Module(new BankRegfile(lid, bid))
+  val rf = Module(new BankRegfile(bid))
 
+  rf.io.lid := io.lid
   rf.io.op <> io.op
   io.rw <> rf.io.global
 

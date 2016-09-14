@@ -138,8 +138,9 @@ trait LanePred extends VXUBundle {
   def active(dummy: Int = 0) = pred.orR
 }
 
-class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
+class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
   val io = new Bundle {
+    val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
     val ack = new LaneAckIO
@@ -157,8 +158,9 @@ class Lane(id: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing 
   ctrl.io.op <> io.op
 
   val banksrw = (0 until nBanks) map { i =>
-    val bank = Module(new Bank(id, i))
+    val bank = Module(new Bank(i))
 
+    bank.io.lid := io.id
     bank.io.cfg <> io.cfg
     bank.io.op <> ctrl.io.uop.bank(i)
     io.bpqs(i) <> bank.io.rw.bpq
