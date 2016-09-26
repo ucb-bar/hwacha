@@ -4,35 +4,30 @@ import Chisel._
 import rocket._
 import cde.{Parameters, Field}
 import uncore.util._
-import rocketchip.LatencyPipe
+import util.LatencyPipe
 
-class RoccBusyDecoupler(commands: Seq[BitPat], counterSz: Int)(implicit p: Parameters) extends RoCC()(p) {
-def connect(r: RoCCInterface, delay: Int): Unit = {
-    val ro = this.io.roccOut
-
-    r.cmd <> LatencyPipe(ro.cmd, delay)
-    ro.resp <> LatencyPipe(r.resp, delay)
-    ro.mem <> ShiftRegister(r.mem, delay)
-    ro.busy <> ShiftRegister(r.busy, delay)
-    ro.interrupt <> ShiftRegister(r.interrupt, delay)
-    ro.autl <> ClientUncachedTileLinkEnqueuer(r.autl, UncachedTileLinkDepths(1,1))(p)
-    ro.utl zip r.utl map {
-      case (out, in) =>
-        out <> ClientUncachedTileLinkEnqueuer(in, UncachedTileLinkDepths(1,1))(p)
-    }
-    ro.ptw zip r.ptw map {
-      case (out, in) => {
-        out.req <> LatencyPipe(in.req, delay)
-        in.resp <> ShiftRegister(out.resp, delay) // resp is flipped
-        in.ptbr <> ShiftRegister(out.ptbr, delay)
-        in.invalidate <> ShiftRegister(out.invalidate, delay)
-        in.status <> ShiftRegister(out.status, delay)
+object Queueify {
+  def apply[T <: Data](ri: Bundle, ro: Bundle, delay: Int): Unit = {
+    ri.elements.zip(ro.elements).foreach {
+      _ match {
+        case ((pName, dIn: DecoupledIO[_]), (pNameOut, dOut:DecoupledIO[_])) =>
+          if(dIn.ready.dir == OUTPUT) dIn <> LatencyPipe(dOut, delay)
+          else if(dIn.ready.dir == INPUT) dOut <> LatencyPipe(dIn, delay)
+        case ((pName, vIn: Vec[_]), (_, vOut:Vec[_])) =>
+          vIn.zip(vOut).map {
+            case(in:Bundle, out:Bundle) => Queueify(in, out, delay)
+            case _ =>
+          }
+        case ((_, bIn: Bundle), (_, bOut: Bundle)) => Queueify(bIn, bOut, delay)
+        case ((_, wIn), (_, wOut)) =>
+          if(wIn.dir == OUTPUT) wOut <> ShiftRegister(wIn, delay)
+          else if(wIn.dir == INPUT) wIn <> ShiftRegister(wOut, delay)
       }
     }
-    ro.fpu_req <> LatencyPipe(r.fpu_req, delay)
-    r.fpu_resp <> LatencyPipe(ro.fpu_resp, delay)
-    r.exception <> ShiftRegister(ro.exception, delay)
   }
+}
+
+class RoccBusyDecoupler(commands: Seq[BitPat], counterSz: Int)(implicit p: Parameters) extends RoCC()(p) {
   override val io = new RoCCInterface {
     val roccOut = new RoCCInterface().flip
 

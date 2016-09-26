@@ -10,8 +10,8 @@ import rocket._
 import coreplex._
 import rocketchip._
 
-class DefaultHwachaConfig extends Config (
-  (pname,site,here) => pname match {
+object DefaultHwachaConfig {
+ val topDefs:cde.World.TopDefs = { case (pname,site,here) => pname match {
     case "HwI" => {
       case NSets => 64
       case NWays => 2
@@ -101,7 +101,7 @@ class DefaultHwachaConfig extends Config (
           if(p(DecoupledRoCC)) {
             val decoupler = Module(new RoccBusyDecoupler(
             Seq(HwachaInstructions.VF, HwachaInstructions.VFT), 10)(p))
-            decoupler.connect(h.io, p(RoCCQueueDepth))
+            Queueify(h.io, decoupler.io.roccOut, p(RoCCQueueDepth))
 
             // Hwacha takes a cycle of decode to become busy
             decoupler.io.delayTwoPhase := ShiftRegister(decoupler.io.twoPhase, p(RoCCQueueDepth) + 1)
@@ -127,7 +127,11 @@ class DefaultHwachaConfig extends Config (
     case HwachaVSETVLCompress => Knob("HWACHA_VSETVL_COMPRESS")
     case _ => throw new CDEMatchError
 
-  },
+  }
+}
+}
+class DefaultHwachaConfig extends Config (
+  topDefinitions = DefaultHwachaConfig.topDefs ,
   knobValues = {
     case "HWACHA_NSRAMRF_ENTRIES" => 256
     case "HWACHA_BUILD_VRU" => true
