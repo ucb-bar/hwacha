@@ -7,23 +7,27 @@ import uncore.util._
 import util.LatencyPipe
 
 object Queueify {
-  def apply[T <: Data](ri: Bundle, ro: Bundle, delay: Int): Unit = {
-    ri.elements.zip(ro.elements).foreach {
+  def apply[T <: Data](ri: Iterable[Data], ro: Iterable[Data], delay: Int): Unit = {
+    ri.zip(ro).foreach {
       _ match {
-        case ((pName, dIn: DecoupledIO[_]), (pNameOut, dOut:DecoupledIO[_])) =>
+        case (dIn: DecoupledIO[_], dOut:DecoupledIO[_]) =>
           if(dIn.ready.dir == OUTPUT) dIn <> LatencyPipe(dOut, delay)
           else if(dIn.ready.dir == INPUT) dOut <> LatencyPipe(dIn, delay)
-        case ((pName, vIn: Vec[_]), (_, vOut:Vec[_])) =>
+        case (vIn: Vec[_], vOut:Vec[_]) =>
           vIn.zip(vOut).map {
-            case(in:Bundle, out:Bundle) => Queueify(in, out, delay)
+            case(in:Bundle, out:Bundle) => apply(in, out, delay)
             case _ =>
           }
-        case ((_, bIn: Bundle), (_, bOut: Bundle)) => Queueify(bIn, bOut, delay)
-        case ((_, wIn), (_, wOut)) =>
+        case (bIn: Bundle, bOut: Bundle) => apply(bIn, bOut, delay)
+        case (wIn, wOut) =>
           if(wIn.dir == OUTPUT) wOut <> ShiftRegister(wIn, delay)
           else if(wIn.dir == INPUT) wIn <> ShiftRegister(wOut, delay)
       }
     }
+  }
+
+  def apply[T <: Data](ri: Bundle, ro: Bundle, delay: Int): Unit = {
+    apply(ri.elements.values, ro.elements.values, delay)
   }
 }
 
