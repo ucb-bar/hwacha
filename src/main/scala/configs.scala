@@ -147,7 +147,7 @@ class VectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env:
 class ScalarVectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-svec")
 
 object HwachaTestSuites {
-  import coreplex.DefaultTestSuites._
+import rocketchip.DefaultTestSuites._
   val rv64uvNames = LinkedHashSet(
     "wakeup", "fence", "keepcfg",
     "vmca", "vmcs", "vssd", "vssw", "vssh", "vssb",
