@@ -209,7 +209,7 @@ class VMUMetaAddr(implicit p: Parameters) extends VMUMetaCount
 class VMUAddrMemResp(implicit p: Parameters) extends VMUBundle with VMUTag
 
 class VMUAddrMemIf(implicit p: Parameters) extends VMUBundle {
-  val req = new Bool(INPUT)
+  val req = Bool(INPUT)
   val resp = new ValidIO(new VMUAddrMemResp()).asInput
 }
 class VMUAddrEntry(implicit p: Parameters) extends VMUMemOp {
