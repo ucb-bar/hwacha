@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import cde.Parameters
 import Commands._
-import rocket.Util._ //implicits for bitpats
+import util._ //implicits for bitpats
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val morelax = Bool(OUTPUT)
