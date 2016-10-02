@@ -155,10 +155,12 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   }
 
   val ctrl = Module(new LaneCtrl)
+  ctrl.suggestName("ctrlInst")
   ctrl.io.op <> io.op
 
   val banksrw = (0 until nBanks) map { i =>
     val bank = Module(new Bank(i))
+    bank.suggestName("bankInst")
 
     bank.io.lid := io.id
     bank.io.cfg <> io.cfg
@@ -224,6 +226,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   val vimu_operands = operands("vimu", ctrl.io.uop.vimu, 2, 0)
   val vimus = (0 until nSlices) map { i =>
     val vimu = Module(new IMulSlice)
+    vimu.suggestName("vimuInst")
     vimu.io.req.valid := ctrl.io.uop.vimu.valid && ctrl.io.uop.vimu.bits.pred(i) && vimu_pred.pred(i)
     vimu.io.req.bits.fn := ctrl.io.uop.vimu.bits.fn
     vimu.io.req.bits.in0 := unpack_slice(vimu_operands(0), i)
@@ -238,6 +241,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
     val vfmu_fn = ctrl.io.uop.vfmu(v).bits.fn
     ((0 until nSlices) map { i =>
       val vfmu = Module(new FMASlice)
+      vfmu.suggestName("vfmuInst")
       vfmu.io.req.valid := vfmu_val
       vfmu.io.req.bits.fn := vfmu_fn
       vfmu.io.req.bits.in0 := unpack_slice(vfmu_operands(0), i)
@@ -261,6 +265,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   val vfcu_operands = operands("vfcu", ctrl.io.uop.vfcu, 2, 3)
   val vfcus = (0 until nSlices) map { i =>
     val vfcu = Module(new FCmpSlice)
+    vfcu.suggestName("vfcuInst")
     vfcu.io.req.valid := ctrl.io.uop.vfcu.valid && ctrl.io.uop.vfcu.bits.pred(i) && vfcu_pred.pred(i)
     vfcu.io.req.bits.fn := ctrl.io.uop.vfcu.bits.fn
     vfcu.io.req.bits.in0 := unpack_slice(vfcu_operands(0), i)
@@ -272,6 +277,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   val vfvu_operands = operands("vfvu", ctrl.io.uop.vfvu, 1, 2)
   val vfvus = ((0 until nSlices) map { i =>
     val vfvu = Module(new FConvSlice)
+    vfvu.suggestName("vfvuInst")
     vfvu.io.req.valid := ctrl.io.uop.vfvu.valid
     vfvu.io.req.bits.fn := ctrl.io.uop.vfvu.bits.fn
     vfvu.io.req.bits.in := unpack_slice(vfvu_operands(0), i)

@@ -85,7 +85,9 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val arf = Mem(nARegs, UInt(width = regLen))
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
+  mrt.suggestName("mrtInst")
   val muldiv = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
+  muldiv.suggestName("muldivInst")
 
   io.pending.mrt.su := mrt.io.pending
 
@@ -534,12 +536,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     A2_IMM  -> ex_imm))
 
   val alu = Module(new rocket.ALU)
+  alu.suggestName("aluInst")
   alu.io.dw := ex_reg_ctrl.alu_dw
   alu.io.fn := ex_reg_ctrl.alu_fn
   alu.io.in2 := ex_op2.asUInt
   alu.io.in1 := ex_op1.asUInt
 
   val ll_warb = Module(new Arbiter(new ScalarRFWritePort, 4))
+  ll_warb.suggestName("ll_warbInst")
 
   ll_warb.io.in(0).valid := io.fpu.resp.valid
   ll_warb.io.in(0).bits.addr := io.fpu.resp.bits.tag

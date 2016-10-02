@@ -181,10 +181,13 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   val flush_kill = this.reset
   val cmdq = Module(new CMDQ(resetSignal = flush_kill))
+  cmdq.suggestName("cmdqInst")
 
   // TODO: probably want to change the length of queues in here
   val vrucmdq = Module(new CMDQ(resetSignal = flush_kill))
+  vrucmdq.suggestName("vrucmdqInst")
   val respq = Module(new Queue(io.rocc.resp.bits, 2))
+  respq.suggestName("respqInst")
   val vru_enable = Reg(init=Bool(false))
 
   val stall_hold = Reg(init=Bool(false))

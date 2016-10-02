@@ -66,6 +66,7 @@ class VMUDecodedOp(implicit p: Parameters) extends VMUOp()(p) with VMUMetaIndex 
 object VMUDecodedOp extends HwachaConstants {
   def apply(op: VMUOp)(implicit p: Parameters): VMUDecodedOp = {
     val dec = Wire(new VMUDecodedOp)
+    dec.suggestName("decWire")
     dec.fn := op.fn
     dec.vlen := op.vlen
     dec.base := op.base
@@ -91,10 +92,11 @@ class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   val issue = Vec(4, Decoupled(new VMUDecodedOp))
 
   def span(sink: DecoupledIO[VMUDecodedOp]*) = {
-    val src = Wire(Decoupled(new VMUDecodedOp))
+    val src = Wire(Decoupled(new VMUDecodedOp)).suggestName("srcWire")
     val rvs = (src.ready, src.valid) +: sink.map(x => (x.valid, x.ready))
     rvs.foreach { case (x, y) =>
-      x := rvs.map(_._2).filter(_ ne y).reduce(_ && _)
+    x := rvs.map(_._2).filter(_ ne y).reduce((a,b) => (a && b).suggestName("andWire"))
+      x.suggestName("andRvs")
     }
     sink.foreach { case x => x.bits := src.bits }
     src
@@ -112,11 +114,13 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
   }
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
   val op = VMUDecodedOp(opq.io.deq.bits)
 
   val agent = if (nLanes > 1) {
       val _agent = Module(new IBoxML)
+      _agent.suggestName("_agentInst")
       _agent.io.id := io.id
       _agent.io.cfg <> io.cfg
       io.agu <> _agent.io.agu
@@ -186,6 +190,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
 
   val enq = io.span(io.issue.map { case deq =>
     val q = Module(new Queue(new VMUDecodedOp, 2))
+    q.suggestName("qInst")
     deq <> q.io.deq
     q.io.enq
   }:_*)
@@ -267,13 +272,21 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
 
   private val confml = (nLanes > 1)
   val ibox = Module(new IBox)
+  ibox.suggestName("iboxInst")
   val pbox = Module(new PBox)
+  pbox.suggestName("pboxInst")
   val abox = Module(new ABox)
+  abox.suggestName("aboxInst")
   val tbox = Module(new TBox(1))
+  tbox.suggestName("tboxInst")
   val sbox = Module(new SBox)
+  sbox.suggestName("sboxInst")
   val lbox = Module(new LBox)
+  lbox.suggestName("lboxInst")
   val mbox = Module(new MBox)
+  mbox.suggestName("mboxInst")
   val agu = Module(new AGU(if (confml) 2 else 1))
+  agu.suggestName("aguInst")
 
   ibox.io.id := io.id
   ibox.io.op <> io.op

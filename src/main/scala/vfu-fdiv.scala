@@ -30,6 +30,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new FDivIO().flip
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
+  qcnt.suggestName("qcntInst")
 
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
@@ -38,7 +39,9 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val ins = List(io.req.bits.in0, io.req.bits.in1) map { in =>
     val dp = recode_dp(in)
     val sp = Module(new hardfloat.RecFNToRecFN(8, 24, 11, 53))
+    sp.suggestName("spInst")
     val hp = Module(new hardfloat.RecFNToRecFN(5, 11, 11, 53))
+    hp.suggestName("hpInst")
     sp.io.in := recode_sp(in)
     sp.io.roundingMode := io.req.bits.fn.rm
     hp.io.in := recode_hp(in)
@@ -51,8 +54,11 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   }
 
   val in0q = Module(new Queue(Bits(width = 65), 2))
+  in0q.suggestName("in0qInst")
   val in1q = Module(new Queue(Bits(width = 65), 2))
+  in1q.suggestName("in1qInst")
   val intagq = Module(new Queue(new FDivTag, 2))
+  intagq.suggestName("intagqInst")
 
   val s0_op_div = io.req.bits.fn.op_is(FD_DIV)
 
@@ -70,7 +76,9 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   // stage1
   val div = Module(new hardfloat.DivSqrtRecF64)
+  div.suggestName("divInst")
   val outtagq = Module(new Queue(new FDivTag, nDecoupledUnitWBQueue))
+  outtagq.suggestName("outtagqInst")
 
   val s1_op_div = intagq.io.deq.bits.fn.op_is(FD_DIV)
   val mask_in1q_valid = !s1_op_div || in1q.io.deq.valid
@@ -105,10 +113,13 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val s1_result_exc = RegEnable(div.io.exceptionFlags, s0_result_valid)
 
   val rq = Module(new Queue(new FDivResult, nDecoupledUnitWBQueue))
+  rq.suggestName("rqInst")
 
   val s1_result_dp = ieee_dp(s1_result_out)
   val s1_result_sp = Module(new hardfloat.RecFNToRecFN(11, 53, 8, 24))
+  s1_result_sp.suggestName("s1_result_spInst")
   val s1_result_hp = Module(new hardfloat.RecFNToRecFN(11, 53, 5, 11))
+  s1_result_hp.suggestName("s1_result_hpInst")
   s1_result_sp.io.in := s1_result_out
   s1_result_sp.io.roundingMode := outtagq.io.deq.bits.fn.rm
   s1_result_hp.io.in := s1_result_out

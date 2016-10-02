@@ -22,12 +22,15 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   }
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val lpq = Module(new Queue(new LPQEntry, nBanks+2))
+  lpq.suggestName("lpqInst")
   lpq.io.enq <> io.lpq
 
   val lrq = Module(new Queue(new LRQEntry, nBanks+2))
+  lrq.suggestName("lrqInst")
   lrq.io.enq <> io.lrq
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
@@ -97,12 +100,14 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   // using fire fn, just to be consistent with rcntr
   // don't really need to do this, because lpq entry should always be there
   val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  pcntr.suggestName("pcntrInst")
   pcntr.io.inc.cnt := UInt(1)
   pcntr.io.inc.update := fire(null, deq_lq)
   pcntr.io.dec <> io.pla
 
   // have to update with fire fn, since there are cases where the lrq is empty
   val rcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  rcntr.suggestName("rcntrInst")
   rcntr.io.inc.cnt := UInt(1)
   rcntr.io.inc.update := fire(null, deq_lq)
   rcntr.io.dec <> io.qla
@@ -120,11 +125,14 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   require(nBanks*2 == nStrip)
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val bpqs = (io.bpqs zipWithIndex) map { case (enq, i) =>
     val bpq = Module(new Queue(new BPQEntry, nBPQ))
+    bpq.suggestName("bpqInst")
     val placntr = Module(new LookAheadCounter(nBPQ, nBPQ))
+    placntr.suggestName("placntrInst")
     val en = io.la.mask(i)
     bpq.io.enq <> enq
     placntr.io.inc.cnt := UInt(1)
@@ -203,6 +211,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   }
 
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
   opq.io.deq.ready := Bool(false)
 
@@ -240,6 +249,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   val brqs_sel = (0 until nBanks).map(brqs_sel_bits(_))
 
   val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
+  predq.suggestName("predqInst")
   predq.io.enq <> io.pred
   private val pred = predq.io.deq
 
@@ -254,6 +264,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
   val brqs = io.brqs.map { enq =>
     val brq = Module(new Queue(enq.bits, nBRQ))
+    brq.suggestName("brqInst")
     brq.io.enq <> enq
     brq.io.deq.ready := Bool(false)
     brq.io.deq
@@ -261,6 +272,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
   val brqs_la = brqs.zipWithIndex.map { case (brq, i) =>
     val scntr = Module(new LookAheadCounter(nBRQ, maxSLA))
+    scntr.suggestName("scntrInst")
     val en = io.la.mask(i)
     scntr.io.inc.cnt := UInt(1)
     scntr.io.inc.update := Bool(false)
@@ -379,9 +391,11 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   //--------------------------------------------------------------------\\
 
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val map = Module(new VLUMapper)
+  map.suggestName("mapInst")
   map.io.op <> opq.io.deq
   map.io.free := Bool(false)
   io.map <> map.io.use
@@ -450,6 +464,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   //--------------------------------------------------------------------\\
 
   val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
+  predq.suggestName("predqInst")
   predq.io.enq <> io.pred
   val pred_fire = predq.io.deq.fire()
 
@@ -500,6 +515,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   private def rotate[T <: Data](gen: T, in: Seq[T]) = {
     val rot = Module(new Rotator(gen, in.size, nStrip))
+    rot.suggestName("rotInst")
     val out = Wire(Vec(nStrip, gen))
     rot.io.sel := rotamt
     rot.io.in := in
@@ -581,6 +597,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nBWQ))
+    bwq.suggestName("bwqInst")
 
     bwq.io.enq.bits.vidx := meta.vidx
     bwq.io.enq.bits.eidx := Mux(eidx_step(i), eidx_reg_next, eidx_reg)

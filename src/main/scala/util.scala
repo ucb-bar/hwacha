@@ -127,6 +127,7 @@ class MaskStall[T <: Data](data: => T) extends Module {
 object MaskStall {
   def apply[T <: Data](deq: DecoupledIO[T], stall: Bool) = {
     val ms = Module(new MaskStall(deq.bits.cloneType))
+    ms.suggestName("msInst")
     ms.io.input <> deq
     ms.io.stall := stall
     ms.io.output

@@ -65,6 +65,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val val_fp = fn.fp_is(fp)
         val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
           val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
+          fma.suggestName("fmaInst")
           val valid = pred(i) && val_fp
           fma.io.op := dgate(valid, fma_op)
           fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))

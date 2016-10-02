@@ -63,6 +63,7 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   }
 
   val table = Module(new Table(nSMU, new SMUEntry))
+  table.suggestName("tableInst")
   private val tw = table.io.w
   private val tr = table.io.r
 
@@ -76,6 +77,7 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   val req_store = (req.fn.cmd === SM_S)
 
   val tbox = Module(new TBox(1))
+  tbox.suggestName("tboxInst")
   private val tlb = tbox.io.inner(0)
   tlb.req.valid := Bool(false)
   tlb.req.bits.addr := req.addr

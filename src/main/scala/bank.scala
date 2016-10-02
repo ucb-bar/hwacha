@@ -72,6 +72,7 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
   }
 
   val rf = Module(new BankRegfile(bid))
+  rf.suggestName("rfInst")
 
   rf.io.lid := io.lid
   rf.io.op <> io.op
@@ -84,6 +85,7 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
   val alu_pred = io.op.viu.bits.pred & rf.io.local.pdl(0).pred
   val alus = ((0 until nSlices) map { i =>
     val alu = Module(new ALUSlice(bid*nSlices+i))
+    alu.suggestName("aluInst")
     alu.io.cfg <> io.cfg
     alu.io.req.valid := io.op.viu.valid
     alu.io.req.bits.fn := io.op.viu.bits.fn
@@ -102,6 +104,7 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
   // PLU: Predicate Logic Unit
   val plus = (0 until wPred) map { i =>
     val plu = Module(new PLUSlice)
+    plu.suggestName("pluInst")
     plu.io.req.valid := io.op.vipu.valid && io.op.vipu.bits.pred(i)
     plu.io.req.bits.fn := io.op.vipu.bits.fn
     plu.io.req.bits.in0 := rf.io.local.rpred(0).pred(i)

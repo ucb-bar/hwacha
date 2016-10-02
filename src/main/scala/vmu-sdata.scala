@@ -32,6 +32,7 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
   private val meta = io.mem.meta
 
   val vsdq = Module(new Queue(io.lane.bits, nVSDQ))
+  vsdq.suggestName("vsdqInst")
   vsdq.io.enq <> io.lane
 
   /* Byte mode: Ignore MSB */

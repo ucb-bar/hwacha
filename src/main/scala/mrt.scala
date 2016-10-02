@@ -24,7 +24,9 @@ class MemTracker(nlreq: Int, nsreq: Int)(implicit p: Parameters) extends HwachaM
   val io = new MRTIO().flip
 
   val lcnt = Module(new LookAheadCounter(nlreq, nlreq))
+  lcnt.suggestName("lcntInst")
   val scnt = Module(new LookAheadCounter(nsreq, nsreq))
+  scnt.suggestName("scntInst")
 
   lcnt.io.dec <> io.lreq
   lcnt.io.inc <> io.lret

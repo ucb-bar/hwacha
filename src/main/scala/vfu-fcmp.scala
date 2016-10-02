@@ -48,6 +48,7 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     ins zip List(wdp, wsp, whp) map {
       case ((input0, input1), (exp, sig)) => {
         val comp = Module(new hardfloat.CompareRecFN(exp, sig))
+        comp.suggestName("compInst")
         comp.io.a := input0
         comp.io.b := input1
         comp.io.signaling := Bool(true)

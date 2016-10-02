@@ -31,11 +31,13 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
+  qcnt.suggestName("qcntInst")
 
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
 
   val div = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
+  div.suggestName("divInst")
 
   div.io.req.valid := io.req.valid
   io.req.ready := !qcnt.io.empty && div.io.req.ready
@@ -52,6 +54,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   div.io.kill := Bool(false)
 
   val rq = Module(new Queue(new IDivResult, nDecoupledUnitWBQueue))
+  rq.suggestName("rqInst")
 
   rq.io.enq.valid := div.io.resp.valid
   rq.io.enq.bits.out := div.io.resp.bits.data

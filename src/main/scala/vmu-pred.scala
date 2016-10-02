@@ -301,9 +301,13 @@ class PBox(implicit p: Parameters) extends VMUModule()(p) {
    * counter in order to avoid potential deadlock.
    */
   val predq0 = Module(new Queue(io.pred.bits, nVMUPredQ))
+  predq0.suggestName("predq0Inst")
   val predq1 = Module(new Queue(io.pred.bits, nVMUPredQ))
+  predq1.suggestName("predq1Inst")
   val pbox0 = Module(new PBox0)
+  pbox0.suggestName("pbox0Inst")
   val pbox1 = Module(new PBox1)
+  pbox1.suggestName("pbox1Inst")
 
   predq0.io.enq <> io.pred
 
@@ -316,6 +320,7 @@ class PBox(implicit p: Parameters) extends VMUModule()(p) {
   pbox1.io.ingress <> predq1.io.deq
 
   val anteq = Module(new Queue(pbox0.io.sample.bits, 2))
+  anteq.suggestName("anteqInst")
   anteq.io.enq <> pbox0.io.sample
   io.mask.ante <> anteq.io.deq
   io.mask.post <> pbox1.io.sample

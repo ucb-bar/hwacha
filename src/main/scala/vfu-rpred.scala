@@ -47,6 +47,7 @@ class RPredMaster(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   val opq = Module(new Queue(new IssueOpML, 2))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)

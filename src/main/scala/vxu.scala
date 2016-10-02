@@ -16,9 +16,13 @@ class VXU(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   val seq = Module(new LaneSequencer)
+  seq.suggestName("seqInst")
   val exp = Module(new Expander)
+  exp.suggestName("expInst")
   val lane = Module(new Lane)
+  lane.suggestName("laneInst")
   val dcc = Module(new DecoupledCluster)
+  dcc.suggestName("dccInst")
 
   seq.io.cfg <> io.cfg
   seq.io.lid := io.id

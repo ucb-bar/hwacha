@@ -59,7 +59,9 @@ class LBox(implicit p: Parameters)  extends VMUModule()(p) {
   }
 
   val vldq = Module(new Queue(io.lane.bits, nVLDQ))
+  vldq.suggestName("vldqInst")
   val vlt = Module(new Table(nVLT, new VLTEntry))
+  vlt.suggestName("vltInst")
 
   vlt.io.w <> io.mem.meta
   vlt.io.r.bits := io.mem.load.bits.tag

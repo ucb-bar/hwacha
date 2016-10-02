@@ -41,13 +41,15 @@ class DecodedMemCommand extends Bundle {
 
 object DecodedMemCommand {
   def apply[T <: UInt](cmd: T): DecodedMemCommand = {
+    cmd.suggestName("cmdWire")
     val dec = Wire(new DecodedMemCommand)
-    dec.load := (cmd === M_XRD)
-    dec.store := (cmd === M_XWR)
+    dec.suggestName("decWire")
+    dec.load := (cmd === M_XRD).suggestName("loadWire")
+    dec.store := (cmd === M_XWR).suggestName("storeWire")
     dec.amo := isAMO(cmd)
     dec.pf := isPrefetch(cmd)
-    dec.read := (dec.load || dec.amo)
-    dec.write := (dec.store || dec.amo)
+    dec.read := (dec.load || dec.amo).suggestName("readWire")
+    dec.write := (dec.store || dec.amo).suggestName("writeWire")
     dec
   }
 }
@@ -65,20 +67,22 @@ class DecodedMemType extends Bundle {
 
 object DecodedMemType {
   def apply[T <: UInt](mt: T): DecodedMemType = {
-    val b = (mt === MT_B)
-    val h = (mt === MT_H)
-    val w = (mt === MT_W)
-    val d = (mt === MT_D)
-    val bu = (mt === MT_BU)
-    val hu = (mt === MT_HU)
-    val wu = (mt === MT_WU)
+    mt.suggestName("mtWire")
+    val b = (mt === MT_B).suggestName("bWire")
+    val h = (mt === MT_H).suggestName("hWire")
+    val w = (mt === MT_W).suggestName("wWire")
+    val d = (mt === MT_D).suggestName("dWire")
+    val bu = (mt === MT_BU).suggestName("buWire")
+    val hu = (mt === MT_HU).suggestName("huWire")
+    val wu = (mt === MT_WU).suggestName("wuWire")
 
     val dec = Wire(new DecodedMemType)
-    dec.b := (b || bu)
-    dec.h := (h || hu)
-    dec.w := (w || wu)
+    dec.suggestName("decWire")
+    dec.b := (b || bu).suggestName("decbWire")
+    dec.h := (h || hu).suggestName("dechWire")
+    dec.w := (w || wu).suggestName("decwWire")
     dec.d := d
-    dec.signed := (b || h || w || d)
+    dec.signed := ((b || h).suggestName("bhWire") || (w || d).suggestName("wdWire")).suggestName("signedWire")
     dec
   }
 }

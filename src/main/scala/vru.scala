@@ -102,6 +102,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   // in flight (where in-flight = sent to prefetch stage, but not acked by 
   // vxu)
   val bytesq = Module(new Queue(UInt(width=entrywidth), throttleQueueDepth))
+  bytesq.suggestName("bytesqInst")
 
   // the number of bytes the prefetcher is ahead of the vxu
   val runahead_bytes_count = Reg(init=UInt(0, width=32))
@@ -260,6 +261,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
   io.vf_active := vf_active
 
   val runaheadman = Module(new RunaheadManager)
+  runaheadman.suggestName("runaheadmanInst")
   runaheadman.io.vf_done_vxu := io.vf_complete_ack
   runaheadman.io.vf_fire := io.fire_vf
 
@@ -403,10 +405,13 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   }
 
   val vru_frontend = Module(new VRUFrontend)
+  vru_frontend.suggestName("vru_frontendInst")
   val vru_rocc_unit = Module(new VRURoCCUnit)
+  vru_rocc_unit.suggestName("vru_rocc_unitInst")
 
   // queue of load/store/addr/len to L2 prefetching stage
   val decodedMemOpQueue = Module(new Queue(new DecodedMemOp, 10))
+  decodedMemOpQueue.suggestName("decodedMemOpQueueInst")
 
   // wire up vru_rocc_unit, vec inst decode unit
   vru_rocc_unit.io.cmdq <> io.cmdq
@@ -423,6 +428,7 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
 
   // prefetch unit
   val prefetch_unit = Module(new PrefetchUnit)
+  prefetch_unit.suggestName("prefetch_unitInst")
   prefetch_unit.io.memop <> decodedMemOpQueue.io.deq
   io.dmem <> prefetch_unit.io.dmem
 }

@@ -22,9 +22,13 @@ class VectorUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqParam
   }
 
   val vxu = Module(new VXU)
+  vxu.suggestName("vxuInst")
   val vmu = Module(new VMU)
+  vmu.suggestName("vmuInst")
   val memif = Module(new VMUTileLink)
+  memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
+  mrt.suggestName("mrtInst")
 
   vxu.io.id := io.id
   vxu.io.cfg <> io.cfg

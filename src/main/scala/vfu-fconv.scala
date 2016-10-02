@@ -67,7 +67,9 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_int2float)
         val l2fp = Module(new hardfloat.INToRecFN(SZ_D, exp, sig))
+        l2fp.suggestName("l2fpInst")
         val w2fp = Module(new hardfloat.INToRecFN(SZ_W, exp, sig))
+        w2fp.suggestName("w2fpInst")
         l2fp.io.signedIn := op(0)
         l2fp.io.in := input
         l2fp.io.roundingMode := rm
@@ -90,7 +92,9 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val rm = dgate(valid, fn.rm)
         val op = dgate(valid, op_float2int)
         val fp2l = Module(new hardfloat.RecFNToIN(exp, sig, SZ_D))
+        fp2l.suggestName("fp2lInst")
         val fp2w = Module(new hardfloat.RecFNToIN(exp, sig, SZ_W))
+        fp2w.suggestName("fp2wInst")
         fp2l.io.signedOut := op(0)
         fp2l.io.in := input
         fp2l.io.roundingMode := rm
@@ -117,6 +121,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val val_op = fn.op_is(op)
         val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
           val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
+          fp2fp.suggestName("fp2fpInst")
           val valid = pred(i) && val_op
           fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
           fp2fp.io.roundingMode := dgate(valid, fn.rm)

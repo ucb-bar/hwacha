@@ -50,6 +50,7 @@ class VVAQ(implicit p: Parameters) extends VMUModule()(p) {
   }
 
   val q = Module(new Queue(io.enq.bits, nVVAQ))
+  q.suggestName("qInst")
   q.io.enq <> io.enq
   io.deq <> q.io.deq
 }
@@ -159,10 +160,12 @@ class VPAQ(implicit p: Parameters) extends VMUModule()(p) with SeqParameters {
   }
 
   val q = Module(new Queue(io.enq.bits, nVPAQ))
+  q.suggestName("qInst")
   q.io.enq <> io.enq
   io.deq <> q.io.deq
 
   val vcucntr = Module(new LookAheadCounter(0, maxVCU))
+  vcucntr.suggestName("vcucntrInst")
   vcucntr.io.inc.cnt := io.vcu.bits.ecnt
   vcucntr.io.inc.update := io.vcu.valid
   vcucntr.io.dec <> io.la
@@ -332,6 +335,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   val mt = DecodedMemType(op.fn.mt)
   val vidx = Reg(io.load.bits.vidx)
   val vst = Module(new Table(1 << (bVMUTag - (tlByteAddrBits - 1)), UInt(width=1)))
+  vst.suggestName("vstInst")
 
   val offset = (inner.meta.epad << mt.shift())(tlByteAddrBits-1, 0)
 
@@ -432,10 +436,15 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
   }
 
   val vvaq = Module(new VVAQ)
+  vvaq.suggestName("vvaqInst")
   val vpaq = Module(new VPAQ)
+  vpaq.suggestName("vpaqInst")
   val abox0 = Module(new ABox0)
+  abox0.suggestName("abox0Inst")
   val abox1 = Module(new ABox1)
+  abox1.suggestName("abox1Inst")
   val abox2 = Module(new ABox2)
+  abox2.suggestName("abox2Inst")
 
   vvaq.io.enq <> io.lane
 
@@ -458,6 +467,7 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
   abox1.io.la.reserve := io.la.reserve
 
   val pipe = Module(new Queue(abox1.io.pipe.bits, 2))
+  pipe.suggestName("pipeInst")
   pipe.io.enq <> abox1.io.pipe
 
   abox2.io.op <> io.op(2)

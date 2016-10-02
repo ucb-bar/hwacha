@@ -53,10 +53,15 @@ class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   val vdu = Module(new VDU)
+  vdu.suggestName("vduInst")
   val vgu = Module(new VGU)
+  vgu.suggestName("vguInst")
   val vpu = Module(new VPU)
+  vpu.suggestName("vpuInst")
   val vlu = Module(new VLU)
+  vlu.suggestName("vluInst")
   val vsu = Module(new VSU)
+  vsu.suggestName("vsuInst")
 
   val mask_vdu_ready = !io.op.bits.active.enq_vdu() || vdu.io.op.ready
   val mask_vgu_ready = !io.op.bits.active.enq_vgu() || vgu.io.op.ready

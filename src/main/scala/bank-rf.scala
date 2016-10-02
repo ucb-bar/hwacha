@@ -88,6 +88,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
 
   // SRAM RF write port
   val sram_warb = Module(new Arbiter(new RFWritePort, 3))
+  sram_warb.suggestName("sram_warbInst")
 
   val sram_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.sram.write.bits.selg,
@@ -136,6 +137,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
 
   // FF RF write port
   val ff_warb = Module(new Arbiter(new RFWritePort, 3))
+  ff_warb.suggestName("ff_warbInst")
 
   val ff_wdata = new BankDataPredEntry().fromBits(
     Mux(io.op.ff.write.bits.selg,

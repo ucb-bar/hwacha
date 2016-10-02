@@ -32,6 +32,7 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   val ctrl = Module(new VDUCtrl)
+  ctrl.suggestName("ctrlInst")
 
   ctrl.io.op <> io.op
   ctrl.io.ila <> io.ila
@@ -39,20 +40,24 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
   ctrl.io.cfg <> io.cfg
 
   val lpq = Module(new Queue(new LPQEntry, nBanks+2))
+  lpq.suggestName("lpqInst")
   lpq.io.enq <> io.lpq
   ctrl.io.lpq <> lpq.io.deq
 
   val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+  pcntr.suggestName("pcntrInst")
   pcntr.io.inc.cnt := UInt(1)
   pcntr.io.inc.update := lpq.io.deq.fire()
   pcntr.io.dec <> io.pla
 
   for (i <- 0 until nVDUOperands) {
     val lrq = Module(new Queue(new LRQEntry, nBanks+2))
+    lrq.suggestName("lrqInst")
     lrq.io.enq <> io.lrqs(i)
     ctrl.io.lrqs.q(i) <> lrq.io.deq
 
     val cntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
+    cntr.suggestName("cntrInst")
     cntr.io.inc.cnt := UInt(1)
     cntr.io.inc.update := ctrl.io.lrqs.update(i)
     cntr.io.dec <> io.qla(i)
@@ -60,18 +65,22 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 
   for (i <- 0 until nSlices) {
     val idiv = Module(new IDivSlice)
+    idiv.suggestName("idivInst")
     val fdiv = Module(new FDivSlice)
+    fdiv.suggestName("fdivInst")
     idiv.io <> ctrl.io.idiv.fus(i)
     fdiv.io <> ctrl.io.fdiv.fus(i)
   }
 
   val rpred = Module(new RPredLane)
+  rpred.suggestName("rpredInst")
   rpred.io <> ctrl.io.rpred.fu
   io.red.pred.bits.cond := rpred.io.result.bits.cond
   io.red.pred.valid := ctrl.io.rpred.result.valid
   ctrl.io.rpred.result.ready := io.red.pred.ready
 
   val rfirst = Module(new RFirstLane)
+  rfirst.suggestName("rfirstInst")
   rfirst.io <> ctrl.io.rfirst.fu
   io.red.first.bits <> rfirst.io.result.bits
   io.red.first.valid := ctrl.io.rfirst.result.valid
@@ -114,6 +123,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   }
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
+  opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val s_idle :: s_busy :: s_wait :: Nil = Enum(UInt(), 3)
@@ -191,6 +201,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   }
 
   val tagq = Module(new Queue(new VDUTag, nDecoupledUnitWBQueue))
+  tagq.suggestName("tagqInst")
 
   val active_entry = io.lpq.bits.active()
   val mask_lrq0_valid = !active_entry || io.lrqs.q(0).valid
@@ -334,11 +345,13 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     dgate(tagq.io.deq.bits.pred(i), fdiv.resp.bits.exc) } reduce(_|_)
 
   val icntr = Module(new LookAheadCounter(0, maxLookAhead))
+  icntr.suggestName("icntrInst")
   icntr.io.inc.cnt := UInt(1)
   icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
   icntr.io.dec <> io.ila
 
   val fcntr = Module(new LookAheadCounter(0, maxLookAhead))
+  fcntr.suggestName("fcntrInst")
   fcntr.io.inc.cnt := UInt(1)
   fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.toBool)
   fcntr.io.dec <> io.fla

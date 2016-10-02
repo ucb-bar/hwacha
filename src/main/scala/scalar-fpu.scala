@@ -24,26 +24,31 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   req.in3 := Mux(io.req.bits.swap23, io.req.bits.in2, io.req.bits.in3)
 
   val sfma = Module(new rocket.FPUFMAPipe(p(rocket.FPUKey).getOrElse(rocket.FPUConfig()).sfmaLatency, 23, 9))
+  sfma.suggestName("sfmaInst")
   sfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       io.req.bits.single
   sfma.io.in.bits := req
 
   val dfma = Module(new rocket.FPUFMAPipe(p(rocket.FPUKey).getOrElse(rocket.FPUConfig()).dfmaLatency, 52, 12))
+  dfma.suggestName("dfmaInst")
   dfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       !io.req.bits.single
   dfma.io.in.bits := req
 
   val fpiu = Module(new rocket.FPToInt)
+  fpiu.suggestName("fpiuInst")
   fpiu.io.in.valid := io.req.valid && (io.req.bits.toint || io.req.bits.cmd === FCMD_MINMAX)
   fpiu.io.in.bits := req
 
   val ifpu = Module(new rocket.IntToFP(3))
+  ifpu.suggestName("ifpuInst")
   ifpu.io.in.valid := io.req.valid && io.req.bits.fromint
   ifpu.io.in.bits := req
 
   //ifpu.io.in.bits.in1 := io.dpath.fromint_data
 
   val fpmu = Module(new rocket.FPToFP(2))
+  fpmu.suggestName("fpmuInst")
   fpmu.io.in.valid := io.req.valid && io.req.bits.fastpipe
   fpmu.io.in.bits := req
   fpmu.io.lt := fpiu.io.out.bits.lt
