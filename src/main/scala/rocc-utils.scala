@@ -4,7 +4,34 @@ import Chisel._
 import rocket._
 import cde.{Parameters, Field}
 import uncore.util._
-import util.LatencyPipe
+import util._
+
+object AsyncQueueify {
+  def apply[T <: Data](from_clock: Clock, from_reset: Bool, ri: Iterable[Data], ro: Iterable[Data], to_clock: Clock, to_reset: Bool, depth: Int, sync: Int): Unit = {
+    ri.zip(ro).foreach {
+      _ match {
+        case (dIn: DecoupledIO[_], dOut:DecoupledIO[_]) =>
+          if(dIn.ready.dir == OUTPUT) dIn <> AsyncDecoupledCrossing(from_clock, from_reset, dOut, to_clock, to_reset, depth, sync)
+          else if(dIn.ready.dir == INPUT) dOut <> AsyncDecoupledCrossing(from_clock, from_reset, dIn, to_clock, to_reset, depth, sync)
+        case (vIn: Vec[_], vOut:Vec[_]) =>
+          vIn.zip(vOut).map {
+            case(in:Bundle, out:Bundle) => apply(from_clock, from_reset, in, out, to_clock, to_reset, depth, sync)
+            case _ =>
+          }
+        case (bIn: Bundle, bOut: Bundle) => apply(from_clock, from_reset, bIn, bOut, to_clock, to_reset, depth, sync)
+        case (wIn: Bool, wOut: Bool) =>
+          if(wIn.dir == OUTPUT) wOut <> LevelSyncTo(to_clock, wIn, sync)
+          else if(wIn.dir == INPUT) wIn <> LevelSyncFrom(from_clock, wOut, sync)
+        case (mBIn, mBOut) =>
+          println("Can't async cross a non decoupled multi-bit signal")
+      }
+    }
+  }
+
+  def apply[T <: Data](from_clock: Clock, from_reset: Bool, ri: Bundle, ro: Bundle, to_clock: Clock, to_reset: Bool, depth: Int, sync: Int): Unit = {
+    apply(from_clock, from_reset, ri.elements.values, ro.elements.values, to_clock, to_reset, depth, sync)
+  }
+}
 
 object Queueify {
   def apply[T <: Data](ri: Iterable[Data], ro: Iterable[Data], delay: Int): Unit = {

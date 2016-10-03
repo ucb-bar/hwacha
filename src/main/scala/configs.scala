@@ -9,6 +9,7 @@ import uncore.agents._
 import rocket._
 import coreplex._
 import rocketchip._
+import util._
 
 object DefaultHwachaConfig {
  val topDefs:cde.World.TopDefs = { case (pname,site,here) => pname match {
@@ -101,10 +102,19 @@ object DefaultHwachaConfig {
           if(p(DecoupledRoCC)) {
             val decoupler = Module(new RoccBusyDecoupler(
             Seq(HwachaInstructions.VF, HwachaInstructions.VFT), 10)(p))
-            Queueify(h.io, decoupler.io.roccOut, p(RoCCQueueDepth))
+            AsyncQueueify(decoupler.clock, decoupler.reset,
+              (h.io.elements - "utl").values,
+              (decoupler.io.roccOut.elements - "utl").values,
+              h.clock, h.reset,
+              p(RoCCQueueDepth), 2)
+            // UTL port is crossed in the coreplex for now
+            decoupler.io.roccOut.utl <> h.io.utl
 
+            val twoPhaseHwacha = Wire(Bool())
+            twoPhaseHwacha := LevelSyncTo(h.clock, decoupler.io.twoPhase, 2)
             // Hwacha takes a cycle of decode to become busy
-            decoupler.io.delayTwoPhase := ShiftRegister(decoupler.io.twoPhase, p(RoCCQueueDepth) + 1)
+            // so we add another sync reg to account for this
+            decoupler.io.delayTwoPhase := LevelSyncFrom(h.clock, twoPhaseHwacha, 2+1)
             decoupler
           } else h
           },
