@@ -23,6 +23,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
     }
   }
   val sram_rf = SeqMem(nSRAM, Vec(wBank/8, Bits(width = 8)))
+  sram_rf.suggestName("HwSRAMRF")
   val ff_rf = Mem(nFF, Vec(wBank/8, Bits(width = 8)))
   val pred_rf = Mem(nPred, Vec(wPred, Bool()))
 

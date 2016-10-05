@@ -23,7 +23,7 @@ object AsyncQueueify {
           if(wIn.dir == OUTPUT) wOut <> LevelSyncTo(to_clock, wIn, sync)
           else if(wIn.dir == INPUT) wIn <> LevelSyncFrom(from_clock, wOut, sync)
         case (mBIn, mBOut) =>
-          println("Can't async cross a non decoupled multi-bit signal")
+          //println("Can't async cross a non decoupled multi-bit signal")
       }
     }
   }
