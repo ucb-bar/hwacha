@@ -13,6 +13,32 @@ object AsyncQueueify {
         case (dIn: DecoupledIO[_], dOut:DecoupledIO[_]) =>
           if(dIn.ready.dir == OUTPUT) dIn <> AsyncDecoupledCrossing(from_clock, from_reset, dOut, to_clock, to_reset, depth, sync)
           else if(dIn.ready.dir == INPUT) dOut <> AsyncDecoupledCrossing(from_clock, from_reset, dIn, to_clock, to_reset, depth, sync)
+        case (vIn: ValidIO[_], vOut:ValidIO[_]) =>
+          if(vIn.valid.dir == INPUT) {
+            val dIn = Wire(Decoupled(vIn.bits))
+            val dOut = Wire(Decoupled(vOut.bits))
+
+            dIn.ready := Bool(true)
+            vIn.bits := dIn.bits
+            vIn.valid := dIn.valid
+
+            dIn <> AsyncDecoupledCrossing(from_clock, from_reset, dOut, to_clock, to_reset, depth, sync)
+
+            dOut.bits := vOut.bits
+            dOut.valid := vOut.valid
+          } else if(vIn.valid.dir == OUTPUT) {
+            val dIn = Wire(Decoupled(vIn.bits))
+            val dOut = Wire(Decoupled(vOut.bits))
+
+            dOut.ready := Bool(true)
+            dOut.bits := vOut.bits
+            dOut.valid := vOut.valid
+
+            dOut <> AsyncDecoupledCrossing(from_clock, from_reset, dIn, to_clock, to_reset, depth, sync)
+
+            vIn.bits := dIn.bits
+            vIn.valid := dIn.valid
+          }
         case (vIn: Vec[_], vOut:Vec[_]) =>
           vIn.zip(vOut).map {
             case(in:Bundle, out:Bundle) => apply(from_clock, from_reset, in, out, to_clock, to_reset, depth, sync)
