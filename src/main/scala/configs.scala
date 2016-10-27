@@ -94,11 +94,13 @@ object DefaultHwachaConfig {
       TestGeneration.addVariable("DISASM_EXTENSION", "--extension=hwacha")
       Seq(RoccParameters(
         opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
-        generator = (p: Parameters) => {
+        generator = (p: Parameters, c: Clock, r: Bool) => {
           val h = Module(new Hwacha()(p.alterPartial({
           case FetchWidth => 1
           case CoreInstBits => 64
           })))
+          h.clock := c
+          h.reset := r
           if(p(DecoupledRoCC)) {
             val decoupler = Module(new RoccBusyDecoupler(
             Seq(HwachaInstructions.VF, HwachaInstructions.VFT), 10)(p))
