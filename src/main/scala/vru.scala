@@ -389,6 +389,9 @@ class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
 
 }
 
+class VRUCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
+  val memOps = UInt(width = log2Up(10))
+}
 
 class VRU(implicit p: Parameters) extends HwachaModule()(p)
   with MemParameters {
@@ -402,6 +405,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
     val dmem = new ClientUncachedTileLinkIO
     // shorten names
     val vf_complete_ack = Bool(INPUT)
+
+    val counters = new VRUCounterIO
   }
 
   val vru_frontend = Module(new VRUFrontend)
@@ -412,6 +417,8 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   // queue of load/store/addr/len to L2 prefetching stage
   val decodedMemOpQueue = Module(new Queue(new DecodedMemOp, 10))
   decodedMemOpQueue.suggestName("decodedMemOpQueueInst")
+
+  io.counters.memOps := decodedMemOpQueue.io.count
 
   // wire up vru_rocc_unit, vec inst decode unit
   vru_rocc_unit.io.cmdq <> io.cmdq

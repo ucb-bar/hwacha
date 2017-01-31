@@ -77,6 +77,12 @@ class SequencerPending(implicit p: Parameters) extends VXUBundle()(p) {
   val all = Bool()
 }
 
+class MasterSequencerCounterIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
+  val memoryUOps = UInt(width = log2Up(nSeq))
+  val arithUOps = UInt(width = log2Up(nSeq))
+  val predUOps = UInt(width = log2Up(nSeq))
+}
+
 class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic {
   val io = new Bundle {
     val op = Decoupled(new IssueOpBase).flip
@@ -86,6 +92,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val stop = Bool(INPUT)
       val last = Bool(OUTPUT)
     }
+    val counters = new MasterSequencerCounterIO
 
     val debug = new Bundle {
       val head = UInt(OUTPUT, log2Up(nSeq))
@@ -436,6 +443,20 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       io.pending.mem := vcus.reduce(_ || _)
       io.pending.all := v.reduce(_ || _)
 
+      io.counters.memoryUOps := PopCount((v zip e) map {
+        case (valid, e) => valid &&
+          (e.active.vgu || e.active.vcu || e.active.vlu || e.active.vsu)
+      })
+      io.counters.arithUOps := PopCount((v zip e) map {
+        case (valid, e) => valid &&
+          (e.active.viu || e.active.vimu || e.active.vidu ||
+          e.active.vfmu || e.active.vfdu || e.active.vfcu || e.active.vfvu ||
+          e.active.vqu)
+      })
+      io.counters.predUOps := PopCount((v zip e) map {
+        case (valid, e) => valid &&
+          (e.active.vpu || e.active.vipu)
+      })
       retired = true
     }
 

@@ -4,6 +4,7 @@ import Chisel._
 import cde.{Parameters, Field}
 import util.ParameterizedBundle
 import rocket.NTLBEntries
+import rocket.RoCCInterface
 
 case object HwachaCommitLog extends Field[Boolean]
 case object HwachaNLanes extends Field[Int]
@@ -108,8 +109,17 @@ abstract trait UsesHwachaParameters extends rocket.HasCoreParameters {
   val nvlreq = 512
 }
 
+class HwachaCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
+  val mseq = new MasterSequencerCounterIO
+  val rocc = new RoCCCounterIO
+  val vru = new VRUCounterIO
+}
+
 class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaParameters
 {
+  override val io = new RoCCInterface {
+    val counters = new HwachaCounterIO
+  }
   import HwachaDecodeTable._
   import Commands._
 
@@ -131,6 +141,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.busy <> rocc.io.rocc.busy
   io.interrupt <> rocc.io.rocc.interrupt
   rocc.io.rocc.exception <> io.exception
+  io.counters.rocc <> rocc.io.counters
 
   // Connect RoccUnit to ScalarUnit
   rocc.io.pending.mseq := mseq.io.pending.all
@@ -160,6 +171,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     vru.io.cmdq <> rocc.io.cmdqs.vru
     imemarb.io.in(2) <> vru.io.dmem
     vru.io.vf_complete_ack := mseq.io.vf.last
+    io.counters.vru <> vru.io.counters
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
@@ -170,6 +182,8 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
     icache.io.vru.req.valid := Bool(false)
     icache.io.vru.active := Bool(false)
+
+    io.counters.vru <> (new VRUCounterIO).fromBits(UInt(0))
   }
   imemarb.io.in(0) <> icache.io.mem
   imemarb.io.in(1) <> smu.io.dmem
@@ -219,6 +233,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   }
   scalar.io.pending.mseq <> mseq.io.pending
   mseq.io.vf.stop := scalar.io.vf_stop
+  io.counters.mseq <> mseq.io.counters
 
   rpred.io.op.valid := fire_vxu(mask_rpred_ready, enq_rpred)
   rpred.io.op.bits <> scalar.io.vxu.bits

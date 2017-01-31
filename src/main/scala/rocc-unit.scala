@@ -42,17 +42,61 @@ class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val status = Decoupled(new rocket.MStatus())
 }
 
+class CMDQCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
+  val cmd = UInt(width = log2Up(confvcmdq.ncmd))
+  val imm = UInt(width = log2Up(confvcmdq.nimm))
+  val rd = UInt(width = log2Up(confvcmdq.nrd))
+  val cnt = UInt(width = log2Up(confvcmdq.ncnt))
+  val status = UInt(width = log2Up(confvcmdq.nstatus))
+}
+
+object QueueWithCount
+{
+  /** Create a queue and supply a DecoupledIO containing the product and the count. */
+  def apply[T <: Data](
+      enq: DecoupledIO[T],
+      entries: Int = 2,
+      pipe: Boolean = false,
+      flow: Boolean = false): (DecoupledIO[T], UInt) = {
+    val q = Module(new Queue(enq.bits.cloneType, entries, pipe, flow))
+    q.io.enq.valid := enq.valid // not using <> so that override is allowed
+    q.io.enq.bits := enq.bits
+    enq.ready := q.io.enq.ready
+    (q.io.deq, q.io.count)
+  }
+}
+
 class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
   val io = new Bundle {
     val enq = new CMDQIO().flip
     val deq = new CMDQIO()
+    val counters = new CMDQCounterIO()
   }
 
-  io.deq.cmd <> Queue(io.enq.cmd, confvcmdq.ncmd)
-  io.deq.imm <> Queue(io.enq.imm, confvcmdq.nimm)
-  io.deq.rd <> Queue(io.enq.rd, confvcmdq.nrd)
-  io.deq.cnt <> Queue(io.enq.cnt, confvcmdq.ncnt)
-  io.deq.status <> Queue(io.enq.status, confvcmdq.nstatus)
+  val (qcmd, ccmd) = QueueWithCount(io.enq.cmd, confvcmdq.ncmd)
+  io.deq.cmd <> qcmd
+  io.counters.cmd <> ccmd
+
+  val (qimm, cimm) = QueueWithCount(io.enq.imm, confvcmdq.nimm)
+  io.deq.imm <> qimm
+  io.counters.imm <> cimm
+
+  val (qrd, crd) = QueueWithCount(io.enq.rd, confvcmdq.nrd)
+  io.deq.rd <> qrd
+  io.counters.rd <> crd
+
+  val (qcnt, ccnt) = QueueWithCount(io.enq.cnt, confvcmdq.ncnt)
+  io.deq.cnt <> qcnt
+  io.counters.cnt <> ccnt
+
+  val (qstatus, cstatus) = QueueWithCount(io.enq.status, confvcmdq.nstatus)
+  io.deq.status <> qstatus
+  io.counters.status <> cstatus
+}
+
+class RoCCCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
+  val req = new CMDQCounterIO
+  val resp = UInt(width = log2Up(2))
 }
 
 class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -131,6 +175,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       val vu = new CMDQIO
       val vru = new CMDQIO
     }
+    val counters = new RoCCCounterIO
   }
 
   // COLIN TODO FIXME: make these types play nice with chisel3
@@ -397,6 +442,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   io.cmdqs.vru.imm <> vrucmdq.io.deq.imm
   io.cmdqs.vru.rd <> vrucmdq.io.deq.rd
   io.cmdqs.vru.status <> vrucmdq.io.deq.status
+
+  io.counters.req <> cmdq.io.counters
+  io.counters.resp := respq.io.count
 
  // COLIN FIXME: update keepcfg
   keepcfg :=
