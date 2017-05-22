@@ -1,26 +1,26 @@
 package hwacha
 
 import Chisel._
-import cde._
-import cde.Implicits._
+import config._
 import scala.collection.mutable.LinkedHashSet
-import uncore.tilelink._
 import uncore.agents._
 import rocket._
+import tile._
 import coreplex._
 import rocketchip._
 import util._
+import diplomacy._
 
-object DefaultHwachaConfig {
- val topDefs:cde.World.TopDefs = { case (pname,site,here) => pname match {
-    case "HwI" => {
-      case NSets => 64
-      case NWays => 2
-      case RowBits => 2 * site(CoreInstBits)
-      case NTLBEntries => 8
-      case CacheIdBits => 0
-      case SplitMetadata => false
-    }:PartialFunction[Any, Any]
+
+class DefaultHwachaConfig extends Config((site, here, up) => {
+    case HwachaIcacheKey => ICacheParams(
+      nSets = 64,
+      nWays = 1,
+      rowBits = 1 * 64,
+      nTLBEntries = 8,
+      fetchBytes = 8, // Fetch one 8 byte instruction
+      latency = 1
+    )
     // Same as core's icache: NITLBEntries, NRAS, ECCCode, WordBits, Replacer
 
     case HwachaCommitLog => true
@@ -39,7 +39,6 @@ object DefaultHwachaConfig {
 
     case HwachaNDTLB => 8
     case HwachaNPTLB => 2
-    case HwachaCacheBlockOffsetBits => site(CacheBlockOffsetBits)
     case HwachaLocalScalarFPU => false
 
     // Multi-lane constants
@@ -48,7 +47,7 @@ object DefaultHwachaConfig {
     // lane constants
     case HwachaBankWidth => 128
     case HwachaNBanks => 4
-    case HwachaNSRAMRFEntries => Knob("HWACHA_NSRAMRF_ENTRIES")
+    case HwachaNSRAMRFEntries => 256
     case HwachaNFFRFEntries => 16
     case HwachaNFFRFReadPorts => 3
     case HwachaNPredRFEntries => 256
@@ -77,61 +76,38 @@ object DefaultHwachaConfig {
     case HwachaNVLTEntries => 64
 
     case HwachaNSMUEntries => 16
-    case HwachaBuildVRU => Knob("HWACHA_BUILD_VRU")
+    case HwachaBuildVRU => true
 
-    // +2 comes from the overhead of tagging for the arbitration
-    case RoccMaxTaggedMemXacts =>
-      math.max(site(HwachaNVLTEntries), site(HwachaNSMUEntries))
-    case BuildRoCC => {
-      import HwachaTestSuites._
-      TestGeneration.addSuites(rv64uv.map(_("p")))
-      TestGeneration.addSuites(rv64uv.map(_("vp")))
-      // no excep or vm in v4 yet
-      //TestGeneration.addSuites((if(site(UseVM)) List("pt","v") else List("pt")).flatMap(env => rv64uv.map(_(env))))
-      TestGeneration.addSuite(rv64sv("p"))
-      TestGeneration.addSuite(hwachaBmarks)
-      TestGeneration.addVariable("SRC_EXTENSION", "$(base_dir)/hwacha/$(src_path)/*.scala")
-      TestGeneration.addVariable("DISASM_EXTENSION", "--extension=hwacha")
-      Seq(RoccParameters(
-        opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
-        generator = (p: Parameters) => {
-          Module(new Hwacha()(p.alterPartial({
-          case FetchWidth => 1
-          case CoreInstBits => 64
-          })))
-          },
-        nMemChannels = site(HwachaNLanes),
-        nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
-        useFPU = true))
-    }
+    case RocketTilesKey => up(RocketTilesKey, site) map { r =>
+      r.copy(
+        rocc = {
+        import HwachaTestSuites._
+        TestGeneration.addSuites(rv64uv.map(_("p")))
+        TestGeneration.addSuites(rv64uv.map(_("vp")))
+        // no excep or vm in v4 yet
+        //TestGeneration.addSuites((if(site(UseVM)) List("pt","v") else List("pt")).flatMap(env => rv64uv.map(_(env))))
+        TestGeneration.addSuite(rv64sv("p"))
+        TestGeneration.addSuite(hwachaBmarks)
+        TestGeneration.addVariable("SRC_EXTENSION", "$(base_dir)/hwacha/$(src_path)/*.scala")
+        TestGeneration.addVariable("DISASM_EXTENSION", "--extension=hwacha")
+        Seq(RoCCParams(
+          opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
+          generator = (p: Parameters) => {
+            LazyModule(new Hwacha()(p))},
+          nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
+          useFPU = true))
+    })}
     // Set TL network to 128bits wide
-    case TLKey("L1toL2") => site(TLKey("DefaultL1toL2")).copy(dataBeats = 4)
-    case TLKey("L2toMC") => site(TLKey("DefaultL2toMC")).copy(dataBeats = 4)
-    case TLKey("L2toMMIO") => site(TLKey("DefaultL2toMMIO")).copy(dataBeats = 4)
+    case L1toL2Config => TLBusConfig(beatBytes = 16)
 
     case HwachaConfPrec => true
-    case HwachaVRUMaxOutstandingPrefetches => Knob("HWACHA_VRU_THROTTLE")
-    case HwachaVRUEarlyIgnore => Knob("HWACHA_VRU_EARLY_IGNORE")
-    case HwachaVRUMaxRunaheadBytes => Knob("HWACHA_VRU_DIST_THROTTLE")
-    case HwachaCMDQLen => Knob("HWACHA_CMDQ_LEN")
-    case HwachaVSETVLCompress => Knob("HWACHA_VSETVL_COMPRESS")
-    case _ => throw new CDEMatchError
-
+    case HwachaVRUMaxOutstandingPrefetches => 20
+    case HwachaVRUEarlyIgnore => 1
+    case HwachaVRUMaxRunaheadBytes => 16777216
+    case HwachaCMDQLen => 32
+    case HwachaVSETVLCompress => true
   }
-}
-}
-class DefaultHwachaConfig extends Config (
-  topDefinitions = DefaultHwachaConfig.topDefs ,
-  knobValues = {
-    case "HWACHA_NSRAMRF_ENTRIES" => 256
-    case "HWACHA_BUILD_VRU" => true
-    case "HWACHA_VRU_THROTTLE" => 20 // try 8, 16, 20, 32, 64
-    case "HWACHA_VRU_EARLY_IGNORE" => 1 // try 0, 1, 2, 3, 4
-    case "HWACHA_VRU_DIST_THROTTLE" => 16777216 // try 8, 16, 32, 64, 128, 256, 512, 2048
-    case "HWACHA_CMDQ_LEN" => 32 // try 8, 16, 32, 64, 128
-    case "HWACHA_VSETVL_COMPRESS" => true
-    case _ => throw new CDEMatchError
-  })
+)
 
 class VectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-vec")
 class ScalarVectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-svec")

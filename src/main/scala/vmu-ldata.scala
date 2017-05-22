@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class TableWIO[T <: Data](gen: => T, sztag: Int)
   extends DecoupledIO(gen) {

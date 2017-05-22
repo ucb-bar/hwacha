@@ -1,9 +1,10 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import DataGating._
 import HardFloatHelper._
+import tile.FType
 
 class FCmpOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFCUFn
@@ -16,7 +17,7 @@ class FCmpResult(implicit p: Parameters) extends VXUBundle()(p) {
   val cmp = Bits(width = nPack)
 }
 
-class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
+class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with tile.HasFPUParameters {
   val io = new Bundle {
     val req = Valid(new FCmpOperand).flip
     val resp = Valid(new FCmpResult)
@@ -59,25 +60,29 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val classifys =
     ins zip List(wdp, wsp, whp) map {
       case ((input0, input1), (exp, sig)) => {
-        val c0 = rocket.ClassifyRecFN(exp, sig, input0)
-        val c1 = rocket.ClassifyRecFN(exp, sig, input1)
+        val c0 = FType(exp, sig).classify(input0)
+        val c1 = FType(exp, sig).classify(input1)
         (c0, c1)
       }
     }
 
   val results =
-    List((unpack_d _, expand_float_d _),
-         (unpack_w _, expand_float_s _),
-         (unpack_h _, expand_float_h _)) zip cmps zip classifys map {
-      case (((unpack, expand), cmp), classify) => {
+    List((unpack_d _, expand_float_d _, FType.D),
+         (unpack_w _, expand_float_s _, FType.S),
+         (unpack_h _, expand_float_h _, FType(whp._1, whp._2))) zip cmps zip ins zip classifys map {
+      case ((((unpack, expand, fType), cmp), (input0, input1)), classify) => {
         val less = cmp.lt
-        val want_min = fn.op_is(FC_MIN)
-        val in0_nan = classify._1(8) || classify._1(9) // isNaN, 8: sNaN, 9: qNaN
-        val in1_nan = classify._2(8) || classify._2(9) // isNaN, 8: sNaN, 9: qNaN
+        val in0_nan = fType.isNaN(input0)
+        val in1_nan = fType.isNaN(input1)
+        val isInvalid = fType.isSNaN(input0) || fType.isSNaN(input1)
+        val isNaNOut = isInvalid || (in0_nan && in1_nan)
+        val want_min = in1_nan || (fn.op_is(FC_MIN) === less) && !in0_nan
         val in0_minmax = expand(unpack(in0, 0))
         val in1_minmax = expand(unpack(in1, 0))
+        val qnan = fType.qNaN
+        val ieeeNaN = if(fType == FType.S || fType == FType.D) ieee(qnan, fType) else qnan
         val minmax =
-          Mux(in1_nan || !in0_nan && (want_min === less), in0_minmax, in1_minmax)
+          Mux(isNaNOut, ieeeNaN, Mux(want_min, in0_minmax, in1_minmax))
         val sel = List(FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
         val in = List(
           minmax,        // FC_MIN

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import DataGating._
 import HardFloatHelper._
 
@@ -13,7 +13,7 @@ class FDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
 
 class FDivResult extends Bundle {
   val out = Bits(width = SZ_D)
-  val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
+  val exc = Bits(width = tile.FPConstants.FLAGS_SZ)
 }
 
 class FDivIO(implicit p: Parameters) extends VXUBundle()(p) {
@@ -23,7 +23,7 @@ class FDivIO(implicit p: Parameters) extends VXUBundle()(p) {
 
 class FDivTag(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFDUFn
-  val exc = Bits(width = rocket.FPConstants.FLAGS_SZ)
+  val exc = Bits(width = tile.FPConstants.FLAGS_SZ)
 }
 
 class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {

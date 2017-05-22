@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.{Parameters, Field}
+import config._
 
 case object FastMulDiv extends Field[Boolean]
 
@@ -36,7 +36,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
 
-  val div = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
+  val div = Module(new rocket.MulDiv(cfg = rocket.MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
   div.suggestName("divInst")
 
   div.io.req.valid := io.req.valid

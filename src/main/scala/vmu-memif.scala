@@ -1,7 +1,8 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
+import uncore.tilelink2._
 
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {
@@ -107,20 +108,16 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     Mux(sret_resp_en, Cat(Bits(0,1), sret_resp.decode()), UInt(0))
 }
 
-class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
-  import uncore.tilelink._
-
+class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val vmu = new VMUMemIO().flip
-    val dmem = new ClientUncachedTileLinkIO
+    val dmem = TLBundle(edge.bundle)
   }
-
-  private val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
 
   private val req = io.vmu.req
   private val resp = io.vmu.resp
-  private val acquire = io.dmem.acquire
-  private val grant = io.dmem.grant
+  private val acquire = io.dmem.a
+  private val grant = io.dmem.d
 
   val cmd = DecodedMemCommand(req.bits.fn.cmd)
   assert(!req.valid || cmd.load || cmd.store || cmd.amo,
@@ -128,32 +125,47 @@ class VMUTileLink(implicit p: Parameters) extends VMUModule()(p) {
 
   req.ready := acquire.ready
   acquire.valid := req.valid
+  val req_tag = Cat(cmd.read, req.bits.tag)
 
-  val acq_type = Mux1H(Seq(cmd.load, cmd.store, cmd.amo),
-    Seq(Acquire.getType, Acquire.putType, Acquire.putAtomicType))
+  val acq_amo = MuxLookup(req.bits.fn.cmd, Wire(new TLBundleA(edge.bundle)), Seq(
+    M_XA_SWAP -> edge.Logical(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.SWAP)._2,
+    M_XA_XOR  -> edge.Logical(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.XOR)._2,
+    M_XA_OR   -> edge.Logical(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.OR)._2,
+    M_XA_AND  -> edge.Logical(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.AND)._2,
+    M_XA_ADD  -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.ADD)._2,
+    M_XA_MIN  -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.MIN)._2,
+    M_XA_MAX  -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.MAX)._2,
+    M_XA_MINU -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.MINU)._2,
+    M_XA_MAXU -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.MAXU)._2
+  ))
 
-  val acq_shift = req.bits.addr(tlByteAddrBits-1, 0)
-  val acq_union_amo = Cat(acq_shift, req.bits.fn.mt, req.bits.fn.cmd)
-  val acq_union = Cat(Mux1H(Seq(
-      (cmd.load, req.bits.fn.cmd),
-      (cmd.store, req.bits.mask),
-      (cmd.amo, acq_union_amo))),
-    Bool(true))
+  val alignment = Mux(~req.bits.addr(0),
+                    Mux(~req.bits.addr(1),
+                      Mux(~req.bits.addr(2),
+                         Mux(~req.bits.addr(3), 4.U, 3.U),
+                      2.U),
+                    1.U),
+                  0.U)
+  val req_size = alignment//Max(req.bits.fn.mt, alignment)
+  val req_addr_beat_aligned = (req.bits.addr >> UInt(tlByteAddrBits)) << UInt(tlByteAddrBits)
+  acquire.bits := Mux1H(Seq(
+    cmd.load -> edge.Get(req_tag, req_addr_beat_aligned, 4.U)._2,
+    cmd.store -> Mux(req.bits.mask.andR,
+      edge.Put(req_tag, req.bits.addr, 4.U, req.bits.data)._2,
+      edge.Put(req_tag, req.bits.addr, req_size, req.bits.data, req.bits.mask)._2),
+    cmd.amo -> acq_amo
+  ))
 
-  acquire.bits := Acquire(
-    is_builtin_type = Bool(true),
-    a_type = acq_type,
-    client_xact_id = req.bits.tag,
-    addr_block = req.bits.addr(bPAddr-1, tlBlockAddrOffset),
-    addr_beat = req.bits.addr(tlBlockAddrOffset-1, tlByteAddrBits),
-    data = req.bits.data,
-    union = acq_union)
-
-  val resp_en = grant.bits.hasData() || resp.bits.store
+  val resp_en = edge.hasData(grant.bits) || resp.bits.store
   grant.ready := !resp_en || resp.ready
 
   resp.valid := grant.valid && resp_en
-  resp.bits.tag := grant.bits.client_xact_id
+  resp.bits.tag := grant.bits.source(bVMUTag-1,0)
   resp.bits.data := grant.bits.data
-  resp.bits.store := grant.bits.isBuiltInType(Grant.putAckType)
+  resp.bits.store := grant.bits.opcode === TLMessages.AccessAck
+
+  //Tie off unused channels
+  io.dmem.b.ready := Bool(true)
+  io.dmem.c.valid := Bool(false)
+  io.dmem.e.valid := Bool(false)
 }

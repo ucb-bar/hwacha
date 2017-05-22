@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.{Parameters, Field}
+import config._
 import DataGating._
 
 case object HwachaNSeqEntries extends Field[Int]
@@ -18,7 +18,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
   val maxPredWPortLatency = expLatency +
     List(stagesPLU, 2 + 1 + stagesALU, 2 + 1 + stagesFCmp).max
   val bPredWPortLatency = log2Down(maxPredWPortLatency) + 1
-  val maxLookAhead = math.max(tlDataBits / SZ_B, nStrip)
+  val maxLookAhead = math.max((tlDataBytes*8) / SZ_B, nStrip)
   val bLookAhead = log2Down(maxLookAhead) + 1
 
   // the following needs to hold in order to simplify dhazard_war checking

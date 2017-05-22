@@ -1,9 +1,17 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
+import diplomacy._
+import uncore.tilelink2._
 
-class VectorUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqParameters {
+class VectorUnit(implicit p: Parameters) extends LazyModule {
+  lazy val module = new VectorUnitModule(this)
+  val masterNode = TLClientNode(
+    TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, 2*p(HwachaNVLTEntries))))
+}
+
+class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyModuleImp(outer) with SeqParameters {
   val io = new Bundle {
     val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
@@ -15,17 +23,18 @@ class VectorUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqParam
     val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
     val tlb = new RTLBIO
-    val dmem = new uncore.tilelink.ClientUncachedTileLinkIO
+    val dmem = outer.masterNode.bundleOut
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
   }
+  val edge = outer.masterNode.edgesOut.head
 
   val vxu = Module(new VXU)
   vxu.suggestName("vxuInst")
   val vmu = Module(new VMU)
   vmu.suggestName("vmuInst")
-  val memif = Module(new VMUTileLink)
+  val memif = Module(new VMUTileLink(edge))
   memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
   mrt.suggestName("mrtInst")
@@ -51,7 +60,7 @@ class VectorUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqParam
 
   io.red <> vxu.io.red
   io.tlb <> vmu.io.tlb
-  io.dmem <> memif.io.dmem
+  io.dmem.head <> memif.io.dmem
   io.pending <> mrt.io.pending
 
   vmu.io.xcpt.prop.vmu.stall := Bool(false)

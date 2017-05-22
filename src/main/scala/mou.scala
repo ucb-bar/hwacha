@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class MOCheck(implicit p: Parameters) extends HwachaBundle()(p) {
   val load = Bool()

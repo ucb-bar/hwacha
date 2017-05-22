@@ -1,12 +1,15 @@
 package hwacha
 
 import Chisel._
-import cde.{Parameters, Field}
+import config._
 import util.ParameterizedBundle
-import rocket.NTLBEntries
-import rocket.RoCCInterface
+import tile._
+import rocket.ICacheParams
+import diplomacy._
+import uncore.tilelink2._
 
 case object HwachaCommitLog extends Field[Boolean]
+case object HwachaIcacheKey extends Field[ICacheParams]
 case object HwachaNLanes extends Field[Int]
 case object HwachaNBanks extends Field[Int]
 case object HwachaNAddressRegs extends Field[Int]
@@ -20,7 +23,6 @@ case object HwachaBankWidth extends Field[Int]
 case object HwachaRegLen extends Field[Int]
 case object HwachaNDTLB extends Field[Int]
 case object HwachaNPTLB extends Field[Int]
-case object HwachaCacheBlockOffsetBits extends Field[Int]
 case object HwachaLocalScalarFPU extends Field[Boolean]
 case object HwachaBuildVRU extends Field[Boolean]
 case object HwachaConfPrec extends Field[Boolean]
@@ -37,7 +39,7 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends rocket.HasCoreParameters {
+abstract trait UsesHwachaParameters extends tile.HasCoreParameters {
   implicit val p: Parameters
 
   val commit_log = p(HwachaCommitLog)
@@ -85,11 +87,11 @@ abstract trait UsesHwachaParameters extends rocket.HasCoreParameters {
   val maxMLVLen = nLanes * maxVLen
   val bMLVLen = log2Down(maxMLVLen) + 1
 
-  val local_sfpu = p(HwachaLocalScalarFPU)
+  val local_sfpu = false //p(HwachaLocalScalarFPU) //TODO: Fix local fpu for new encoding
 
   val ndtlb = p(HwachaNDTLB)
   val nptlb = p(HwachaNPTLB)
-  val confvru = p(HwachaBuildVRU)
+  val confvru = false//p(HwachaBuildVRU) //TODO: Fix prefetcher using TL2 Hints
   val confprec = p(HwachaConfPrec)
 
   val confvcmdq = new {
@@ -115,25 +117,51 @@ class HwachaCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vru = new VRUCounterIO
 }
 
-class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaParameters
+class Hwacha(implicit p: Parameters) extends LazyRoCC
+  with UsesHwachaParameters {
+  override lazy val module = new HwachaImp(this)
+
+  val icache = LazyModule(new HwachaFrontend())
+  val smu = LazyModule(new SMU())
+  val vus = Seq.fill(nLanes) {LazyModule(new VectorUnit())}
+  val atlBus = LazyModule(new TLXbar)
+
+  atlNode := atlBus.node
+  atlBus.node := icache.masterNode
+  atlBus.node := smu.masterNode
+  val vru = if(confvru) {
+    val vruM = LazyModule(new VRU)
+    atlBus.node := vruM.masterNode
+    Some(vruM)
+  } else None
+  vus.map(_.masterNode).foreach { tlNode := _ }
+}
+
+class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(outer)
+  with UsesHwachaParameters
 {
-  override val io = new RoCCInterface {
+  // TODO: Re-add counters
+  /*
+  override val io = new RoCCIO {
     val counters = new HwachaCounterIO
   }
+  */
   import HwachaDecodeTable._
   import Commands._
 
+  val atlEdge = outer.atlNode.edgesOut.head
+  val tlEdge = outer.tlNode.edgesOut.head
+
   val rocc = Module(new RoCCUnit)
-  val icache = Module(new HwachaFrontend()(p.alterPartial({case uncore.agents.CacheName => "HwI"})))
+  val icache = outer.icache.module
   val scalar = Module(new ScalarUnit)
   val mseq = Module(new MasterSequencer)
-  val vus = Seq.fill(nLanes) {Module(new VectorUnit())}
+  val vus = outer.vus.map(_.module)
   val rpred = Module(new RPredMaster)
   val rfirst = Module(new RFirstMaster)
-  val smu = Module(new SMU)
+  val smu = outer.smu.module
   val mou = Module(new MemOrderingUnit)
-  val ptlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => nptlb})))
-  val imemarb = Module(new uncore.tilelink.ClientTileLinkIOArbiter(if (confvru) 3 else 2))
+  val ptlb = Module(new rocket.TLB(lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -141,7 +169,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   io.busy <> rocc.io.rocc.busy
   io.interrupt <> rocc.io.rocc.interrupt
   rocc.io.rocc.exception <> io.exception
-  io.counters.rocc <> rocc.io.counters
+  //io.counters.rocc <> rocc.io.counters
 
   // Connect RoccUnit to ScalarUnit
   rocc.io.pending.mseq := mseq.io.pending.all
@@ -166,12 +194,12 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
   if (confvru) {
-    val vru = Module(new VRU)
+    val vru = outer.vru.get.module
     icache.io.vru <> vru.io.imem
     vru.io.cmdq <> rocc.io.cmdqs.vru
-    imemarb.io.in(2) <> vru.io.dmem
+    outer.atlBus.node.bundleIn(2) := vru.io.dmem
     vru.io.vf_complete_ack := mseq.io.vf.last
-    io.counters.vru <> vru.io.counters
+    //io.counters.vru <> vru.io.counters
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
     rocc.io.cmdqs.vru.cmd.ready := Bool(true)
@@ -183,11 +211,11 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
     icache.io.vru.req.valid := Bool(false)
     icache.io.vru.active := Bool(false)
 
-    io.counters.vru <> (new VRUCounterIO).fromBits(UInt(0))
+    //io.counters.vru <> (new VRUCounterIO).fromBits(UInt(0))
   }
-  imemarb.io.in(0) <> icache.io.mem
-  imemarb.io.in(1) <> smu.io.dmem
-  io.autl <> imemarb.io.out
+  outer.atlBus.node.bundleIn(0) := icache.io.mem
+  outer.atlBus.node.bundleIn(1) := smu.io.dmem
+  io.atl <> outer.atlBus.node.bundleOut
   io.ptw(0) <> icache.io.ptw
 
   // Connect supporting Hwacha memory modules to external ports
@@ -197,6 +225,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   smu.io.scalar <> scalar.io.smu
   //ptlb.io <> smu.io.tlb
   ptlb.io.req <> smu.io.tlb.req
+  ptlb.io.req.bits := smu.io.tlb.req.bits.req
   smu.io.tlb.resp  <> ptlb.io.resp
   io.ptw(1) <> ptlb.io.ptw
   ptlb.io.ptw.status := smu.io.tlb.req.bits.status
@@ -233,7 +262,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
   }
   scalar.io.pending.mseq <> mseq.io.pending
   mseq.io.vf.stop := scalar.io.vf_stop
-  io.counters.mseq <> mseq.io.counters
+  //io.counters.mseq <> mseq.io.counters
 
   rpred.io.op.valid := fire_vxu(mask_rpred_ready, enq_rpred)
   rpred.io.op.bits <> scalar.io.vxu.bits
@@ -253,7 +282,7 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
   (vus zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)
-    val dtlb = Module(new rocket.TLB()(p.alterPartial({case NTLBEntries => ndtlb})))
+    val dtlb = Module(new rocket.TLB(lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))
@@ -269,10 +298,17 @@ class Hwacha()(implicit p: Parameters) extends rocket.RoCC()(p) with UsesHwachaP
 
     //dtlb.io <> vu.io.tlb
     dtlb.io.req <> vu.io.tlb.req
+    dtlb.io.req.bits := vu.io.tlb.req.bits.req
     vu.io.tlb.resp <> dtlb.io.resp
     io.ptw(2 + i) <> dtlb.io.ptw
     dtlb.io.ptw.status := vu.io.tlb.req.bits.status
 
-    io.utl(i) <> vu.io.dmem
+    io.tl(i) <> vu.io.dmem
+  }
+  //Tie off unused channels
+  (io.tl ++ io.atl).foreach { chan =>
+    chan.b.ready := Bool(true)
+    chan.c.valid := Bool(false)
+    chan.e.valid := Bool(false)
   }
 }

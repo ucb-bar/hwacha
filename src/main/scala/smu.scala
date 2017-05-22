@@ -1,7 +1,9 @@
 package hwacha
 
 import Chisel._
-import cde.{Parameters, Field}
+import config._
+import uncore.tilelink2._
+import diplomacy._
 
 case object HwachaNSMUEntries extends Field[Int]
 
@@ -50,17 +52,23 @@ class SMUEntry(implicit p: Parameters) extends SMUBundle()(p)
   val offset = UInt(width = tlByteAddrBits)
 }
 
-class SMU(implicit p: Parameters) extends HwachaModule()(p)
+class SMU(implicit p: Parameters) extends LazyModule
+  with UsesHwachaParameters {
+  lazy val module = new SMUModule(this)
+  val masterNode = TLClientNode(TLClientParameters(name = "HwachaSMU", sourceId = IdRange(0, p(HwachaNSMUEntries))))
+}
+
+class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with SMUParameters {
-  import uncore.tilelink._
 
   val io = new Bundle {
     val scalar = new SMUIO().flip
-    val dmem = new ClientUncachedTileLinkIO
+    val dmem = outer.masterNode.bundleOut
 
     val tlb = new RTLBIO
     val irq = new IRQIO
   }
+  val edge = outer.masterNode.edgesOut.head
 
   val table = Module(new Table(nSMU, new SMUEntry))
   table.suggestName("tableInst")
@@ -70,7 +78,7 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   //--------------------------------------------------------------------\\
   // request
   //--------------------------------------------------------------------\\
-  private val acquire = io.dmem.acquire
+  private val acquire = io.dmem.head.a
 
   val req = Reg(io.scalar.req.bits)
   val req_mt = DecodedMemType(req.fn.mt)
@@ -87,10 +95,6 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   io.tlb <> tbox.io.outer
   io.irq <> tbox.io.irq
 
-  private val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
-
-  val addr_block = req.addr(bPAddr-1, tlBlockAddrOffset)
-  val addr_beat = req.addr(tlBlockAddrOffset-1, tlByteAddrBits)
   val addr_offset = req.addr(tlByteAddrBits-1, 0)
 
   private def mts(mt: DecodedMemType) = Seq(mt.b, mt.h, mt.w, mt.d)
@@ -109,9 +113,10 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   tw.bits.mt := req.fn.mt
   tw.bits.offset := addr_offset
 
+  val SMUID = 1.U(2.W)
   acquire.bits := Mux(req_store,
-    Put(tw.tag, addr_block, addr_beat, req_data, Some(req_mask)),
-    Get(tw.tag, addr_block, addr_beat))
+    edge.Put(tw.tag, req.addr, req_mt.shift(), req_data, req_mask)._2,
+    edge.Get(tw.tag, req.addr, req_mt.shift())._2)
 
   private def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(acquire.ready, tw.ready)
@@ -155,12 +160,12 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   //--------------------------------------------------------------------\\
   // request
   //--------------------------------------------------------------------\\
-  private val grant = io.dmem.grant
+  private val grant = io.dmem.head.d
 
   io.scalar.resp.valid := grant.valid
   grant.ready := io.scalar.resp.ready
   tr.valid := io.scalar.resp.fire()
-  tr.bits := grant.bits.client_xact_id
+  tr.bits := grant.bits.source(log2Up(nSMU)-1,0)
 
   val resp_mt = DecodedMemType(tr.record.mt)
   val resp_shift = Cat(tr.record.offset, UInt(0,3))
@@ -173,10 +178,15 @@ class SMU(implicit p: Parameters) extends HwachaModule()(p)
   })
   val resp_extend = Fill(regLen-8, resp_mt.signed && resp_sign)
 
-  io.scalar.resp.bits.store := grant.bits.isBuiltInType(Grant.putAckType)
+  io.scalar.resp.bits.store := grant.bits.opcode === TLMessages.AccessAck
   io.scalar.resp.bits.tag := tr.record.tag
   io.scalar.resp.bits.data := Cat(
     (resp_data(regLen-1, 8) & resp_mask) |
       (resp_extend & (~resp_mask)),
     resp_data(7, 0))
+
+  //Tie off unused channels
+  io.dmem.head.b.ready := Bool(true)
+  io.dmem.head.c.valid := Bool(false)
+  io.dmem.head.e.valid := Bool(false)
 }

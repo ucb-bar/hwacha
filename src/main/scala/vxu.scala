@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class VXU(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {

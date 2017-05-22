@@ -1,13 +1,13 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
     val addr = UInt(width = bVAddrExtended)
     val store = Bool()
     val mt = new DecodedMemType
-    val status = new rocket.MStatus
+    val status = new rocket.MStatus()
 }
 
 class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
@@ -22,8 +22,9 @@ class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   def paddr(dummy: Int = 0): UInt = Cat(this.resp.ppn, this.pgidx())
 }
 
-class RTLBReqWithStatus(implicit p: Parameters) extends rocket.TLBReq()(p) {
-  val status = new rocket.MStatus
+class RTLBReqWithStatus(implicit p: Parameters) extends VMUBundle()(p) {
+  val req = new rocket.TLBReq(log2Ceil(p(HwachaRegLen)))(p)
+  val status = new rocket.MStatus()
 }
 
 class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
@@ -31,16 +32,19 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   val resp = (new rocket.TLBResp()).flip
 
   def bridge(client: TLBIO) {
-    this.req.bits.vpn := client.vpn()
-    this.req.bits.store := client.req.bits.store
-    this.req.bits.passthrough := Bool(false)
-    this.req.bits.instruction := Bool(false)
+    this.req.bits.req.vaddr := client.req.bits.addr
+    this.req.bits.req.passthrough := Bool(false)
+    this.req.bits.req.instruction := Bool(false)
+    this.req.bits.req.store := client.req.bits.store
+    this.req.bits.req.sfence.valid := Bool(false)
+    this.req.bits.req.size := client.req.bits.mt.shift()
+    this.req.bits.req.cmd := client.req.bits.store // for now just give whether its read or write M_XRD or M_XWR
     this.req.bits.status := client.req.bits.status
 
     this.req.valid := client.req.valid
     client.req.ready := this.req.ready && !this.resp.miss
 
-    client.resp.ppn := this.resp.ppn
+    client.resp.ppn := this.resp.paddr(bPAddr-1, bPgIdx)
   }
 }
 
@@ -78,8 +82,8 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val xcpts = Seq(
     ma && read,
     ma && write,
-    io.outer.resp.xcpt_ld && read,
-    io.outer.resp.xcpt_st && write)
+    io.outer.resp.pf.ld && read,
+    io.outer.resp.pf.st && write)
   val irqs = Seq(
     io.irq.vmu.ma_ld,
     io.irq.vmu.ma_st,

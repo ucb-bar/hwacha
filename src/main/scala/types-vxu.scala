@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 abstract class VXUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
   extends HwachaModule(clock, _reset)(p) with SeqParameters with LaneParameters with DCCParameters with ExpParameters
@@ -45,7 +45,7 @@ class VIDUFn(implicit p: Parameters) extends VIXUFn(SZ_VIDU_OP)(p)
 
 class VFXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
   val fp = UInt(width = SZ_FP)
-  val rm = UInt(width = rocket.FPConstants.RM_SZ)
+  val rm = UInt(width = tile.FPConstants.RM_SZ)
   val op = UInt(width = sz_op)
 
   def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
@@ -570,7 +570,7 @@ class VGUAck(implicit p: Parameters) extends BankPred
 class VQUAck(implicit p: Parameters) extends BankPred
 
 class VFXUAck(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
-  val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
+  val exc = Bits(OUTPUT, tile.FPConstants.FLAGS_SZ)
 }
 
 class VFMUAck(implicit p: Parameters) extends VFXUAck()(p)

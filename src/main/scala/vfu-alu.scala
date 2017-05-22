@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class ALUOperand(implicit p: Parameters) extends VXUBundle()(p)
   with LanePred with Rate {

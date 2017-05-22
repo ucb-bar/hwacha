@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import Commands._
 import util._ //implicits for bitpats
 
@@ -161,7 +161,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   import HwachaDecodeTable._
 
   val io = new Bundle {
-    val rocc = new rocket.RoCCInterface
+    val rocc = new tile.RoCCCoreIO
 
     val vf_active = Bool(INPUT)
     val pending = new Bundle {

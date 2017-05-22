@@ -25,6 +25,8 @@ trait MachineConstants {
   val SZ_W = 32
   val SZ_H = 16
   val SZ_B = 8
+
+  val HwachaElementInstBytes = HwachaElementInstructions.VSTOP.getWidth/8
 }
 
 trait PrecisionConstants {

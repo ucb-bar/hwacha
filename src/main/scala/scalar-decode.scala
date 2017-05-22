@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import HwachaElementInstructions._
 import rocket.ALU._
 import util._
@@ -62,7 +62,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val vrpu_val = Bool()
   val vrpu_fn = Bits(width = FR_X.getWidth)
   val vrfu_val = Bool()
-  val fpu_fn = new rocket.FPUCtrlSigs
+  val fpu_fn = new tile.FPUCtrlSigs
 
   val vp = UInt(width = bPRegs)
   val vs1 = UInt(width = bRegs)
@@ -95,8 +95,9 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
         vfvu_val, vfvu_fn,
         vrpu_val,
         vrfu_val,
-        fpu_fn.cmd, fpu_fn.ldst, fpu_fn.wen, fpu_fn.ren1, fpu_fn.ren2, fpu_fn.ren3, fpu_fn.swap12, fpu_fn.swap23, fpu_fn.single, fpu_fn.fromint,
-        fpu_fn.toint, fpu_fn.fastpipe, fpu_fn.fma, fpu_fn.div, fpu_fn.sqrt, fpu_fn.round, fpu_fn.wflags)
+        fpu_fn.ldst, fpu_fn.wen, fpu_fn.ren1, fpu_fn.ren2, fpu_fn.ren3, fpu_fn.swap12,
+          fpu_fn.swap23, fpu_fn.singleIn, fpu_fn.singleOut, fpu_fn.fromint, fpu_fn.toint,
+          fpu_fn.fastpipe, fpu_fn.fma, fpu_fn.div, fpu_fn.sqrt, fpu_fn.wflags)
     sigs zip decoder map {case(s,d) => s := d}
     vd_type := reg_type(vd_t, vd_dyn, inst(OPC_VD))
     vs1_type := reg_type(vs1_t, vs1_dyn, inst(OPC_VS1))

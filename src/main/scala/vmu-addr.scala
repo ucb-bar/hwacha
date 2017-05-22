@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class AGUOperand(implicit p: Parameters) extends VMUBundle()(p) {
   val base = UInt(width = bVAddrExtended)

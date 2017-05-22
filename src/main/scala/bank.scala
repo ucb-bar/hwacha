@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {

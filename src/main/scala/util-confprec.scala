@@ -2,7 +2,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 trait PrecLogic {
   def confprec_decode(prec: UInt): Seq[(Bool, Int)] =

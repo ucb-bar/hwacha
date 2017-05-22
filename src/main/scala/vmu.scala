@@ -1,7 +1,9 @@
 package hwacha
 
 import Chisel._
-import cde.{Parameters, Field}
+import config._
+import uncore.tilelink2.TLEdgeOut
+import tile.SharedMemoryTLEdge
 
 case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
@@ -10,7 +12,7 @@ case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVLTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
-  with uncore.tilelink.HasTileLinkParameters {
+  with tile.HasCoreParameters {
   val bVAddr = vaddrBits
   val bPAddr = paddrBits
   val bVAddrExtended = bVAddr + (if (bVAddr < regLen) 1 else 0)
@@ -20,7 +22,12 @@ trait MemParameters extends UsesHwachaParameters
   val bPgIdx = pgIdxBits
   val pgSize = 1 << bPgIdx
 
-  require((tlDataBits & (regLen - 1)) == 0)
+  val tlDataBytes = p(SharedMemoryTLEdge).manager.beatBytes
+  val tlByteAddrBits = log2Up(tlDataBytes)
+  val tlDataBits = tlDataBytes*8
+
+
+  require(((tlDataBytes*8) & (regLen - 1)) == 0)
 }
 
 trait VMUParameters extends MemParameters {
@@ -33,7 +40,6 @@ trait VMUParameters extends MemParameters {
 
   val nVLT = p(HwachaNVLTEntries)
   val bVMUTag = log2Up(nVLT)
-  require(tlClientXactIdBits >= bVMUTag)
 
   /* Maximum of two ongoing operations in the VMU */
   val maxVCU = maxVLen << 1

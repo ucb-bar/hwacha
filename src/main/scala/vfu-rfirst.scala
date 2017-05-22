@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import DataGating._
 
 class RFirstOperand(implicit p: Parameters) extends VXUBundle()(p) {

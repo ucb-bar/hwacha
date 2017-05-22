@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import DataGating._
 import HardFloatHelper._
 import scala.collection.mutable.ArrayBuffer
@@ -14,7 +14,7 @@ class FConvOperand(implicit p: Parameters) extends VXUBundle()(p)
 
 class FConvResult extends Bundle {
   val out = Bits(OUTPUT, SZ_D)
-  val exc = Bits(OUTPUT, rocket.FPConstants.FLAGS_SZ)
+  val exc = Bits(OUTPUT, tile.FPConstants.FLAGS_SZ)
 }
 
 class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {

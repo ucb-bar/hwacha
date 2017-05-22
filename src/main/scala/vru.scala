@@ -1,7 +1,9 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
+import uncore.tilelink2._
+import diplomacy._
 
 /*
  * TODO:
@@ -30,7 +32,7 @@ object VRUDecodeTable {
   import HwachaElementInstructions._
   import util._ //implicit uint to bitpat
 
-  /* list contains: 
+  /* list contains:
    * opwidth (2 bits, stored as 2^opwidth)
    * store (false for load, true for store)
    * prefetchable (0 for VRU ignore, 1 for VRU use)
@@ -65,14 +67,14 @@ class DecodedMemOp(implicit p: Parameters) extends HwachaBundle()(p) {
 /*
  * Formerly called ThrottleManager
  *
- * This module regulates the amount that the VRU can runahead by stalling 
+ * This module regulates the amount that the VRU can runahead by stalling
  * the decoding of VF blocks.
  *
- * It also measures the number of vf blocks that we are ahead/behind to 
+ * It also measures the number of vf blocks that we are ahead/behind to
  * facilitate skipping vf blocks to purposefully get ahead
  *
  * To deal with predication, runahead is always tracked at VF block granularity.
- * The runahead counter is always brought back into sync at the end of each 
+ * The runahead counter is always brought back into sync at the end of each
  * vf block, even with predication.
  */
 class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
@@ -99,7 +101,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   val MAX_RUNAHEAD = p(HwachaVRUMaxRunaheadBytes)
 
   // this queue tracks the number of bytes loaded/stored per vf block
-  // in flight (where in-flight = sent to prefetch stage, but not acked by 
+  // in flight (where in-flight = sent to prefetch stage, but not acked by
   // vxu)
   val bytesq = Module(new Queue(UInt(width=entrywidth), throttleQueueDepth))
   bytesq.suggestName("bytesqInst")
@@ -142,18 +144,18 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
  * The only throttling applied here is based on the allowed number of
  * outstanding requests
  */
-class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) 
+class PrefetchUnit(edge: TLEdgeOut, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
   with MemParameters {
-  import uncore.tilelink._
 
   val io = new Bundle {
     val memop = Decoupled(new DecodedMemOp).flip
-    val dmem = new ClientUncachedTileLinkIO
+    val dmem = TLBundle(edge.bundle)
   }
 
-  val tag_count = Reg(init = UInt(0, tlClientXactIdBits))
+  val tag_count = Reg(init = UInt(0, 5))//tlClientXactIdBits))
 
-  val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
+  val tlBlockAddrOffset =  tlByteAddrBits
+  //val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
   val req_addr = io.memop.bits.addr(bPAddr-1, tlBlockAddrOffset)
   val req_vlen = io.memop.bits.curr_vlen // vector len
   val req_opwidth = io.memop.bits.opwidth // byte = 0 ... double = 3
@@ -172,33 +174,36 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
 
   assert(remaining_allowed_prefetches <= MAX_OUTSTANDING_PREFETCHES, "VRU: THROTTLE TOO LARGE\n")
 
-  io.dmem.acquire.bits := Mux(req_ls === UInt(0), 
-    GetPrefetch(tag_count, req_addr+pf_ip_counter), 
-    PutPrefetch(tag_count, req_addr+pf_ip_counter))
+//TODO: fix-up once TL2 supports prefetches (Intent message type)
+/*
+  io.dmem.a.bits := Mux(req_ls === UInt(0),
+    edge.GetPrefetch(tag_count, req_addr+pf_ip_counter),
+    edge.PutPrefetch(tag_count, req_addr+pf_ip_counter))
+*/
 
-  io.dmem.acquire.valid := Bool(false)
+  io.dmem.a.valid := Bool(false)
   io.memop.ready := Bool(false)
 
-  when (io.memop.valid && !prefetch_ip && io.dmem.acquire.ready) {
+  when (io.memop.valid && !prefetch_ip && io.dmem.a.ready) {
     prefetch_ip := Bool(true)
     pf_ip_counter := UInt(0)
   }
 
-  val movecond1 = prefetch_ip && 
-    pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.acquire.ready && 
+  val movecond1 = prefetch_ip &&
+    pf_ip_counter < (num_blocks_pf-UInt(1)) && io.dmem.a.ready &&
     remaining_allowed_prefetches > UInt(0)
 
 
   when (movecond1) {
     pf_ip_counter := pf_ip_counter + UInt(1)
     tag_count := tag_count + UInt(1)
-    when (!io.dmem.grant.valid) {
+    when (!io.dmem.d.valid) {
       remaining_allowed_prefetches := remaining_allowed_prefetches - UInt(1)
     }
   }
 
-  val movecond2 = prefetch_ip && 
-    pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.acquire.ready && 
+  val movecond2 = prefetch_ip &&
+    pf_ip_counter === (num_blocks_pf - UInt(1)) && io.dmem.a.ready &&
     remaining_allowed_prefetches > UInt(0)
 
   when (movecond2) {
@@ -206,14 +211,14 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
     prefetch_ip := Bool(false)
     tag_count := tag_count + UInt(1)
     io.memop.ready := Bool(true)
-    when (!io.dmem.grant.valid) {
+    when (!io.dmem.d.valid) {
       remaining_allowed_prefetches := remaining_allowed_prefetches - UInt(1)
     }
   }
 
-  io.dmem.acquire.valid := prefetch_ip && remaining_allowed_prefetches > UInt(0)
-  io.dmem.grant.ready := Bool(true)
-  when (io.dmem.grant.valid) {
+  io.dmem.a.valid := prefetch_ip && remaining_allowed_prefetches > UInt(0)
+  io.dmem.d.ready := Bool(true)
+  when (io.dmem.d.valid) {
     when (!(movecond1 || movecond2)) {
       remaining_allowed_prefetches := remaining_allowed_prefetches + UInt(1)
     }
@@ -221,19 +226,19 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
 }
 
 
-/* 
+/*
  * This module is notified when a vf command is received, then:
  *
  * 1) gets the instructions in the VF block from the icache
  *
- * 2) determines the total number of bytes loaded/stored in the VF block 
+ * 2) determines the total number of bytes loaded/stored in the VF block
  * (repeat loads/stores to the same address will be double counted)
  *
  * 3) As it sees loads/stores, puts them into the decoded memop queue for use
  * by the PrefetchUnit. There is no backpressure here, we drop entries if
  * we don't have space to remember them
  *
- * 4) If the runahead manager determines that we aren't too far ahead, it 
+ * 4) If the runahead manager determines that we aren't too far ahead, it
  * enqueues tracking information in the runahead manager's tracking queue,
  * otherwise, we halt vf decode (and thus stop accepting any more rocc commands)
  * until the runahead manager determines that it is okay to continue
@@ -242,7 +247,7 @@ class PrefetchUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwa
 class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
   val io = new Bundle {
-    val imem = new FrontendIO
+    val imem = new FrontendIO(p(HwachaIcacheKey))
 
     val fire_vf = Bool(INPUT)
     val fetch_pc = UInt(INPUT)
@@ -257,7 +262,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
     val adata = UInt(INPUT)
   }
 
-  val vf_active = Reg(init=Bool(false)) 
+  val vf_active = Reg(init=Bool(false))
   io.vf_active := vf_active
 
   val runaheadman = Module(new RunaheadManager)
@@ -273,27 +278,27 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
     vf_active := Bool(true)
   }
 
- /* pause if we get to a VSTOP but the runaheadman is not ready to accept 
-  * new entries in the vf block load/store byte tracking queue or if 
+ /* pause if we get to a VSTOP but the runaheadman is not ready to accept
+  * new entries in the vf block load/store byte tracking queue or if
   * the throttle manager says to throttle
 
   * it is okay to stop instruction decode when stop_at_VSTOP is true without
   * causing a lockup because either:
 
   * 1) the runaheadman queue is full, which means the vxu is behind anyway
-  * 2) the vru is very far ahead in terms of runahead distance, which means 
+  * 2) the vru is very far ahead in terms of runahead distance, which means
   * vxu is behind
   */
   val stop_at_VSTOP = !runaheadman.io.enq.ready || runaheadman.io.stall_prefetch
 
-  // do a fetch 
+  // do a fetch
   io.imem.req.valid := io.fire_vf && !runaheadman.io.vf_skip //fixed
   io.imem.req.bits.pc := io.fetch_pc
   io.imem.req.bits.status := io.fetch_status
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false)
 
-  val loaded_inst = io.imem.resp.bits.data; require(p(rocket.FetchWidth) == 1)
+  val loaded_inst = io.imem.resp.bits.data; require(fetchWidth == 1)
   io.aaddr := loaded_inst(28, 24)
   io.memop.bits.addr := io.adata
   io.memop.bits.curr_vlen := io.vlen
@@ -393,16 +398,19 @@ class VRUCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val memOps = UInt(width = log2Up(10))
 }
 
-class VRU(implicit p: Parameters) extends HwachaModule()(p)
+class VRU(implicit p: Parameters) extends LazyModule {
+  lazy val module = new VRUModule(this)
+  val masterNode = TLClientNode(TLClientParameters(name = "HwachaVRU", sourceId = IdRange(0,5)))
+}
+class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with MemParameters {
   import Commands._
-  import uncore.tilelink._
-
+  val edge = outer.masterNode.edgesOut.head
   val io = new Bundle {
     // to is implicit, -> imem
-    val imem = new FrontendIO
-    val cmdq = new CMDQIO().flip 
-    val dmem = new ClientUncachedTileLinkIO
+    val imem = new FrontendIO(p(HwachaIcacheKey))
+    val cmdq = new CMDQIO().flip
+    val dmem = outer.masterNode.bundleOut
     // shorten names
     val vf_complete_ack = Bool(INPUT)
 
@@ -434,8 +442,13 @@ class VRU(implicit p: Parameters) extends HwachaModule()(p)
   vru_frontend.io.adata := vru_rocc_unit.io.adata
 
   // prefetch unit
-  val prefetch_unit = Module(new PrefetchUnit)
+  val prefetch_unit = Module(new PrefetchUnit(edge))
   prefetch_unit.suggestName("prefetch_unitInst")
   prefetch_unit.io.memop <> decodedMemOpQueue.io.deq
-  io.dmem <> prefetch_unit.io.dmem
+  io.dmem.head <> prefetch_unit.io.dmem
+
+  //Tie off unused channels
+  io.dmem.head.b.ready := Bool(true)
+  io.dmem.head.c.valid := Bool(false)
+  io.dmem.head.e.valid := Bool(false)
 }

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import scala.math._
 
 abstract trait Packing extends LaneParameters {

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
   extends HwachaModule(clock, _reset)(p) with VMUParameters

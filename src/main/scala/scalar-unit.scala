@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import cde.Parameters
+import config._
 import rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
@@ -19,7 +19,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val cfg = new HwachaConfigIO().flip
 
     val cmdq = new CMDQIO().flip
-    val imem = new FrontendIO
+    val imem = new FrontendIO(p(HwachaIcacheKey))
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
@@ -86,7 +86,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
   mrt.suggestName("mrtInst")
-  val muldiv = Module(new rocket.MulDiv(cfg = rocket.MulDivConfig(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
+  val muldiv = Module(new rocket.MulDiv(cfg = rocket.MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
   muldiv.suggestName("muldivInst")
 
   io.pending.mrt.su := mrt.io.pending
@@ -198,7 +198,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // DECODE
   val id_pc = io.imem.resp.bits.pc
-  val id_inst = io.imem.resp.bits.data; require(p(rocket.FetchWidth) == 1)
+  val id_inst = io.imem.resp.bits.data; require(io.imem.resp.bits.data.getWidth == HwachaElementInstBytes*8)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
   when (!killd && id_ctrl.decode_stop) {
@@ -433,6 +433,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.fpu.req.bits <> id_ctrl.fpu_fn
   io.fpu.req.bits.rm := rm
   io.fpu.req.bits.typ := id_ctrl.out_fmt
+  io.fpu.req.bits.fmaCmd := id_inst(8,7) | (!id_ctrl.vs3_val && id_inst(41))
   io.fpu.req.bits.in_fmt := id_ctrl.in_fmt
   io.fpu.req.bits.in1 := id_sreads(0)
   io.fpu.req.bits.in2 := id_sreads(1)
