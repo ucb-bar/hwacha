@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import config._
 import tile.FPConstants._
+import tile.FType
 import HardFloatHelper._
 
 object ScalarFPUDecode {
@@ -140,20 +141,24 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   io.rocc.req.bits <> hreq
 
+  def unboxAndRecode(in: UInt, minT: FType) = {
+    unbox(recode(in, hreq.in_fmt), !hreq.singleIn, Some(minT))
+  }
+
   val rec_s_in1 = recode(hreq.in1, hreq.in_fmt)
-  io.rocc.req.bits.in1 := unbox(
+  io.rocc.req.bits.in1 :=
     Mux(hreq.fromint, hreq.in1,//unboxing is unecessary here
-      Mux(hreq.in_fmt === UInt(0), recode(hreq.in1, hreq.in_fmt),
-        Mux(hreq.in_fmt === UInt(1), recode(hreq.in1, hreq.in_fmt),
-          h2s(0)))), !hreq.singleIn, None)
-  io.rocc.req.bits.in2 := unbox(
-    Mux(hreq.in_fmt === UInt(0), recode(hreq.in2, hreq.in_fmt),
-      Mux(hreq.in_fmt === UInt(1), recode(hreq.in2, hreq.in_fmt),
-        h2s(1))), !hreq.singleIn, None)
-  io.rocc.req.bits.in3 := unbox(
-    Mux(hreq.in_fmt === UInt(0), recode(hreq.in3, hreq.in_fmt),
-      Mux(hreq.in_fmt === UInt(1), recode(hreq.in3, hreq.in_fmt),
-        h2s(2))), !hreq.singleIn, None)
+      Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in1, FType.S),
+        Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in1, FType.D),
+          unboxAndRecode(h2s(0), FType.S))))
+  io.rocc.req.bits.in2 :=
+    Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in2, FType.S),
+      Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in2, FType.D),
+        unboxAndRecode(h2s(1), FType.S)))
+  io.rocc.req.bits.in3 :=
+    Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in3, FType.S),
+      Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in3, FType.D),
+        unboxAndRecode(h2s(2), FType.S)))
 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
