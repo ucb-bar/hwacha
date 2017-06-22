@@ -128,9 +128,10 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
     pending_fpu_req := hreq
     pending_fpu_typ := Mux(hreq.fromint, hreq.in_fmt, hreq.typ)
   }
+  val ins = List(hreq.in1, hreq.in2, hreq.in3)
 
   val h2s =
-    List(hreq.in1, hreq.in2, hreq.in3) map { case in =>
+    ins map { case in =>
       val h2s = Module(new hardfloat.RecFNToRecFN(5, 11, 8, 24))
       h2s.suggestName("h2sInst")
       h2s.io.in := recode_hp(in)
@@ -141,24 +142,25 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   io.rocc.req.bits <> hreq
 
-  def unboxAndRecode(in: UInt, minT: FType) = {
-    unbox(recode(in, hreq.in_fmt), !hreq.singleIn, Some(minT))
+  def unboxRecode(in: UInt, minT: Option[FType]) = {
+    unbox(recode(in, hreq.in_fmt), !hreq.singleIn, minT)
   }
+  val fuIn = ins.map(in => unboxRecode(in, None))
+  val sfmaIn = ins.map(in => unboxRecode(in, Some(FType.S)))
+  val dfmaIn = ins.map(in => unboxRecode(in, Some(FType.D)))
+  val hIn = h2s.map(in => unboxRecode(in, Some(FType.S)))
 
   val rec_s_in1 = recode(hreq.in1, hreq.in_fmt)
   io.rocc.req.bits.in1 :=
     Mux(hreq.fromint, hreq.in1,//unboxing is unecessary here
-      Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in1, FType.S),
-        Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in1, FType.D),
-          unboxAndRecode(h2s(0), FType.S))))
+      Mux(hreq.in_fmt === 2.U, hIn(0),
+        Mux(hreq.fma, Mux(hreq.in_fmt === 0.U, sfmaIn(0), dfmaIn(0)), fuIn(0))))
   io.rocc.req.bits.in2 :=
-    Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in2, FType.S),
-      Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in2, FType.D),
-        unboxAndRecode(h2s(1), FType.S)))
+    Mux(hreq.in_fmt === 2.U, hIn(1),
+      Mux(hreq.fma, Mux(hreq.in_fmt === 0.U, sfmaIn(1), dfmaIn(1)), fuIn(1)))
   io.rocc.req.bits.in3 :=
-    Mux(hreq.in_fmt === UInt(0), unboxAndRecode(hreq.in3, FType.S),
-      Mux(hreq.in_fmt === UInt(1), unboxAndRecode(hreq.in3, FType.D),
-        unboxAndRecode(h2s(2), FType.S)))
+    Mux(hreq.in_fmt === 2.U, hIn(2),
+      Mux(hreq.fma, Mux(hreq.in_fmt === 0.U, sfmaIn(2), dfmaIn(2)), fuIn(2)))
 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
@@ -184,7 +186,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   // XXX: use s2h.io.exceptionFlags
 
   val unrec_h = ieee_hp(s2h.io.out)
-  val unrec_s = Fill(2, ieee(rresp.data)(31,0))
+  val unrec_s = ieee(rresp.data)(31,0)
   val unrec_d = ieee(rresp.data)
   val unrec_fpu_resp =
     Mux(pending_fpu_typ === UInt(0), unrec_s,
