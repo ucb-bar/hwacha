@@ -139,20 +139,12 @@ class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p
     M_XA_MAXU -> edge.Arithmetic(req_tag, req.bits.addr, req.bits.fn.mt, req.bits.data, TLAtomics.MAXU)._2
   ))
 
-  val alignment = Mux(~req.bits.addr(0),
-                    Mux(~req.bits.addr(1),
-                      Mux(~req.bits.addr(2),
-                         Mux(~req.bits.addr(3), 4.U, 3.U),
-                      2.U),
-                    1.U),
-                  0.U)
-  val req_size = alignment//Max(req.bits.fn.mt, alignment)
+  // Unclear what the tradeoff is for us not requesting the smallest size transaction we need.
+  val req_size = log2Up(tlDataBytes).U
   val req_addr_beat_aligned = (req.bits.addr >> UInt(tlByteAddrBits)) << UInt(tlByteAddrBits)
   acquire.bits := Mux1H(Seq(
-    cmd.load -> edge.Get(req_tag, req_addr_beat_aligned, 4.U)._2,
-    cmd.store -> Mux(req.bits.mask.andR,
-      edge.Put(req_tag, req.bits.addr, 4.U, req.bits.data)._2,
-      edge.Put(req_tag, req.bits.addr, req_size, req.bits.data, req.bits.mask)._2),
+    cmd.load -> edge.Get(req_tag, req_addr_beat_aligned, req_size)._2,
+    cmd.store -> edge.Put(req_tag, req_addr_beat_aligned, req_size, req.bits.data, req.bits.mask)._2,
     cmd.amo -> acq_amo
   ))
 
