@@ -465,7 +465,9 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 
   val predq = Module(new Queue(io.pred.bits, nDCCPredQ))
   predq.suggestName("predqInst")
-  predq.io.enq <> io.pred
+  // NOTE: insert extra cycle of latency for empty predicate short vector race that results in vlu retiring before vcu
+  // COLIN: could also be solved with anteq being a flow queue but need to test QoR on that path
+  predq.io.enq <> Queue(io.pred)
   val pred_fire = predq.io.deq.fire()
 
   private val bpcnt = bVLen - bStrip + log2Ceil(nVLU)
