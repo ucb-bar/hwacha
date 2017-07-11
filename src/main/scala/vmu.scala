@@ -32,6 +32,7 @@ trait MemParameters extends UsesHwachaParameters
 
 trait VMUParameters extends MemParameters {
   val nVMUQ = 2
+  val nVMUIQ = 2
   val nVVAQ = p(HwachaNVVAQEntries)
   val nVPAQ = p(HwachaNVPAQEntries)
   val nVSDQ = p(HwachaNVSDQEntries)
@@ -96,6 +97,7 @@ class VMUIssueIO(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   val issue = Vec(4, Decoupled(new VMUDecodedOp))
+  val aret = Bool()
 
   def span(sink: DecoupledIO[VMUDecodedOp]*) = {
     val src = Wire(Decoupled(new VMUDecodedOp)).suggestName("srcWire")
@@ -117,6 +119,7 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
     val agu = new AGUIO
     val abox = Vec(3, Decoupled(new VMUDecodedOp))
     val pbox = Vec(2, Decoupled(new VMUDecodedOp))
+    val aret = Bool()
   }
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))
@@ -136,6 +139,7 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
   agent.io.op.bits := op
   agent.io.op.valid := opq.io.deq.valid
   opq.io.deq.ready := agent.io.op.ready
+  io.aret := agent.io.aret
 
   val issue = Seq(io.abox(0), io.pbox(0),
     agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
@@ -157,6 +161,7 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
   io.op.ready := mask.asUInt.andR
   when (io.op.ready) {
     mask.map(_ := Bool(false))
+    io.aret := true.B
   }
 }
 
@@ -194,8 +199,13 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   val vlen_end = (vlen_next <= SInt(0))
   val ecnt = Mux(vlen_end, op.vlen(bfLStrip-1, 0), ecnt_max)
 
-  val enq = io.span(io.issue.map { case deq =>
-    val q = Module(new Queue(new VMUDecodedOp, 2))
+
+  val qcntr = Reg(init = 0.U((log2Up(nVMUIQ + 2)).W))
+  val qcnts = Wire(Vec(io.issue.size, UInt(width = log2Up(nVMUIQ + 1))))
+  val aret_pending = Reg(init = Bool(false))
+  val enq = io.span(io.issue.zipWithIndex.map { case (deq, i) =>
+    val q = Module(new Queue(new VMUDecodedOp, nVMUIQ))
+    qcnts(i) := q.io.count
     q.suggestName("qInst")
     deq <> q.io.deq
     q.io.enq
@@ -208,7 +218,14 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   enq.bits.status := op.status
 
   io.op.ready := Bool(false)
+  io.aret := Bool(false)
   enq.valid := Bool(false)
+
+  when(io.issue(3).fire()) {
+    qcntr := Mux(qcntr === 0.U, 0.U, (qcntr.zext - 1.S).asUInt)
+    io.aret := qcntr === 1.U || aret_pending
+    aret_pending := Bool(false)
+  }
 
   val s_idle :: s_busy :: s_setup :: Nil = Enum(UInt(), 3)
   val state = Reg(init = s_idle)
@@ -228,7 +245,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
 
     is (s_busy) {
       io.agu.in.valid := !indexed
-      enq.valid := indexed || io.agu.out.valid
+      enq.valid := !aret_pending && (indexed || io.agu.out.valid)
 
       when (enq.fire()) {
         unless (indexed) {
@@ -240,6 +257,12 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
         when (vlen_end) {
           state := s_idle
           io.op.ready := Bool(true)
+          // Last queue is abox2 deepest stage
+          // +1+1 because we are enqing this cycle and need to wait for the next op to be eaten by abox2
+          qcntr := qcnts(3) + 1.U + Mux(io.issue(3).fire(), 0.U, 1.U)
+          // aret after next issue3.fire
+          aret_pending := qcntr =/= 0.U
+          assert(qcntr <= UInt(1), "IBox: qcntr too large. aret broken")
         }
       }
     }
@@ -272,6 +295,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
     val memif = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)
+    val aret = Bool()
     val irq = new IRQIO
     val xcpt = new XCPTIO().flip
   }
@@ -297,6 +321,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   ibox.io.id := io.id
   ibox.io.op <> io.op
   ibox.io.cfg <> io.cfg
+  io.aret <> ibox.io.aret
   if (confml) agu.io.ports(1) <> ibox.io.agu
 
   pbox.io.op <> ibox.io.pbox

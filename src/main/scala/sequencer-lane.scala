@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import config._
 import DataGating._
+import chisel3.experimental.dontTouch
 
 class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val exp = Valid(new SeqOp)
@@ -33,6 +34,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val sla = new BRQLookAheadIO
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
+    val areq = new MRTAddrIO
 
     val lpred = Decoupled(Bits(width=nStrip))
     val spred = Decoupled(Bits(width=nStrip))
@@ -73,6 +75,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     }
   }
 
+  dontTouch(io.debug)
   val mv = io.master.state.valid
   val me = io.master.state.e
   val head = io.master.state.head
@@ -415,6 +418,8 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         io.lreq.reserve := fire && mcmd.read
         io.sreq.cnt := strip
         io.sreq.reserve := fire && mcmd.store
+        io.areq.valid := fire && io.op.bits.vlen === Mux1H(first, e.map(_.vlen))
+        io.areq.bits := OHToUInt(find_first(ffv, OHToUInt(first), (i: Int) => me(i).active.vlu || me(i).active.vsu))
       }
     }
 

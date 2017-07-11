@@ -56,7 +56,9 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   mrt.io.lreq <> vxu.io.mrt.lreq
   mrt.io.lret <> vxu.io.mrt.lret
   mrt.io.sreq <> vxu.io.mrt.sreq
+  mrt.io.areq <> vxu.io.mrt.areq
   mrt.io.sret <> vmu.io.sret
+  mrt.io.aret <> vmu.io.aret
 
   io.red <> vxu.io.red
   io.tlb <> vmu.io.tlb

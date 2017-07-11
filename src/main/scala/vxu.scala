@@ -84,6 +84,7 @@ class VXU(implicit p: Parameters) extends VXUModule()(p) {
 
   io.mrt.lreq <> seq.io.lreq
   io.mrt.sreq <> seq.io.sreq
+  io.mrt.areq <> seq.io.areq
   io.mrt.lret.cnt := dcc.io.lla.cnt
   io.mrt.lret.update := dcc.io.lla.reserve
 }

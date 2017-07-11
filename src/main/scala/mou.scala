@@ -22,6 +22,24 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
     }
   }
 
+  // Treat addr as limiter on head advancement for comparisons
+  val latchedHead = Reg(init = 0.U(log2Up(nSeq).W))
+  val headMatchAddr = io.pending.vus.map(_.addr).map{ case a =>
+    a.valid && a.bits === latchedHead }.foldLeft(Bool(false))(_ || _)
+  when(!headMatchAddr) { latchedHead := io.mseq.head }
+  // if the vmu is sending out acquires for a vlu/vsu between
+  // the head and our mseq entry we need to wait
+  def pending_addr(i: Int) = {
+    val myIdx = i.U(log2Up(nSeq).W)
+    // comparisons between head and aidx should be inclusive
+    io.pending.vus.map(_.addr).map{ case a => a.valid &&
+      (latchedHead < myIdx && latchedHead <= a.bits && a.bits < myIdx) ||
+      (latchedHead > myIdx && // check for wrap-around
+        ((a.bits >= latchedHead && a.bits > myIdx) ||
+        (a.bits < myIdx && a.bits <= latchedHead)))
+    }.foldLeft(false.B)(_ || _)
+  }
+
   def vus_pending_store(exclude: Bool) =
     io.pending.vus.map(_.store).filter(_ ne exclude).foldLeft(Bool(false))(_ || _)
   def vus_pending_all(exclude: Bool) =
@@ -43,8 +61,12 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
   // when no pending scalar laods & stores and when either of these conditions are met
   //  1) it's the first vector memory op
   //  2) no pending vector loads & stores from other lanes than the one examined
+  // First is defined as being the first vcu op after any previous memory ops have
+  // finished sending out the aquires (vu_pending_addr)
 
+  val vu_pending_addr = (0 until nSeq).map{ case i => pending_addr(i) }
   val first = find_first(io.mseq.valid, io.mseq.head, (i: Int) => io.mseq.e(i).active.vcu)
+    .zip(vu_pending_addr).map{ case (f, a) => f && !a }
 
   (0 until nLanes) map { l => (0 until nSeq) map { s =>
     io.check.vus(l)(s).load :=
