@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import config._
 import DataGating._
-import chisel3.experimental.dontTouch
 
 class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
   val exp = Valid(new SeqOp)
@@ -75,7 +74,6 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     }
   }
 
-  dontTouch(io.debug)
   val mv = io.master.state.valid
   val me = io.master.state.e
   val head = io.master.state.head
