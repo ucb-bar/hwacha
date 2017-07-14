@@ -1,15 +1,15 @@
 package hwacha
 
 import Chisel._
-import config._
 import scala.collection.mutable.LinkedHashSet
-import uncore.agents._
-import rocket._
-import tile._
-import coreplex._
-import rocketchip._
-import util._
-import diplomacy._
+import freechips.rocketchip._
+import freechips.rocketchip.chip._
+import freechips.rocketchip.config._
+import freechips.rocketchip.coreplex._
+import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.rocket._
+import freechips.rocketchip.tile._
+import freechips.rocketchip.util._
 
 
 class DefaultHwachaConfig extends Config((site, here, up) => {
@@ -113,7 +113,7 @@ class VectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env:
 class ScalarVectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-svec")
 
 object HwachaTestSuites {
-import rocketchip.DefaultTestSuites._
+import freechips.rocketchip.chip.DefaultTestSuites._
   val rv64uvNames = LinkedHashSet(
     "wakeup", "fence", "keepcfg",
     "vmca", "vmcs", "vssd", "vssw", "vssh", "vssb",

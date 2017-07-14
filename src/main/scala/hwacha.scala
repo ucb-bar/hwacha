@@ -1,12 +1,12 @@
 package hwacha
 
 import Chisel._
-import config._
-import util.ParameterizedBundle
-import tile._
-import rocket.ICacheParams
-import diplomacy._
-import uncore.tilelink2._
+import freechips.rocketchip.config._
+import freechips.rocketchip.util.ParameterizedBundle
+import freechips.rocketchip.tile._
+import freechips.rocketchip.rocket.ICacheParams
+import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.tilelink._
 
 case object HwachaCommitLog extends Field[Boolean]
 case object HwachaIcacheKey extends Field[ICacheParams]
@@ -39,7 +39,7 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends tile.HasCoreParameters {
+abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters {
   implicit val p: Parameters
 
   val commit_log = p(HwachaCommitLog)
@@ -161,7 +161,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   val rfirst = Module(new RFirstMaster)
   val smu = outer.smu.module
   val mou = Module(new MemOrderingUnit)
-  val ptlb = Module(new rocket.TLB(lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
+  val ptlb = Module(new freechips.rocketchip.rocket.TLB(lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -282,7 +282,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
 
   (vus zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)
-    val dtlb = Module(new rocket.TLB(lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
+    val dtlb = Module(new freechips.rocketchip.rocket.TLB(lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))

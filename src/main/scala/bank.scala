@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
   val sram = new Bundle {

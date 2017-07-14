@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
   val rpVIU = 2

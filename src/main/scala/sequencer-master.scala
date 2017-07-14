@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 import DataGating._
 
 case object HwachaNSeqEntries extends Field[Int]

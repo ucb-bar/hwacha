@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
   extends HwachaModule(clock, _reset)(p) with VMUParameters
@@ -23,7 +23,7 @@ class VMUOpBase(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
   val base = UInt(width = bVAddrExtended)
   val stride = UInt(width = regLen)
-  val status = new rocket.MStatus
+  val status = new freechips.rocketchip.rocket.MStatus
 }
 
 class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen

@@ -1,2 +1,2 @@
 package object hwacha extends HwachaConstants
-  with uncore.constants.MemoryOpConstants
+  with freechips.rocketchip.rocket.constants.MemoryOpConstants

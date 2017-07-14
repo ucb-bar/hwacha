@@ -1,14 +1,15 @@
 package hwacha 
 
 import Chisel._
-import config._
-import tile.FPConstants._
-import util._
+import freechips.rocketchip.config._
+import freechips.rocketchip.tile.FPConstants._
+import freechips.rocketchip.tile.{FPUCtrlSigs, FPResult}
+import freechips.rocketchip.util._
 
 class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   val io = new Bundle {
-    val req = Decoupled(new tile.FPInput()).flip
-    val resp = Decoupled(new tile.FPResult())
+    val req = Decoupled(new freechips.rocketchip.tile.FPInput()).flip
+    val resp = Decoupled(new FPResult())
   }
   //buffer for simple back-pressure model
   val resp_reg = Reg(Bits())
@@ -16,41 +17,41 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
 
   io.req.ready := !resp_reg_val
 
-  val ex_ctrl = Wire(new tile.FPUCtrlSigs)
+  val ex_ctrl = Wire(new FPUCtrlSigs)
   ex_ctrl <> io.req.bits
   val wb_ctrl = RegEnable(ex_ctrl, io.req.valid)
   val wb_reg_valid = Reg(next=io.req.valid, init=Bool(false))
 
-  val req = new tile.FPInput
+  val req = new freechips.rocketchip.tile.FPInput
   req := io.req.bits
   req.in2 := Mux(io.req.bits.swap23, io.req.bits.in3, io.req.bits.in2)
   req.in3 := Mux(io.req.bits.swap23, io.req.bits.in2, io.req.bits.in3)
 
-  val sfma = Module(new tile.FPUFMAPipe(p(HwachaStagesSFMA), tile.FType.S))
+  val sfma = Module(new freechips.rocketchip.tile.FPUFMAPipe(p(HwachaStagesSFMA), freechips.rocketchip.tile.FType.S))
   sfma.suggestName("sfmaInst")
   sfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       io.req.bits.singleOut
   sfma.io.in.bits := req
 
-  val dfma = Module(new tile.FPUFMAPipe(p(HwachaStagesDFMA), tile.FType.D))
+  val dfma = Module(new freechips.rocketchip.tile.FPUFMAPipe(p(HwachaStagesDFMA), freechips.rocketchip.tile.FType.D))
   dfma.suggestName("dfmaInst")
   dfma.io.in.valid := io.req.valid && io.req.bits.fma &&
                       !io.req.bits.singleOut
   dfma.io.in.bits := req
 
-  val fpiu = Module(new tile.FPToInt)
+  val fpiu = Module(new freechips.rocketchip.tile.FPToInt)
   fpiu.suggestName("fpiuInst")
   fpiu.io.in.valid := io.req.valid && (io.req.bits.toint || io.req.bits.div || io.req.bits.sqrt || (io.req.bits.fastpipe && io.req.bits.wflags))
   fpiu.io.in.bits := req
 
-  val ifpu = Module(new tile.IntToFP(3))
+  val ifpu = Module(new freechips.rocketchip.tile.IntToFP(3))
   ifpu.suggestName("ifpuInst")
   ifpu.io.in.valid := io.req.valid && io.req.bits.fromint
   ifpu.io.in.bits := req
 
   //ifpu.io.in.bits.in1 := io.dpath.fromint_data
 
-  val fpmu = Module(new tile.FPToFP(2))
+  val fpmu = Module(new freechips.rocketchip.tile.FPToFP(2))
   fpmu.suggestName("fpmuInst")
   fpmu.io.in.valid := io.req.valid && io.req.bits.fastpipe
   fpmu.io.in.bits := req
@@ -58,18 +59,18 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
 
   // No writeback arbitration since ScalarUnit can't put backpressure on us
   // writeback arbitration
-  case class Pipe(p: Module, lat: Int, cond: (tile.FPUCtrlSigs) => Bool, res: tile.FPResult)
+  case class Pipe(p: Module, lat: Int, cond: (FPUCtrlSigs) => Bool, res: FPResult)
   val pipes = List(
-    Pipe(fpmu, fpmu.latency, (c: tile.FPUCtrlSigs) => c.fastpipe, fpmu.io.out.bits),
-    Pipe(ifpu, ifpu.latency, (c: tile.FPUCtrlSigs) => c.fromint, ifpu.io.out.bits),
-    Pipe(sfma, sfma.latency, (c: tile.FPUCtrlSigs) => c.fma && c.singleOut, sfma.io.out.bits),
-    Pipe(dfma, dfma.latency, (c: tile.FPUCtrlSigs) => c.fma && !c.singleOut, dfma.io.out.bits)
+    Pipe(fpmu, fpmu.latency, (c: FPUCtrlSigs) => c.fastpipe, fpmu.io.out.bits),
+    Pipe(ifpu, ifpu.latency, (c: FPUCtrlSigs) => c.fromint, ifpu.io.out.bits),
+    Pipe(sfma, sfma.latency, (c: FPUCtrlSigs) => c.fma && c.singleOut, sfma.io.out.bits),
+    Pipe(dfma, dfma.latency, (c: FPUCtrlSigs) => c.fma && !c.singleOut, dfma.io.out.bits)
   )
-  def latencyMask(c: tile.FPUCtrlSigs, offset: Int) = {
+  def latencyMask(c: FPUCtrlSigs, offset: Int) = {
     require(pipes.forall(_.lat >= offset))
     pipes.map(p => Mux(p.cond(c), UInt(1 << p.lat-offset), UInt(0))).reduce(_|_)
   }
-  def pipeid(c: tile.FPUCtrlSigs) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), UInt(p._2), UInt(0))).reduce(_|_)
+  def pipeid(c: FPUCtrlSigs) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), UInt(p._2), UInt(0))).reduce(_|_)
   val maxLatency = pipes.map(_.lat).max
   val wbLatencyMask = latencyMask(wb_ctrl, 2)
 

@@ -1,10 +1,10 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 import HwachaElementInstructions._
-import rocket.ALU._
-import util._
+import freechips.rocketchip.rocket.ALU._
+import freechips.rocketchip.util._
 import ScalarFPUDecode._
 
 class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -62,7 +62,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val vrpu_val = Bool()
   val vrpu_fn = Bits(width = FR_X.getWidth)
   val vrfu_val = Bool()
-  val fpu_fn = new tile.FPUCtrlSigs
+  val fpu_fn = new freechips.rocketchip.tile.FPUCtrlSigs
 
   val vp = UInt(width = bPRegs)
   val vs1 = UInt(width = bRegs)
@@ -74,7 +74,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val out_fmt = UInt(width = 2)
 
   def decode(inst: UInt, table: Iterable[(BitPat, List[BitPat])]) = {
-    val decoder = rocket.DecodeLogic(inst, ScalarDecode.default, table)
+    val decoder = freechips.rocketchip.rocket.DecodeLogic(inst, ScalarDecode.default, table)
     val sigs = Seq(ival, decode_scalar, decode_fence, decode_stop,
         vd_val, vd_t, vd_dyn, vs1_val, vs1_t, vs1_dyn,
         vs2_val, vs2_t, vs2_dyn, vs3_val, vs3_t, vs3_dyn,

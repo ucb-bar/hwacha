@@ -1,9 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
-import uncore.tilelink2._
-import diplomacy._
+import freechips.rocketchip.config._
+import freechips.rocketchip.tilelink._
+import freechips.rocketchip.diplomacy._
 
 /*
  * TODO:
@@ -20,7 +20,7 @@ class VRUCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val stop = Bool()
 
   def decode(inst: UInt) = {
-    val decoder = rocket.DecodeLogic(inst, VRUDecodeTable.default, VRUDecodeTable.table)
+    val decoder = freechips.rocketchip.rocket.DecodeLogic(inst, VRUDecodeTable.default, VRUDecodeTable.table)
     val sigs = Seq(opwidth, ls, prefetchable, stop)
     sigs zip decoder map {case(s,d) => s := d}
 
@@ -30,7 +30,7 @@ class VRUCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
 
 object VRUDecodeTable {
   import HwachaElementInstructions._
-  import util._ //implicit uint to bitpat
+  import freechips.rocketchip.util._ //implicit uint to bitpat
 
   /* list contains:
    * opwidth (2 bits, stored as 2^opwidth)
@@ -251,7 +251,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
 
     val fire_vf = Bool(INPUT)
     val fetch_pc = UInt(INPUT)
-    val fetch_status = new rocket.MStatus().asInput
+    val fetch_status = new freechips.rocketchip.rocket.MStatus().asInput
     val vf_active = Bool(OUTPUT)
     val vf_complete_ack = Bool(INPUT)
 

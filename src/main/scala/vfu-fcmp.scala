@@ -1,10 +1,10 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 import DataGating._
 import HardFloatHelper._
-import tile.FType
+import freechips.rocketchip.tile.FType
 
 class FCmpOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFCUFn
@@ -17,7 +17,7 @@ class FCmpResult(implicit p: Parameters) extends VXUBundle()(p) {
   val cmp = Bits(width = nPack)
 }
 
-class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with tile.HasFPUParameters {
+class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
   val io = new Bundle {
     val req = Valid(new FCmpOperand).flip
     val resp = Valid(new FCmpResult)

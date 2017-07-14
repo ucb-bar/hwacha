@@ -1,9 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 import Commands._
-import util._ //implicits for bitpats
+import freechips.rocketchip.util._ //implicits for bitpats
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val morelax = Bool(OUTPUT)
@@ -39,7 +39,7 @@ class CMDQIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val imm = Decoupled(Bits(width = regLen))
   val rd  = Decoupled(Bits(width = bSDest))
   val cnt = Decoupled(Bits(width = bMLVLen))
-  val status = Decoupled(new rocket.MStatus())
+  val status = Decoupled(new freechips.rocketchip.rocket.MStatus())
 }
 
 class CMDQCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -118,7 +118,7 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val decode_kill = Bool() // TODO: unused
 
   def decode(inst: UInt) = {
-    val decoder = rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
+    val decoder = freechips.rocketchip.rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
     val sigs = Seq(inst_val, inst_priv, enq_cmd_, sel_cmd, rd_type, sel_imm,
         check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp, decode_save,
         decode_rest, decode_kill)
@@ -161,7 +161,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   import HwachaDecodeTable._
 
   val io = new Bundle {
-    val rocc = new tile.RoCCCoreIO
+    val rocc = new freechips.rocketchip.tile.RoCCCoreIO
 
     val vf_active = Bool(INPUT)
     val pending = new Bundle {

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {

@@ -1,9 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
-import uncore.tilelink2._
-import diplomacy._
+import freechips.rocketchip.config._
+import freechips.rocketchip.tilelink._
+import freechips.rocketchip.diplomacy._
 
 case object HwachaNSMUEntries extends Field[Int]
 
@@ -31,7 +31,7 @@ class SMUReq(implicit p: Parameters) extends SMUBundle()(p)
   with SMUData {
   val fn = new SMUFn
   val addr = UInt(width = bVAddrExtended)
-  val status = new rocket.MStatus
+  val status = new freechips.rocketchip.rocket.MStatus
 }
 
 class SMUResp(implicit p: Parameters) extends SMUBundle()(p)

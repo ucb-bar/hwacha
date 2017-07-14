@@ -1,9 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
-import diplomacy._
-import uncore.tilelink2._
+import freechips.rocketchip.config._
+import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.tilelink._
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)

@@ -1,9 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
-import uncore.tilelink2.TLEdgeOut
-import tile.SharedMemoryTLEdge
+import freechips.rocketchip.config._
+import freechips.rocketchip.tilelink.TLEdgeOut
+import freechips.rocketchip.tile.SharedMemoryTLEdge
 
 case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
@@ -12,7 +12,7 @@ case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVLTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
-  with tile.HasCoreParameters {
+  with freechips.rocketchip.tile.HasCoreParameters {
   val bVAddr = vaddrBits
   val bPAddr = paddrBits
   val bVAddrExtended = bVAddr + (if (bVAddr < regLen) 1 else 0)

@@ -1,11 +1,12 @@
 package hwacha
 
 import Chisel._
-import config._
-import diplomacy._
-import uncore.tilelink2._
+import freechips.rocketchip.config._
+import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.tilelink._
+import freechips.rocketchip.rocket.{ICacheParams, MStatus, TLBResp}
 
-class FrontendResp(icacheParams: rocket.ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
+class FrontendResp(icacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
   val pc = UInt(width = vaddrBitsExtended)  // ID stage PC
   val data = UInt(width = icacheParams.fetchBytes * 8)
   val pf = Bool()
@@ -13,12 +14,12 @@ class FrontendResp(icacheParams: rocket.ICacheParams)(implicit p: Parameters) ex
   override def cloneType = new FrontendResp(icacheParams).asInstanceOf[this.type]
 }
 
-class FrontendReq(implicit p: Parameters) extends tile.CoreBundle()(p) {
+class FrontendReq(implicit p: Parameters) extends freechips.rocketchip.tile.CoreBundle()(p) {
   val pc = UInt(width = vaddrBits+1)
-  val status = new rocket.MStatus
+  val status = new MStatus
 }
 
-class FrontendIO(cacheParams: rocket.ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
+class FrontendIO(cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
   val active = Bool(OUTPUT)
   val req = Valid(new FrontendReq)
   val resp = Decoupled(new FrontendResp(cacheParams)).flip
@@ -27,7 +28,7 @@ class FrontendIO(cacheParams: rocket.ICacheParams)(implicit p: Parameters) exten
   override def cloneType = new FrontendIO(cacheParams).asInstanceOf[this.type]
 }
 
-class MiniFrontend(val cacheParams: rocket.ICacheParams)(implicit p: Parameters) extends HwachaModule()(p) with tile.HasL1CacheParameters {
+class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaModule()(p) with freechips.rocketchip.tile.HasL1CacheParameters {
   val io = new Bundle {
     val front = new FrontendIO(cacheParams).flip
     val back = new Bundle {
@@ -35,20 +36,20 @@ class MiniFrontend(val cacheParams: rocket.ICacheParams)(implicit p: Parameters)
       val s1_kill = Bool(OUTPUT)
       //TODO: make sure we dont need double Valid nesting
       val s1_resp = Valid(UInt(width = cacheParams.fetchBytes * 8)).flip
-      val s1_tlb = new rocket.TLBResp().flip
+      val s1_tlb = new TLBResp().flip
     }
   }
 
   val s1_valid = Reg(init=Bool(false))
   val s1_pc_ = Reg(UInt())
-  val s1_status = Reg(new rocket.MStatus)
+  val s1_status = Reg(new MStatus)
   val s1_pc = ~(~s1_pc_ | UInt(HwachaElementInstBytes-1)) // discard PC LSBS (this propagates down the pipeline)
   val s1_same_block = Reg(init=Bool(false))
   val s1_req_valid = Reg(init=Bool(false))
 
   val s2_valid = Reg(init=Bool(false))
   val s2_pc = Reg(UInt())
-  val s2_status = Reg(new rocket.MStatus)
+  val s2_status = Reg(new MStatus)
   val s2_xcpt_if = Reg(init=Bool(false))
   val s2_line = Module(new Queue(UInt(width = cacheParams.fetchBytes * 8), 1, pipe=true))
 
@@ -112,25 +113,25 @@ class HwachaFrontend(implicit p : Parameters) extends LazyModule {
   lazy val module = new HwachaFrontendModule(this)
   val cacheParams = p(HwachaIcacheKey)
 
-  val icache = LazyModule(new rocket.ICache(cacheParams, hartid = 0))
+  val icache = LazyModule(new freechips.rocketchip.rocket.ICache(cacheParams, hartid = 0))
   val masterNode = TLOutputNode()
 
   masterNode := icache.masterNode
 }
 
 class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extends LazyModuleImp(outer)
-  with tile.HasL1CacheParameters with UsesHwachaParameters {
+  with freechips.rocketchip.tile.HasL1CacheParameters with UsesHwachaParameters {
   implicit val edge = outer.masterNode.edgesOut.head
   val cacheParams = outer.cacheParams
 
   val io = new Bundle {
     val vxu = new FrontendIO(cacheParams).flip
     val vru = new FrontendIO(cacheParams).flip
-    val ptw = new rocket.TLBPTWIO()
+    val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
     val mem = outer.masterNode.bundleOut
   }
   val icache = outer.icache.module
-  val tlb = Module(new rocket.TLB(lgMaxSize = log2Ceil(cacheParams.fetchBytes), nEntries = nptlb))
+  val tlb = Module(new freechips.rocketchip.rocket.TLB(lgMaxSize = log2Ceil(cacheParams.fetchBytes), nEntries = nptlb))
   val vxu = Module(new MiniFrontend(cacheParams))
   val vru = Module(new MiniFrontend(cacheParams))
   val req_arb = Module(new Arbiter(new FrontendReq, 2))
@@ -161,14 +162,15 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   tlb.io.req.bits.vaddr := s1_pc
   tlb.io.req.bits.passthrough := Bool(false)
   tlb.io.req.bits.instruction := Bool(true)
-  tlb.io.req.bits.store := Bool(false)
   tlb.io.req.bits.sfence.valid := Bool(false)
   tlb.io.req.bits.size := UInt(log2Ceil(cacheParams.fetchBytes))
 
   req.ready := Bool(true)
 
-  vxu.io.back.s1_resp <> icache.io.resp
-  vru.io.back.s1_resp <> icache.io.resp
+  vxu.io.back.s1_resp.valid <> icache.io.resp.valid
+  vru.io.back.s1_resp.valid <> icache.io.resp.valid
+  vxu.io.back.s1_resp.bits <> icache.io.resp.bits.data
+  vru.io.back.s1_resp.bits <> icache.io.resp.bits.data
   vxu.io.back.s1_tlb <> tlb.io.resp
   vru.io.back.s1_tlb <> tlb.io.resp
 

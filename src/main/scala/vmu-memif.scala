@@ -1,8 +1,8 @@
 package hwacha
 
 import Chisel._
-import config._
-import uncore.tilelink2._
+import freechips.rocketchip.config._
+import freechips.rocketchip.tilelink._
 
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {

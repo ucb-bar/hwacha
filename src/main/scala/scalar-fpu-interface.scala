@@ -1,9 +1,9 @@
 package hwacha 
 
 import Chisel._
-import config._
-import tile.FPConstants._
-import tile.FType
+import freechips.rocketchip.config._
+import freechips.rocketchip.tile.FPConstants._
+import freechips.rocketchip.tile.FType
 import HardFloatHelper._
 
 object ScalarFPUDecode {
@@ -69,28 +69,28 @@ object ScalarFPUDecode {
 
 }
 
-class HwachaFPInput(implicit p: Parameters) extends tile.FPInput {
+class HwachaFPInput(implicit p: Parameters) extends freechips.rocketchip.tile.FPInput {
   val bSRegs = log2Up(p(HwachaNScalarRegs))
   val in_fmt = UInt(width = 2)
   val tag = UInt(width = bSRegs)
   override def cloneType = new HwachaFPInput()(p).asInstanceOf[this.type]
 }
 
-class HwachaFPResult(implicit p: Parameters) extends tile.FPResult {
+class HwachaFPResult(implicit p: Parameters) extends freechips.rocketchip.tile.FPResult {
   val bSRegs = log2Up(p(HwachaNScalarRegs))
   val tag = UInt(width = bSRegs)
   override def cloneType = new HwachaFPResult()(p).asInstanceOf[this.type]
 }
 
-class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing with tile.HasFPUParameters {
+class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
   val io = new Bundle {
     val hwacha = new Bundle {
       val req = Decoupled(new HwachaFPInput).flip
       val resp = Decoupled(new HwachaFPResult)
     }
     val rocc = new Bundle {
-      val req = Decoupled(new tile.FPInput)
-      val resp = Decoupled(new tile.FPResult).flip
+      val req = Decoupled(new freechips.rocketchip.tile.FPInput)
+      val resp = Decoupled(new freechips.rocketchip.tile.FPResult).flip
     }
   }
 
@@ -100,14 +100,14 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   val reqq = Module(new Queue(new HwachaFPInput, 2))
   reqq.suggestName("reqqInst")
-  val respq = Module(new Queue(new tile.FPResult, 2))
+  val respq = Module(new Queue(new freechips.rocketchip.tile.FPResult, 2))
   respq.suggestName("respqInst")
 
   reqq.io.enq <> io.hwacha.req
 
   private val hreq = reqq.io.deq.bits
 
-  private val hreq_ctrl = Wire(new tile.FPUCtrlSigs)
+  private val hreq_ctrl = Wire(new freechips.rocketchip.tile.FPUCtrlSigs)
   hreq_ctrl <> hreq
   //We handle half conversions locally
   val enq_rocc = !(hreq_ctrl.getElements.zip(ScalarFPUDecode.FCVT_S_S).map{case(l,r) => r === l.asInstanceOf[UInt]}.reduce(_ && _))

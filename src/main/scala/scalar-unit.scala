@@ -1,8 +1,9 @@
 package hwacha
 
 import Chisel._
-import config._
-import rocket.ALU._
+import freechips.rocketchip.config._
+import freechips.rocketchip.rocket._
+import freechips.rocketchip.rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
 
@@ -86,7 +87,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
   mrt.suggestName("mrtInst")
-  val muldiv = Module(new rocket.MulDiv(cfg = rocket.MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
+  val muldiv = Module(new MulDiv(cfg = MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = regLen, nXpr = nSRegs))
   muldiv.suggestName("muldivInst")
 
   io.pending.mrt.su := mrt.io.pending
@@ -152,7 +153,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val fire_vf = fire_cmdq(null, decode_vf)
-  val id_status = Reg(new rocket.MStatus)
+  val id_status = Reg(new MStatus)
   when (fire_vf) {
     vf_active := Bool(true)
     id_status := io.cmdq.status.bits
@@ -460,14 +461,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     Mux(id_ctrl.alu_dw === DW32, RocketConstants.DW_32, RocketConstants.DW_64)
   muldiv.io.req.bits.fn :=
     Mux(id_mul_inst,
-      Mux(id_ctrl.vimu_fn === IM_M,    rocket.ALU.FN_MUL,
-      Mux(id_ctrl.vimu_fn === IM_MH,   rocket.ALU.FN_MULH,
-      Mux(id_ctrl.vimu_fn === IM_MHU,  rocket.ALU.FN_MULHU,
-                                       rocket.ALU.FN_MULHSU))),
-      Mux(id_ctrl.vidu_fn === ID_DIV,  rocket.ALU.FN_DIV,
-      Mux(id_ctrl.vidu_fn === ID_DIVU, rocket.ALU.FN_DIVU,
-      Mux(id_ctrl.vidu_fn === ID_REM,  rocket.ALU.FN_REM,
-                                       rocket.ALU.FN_REMU))))
+      Mux(id_ctrl.vimu_fn === IM_M,    FN_MUL,
+      Mux(id_ctrl.vimu_fn === IM_MH,   FN_MULH,
+      Mux(id_ctrl.vimu_fn === IM_MHU,  FN_MULHU,
+                                       FN_MULHSU))),
+      Mux(id_ctrl.vidu_fn === ID_DIV,  FN_DIV,
+      Mux(id_ctrl.vidu_fn === ID_DIVU, FN_DIVU,
+      Mux(id_ctrl.vidu_fn === ID_REM,  FN_REM,
+                                       FN_REMU))))
   muldiv.io.req.bits.in1 := id_sreads(0)
   muldiv.io.req.bits.in2 := id_sreads(1)
   muldiv.io.req.bits.tag := id_ctrl.vd
@@ -536,7 +537,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     A2_RS2  -> ex_srs(1).asSInt,
     A2_IMM  -> ex_imm))
 
-  val alu = Module(new rocket.ALU)
+  val alu = Module(new ALU)
   alu.suggestName("aluInst")
   alu.io.dw := ex_reg_ctrl.alu_dw
   alu.io.fn := ex_reg_ctrl.alu_fn

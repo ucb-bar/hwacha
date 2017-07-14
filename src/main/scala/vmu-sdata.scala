@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class VMUStoreCtrl(implicit p: Parameters) extends VMUBundle()(p) {
   val mode = new Bundle {

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class PLUOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIPUFn

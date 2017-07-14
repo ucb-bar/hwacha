@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class VMUMaskIO(implicit p: Parameters) extends VMUBundle()(p) {
   val ante = new VMUMaskIO_0

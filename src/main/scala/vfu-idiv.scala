@@ -1,11 +1,12 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
+import freechips.rocketchip.rocket._
 
 case object FastMulDiv extends Field[Boolean]
 
-object RocketConstants extends rocket.constants.ScalarOpConstants
+object RocketConstants extends freechips.rocketchip.rocket.constants.ScalarOpConstants
 
 class IDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIDUFn
@@ -36,7 +37,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   qcnt.io.dec := io.req.fire()
   qcnt.io.inc := io.resp.fire()
 
-  val div = Module(new rocket.MulDiv(cfg = rocket.MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
+  val div = Module(new MulDiv(cfg = MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
   div.suggestName("divInst")
 
   div.io.req.valid := io.req.valid
@@ -45,10 +46,10 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
     Mux(io.req.bits.fn.dw_is(DW32), RocketConstants.DW_32,
                                     RocketConstants.DW_64)
   div.io.req.bits.fn :=
-    Mux(io.req.bits.fn.op_is(ID_DIV),  rocket.ALU.FN_DIV,
-    Mux(io.req.bits.fn.op_is(ID_DIVU), rocket.ALU.FN_DIVU,
-    Mux(io.req.bits.fn.op_is(ID_REM),  rocket.ALU.FN_REM,
-                                       rocket.ALU.FN_REMU)))
+    Mux(io.req.bits.fn.op_is(ID_DIV),  ALU.FN_DIV,
+    Mux(io.req.bits.fn.op_is(ID_DIVU), ALU.FN_DIVU,
+    Mux(io.req.bits.fn.op_is(ID_REM),  ALU.FN_REM,
+                                       ALU.FN_REMU)))
   div.io.req.bits.in1 := io.req.bits.in0
   div.io.req.bits.in2 := io.req.bits.in1
   div.io.kill := Bool(false)

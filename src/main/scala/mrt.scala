@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class MRTAddrIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
   val valid = Bool()

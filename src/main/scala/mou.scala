@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import config._
+import freechips.rocketchip.config._
 
 class MOCheck(implicit p: Parameters) extends HwachaBundle()(p) {
   val load = Bool()
