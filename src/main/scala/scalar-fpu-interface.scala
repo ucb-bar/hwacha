@@ -110,7 +110,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   private val hreq_ctrl = Wire(new freechips.rocketchip.tile.FPUCtrlSigs)
   hreq_ctrl <> hreq
   //We handle half conversions locally
-  val enq_rocc = !(hreq_ctrl.getElements.zip(ScalarFPUDecode.FCVT_S_S).map{case(l,r) => r === l.asInstanceOf[UInt]}.reduce(_ && _))
+  val enq_rocc = !(hreq_ctrl.getElements.reverse.zip(ScalarFPUDecode.FCVT_S_S).map{case(l,r) => r === l.asInstanceOf[UInt]}.reduce(_ && _))
   val mask_rocc_req_ready = !enq_rocc || io.rocc.req.ready
   val mask_respq_enq_ready = enq_rocc || respq.io.enq.ready
 
@@ -165,7 +165,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
   when (fire(null, !enq_rocc)) {
-    respq.io.enq.bits.data := Mux(hreq.in_fmt === UInt(0), rec_s_in1, h2s(0))
+    respq.io.enq.bits.data := Mux(hreq.in_fmt === UInt(0), rec_s_in1, box(h2s(0), typeTag(FType.S).U))
   }
 
   respq.io.deq.ready := io.hwacha.resp.ready
