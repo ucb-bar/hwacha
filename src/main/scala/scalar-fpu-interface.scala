@@ -188,6 +188,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   val unrec_h = ieee_hp(s2h.io.out)
   val unrec_s = ieee(rresp.data)(31,0)
   val unrec_d = ieee(rresp.data)
+  val fsgnj_s = unrec_s.asSInt.pad(64).asUInt
   val unrec_fpu_resp =
     Mux(pending_fpu_typ === UInt(0), unrec_s,
       Mux(pending_fpu_typ === UInt(1), unrec_d,
@@ -195,5 +196,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   hresp.tag := pending_fpu_req.tag
   hresp.data :=
-    Mux(pending_fpu_req.toint, rresp.data(63, 0), unrec_fpu_resp)
+    Mux(pending_fpu_req.toint, rresp.data(63, 0),
+      Mux(pending_fpu_req.fastpipe && !pending_fpu_req.wflags && pending_fpu_req.singleIn, fsgnj_s,
+      unrec_fpu_resp))
 }
