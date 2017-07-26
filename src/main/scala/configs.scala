@@ -2,7 +2,7 @@ package hwacha
 
 import Chisel._
 import freechips.rocketchip._
-import freechips.rocketchip.chip._
+import freechips.rocketchip.system._
 import freechips.rocketchip.config._
 import freechips.rocketchip.coreplex._
 import freechips.rocketchip.diplomacy._
@@ -88,7 +88,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
           useFPU = true))
     })}
     // Set TL network to 128bits wide
-    case L1toL2Config => TLBusConfig(beatBytes = 16)
+    case SystemBusParams => up(SystemBusParams, site).copy(beatBytes = 16)
 
     case HwachaConfPrec => true
     case HwachaVRUMaxOutstandingPrefetches => 20

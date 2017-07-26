@@ -1,7 +1,7 @@
 package hwacha
 
 import scala.collection.mutable.LinkedHashSet
-import freechips.rocketchip.chip._
+import freechips.rocketchip.system._
 import freechips.rocketchip.config._
 import freechips.rocketchip.util.GeneratorApp
 
@@ -9,7 +9,7 @@ class VectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env:
 class ScalarVectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-svec")
 
 object HwachaTestSuites {
-import freechips.rocketchip.chip.DefaultTestSuites._
+import freechips.rocketchip.system.DefaultTestSuites._
   val rv64uvNames = LinkedHashSet(
     "wakeup", "fence", "keepcfg",
     "vmca", "vmcs", "vssd", "vssw", "vssh", "vssb",
