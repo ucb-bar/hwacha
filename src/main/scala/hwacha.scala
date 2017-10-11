@@ -161,7 +161,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   val rfirst = Module(new RFirstMaster)
   val smu = outer.smu.module
   val mou = Module(new MemOrderingUnit)
-  val ptlb = Module(new freechips.rocketchip.rocket.TLB(lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
+  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -282,7 +282,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
 
   (vus zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)
-    val dtlb = Module(new freechips.rocketchip.rocket.TLB(lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
+    val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))

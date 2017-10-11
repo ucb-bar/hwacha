@@ -145,7 +145,7 @@ object Generator extends GeneratorApp {
     writeOutputFile(td, s"$longName.d", frag)
   }
 
-  val longName = names.topModuleProject + "." + names.topModuleClass + "." + names.configs
+  val longName = names.topModuleProject + "." + names.configs
   generateFirrtl
   generateTestSuiteMakefrags
   generateArtefacts
