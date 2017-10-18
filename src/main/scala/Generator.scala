@@ -149,4 +149,5 @@ object Generator extends GeneratorApp {
   generateFirrtl
   generateTestSuiteMakefrags
   generateArtefacts
+  generateAnno
 }
