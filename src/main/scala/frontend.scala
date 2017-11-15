@@ -114,29 +114,26 @@ class HwachaFrontend(implicit p : Parameters) extends LazyModule {
   val cacheParams = p(HwachaIcacheKey)
 
   val icache = LazyModule(new freechips.rocketchip.rocket.ICache(cacheParams, hartid = 0))
-  val masterNode = TLOutputNode()
 
-  masterNode := icache.masterNode
+  val masterNode = icache.masterNode
 }
 
 class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extends LazyModuleImp(outer)
   with freechips.rocketchip.tile.HasL1CacheParameters with UsesHwachaParameters {
-  implicit val edge = outer.masterNode.edgesOut.head
+  implicit val edge = outer.masterNode.edges.out.head
   val cacheParams = outer.cacheParams
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val vxu = new FrontendIO(cacheParams).flip
     val vru = new FrontendIO(cacheParams).flip
     val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
-    val mem = outer.masterNode.bundleOut
-  }
+  })
   val icache = outer.icache.module
   val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), nEntries = nptlb))
   val vxu = Module(new MiniFrontend(cacheParams))
   val vru = Module(new MiniFrontend(cacheParams))
   val req_arb = Module(new Arbiter(new FrontendReq, 2))
 
-  io.mem.head <> icache.io.tl_out
   vxu.io.front <> io.vxu
   vru.io.front <> io.vru
 

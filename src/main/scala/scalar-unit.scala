@@ -16,7 +16,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   with SeqParameters {
   import Commands._
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val cfg = new HwachaConfigIO().flip
 
     val cmdq = new CMDQIO().flip
@@ -42,7 +42,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
         val vus = Vec(nLanes, new MRTPending).asInput
       }
     }
-  }
+  })
 
   // STATE
   class SRegFile {

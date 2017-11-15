@@ -39,7 +39,9 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters {
+abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters with UsesHwachaOnlyParameters
+
+abstract trait UsesHwachaOnlyParameters {
   implicit val p: Parameters
 
   val commit_log = p(HwachaCommitLog)
@@ -118,7 +120,7 @@ class HwachaCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class Hwacha(implicit p: Parameters) extends LazyRoCC
-  with UsesHwachaParameters {
+  with UsesHwachaOnlyParameters {
   override lazy val module = new HwachaImp(this)
 
   val icache = LazyModule(new HwachaFrontend())
@@ -149,8 +151,8 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   import HwachaDecodeTable._
   import Commands._
 
-  val atlEdge = outer.atlNode.edgesOut.head
-  val tlEdge = outer.tlNode.edgesOut.head
+  val atlEdge = outer.atlNode.edges.out.head
+  val tlEdge = outer.tlNode.edges.out.head
 
   val rocc = Module(new RoCCUnit)
   val icache = outer.icache.module
@@ -197,7 +199,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
     val vru = outer.vru.get.module
     icache.io.vru <> vru.io.imem
     vru.io.cmdq <> rocc.io.cmdqs.vru
-    outer.atlBus.node.bundleIn(2) := vru.io.dmem
     vru.io.vf_complete_ack := mseq.io.vf.last
     //io.counters.vru <> vru.io.counters
   } else {
@@ -213,10 +214,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
 
     //io.counters.vru <> (new VRUCounterIO).fromBits(UInt(0))
   }
-  outer.atlBus.node.bundleIn(0) := icache.io.mem
-  outer.atlBus.node.bundleIn(1) := smu.io.dmem
-  io.atl <> outer.atlBus.node.bundleOut
-  io.ptw(0) <> icache.io.ptw
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
@@ -303,12 +300,5 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
     io.ptw(2 + i) <> dtlb.io.ptw
     dtlb.io.ptw.status := vu.io.tlb.req.bits.status
 
-    io.tl(i) <> vu.io.dmem
-  }
-  //Tie off unused channels
-  (io.tl ++ io.atl).foreach { chan =>
-    chan.b.ready := Bool(true)
-    chan.c.valid := Bool(false)
-    chan.e.valid := Bool(false)
   }
 }

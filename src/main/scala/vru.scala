@@ -151,7 +151,6 @@ class PrefetchUnit(edge: TLEdgeOut, resetSignal: Bool = null)(implicit p: Parame
     val memop = Decoupled(new DecodedMemOp).flip
     val dmem = TLBundle(edge.bundle)
   }
-
   val tag_count = Reg(init = UInt(0, 5))//tlClientXactIdBits))
 
   val tlBlockAddrOffset =  tlByteAddrBits
@@ -400,17 +399,16 @@ class VRUCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
 
 class VRU(implicit p: Parameters) extends LazyModule {
   lazy val module = new VRUModule(this)
-  val masterNode = TLClientNode(TLClientParameters(name = "HwachaVRU", sourceId = IdRange(0,5)))
+  val masterNode = TLClientNode(Seq(TLClientPortParameters(Seq(TLClientParameters(name = "HwachaVRU", sourceId = IdRange(0,5))))))
 }
 class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with MemParameters {
   import Commands._
-  val edge = outer.masterNode.edgesOut.head
+  val (dmem, edge) = outer.masterNode.out.head
   val io = new Bundle {
     // to is implicit, -> imem
     val imem = new FrontendIO(p(HwachaIcacheKey))
     val cmdq = new CMDQIO().flip
-    val dmem = outer.masterNode.bundleOut
     // shorten names
     val vf_complete_ack = Bool(INPUT)
 
@@ -445,10 +443,10 @@ class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
   val prefetch_unit = Module(new PrefetchUnit(edge))
   prefetch_unit.suggestName("prefetch_unitInst")
   prefetch_unit.io.memop <> decodedMemOpQueue.io.deq
-  io.dmem.head <> prefetch_unit.io.dmem
+  dmem <> prefetch_unit.io.dmem
 
   //Tie off unused channels
-  io.dmem.head.b.ready := Bool(true)
-  io.dmem.head.c.valid := Bool(false)
-  io.dmem.head.e.valid := Bool(false)
+  dmem.b.ready := Bool(true)
+  dmem.c.valid := Bool(false)
+  dmem.e.valid := Bool(false)
 }

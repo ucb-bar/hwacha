@@ -52,23 +52,21 @@ class SMUEntry(implicit p: Parameters) extends SMUBundle()(p)
   val offset = UInt(width = tlByteAddrBits)
 }
 
-class SMU(implicit p: Parameters) extends LazyModule
-  with UsesHwachaParameters {
+class SMU(implicit p: Parameters) extends LazyModule {
   lazy val module = new SMUModule(this)
-  val masterNode = TLClientNode(TLClientParameters(name = "HwachaSMU", sourceId = IdRange(0, p(HwachaNSMUEntries))))
+  val masterNode = TLClientNode(Seq(TLClientPortParameters(Seq(TLClientParameters(name = "HwachaSMU", sourceId = IdRange(0, p(HwachaNSMUEntries)))))))
 }
 
 class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with SMUParameters {
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val scalar = new SMUIO().flip
-    val dmem = outer.masterNode.bundleOut
 
     val tlb = new RTLBIO
     val irq = new IRQIO
-  }
-  val edge = outer.masterNode.edgesOut.head
+  })
+  val (dmem, edge) = outer.masterNode.out.head
 
   val table = Module(new Table(nSMU, new SMUEntry))
   table.suggestName("tableInst")
@@ -78,7 +76,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   //--------------------------------------------------------------------\\
   // request
   //--------------------------------------------------------------------\\
-  private val acquire = io.dmem.head.a
+  private val acquire = dmem.a
 
   val req = Reg(io.scalar.req.bits)
   val req_mt = DecodedMemType(req.fn.mt)
@@ -160,7 +158,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   //--------------------------------------------------------------------\\
   // request
   //--------------------------------------------------------------------\\
-  private val grant = io.dmem.head.d
+  private val grant = dmem.d
 
   io.scalar.resp.valid := grant.valid
   grant.ready := io.scalar.resp.ready
@@ -186,7 +184,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
     resp_data(7, 0))
 
   //Tie off unused channels
-  io.dmem.head.b.ready := Bool(true)
-  io.dmem.head.c.valid := Bool(false)
-  io.dmem.head.e.valid := Bool(false)
+  dmem.b.ready := Bool(true)
+  dmem.c.valid := Bool(false)
+  dmem.e.valid := Bool(false)
 }

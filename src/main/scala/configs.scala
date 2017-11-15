@@ -88,7 +88,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
           useFPU = true))
     })}
     // Set TL network to 128bits wide
-    case SystemBusParams => up(SystemBusParams, site).copy(beatBytes = 16)
+    case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 16)
 
     case HwachaConfPrec => true
     case HwachaVRUMaxOutstandingPrefetches => 20

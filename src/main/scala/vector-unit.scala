@@ -7,12 +7,12 @@ import freechips.rocketchip.tilelink._
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
-  val masterNode = TLClientNode(
-    TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, 2*p(HwachaNVLTEntries))))
+  val masterNode = TLClientNode(Seq(TLClientPortParameters(
+    Seq(TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, 2*p(HwachaNVLTEntries)))))))
 }
 
 class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyModuleImp(outer) with SeqParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val issue = new Bundle {
@@ -23,12 +23,11 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
     val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
     val tlb = new RTLBIO
-    val dmem = outer.masterNode.bundleOut
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
-  }
-  val edge = outer.masterNode.edgesOut.head
+  })
+  val (dmem, edge) = outer.masterNode.out.head
 
   val vxu = Module(new VXU)
   vxu.suggestName("vxuInst")
@@ -62,7 +61,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
 
   io.red <> vxu.io.red
   io.tlb <> vmu.io.tlb
-  io.dmem.head <> memif.io.dmem
+  dmem <> memif.io.dmem
   io.pending <> mrt.io.pending
 
   vmu.io.xcpt.prop.vmu.stall := Bool(false)
