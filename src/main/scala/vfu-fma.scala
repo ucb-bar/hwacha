@@ -64,16 +64,17 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
         val n = SZ_D / sz
         val val_fp = fn.fp_is(fp)
         val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
-          val fma = Module(new hardfloat.MulAddRecFN(exp, sig))
+          val fma = Module(new freechips.rocketchip.tile.MulAddRecFNPipe((stages-1) min 2, exp, sig))
           fma.suggestName("fmaInst")
           val valid = pred(i) && val_fp
+          fma.io.validin := valid
           fma.io.op := dgate(valid, fma_op)
           fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))
           fma.io.b := recode(dgate(valid, unpack(fma_multiplier, i)))
           fma.io.c := recode(dgate(valid, unpack(fma_addend, i)))
           fma.io.roundingMode := dgate(valid, fn.rm)
-          val out = Pipe(valid, ieee(fma.io.out), stages).bits
-          val exc = Pipe(valid, fma.io.exceptionFlags, stages).bits
+          val out = Pipe(fma.io.validout, ieee(fma.io.out), (stages - 3) max 0).bits
+          val exc = Pipe(fma.io.validout, fma.io.exceptionFlags, (stages - 3) max 0).bits
           (out, exc)
         }
         val valid = active && val_fp
