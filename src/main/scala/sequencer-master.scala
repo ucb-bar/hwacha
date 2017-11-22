@@ -101,6 +101,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val empty = UInt(OUTPUT, log2Down(nSeq)+1)
     }
   }
+  chisel3.experimental.dontTouch(io.debug)
 
   val v = Reg(init = Vec.fill(nSeq){Bool(false)})
   val e = Reg(Vec(nSeq, new MasterSeqEntry))

@@ -158,7 +158,6 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   tlb.io.req.valid := Reg(next=req.valid)
   tlb.io.req.bits.vaddr := s1_pc
   tlb.io.req.bits.passthrough := Bool(false)
-  tlb.io.req.bits.instruction := Bool(true)
   tlb.io.req.bits.sfence.valid := Bool(false)
   tlb.io.req.bits.size := UInt(log2Ceil(cacheParams.fetchBytes))
 

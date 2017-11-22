@@ -73,6 +73,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val second_sched = Vec(nSeq, Bool(OUTPUT))
     }
   }
+  chisel3.experimental.dontTouch(io.debug)
 
   val mv = io.master.state.valid
   val me = io.master.state.e

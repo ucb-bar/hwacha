@@ -34,7 +34,6 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
   def bridge(client: TLBIO) {
     this.req.bits.req.vaddr := client.req.bits.addr
     this.req.bits.req.passthrough := Bool(false)
-    this.req.bits.req.instruction := Bool(false)
     this.req.bits.req.sfence.valid := Bool(false)
     this.req.bits.req.size := client.req.bits.mt.shift()
     this.req.bits.req.cmd := client.req.bits.store // for now just give whether its read or write M_XRD or M_XWR
