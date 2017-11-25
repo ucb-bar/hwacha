@@ -5,11 +5,11 @@ import freechips.rocketchip.config._
 
 abstract trait DCCParameters extends UsesHwachaParameters {
   val nDCCOpQ = 2
-  val nDCCPredQ = 2
+  val nDCCPredQ = 4
   val nVDUOperands = 2
 
   val nBPQ = 2*nBanks
-  val nBRQ = 2
+  val nBRQ = 4
   val nBWQ = 2
 
   val maxSLA = 7 /* Ideally (2^i - 1) where (i > 1) */
