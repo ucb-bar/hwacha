@@ -151,9 +151,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   import HwachaDecodeTable._
   import Commands._
 
-  val atlEdge = outer.atlNode.edges.out.head
-  val tlEdge = outer.tlNode.edges.out.head
-
   val rocc = Module(new RoCCUnit)
   val icache = outer.icache.module
   val scalar = Module(new ScalarUnit)
@@ -163,7 +160,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   val rfirst = Module(new RFirstMaster)
   val smu = outer.smu.module
   val mou = Module(new MemOrderingUnit)
-  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(atlEdge, p))
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -195,6 +191,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
+  io.ptw(0) <> icache.io.ptw
   if (confvru) {
     val vru = outer.vru.get.module
     icache.io.vru <> vru.io.imem
@@ -220,12 +217,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
   io.mem.invalidate_lr := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
-  //ptlb.io <> smu.io.tlb
-  ptlb.io.req <> smu.io.tlb.req
-  ptlb.io.req.bits := smu.io.tlb.req.bits.req
-  smu.io.tlb.resp  <> ptlb.io.resp
-  io.ptw(1) <> ptlb.io.ptw
-  ptlb.io.ptw.status := smu.io.tlb.req.bits.status
+  io.ptw(1) <> smu.io.ptw
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
   val enq_rpred = scalar.io.vxu.bits.active.vrpred
@@ -279,7 +271,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
 
   (vus zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)
-    val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(tlEdge, p))
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))
@@ -292,13 +283,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(ou
     vu.io.mseq.update <> mseq.io.master.update
     rpred.io.lane(i) <> vu.io.red.pred
     rfirst.io.lane(i) <> vu.io.red.first
-
-    //dtlb.io <> vu.io.tlb
-    dtlb.io.req <> vu.io.tlb.req
-    dtlb.io.req.bits := vu.io.tlb.req.bits.req
-    vu.io.tlb.resp <> dtlb.io.resp
-    io.ptw(2 + i) <> dtlb.io.ptw
-    dtlb.io.ptw.status := vu.io.tlb.req.bits.status
-
+    io.ptw(2 + i) <> vu.io.ptw
   }
 }

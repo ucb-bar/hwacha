@@ -83,7 +83,9 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
         Seq(RoCCParams(
           opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
           generator = (p: Parameters) => {
-            LazyModule(new Hwacha()(p))},
+            val hwacha = LazyModule.apply(new Hwacha()(p))
+            hwacha
+            },
           nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
           useFPU = true))
     })}

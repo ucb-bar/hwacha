@@ -4,6 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
+import freechips.rocketchip.rocket.{TLBPTWIO}
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
@@ -22,7 +23,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
     val mseq = new MasterSequencerIO().flip
     val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
-    val tlb = new RTLBIO
+    val ptw = new TLBPTWIO
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
@@ -37,6 +38,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
   mrt.suggestName("mrtInst")
+  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(edge, p))
 
   vxu.io.id := io.id
   vxu.io.cfg <> io.cfg
@@ -59,8 +61,13 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   mrt.io.sret <> vmu.io.sret
   mrt.io.aret <> vmu.io.aret
 
+  dtlb.io.req <> vmu.io.tlb.req
+  dtlb.io.req.bits := vmu.io.tlb.req.bits.req
+  vmu.io.tlb.resp <> dtlb.io.resp
+  io.ptw <> dtlb.io.ptw
+  dtlb.io.ptw.status := vmu.io.tlb.req.bits.status
+
   io.red <> vxu.io.red
-  io.tlb <> vmu.io.tlb
   dmem <> memif.io.dmem
   io.pending <> mrt.io.pending
 
