@@ -685,9 +685,10 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 trait VLUSelect extends DCCParameters {
   val vidx = UInt(width = bVLU)
 }
+class VLUSelectBundle(implicit p: Parameters) extends VXUBundle()(p) with VLUSelect
 class VLUSelectIO(implicit p: Parameters)
-  extends DecoupledIO(new VXUBundle()(p) with VLUSelect) {
-  override def cloneType = new VLUSelectIO().asInstanceOf[this.type]
+  extends DecoupledIO(new VLUSelectBundle()(p)) {
+  override def cloneType: this.type = (new VLUSelectIO()).asInstanceOf[this.type]
 }
 
 class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {

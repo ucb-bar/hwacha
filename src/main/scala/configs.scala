@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip._
 import freechips.rocketchip.system._
 import freechips.rocketchip.config._
-import freechips.rocketchip.coreplex._
+import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket._
 import freechips.rocketchip.tile._

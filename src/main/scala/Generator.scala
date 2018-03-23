@@ -91,7 +91,7 @@ object Generator extends GeneratorApp {
       "rv32mi-p-sbreak",
       "rv32ui-p-sll")
 
-    import freechips.rocketchip.coreplex.RocketTilesKey
+    import freechips.rocketchip.subsystem.RocketTilesKey
     import freechips.rocketchip.tile.XLen
     import DefaultTestSuites._
     val xlen = params(XLen)
@@ -102,11 +102,11 @@ object Generator extends GeneratorApp {
     val env = if (vm) List("p","v") else List("p")
     coreParams.fpu foreach { case cfg =>
       if (xlen == 32) {
-        TestGeneration.addSuites(env.map(rv32ufNoDiv))
+        TestGeneration.addSuites(env.map(rv32uf))
       } else {
         TestGeneration.addSuite(rv32udBenchmarks)
-        TestGeneration.addSuites(env.map(rv64ufNoDiv))
-        TestGeneration.addSuites(env.map(rv64udNoDiv))
+        TestGeneration.addSuites(env.map(rv64uf))
+        TestGeneration.addSuites(env.map(rv64ud))
         if (cfg.divSqrt) {
           TestGeneration.addSuites(env.map(rv64uf))
           TestGeneration.addSuites(env.map(rv64ud))

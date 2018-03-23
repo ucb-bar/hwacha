@@ -4,7 +4,7 @@ package hwacha
 
 import freechips.rocketchip._
 import freechips.rocketchip.system._
-import freechips.rocketchip.coreplex._
+import freechips.rocketchip.subsystem._
 import freechips.rocketchip.rocket._
 import hwacha._
 import freechips.rocketchip.config._
