@@ -145,6 +145,33 @@ object Generator extends GeneratorApp {
     writeOutputFile(td, s"$longName.d", frag)
   }
 
+  override def generateAnno {
+    import java.io.{File, FileWriter}
+    import firrtl.annotations.JsonProtocol
+    import freechips.rocketchip.util.ParamsAnnotation
+    import freechips.rocketchip.tile.RoCCParams
+
+    val annotationFile = new File(td, s"$longName.anno.json")
+    val af = new FileWriter(annotationFile)
+
+    def isRoCCParams(x: (String, Any)): Boolean = {
+      x._2 match {
+        case Seq(_: RoCCParams, _*) => true
+        case _ => false
+      }
+    }
+
+    // FIXME: Avoid serializing RoCCParams
+    af.write(JsonProtocol.serialize(circuit.annotations.map {
+      _.toFirrtl match {
+        case anno: ParamsAnnotation if anno.params.exists(isRoCCParams(_)) =>
+          anno.copy(params = anno.params.filterNot(isRoCCParams(_)))
+        case anno => anno
+      }
+    }))
+    af.close()
+  }
+
   val longName = names.topModuleProject + "." + names.configs
   generateFirrtl
   generateTestSuiteMakefrags
