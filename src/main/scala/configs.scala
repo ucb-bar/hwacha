@@ -37,7 +37,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
         site(HwachaBankWidth) / site(HwachaRegLen)
 
     case HwachaNDTLB => 8
-    case HwachaNPTLB => 2
+    case HwachaNPTLB => 4
     case HwachaLocalScalarFPU => false
 
     // Multi-lane constants

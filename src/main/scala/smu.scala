@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.rocket.{TLBPTWIO}
+import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
 
 case object HwachaNSMUEntries extends Field[Int]
 
@@ -93,12 +93,13 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tlb.req.bits.status := req.status
   io.irq <> tbox.io.irq
 
-  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), nEntries = nptlb)(edge, p))
+  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), TLBConfig(nptlb))(edge, p))
   ptlb.io.req <> tbox.io.outer.req
   ptlb.io.req.bits := tbox.io.outer.req.bits.req
   tbox.io.outer.resp  <> ptlb.io.resp
   io.ptw <> ptlb.io.ptw
   ptlb.io.ptw.status := tbox.io.outer.req.bits.status
+  ptlb.io.sfence.valid := false.B
 
   val addr_offset = req.addr(tlByteAddrBits-1, 0)
 

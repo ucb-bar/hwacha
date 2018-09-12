@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
-import freechips.rocketchip.rocket.{TLBPTWIO}
+import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
@@ -38,7 +38,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
   mrt.suggestName("mrtInst")
-  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), nEntries = ndtlb)(edge, p))
+  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), TLBConfig(ndtlb))(edge, p))
 
   vxu.io.id := io.id
   vxu.io.cfg <> io.cfg
@@ -66,6 +66,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   vmu.io.tlb.resp <> dtlb.io.resp
   io.ptw <> dtlb.io.ptw
   dtlb.io.ptw.status := vmu.io.tlb.req.bits.status
+  dtlb.io.sfence.valid := false.B
 
   io.red <> vxu.io.red
   dmem <> memif.io.dmem

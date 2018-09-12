@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
-import freechips.rocketchip.rocket.{ICacheParams, MStatus, TLBResp}
+import freechips.rocketchip.rocket.{ICacheParams, MStatus, TLBConfig, TLBResp}
 
 class FrontendResp(icacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
   val pc = UInt(width = vaddrBitsExtended)  // ID stage PC
@@ -129,7 +129,7 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
     val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
   })
   val icache = outer.icache.module
-  val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), nEntries = nptlb))
+  val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), TLBConfig(nptlb))(edge, p))
   val vxu = Module(new MiniFrontend(cacheParams))
   val vru = Module(new MiniFrontend(cacheParams))
   val req_arb = Module(new Arbiter(new FrontendReq, 2))
@@ -158,8 +158,8 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   tlb.io.req.valid := Reg(next=req.valid)
   tlb.io.req.bits.vaddr := s1_pc
   tlb.io.req.bits.passthrough := Bool(false)
-  tlb.io.req.bits.sfence.valid := Bool(false)
   tlb.io.req.bits.size := UInt(log2Ceil(cacheParams.fetchBytes))
+  tlb.io.sfence.valid := false.B
 
   req.ready := Bool(true)
 
