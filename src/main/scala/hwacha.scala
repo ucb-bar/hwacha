@@ -217,7 +217,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
 
   // Connect supporting Hwacha memory modules to external ports
   io.mem.req.valid := Bool(false)
-  io.mem.invalidate_lr := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
   io.ptw(1) <> smu.io.ptw
