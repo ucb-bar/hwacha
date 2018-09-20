@@ -65,14 +65,16 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   val pred_u = (head & head_mask).orR
   val pred = Mux(op.mode.unit, pred_u, pred_n)
 
+  val vlen_end = Wire(Bool())
   val ecnt_u_page = pred_u || pglen_end
   val ecnt_u = Mux(ecnt_u_page, pglen, step_max)
   val step_u = Mux(pglen_end, pglen(bStrip, 0), step_max)
-  val ecnt = Mux(op.mode.unit, ecnt_u, ecnt_n)
+  val ecnt_n_bounded = Mux(vlen_end, op.vlen, ecnt_n)
+  val ecnt = Mux(op.mode.unit, ecnt_u, ecnt_n_bounded)
 
   val step = Mux(op.mode.unit, step_u, step_n)
   val vlen_next = op.vlen.zext - step.zext
-  val vlen_end = (vlen_next <= SInt(0))
+  vlen_end := (vlen_next <= SInt(0))
 
   io.sample.bits.pred := pred
   io.sample.bits.ecnt := ecnt
