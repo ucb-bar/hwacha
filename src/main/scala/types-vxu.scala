@@ -250,6 +250,10 @@ trait BankPred extends VXUBundle {
   def neg(cond: Bool) = Mux(cond, ~pred, pred)
 }
 
+trait PredMask extends VXUBundle {
+  val mask = Bits(width = wPred)
+}
+
 trait BankMask extends VXUBundle {
   val mask = Bits(width = wBank/8)
 }
@@ -527,6 +531,7 @@ class PredRFWriteExpEntry(implicit p: Parameters) extends PredRFWriteLaneOp()(p)
 //-------------------------------------------------------------------------\\
 
 class BankPredEntry(implicit p: Parameters) extends BankPred
+class BankPredMaskEntry(implicit p: Parameters) extends BankPred with PredMask
 class BankDataEntry(implicit p: Parameters) extends BankData
 class BankDataPredEntry(implicit p: Parameters) extends BankData with BankPred
 class BankDataMaskEntry(implicit p: Parameters) extends BankData with BankMask

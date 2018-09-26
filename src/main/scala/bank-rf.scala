@@ -18,7 +18,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
       val opl = Vec(nLOPL, new BankDataEntry()).asOutput
       val ppred = new BankPredEntry().asOutput
       val rpred = Vec(nPredRPorts, new BankPredEntry()).asOutput
-      val wpred = Vec(2, new BankPredEntry()).asInput
+      val wpred = Vec(2, new BankPredMaskEntry()).asInput
       val wdata = new BankDataPredEntry().asInput
     }
   }
@@ -64,12 +64,13 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
   when (io.op.pred.write.valid) {
     val waddr = io.op.pred.write.bits.addr
     val shift = pred_shift(io.op.pred.write.bits.pack.idx)
-    val wdata_base =
-      Mux(io.op.pred.write.bits.selg, io.global.wpred.pred,
-        Mux(io.op.pred.write.bits.plu, io.local.wpred(1).pred, io.local.wpred(0).pred))
-    val wdata_pack = repack_pred(wdata_base, io.op.pred.write.bits.rate)
-    val wdata = (wdata_pack << shift)(wPred-1, 0)
-    val wmask = (io.op.pred.write.bits.pred << shift)(wPred-1, 0)
+    val wpred =
+      Mux(io.op.pred.write.bits.selg, io.global.wpred,
+        Mux(io.op.pred.write.bits.plu, io.local.wpred(1), io.local.wpred(0)))
+    val wdata_base = repack_pred(wpred.pred, io.op.pred.write.bits.rate)
+    val wdata = (wdata_base << shift)(wPred-1, 0)
+    val wmask_base = io.op.pred.write.bits.pred & wpred.mask
+    val wmask = (wmask_base << shift)(wPred-1, 0)
 
     pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).asUInt & ~wmask)).toBools))
 

@@ -17,7 +17,7 @@ import freechips.rocketchip.system.DefaultTestSuites._
     "vsad", "vsaw", "vsah", "vsab", "vlad", "vlaw", "vlawu", "vlah", "vlahu", "vlab", "vlabu",
     "vld", "vlw", "vlwu", "vlh", "vlhu", "vlb", "vlbu", "vlxd", "vlxw", "vlxwu", "vlxh", "vlxhu", "vlxb", "vlxbu",
     "vsd", "vsw", "vsh", "vsb", "vsxd", "vsxw", "vsxh", "vsxb",
-    "eidx", "imul", "fcvt", "fcvt_hs", "vvadd_d", "vvadd_w", "vvadd_fd", "vvadd_fw", "vvmul_d",
+    "eidx", "imul", "fcvt", "fcvt_hs", "cmp", "fcmp", "vvadd_d", "vvadd_w", "vvadd_fd", "vvadd_fw", "vvmul_d",
     "overlap", "sched_sreg_xbar", "sched_fadd", "sched_waw", "sched_war", "pointer", "vcjal", "vfirst", "vfence",
     "vl_empty", "vs_empty", "vlx_empty", "vsx_empty", "vamo_empty", "eidx_empty") ++
     (rv32uaNames -- Set("lrsc")) ++ (rv64uaNames -- Set("lrsc"))

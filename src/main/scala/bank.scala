@@ -48,7 +48,7 @@ class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p)) {
 class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
   val pdl = Vec(nGPDL, new BankPredEntry()).asOutput
   val opl = Vec(nGOPL, new BankDataEntry()).asOutput
-  val wpred = new BankPredEntry().asInput
+  val wpred = new BankPredMaskEntry().asInput
   val wdata = Vec(nWSel, new BankDataPredEntry()).asInput
 
   val bpq = new BPQIO
@@ -83,7 +83,7 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
 
   // ALU
   val alu_pred = io.op.viu.bits.pred & rf.io.local.pdl(0).pred
-  val alus = ((0 until nSlices) map { i =>
+  val alus = (0 until nSlices) map { i =>
     val alu = Module(new ALUSlice(bid*nSlices+i))
     alu.suggestName("aluInst")
     alu.io.cfg <> io.cfg
@@ -98,8 +98,9 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
                                unpack_slice(rf.io.local.opl(1).data, i))
     alu.io.req.bits.rate := io.op.viu.bits.rate
     alu.io.req.bits.pred := unpack_pred(alu_pred, i, alu.io.req.bits.rate)
-    alu.io.resp.bits
-  }, valids(io.op.viu.valid, alu_pred, stagesALU))
+    alu.io.resp
+  }
+  val alus_wpred = valids(io.op.viu.valid, alu_pred, stagesALU)
 
   // PLU: Predicate Logic Unit
   val plus = (0 until wPred) map { i =>
@@ -112,11 +113,14 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
     plu.io.req.bits.in2 := rf.io.local.rpred(2).pred(i)
     plu.io.resp
   }
+  val plus_wpred = valids(io.op.vipu.valid, io.op.vipu.bits.pred, stagesPLU)
 
-  rf.io.local.wpred(0).pred := Vec(alus._1.map(_.cmp)).asUInt
+  rf.io.local.wpred(0).pred := Cat(alus.map(_.bits.cmp).reverse)
+  rf.io.local.wpred(0).mask := alus_wpred
   rf.io.local.wpred(1).pred := Cat(plus.map(_.bits.out).reverse)
-  rf.io.local.wdata.data := repack_slice(alus._1.map(_.out))
-  rf.io.local.wdata.pred := alus._2
+  rf.io.local.wpred(1).mask := plus_wpred
+  rf.io.local.wdata.data := repack_slice(alus.map(_.bits.out))
+  rf.io.local.wdata.pred := alus_wpred
 
   // BPQ
   io.rw.bpq.valid := io.op.vpu.valid
@@ -133,6 +137,6 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
   assert(!io.op.vsu.valid || io.rw.brq.ready, "brq enabled when not ready; check brq counters")
 
   // ACK
-  io.ack.viu.valid := alus._2.orR
-  io.ack.viu.bits.pred := alus._2
+  io.ack.viu.valid := alus.map(_.valid).reduce(_||_)
+  io.ack.viu.bits.pred := alus_wpred
 }
