@@ -4,4 +4,4 @@ version := "1.2"
 
 name := "hwacha"
 
-scalaVersion := "2.11.6"
+scalaVersion := "2.12.4"
