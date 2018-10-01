@@ -119,7 +119,10 @@ class HwachaCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vru = new VRUCounterIO
 }
 
-class Hwacha(implicit p: Parameters) extends LazyRoCC
+class Hwacha(implicit p: Parameters) extends LazyRoCC(
+    opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
+    nPTWPorts = 2 + p(HwachaNLanes),
+    usesFPU = true)
   with UsesHwachaOnlyParameters {
   override lazy val module = new HwachaImp(this)
 
@@ -139,7 +142,7 @@ class Hwacha(implicit p: Parameters) extends LazyRoCC
   vus.map(_.masterNode).foreach { tlNode := _ }
 }
 
-class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModule(outer)
+class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp(outer)
   with UsesHwachaParameters
 {
   // TODO: Re-add counters

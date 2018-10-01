@@ -77,18 +77,12 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaNSMUEntries => 16
     case HwachaBuildVRU => true
 
-    case RocketTilesKey => up(RocketTilesKey, site) map { r =>
-      r.copy(
-        rocc = {
-        Seq(RoCCParams(
-          opcodes = OpcodeSet.custom0 | OpcodeSet.custom1,
-          generator = (p: Parameters) => {
-            val hwacha = LazyModule.apply(new Hwacha()(p))
-            hwacha
-            },
-          nPTWPorts = 2 + site(HwachaNLanes), // icache + vru + vmus
-          useFPU = true))
-    })}
+    case BuildRoCC => Seq(
+      (p: Parameters) => {
+         val hwacha = LazyModule.apply(new Hwacha()(p))
+         hwacha
+      }
+    )
     // Set TL network to 128bits wide
     case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 16)
 
