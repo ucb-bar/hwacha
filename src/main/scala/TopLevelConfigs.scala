@@ -9,9 +9,9 @@ import freechips.rocketchip.rocket._
 import hwacha._
 import freechips.rocketchip.config._
 
-class HwachaConfig extends Config(new DefaultHwachaConfig ++ new WithFederationL2Cache ++ new DefaultConfig)
+class HwachaConfig extends Config(new DefaultHwachaConfig ++ new DefaultConfig)
 
-class EOS24Config extends Config(new WithNBanksPerMemChannel(4) ++ new WithL2Size(256) ++ new HwachaConfig)
+class EOS24Config extends Config(new WithNBanksPerMemChannel(4) ++ new HwachaConfig)
 
 class WithNLanes(n: Int) extends Config((site, here, up) => {
   case HwachaNLanes => n
@@ -40,7 +40,7 @@ class WithSmallPredRF extends Config((site, here, up) => {
 class ISCA2016Config extends Config(
   new Process28nmConfig ++
   new WithNBanksPerMemChannel(4) ++
-  new WithL2Size(256) ++ new With32BtbEntires ++ new HwachaConfig)
+  new With32BtbEntires ++ new HwachaConfig)
 class FastISCA2016Config extends Config(new WithoutTLMonitors ++ new ISCA2016Config)
 
 class ISCA2016L2Config extends Config(new WithNLanes(2) ++ new ISCA2016Config)
