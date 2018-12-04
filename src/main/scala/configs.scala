@@ -86,7 +86,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     // Set TL network to 128bits wide
     case SystemBusKey => up(SystemBusKey, site).copy(beatBytes = 16)
 
-    case HwachaConfPrec => true
+    case HwachaConfPrec => false
     case HwachaVRUMaxOutstandingPrefetches => 20
     case HwachaVRUEarlyIgnore => 1
     case HwachaVRUMaxRunaheadBytes => 16777216
