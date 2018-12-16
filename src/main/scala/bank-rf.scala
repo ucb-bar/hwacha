@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import DataGating._
+import midas.targetutils._
 
 class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData with BankMask {
   val addr = UInt(width = log2Up(nSRAM))
@@ -77,7 +78,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
     if (commit_log) {
       (0 until wPred) foreach { case i =>
         when (wmask(i)) {
-          printf("H: write_prf %d %d %d %d %d\n", io.lid, UInt(bid), waddr, UInt(i), wdata(i))
+          printf(SynthesizePrintf(s"pred_rf_${i}", s"H: write_prf %d $bid %d $i%d\n", io.lid, waddr, wdata(i)))
         }
       }
     }
@@ -127,7 +128,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
       val wdata = toDWords(sram_warb.io.out.bits.data) // FIXME
       (0 until nSlices) foreach { case i =>
         when (wmask(8*i)) {
-          printf("H: write_vrf %d %d %d %d %x\n", io.lid, UInt(bid), waddr, UInt(i), wdata(i))
+          printf(SynthesizePrintf(s"sram_rf_${i}", s"H: write_vrf %d $bid %d $i %x\n", io.lid, waddr, wdata(i)))
         }
       }
     }

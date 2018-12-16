@@ -82,6 +82,12 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
   val v = Reg(init = Vec.fill(nSeq){Bool(false)})
   val e = Reg(Vec(nSeq, new SeqEntry))
 
+  import midas.targetutils.FpgaDebugAnnotation
+//chisel3.experimental.annotate(FpgaDebugAnnotation(v))
+  e.foreach { r =>
+    chisel3.experimental.annotate(FpgaDebugAnnotation(r.vlen))
+  }
+
   val me_rate = Vec(me.map(UInt(1) << _.rate))
 
   val e_sidx_next = Vec((0 until nSeq) map { r => e(r).sidx + me_rate(r) })

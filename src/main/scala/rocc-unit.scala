@@ -4,6 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import Commands._
 import freechips.rocketchip.util._ //implicits for bitpats
+import midas.targetutils._
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val morelax = Bool(OUTPUT)
@@ -369,8 +370,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_nvvdw := cfg_nvvdw
     if (!confprec) cfg_reg_vstride := cfg_nvv
     val vru_switch_on = io.rocc.cmd.bits.rs1(63).toBool
-    printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
-      UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on)
+    printf(SynthesizePrintf("vsetcfg", s"H: VSETCFG[nlanes=$nLanes][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
+      cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on))
     vru_enable := vru_switch_on
   }
 
@@ -378,8 +379,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   when (fire_vsetvl && !ignore_dup_vsetvl) {
     cfg_reg_vl := cfg_vl
-    printf("H: VSETVL[maxvl=%d][vl=%d]\n",
-      cfg_reg_maxvl, cfg_vl)
+    printf(SynthesizePrintf("vsetvl", "H: VSETVL[maxvl=%d][vl=%d]\n",
+      cfg_reg_maxvl, cfg_vl))
   } .elsewhen (fire_vsetvl && ignore_dup_vsetvl) {
     printf("H: IGNORED REPEAT VSETVL[maxvl=%d][vl=%d]\n",
       cfg_reg_maxvl, cfg_vl)

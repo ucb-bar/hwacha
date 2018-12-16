@@ -113,6 +113,18 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
   io.master.state.e := e
   io.master.state.head := head
 
+  import midas.targetutils.FpgaDebugAnnotation
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.master.state.valid))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.master.state.head))
+  io.master.state.e.foreach { r =>
+    chisel3.experimental.annotate(FpgaDebugAnnotation(r.fn))
+    chisel3.experimental.annotate(FpgaDebugAnnotation(r.active))
+//  chisel3.experimental.annotate(FpgaDebugAnnotation(r.raw))
+//  chisel3.experimental.annotate(FpgaDebugAnnotation(r.war))
+//  chisel3.experimental.annotate(FpgaDebugAnnotation(r.waw))
+//  chisel3.experimental.annotate(FpgaDebugAnnotation(r.last))
+  }
+
   var retired = false
 
   ///////////////////////////////////////////////////////////////////////////

@@ -2,6 +2,7 @@ package hwacha
 
 import Chisel._
 import freechips.rocketchip.config._
+import midas.targetutils.FpgaDebugAnnotation
 
 class AGUOperand(implicit p: Parameters) extends VMUBundle()(p) {
   val base = UInt(width = bVAddrExtended)
@@ -107,6 +108,11 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   io.vpaq.valid := Bool(false)
   io.vcu.valid := Bool(false)
   io.tlb.req.valid := Bool(false)
+
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.tlb.req.valid))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.tlb.req.ready))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.tlb.req.bits.addr))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.tlb.resp))
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)

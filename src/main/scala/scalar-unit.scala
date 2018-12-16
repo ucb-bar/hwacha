@@ -6,6 +6,7 @@ import freechips.rocketchip.rocket._
 import freechips.rocketchip.rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
+import midas.targetutils._
 
 class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
   val addr = UInt(width = bSRegs)
@@ -196,6 +197,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.imem.active := vf_active
   io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
   io.imem.resp.ready := !stalld
+
+  val cycle = freechips.rocketchip.util.WideCounter(32).value
+  chisel3.experimental.dontTouch(cycle)
+  chisel3.experimental.annotate(FpgaDebugAnnotation(cycle))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.imem.resp))
 
   // DECODE
   val id_pc = io.imem.resp.bits.pc
@@ -401,6 +407,13 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vxu.bits.reg.vp.id := id_ctrl.vp
   when (fire_decode(null, id_branch_inst)) { pending_cbranch := Bool(true) }
 
+/*
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.vxu.valid))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.vxu.ready))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.vxu.bits.active))
+  chisel3.experimental.annotate(FpgaDebugAnnotation(io.vxu.bits.fn))
+*/
+
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
   io.vmu.bits.fn.mode := id_ctrl.vmu_mode
@@ -603,11 +616,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   when (swrite || wb_ll_valid || wb_wen) {
     srf.write(wb_waddr, wb_wdata)
-    if (commit_log) printf("H: write_srf %d %x\n", wb_waddr, wb_wdata)
+    if (commit_log) printf(SynthesizePrintf("srf", "H: write_srf %d %x\n", wb_waddr, wb_wdata))
   }
   when (awrite) {
     arf(io.cmdq.rd.bits) := io.cmdq.imm.bits
-    if (commit_log) printf("H: write_arf %d %x\n", io.cmdq.rd.bits, io.cmdq.imm.bits)
+    if (commit_log) printf(SynthesizePrintf("arf", "H: write_arf %d %x\n", io.cmdq.rd.bits, io.cmdq.imm.bits))
   }
 
   sboard.clear(wb_ll_valid, wb_ll_waddr)
