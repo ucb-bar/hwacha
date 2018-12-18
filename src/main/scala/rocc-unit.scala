@@ -370,21 +370,33 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_nvvdw := cfg_nvvdw
     if (!confprec) cfg_reg_vstride := cfg_nvv
     val vru_switch_on = io.rocc.cmd.bits.rs1(63).toBool
-    printf(SynthesizePrintf("vsetcfg", s"H: VSETCFG[nlanes=$nLanes][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
-      cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on))
     vru_enable := vru_switch_on
+  }
+
+  if (commit_log) {
+    when (RegNext(fire_vsetcfg)) {
+      printf(SynthesizePrintf("vsetcfg", s"H: VSETCFG[nlanes=$nLanes][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
+        cfg_reg.nvvd, cfg_reg.nvvw, cfg_reg.nvvh, cfg_reg.nvp, cfg_reg_lstride, RegNext(epb_nvv), RegNext(epb_nvp), cfg_reg_maxvl, vru_enable))
+    }
   }
 
   val ignore_dup_vsetvl = Bool(p(HwachaVSETVLCompress)) && (decode_vsetvl && (cfg_reg_vl === cfg_vl))
 
-  when (fire_vsetvl && !ignore_dup_vsetvl) {
+  val fire_vsetvl_nodup = fire_vsetvl && !ignore_dup_vsetvl
+  when (fire_vsetvl_nodup) {
     cfg_reg_vl := cfg_vl
-    printf(SynthesizePrintf("vsetvl", "H: VSETVL[maxvl=%d][vl=%d]\n",
-      cfg_reg_maxvl, cfg_vl))
   } .elsewhen (fire_vsetvl && ignore_dup_vsetvl) {
     printf("H: IGNORED REPEAT VSETVL[maxvl=%d][vl=%d]\n",
       cfg_reg_maxvl, cfg_vl)
   }
+
+  if (commit_log) {
+    when (RegNext(fire_vsetvl_nodup)) {
+      printf(SynthesizePrintf("vsetvl", "H: VSETVL[maxvl=%d][vl=%d]\n",
+        cfg_reg_maxvl, cfg_reg_vl))
+    }
+  }
+
 
   // Hookup ready port of RoCC cmd queue
   //COLIN FIXME: we use the exception flag to set a sticky bit that causes to always be ready after exceptions

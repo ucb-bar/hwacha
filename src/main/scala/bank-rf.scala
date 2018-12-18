@@ -62,23 +62,28 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
     rpred := RegEnable(new BankPredEntry().fromBits(op.bits.pred & rdata), op.valid) }
 
   // Predicate RF write port
+  val prf_waddr = io.op.pred.write.bits.addr
+  val prf_shift = pred_shift(io.op.pred.write.bits.pack.idx)
+  val prf_wpred =
+    Mux(io.op.pred.write.bits.selg, io.global.wpred,
+      Mux(io.op.pred.write.bits.plu, io.local.wpred(1), io.local.wpred(0)))
+  val prf_wdata_base = repack_pred(prf_wpred.pred, io.op.pred.write.bits.rate)
+  val prf_wdata = (prf_wdata_base << prf_shift)(wPred-1, 0)
+  val prf_wmask_base = io.op.pred.write.bits.pred & prf_wpred.mask
+  val prf_wmask = (prf_wmask_base << prf_shift)(wPred-1, 0)
+
   when (io.op.pred.write.valid) {
-    val waddr = io.op.pred.write.bits.addr
-    val shift = pred_shift(io.op.pred.write.bits.pack.idx)
-    val wpred =
-      Mux(io.op.pred.write.bits.selg, io.global.wpred,
-        Mux(io.op.pred.write.bits.plu, io.local.wpred(1), io.local.wpred(0)))
-    val wdata_base = repack_pred(wpred.pred, io.op.pred.write.bits.rate)
-    val wdata = (wdata_base << shift)(wPred-1, 0)
-    val wmask_base = io.op.pred.write.bits.pred & wpred.mask
-    val wmask = (wmask_base << shift)(wPred-1, 0)
+    pred_rf.write(prf_waddr, Vec(((prf_wdata & prf_wmask) | (pred_rf(prf_waddr).asUInt & ~prf_wmask)).toBools))
+  }
 
-    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).asUInt & ~wmask)).toBools))
-
-    if (commit_log) {
+  if (commit_log) {
+    val waddr = RegNext(prf_waddr)
+    val wmask = RegNext(prf_wmask)
+    val wdata = RegNext(prf_wdata)
+    when (RegNext(io.op.pred.write.valid)) {
       (0 until wPred) foreach { case i =>
         when (wmask(i)) {
-          printf(SynthesizePrintf(s"pred_rf_${i}", s"H: write_prf %d $bid %d $i%d\n", io.lid, waddr, wdata(i)))
+          printf(SynthesizePrintf(s"pred_rf_${i}", s"H: write_prf %d $bid %d $i %d\n", io.lid, waddr, wdata(i)))
         }
       }
     }
@@ -117,15 +122,20 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
   sram_warb.io.in(2).bits.mask := io.global.bwq.fu.bits.mask
 
   sram_warb.io.out.ready := Bool(true) // can always write the register file
+
+  val sram_waddr = sram_warb.io.out.bits.addr
+  val sram_wmask = sram_warb.io.out.bits.mask.toBools
+
   when (sram_warb.io.out.valid) {
-    val waddr = sram_warb.io.out.bits.addr
     val wdata = toBytes(sram_warb.io.out.bits.data)
-    val wmask = sram_warb.io.out.bits.mask.toBools
+    sram_rf.write(sram_waddr, wdata, sram_wmask)
+  }
 
-    sram_rf.write(waddr, wdata, wmask)
-
-    if (commit_log) {
-      val wdata = toDWords(sram_warb.io.out.bits.data) // FIXME
+  if (commit_log) {
+    val waddr = RegNext(sram_waddr)
+    val wmask = sram_wmask.map(RegNext(_))
+    val wdata = RegNext(toDWords(sram_warb.io.out.bits.data))
+    when (RegNext(sram_warb.io.out.valid)) {
       (0 until nSlices) foreach { case i =>
         when (wmask(8*i)) {
           printf(SynthesizePrintf(s"sram_rf_${i}", s"H: write_vrf %d $bid %d $i %x\n", io.lid, waddr, wdata(i)))

@@ -614,13 +614,22 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     Mux(swrite, io.cmdq.imm.bits,
       Mux(wb_ll_valid, wb_ll_wdata, wb_reg_wdata))
 
-  when (swrite || wb_ll_valid || wb_wen) {
+  val swriteb = swrite || wb_ll_valid || wb_wen
+  when (swriteb) {
     srf.write(wb_waddr, wb_wdata)
-    if (commit_log) printf(SynthesizePrintf("srf", "H: write_srf %d %x\n", wb_waddr, wb_wdata))
+  }
+  if (commit_log) {
+    when (RegNext(swriteb)) {
+      printf(SynthesizePrintf("srf", "H: write_srf %d %x\n", RegNext(wb_waddr), RegNext(wb_wdata)))
+    }
   }
   when (awrite) {
     arf(io.cmdq.rd.bits) := io.cmdq.imm.bits
-    if (commit_log) printf(SynthesizePrintf("arf", "H: write_arf %d %x\n", io.cmdq.rd.bits, io.cmdq.imm.bits))
+  }
+  if (commit_log) {
+    when (RegNext(awrite)) {
+      printf(SynthesizePrintf("arf", "H: write_arf %d %x\n", RegNext(io.cmdq.rd.bits), RegNext(io.cmdq.imm.bits)))
+    }
   }
 
   sboard.clear(wb_ll_valid, wb_ll_waddr)
