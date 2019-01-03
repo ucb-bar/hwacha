@@ -406,7 +406,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val readys = Vec((0 until nSeq) map { case i =>
         io.vmu.pala.available &&
         (!mcmd.read || io.mocheck(i).load && io.lreq.available) &&
-        (!mcmd.write || io.mocheck(i).store && io.sreq.available) })
+        (!mcmd.store || io.mocheck(i).store && io.sreq.available) })
       def fires(n: Int) = valids(n) && readys(n)
       val fire = (valids zip readys) map { case (v, r) => v && r } reduce(_ || _)
 
