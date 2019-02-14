@@ -610,13 +610,16 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
-    val wb_shift = Cat(wb_offset(lgwb-1,0), UInt(i << bSlices, bStrip))
+    // Minimize bitwidth to match actual range of values
+    // Discarded upper bits should be zero, as checked by assertions below
+    val wb_offset_w = Wire(UInt((lgwb - bStrip).W))
+    wb_offset_w := wb_offset.asUInt
+    val wb_shift = Cat(wb_offset_w, (i << bSlices).U(bStrip.W))
     wb_update(i) := wb_mask << wb_shift
 
     val max = (szwb + (nStrip-1)) >> bStrip
-    val s = "VLU: BWQ " + i
-    assert(!deq.valid || (wb_offset >= SInt(0)), s+": wb_offset underflow")
-    assert(!deq.valid || (wb_offset < SInt(max)), s+": wb_offset overflow")
+    assert(!deq.valid || (wb_offset >= SInt(0)), f"VLU: BWQ ${i}: wb_offset underflow")
+    assert(!deq.valid || (wb_offset < SInt(max)), f"VLU: BWQ ${i}: wb_offset overflow")
 
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready

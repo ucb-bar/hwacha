@@ -109,6 +109,7 @@ abstract trait UsesHwachaOnlyParameters {
   require(confvcmdq.nrd >= nBanks)
   require(confvcmdq.nstatus >= nBanks)
 
+  // TODO: Parameterize based on maxVLen and bandwidth-delay product
   val nvsreq = 512
   val nvlreq = 512
 }
