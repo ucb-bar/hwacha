@@ -94,8 +94,9 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   /* Store acknowledgement */
   val sret_req = abox.bits.meta.ecnt
   val sret_resp = Wire(new CInt(tlByteAddrBits-1))
-  sret_resp.raw := resp.bits.tag(tlByteAddrBits-1, 0)
-  abox.memif.resp.bits.tag := resp.bits.tag(bVMUTag - 1, tlByteAddrBits - 1)
+  sret_resp.raw := resp.bits.tag(tlByteAddrBits - 2, 0)
+  abox.memif.resp.bits.tag := (if (bVMUTag < tlByteAddrBits) 0.U else
+    resp.bits.tag(bVMUTag - 1, tlByteAddrBits - 1))
 
   val sret_req_en = fire(null, cmd.store, !pred)
   abox.memif.req := fire(null, cmd.store, pred)
