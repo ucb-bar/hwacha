@@ -435,6 +435,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   bias_in := bias
   bias := bias_next
 
+  /* Count the number of strips in the latest vector have not yet been
+   * retired, equal to (ceil(vlen / nstrip) - rcnt), where rcnt is the
+   * number of strips retired by the vlu sequencer op thus far.
+   *
+   * The negated value becomes the initial bias for the next vector,
+   * such that its first strip of elements is recorded in the writeback
+   * bitmap immediately after the final strip of the preceding vector.
+   */
   val bias_tail = Reg(init = SInt(0, bbias))
   val vlen_tail = Ceil(opq.io.deq.bits.vlen, bStrip)
   val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
