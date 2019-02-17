@@ -129,6 +129,9 @@ class VMULoadData(implicit p: Parameters) extends VMUData with VMUTag
 class VLTEntry(implicit p: Parameters) extends VMUBundle()(p)
   with VMUMetaIndex with VMUMetaPadding with VMUMetaMask with VLUSelect
 
+class VSTEntry(implicit p: Parameters) extends VMUBundle()(p)
+  with VMUMetaCount
+
 class VLDQEntry(implicit p: Parameters) extends VMUData {
   val meta = new VLTEntry
 }
@@ -210,17 +213,9 @@ trait VMUMemOp extends VMUAddr {
 class VMUMetaAddr(implicit p: Parameters) extends VMUMetaCount
   with VMUMetaPadding with VMUMetaMask with VMUMetaStore with VLUSelect
 
-class VMUAddrMemResp(implicit p: Parameters) extends VMUBundle with VMUTag
-
-class VMUAddrMemIf(implicit p: Parameters) extends VMUBundle {
-  val req = Bool(INPUT)
-  val resp = new ValidIO(new VMUAddrMemResp()).asInput
-}
 class VMUAddrEntry(implicit p: Parameters) extends VMUMemOp {
-  val meta = new VMUMetaAddr with VMUMetaIndex with VMUTag
+  val meta = new VMUMetaAddr with VMUMetaIndex
 }
 class VMUAddrIO(implicit p: Parameters) extends DecoupledIO(new VMUAddrEntry()(p)) {
-  val memif = new VMUAddrMemIf()
-
   override def cloneType = new VMUAddrIO().asInstanceOf[this.type]
 }

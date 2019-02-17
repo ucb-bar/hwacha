@@ -334,8 +334,6 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   val op = Reg(new VMUDecodedOp)
   val mt = DecodedMemType(op.fn.mt)
   val vidx = Reg(io.load.bits.vidx)
-  val vst = Module(new Table(1 << (bVMUTag - (tlByteAddrBits - 1)), UInt(width=1)))
-  vst.suggestName("vstInst")
 
   val offset = (inner.meta.epad << mt.shift())(tlByteAddrBits-1, 0)
 
@@ -349,14 +347,10 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   outer.meta.last := inner.meta.last
   outer.meta.mask := inner.meta.mask
   outer.meta.vsdq := inner.meta.vsdq
-  /* TileLink2 requires unique client_xact_id */
-  outer.meta.tag := Cat(vst.io.w.tag, inner.meta.ecnt.raw)
 
   io.store.bits.mode.unit := op.mode.unit
   io.store.bits.base := op.base(tlByteAddrBits-1, 0)
   io.store.bits.mt := mt
-
-  vst.io.r.bits := io.outer.memif.resp.bits.tag
 
   val load_en = io.op.bits.first && io.op.bits.cmd.read
   val load_valid = !load_en || io.load.valid
@@ -366,10 +360,8 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  val vst_ready = !op.cmd.store || vst.io.w.ready
-
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(io.inner.valid, io.outer.ready, vst_ready)
+    val rvs = Seq(io.inner.valid, io.outer.ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -378,7 +370,6 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
   io.outer.valid := Bool(false)
   io.store.valid := Bool(false)
   io.load.ready := Bool(false)
-  vst.io.r.valid := io.outer.memif.resp.valid
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
   val state = Reg(init = s_idle)
@@ -393,7 +384,6 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
     is (s_busy) {
       io.inner.ready := fire(io.inner.valid)
       io.outer.valid := fire(io.outer.ready)
-      vst.io.w.valid := fire(vst_ready, io.outer.memif.req)
       io.store.valid := op.cmd.write
 
       when (fire(null)) {

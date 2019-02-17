@@ -9,7 +9,10 @@ import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
   val masterNode = TLClientNode(Seq(TLClientPortParameters(
-    Seq(TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, 2*p(HwachaNVLTEntries)))))))
+    Seq(TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, {
+      val nvlt = p(HwachaNVLTEntries)
+      val nvst = p(HwachaNVSTEntries)
+      (1 << log2Ceil(math.max(nvlt, nvst))) + nvst }))))))
 }
 
 class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyModuleImp(outer) with SeqParameters {

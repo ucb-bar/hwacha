@@ -31,6 +31,9 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     val sret = new CounterUpdateIO(bSRet)
   }
 
+  val vst = Module(new Table(nVST, new VSTEntry))
+  vst.suggestName("vstInst")
+
   private val abox = io.inner.abox
   private val sbox = io.inner.sbox
   private val lbox = io.inner.lbox
@@ -47,16 +50,19 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   val lbox_en = pred && read
   val lbox_ready = !lbox_en || lbox.meta.ready
   val sbox_valid = !write || sbox.valid
+  val vst_en = pred && cmd.store
+  val vst_ready = !vst_en || vst.io.w.ready
   val req_ready = !pred || req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(abox.valid, sbox_valid, lbox_ready, req_ready)
+    val rvs = Seq(abox.valid, sbox_valid, lbox_ready, vst_ready, req_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   abox.ready := fire(abox.valid)
   sbox.ready := fire(sbox_valid, write)
   lbox.meta.valid := fire(lbox_ready, lbox_en)
+  vst.io.w.valid := fire(vst_ready, vst_en)
   req.valid := fire(req_ready, pred)
 
   /* Data mask */
@@ -83,8 +89,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
   req.bits.pred := pred
-  req.bits.tag := Mux(read, lbox.meta.tag, abox.bits.meta.tag)
-  require(tlByteAddrBits-1 <= bVMUTag)
+  req.bits.tag := Cat(cmd.store, Mux(read, lbox.meta.tag, vst.io.w.tag))
 
   /* Response */
   lbox.load.bits := resp.bits
@@ -92,21 +97,17 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   resp.ready := resp.bits.store || lbox.load.ready
 
   /* Store acknowledgement */
-  val sret_req = abox.bits.meta.ecnt
-  val sret_resp = Wire(new CInt(tlByteAddrBits-1))
-  sret_resp.raw := resp.bits.tag(tlByteAddrBits - 2, 0)
-  abox.memif.resp.bits.tag := (if (bVMUTag < tlByteAddrBits) 0.U else
-    resp.bits.tag(bVMUTag - 1, tlByteAddrBits - 1))
+  vst.io.w.bits.ecnt := abox.bits.meta.ecnt
 
-  val sret_req_en = fire(null, cmd.store, !pred)
-  abox.memif.req := fire(null, cmd.store, pred)
+  val sret_req_en = fire(vst_ready, cmd.store, !pred)
   val sret_resp_en = resp.fire() && resp.bits.store
-  abox.memif.resp.valid := sret_resp_en
+  vst.io.r.valid := sret_resp_en
+  vst.io.r.bits := resp.bits.tag
 
   io.sret.update := Bool(true)
   io.sret.cnt :=
-    Mux(sret_req_en, Cat(Bits(0,1), sret_req.decode()), UInt(0)) +
-    Mux(sret_resp_en, Cat(Bits(0,1), sret_resp.decode()), UInt(0))
+    Mux(sret_req_en, abox.bits.meta.ecnt.decode(), 0.U) +
+    Mux(sret_resp_en, vst.io.r.record.ecnt.decode(), 0.U)
 }
 
 class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p) {

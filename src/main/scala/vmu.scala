@@ -10,6 +10,7 @@ case object HwachaNVPAQEntries extends Field[Int]
 case object HwachaNVSDQEntries extends Field[Int]
 case object HwachaNVLDQEntries extends Field[Int]
 case object HwachaNVLTEntries extends Field[Int]
+case object HwachaNVSTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
   with freechips.rocketchip.tile.HasCoreParameters {
@@ -40,7 +41,8 @@ trait VMUParameters extends MemParameters {
   val nVMUPredQ = 4
 
   val nVLT = p(HwachaNVLTEntries)
-  val bVMUTag = log2Up(nVLT)
+  val nVST = p(HwachaNVSTEntries)
+  val bVMUTag = log2Up(math.max(nVLT, nVST))
 
   /* Maximum of two ongoing operations in the VMU */
   val maxVCU = maxVLen << 1
