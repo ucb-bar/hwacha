@@ -72,8 +72,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaNVPAQEntries => 24
     case HwachaNVSDQEntries => 4
     case HwachaNVLDQEntries => 4
-    case HwachaNVLTEntries => 64
-    case HwachaNVSTEntries => 24
+    case HwachaNVMTEntries => 64
 
     case HwachaNSMUEntries => 16
     case HwachaBuildVRU => true

@@ -24,15 +24,15 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     val inner = new Bundle {
       val abox = new VMUAddrIO().flip
       val sbox = new VMUStoreIO().flip
-      val lbox = new VMULoadIO
+      val lbox = new VLDQIO
     }
     val outer = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)
   }
 
-  val vst = Module(new Table(nVST, new VSTEntry))
-  vst.suggestName("vstInst")
+  val vmt = Module(new Table(nVMT, new VMTEntry))
+  vmt.suggestName("vmtInst")
 
   private val abox = io.inner.abox
   private val sbox = io.inner.sbox
@@ -47,22 +47,18 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
 
   val pred = abox.bits.meta.mask.orR
 
-  val lbox_en = pred && read
-  val lbox_ready = !lbox_en || lbox.meta.ready
   val sbox_valid = !write || sbox.valid
-  val vst_en = pred && cmd.store
-  val vst_ready = !vst_en || vst.io.w.ready
+  val vmt_ready = !pred || vmt.io.w.ready
   val req_ready = !pred || req.ready
 
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(abox.valid, sbox_valid, lbox_ready, vst_ready, req_ready)
+    val rvs = Seq(abox.valid, sbox_valid, vmt_ready, req_ready)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
   abox.ready := fire(abox.valid)
   sbox.ready := fire(sbox_valid, write)
-  lbox.meta.valid := fire(lbox_ready, lbox_en)
-  vst.io.w.valid := fire(vst_ready, vst_en)
+  vmt.io.w.valid := fire(vmt_ready, pred)
   req.valid := fire(req_ready, pred)
 
   /* Data mask */
@@ -71,11 +67,15 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     Cat(abox.bits.meta.mask, UInt(0, tlDataBytes >> 1)),
     abox.bits.meta.mask)
 
-  /* Load metadata */
-  lbox.meta.bits.vidx := abox.bits.meta.vidx
-  lbox.meta.bits.eidx := abox.bits.meta.eidx
-  lbox.meta.bits.epad := abox.bits.meta.epad
-  lbox.meta.bits.mask := abox.bits.meta.mask
+  /* Metadata table */
+  val vlt = Wire(new VMTLoadEntry)
+  val vst = Wire(new VMTStoreEntry)
+  vlt.vidx := abox.bits.meta.vidx
+  vlt.eidx := abox.bits.meta.eidx
+  vlt.epad := abox.bits.meta.epad
+  vlt.mask := abox.bits.meta.mask
+  vst.ecnt := abox.bits.meta.ecnt
+  vmt.io.w.bits.union := Mux(cmd.store, vst.toBits, vlt.toBits)
 
   /* Store metadata */
   sbox.meta.offset := abox.bits.addr(tlByteAddrBits-1, 0)
@@ -89,25 +89,26 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   req.bits.mask := PredicateByteMask(mask, mt)
   req.bits.data := sbox.bits.data
   req.bits.pred := pred
-  req.bits.tag := Cat(cmd.store, Mux(read, lbox.meta.tag, vst.io.w.tag))
+  req.bits.tag := vmt.io.w.tag
 
   /* Response */
-  lbox.load.bits := resp.bits
-  lbox.load.valid := resp.valid && !resp.bits.store
-  resp.ready := resp.bits.store || lbox.load.ready
+  lbox.bits.data := resp.bits.data
+  lbox.bits.meta := vmt.io.r.record.load()
+  lbox.valid := resp.valid && !resp.bits.store
+  resp.ready := resp.bits.store || lbox.ready
+  vmt.io.r.valid := resp.fire()
+  vmt.io.r.bits := resp.bits.tag
 
   /* Store acknowledgement */
-  vst.io.w.bits.ecnt := abox.bits.meta.ecnt
-
-  val sret_req_en = fire(vst_ready, cmd.store, !pred)
-  val sret_resp_en = resp.fire() && resp.bits.store
-  vst.io.r.valid := sret_resp_en
-  vst.io.r.bits := resp.bits.tag
+  val sret_req_en = fire(vmt_ready, cmd.store, !pred)
+  val sret_req_cnt = abox.bits.meta.ecnt.decode()
+  val sret_resp_en = vmt.io.r.valid && resp.bits.store
+  val sret_resp_cnt = vmt.io.r.record.store().ecnt.decode()
 
   io.sret.update := Bool(true)
   io.sret.cnt :=
-    Mux(sret_req_en, abox.bits.meta.ecnt.decode(), 0.U) +
-    Mux(sret_resp_en, vst.io.r.record.ecnt.decode(), 0.U)
+    Mux(sret_req_en, sret_req_cnt, 0.U) +
+    Mux(sret_resp_en, sret_resp_cnt, 0.U)
 }
 
 class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p) {

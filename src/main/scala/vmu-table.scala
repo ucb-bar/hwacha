@@ -46,31 +46,3 @@ class Table[T <: Data](n: Int, gen: => T) extends Module {
     array(io.w.tag) := io.w.bits
   }
 }
-
-class VMULoadIO(implicit p: Parameters) extends VMUBundle()(p) {
-  val load = Decoupled(new VMULoadData)
-  val meta = new TableWIO(new VLTEntry, bVMUTag)
-}
-
-class LBox(implicit p: Parameters)  extends VMUModule()(p) {
-  val io = new Bundle {
-    val mem = new VMULoadIO().flip
-    val lane = new VLDQIO
-  }
-
-  val vldq = Module(new Queue(io.lane.bits, nVLDQ))
-  vldq.suggestName("vldqInst")
-  val vlt = Module(new Table(nVLT, new VLTEntry))
-  vlt.suggestName("vltInst")
-
-  vlt.io.w <> io.mem.meta
-  vlt.io.r.bits := io.mem.load.bits.tag
-  vlt.io.r.valid := io.mem.load.fire()
-
-  vldq.io.enq.bits.data := io.mem.load.bits.data
-  vldq.io.enq.bits.meta := vlt.io.r.record
-  vldq.io.enq.valid := io.mem.load.valid
-  io.mem.load.ready := vldq.io.enq.ready
-
-  io.lane <> vldq.io.deq
-}

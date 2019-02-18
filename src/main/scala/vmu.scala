@@ -9,8 +9,7 @@ case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
 case object HwachaNVSDQEntries extends Field[Int]
 case object HwachaNVLDQEntries extends Field[Int]
-case object HwachaNVLTEntries extends Field[Int]
-case object HwachaNVSTEntries extends Field[Int]
+case object HwachaNVMTEntries extends Field[Int]
 
 trait MemParameters extends UsesHwachaParameters
   with freechips.rocketchip.tile.HasCoreParameters {
@@ -40,9 +39,8 @@ trait VMUParameters extends MemParameters {
   val nVLDQ = p(HwachaNVLDQEntries)
   val nVMUPredQ = 4
 
-  val nVLT = p(HwachaNVLTEntries)
-  val nVST = p(HwachaNVSTEntries)
-  val bVMUTag = log2Up(math.max(nVLT, nVST))
+  val nVMT = p(HwachaNVMTEntries)
+  val bVMUTag = log2Up(nVMT)
 
   /* Maximum of two ongoing operations in the VMU */
   val maxVCU = maxVLen << 1
@@ -313,8 +311,8 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   tbox.suggestName("tboxInst")
   val sbox = Module(new SBox)
   sbox.suggestName("sboxInst")
-  val lbox = Module(new LBox)
-  lbox.suggestName("lboxInst")
+  val vldq = Module(new Queue(io.lane.vldq.bits, nVLDQ))
+  vldq.suggestName("vldqInst")
   val mbox = Module(new MBox)
   mbox.suggestName("mboxInst")
   val agu = Module(new AGU(if (confml) 2 else 1))
@@ -344,11 +342,11 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
 
   sbox.io.ctrl <> abox.io.store
   sbox.io.lane <> io.lane.vsdq
-  io.lane.vldq <> lbox.io.lane
+  io.lane.vldq <> vldq.io.deq
 
   mbox.io.inner.abox <> abox.io.mem
   mbox.io.inner.sbox <> sbox.io.mem
-  lbox.io.mem <> mbox.io.inner.lbox
+  vldq.io.enq <> mbox.io.inner.lbox
   io.sret <> mbox.io.sret
 
   io.memif <> mbox.io.outer

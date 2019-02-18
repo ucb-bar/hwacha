@@ -126,14 +126,23 @@ trait VMUTag extends VMUBundle {
 
 class VMULoadData(implicit p: Parameters) extends VMUData with VMUTag
 
-class VLTEntry(implicit p: Parameters) extends VMUBundle()(p)
+class VMTLoadEntry(implicit p: Parameters) extends VMUBundle()(p)
   with VMUMetaIndex with VMUMetaPadding with VMUMetaMask with VLUSelect
 
-class VSTEntry(implicit p: Parameters) extends VMUBundle()(p)
+class VMTStoreEntry(implicit p: Parameters) extends VMUBundle()(p)
   with VMUMetaCount
 
+class VMTEntry(implicit p: Parameters) extends VMUBundle()(p) {
+  val union = Bits(math.max(
+    new VMTLoadEntry().getWidth,
+    new VMTStoreEntry().getWidth).W)
+
+  def load(d: Int = 0) = new VMTLoadEntry().fromBits(this.union)
+  def store(d: Int = 0) = new VMTStoreEntry().fromBits(this.union)
+}
+
 class VLDQEntry(implicit p: Parameters) extends VMUData {
-  val meta = new VLTEntry
+  val meta = new VMTLoadEntry
 }
 class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p)) {
   override def cloneType = new VLDQIO().asInstanceOf[this.type]
