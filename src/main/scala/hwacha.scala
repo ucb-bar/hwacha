@@ -195,6 +195,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
 
   // Connect Scalar to I$
   icache.io.vxu <> scalar.io.imem
+  icache.io.sfence := io.sfence
   io.ptw(0) <> icache.io.ptw
   if (confvru) {
     val vru = outer.vru.get.module
@@ -220,6 +221,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   io.mem.req.valid := Bool(false)
 
   smu.io.scalar <> scalar.io.smu
+  smu.io.sfence := io.sfence
   io.ptw(1) <> smu.io.ptw
 
   val enq_vxus = scalar.io.vxu.bits.lane.map(_.active)
@@ -287,5 +289,6 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
     rpred.io.lane(i) <> vu.io.red.pred
     rfirst.io.lane(i) <> vu.io.red.first
     io.ptw(2 + i) <> vu.io.ptw
+    vu.io.sfence := io.sfence
   }
 }

@@ -127,6 +127,7 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
     val vxu = new FrontendIO(cacheParams).flip
     val vru = new FrontendIO(cacheParams).flip
     val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
+    val sfence = Valid(new freechips.rocketchip.rocket.SFenceReq).flip
   })
   val icache = outer.icache.module
   val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), TLBConfig(nptlb))(edge, p))
@@ -159,7 +160,7 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   tlb.io.req.bits.vaddr := s1_pc
   tlb.io.req.bits.passthrough := Bool(false)
   tlb.io.req.bits.size := UInt(log2Ceil(cacheParams.fetchBytes))
-  tlb.io.sfence.valid := false.B
+  tlb.io.sfence :=  io.sfence
 
   req.ready := Bool(true)
 

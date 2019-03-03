@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
+import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig, SFenceReq}
 
 case object HwachaNSMUEntries extends Field[Int]
 
@@ -64,6 +64,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   val io = IO(new Bundle {
     val scalar = new SMUIO().flip
 
+    val sfence = Valid(new SFenceReq).flip()
     val ptw = new TLBPTWIO
     val irq = new IRQIO
   })
@@ -99,7 +100,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tbox.io.outer.resp  <> ptlb.io.resp
   io.ptw <> ptlb.io.ptw
   ptlb.io.ptw.status := tbox.io.outer.req.bits.status
-  ptlb.io.sfence.valid := false.B
+  ptlb.io.sfence := io.sfence
 
   val addr_offset = req.addr(tlByteAddrBits-1, 0)
 
