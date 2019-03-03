@@ -279,17 +279,17 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   mrt.io.sreq.cnt := UInt(1)
 
   val stall_smu =
-    pending_smu ||
     enq_smu && id_smu_load && (!io.mocheck.load || !mrt.io.lreq.available) ||
     enq_smu && id_smu_store && (!io.mocheck.store || !mrt.io.sreq.available)
 
   val stall_pending_fence = id_ctrl.decode_fence && (
-    io.pending.mseq.mem ||
     io.pending.mrt.su.all || io.pending.mrt.vus.map(_.all).reduce(_ || _))
+
+  val stall_xcpt_check = pending_smu || io.pending.mseq.mem
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_smu || stall_pending_fence || stallx || stallw
+    stall_smu || stall_pending_fence || stall_xcpt_check || stallx || stallw
 
   val ctrl_fire_common =
     io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
