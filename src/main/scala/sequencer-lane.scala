@@ -417,8 +417,11 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         io.lreq.reserve := fire && mcmd.read
         io.sreq.cnt := strip
         io.sreq.reserve := fire && mcmd.store
-        io.areq.valid := fire && io.op.bits.vlen === Mux1H(first, e.map(_.vlen))
-        io.areq.bits := OHToUInt(find_first(ffv, OHToUInt(first), (i: Int) => me(i).active.vlu || me(i).active.vsu))
+        io.areq.valid := fire && (read(first, (e: SeqEntry) => e.sidx) === 0.U)
+        /* next seq entry after vcu contains corresponding vlu/vsu */
+        io.areq.bits := Mux1H(first, Seq.tabulate(nSeq)(i => UInt((i + 1) % nSeq)))
+        assert(!io.areq.valid || me(io.areq.bits).active.vlu || me(io.areq.bits).active.vsu,
+          "missing vlu/vsu after vcu")
       }
     }
 
