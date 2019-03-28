@@ -3,6 +3,7 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import DataGating._
+import chisel3.experimental.dontTouch
 
 case object HwachaNSeqEntries extends Field[Int]
 
@@ -101,13 +102,20 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val empty = UInt(OUTPUT, log2Down(nSeq)+1)
     }
   }
-  chisel3.experimental.dontTouch(io.debug)
+  dontTouch(io.debug)
 
   val v = Reg(init = Vec.fill(nSeq){Bool(false)})
   val e = Reg(Vec(nSeq, new MasterSeqEntry))
   val maybe_full = Reg(init = Bool(false))
   val head = Reg(init = UInt(0, log2Up(nSeq)))
   val tail = Reg(init = UInt(0, log2Up(nSeq)))
+  // TODO: workaround constprop performance issue
+  // Remove once firrtl/98aad5616737e7f9e0dabbc9bc9c5eb8fec97e37 is used by rocket-chip
+  dontTouch(v)
+  dontTouch(e)
+  dontTouch(maybe_full)
+  dontTouch(head)
+  dontTouch(tail)
 
   io.master.state.valid := v
   io.master.state.e := e

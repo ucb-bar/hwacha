@@ -11,7 +11,7 @@ import freechips.rocketchip.config._
 
 class HwachaConfig extends Config(new DefaultHwachaConfig ++ new DefaultConfig)
 
-class EOS24Config extends Config(new WithNBanksPerMemChannel(4) ++ new HwachaConfig)
+class EOS24Config extends Config(new WithNBanks(4) ++ new HwachaConfig)
 
 class WithNLanes(n: Int) extends Config((site, here, up) => {
   case HwachaNLanes => n
@@ -39,14 +39,14 @@ class WithSmallPredRF extends Config((site, here, up) => {
 
 class ISCA2016Config extends Config(
   new Process28nmConfig ++
-  new WithNBanksPerMemChannel(4) ++
+  new WithNBanks(4) ++
   new With32BtbEntires ++ new HwachaConfig)
 class FastISCA2016Config extends Config(new WithoutTLMonitors ++ new ISCA2016Config)
 
 class ISCA2016L2Config extends Config(new WithNLanes(2) ++ new ISCA2016Config)
 class ISCA2016L4Config extends Config(new WithNLanes(4) ++ new ISCA2016Config)
 
-class ISCA2016HOVB4Config extends Config(new WithNBanksPerMemChannel(2) ++ new ISCA2016Config)
+class ISCA2016HOVB4Config extends Config(new WithNBanks(2) ++ new ISCA2016Config)
 class ISCA2016HOVB8Config extends Config(new ISCA2016Config)
 class ISCA2016LOVB4Config extends Config(new WithoutConfPrec ++ new ISCA2016HOVB4Config)
 class ISCA2016LOVB8Config extends Config(new WithoutConfPrec ++ new ISCA2016HOVB8Config)
@@ -63,4 +63,4 @@ class ISCA2016LOVL4B8Config extends Config(new WithNLanes(4) ++ new ISCA2016LOVB
 
 class DualCoreISCA2016L2Config extends Config(new WithNBigCores(2) ++ new WithNLanes(2) ++ new ISCA2016Config)
 
-class HurricaneSimilarConfig extends Config(new WithNLanes(2) ++ new WithNMemoryChannels(8) ++ new WithNBanksPerMemChannel(1) ++ new ISCA2016Config)
+class HurricaneSimilarConfig extends Config(new WithNLanes(2) ++ new WithNMemoryChannels(8) ++ new WithNBanks(1) ++ new ISCA2016Config)
