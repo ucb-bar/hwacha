@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tilelink.TLEdgeOut
-import freechips.rocketchip.tile.SharedMemoryTLEdge
+import freechips.rocketchip.tile.TileVisibilityNodeKey
 
 case object HwachaNVVAQEntries extends Field[Int]
 case object HwachaNVPAQEntries extends Field[Int]
@@ -22,7 +22,7 @@ trait MemParameters extends UsesHwachaParameters
   val bPgIdx = pgIdxBits
   val pgSize = 1 << bPgIdx
 
-  val tlDataBytes = p(SharedMemoryTLEdge).manager.beatBytes
+  val tlDataBytes = p(TileVisibilityNodeKey).edges.out.head.manager.beatBytes
   val tlByteAddrBits = log2Up(tlDataBytes)
   val tlDataBits = tlDataBytes*8
 
