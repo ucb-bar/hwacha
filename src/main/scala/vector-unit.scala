@@ -27,6 +27,8 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
+
+    val xcpt = new XCPTMemIO().flip
   })
   val (dmem, edge) = outer.masterNode.out.head
 
@@ -66,12 +68,9 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   io.ptw <> dtlb.io.ptw
   dtlb.io.ptw.status := vmu.io.tlb.status
   dtlb.io.sfence.valid := false.B
+  vmu.io.xcpt <> io.xcpt
 
   io.red <> vxu.io.red
   dmem <> memif.io.dmem
   io.pending <> mrt.io.pending
-
-  vmu.io.xcpt.prop.vmu.stall := Bool(false)
-  vmu.io.xcpt.prop.vmu.drain := Bool(false)
-  vmu.io.xcpt.prop.top.stall := Bool(false)
 }

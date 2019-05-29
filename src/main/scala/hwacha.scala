@@ -165,6 +165,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   val rfirst = Module(new RFirstMaster)
   val smu = outer.smu.module
   val mou = Module(new MemOrderingUnit)
+  val xcpt = Module(new ExceptionUnit)
 
   // Connect RoccUnit to top level IO
   rocc.io.rocc.cmd <> io.cmd
@@ -272,6 +273,11 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   scalar.io.mocheck <> mou.io.check.su
   (vus zip mou.io.check.vus) map { case (vu, mocheck) => vu.io.mocheck <> mocheck }
   (scalar.io.pending.mrt.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
+
+  rocc.io.xcpt <> xcpt.io.rocc
+  scalar.io.xcpt <> xcpt.io.issue
+  (vus zip xcpt.io.vmu).foreach { case (vu, x) => vu.io.xcpt <> x }
+  smu.io.xcpt <> xcpt.io.smu
 
   (vus zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)

@@ -119,7 +119,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     }
 
     is (s_busy) {
-      unless (stall || io.xcpt.prop.vmu.stall) {
+      unless (stall) {
         io.mask.ready := fire(io.mask.valid)
         io.vvaq.ready := fire(vvaq_valid, vvaq_en)
         io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
@@ -218,7 +218,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val vlen_end = (vlen_next <= SInt(0))
   val ecnt_test = Mux(vlen_end, offset(op.vlen), ecnt_max)
 
-  val xcpt = io.xcpt.prop.top.stall
+  val xcpt = Bool(false) // io.xcpt.prop.top.stall // FIXME
 
   val valve = Reg(init = UInt(0, bVCU))
   val valve_off = (valve < ecnt_test)
@@ -453,7 +453,6 @@ class ABox(implicit p: Parameters) extends VMUModule()(p) {
   abox1.io.op <> io.op(1)
   abox1.io.mask <> io.mask.post
   abox1.io.vpaq <> vpaq.io.deq
-  abox1.io.xcpt.prop.top.stall :=  io.xcpt.prop.top.stall
   abox1.io.la.cnt := io.la.cnt
   abox1.io.la.reserve := io.la.reserve
 

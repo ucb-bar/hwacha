@@ -36,7 +36,7 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val inner = Vec(n, new TLBIO()).flip
     val outer = new RocketTLBIO
-    val irq = new IRQIO
+    val xcpt = new XCPTMemIO().flip
   }
 
   val arb = Wire(new TLBIO())
@@ -53,21 +53,20 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
     i.resp.xcpt <> arb.resp.xcpt
   }
 
-  val xcpts = Seq(
-    io.outer.resp.ma.ld,
-    io.outer.resp.ma.st,
-    io.outer.resp.pf.ld,
-    io.outer.resp.pf.st)
-  val irqs = Seq(
-    io.irq.vmu.ma_ld,
-    io.irq.vmu.ma_st,
-    io.irq.vmu.faulted_ld,
-    io.irq.vmu.faulted_st)
-
   val fire = arb.req.fire()
-  irqs.zip(xcpts).foreach { case (irq, xcpt) =>
-    irq := xcpt && fire
-  }
-  io.irq.vmu.aux := arb.req.bits.vaddr
-  arb.resp.xcpt := xcpts.reduce(_ || _)
+  val irq = Reg(init = 0.U.asTypeOf(new IRQMem))
+
+  val xcpt = Seq(
+    irq.ma.ld -> io.outer.resp.ma.ld,
+    irq.ma.st -> io.outer.resp.ma.st,
+    irq.pf.ld -> io.outer.resp.pf.ld,
+    irq.pf.st -> io.outer.resp.pf.st,
+    irq.ae.ld -> io.outer.resp.ae.ld,
+    irq.ae.st -> io.outer.resp.ae.st)
+
+  arb.resp.xcpt := xcpt.map(_._2).reduce(_ || _)
+
+  xcpt.foreach { case (irq, resp) => irq := fire && resp }
+  io.xcpt.irq := irq
+  io.xcpt.irq.tval := arb.req.bits.vaddr
 }

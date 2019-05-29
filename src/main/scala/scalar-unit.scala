@@ -42,6 +42,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
         val vus = Vec(nLanes, new MRTPending).asInput
       }
     }
+    val xcpt = new XCPTIssueIO().flip
   })
 
   // STATE
@@ -159,7 +160,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     id_status := io.cmdq.status.bits
   }
 
-  val pending_smu = Reg(init=Bool(false))
   val pending_cbranch = Reg(init=Bool(false))
 
   val ex_reg_valid = Reg(Bool())
@@ -169,6 +169,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_reg_bypass = Reg(Vec(3, Bool()))
   val ex_reg_srs = Reg(Vec(3, Bits()))
   val ex_reg_ars = Reg(Vec(2, Bits()))
+  val ex_reg_xcpt = RegInit(0.U.asTypeOf(new IRQIssue))
 
   val wb_reg_valid = Reg(Bool())
   val wb_reg_ctrl = Reg(new IntCtrlSigs)
@@ -179,6 +180,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   busy_scalar := ex_reg_valid || wb_reg_valid
 
   // WIRES
+  val fetch = Wire(Bool())
   val stalld = Wire(Bool())
   val killd = Wire(Bool())
   val stallx = Wire(Bool())
@@ -190,22 +192,29 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_br_taken_pc = Wire(UInt())
 
   // FETCH
-  io.imem.req.valid := fire_vf || ex_br_taken
-  io.imem.req.bits.pc := Mux(ex_br_taken, ex_br_taken_pc, io.cmdq.imm.bits)
+  val vf_pc = io.cmdq.imm.bits
+  val vf_ma = (vf_pc(log2Up(HwachaElementInstBytes)-1, 0) =/= 0.U)
+  val vf_ma_xcpt = fire_vf && vf_ma
+
+  io.imem.req.valid := (fire_vf && !vf_ma) || ex_br_taken
+  io.imem.req.bits.pc := Mux(ex_br_taken, ex_br_taken_pc, vf_pc)
   io.imem.req.bits.status := Mux(ex_br_taken, id_status, io.cmdq.status.bits)
-  io.imem.active := vf_active
+  io.imem.active := vf_active && !vf_ma_xcpt
   io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
-  io.imem.resp.ready := !stalld
+  io.imem.resp.ready := fetch
 
   // DECODE
   val id_pc = io.imem.resp.bits.pc
   val id_inst = io.imem.resp.bits.data; require(io.imem.resp.bits.data.getWidth == HwachaElementInstBytes*8)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
-  when (!killd && id_ctrl.decode_stop) {
+
+  val vf_stop = !stalld && id_ctrl.decode_stop
+  val vf_stop_reg = RegNext(vf_stop, Bool(false))
+  when (vf_stop) {
     vf_active := Bool(false)
   }
-  io.vf_stop := io.imem.resp.fire() && id_ctrl.decode_stop
+  io.vf_stop := vf_stop_reg
 
   val sren = Vec(
     id_ctrl.vs1_val && id_ctrl.vs1_type === REG_SHR,
@@ -269,11 +278,29 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     io.fpu.req.fire() || io.smu.req.fire() && id_smu_load || muldiv.io.req.fire()
   sboard.set(id_set_sboard, id_ctrl.vd)
 
-  val enq_vxu = id_val && id_vector_inst
-  val enq_vmu = id_val && id_vmem_inst
-  val enq_fpu = id_val && id_scalar_inst && id_fpu_inst
-  val enq_smu = id_val && id_smem_inst
-  val enq_muldiv = id_val && id_scalar_inst && id_muldiv_inst
+  // Exceptions
+  val id_fetch_pf = io.imem.resp.bits.xcpt.pf
+  val id_fetch_ae = io.imem.resp.bits.xcpt.ae
+  val id_illegal_inst = !id_ctrl.ival
+  val id_illegal_vregs = Vec(Seq(
+    (reg_vs1, id_ctrl.vs1),
+    (reg_vs2, id_ctrl.vs2),
+    (reg_vs3, id_ctrl.vs3),
+    (reg_vd, id_ctrl.vd)).map { case (fn, id) =>
+    val base = fn(io.vxu.bits.base)
+    val vector = base.is_vector() && (id >= io.cfg.id.vh)
+    val pred = base.is_pred() && (id >= io.cfg.id.vp)
+    base.valid && (vector || pred)
+  })
+  val id_illegal_vreg = id_illegal_vregs.reduce(_ || _)
+  val id_xcpt = id_fetch_pf || id_fetch_ae || id_illegal_inst || id_illegal_vreg
+
+  val id_issue = !id_xcpt
+  val enq_vxu = id_issue && id_vector_inst
+  val enq_vmu = id_issue && id_vmem_inst
+  val enq_fpu = id_issue && id_scalar_inst && id_fpu_inst
+  val enq_smu = id_issue && id_smem_inst
+  val enq_muldiv = id_issue && id_scalar_inst && id_muldiv_inst
 
   mrt.io.lreq.cnt := UInt(1)
   mrt.io.sreq.cnt := UInt(1)
@@ -285,16 +312,16 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val stall_pending_fence = id_ctrl.decode_fence && (
     io.pending.mrt.su.all || io.pending.mrt.vus.map(_.all).reduce(_ || _))
 
-  val stall_xcpt_check = pending_smu || io.pending.mseq.mem
+  val stall_xcpt_check = io.pending.mseq.mem || io.smu.pending
+  val stall_xcpt_hold = RegInit(Bool(false))
 
   val ctrl_stalld_common =
     !vf_active || id_ex_hazard || id_sboard_hazard ||
-    stall_smu || stall_pending_fence || stall_xcpt_check || stallx || stallw
+    stall_smu || stall_pending_fence || stall_xcpt_check || stall_xcpt_hold ||
+    stallx || stallw
 
   val ctrl_fire_common =
-    io.imem.resp.valid && id_ctrl.ival && !ex_br_taken
-
-  assert(!vf_active || !io.imem.resp.valid || id_ctrl.ival, "illegal instruction exception!")
+    io.imem.resp.valid && !ex_br_taken
 
   val mask_vxu_ready = !enq_vxu || io.vxu.ready
   val mask_vmu_ready = !enq_vmu || io.vmu.ready
@@ -310,10 +337,15 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   // stall fetch/decode if we aren't ready to issue the op being decoded
-  stalld := !fire_decode(ctrl_fire_common)
+  fetch := fire_decode(ctrl_fire_common)
+  stalld := !(fetch && ctrl_fire_common)
   killd :=
-    !ctrl_fire_common || stalld ||
+    stalld ||
     id_vector_inst && !id_branch_inst || enq_fpu || enq_smu || enq_muldiv
+
+  when (vf_ma_xcpt || (!stalld && id_xcpt)) {
+    stall_xcpt_hold := Bool(true)
+  }
 
   // use rm in inst unless its dynamic then take rocket rm
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
@@ -454,8 +486,6 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.smu.req.bits.data := id_sreads(1)
   io.smu.req.bits.tag := id_ctrl.vd
   io.smu.req.bits.status := id_status
-  when (io.smu.req.fire()) { pending_smu := Bool(true) }
-  when (io.smu.confirm) { pending_smu := Bool(false) }
 
   implicit def BitPatToUInt(x: BitPat): UInt = {
     require(x.mask == (BigInt(1) << x.getWidth)-1)
@@ -506,8 +536,26 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     ex_reg_ctrl := id_ctrl
   }
 
-  when (!killd) {
+  val id_xcpt_valid = !stalld
+  ex_reg_xcpt.ma.inst := vf_ma_xcpt
+  ex_reg_xcpt.pf.inst := id_xcpt_valid && id_fetch_pf
+  ex_reg_xcpt.ae.inst := id_xcpt_valid && id_fetch_ae
+  ex_reg_xcpt.illegal.inst := id_xcpt_valid && id_illegal_inst
+  ex_reg_xcpt.illegal.vreg := id_xcpt_valid && id_illegal_vreg
+
+  io.xcpt.irq := ex_reg_xcpt
+  io.xcpt.irq.epc := ex_reg_pc
+  io.xcpt.irq.tval := Mux(ex_reg_xcpt.illegal.inst || ex_reg_xcpt.illegal.vreg, UInt(0), ex_reg_pc)
+
+  // Enable condition is subset of !killd so that epc is registered preemptively
+  when (!stalld) {
     ex_reg_pc := id_pc
+  }
+  when (vf_ma_xcpt) {
+    ex_reg_pc := vf_pc
+  }
+
+  when (!killd) {
     ex_reg_inst := id_inst
     ex_reg_bypass := id_data_hazard_ex.map(ex_reg_valid && !ex_br_not_taken && _)
     for (i <- 0 until id_sreads.size) {

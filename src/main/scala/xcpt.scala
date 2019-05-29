@@ -1,198 +1,105 @@
-package hwacha 
+package hwacha
 
 import Chisel._
+
 import freechips.rocketchip.config._
+import freechips.rocketchip.rocket.Causes
 
 class XCPTIO(implicit p: Parameters) extends HwachaBundle()(p) {
-  val prop = new Bundle {
-    val vu = new Bundle {
-      val busy = Bool(OUTPUT)
-      val flush_top = Bool(OUTPUT)
-      val flush_kill = Bool(OUTPUT)
-      val flush_aiw = Bool(OUTPUT)
-      val flush_vxu = Bool(OUTPUT)
-      val flush_vru = Bool(OUTPUT)
-      val flush_vmu = Bool(OUTPUT)
-    }
-
-    val top = new Bundle {
-      val stall = Bool(OUTPUT)
-    }
-
-    val issue = new Bundle {
-      val stall = Bool(OUTPUT)
-    }
-
-    val seq = new Bundle {
-      val stall = Bool(OUTPUT)
-    }
-
-    val vmu = new Bundle {
-      val stall = Bool(OUTPUT)
-      val drain = Bool(OUTPUT)
-    }
-
-    val evac = new Bundle {
-      val start = Bool(OUTPUT)
-      val addr = UInt(OUTPUT, regLen)
-    }
-  }
-  val report = new Bundle {
-    val exp = new Bundle {
-      val empty = Bool(INPUT)
-    }
-
-    val mrt = new Bundle {
-      val pending = Bool(INPUT)
-    }
-
-    val evac = new Bundle {
-      val done = Bool(INPUT)
-    }
-  }
+  val raise = Bool(OUTPUT)
 }
 
-class XCPT(implicit p: Parameters) extends HwachaModule()(p) {
-  val io = new HwachaBundle {
-    val rocc = new Bundle {
-      val exception = Bool(INPUT)
-      val evac = Bool(INPUT)
-      val evac_addr = UInt(INPUT, regLen)
-      val hold = Bool(INPUT)
-      val kill = Bool(INPUT)
-    }
+abstract class IRQ(implicit p: Parameters) extends HwachaBundle()(p) {
+  val tval = UInt(width = vaddrBitsExtended)
 
-    val vu = new XCPTIO
+  protected def _check(x: (Bool, UInt)*): (Bool, UInt) = {
+    (x.map(_._1).reduce(_ || _), PriorityMux(x))
+  }
+  def check(): (Bool, UInt)
+}
+
+class DTLBExceptions extends Bundle {
+  val ld = Bool()
+  val st = Bool()
+}
+
+class ITLBExceptions extends Bundle {
+  val inst = Bool()
+}
+
+class IRQIssue(implicit p: Parameters) extends IRQ()(p) {
+  val epc = UInt(width = vaddrBitsExtended)
+  val illegal = new Bundle {
+    val inst = Bool()
+    val vreg = Bool()
+  }
+  val ma = new ITLBExceptions
+  val pf = new ITLBExceptions
+  val ae = new ITLBExceptions
+
+  def check(): (Bool, UInt) = _check(
+    this.ma.inst -> Causes.misaligned_fetch.U,
+    this.pf.inst -> Causes.fetch_page_fault.U,
+    this.ae.inst -> Causes.fetch_access.U,
+    this.illegal.inst -> Causes.illegal_instruction.U,
+    this.illegal.vreg -> Causes.illegal_instruction.U)
+}
+
+class XCPTIssueIO(implicit p: Parameters) extends XCPTIO()(p) {
+  val irq = new IRQIssue().asInput
+}
+
+class IRQMem(implicit p: Parameters) extends IRQ()(p) {
+  val ma = new DTLBExceptions
+  val pf = new DTLBExceptions
+  val ae = new DTLBExceptions
+
+  def check(): (Bool, UInt) = _check(
+    this.ma.st -> Causes.misaligned_store.U,
+    this.ma.ld -> Causes.misaligned_load.U,
+    this.pf.st -> Causes.store_page_fault.U,
+    this.pf.ld -> Causes.load_page_fault.U,
+    this.ae.st -> Causes.store_access.U,
+    this.ae.ld -> Causes.load_access.U)
+}
+
+class XCPTMemIO(implicit p: Parameters) extends XCPTIO()(p) {
+  val irq = new IRQMem().asInput
+}
+
+class XCPTStatus(implicit p: Parameters) extends HwachaBundle()(p) {
+  val cause = UInt(width = 5)
+  val tval = UInt(width = vaddrBitsExtended)
+  val epc = UInt(width = vaddrBitsExtended)
+}
+
+class XCPTRoCCIO(implicit p: Parameters) extends XCPTIO()(p) {
+  val status = new XCPTStatus().asOutput
+}
+
+class ExceptionUnit(implicit p: Parameters) extends HwachaModule()(p) {
+  val io = new Bundle {
+    val rocc = new XCPTRoCCIO
+    val issue = new XCPTIssueIO
+    val vmu = Vec(nLanes, new XCPTMemIO)
+    val smu = new XCPTMemIO
   }
 
-  val hold_top = Reg(init = Bool(false))
-  val hold_vu = Reg(init = Bool(false))
-  val hold_tlb = Reg(init = Bool(false))
+  val status = RegInit(0.U.asTypeOf(io.rocc.status))
 
-  // output assignments
-  io.vu.prop.top.stall := hold_top
-  io.vu.prop.issue.stall := hold_vu
-  io.vu.prop.seq.stall := hold_vu
-  io.vu.prop.vmu.stall := hold_tlb
-  io.vu.prop.vmu.drain := Bool(false)
+  val irqs = io.issue.irq +: io.vmu.map(_.irq) :+ io.smu.irq
+  val irqs_cause = irqs.map(_.check())
+  val irqs_sel = irqs_cause.map(_._1)
+  val raise = irqs_sel.reduce(_ || _)
 
-  val NORMAL = Bits(0, 3)
-  val XCPT_DRAIN = Bits(1, 3)
-  val XCPT_FLUSH = Bits(2, 3)
-  val XCPT_EVAC = Bits(3, 3)
-  val XCPT_DRAIN_EVAC = Bits(4, 3)  
-  val HOLD = Bits(5, 3)
-
-  val state = Reg(init = NORMAL)
-  val addr = Reg(init = UInt(0, regLen))
-  val evac = Reg(init = Bool(false))
-  val kill = Reg(init = Bool(false))
-
-  when (io.rocc.evac) {
-    evac := Bool(true)
-    addr := io.rocc.evac_addr
+  when (raise) {
+    status.tval := PriorityMux(irqs_sel, irqs.map(_.tval))
+    status.cause := PriorityMux(irqs_cause)
+    status.epc := io.issue.irq.epc
   }
+  io.rocc.status := status
 
-  when (io.rocc.kill) {
-    kill := Bool(true)
-  }
-
-  io.vu.prop.vu.busy := (state =/= NORMAL) && (state =/= HOLD)
-  io.vu.prop.vu.flush_top := Bool(false)
-  io.vu.prop.vu.flush_kill := Bool(false)
-  io.vu.prop.vu.flush_aiw := Bool(false)
-  io.vu.prop.vu.flush_vxu := Bool(false)
-  io.vu.prop.vu.flush_vru := Bool(false)
-  io.vu.prop.vu.flush_vmu := Bool(false)
-
-  io.vu.prop.evac.start := Bool(false)
-  io.vu.prop.evac.addr := addr
-
-  switch (state) {
-
-    is (NORMAL) {
-      when (io.rocc.exception) {
-        hold_top := Bool(true)
-        hold_vu := Bool(true)
-        hold_tlb := Bool(true)
-
-        evac := Bool(false)
-        kill := Bool(false)
-
-        state := XCPT_DRAIN
-      }
-
-      when (io.rocc.hold) {
-        hold_vu := Bool(true)
-        hold_tlb := Bool(true)
-
-        state := HOLD
-      }
-    }
-
-    is (XCPT_DRAIN) {
-      when (io.vu.report.exp.empty && !io.vu.report.mrt.pending) {
-        hold_top := Bool(false)
-
-        state := XCPT_FLUSH
-      }
-    }
-
-    is (XCPT_FLUSH) {
-      io.vu.prop.vu.flush_top := Bool(true)
-      io.vu.prop.vu.flush_vxu := Bool(true)
-      io.vu.prop.vu.flush_vru := Bool(true)
-      io.vu.prop.vu.flush_vmu := Bool(true)
-
-      when (kill) {
-        io.vu.prop.vu.flush_kill := Bool(true)
-        io.vu.prop.vu.flush_aiw := Bool(true)
-      }
-
-      when (evac) {
-        hold_tlb := Bool(false)
-
-        state := XCPT_EVAC
-      }
-
-      when (kill) {
-        hold_vu := Bool(false)
-        hold_tlb := Bool(false)
-        kill := Bool(false)
-        
-        state := NORMAL
-      }
-    }
-
-    is (XCPT_EVAC) {
-      io.vu.prop.evac.start := Bool(true)
-      io.vu.prop.vmu.drain := Bool(true)
-
-      when (io.vu.report.evac.done) {
-        state := XCPT_DRAIN_EVAC
-      }
-    }
-
-    is (XCPT_DRAIN_EVAC) {
-      io.vu.prop.vmu.drain := Bool(true)
-
-      when (!io.vu.report.mrt.pending) {
-        hold_vu := Bool(false)
-        hold_tlb := Bool(false)
-        evac := Bool(false)
-        
-        state := NORMAL
-      }
-    }
-
-    is (HOLD) {
-      when (!io.rocc.hold) {
-        hold_vu := Bool(false)
-        hold_tlb := Bool(false)
-
-        state := NORMAL
-      }
-    }
-
+  (Seq(io.rocc, io.issue, io.smu) ++ io.vmu).foreach { x =>
+    x.raise := raise
   }
 }

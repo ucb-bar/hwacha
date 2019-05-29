@@ -181,6 +181,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       val vru = new CMDQIO
     }
     val counters = new RoCCCounterIO
+
+    val xcpt = new XCPTRoCCIO().flip
   }
 
   // COLIN TODO FIXME: make these types play nice with chisel3

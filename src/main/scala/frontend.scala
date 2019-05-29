@@ -9,8 +9,10 @@ import freechips.rocketchip.rocket.{ICacheParams, MStatus, TLBConfig, TLBResp}
 class FrontendResp(icacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
   val pc = UInt(width = vaddrBitsExtended)  // ID stage PC
   val data = UInt(width = icacheParams.fetchBytes * 8)
-  val pf = Bool()
-
+  val xcpt = new Bundle {
+    val pf = Bool()
+    val ae = Bool()
+  }
   override def cloneType = new FrontendResp(icacheParams).asInstanceOf[this.type]
 }
 
@@ -41,16 +43,16 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
   }
 
   val s1_valid = Reg(init=Bool(false))
-  val s1_pc_ = Reg(UInt())
+  val s1_pc = Reg(UInt())
   val s1_status = Reg(new MStatus)
-  val s1_pc = ~(~s1_pc_ | UInt(HwachaElementInstBytes-1)) // discard PC LSBS (this propagates down the pipeline)
   val s1_same_block = Reg(init=Bool(false))
   val s1_req_valid = Reg(init=Bool(false))
 
   val s2_valid = Reg(init=Bool(false))
   val s2_pc = Reg(UInt())
   val s2_status = Reg(new MStatus)
-  val s2_xcpt_if = Reg(init=Bool(false))
+  val s2_tlb = Reg(io.back.s1_tlb)
+  val s2_xcpt = s2_tlb.ae.inst || s2_tlb.pf.inst
   val s2_line = Module(new Queue(UInt(width = cacheParams.fetchBytes * 8), 1, pipe=true))
 
   s1_req_valid := io.back.s0_req.fire()
@@ -81,7 +83,7 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
 
   when (!stall) {
     s1_valid := s0_req_valid
-    s1_pc_ := io.back.s0_req.bits.pc
+    s1_pc := io.back.s0_req.bits.pc
     s1_status := io.back.s0_req.bits.status
     s1_same_block := s0_same_block && !(s1_req_valid && io.back.s1_tlb.miss)
 
@@ -89,7 +91,7 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
     when (!s1_kill) {
       s2_pc := s1_pc
       s2_status := s1_status
-      s2_xcpt_if := s1_req_valid && io.back.s1_tlb.pf.inst
+      s2_tlb := io.back.s1_tlb
     }
   }
 
@@ -97,9 +99,10 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
   s2_line.io.enq.valid := s1_req_valid && io.back.s1_resp.valid
   s2_line.io.deq.ready := !stall && !(s1_valid && s1_same_block)
 
-  io.front.resp.valid := s2_valid && (s2_line.io.deq.valid || s2_xcpt_if)
+  io.front.resp.valid := s2_valid && (s2_line.io.deq.valid || s2_xcpt)
   io.front.resp.bits.pc := s2_pc
-  io.front.resp.bits.pf := s2_xcpt_if
+  io.front.resp.bits.xcpt.pf := s2_tlb.pf.inst
+  io.front.resp.bits.xcpt.ae := s2_tlb.ae.inst
 
   require(cacheParams.fetchBytes <= rowBytes)
   val fetch_data =
@@ -151,7 +154,8 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   icache.io.s2_vaddr := s2_pc
   icache.io.s1_kill :=
     vxu.io.back.s1_kill || vru.io.back.s1_kill ||
-    tlb.io.resp.miss || tlb.io.resp.pf.inst
+    tlb.io.resp.miss ||
+    tlb.io.resp.pf.inst || tlb.io.resp.ae.inst
     //TODO: check ptw result
   icache.io.s2_kill := Bool(false)
 

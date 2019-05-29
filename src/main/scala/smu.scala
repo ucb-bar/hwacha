@@ -43,7 +43,7 @@ class SMUResp(implicit p: Parameters) extends SMUBundle()(p)
 class SMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val req = Decoupled(new SMUReq)
   val resp = Decoupled(new SMUResp).flip
-  val confirm = Bool(INPUT)
+  val pending = Bool(INPUT)
 }
 
 
@@ -65,7 +65,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
     val scalar = new SMUIO().flip
 
     val ptw = new TLBPTWIO
-    val irq = new IRQIO
+    val xcpt = new XCPTMemIO().flip
   })
   val (dmem, edge) = outer.masterNode.out.head
 
@@ -92,7 +92,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tlb.req.bits.size := req_mt.shift()
   tlb.req.bits.cmd := Mux(req_store, M_XWR, M_XRD)
   tlb.status := req.status
-  io.irq <> tbox.io.irq
+  tbox.io.xcpt <> io.xcpt
 
   val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nptlb))(edge, p))
   ptlb.io.req <> tbox.io.outer.req
@@ -129,10 +129,10 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  val s_idle :: s_tlb :: s_mem :: Nil = Enum(UInt(), 3)
+  val s_idle :: s_tlb :: s_mem :: s_xcpt :: Nil = Enum(UInt(), 4)
   val state = Reg(init = s_idle)
 
-  io.scalar.confirm := Bool(false)
+  io.scalar.pending := Bool(false)
   io.scalar.req.ready := Bool(false)
   acquire.valid := Bool(false)
 
@@ -147,10 +147,14 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
 
     is (s_tlb) {
       tlb.req.valid := Bool(true)
+      io.scalar.pending := Bool(true)
       when (tlb.req.ready) {
-        state := Mux(tlb.resp.xcpt, s_idle, s_mem)
-        io.scalar.confirm := !tlb.resp.xcpt
-        req.addr := tlb.paddr()
+        when (tlb.resp.xcpt) {
+          state := s_xcpt
+        } .otherwise {
+          state := s_mem
+          req.addr := tlb.paddr()
+        }
       }
     }
 
@@ -160,6 +164,10 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
       when (fire(null)) {
         state := s_idle
       }
+    }
+
+    is (s_xcpt) {
+      io.scalar.pending := Bool(true)
     }
   }
 

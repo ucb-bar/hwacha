@@ -296,8 +296,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
 
     val sret = new CounterUpdateIO(bSRet)
     val aret = Bool()
-    val irq = new IRQIO
-    val xcpt = new XCPTIO().flip
+    val xcpt = new XCPTMemIO().flip
   }
 
   private val confml = (nLanes > 1)
@@ -338,7 +337,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   tbox.io.inner(0) <> abox.io.tlb
   io.tlb <> tbox.io.outer
 
-  io.irq <> tbox.io.irq
+  tbox.io.xcpt <> io.xcpt
 
   sbox.io.ctrl <> abox.io.store
   sbox.io.lane <> io.lane.vsdq
