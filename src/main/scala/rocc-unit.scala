@@ -6,6 +6,7 @@ import Commands._
 import freechips.rocketchip.util._ //implicits for bitpats
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
+  val valid = Bool(OUTPUT)
   val morelax = Bool(OUTPUT)
   val unpred = Bool(OUTPUT)
   val lstrip = UInt(OUTPUT, bfLStrip)
@@ -16,16 +17,20 @@ class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with Lane
     val w = UInt(OUTPUT, bRFAddr)
     val h = UInt(OUTPUT, bRFAddr)
   }
-  val vbase = new HwachaConfigBase().asOutput
-  val vident = new HwachaConfigIdent().asOutput
+  val base = new HwachaConfigRegBase().asOutput
+  val id = new HwachaConfigRegId().asOutput
 }
-class HwachaConfigBase(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
+
+class HwachaConfigRegBase(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val w = UInt(width = bRFAddr)
   val h = UInt(width = bRFAddr)
 }
-class HwachaConfigIdent(implicit p: Parameters) extends HwachaBundle()(p) {
-  val d = UInt(width = bfVRegs)
-  val dw = UInt(width = bfVRegs)
+
+class HwachaConfigRegId(implicit p: Parameters) extends HwachaBundle()(p) {
+  val vp = UInt(width = bfPRegs)
+  val vd = UInt(width = bfVRegs)
+  val vw = UInt(width = bfVRegs)
+  val vh = UInt(width = bfVRegs)
 }
 
 class DecodeConfig(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -188,8 +193,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   cfg_init.nvvw := UInt(0)
   cfg_init.nvvh := UInt(0)
   cfg_init.nvp := UInt(16)
-  private val cfg_init_nvvdw = cfg_init.nvvd + cfg_init.nvvw
-  private val cfg_init_nvv = cfg_init_nvvdw + cfg_init.nvvh
+  private val cfg_init_nvv_dw = cfg_init.nvvd + cfg_init.nvvw
+  private val cfg_init_nvv_dwh = cfg_init_nvv_dw + cfg_init.nvvh
 
   // Configuration state
   val cfg_reg = Reg(init=cfg_init)
@@ -197,23 +202,26 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val cfg_reg_vl = Reg(init=UInt(0, bMLVLen))
   val cfg_reg_lstride = Reg(init=UInt(0, bLStride))
   val cfg_reg_unpred = Reg(init=Bool(false))
-  val cfg_reg_nvvdw = Reg(init=cfg_init_nvvdw)
-  val cfg_reg_vbase = if(confprec) Reg(init=new HwachaConfigBase().fromBits(Bits(0))) else
-                                   new HwachaConfigBase().fromBits(Bits(0))
-  val cfg_reg_vstride = if(!confprec) Reg(init=cfg_init_nvv) else
-                                      cfg_reg.nvvd
+  val cfg_reg_nvv_dw = Reg(init=cfg_init_nvv_dw)
+  val cfg_reg_nvv_dwh = Reg(init=cfg_init_nvv_dwh)
+  val cfg_reg_base = if (confprec) Reg(init=new HwachaConfigRegBase().fromBits(Bits(0))) else
+                                   new HwachaConfigRegBase().fromBits(Bits(0))
 
   io.cfg.morelax := Bool(false)
   io.cfg.unpred := cfg_reg_unpred
   io.cfg.lstrip := UInt(nStrip) << io.cfg.lstride
   io.cfg.lstride := cfg_reg_lstride
   io.cfg.pstride := cfg_reg.nvp
-  io.cfg.vstride.d := cfg_reg_vstride
+  io.cfg.vstride.d := (if (confprec) cfg_reg.nvvd else cfg_reg_nvv_dwh)
   io.cfg.vstride.w := cfg_reg.nvvw
   io.cfg.vstride.h := cfg_reg.nvvh
-  io.cfg.vbase := cfg_reg_vbase
-  io.cfg.vident.d := cfg_reg.nvvd
-  io.cfg.vident.dw := cfg_reg_nvvdw
+  // Base physical reg addr for each type
+  io.cfg.base := cfg_reg_base
+  // Upper bound of register ids for each type
+  io.cfg.id.vp := cfg_reg.nvp
+  io.cfg.id.vd := cfg_reg.nvvd
+  io.cfg.id.vw := cfg_reg_nvv_dw
+  io.cfg.id.vh := cfg_reg_nvv_dwh
 
   // Decode
   val rocc_inst = io.rocc.cmd.bits.inst.asUInt
@@ -234,10 +242,6 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val respq = Module(new Queue(io.rocc.resp.bits, 2))
   respq.suggestName("respqInst")
   val vru_enable = Reg(init=Bool(false))
-
-  val stall_hold = Reg(init=Bool(false))
-  val stall_vsetcfg = Wire(Bool())
-  val stall = stall_hold || stall_vsetcfg
 
   val decode_vsetcfg = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETCFG)
   val decode_vsetvl = ctrl.enq_cmd_ && (ctrl.sel_cmd === CMD_VSETVL)
@@ -276,7 +280,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
-      !stall, mask_vsetcfg,
+      mask_vsetcfg,
       io.rocc.cmd.valid,
       mask_vxu_cmd_ready,
       mask_vxu_imm_ready,
@@ -299,10 +303,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   // Logic to handle vector length calculation
   val cfg = new DecodeConfig().fromBits(rocc_imm12 | io.rocc.cmd.bits.rs1)
-  val cfg_nvvdw = cfg.nvvd + cfg.nvvw
-  val cfg_nvv = cfg.nvvh + (
-    if (confprec) (cfg.nvvd << UInt(2)) + (cfg.nvvw << UInt(1))
-    else cfg_nvvdw)
+  val cfg_nvv_dw = cfg.nvvd + cfg.nvvw
+  val cfg_nvv_dwh = cfg_nvv_dw + cfg.nvvh
+  val cfg_nvv = if (confprec) ((cfg.nvvd << UInt(2)) + (cfg.nvvw << UInt(1)) + cfg.nvvh) else cfg_nvv_dwh
 
   // vector length lookup
   val lookup_tbl_nvv = (0 to (nVRegs << bPack)).toArray map { n =>
@@ -330,9 +333,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val cfg_maxvl = Cat(epb, UInt(0, bLanes + bBanks + bSlices))
   val cfg_vl = min(cfg_reg_maxvl, io.rocc.cmd.bits.rs1)(bMLVLen-1, 0)
 
-  stall_vsetcfg := Bool(false)
+  val cfg_busy = if (confprec) Reg(init = Bool(false)) else Bool(false)
   if (confprec) {
-    val busy = Reg(init = Bool(false))
     val state = Reg(UInt())
     val s1 :: s2 :: Nil = Enum(UInt(), 2)
 
@@ -341,24 +343,24 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     val vspan = _epb * vregs
 
     when (fire_vsetcfg) {
-      busy := Bool(true)
+      cfg_busy := Bool(true)
       state := s1
       _epb := epb
     }
-    when (busy) {
-      stall_vsetcfg := decode_vsetcfg
+    when (cfg_busy) {
       switch (state) {
         is (s1) {
           state := s2
-          cfg_reg_vbase.w := vspan
+          cfg_reg_base.w := vspan
         }
         is (s2) {
-          busy := Bool(false)
-          cfg_reg_vbase.h := cfg_reg_vbase.w + Ceil(vspan, 1)
+          cfg_busy := Bool(false)
+          cfg_reg_base.h := cfg_reg_base.w + Ceil(vspan, 1)
         }
       }
     }
   }
+  io.cfg.valid := !cfg_busy
 
   when (fire_vsetcfg) {
     cfg_reg := cfg
@@ -366,8 +368,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_vl := UInt(0)
     cfg_reg_lstride := cfg_lstride
     cfg_reg_unpred := (cfg.nvp === UInt(0))
-    cfg_reg_nvvdw := cfg_nvvdw
-    if (!confprec) cfg_reg_vstride := cfg_nvv
+    cfg_reg_nvv_dw := cfg_nvv_dw
+    cfg_reg_nvv_dwh := cfg_nvv_dwh
     val vru_switch_on = io.rocc.cmd.bits.rs1(63).toBool
     printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
       UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on)
@@ -449,7 +451,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
  // COLIN FIXME: update keepcfg
   keepcfg :=
     cmdq.io.deq.cmd.valid ||
-    io.vf_active || io.pending.mseq
+    io.vf_active || io.pending.mseq ||
+    cfg_busy
 
   // Busy signal for fencing
   val busy =

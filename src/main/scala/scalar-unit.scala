@@ -319,14 +319,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
   val rm = Mux(id_ctrl.rm === Bits("b111"), UInt(0), id_ctrl.rm)
 
-  val vbias_w = io.cfg.vbase.w - io.cfg.vident.d
-  val vbias_h = io.cfg.vbase.h - io.cfg.vident.dw
+  val vbias_w = io.cfg.base.w - io.cfg.id.vd
+  val vbias_h = io.cfg.base.h - io.cfg.id.vw
 
   private def vregid(fn: RegVFn, pfn: PRegIdFn, id: UInt) {
     val base = fn(io.vxu.bits.base)
     val reg = pfn(io.vxu.bits.reg)
     if (confprec) {
-      val (d, dw) = (id < io.cfg.vident.d, id < io.cfg.vident.dw)
+      val (d, dw) = (id < io.cfg.id.vd, id < io.cfg.id.vw)
       val sel = Seq(d, !d && dw, !d && !dw)
       val bias = Mux1H(sel, Seq(UInt(0), vbias_w, vbias_h))
       reg.id := id + Mux(base.is_vector(), bias, UInt(0))
@@ -337,6 +337,12 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
       base.id := id
       base.prec := PREC_D
     }
+  }
+
+  /* NOTE: It should not be necessary to explicitly stall until vsetcfg
+     completion, as the frontend latency should hide vsetcfg cycles */
+  if (confprec) {
+    assert(!vf_active || !id_val || io.cfg.valid, "invalid vcfg")
   }
 
   // to VXU
