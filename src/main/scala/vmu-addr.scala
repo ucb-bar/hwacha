@@ -84,10 +84,11 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   io.agu.in.bits.shift := Mux(op.mode.unit || op.mode.indexed, UInt(0), mask.nonunit.shift)
   val addr = Mux(op.mode.indexed, io.agu.out.bits.addr, op.base)
 
-  io.tlb.req.bits.addr := addr
-  io.tlb.req.bits.store := op.cmd.write
-  io.tlb.req.bits.mt := op.mt
-  io.tlb.req.bits.status := op.status
+  io.tlb.req.bits.vaddr := addr
+  io.tlb.req.bits.passthrough := Bool(false)
+  io.tlb.req.bits.size := op.mt.shift()
+  io.tlb.req.bits.cmd := op.cmd.bits
+  io.tlb.status := op.status
   io.vpaq.bits.addr := io.tlb.paddr()
   io.vcu.bits.ecnt := mask.ecnt
 

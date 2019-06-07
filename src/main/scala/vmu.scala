@@ -291,7 +291,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
     val op = Decoupled(new VMUOp).flip
     val cfg = new HwachaConfigIO().flip
     val lane = new VMUIO().flip
-    val tlb = new RTLBIO
+    val tlb = new RocketTLBIO
     val memif = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)

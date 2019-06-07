@@ -2,45 +2,32 @@ package hwacha
 
 import Chisel._
 import freechips.rocketchip.config._
+import freechips.rocketchip.rocket.{TLBReq, TLBResp, MStatus}
 
-class TLBRequest(implicit p: Parameters) extends VMUBundle()(p) {
-    val addr = UInt(width = bVAddrExtended)
-    val store = Bool()
-    val mt = new DecodedMemType
-    val status = new freechips.rocketchip.rocket.MStatus()
+abstract class TLBReqIO(implicit p: Parameters) extends VMUBundle()(p) {
+  val status = new MStatus().asOutput
+  val req = Decoupled(new TLBReq(log2Ceil(p(HwachaRegLen))))
 }
 
-class TLBIO(implicit p: Parameters) extends VMUBundle()(p) {
-  val req = Decoupled(new TLBRequest)
+class TLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
   val resp = new Bundle {
     val ppn = UInt(INPUT, bPPN)
     val xcpt = Bool(INPUT)
   }
 
-  def pgidx(dummy: Int = 0): UInt = this.req.bits.addr(bPgIdx-1, 0)
-  def vpn(dummy: Int = 0): UInt = this.req.bits.addr(bVAddrExtended-1, bPgIdx)
+  def pgidx(dummy: Int = 0): UInt = this.req.bits.vaddr(bPgIdx-1, 0)
+  def vpn(dummy: Int = 0): UInt = this.req.bits.vaddr(bVAddrExtended-1, bPgIdx)
   def paddr(dummy: Int = 0): UInt = Cat(this.resp.ppn, this.pgidx())
 }
 
-class RTLBReqWithStatus(implicit p: Parameters) extends VMUBundle()(p) {
-  val req = new freechips.rocketchip.rocket.TLBReq(log2Ceil(p(HwachaRegLen)))(p)
-  val status = new freechips.rocketchip.rocket.MStatus()
-}
-
-class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
-  val req = Decoupled(new RTLBReqWithStatus)
-  val resp = (new freechips.rocketchip.rocket.TLBResp()).flip
+class RocketTLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
+  val resp = new TLBResp().flip
 
   def bridge(client: TLBIO) {
-    this.req.bits.req.vaddr := client.req.bits.addr
-    this.req.bits.req.passthrough := Bool(false)
-    this.req.bits.req.size := client.req.bits.mt.shift()
-    this.req.bits.req.cmd := client.req.bits.store // for now just give whether its read or write M_XRD or M_XWR
-    this.req.bits.status := client.req.bits.status
-
+    this.status := client.status
+    this.req.bits := client.req.bits
     this.req.valid := client.req.valid
     client.req.ready := this.req.ready && !this.resp.miss
-
     client.resp.ppn := this.resp.paddr(bPAddr-1, bPgIdx)
   }
 }
@@ -48,17 +35,15 @@ class RTLBIO(implicit p: Parameters) extends VMUBundle()(p) {
 class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val io = new Bundle {
     val inner = Vec(n, new TLBIO()).flip
-    val outer = new RTLBIO
+    val outer = new RocketTLBIO
     val irq = new IRQIO
   }
 
   val arb = Wire(new TLBIO())
   io.outer.bridge(arb)
 
-  /* Priority mux */
-  arb.req.bits := io.inner.init.foldRight(io.inner.last.req.bits) {
-    case (a, b) => Mux(a.req.valid, a.req.bits, b)
-  }
+  arb.status := PriorityMux(io.inner.map(x => x.req.valid -> x.status))
+  arb.req.bits := PriorityMux(io.inner.map(x => x.req.valid -> x.req.bits))
   arb.req.valid := io.inner.map(_.req.valid).reduce(_ || _)
 
   val ready = io.inner.init.map(!_.req.valid).scanLeft(arb.req.ready)(_ && _)
@@ -68,19 +53,11 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
     i.resp.xcpt <> arb.resp.xcpt
   }
 
-  /* Misalignment */
-  val mt = arb.req.bits.mt
-  val ma = Seq(mt.h, mt.w, mt.d).zipWithIndex.map(x =>
-    x._1 && (arb.req.bits.addr(x._2, 0) =/= UInt(0))).reduce(_ || _)
-
-  val write = arb.req.bits.store
-  val read = !write
-
   val xcpts = Seq(
-    ma && read,
-    ma && write,
-    io.outer.resp.pf.ld && read,
-    io.outer.resp.pf.st && write)
+    io.outer.resp.ma.ld,
+    io.outer.resp.ma.st,
+    io.outer.resp.pf.ld,
+    io.outer.resp.pf.st)
   val irqs = Seq(
     io.irq.vmu.ma_ld,
     io.irq.vmu.ma_st,
@@ -91,6 +68,6 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   irqs.zip(xcpts).foreach { case (irq, xcpt) =>
     irq := xcpt && fire
   }
-  io.irq.vmu.aux := arb.req.bits.addr
+  io.irq.vmu.aux := arb.req.bits.vaddr
   arb.resp.xcpt := xcpts.reduce(_ || _)
 }

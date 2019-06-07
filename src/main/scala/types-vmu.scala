@@ -30,6 +30,8 @@ class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen
 class VMUOpML(implicit p: Parameters) extends VMUOpBase()(p) with MultiLaneVLen
 
 class DecodedMemCommand extends Bundle {
+  val bits = Bits(width = M_SZ)
+
   val load = Bool()
   val store = Bool()
   val amo = Bool()
@@ -44,6 +46,7 @@ object DecodedMemCommand {
     cmd.suggestName("cmdWire")
     val dec = Wire(new DecodedMemCommand)
     dec.suggestName("decWire")
+    dec.bits := cmd
     dec.load := (cmd === M_XRD).suggestName("loadWire")
     dec.store := (cmd === M_XWR).suggestName("storeWire")
     dec.amo := isAMO(cmd)

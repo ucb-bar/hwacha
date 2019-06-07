@@ -62,10 +62,9 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   mrt.io.aret <> vmu.io.aret
 
   dtlb.io.req <> vmu.io.tlb.req
-  dtlb.io.req.bits := vmu.io.tlb.req.bits.req
   vmu.io.tlb.resp <> dtlb.io.resp
   io.ptw <> dtlb.io.ptw
-  dtlb.io.ptw.status := vmu.io.tlb.req.bits.status
+  dtlb.io.ptw.status := vmu.io.tlb.status
   dtlb.io.sfence.valid := false.B
 
   io.red <> vxu.io.red

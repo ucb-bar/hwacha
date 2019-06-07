@@ -87,18 +87,18 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tbox.suggestName("tboxInst")
   private val tlb = tbox.io.inner(0)
   tlb.req.valid := Bool(false)
-  tlb.req.bits.addr := req.addr
-  tlb.req.bits.store := req_store
-  tlb.req.bits.mt := req_mt
-  tlb.req.bits.status := req.status
+  tlb.req.bits.vaddr := req.addr
+  tlb.req.bits.passthrough := Bool(false)
+  tlb.req.bits.size := req_mt.shift()
+  tlb.req.bits.cmd := Mux(req_store, M_XWR, M_XRD)
+  tlb.status := req.status
   io.irq <> tbox.io.irq
 
   val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreInstBytes*fetchWidth), TLBConfig(nptlb))(edge, p))
   ptlb.io.req <> tbox.io.outer.req
-  ptlb.io.req.bits := tbox.io.outer.req.bits.req
-  tbox.io.outer.resp  <> ptlb.io.resp
+  tbox.io.outer.resp <> ptlb.io.resp
   io.ptw <> ptlb.io.ptw
-  ptlb.io.ptw.status := tbox.io.outer.req.bits.status
+  ptlb.io.ptw.status := tbox.io.outer.status
   ptlb.io.sfence.valid := false.B
 
   val addr_offset = req.addr(tlByteAddrBits-1, 0)
