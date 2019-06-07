@@ -62,6 +62,7 @@ abstract trait UsesHwachaOnlyParameters {
   val bSDest = List(bARegs, bSRegs).max
 
   val regLen = p(HwachaRegLen)
+  val regBytes = regLen >> 3
 
   require(SZ_D == regLen)
 

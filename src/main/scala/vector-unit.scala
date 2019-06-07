@@ -38,7 +38,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
   mrt.suggestName("mrtInst")
-  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(coreDataBytes), TLBConfig(ndtlb))(edge, p))
+  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(ndtlb))(edge, p))
 
   vxu.io.id := io.id
   vxu.io.cfg <> io.cfg

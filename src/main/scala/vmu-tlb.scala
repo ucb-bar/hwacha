@@ -6,7 +6,7 @@ import freechips.rocketchip.rocket.{TLBReq, TLBResp, MStatus}
 
 abstract class TLBReqIO(implicit p: Parameters) extends VMUBundle()(p) {
   val status = new MStatus().asOutput
-  val req = Decoupled(new TLBReq(log2Ceil(p(HwachaRegLen))))
+  val req = Decoupled(new TLBReq(log2Ceil(regBytes)))
 }
 
 class TLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
