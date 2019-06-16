@@ -155,7 +155,8 @@ object HwachaDecodeTable {
     VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N,N),
     // Exception and save/restore instructions
     VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N,N,N),
-    VXCPTAUX   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_AUX,   N,N,N),
+    VXCPTVAL   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_TVAL,  N,N,N),
+    VXCPTPC    -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_EPC,   N,N,N),
     VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y,N,N),
     VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,Y,N),
     VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,N,Y)
@@ -430,7 +431,10 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     MuxLookup(ctrl.sel_resp, Bits(0), Array(
       RESP_NVL -> cfg_vl,
       RESP_CFG -> cfg_reg.asUInt,
-      RESP_VL  -> cfg_reg_vl
+      RESP_VL  -> cfg_reg_vl,
+      RESP_CAUSE-> io.xcpt.status.cause,
+      RESP_TVAL -> io.xcpt.status.tval,
+      RESP_EPC  -> io.xcpt.status.epc
     ))
   respq.io.enq.bits.rd := io.rocc.cmd.bits.inst.rd
 
@@ -464,7 +468,14 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   io.rocc.busy := busy
 
   // Setup interrupt
-  io.rocc.interrupt := Bool(false)
+  val interrupt = RegInit(Bool(false))
+  when (respq.io.enq.valid && (ctrl.sel_resp === RESP_CAUSE)) {
+    interrupt := Bool(false)
+  }
+  when (io.xcpt.raise) {
+    interrupt := Bool(true)
+  }
+  io.rocc.interrupt := interrupt
 
 
   //COLIN FIXME: do we need to do something on the rocc.s field that hold used to do

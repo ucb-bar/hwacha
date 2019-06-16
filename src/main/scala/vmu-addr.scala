@@ -178,7 +178,6 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
     val pipe = new VMUPipeIO
 
     val mask = new VMUMaskIO_1().flip
-    val xcpt = new XCPTIO().flip
     val la = new CounterLookAheadIO().flip
   }
 

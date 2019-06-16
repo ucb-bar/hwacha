@@ -56,10 +56,10 @@ trait HwachaDecodeConstants {
   val RESP_X     = BitPat("b???")
   val RESP_NVL   = UInt(0,3)
   val RESP_CAUSE = UInt(1,3)
-  val RESP_AUX   = UInt(2,3)
+  val RESP_TVAL  = UInt(2,3)
   val RESP_CFG   = UInt(3,3)
   val RESP_VL    = UInt(4,3)
-
+  val RESP_EPC   = UInt(5,3)
 }
 
 trait DecodeConstants {
