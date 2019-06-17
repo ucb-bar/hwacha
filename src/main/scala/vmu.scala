@@ -333,6 +333,7 @@ class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   abox.io.la <> io.lane.pala
   abox.io.load <> io.lane.vlu
   agu.io.ports(0) <> abox.io.agu
+  abox.io.xcpt <> io.xcpt
 
   tbox.io.inner(0) <> abox.io.tlb
   io.tlb <> tbox.io.outer

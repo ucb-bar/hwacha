@@ -169,6 +169,9 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
 
     is (s_xcpt) {
       io.scalar.pending := Bool(true)
+      when (io.xcpt.replay) {
+        state := s_tlb
+      }
     }
   }
 

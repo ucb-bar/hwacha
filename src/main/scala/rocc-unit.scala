@@ -119,12 +119,14 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val enq_status_ = Bool()
   val enq_resp_ = Bool()
   val sel_resp = Bits(width= RESP_X.getWidth)
+  val xcpt_ret = Bool()
   val sfence = Bool()
 
   def decode(inst: UInt) = {
     val decoder = freechips.rocketchip.rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
     val sigs = Seq(inst_val, inst_priv, enq_cmd_, sel_cmd, rd_type, sel_imm,
-        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp, sfence)
+        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp,
+        xcpt_ret, sfence)
     sigs zip decoder map {case(s,d) => s := d}
 
     this
@@ -136,26 +138,27 @@ object HwachaDecodeTable {
   val default: List[BitPat] =
                 // * means special case decode code below      checkvl?
                 //     inst_val                                |
-                //     |  priv                                 | vrd?            resp?
-                //     |  |  vmcd_val                          | | imm?          |
-                //     |  |  |  cmd          rtype  imm        | | | vcnt?       | resptype    sfence
-                //     |  |  |  |            |      |          | | | | status    | |           |
-                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,        N,RESP_X,     N)
+                //     |  priv                                 | vrd?            resp?         return
+                //     |  |  vmcd_val                          | | imm?          |             |
+                //     |  |  |  cmd          rtype  imm        | | | vcnt?       | resptype    | sfence
+                //     |  |  |  |            |      |          | | | | status    | |           | |
+                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,        N,RESP_X,     N,N)
   val table: Array[(BitPat, List[BitPat])] = Array(
     // General instructions
-    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,N,    N,RESP_X,     N), //* set maxvl register
-    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,N,    Y,RESP_NVL,   N), //* set vl register
-    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N),
-    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N),
-    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N),
-    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N),
-    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N),
-    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N),
+    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,N,    N,RESP_X,     N,N), //* set maxvl register
+    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,N,    Y,RESP_NVL,   N,N), //* set vl register
+    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N,N),
+    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N,N),
+    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N),
+    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N),
+    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N),
+    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N),
     // Exception and save/restore instructions
-    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N),
-    VXCPTVAL   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_TVAL,  N),
-    VXCPTPC    -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_EPC,   N),
-    VFENCE_VMA -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y)
+    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N,N),
+    VXCPTVAL   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_TVAL,  N,N),
+    VXCPTPC    -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_EPC,   N,N),
+    VXCPTRET   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y,N),
+    VFENCE_VMA -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,Y)
   )
 }
 
@@ -473,6 +476,8 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     interrupt := Bool(true)
   }
   io.rocc.interrupt := interrupt
+
+  io.xcpt.cmd.ret := io.rocc.cmd.valid && ctrl.xcpt_ret
 
   io.sfence.valid := io.rocc.cmd.valid && ctrl.sfence
   io.sfence.bits.rs1 := (io.rocc.cmd.bits.inst.rs1 =/= 0.U)

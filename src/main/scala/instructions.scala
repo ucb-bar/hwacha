@@ -16,6 +16,7 @@ object HwachaInstructions {
   def VXCPTCAUSE         = BitPat("b00000000000000000100?????0101011")
   def VXCPTVAL           = BitPat("b00000010000000000100?????0101011")
   def VXCPTPC            = BitPat("b00000100000000000100?????0101011")
+  def VXCPTRET           = BitPat("b00000110000000000000000000101011")
   def VFENCE_VMA         = BitPat("b0001000??????????011000000101011")
 }
 object HwachaElementInstructions {

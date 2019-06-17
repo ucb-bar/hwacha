@@ -97,8 +97,11 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   val vpaq_ready = !pred || io.vpaq.ready
   val tlb_ready = !pred || io.tlb.req.ready
 
+  val xcpt = pred && io.tlb.resp.xcpt
+  val xcpt_none = !xcpt
+
   private def fire(exclude: Bool, include: Bool*) = {
-    val rvs = Seq(io.mask.valid, vvaq_valid, vpaq_ready, tlb_ready)
+    val rvs = Seq(io.mask.valid, vvaq_valid, vpaq_ready, tlb_ready, xcpt_none)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
@@ -122,18 +125,18 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
       unless (stall) {
         io.mask.ready := fire(io.mask.valid)
         io.vvaq.ready := fire(vvaq_valid, vvaq_en)
-        io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
+        io.vpaq.valid := fire(vpaq_ready, pred)
         io.tlb.req.valid := vvaq_valid && io.mask.valid && pred
 
         io.agu.in.valid := op.mode.indexed || !mask.last
 
-        when (fire(null)) {
-          unless (op.mode.indexed || (op.mode.unit && !mask.unit.page)) {
-            op.base := io.agu.out.bits.addr
-          }
-          when (io.tlb.resp.xcpt && pred) {
+        when (fire(xcpt_none)) {
+          when (xcpt) {
             stall := Bool(true)
           } .otherwise {
+            unless (op.mode.indexed || (op.mode.unit && !mask.unit.page)) {
+              op.base := io.agu.out.bits.addr
+            }
             io.vcu.valid := Bool(true)
             when (mask.last) {
               state := s_idle
@@ -148,6 +151,10 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   when (io.op.fire()) { /* initialization */
     state := s_busy
     op := io.op.bits
+  }
+
+  when (io.xcpt.replay) {
+    stall := Bool(false)
   }
 }
 
