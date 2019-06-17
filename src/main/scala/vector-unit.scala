@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
-import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
+import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig, SFenceReq}
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
@@ -24,6 +24,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
     val mocheck = Vec(nSeq, new MOCheck).asInput
     val red = new ReduceResultIO
     val ptw = new TLBPTWIO
+    val sfence = Valid(new SFenceReq).asInput
     val pending = new MRTPending().asOutput
 
     val complete_memop = Bool(OUTPUT)
@@ -67,7 +68,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   vmu.io.tlb.resp <> dtlb.io.resp
   io.ptw <> dtlb.io.ptw
   dtlb.io.ptw.status := vmu.io.tlb.status
-  dtlb.io.sfence.valid := false.B
+  dtlb.io.sfence := io.sfence
   vmu.io.xcpt <> io.xcpt
 
   io.red <> vxu.io.red

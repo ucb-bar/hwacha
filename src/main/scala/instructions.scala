@@ -16,15 +16,7 @@ object HwachaInstructions {
   def VXCPTCAUSE         = BitPat("b00000000000000000100?????0101011")
   def VXCPTVAL           = BitPat("b00000010000000000100?????0101011")
   def VXCPTPC            = BitPat("b00000100000000000100?????0101011")
-  def VXCPTSAVE          = BitPat("b000000000000?????011000000101011")
-  def VXCPTRESTORE       = BitPat("b000000100000?????011000000101011")
-  def VXCPTKILL          = BitPat("b00000100000000000011000000101011")
-  def VXCPTEVAC          = BitPat("b000001100000?????011000000101011")
-  def VXCPTHOLD          = BitPat("b000010000000?????011000000101011")
-  def VENQCMD            = BitPat("b0000101??????????011000000101011")
-  def VENQIMM1           = BitPat("b0000110??????????011000000101011")
-  def VENQIMM2           = BitPat("b0000111??????????011000000101011")
-  def VENQCNT            = BitPat("b0001000??????????011000000101011")
+  def VFENCE_VMA         = BitPat("b0001000??????????011000000101011")
 }
 object HwachaElementInstructions {
   def VEIDX              = BitPat("b1?00000001011000000000000000000?????????????????????011000111111")

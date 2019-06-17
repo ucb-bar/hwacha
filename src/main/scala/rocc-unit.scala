@@ -4,6 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 import Commands._
 import freechips.rocketchip.util._ //implicits for bitpats
+import freechips.rocketchip.rocket.SFenceReq
 
 class HwachaConfigIO(implicit p: Parameters) extends HwachaBundle()(p) with LaneParameters {
   val valid = Bool(OUTPUT)
@@ -118,15 +119,12 @@ class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
   val enq_status_ = Bool()
   val enq_resp_ = Bool()
   val sel_resp = Bits(width= RESP_X.getWidth)
-  val decode_save = Bool() // TODO: unused
-  val decode_rest = Bool() // TODO: unused
-  val decode_kill = Bool() // TODO: unused
+  val sfence = Bool()
 
   def decode(inst: UInt) = {
     val decoder = freechips.rocketchip.rocket.DecodeLogic(inst, HwachaDecodeTable.default, HwachaDecodeTable.table)
     val sigs = Seq(inst_val, inst_priv, enq_cmd_, sel_cmd, rd_type, sel_imm,
-        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp, decode_save,
-        decode_rest, decode_kill)
+        check_vl, enq_rd_, enq_imm_, enq_vcnt_, enq_status_, enq_resp_, sel_resp, sfence)
     sigs zip decoder map {case(s,d) => s := d}
 
     this
@@ -137,29 +135,27 @@ object HwachaDecodeTable {
   import HwachaInstructions._
   val default: List[BitPat] =
                 // * means special case decode code below      checkvl?
-                //     inst_val                                |                               save
-                //     |  priv                                 | vrd?            resp?         | restore
-                //     |  |  vmcd_val                          | | imm?          |             | |
-                //     |  |  |  cmd          rtype  imm        | | | vcnt?       | resptype    | | kill
-                //     |  |  |  |            |      |          | | | | status    | |           | | |
-                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,        N,RESP_X,     N,N,N)
+                //     inst_val                                |
+                //     |  priv                                 | vrd?            resp?
+                //     |  |  vmcd_val                          | | imm?          |
+                //     |  |  |  cmd          rtype  imm        | | | vcnt?       | resptype    sfence
+                //     |  |  |  |            |      |          | | | | status    | |           |
+                  List(N, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,        N,RESP_X,     N)
   val table: Array[(BitPat, List[BitPat])] = Array(
     // General instructions
-    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,N,    N,RESP_X,     N,N,N), //* set maxvl register
-    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,N,    Y,RESP_NVL,   N,N,N), //* set vl register
-    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N,N,N),
-    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N,N,N),
-    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N,N),
-    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N,N,N),
-    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N,N),
-    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N,N,N),
+    VSETCFG    -> List(Y, N, Y, CMD_VSETCFG, VRT_X, RIMM_VLEN, N,N,Y,N,N,    N,RESP_X,     N), //* set maxvl register
+    VSETVL     -> List(Y, N, Y, CMD_VSETVL,  VRT_X, RIMM_VLEN, N,N,Y,N,N,    Y,RESP_NVL,   N), //* set vl register
+    VGETCFG    -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CFG,   N),
+    VGETVL     -> List(Y, N, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_VL,    N),
+    VF         -> List(Y, N, Y, CMD_VF,      VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N),
+    VFT        -> List(Y, N, Y, CMD_VFT,     VRT_X, RIMM_ADDR, Y,N,Y,N,Y,    N,RESP_X,     N),
+    VMCA       -> List(Y, N, Y, CMD_VMCA,    VRT_A, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N),
+    VMCS       -> List(Y, N, Y, CMD_VMCS,    VRT_S, RIMM_RS1,  N,Y,Y,N,N,    N,RESP_X,     N),
     // Exception and save/restore instructions
-    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N,N,N),
-    VXCPTVAL   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_TVAL,  N,N,N),
-    VXCPTPC    -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_EPC,   N,N,N),
-    VXCPTSAVE  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y,N,N),
-    VXCPTRESTORE->List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,Y,N),
-    VXCPTKILL  -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     N,N,Y)
+    VXCPTCAUSE -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_CAUSE, N),
+    VXCPTVAL   -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_TVAL,  N),
+    VXCPTPC    -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    Y,RESP_EPC,   N),
+    VFENCE_VMA -> List(Y, Y, N, CMD_X,       VRT_X, RIMM_X,    N,N,N,N,N,    N,RESP_X,     Y)
   )
 }
 
@@ -182,6 +178,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
       val vru = new CMDQIO
     }
     val counters = new RoCCCounterIO
+    val sfence = Valid(new SFenceReq)
 
     val xcpt = new XCPTRoCCIO().flip
   }
@@ -477,6 +474,11 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   }
   io.rocc.interrupt := interrupt
 
+  io.sfence.valid := io.rocc.cmd.valid && ctrl.sfence
+  io.sfence.bits.rs1 := (io.rocc.cmd.bits.inst.rs1 =/= 0.U)
+  io.sfence.bits.rs2 := (io.rocc.cmd.bits.inst.rs2 =/= 0.U)
+  io.sfence.bits.addr := io.rocc.cmd.bits.rs1
+  io.sfence.bits.asid := io.rocc.cmd.bits.rs2
 
   //COLIN FIXME: do we need to do something on the rocc.s field that hold used to do
   /*
