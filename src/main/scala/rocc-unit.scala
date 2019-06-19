@@ -72,16 +72,39 @@ object QueueWithCount
   }
 }
 
-class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
+class CMDQ(resetSignal: Bool = null, nReserve: Int = 2)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
   val io = new Bundle {
     val enq = new CMDQIO().flip
     val deq = new CMDQIO()
     val counters = new CMDQCounterIO()
+    val xcpt = new XCPTIO().flip
   }
 
-  val (qcmd, ccmd) = QueueWithCount(io.enq.cmd, confvcmdq.ncmd)
+  /* To avoid deadlocking the RoCC interface after taking an exception,
+   * the command queue must reserve enough space to sink all entries
+   * buffered in the RoccCommandRouter.
+   */
+  require(confvcmdq.ncmd > nReserve)
+  val free = RegInit(Bool(true)) // at least nReserve entries available
+  val enable = io.xcpt.hold || free
+
+  val cmd = Wire(io.enq.cmd)
+  val (qcmd, ccmd) = QueueWithCount(cmd, confvcmdq.ncmd)
+  cmd.bits := io.enq.cmd.bits
+  cmd.valid := io.enq.cmd.valid && enable
+  io.enq.cmd.ready := cmd.ready && enable
+
   io.deq.cmd <> qcmd
   io.counters.cmd <> ccmd
+
+  val quota = (ccmd === (confvcmdq.ncmd - nReserve).U)
+  val quota_m1 = (ccmd === (confvcmdq.ncmd - nReserve - 1).U)
+  when (io.deq.cmd.fire() && quota) {
+    free := Bool(true)
+  }
+  when (io.enq.cmd.fire() && (quota || quota_m1)) {
+    free := Bool(false)
+  }
 
   val (qimm, cimm) = QueueWithCount(io.enq.imm, confvcmdq.nimm)
   io.deq.imm <> qimm
@@ -399,6 +422,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   cmdq.io.enq.cnt.valid := fire(mask_vxu_cnt_ready, enq_cnt, !ignore_dup_vsetvl)
   cmdq.io.enq.status.valid := fire(mask_vxu_status_ready, enq_status, !ignore_dup_vsetvl)
   respq.io.enq.valid := fire(mask_resp_ready, enq_resp)
+  cmdq.io.xcpt <> io.xcpt
 
   vrucmdq.io.enq.cmd.valid := fire(mask_vru_cmd_ready, vru_enq_cmd, !ignore_dup_vsetvl, vru_enable)
   vrucmdq.io.enq.imm.valid := fire(mask_vru_imm_ready, vru_enq_imm, !ignore_dup_vsetvl, vru_enable)

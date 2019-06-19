@@ -7,6 +7,7 @@ import freechips.rocketchip.rocket.Causes
 
 class XCPTIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val raise = Bool(OUTPUT)
+  val hold = Bool(OUTPUT)
   val replay = Bool(OUTPUT)
 }
 
@@ -95,17 +96,24 @@ class ExceptionUnit(implicit p: Parameters) extends HwachaModule()(p) {
   val irqs_cause = irqs.map(_.check())
   val irqs_sel = irqs_cause.map(_._1)
   val raise = irqs_sel.reduce(_ || _)
+  val hold = RegInit(Bool(false))
   val replay = RegNext(io.rocc.cmd.ret, Bool(false))
 
   when (raise) {
+    hold := Bool(true)
     status.tval := PriorityMux(irqs_sel, irqs.map(_.tval))
     status.cause := PriorityMux(irqs_cause)
     status.epc := io.issue.irq.epc
   }
   io.rocc.status := status
 
+  when (io.rocc.cmd.ret) {
+    hold := Bool(false)
+  }
+
   (Seq(io.rocc, io.issue, io.smu) ++ io.vmu).foreach { x =>
     x.raise := raise
+    x.hold := hold
     x.replay := replay
   }
 }
