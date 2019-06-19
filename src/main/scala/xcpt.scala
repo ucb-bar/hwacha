@@ -11,9 +11,15 @@ class XCPTIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val replay = Bool(OUTPUT)
 }
 
-abstract class IRQ(implicit p: Parameters) extends HwachaBundle()(p) {
-  val tval = UInt(width = vaddrBitsExtended)
+trait HasTVal extends HwachaBundle {
+  val tval = UInt(width = math.max(vaddrBitsExtended, coreInstBits))
+}
 
+trait HasEPC extends HwachaBundle {
+  val epc = UInt(width = vaddrBitsExtended)
+}
+
+abstract class IRQ(implicit p: Parameters) extends HwachaBundle()(p) with HasTVal {
   protected def _check(x: (Bool, UInt)*): (Bool, UInt) = {
     (x.map(_._1).reduce(_ || _), PriorityMux(x))
   }
@@ -29,8 +35,7 @@ class ITLBExceptions extends Bundle {
   val inst = Bool()
 }
 
-class IRQIssue(implicit p: Parameters) extends IRQ()(p) {
-  val epc = UInt(width = vaddrBitsExtended)
+class IRQIssue(implicit p: Parameters) extends IRQ()(p) with HasEPC {
   val illegal = new Bundle {
     val inst = Bool()
     val vreg = Bool()
@@ -69,14 +74,24 @@ class XCPTMemIO(implicit p: Parameters) extends XCPTIO()(p) {
   val irq = new IRQMem().asInput
 }
 
-class XCPTStatus(implicit p: Parameters) extends HwachaBundle()(p) {
+class IRQRoCC(implicit p: Parameters) extends IRQ()(p) {
+  val illegal = new Bundle {
+    val inst = Bool()
+  }
+
+  def check(): (Bool, UInt) =
+    this.illegal.inst -> Causes.illegal_instruction.U
+}
+
+class XCPTStatus(implicit p: Parameters) extends HwachaBundle()(p)
+  with HasTVal
+  with HasEPC {
   val cause = UInt(width = 5)
-  val tval = UInt(width = vaddrBitsExtended)
-  val epc = UInt(width = vaddrBitsExtended)
 }
 
 class XCPTRoCCIO(implicit p: Parameters) extends XCPTIO()(p) {
   val status = new XCPTStatus().asOutput
+  val irq = new IRQRoCC().asInput
   val cmd = new Bundle {
     val ret = Bool(INPUT)
   }
@@ -92,7 +107,7 @@ class ExceptionUnit(implicit p: Parameters) extends HwachaModule()(p) {
 
   val status = RegInit(0.U.asTypeOf(io.rocc.status))
 
-  val irqs = io.issue.irq +: io.vmu.map(_.irq) :+ io.smu.irq
+  val irqs = Seq(io.rocc.irq, io.issue.irq, io.smu.irq) ++ io.vmu.map(_.irq)
   val irqs_cause = irqs.map(_.check())
   val irqs_sel = irqs_cause.map(_._1)
   val raise = irqs_sel.reduce(_ || _)
@@ -103,7 +118,7 @@ class ExceptionUnit(implicit p: Parameters) extends HwachaModule()(p) {
     hold := Bool(true)
     status.tval := PriorityMux(irqs_sel, irqs.map(_.tval))
     status.cause := PriorityMux(irqs_cause)
-    status.epc := io.issue.irq.epc
+    status.epc := Mux(irqs_sel.head, 0.U, io.issue.irq.epc)
   }
   io.rocc.status := status
 

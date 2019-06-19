@@ -129,7 +129,7 @@ class RoCCCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class RoCCCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
-  val inst_val = Bool() // TODO: unused
+  val inst_val = Bool()
   val inst_priv = Bool() // TODO: unused
   val enq_cmd_  = Bool()
   val sel_cmd = Bits(width = CMD_X.getWidth)
@@ -276,6 +276,12 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
   val keepcfg = Wire(Bool())
   val mask_vsetcfg = !decode_vsetcfg || !keepcfg
 
+  val illegal = RegInit(Bool(false))
+  val mask_illegal = ctrl.inst_val || illegal
+  illegal := io.rocc.cmd.valid && !ctrl.inst_val && !illegal
+
+  val mask_common = mask_vsetcfg && mask_illegal
+
   val mask_vl = !ctrl.check_vl || (cfg_reg_vl =/= UInt(0))
   val enq_cmd = mask_vl && ctrl.enq_cmd_
   val enq_imm = mask_vl && ctrl.enq_imm_
@@ -306,7 +312,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
 
   def fire(exclude: Bool, include: Bool*) = {
     val rvs = Seq(
-      mask_vsetcfg,
+      mask_common,
       io.rocc.cmd.valid,
       mask_vxu_cmd_ready,
       mask_vxu_imm_ready,
@@ -500,6 +506,9 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     interrupt := Bool(true)
   }
   io.rocc.interrupt := interrupt
+
+  io.xcpt.irq.illegal.inst := illegal
+  io.xcpt.irq.tval := rocc_inst
 
   io.xcpt.cmd.ret := io.rocc.cmd.valid && ctrl.xcpt_ret
 
