@@ -190,15 +190,17 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_br_taken = Wire(Bool())
   val ex_br_not_taken = Wire(Bool())
   val ex_br_taken_pc = Wire(UInt())
+  val vf_replay = Wire(Bool())
 
   // FETCH
-  val vf_pc = io.cmdq.imm.bits
+  val vf_pc = Mux(vf_replay, ex_reg_pc, io.cmdq.imm.bits)
   val vf_ma = (vf_pc(log2Up(HwachaElementInstBytes)-1, 0) =/= 0.U)
-  val vf_ma_xcpt = fire_vf && vf_ma
+  val vf_taken = fire_vf || vf_replay
+  val vf_ma_xcpt = vf_taken && vf_ma
 
-  io.imem.req.valid := (fire_vf && !vf_ma) || ex_br_taken
+  io.imem.req.valid := (vf_taken && !vf_ma) || ex_br_taken
   io.imem.req.bits.pc := Mux(ex_br_taken, ex_br_taken_pc, vf_pc)
-  io.imem.req.bits.status := Mux(ex_br_taken, id_status, io.cmdq.status.bits)
+  io.imem.req.bits.status := Mux(ex_br_taken || vf_replay, id_status, io.cmdq.status.bits)
   io.imem.active := vf_active && !vf_ma_xcpt
   io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
   io.imem.resp.ready := fetch
@@ -346,6 +348,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (vf_ma_xcpt || (!stalld && id_xcpt)) {
     stall_xcpt_hold := Bool(true)
   }
+  when (io.xcpt.replay) {
+    stall_xcpt_hold := Bool(false)
+  }
+  vf_replay := stall_xcpt_hold && io.xcpt.replay
 
   // use rm in inst unless its dynamic then take rocket rm
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
