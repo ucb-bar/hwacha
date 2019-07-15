@@ -102,7 +102,7 @@ class CMDQ(resetSignal: Bool = null, nReserve: Int = 2)(implicit p: Parameters) 
   when (io.deq.cmd.fire() && quota) {
     free := Bool(true)
   }
-  when (io.enq.cmd.fire() && (quota || quota_m1)) {
+  when (io.enq.cmd.fire() && (quota || (quota_m1 && !io.deq.cmd.fire))) {
     free := Bool(false)
   }
 
