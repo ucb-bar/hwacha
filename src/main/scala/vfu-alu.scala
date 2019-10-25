@@ -30,6 +30,8 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
   val (in0_hi, in0_lo) = (in0(63, 32), in0(31, 0))
   val (in1_hi, in1_lo) = (in1(63, 32), in1(31, 0))
 
+  val (fn_dw64, fn_dw32) = (fn.dw_is(DW64), fn.dw_is(DW32))
+
   // TODO: Support x4 rate with halfwords
   val rate_x2 = if (confprec) (io.req.bits.rate === UInt(1)) else Bool(false)
 
@@ -48,18 +50,25 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
 
   // SLL, SRL, SRA
   val sra = fn.op_is(I_SRA)
-  val shamt = Cat(in1(5) & fn.dw_is(DW64), in1(4,0)).asUInt
   val shright = sra || fn.op_is(I_SRL)
-  val shfill_hi = sra & in0(63)
+  val shamt_lo = Cat(in1(5) & fn_dw64, in1(4,0)).asUInt
+  val shamt_hi = Cat(in1(37) & fn_dw64, in1(36,32)).asUInt
+  // Swap shift amounts if left shift and x2 rate
+  val shamt_hi_swap = Mux(rate_x2 && shright, shamt_hi, shamt_lo)
+  val shamt_lo_swap = Mux(rate_x2 && !shright, shamt_hi, shamt_lo)
   val shfill_lo = sra & in0(31)
-  val shin_hi = Mux(fn.dw_is(DW32) && !rate_x2, Fill(32, shfill_lo), in0_hi)
+  val shin_hi = Mux(fn_dw32 && !rate_x2, Fill(32, shfill_lo), in0_hi)
   val shin_r = Cat(shin_hi, in0_lo)
   val shin = Mux(shright, shin_r, Reverse(shin_r))
+  val shfill_hi = sra & shin_r(63)
   val shout_r = (0 to 5).foldLeft(shin) { case (bits, i) =>
     val n = 1 << i
     val pad_hi = Fill(n, shfill_hi)
-    val pad_lo = Mux(rate_x2, Fill(n, shfill_lo), bits(31+n, 32))
-    Mux(shamt(i), if(n == 32) Cat(pad_hi, pad_lo) else Cat(pad_hi, bits(63, 32+n), pad_lo, bits(31, n)), bits)
+    if (confprec) {
+      val pad_lo = Mux(rate_x2, Fill(n, shfill_lo), bits(31+n, 32))
+      Cat(Mux(shamt_hi_swap(i), if (i < 5) Cat(pad_hi, bits(63, 32+n)) else pad_hi, bits(63, 32)),
+          Mux(shamt_lo_swap(i), if (i < 5) Cat(pad_lo, bits(31, n)) else pad_lo, bits(31, 0)))
+    } else Mux(shamt_lo(i), Cat(pad_hi, bits(63, n)), bits)
   }
   val shift_out = Mux(fn.op_is(I_SLL), Reverse(shout_r), shout_r)
 
@@ -119,8 +128,8 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
 
   val s0_result = MuxCase(
     Bits(0, SZ_D), Array(
-      (fn.dw_is(DW64) || rate_x2) -> s0_result64,
-      fn.dw_is(DW32) -> expand_w(s0_result64(31,0))
+      (fn_dw64 || rate_x2) -> s0_result64,
+      fn_dw32 -> expand_w(s0_result64(31,0))
     ))
 
   val s0_cmp = Mux1H(Seq(
