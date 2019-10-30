@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import DataGating._
-import chisel3.experimental.dontTouch
+import chisel3.dontTouch
 
 case object HwachaNSeqEntries extends Field[Int]
 
