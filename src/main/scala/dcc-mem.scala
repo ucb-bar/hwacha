@@ -454,7 +454,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   assert(!io.la.reserve || vlen_end || (rcnt_residue === UInt(0)),
     "VLU: retire count not a strip multiple")
 
-  map.io.free := vlen_end
+  map.io.free := vlen_end && busy
 
   val (vd_stride, vd_shift) = if (confprec) {
     val stride = Reg(Vec(nVLU, UInt()))
@@ -736,12 +736,12 @@ class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
   io.use.bits.vidx := tail
   io.vidx := head
 
-  when (io.use.fire()) {
-    tail := tail_next
-    used := Bool(true)
-  }
   when (io.free) {
     head := head_next
     used := Bool(false)
+  }
+  when (io.use.fire()) {
+    tail := tail_next
+    used := Bool(true)
   }
 }
