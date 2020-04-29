@@ -77,7 +77,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaNSMUEntries => 16
     case HwachaBuildVRU => true
 
-    case BuildRoCC => Seq(
+    case BuildRoCC => up(BuildRoCC) ++ Seq(
       (p: Parameters) => {
          val hwacha = LazyModule.apply(new Hwacha()(p))
          hwacha
