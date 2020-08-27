@@ -113,7 +113,7 @@ class HwachaFrontend(implicit p : Parameters) extends LazyModule {
   lazy val module = new HwachaFrontendModule(this)
   val cacheParams = p(HwachaIcacheKey)
 
-  val icache = LazyModule(new freechips.rocketchip.rocket.ICache(cacheParams, hartId = 0))
+  val icache = LazyModule(new freechips.rocketchip.rocket.ICache(cacheParams, staticIdForMetadataUseOnly = 0))
 
   val masterNode = icache.masterNode
 }
