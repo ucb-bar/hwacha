@@ -4,6 +4,5 @@ To use this coprocessor, include this repo as a git submodule and add it as
 to your chip's build.scala as a Project, e.g.
 lazy val hwacha = Project("hwacha", file("hwacha"), settings = buildSettings)
 
-Hwacha depends on the Chisel and Hardloat projects, make sure these libraries' 
+Hwacha depends on the Chisel and HardFloat projects, make sure these libraries' 
 jars are installed.
-
