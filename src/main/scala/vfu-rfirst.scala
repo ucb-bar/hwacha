@@ -35,7 +35,7 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   io.req.ready := Bool(true)
-  val pred = PriorityEncoderOH((io.req.bits.active & io.req.bits.pred).toBools)
+  val pred = PriorityEncoderOH((io.req.bits.active & io.req.bits.pred).asBools)
   val found = pred.reduce(_ || _)
   when (io.req.fire() && !result.found && found) {
     result.found := Bool(true)
@@ -112,6 +112,6 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
   io.result.bits.found := m._1.orR
   io.result.bits.lsidx := m._2 // approximate eidx
   io.result.bits.first :=
-    (m._1.toBools zip io.lane.map(_.bits.first)) map { case (v, f) => dgate(v, f) } reduce(_ | _)
+    (m._1.asBools zip io.lane.map(_.bits.first)) map { case (v, f) => dgate(v, f) } reduce(_ | _)
   io.result.bits.sd := fn.sd
 }

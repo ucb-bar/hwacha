@@ -151,7 +151,7 @@ class PrefetchUnit(edge: TLEdgeOut, resetSignal: Bool = null)(implicit p: Parame
     val memop = Decoupled(new DecodedMemOp).flip
     val dmem = TLBundle(edge.bundle)
   }
-  val tag_count = Reg(init = UInt(0, 5))//tlClientXactIdBits))
+  val tag_count = Reg(init = UInt(0, 5))//tlMasterXactIdBits))
 
   val tlBlockAddrOffset =  tlByteAddrBits
   //val tlBlockAddrOffset = tlBeatAddrBits + tlByteAddrBits
@@ -399,7 +399,7 @@ class VRUCounterIO(implicit p: Parameters) extends HwachaBundle()(p) {
 
 class VRU(implicit p: Parameters) extends LazyModule {
   lazy val module = new VRUModule(this)
-  val masterNode = TLClientNode(Seq(TLClientPortParameters(Seq(TLClientParameters(name = "HwachaVRU", sourceId = IdRange(0,5))))))
+  val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "HwachaVRU", sourceId = IdRange(0,5))))))
 }
 class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with MemParameters {

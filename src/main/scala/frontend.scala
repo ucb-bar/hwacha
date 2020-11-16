@@ -129,7 +129,7 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
     val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
   })
   val icache = outer.icache.module
-  val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), TLBConfig(nptlb))(edge, p))
+  val tlb = Module(new freechips.rocketchip.rocket.TLB(instruction = true, lgMaxSize = log2Ceil(cacheParams.fetchBytes), TLBConfig(nSets=1, nWays=nptlb))(edge, p))
   val vxu = Module(new MiniFrontend(cacheParams))
   val vru = Module(new MiniFrontend(cacheParams))
   val req_arb = Module(new Arbiter(new FrontendReq, 2))
