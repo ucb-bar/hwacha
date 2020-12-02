@@ -94,7 +94,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tlb.status := req.status
   io.irq <> tbox.io.irq
 
-  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nSets=1, nWays=nptlb))(edge, p))
+  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nSets=nptlb, nWays=1))(edge, p))
   ptlb.io.req <> tbox.io.outer.req
   tbox.io.outer.resp <> ptlb.io.resp
   io.ptw <> ptlb.io.ptw
