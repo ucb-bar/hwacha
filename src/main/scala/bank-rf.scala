@@ -72,7 +72,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
     val wmask_base = io.op.pred.write.bits.pred & wpred.mask
     val wmask = (wmask_base << shift)(wPred-1, 0)
 
-    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).asUInt & ~wmask)).toBools))
+    pred_rf.write(waddr, Vec(((wdata & wmask) | (pred_rf(waddr).asUInt & ~wmask)).asBools))
 
     if (commit_log) {
       (0 until wPred) foreach { case i =>
@@ -119,7 +119,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
   when (sram_warb.io.out.valid) {
     val waddr = sram_warb.io.out.bits.addr
     val wdata = toBytes(sram_warb.io.out.bits.data)
-    val wmask = sram_warb.io.out.bits.mask.toBools
+    val wmask = sram_warb.io.out.bits.mask.asBools
 
     sram_rf.write(waddr, wdata, wmask)
 
@@ -168,7 +168,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
     ff_rf.write(
       ff_warb.io.out.bits.addr,
       toBytes(ff_warb.io.out.bits.data),
-      ff_warb.io.out.bits.mask.toBools)
+      ff_warb.io.out.bits.mask.asBools)
   }
 
   // BWQ
@@ -186,7 +186,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
       gopl.write(
         UInt(i),
         toDWords(Mux(io.op.opl.global(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
-        (io.op.opl.global(i).bits.pred & s1_gpred.pred)(1,0).toBools)
+        (io.op.opl.global(i).bits.pred & s1_gpred.pred)(1,0).asBools)
     }
     io.global.opl(i).data :=
       dgate(io.op.xbar(i).valid && read_gpdl(io.op.xbar(i).bits.pdladdr).active(), gopl(i).asUInt)
@@ -196,7 +196,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
       lopl.write(
         UInt(i),
         toDWords(Mux(io.op.opl.local(i).bits.selff, ff_rdata(i % nFFRPorts), sram_rpack.data)),
-        (io.op.opl.local(i).bits.pred & s1_gpred.pred)(1,0).toBools)
+        (io.op.opl.local(i).bits.pred & s1_gpred.pred)(1,0).asBools)
     }
     io.local.opl(i).data := lopl(i).asUInt
   }

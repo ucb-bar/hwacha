@@ -55,7 +55,7 @@ class SMUEntry(implicit p: Parameters) extends SMUBundle()(p)
 
 class SMU(implicit p: Parameters) extends LazyModule {
   lazy val module = new SMUModule(this)
-  val masterNode = TLClientNode(Seq(TLClientPortParameters(Seq(TLClientParameters(name = "HwachaSMU", sourceId = IdRange(0, p(HwachaNSMUEntries)))))))
+  val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(Seq(TLMasterParameters.v1(name = "HwachaSMU", sourceId = IdRange(0, p(HwachaNSMUEntries)))))))
 }
 
 class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
@@ -94,7 +94,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   tlb.status := req.status
   io.irq <> tbox.io.irq
 
-  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nptlb))(edge, p))
+  val ptlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nSets=nptlb, nWays=1, nSectors=1))(edge, p))
   ptlb.io.req <> tbox.io.outer.req
   tbox.io.outer.resp <> ptlb.io.resp
   io.ptw <> ptlb.io.ptw

@@ -253,7 +253,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   predq.io.enq <> io.pred
   private val pred = predq.io.deq
 
-  val brqs_pred = pred.bits.toBools.grouped(nSlices).map(
+  val brqs_pred = pred.bits.asBools.grouped(nSlices).map(
     xs => xs.reduce(_ || _)).toSeq
   val brqs_mask = brqs_sel.zip(brqs_pred)
   val brqs_en = brqs_mask.map { case (sel, pred) => sel && pred }
@@ -585,7 +585,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val mask_tail = Mux(tick, !slice_used, Bool(true))
   val mask_beat = Cat(mask_tail, Fill(nStrip-1, mask_head))
   val mask_base = meta.mask & mask_beat
-  val mask = rotate(Bool(), mask_base.toBools)
+  val mask = rotate(Bool(), mask_base.asBools)
 
   /* Handle intra-load eidx increment */
   val eidx_step_head = EnableDecoder(eidx_bank, nBanks)

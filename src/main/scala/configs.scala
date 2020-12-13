@@ -16,7 +16,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
       nSets = 64,
       nWays = 1,
       rowBits = 1 * 64,
-      nTLBEntries = 8,
+      nTLBWays = 8,
       fetchBytes = 8, // Fetch one 8 byte instruction
       latency = 1
     )

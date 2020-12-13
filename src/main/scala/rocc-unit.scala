@@ -370,7 +370,7 @@ class RoCCUnit(implicit p: Parameters) extends HwachaModule()(p) with LaneParame
     cfg_reg_unpred := (cfg.nvp === UInt(0))
     cfg_reg_nvv_dw := cfg_nvv_dw
     cfg_reg_nvv_dwh := cfg_nvv_dwh
-    val vru_switch_on = io.rocc.cmd.bits.rs1(63).toBool
+    val vru_switch_on = io.rocc.cmd.bits.rs1(63).asBool
     printf("H: VSETCFG[nlanes=%d][nvvd=%d][nvvw=%d][nvvh=%d][nvp=%d][lstride=%d][epb_nvv=%d][epb_nvp=%d][maxvl=%d][vru_enable=%d]\n",
       UInt(nLanes), cfg.nvvd, cfg.nvvw, cfg.nvvh, cfg.nvp, cfg_lstride, epb_nvv, epb_nvp, cfg_maxvl, vru_switch_on)
     vru_enable := vru_switch_on

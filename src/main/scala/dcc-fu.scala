@@ -172,7 +172,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     }
     is (s_busy) {
       when (fire) {
-        op.vlen := vlen_next 
+        op.vlen := vlen_next
         when (vlen_next === UInt(0)) {
           state := Mux(fire_reduce, s_wait, s_idle)
         }
@@ -300,8 +300,8 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   io.rfirst.fu.req.bits.lsidx := strip_idx
   io.rfirst.fu.req.bits.in := Vec((0 until nSlices) map { unpack_slice(io.lrqs.q(0).bits.data, _) })
 
-  val deq_idivs_resp = (0 until nSlices).map {  tagq.io.deq.bits.fusel.toBool && tagq.io.deq.bits.pred(_) }
-  val deq_fdivs_resp = (0 until nSlices).map { !tagq.io.deq.bits.fusel.toBool && tagq.io.deq.bits.pred(_) }
+  val deq_idivs_resp = (0 until nSlices).map {  tagq.io.deq.bits.fusel.asBool && tagq.io.deq.bits.pred(_) }
+  val deq_fdivs_resp = (0 until nSlices).map { !tagq.io.deq.bits.fusel.asBool && tagq.io.deq.bits.pred(_) }
   val mask_idivs_resp_valid = io.idiv.fus.zipWithIndex.map { case (idiv, i) =>
     !deq_idivs_resp(i) || idiv.resp.valid }
   val mask_fdivs_resp_valid = io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
@@ -325,7 +325,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
 
   val wraw = Wire(new BankDataPredEntry)
   wraw.pred := tagq.io.deq.bits.pred
-  wraw.data := Mux(tagq.io.deq.bits.fusel.toBool,
+  wraw.data := Mux(tagq.io.deq.bits.fusel.asBool,
     repack_slice(io.idiv.fus.map(_.resp.bits.out)),
     repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
   val wpack = repack_bank(tagq.io.deq.bits.pack, UInt(0), wraw)
@@ -337,9 +337,9 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     bwq.bits.mask := wpack.mask
   }
 
-  io.idiv.ack.valid := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
+  io.idiv.ack.valid := fire_bwq(null, tagq.io.deq.bits.fusel.asBool)
   io.idiv.ack.bits.pred := tagq.io.deq.bits.pred
-  io.fdiv.ack.valid := fire_bwq(null, !tagq.io.deq.bits.fusel.toBool)
+  io.fdiv.ack.valid := fire_bwq(null, !tagq.io.deq.bits.fusel.asBool)
   io.fdiv.ack.bits.pred := tagq.io.deq.bits.pred
   io.fdiv.ack.bits.exc := io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     dgate(tagq.io.deq.bits.pred(i), fdiv.resp.bits.exc) } reduce(_|_)
@@ -347,12 +347,12 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val icntr = Module(new LookAheadCounter(0, maxLookAhead))
   icntr.suggestName("icntrInst")
   icntr.io.inc.cnt := UInt(1)
-  icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.toBool)
+  icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.asBool)
   icntr.io.dec <> io.ila
 
   val fcntr = Module(new LookAheadCounter(0, maxLookAhead))
   fcntr.suggestName("fcntrInst")
   fcntr.io.inc.cnt := UInt(1)
-  fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.toBool)
+  fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.asBool)
   fcntr.io.dec <> io.fla
 }

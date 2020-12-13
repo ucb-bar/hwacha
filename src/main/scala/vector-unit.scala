@@ -8,8 +8,8 @@ import freechips.rocketchip.rocket.{TLBPTWIO, TLBConfig}
 
 class VectorUnit(implicit p: Parameters) extends LazyModule {
   lazy val module = new VectorUnitModule(this)
-  val masterNode = TLClientNode(Seq(TLClientPortParameters(
-    Seq(TLClientParameters(name = "HwachaVMU", sourceId = IdRange(0, p(HwachaNVMTEntries)))))))
+  val masterNode = TLClientNode(Seq(TLMasterPortParameters.v1(
+    Seq(TLMasterParameters.v1(name = "HwachaVMU", sourceId = IdRange(0, p(HwachaNVMTEntries)))))))
 }
 
 class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyModuleImp(outer) with SeqParameters {
@@ -38,7 +38,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   memif.suggestName("memifInst")
   val mrt = Module(new MemTracker(nvlreq, nvsreq))
   mrt.suggestName("mrtInst")
-  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(ndtlb))(edge, p))
+  val dtlb = Module(new freechips.rocketchip.rocket.TLB(instruction = false, lgMaxSize = log2Ceil(regBytes), TLBConfig(nSets=1, nWays=ndtlb))(edge, p))
 
   vxu.io.id := io.id
   vxu.io.cfg <> io.cfg
