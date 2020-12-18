@@ -3,10 +3,10 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tile.FPConstants._
-import freechips.rocketchip.tile.{FPUCtrlSigs, FPResult}
+import freechips.rocketchip.tile.{FPResult, FPUCtrlSigs, HasFPUParameters}
 import freechips.rocketchip.util._
 
-class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
+class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUParameters {
   val io = new Bundle {
     val req = Decoupled(new freechips.rocketchip.tile.FPInput()).flip
     val resp = Decoupled(new FPResult())
@@ -30,13 +30,13 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   val sfma = Module(new freechips.rocketchip.tile.FPUFMAPipe(p(HwachaStagesSFMA), freechips.rocketchip.tile.FType.S))
   sfma.suggestName("sfmaInst")
   sfma.io.in.valid := io.req.valid && io.req.bits.fma &&
-                      io.req.bits.singleOut
+                      (io.req.bits.typeTagIn === S)
   sfma.io.in.bits := req
 
   val dfma = Module(new freechips.rocketchip.tile.FPUFMAPipe(p(HwachaStagesDFMA), freechips.rocketchip.tile.FType.D))
   dfma.suggestName("dfmaInst")
   dfma.io.in.valid := io.req.valid && io.req.bits.fma &&
-                      !io.req.bits.singleOut
+                      (io.req.bits.typeTagOut === D)
   dfma.io.in.bits := req
 
   val fpiu = Module(new freechips.rocketchip.tile.FPToInt)
@@ -63,8 +63,8 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
   val pipes = List(
     Pipe(fpmu, fpmu.latency, (c: FPUCtrlSigs) => c.fastpipe, fpmu.io.out.bits),
     Pipe(ifpu, ifpu.latency, (c: FPUCtrlSigs) => c.fromint, ifpu.io.out.bits),
-    Pipe(sfma, sfma.latency, (c: FPUCtrlSigs) => c.fma && c.singleOut, sfma.io.out.bits),
-    Pipe(dfma, dfma.latency, (c: FPUCtrlSigs) => c.fma && !c.singleOut, dfma.io.out.bits)
+    Pipe(sfma, sfma.latency, (c: FPUCtrlSigs) => c.fma && (c.typeTagOut === S), sfma.io.out.bits),
+    Pipe(dfma, dfma.latency, (c: FPUCtrlSigs) => c.fma && (c.typeTagOut === D), dfma.io.out.bits)
   )
   def latencyMask(c: FPUCtrlSigs, offset: Int) = {
     require(pipes.forall(_.lat >= offset))
@@ -94,7 +94,7 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) {
     wen := wen >> UInt(1) | wbLatencyMask
     for (i <- 0 until maxLatency-1) {
       when (!write_port_busy && wbLatencyMask(i)) {
-        wbInfo(i).single := wb_ctrl.singleOut
+        wbInfo(i).single := wb_ctrl.typeTagOut === S
         wbInfo(i).pipeid := pipeid(wb_ctrl)
       }
     }
