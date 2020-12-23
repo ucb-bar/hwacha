@@ -96,7 +96,7 @@ class IntCtrlSigs(implicit p: Parameters) extends HwachaBundle()(p) {
         vrpu_val,
         vrfu_val,
         fpu_fn.ldst, fpu_fn.wen, fpu_fn.ren1, fpu_fn.ren2, fpu_fn.ren3, fpu_fn.swap12,
-          fpu_fn.swap23, fpu_fn.singleIn, fpu_fn.singleOut, fpu_fn.fromint, fpu_fn.toint,
+          fpu_fn.swap23, fpu_fn.typeTagIn, fpu_fn.typeTagOut, fpu_fn.fromint, fpu_fn.toint,
           fpu_fn.fastpipe, fpu_fn.fma, fpu_fn.div, fpu_fn.sqrt, fpu_fn.wflags)
     sigs zip decoder map {case(s,d) => s := d}
     vd_type := reg_type(vd_t, vd_dyn, inst(OPC_VD))

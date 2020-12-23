@@ -143,7 +143,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   io.rocc.req.bits <> hreq
 
   def unboxRecode(in: UInt, minT: Option[FType]) = {
-    unbox(recode(in, hreq.in_fmt), !hreq.singleIn, minT)
+    unbox(recode(in, hreq.in_fmt), hreq.typeTagIn =/= S, minT)
   }
   val fuIn = ins.map(in => unboxRecode(in, None))
   val sfmaIn = ins.map(in => unboxRecode(in, Some(FType.S)))
@@ -197,6 +197,6 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   hresp.tag := pending_fpu_req.tag
   hresp.data :=
     Mux(pending_fpu_req.toint, rresp.data(63, 0),
-      Mux(pending_fpu_req.fastpipe && !pending_fpu_req.wflags && pending_fpu_req.singleIn, fsgnj_s,
+      Mux(pending_fpu_req.fastpipe && !pending_fpu_req.wflags && (pending_fpu_req.typeTagIn === S), fsgnj_s,
       unrec_fpu_resp))
 }
