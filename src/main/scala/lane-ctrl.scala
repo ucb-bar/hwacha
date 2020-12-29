@@ -88,6 +88,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
 
     when (reset) {
       reg_valid := Bool(false)
+      reg_bits.strip := 0.U
     }
   }
 
