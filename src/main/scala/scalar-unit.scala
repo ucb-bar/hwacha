@@ -200,7 +200,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   // DECODE
   val id_pc = io.imem.resp.bits.pc
   val id_inst = io.imem.resp.bits.data; require(io.imem.resp.bits.data.getWidth == HwachaElementInstBytes*8)
-  val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
+  val decode_table = (ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
+    ++ (if (p(HwachaSupportsFPD)) VectorArithmeticDecode.fpd_table else Array[(BitPat, List[BitPat])]())
+    ++ (if (p(HwachaSupportsFPS)) VectorArithmeticDecode.fps_table else Array[(BitPat, List[BitPat])]())
+    ++ (if (p(HwachaSupportsFPH)) VectorArithmeticDecode.fph_table else Array[(BitPat, List[BitPat])]()))
   val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
   when (!killd && id_ctrl.decode_stop) {
     vf_active := Bool(false)

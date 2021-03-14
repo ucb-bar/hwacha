@@ -65,6 +65,10 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaStagesHFMA => 3
     case HwachaStagesFConv => 2
     case HwachaStagesFCmp => 1
+    case HwachaFLen => 64
+    case HwachaSupportsFPD => site(HwachaFLen) >= 64
+    case HwachaSupportsFPS => site(HwachaFLen) >= 32
+    case HwachaSupportsFPH => site(HwachaFLen) >= 16
 
     case HwachaNSeqEntries => 8
 

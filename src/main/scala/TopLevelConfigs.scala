@@ -37,6 +37,10 @@ class WithSmallPredRF extends Config((site, here, up) => {
     case HwachaNPredRFEntries => 128
 })
 
+class WithHwachaFLen(flen: Int) extends Config((site, here, up) => {
+  case HwachaFLen => flen
+})
+
 class ISCA2016Config extends Config(
   new Process28nmConfig ++
   new WithNBanks(4) ++
