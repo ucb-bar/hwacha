@@ -31,6 +31,8 @@ case object HwachaVRUEarlyIgnore extends Field[Int]
 case object HwachaVRUMaxRunaheadBytes extends Field[Int]
 case object HwachaCMDQLen extends Field[Int]
 case object HwachaVSETVLCompress extends Field[Boolean]
+case object HwachaSupportsFDIV extends Field[Boolean]
+case object HwachaSupportsIDIV extends Field[Boolean]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(Option(clock), Option(_reset))

@@ -37,8 +37,24 @@ class WithSmallPredRF extends Config((site, here, up) => {
     case HwachaNPredRFEntries => 128
 })
 
-class WithHwachaFLen(flen: Int) extends Config((site, here, up) => {
+class WithFLen(flen: Int) extends Config((site, here, up) => {
   case HwachaFLen => flen
+})
+
+class WithNoFDIV extends Config((site, here, up) => {
+  case HwachaSupportsFDIV => false
+})
+
+class WithNoIDIV extends Config((site, here, up) => {
+  case HwachaSupportsIDIV => false
+})
+
+class WithNSRAMRFEntries(n: Int) extends Config((site, here, up) => {
+  case HwachaNSRAMRFEntries => n
+})
+
+class WithNVectorRegs(n: Int) extends Config((site, here, up) => {
+  case HwachaNVectorRegs => n
 })
 
 class ISCA2016Config extends Config(
