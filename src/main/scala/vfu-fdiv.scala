@@ -40,7 +40,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     val dp = recode_dp(in)
     val sp = Module(new hardfloat.RecFNToRecFN(8, 24, 11, 53))
     sp.suggestName("spInst")
-    val hp = Module(new hardfloat.RecFNToRecFN(5, 11, 11, 53))
+    val hp = Module(new hardfloat.RecFNToRecFN(8, 8, 11, 53))
     hp.suggestName("hpInst")
     sp.io.in := recode_sp(in)
     sp.io.roundingMode := io.req.bits.fn.rm
@@ -118,7 +118,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val s1_result_dp = ieee_dp(s1_result_out)
   val s1_result_sp = Module(new hardfloat.RecFNToRecFN(11, 53, 8, 24))
   s1_result_sp.suggestName("s1_result_spInst")
-  val s1_result_hp = Module(new hardfloat.RecFNToRecFN(11, 53, 5, 11))
+  val s1_result_hp = Module(new hardfloat.RecFNToRecFN(11, 53, 8, 8))
   s1_result_hp.suggestName("s1_result_hpInst")
   s1_result_sp.io.in := s1_result_out
   s1_result_sp.io.roundingMode := outtagq.io.deq.bits.fn.rm

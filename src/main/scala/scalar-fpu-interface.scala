@@ -132,7 +132,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
 
   val h2s =
     ins map { case in =>
-      val h2s = Module(new hardfloat.RecFNToRecFN(5, 11, 8, 24))
+      val h2s = Module(new hardfloat.RecFNToRecFN(8, 8, 8, 24))
       h2s.suggestName("h2sInst")
       h2s.io.in := recode_hp(in)
       h2s.io.roundingMode := hreq.rm
@@ -179,7 +179,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   private val rresp = respq.io.deq.bits
   private val hresp = io.hwacha.resp.bits
 
-  val s2h = Module(new hardfloat.RecFNToRecFN(8, 24, 5, 11))
+  val s2h = Module(new hardfloat.RecFNToRecFN(8, 24, 8, 8))
   s2h.suggestName("s2hInst")
   s2h.io.in := rresp.data
   s2h.io.roundingMode := pending_fpu_req.rm

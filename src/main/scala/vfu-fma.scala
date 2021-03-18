@@ -59,7 +59,7 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val results =
     List((stagesDFMA, SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (11, 53)),
          (stagesSFMA, SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (8, 24)),
-         (stagesHFMA, SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (5, 11))) map {
+         (stagesHFMA, SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (8, 8))) map {
       case (stages, sz, fp, recode, unpack, ieee, repack, expand, (exp, sig)) => {
         val n = SZ_D / sz
         val val_fp = fn.fp_is(fp)

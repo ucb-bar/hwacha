@@ -29,7 +29,7 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with
 
   val wdp = (11, 53)
   val wsp = (8, 24)
-  val whp = (5, 11)
+  val whp = (8, 8)
 
   val val_cmp = fn.op_is(FC_CEQ,FC_CLT,FC_CLE,FC_MIN,FC_MAX)
 

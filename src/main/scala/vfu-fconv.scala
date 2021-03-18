@@ -51,7 +51,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
 
   val wdp = (11, 53)
   val wsp = (8, 24)
-  val whp = (5, 11)
+  val whp = (8, 8)
 
   private def pipe[T <: Data](in: T) = Pipe(active, in, stagesFConv).bits
   private def pipe(valid: Bool, out: Bits, exc: Bits, fn: Bits=>Bits = identity) =

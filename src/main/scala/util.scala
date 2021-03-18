@@ -106,10 +106,10 @@ object DataGating {
 object HardFloatHelper {
   def recode_dp(n: Bits) = hardfloat.recFNFromFN(11, 53, n.asUInt)
   def recode_sp(n: Bits) = hardfloat.recFNFromFN(8, 24, n.asUInt)
-  def recode_hp(n: Bits) = hardfloat.recFNFromFN(5, 11, n.asUInt)
+  def recode_hp(n: Bits) = hardfloat.recFNFromFN(8, 8, n.asUInt)
   def ieee_dp(n: Bits) = hardfloat.fNFromRecFN(11, 53, n.asUInt)
   def ieee_sp(n: Bits) = hardfloat.fNFromRecFN(8, 24, n.asUInt)
-  def ieee_hp(n: Bits) = hardfloat.fNFromRecFN(5, 11, n.asUInt)
+  def ieee_hp(n: Bits) = hardfloat.fNFromRecFN(8, 8, n.asUInt)
 }
 
 class MaskStall[T <: Data](data: => T) extends Module {
