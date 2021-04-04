@@ -133,17 +133,17 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
       _agent.io.id := io.id
       _agent.io.cfg <> io.cfg
       io.agu <> _agent.io.agu
-      _agent
-  } else Module(new IBoxSL)
+      _agent.io
+  } else (Module(new IBoxSL)).io
 
-  agent.io.op.bits := op
-  agent.io.op.valid := opq.io.deq.valid
-  opq.io.deq.ready := agent.io.op.ready
-  io.aret := agent.io.aret
+  agent.op.bits := op
+  agent.op.valid := opq.io.deq.valid
+  opq.io.deq.ready := agent.op.ready
+  io.aret := agent.aret
 
   val issue = Seq(io.abox(0), io.pbox(0),
-    agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
-  issue zip agent.io.issue map {case(s,d) => s <> d}
+    agent.span(io.abox(1), io.pbox(1)), io.abox(2))
+  issue zip agent.issue map {case(s,d) => s <> d}
 }
 
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
@@ -248,7 +248,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
       enq.valid := !aret_pending && (indexed || io.agu.out.valid)
 
       when (enq.fire()) {
-        unless (indexed) {
+        when (!indexed) {
           op.base := io.agu.out.bits.addr
         }
         op.vlen := vlen_next.asUInt()
