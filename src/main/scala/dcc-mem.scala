@@ -500,7 +500,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val wb_pred = pred << pred_shift
   predq.io.deq.ready := !(pcnt_end || pidx_end)
 
-  unless (busy) {
+  when (!busy) {
     assert(wb === Bits(0), "VLU: non-zero quiescent wb")
     assert(bias_tail === SInt(0), "VLU: non-zero quiescent bias_tail")
     assert(pcnt === UInt(0), "VLU: non-zero quiescent pcnt")
