@@ -33,6 +33,7 @@ case object HwachaCMDQLen extends Field[Int]
 case object HwachaVSETVLCompress extends Field[Boolean]
 case object HwachaSupportsFDIV extends Field[Boolean]
 case object HwachaSupportsIDIV extends Field[Boolean]
+case object HwachaUseAtlNode extends Field[Boolean]
 
 abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
                            (implicit val p: Parameters) extends Module(Option(clock), Option(_reset))
@@ -143,7 +144,11 @@ class Hwacha(implicit p: Parameters) extends LazyRoCC(
     atlBus.node := vruM.masterNode
     Some(vruM)
   } else None
-  vus.map(_.masterNode).foreach { tlNode := _ }
+  if (p(HwachaUseAtlNode)) {
+    vus.map(_.masterNode).foreach { atlNode := _ }
+  } else {
+    vus.map(_.masterNode).foreach { tlNode := _ }
+  }
 }
 
 class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp(outer)

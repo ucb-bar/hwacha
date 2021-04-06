@@ -24,6 +24,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
 
     case HwachaCommitLog => true
 
+
     // hwacha constants
     case HwachaNAddressRegs => 32
     case HwachaNScalarRegs => 64
@@ -98,5 +99,6 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaVRUMaxRunaheadBytes => 16777216
     case HwachaCMDQLen => 32
     case HwachaVSETVLCompress => true
+    case HwachaUseAtlNode => false
   }
 )
