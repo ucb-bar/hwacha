@@ -53,9 +53,9 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val wsp = (8, 24)
   val whp = (5, 11)
 
-  private def pipe[T <: Data](in: T) = Pipe(active, in, stagesFConv).bits
+  private def pipe[T <: Data](in: T) = ShiftRegister(in, stagesFConv)
   private def pipe(valid: Bool, out: Bits, exc: Bits, fn: Bits=>Bits = identity) =
-    (fn(Pipe(valid, out, stagesFConv).bits), Pipe(valid, exc, stagesFConv).bits)
+    (fn(ShiftRegister(out, stagesFConv)), ShiftRegister(exc, stagesFConv))
 
   val supported = List(p(HwachaSupportsFPD), p(HwachaSupportsFPS), p(HwachaSupportsFPH))
   val results_int2float =
