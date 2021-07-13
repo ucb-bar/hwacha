@@ -64,12 +64,23 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   for (i <- 0 until nSlices) {
-    val idiv = Module(new IDivSlice)
-    idiv.suggestName("idivInst")
-    val fdiv = Module(new FDivSlice)
-    fdiv.suggestName("fdivInst")
-    idiv.io <> ctrl.io.idiv.fus(i)
-    fdiv.io <> ctrl.io.fdiv.fus(i)
+    if (p(HwachaSupportsIDIV)) {
+      val idiv = Module(new IDivSlice)
+      idiv.suggestName("idivInst")
+      idiv.io <> ctrl.io.idiv.fus(i)
+    } else {
+      ctrl.io.idiv.fus(i).req.ready := false.B
+      ctrl.io.idiv.fus(i).resp.valid := false.B
+    }
+    if (p(HwachaSupportsFDIV)) {
+      val fdiv = Module(new FDivSlice)
+      fdiv.suggestName("fdivInst")
+      fdiv.suggestName("fdivInst")
+      fdiv.io <> ctrl.io.fdiv.fus(i)
+    } else {
+      ctrl.io.fdiv.fus(i).req.ready := false.B
+      ctrl.io.fdiv.fus(i).resp.valid := false.B
+    }
   }
 
   val rpred = Module(new RPredLane)
