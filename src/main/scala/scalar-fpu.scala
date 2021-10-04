@@ -1,4 +1,4 @@
-package hwacha 
+package hwacha
 
 import Chisel._
 import freechips.rocketchip.config._
@@ -7,10 +7,10 @@ import freechips.rocketchip.tile.{FPResult, FPUCtrlSigs, HasFPUParameters}
 import freechips.rocketchip.util._
 
 class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val req = Decoupled(new freechips.rocketchip.tile.FPInput()).flip
     val resp = Decoupled(new FPResult())
-  }
+  })
   //buffer for simple back-pressure model
   val resp_reg = Reg(Bits())
   val resp_reg_val = Reg(init=Bool(false))
@@ -103,9 +103,9 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUPar
   val wsrc = wbInfo(0).pipeid
   val wdata = (pipes.map(_.res.data): Seq[UInt])(wsrc)
   val wexc = (pipes.map(_.res.exc): Seq[UInt])(wsrc)
-  val resp_data = Mux(!fpiu.io.out.valid, wdata, fpiu.io.out.bits.toint) 
+  val resp_data = Mux(!fpiu.io.out.valid, wdata, fpiu.io.out.bits.toint)
   io.resp.bits.data := resp_data
-  when (wen(0) || fpiu.io.out.valid ) { 
+  when (wen(0) || fpiu.io.out.valid ) {
     when(!io.resp.ready){
       resp_reg := resp_data
       resp_reg_val := Bool(true)

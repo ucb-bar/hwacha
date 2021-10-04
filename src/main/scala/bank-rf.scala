@@ -9,7 +9,7 @@ class RFWritePort(implicit p: Parameters) extends VXUBundle()(p) with BankData w
 }
 
 class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val lid = UInt(INPUT)
     val op = new BankOpIO().flip
     val global = new BankRWIO
@@ -21,7 +21,7 @@ class BankRegfile(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with 
       val wpred = Vec(2, new BankPredMaskEntry()).asInput
       val wdata = new BankDataPredEntry().asInput
     }
-  }
+  })
   val sram_rf = SeqMem(nSRAM, Vec(wBank/8, Bits(width = 8)))
   sram_rf.suggestName("HwSRAMRF")
   val ff_rf = Mem(nFF, Vec(wBank/8, Bits(width = 8)))

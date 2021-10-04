@@ -85,7 +85,7 @@ class MasterSequencerCounterIO(implicit p: Parameters) extends HwachaBundle()(p)
 }
 
 class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val op = Decoupled(new IssueOpBase).flip
     val master = new MasterSequencerIO
     val pending = new SequencerPending().asOutput
@@ -101,7 +101,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val maybe_full = Bool(OUTPUT)
       val empty = UInt(OUTPUT, log2Down(nSeq)+1)
     }
-  }
+  })
   dontTouch(io.debug)
 
   val v = Reg(init = Vec.fill(nSeq){Bool(false)})

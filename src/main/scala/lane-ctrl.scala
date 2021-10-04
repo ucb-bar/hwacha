@@ -4,10 +4,10 @@ import Chisel._
 import freechips.rocketchip.config._
 
 class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val op = new LaneOpIO().flip
     val uop = new MicroOpIO
-  }
+  })
 
   class Systolic[T <: LaneOp](in: ValidIO[T], multirate: Boolean) {
     val in_overflow = in.bits.strip > UInt(nSlices)

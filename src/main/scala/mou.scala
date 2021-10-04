@@ -9,7 +9,7 @@ class MOCheck(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqLogic {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val cfg = new HwachaConfigIO().flip
     val mseq = new MasterSequencerState().asInput
     val pending = new Bundle {
@@ -20,7 +20,7 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
       val su = new MOCheck().asOutput
       val vus = Vec(nLanes, Vec(nSeq, new MOCheck)).asOutput
     }
-  }
+  })
 
   // Treat addr as limiter on head advancement for comparisons
   val latchedHead = Reg(init = 0.U(log2Up(nSeq).W))

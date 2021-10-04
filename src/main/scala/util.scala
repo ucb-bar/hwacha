@@ -113,11 +113,11 @@ object HardFloatHelper {
 }
 
 class MaskStall[T <: Data](data: => T) extends Module {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val input = Decoupled(data).flip
     val output = Decoupled(data)
     val stall = Bool(INPUT)
-  }
+  })
 
   io.output.valid := io.input.valid && !io.stall
   io.output.bits := io.input.bits
@@ -136,14 +136,14 @@ object MaskStall {
 
 class QCounter(reset_cnt: Int, max_cnt: Int) extends Module() {
   val sz = log2Down(max_cnt)+1
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val inc = Bool(INPUT)
     val dec = Bool(INPUT)
     val qcnt = UInt(INPUT, sz)
     val watermark = Bool(OUTPUT)
     val full = Bool(OUTPUT)
     val empty = Bool(OUTPUT)
-  }
+  })
 
   val count = Reg(init = UInt(reset_cnt, sz))
 
@@ -176,11 +176,11 @@ class CounterUpdateIO(sz: Int) extends Bundle {
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) with LaneParameters {
   require(reset_cnt <= max_cnt)
   val sz = log2Down(max_cnt)+1
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val inc = new CounterUpdateIO(sz).flip
     val dec = new CounterLookAheadIO().flip
     val full = Bool(OUTPUT)
-  }
+  })
 
   val count = Reg(init = UInt(reset_cnt, sz))
   io.dec.available := (count >= io.dec.cnt)

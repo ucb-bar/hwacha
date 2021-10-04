@@ -139,7 +139,7 @@ trait LanePred extends VXUBundle {
 }
 
 class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val op = new LaneOpIO().flip
@@ -152,7 +152,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
       val mem = Vec(nBanks, new BWQIO).flip
       val fu = Vec(nBanks, new BWQIO).flip
     }
-  }
+  })
 
   val ctrl = Module(new LaneCtrl)
   ctrl.suggestName("ctrlInst")

@@ -4,7 +4,7 @@ import Chisel._
 import freechips.rocketchip.config._
 
 class VXU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val id = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val issue = Decoupled(new IssueOp).flip
@@ -13,7 +13,7 @@ class VXU(implicit p: Parameters) extends VXUModule()(p) {
     val red = new ReduceResultIO
     val vmu = new VMUIO
     val mrt = new LaneMRTIO
-  }
+  })
 
   val seq = Module(new LaneSequencer)
   seq.suggestName("seqInst")

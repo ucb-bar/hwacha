@@ -4,7 +4,9 @@ import Chisel._
 import freechips.rocketchip.config._
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
-  extends HwachaModule(clock, _reset)(p) with VMUParameters
+  extends HwachaModule(clock, _reset)(p) with VMUParameters {
+    val io: Bundle
+}
 abstract class VMUBundle(implicit p: Parameters)
   extends HwachaBundle()(p) with VMUParameters
 

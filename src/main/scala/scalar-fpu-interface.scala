@@ -1,4 +1,4 @@
-package hwacha 
+package hwacha
 
 import Chisel._
 import freechips.rocketchip.config._
@@ -83,7 +83,7 @@ class HwachaFPResult(implicit p: Parameters) extends freechips.rocketchip.tile.F
 }
 
 class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val hwacha = new Bundle {
       val req = Decoupled(new HwachaFPInput).flip
       val resp = Decoupled(new HwachaFPResult)
@@ -92,7 +92,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
       val req = Decoupled(new freechips.rocketchip.tile.FPInput)
       val resp = Decoupled(new freechips.rocketchip.tile.FPResult).flip
     }
-  }
+  })
 
   val pending_fpu = Reg(init=Bool(false))
   val pending_fpu_req = Reg(new HwachaFPInput)

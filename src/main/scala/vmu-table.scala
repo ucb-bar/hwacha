@@ -19,10 +19,10 @@ class TableRIO[T <: Data](gen: => T, sztag: Int)
 
 class Table[T <: Data](n: Int, gen: => T) extends Module {
   private val sztag = log2Up(n)
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val r = new TableRIO(gen, sztag).flip
     val w = new TableWIO(gen, sztag).flip
-  }
+  })
 
   val valid = Reg(init = Bits(0, n))
   val array = Mem(n, gen)

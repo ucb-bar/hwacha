@@ -17,11 +17,11 @@ class ALUResult(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val cfg = new HwachaConfigIO().flip
     val req = Valid(new ALUOperand).flip
     val resp = Valid(new ALUResult)
-  }
+  })
 
   val fn = io.req.bits.fn
   val eidx = io.req.bits.eidx
@@ -108,7 +108,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
     fn.op_is(I_FSJN) & ~in1_sp(31) |
     fn.op_is(I_FSJX) & (in1_sp(31) ^ in0_sp(31))
 
-  val sj_dp = 
+  val sj_dp =
     fn.op_is(I_FSJ) & in1_dp(63)   |
     fn.op_is(I_FSJN) & ~in1_dp(63) |
     fn.op_is(I_FSJX) & (in1_dp(63) ^ in0_dp(63))

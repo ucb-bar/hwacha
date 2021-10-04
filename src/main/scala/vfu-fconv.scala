@@ -18,10 +18,10 @@ class FConvResult extends Bundle {
 }
 
 class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val req = Valid(new FConvOperand).flip
     val resp = Valid(new FConvResult)
-  }
+  })
 
   val pred = Mux(io.req.valid, io.req.bits.pred, Bits(0))
   val active = io.req.valid && io.req.bits.active()

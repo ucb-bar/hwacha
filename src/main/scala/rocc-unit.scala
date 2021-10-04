@@ -72,11 +72,11 @@ object QueueWithCount
 }
 
 class CMDQ(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val enq = new CMDQIO().flip
     val deq = new CMDQIO()
     val counters = new CMDQCounterIO()
-  }
+  })
 
   val (qcmd, ccmd) = QueueWithCount(io.enq.cmd, confvcmdq.ncmd)
   io.deq.cmd <> qcmd

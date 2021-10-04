@@ -40,11 +40,11 @@ class RPredLane(implicit p: Parameters) extends VXUModule()(p) {
 }
 
 class RPredMaster(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val op = Decoupled(new IssueOpML).flip
     val lane = Vec(nLanes, Decoupled(new RPredResult)).flip
     val result = Decoupled(new RPredResult)
-  }
+  })
 
   val opq = Module(new Queue(new IssueOpML, 2))
   opq.suggestName("opqInst")

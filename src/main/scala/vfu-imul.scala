@@ -15,10 +15,10 @@ class IMulResult extends Bundle {
 }
 
 class IMulSlice(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val req = Valid(new IMulOperand).flip
     val resp = Valid(new IMulResult)
-  }
+  })
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
   val in0 = dgate(io.req.valid, io.req.bits.in0)

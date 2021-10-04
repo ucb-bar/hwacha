@@ -21,11 +21,11 @@ class VMUStoreIO(implicit p: Parameters) extends VSDQIO()(p) {
 }
 
 class SBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val ctrl = Valid(new VMUStoreCtrl).flip
     val lane = new VSDQIO().flip
     val mem = new VMUStoreIO
-  }
+  })
 
   private val op = io.ctrl.bits
   private val mts = Seq(op.mt.d, op.mt.w, op.mt.h, op.mt.b)

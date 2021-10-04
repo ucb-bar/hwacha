@@ -33,11 +33,11 @@ class RocketTLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
 }
 
 class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val inner = Vec(n, new TLBIO()).flip
     val outer = new RocketTLBIO
     val irq = new IRQIO
-  }
+  })
 
   val arb = Wire(new TLBIO())
   io.outer.bridge(arb)

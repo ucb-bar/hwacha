@@ -15,10 +15,10 @@ class PLUResult(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class PLUSlice(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val req = Valid(new PLUOperand).flip
     val resp = Valid(new PLUResult)
-  }
+  })
 
   val op = io.req.bits.fn.op
   val s2 = Mux(io.req.bits.in2, op(7,4), op(3,0))

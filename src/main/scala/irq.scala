@@ -27,7 +27,7 @@ class IRQIO extends Bundle {
 }
 
 class IRQ extends Module {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val vu = new IRQIO().flip
     val rocc = new Bundle {
       val request = Bool(OUTPUT)
@@ -35,7 +35,7 @@ class IRQ extends Module {
       val aux = Bits(OUTPUT, 64)
       val clear = Bool(INPUT)
     }
-  }
+  })
 
   val reg_irq = Reg(init=Bool(false))
   val reg_cause = Reg(init=UInt(0, 5))

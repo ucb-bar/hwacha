@@ -20,7 +20,7 @@ class VMUMemIO(implicit p: Parameters) extends VMUBundle()(p) {
 }
 
 class MBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val inner = new Bundle {
       val abox = new VMUAddrIO().flip
       val sbox = new VMUStoreIO().flip
@@ -29,7 +29,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
     val outer = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)
-  }
+  })
 
   val vmt = Module(new Table(nVMT, new VMTEntry))
   vmt.suggestName("vmtInst")

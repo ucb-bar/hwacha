@@ -47,11 +47,11 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
 }
 
 class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val op = Decoupled(new IssueOpML).flip
     val lane = Vec(nLanes, Decoupled(new RFirstResult)).flip
     val result = Decoupled(new RFirstResult)
-  }
+  })
 
   val opq = Module(new Queue(new IssueOpML, 2))
   opq.suggestName("opqInst")

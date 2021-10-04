@@ -12,7 +12,7 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
 
 class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
   with SeqLogic with BankLogic with PrecLogic {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val lid = UInt(INPUT)
     val cfg = new HwachaConfigIO().flip
     val op = Valid(new IssueOp).flip
@@ -72,7 +72,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val first_sched = Vec(nSeq, Bool(OUTPUT))
       val second_sched = Vec(nSeq, Bool(OUTPUT))
     }
-  }
+  })
   chisel3.dontTouch(io.debug)
 
   val mv = io.master.state.valid

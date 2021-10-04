@@ -8,12 +8,12 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
   private val lgn = log2Up(n)
   require(n == (1 << lgn))
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val in0 = Vec(n, gen.cloneType).asInput
     val in1 = Vec(n, gen.cloneType).asInput // left-shift input
     val out = Vec(n, gen.cloneType).asOutput
     val shift = SInt(INPUT, lgn + 1)
-  }
+  })
 
   // Right shift by n
   private var data = Vec((1 until n).map(i =>
@@ -33,11 +33,11 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
 // Rotates n input elements into m output slots
 class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module {
   require(n <= m)
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val in = Vec(n, gen.cloneType).asInput
     val out = Vec(m, gen.cloneType).asOutput
     val sel = UInt(INPUT, log2Up(m))
-  }
+  })
 
   var barrel = io.in
   for (stage <- 0 until log2Up(m)) {

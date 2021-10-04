@@ -136,18 +136,19 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
       _agent
   } else Module(new IBoxSL)
 
-  agent.io.op.bits := op
-  agent.io.op.valid := opq.io.deq.valid
-  opq.io.deq.ready := agent.io.op.ready
-  io.aret := agent.io.aret
+  val agent_io: IBoxIO = agent.io
+  agent_io.op.bits := op
+  agent_io.op.valid := opq.io.deq.valid
+  opq.io.deq.ready := agent_io.op.ready
+  io.aret := agent_io.aret
 
   val issue = Seq(io.abox(0), io.pbox(0),
-    agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
-  issue zip agent.io.issue map {case(s,d) => s <> d}
+    agent_io.span(io.abox(1), io.pbox(1)), io.abox(2))
+  issue zip agent_io.issue map {case(s,d) => s <> d}
 }
 
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new IBoxIO
+  val io = IO(new IBoxIO)
 
   val mask = Reg(init = Vec.fill(io.issue.size){Bool(false)})
   io.issue.zipWithIndex.map { case (box, i) =>
@@ -166,11 +167,11 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new IBoxIO {
+  val io = IO(new IBoxIO {
     val id = UInt(INPUT, width = bLanes)
     val cfg = new HwachaConfigIO().flip
     val agu = new AGUIO
-  }
+  })
 
   val op = Reg(new VMUDecodedOp)
   val indexed = io.op.bits.mode.indexed
@@ -248,7 +249,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
       enq.valid := !aret_pending && (indexed || io.agu.out.valid)
 
       when (enq.fire()) {
-        unless (indexed) {
+        when (!indexed) {
           op.base := io.agu.out.bits.addr
         }
         op.vlen := vlen_next.asUInt()

@@ -292,11 +292,11 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class PBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val op = Vec(2, Decoupled(new VMUDecodedOp)).flip
     val pred = Decoupled(new PredEntry).flip
     val mask = new VMUMaskIO
-  }
+  })
 
   /* NOTE: As a consequence of limited buffer space, predicates enqueued
    * in predq1 must be matched by at least an equal increment of the VCU

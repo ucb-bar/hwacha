@@ -81,7 +81,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
   val entrywidth = 20 // width of per-vf-block bytes loaded/stored counter
   val throttleQueueDepth = 10
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     // runahead distance throttling
     val enq = Decoupled(UInt(width=entrywidth)).flip
     val vf_done_vxu = Bool(INPUT)
@@ -90,7 +90,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
     // vf block skipping
     val vf_fire = Bool(INPUT)
     val vf_skip = Bool(OUTPUT)
-  }
+  })
 
   val skipamt = p(HwachaVRUEarlyIgnore)
   val runahead_vf_count = Reg(init = SInt(0, width=32))
@@ -147,10 +147,10 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 class PrefetchUnit(edge: TLEdgeOut, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
   with MemParameters {
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val memop = Decoupled(new DecodedMemOp).flip
     val dmem = TLBundle(edge.bundle)
-  }
+  })
   val tag_count = Reg(init = UInt(0, 5))//tlMasterXactIdBits))
 
   val tlBlockAddrOffset =  tlByteAddrBits
@@ -245,7 +245,7 @@ class PrefetchUnit(edge: TLEdgeOut, resetSignal: Bool = null)(implicit p: Parame
  */
 class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) {
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val imem = new FrontendIO(p(HwachaIcacheKey))
 
     val fire_vf = Bool(INPUT)
@@ -259,7 +259,7 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
 
     val aaddr = UInt(OUTPUT)
     val adata = UInt(INPUT)
-  }
+  })
 
   val vf_active = Reg(init=Bool(false))
   io.vf_active := vf_active
@@ -332,14 +332,14 @@ class VRUFrontend(resetSignal: Bool = null)(implicit p: Parameters) extends Hwac
 class VRURoCCUnit(implicit p: Parameters) extends HwachaModule()(p) {
   import Commands._
 
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val cmdq = new CMDQIO().flip
     val fire_vf = Bool(OUTPUT)
     val vf_active = Bool(INPUT)
     val vlen = UInt(OUTPUT)
     val aaddr = UInt(INPUT)
     val adata = UInt(OUTPUT)
-  }
+  })
 
   // addr regfile
   val arf = Mem(32, UInt(width = 64))
@@ -405,7 +405,7 @@ class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with MemParameters {
   import Commands._
   val (dmem, edge) = outer.masterNode.out.head
-  val io = new Bundle {
+  val io = IO(new Bundle {
     // to is implicit, -> imem
     val imem = new FrontendIO(p(HwachaIcacheKey))
     val cmdq = new CMDQIO().flip
@@ -413,7 +413,7 @@ class VRUModule(outer: VRU)(implicit p: Parameters) extends LazyModuleImp(outer)
     val vf_complete_ack = Bool(INPUT)
 
     val counters = new VRUCounterIO
-  }
+  })
 
   val vru_frontend = Module(new VRUFrontend)
   vru_frontend.suggestName("vru_frontendInst")

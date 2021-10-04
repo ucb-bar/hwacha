@@ -18,10 +18,10 @@ class FCmpResult(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val req = Valid(new FCmpOperand).flip
     val resp = Valid(new FCmpResult)
-  }
+  })
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
   val in0 = dgate(io.req.valid, io.req.bits.in0)

@@ -29,7 +29,7 @@ class FrontendIO(cacheParams: ICacheParams)(implicit p: Parameters) extends Hwac
 }
 
 class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaModule()(p) with freechips.rocketchip.tile.HasL1CacheParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val front = new FrontendIO(cacheParams).flip
     val back = new Bundle {
       val s0_req = Decoupled(new FrontendReq)
@@ -38,7 +38,7 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
       val s1_resp = Valid(UInt(width = cacheParams.fetchBytes * 8)).flip
       val s1_tlb = new TLBResp().flip
     }
-  }
+  })
 
   val s1_valid = Reg(init=Bool(false))
   val s1_pc_ = Reg(UInt())
