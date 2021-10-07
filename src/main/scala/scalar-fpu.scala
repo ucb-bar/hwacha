@@ -77,7 +77,6 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUPar
   class WBInfo extends Bundle {
     val single = Bool()
     val pipeid = UInt(width = log2Ceil(pipes.size))
-    override def cloneType: this.type = new WBInfo().asInstanceOf[this.type]
   }
 
   val wen = Reg(init=Bits(0, maxLatency-1))

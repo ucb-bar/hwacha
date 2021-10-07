@@ -96,7 +96,6 @@ class VVAQEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val addr = UInt(width = bVAddrExtended)
 }
 class VVAQIO(implicit p: Parameters) extends DecoupledIO(new VVAQEntry()(p)) {
-  override def cloneType = new VVAQIO().asInstanceOf[this.type]
 }
 
 trait VMUAddr extends VMUBundle {
@@ -104,7 +103,6 @@ trait VMUAddr extends VMUBundle {
 }
 class VPAQEntry(implicit p: Parameters) extends VMUAddr
 class VPAQIO(implicit p: Parameters) extends DecoupledIO(new VPAQEntry()(p)) {
-  override def cloneType = new VPAQIO().asInstanceOf[this.type]
 }
 
 
@@ -114,7 +112,6 @@ trait VMUData extends VMUBundle {
 
 class VSDQEntry(implicit p: Parameters) extends VMUData
 class VSDQIO(implicit p: Parameters) extends DecoupledIO(new VSDQEntry()(p)) {
-  override def cloneType = new VSDQIO().asInstanceOf[this.type]
 }
 
 class VCUEntry(implicit p: Parameters) extends VMUBundle()(p) {
@@ -148,7 +145,6 @@ class VLDQEntry(implicit p: Parameters) extends VMUData {
   val meta = new VMTLoadEntry
 }
 class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p)) {
-  override def cloneType = new VLDQIO().asInstanceOf[this.type]
 }
 
 /**********************************************************************/
@@ -170,7 +166,6 @@ class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
   }
 }
 class VMUMaskIO_0(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_0()(p)) {
-  override def cloneType = new VMUMaskIO_0().asInstanceOf[this.type]
 }
 
 class VMUMaskEntry_1(implicit p: Parameters) extends VMUBundle()(p) {
@@ -182,7 +177,6 @@ class VMUMaskIO_1(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_1
     val eoff = UInt(INPUT, tlByteAddrBits - 1)
     val last = Bool(INPUT)
   }
-  override def cloneType = new VMUMaskIO_1().asInstanceOf[this.type]
 }
 
 /**********************************************************************/
@@ -196,7 +190,6 @@ class CInt(n: Int) extends Bundle {
     raw := x
   }
   def decode(dummy: Int = 0): UInt = Cat(raw === UInt(0), raw)
-  override def cloneType = new CInt(n).asInstanceOf[this.type]
 }
 
 trait VMUMetaCount extends VMUBundle {
@@ -229,5 +222,4 @@ class VMUAddrEntry(implicit p: Parameters) extends VMUMemOp {
   val meta = new VMUMetaAddr with VMUMetaIndex
 }
 class VMUAddrIO(implicit p: Parameters) extends DecoupledIO(new VMUAddrEntry()(p)) {
-  override def cloneType = new VMUAddrIO().asInstanceOf[this.type]
 }

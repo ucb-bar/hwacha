@@ -170,7 +170,6 @@ class CounterUpdateIO(sz: Int) extends Bundle {
   val cnt = UInt(OUTPUT, sz)
   val update = Bool(OUTPUT)
 
-  override def cloneType = new CounterUpdateIO(sz).asInstanceOf[this.type]
 }
 
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) with LaneParameters {
