@@ -96,7 +96,7 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   lbox.bits.meta := vmt.io.r.record.load()
   lbox.valid := resp.valid && !resp.bits.store
   resp.ready := resp.bits.store || lbox.ready
-  vmt.io.r.valid := resp.fire()
+  vmt.io.r.valid := resp.fire
   vmt.io.r.bits := resp.bits.tag
 
   /* Store acknowledgement */

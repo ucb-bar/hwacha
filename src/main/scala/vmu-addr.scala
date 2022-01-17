@@ -144,7 +144,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     }
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
   }
@@ -225,7 +225,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt = Mux(valve_off, offset(valve), ecnt_test)
   /* Track number of elements permitted to depart following VCU */
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
-  val valve_sub = Mux(io.mask.fire(), ecnt, UInt(0))
+  val valve_sub = Mux(io.mask.fire, ecnt, UInt(0))
   valve := valve + valve_add - valve_sub
 
   val en = !valve_off || xcpt
@@ -309,7 +309,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
     }
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
     blkidx := io.op.bits.base(bPgIdx-1, tlByteAddrBits)

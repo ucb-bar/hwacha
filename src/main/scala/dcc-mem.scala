@@ -136,7 +136,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     val en = io.la.mask(i)
     bpq.io.enq <> enq
     placntr.io.inc.cnt := UInt(1)
-    placntr.io.inc.update := bpq.io.deq.fire()
+    placntr.io.inc.update := bpq.io.deq.fire
     placntr.io.dec.cnt := UInt(1)
     placntr.io.dec.reserve := io.la.reserve && en
     (bpq.io.deq, !en || placntr.io.dec.available)
@@ -401,7 +401,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   io.map <> map.io.use
 
   val busy = map.io.busy
-  val issue = map.io.use.fire()
+  val issue = map.io.use.fire
 
   /* NOTE: To avoid the need for a full shifter and special masking of
    * final predicate entries, vectors always begin at an nStrip-aligned
@@ -476,7 +476,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   // NOTE: insert extra cycle of latency for empty predicate short vector race that results in vlu retiring before vcu
   // COLIN: could also be solved with anteq being a flow queue but need to test QoR on that path
   predq.io.enq <> Queue(io.pred)
-  val pred_fire = predq.io.deq.fire()
+  val pred_fire = predq.io.deq.fire
 
   private val bpcnt = bVLen - bStrip + log2Ceil(nVLU)
   val pcnt = Reg(init = UInt(0, bpcnt))
@@ -614,7 +614,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     bwq.io.enq.bits.data := bwqs_data(i)
     bwq.io.enq.bits.pred := bwqs_mask(i)
 
-    val wb_mask = Mux(bwq.io.deq.fire(), bwq.io.deq.bits.pred, Bits(0))
+    val wb_mask = Mux(bwq.io.deq.fire, bwq.io.deq.bits.pred, Bits(0))
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
@@ -739,7 +739,7 @@ class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
     head := head_next
     used := Bool(false)
   }
-  when (io.use.fire()) {
+  when (io.use.fire) {
     tail := tail_next
     used := Bool(true)
   }

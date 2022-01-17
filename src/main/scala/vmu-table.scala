@@ -31,7 +31,7 @@ class Table[T <: Data](n: Int, gen: => T) extends Module {
   private val wtag = io.w.tag
   wtag := CTZ(~valid, n)
 
-  val wen = io.w.fire()
+  val wen = io.w.fire
   val ren = io.r.valid
   val valid_mask_r = ren << rtag
   val valid_mask_w = wen << wtag

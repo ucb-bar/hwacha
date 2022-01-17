@@ -152,7 +152,7 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
     sample_en := Bool(true)
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
     index := UInt(0)
@@ -186,12 +186,12 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   val index_next = (index + step)(lglimit-1, 0)
   val index_end = (index_next === UInt(0))
 
-  when (io.sample.fire()) {
+  when (io.sample.fire) {
     index := index_next
   }
 
   val hold = Reg(Bits(width = limit - 1))
-  when (io.ingress.fire()) {
+  when (io.ingress.fire) {
     hold := io.ingress.bits.pred(nStrip-1, nStrip-limit+1)
   }
 
@@ -283,7 +283,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
     }
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
     hold := Bits(0)

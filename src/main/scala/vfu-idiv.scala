@@ -34,8 +34,8 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
   qcnt.suggestName("qcntInst")
 
-  qcnt.io.dec := io.req.fire()
-  qcnt.io.inc := io.resp.fire()
+  qcnt.io.dec := io.req.fire
+  qcnt.io.inc := io.resp.fire
 
   val div = Module(new MulDiv(cfg = MulDivParams(mulUnroll = 8, mulEarlyOut = true, divEarlyOut = true), width = p(HwachaRegLen)))
   div.suggestName("divInst")
@@ -62,7 +62,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
   div.io.resp.ready := rq.io.enq.ready
 
   assert(!div.io.resp.valid || rq.io.enq.ready, "result queue should always be ready when a result is about to enqueue")
-  assert(!io.req.fire() || rq.io.enq.ready, "result queue should always be ready when a request fires")
+  assert(!io.req.fire || rq.io.enq.ready, "result queue should always be ready when a request fires")
 
   io.resp <> rq.io.deq
 }

@@ -1,4 +1,4 @@
-package hwacha 
+package hwacha
 
 import Chisel._
 import freechips.rocketchip.config._
@@ -170,7 +170,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   io.hwacha.resp.valid := respq.io.deq.valid
   io.rocc.resp.ready := respq.io.enq.ready
 
-  when (respq.io.deq.fire()) {
+  when (respq.io.deq.fire) {
     pending_fpu := Bool(false)
   }
 

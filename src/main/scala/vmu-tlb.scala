@@ -64,7 +64,7 @@ class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
     io.irq.vmu.faulted_ld,
     io.irq.vmu.faulted_st)
 
-  val fire = arb.req.fire()
+  val fire = arb.req.fire
   irqs.zip(xcpts).foreach { case (irq, xcpt) =>
     irq := xcpt && fire
   }

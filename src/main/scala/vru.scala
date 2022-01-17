@@ -121,7 +121,7 @@ class RunaheadManager(resetSignal: Bool = null)(implicit p: Parameters) extends 
 
   // only one of these can be true at a time
   val skipped_block = io.vf_fire && io.vf_skip
-  val accepted_block = io.enq.fire()
+  val accepted_block = io.enq.fire
   assert(!(skipped_block && accepted_block), "VRU attempted to simultaneously enqueue and skip VF block")
   val increment_vf_count = skipped_block || accepted_block
 

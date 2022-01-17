@@ -56,7 +56,7 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
   private val bpart = bbyte - 8
 
   val hold = Reg(Bits(width = tlDataBits - 16))
-  when (vsdq.io.deq.fire()) {
+  when (vsdq.io.deq.fire) {
    /* Byte mode: Align relevant data bits to the upper end of the
       hold register */
     hold := Cat(Mux(op.mt.b,

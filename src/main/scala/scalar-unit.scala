@@ -205,7 +205,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   when (!killd && id_ctrl.decode_stop) {
     vf_active := Bool(false)
   }
-  io.vf_stop := io.imem.resp.fire() && id_ctrl.decode_stop
+  io.vf_stop := io.imem.resp.fire && id_ctrl.decode_stop
 
   val sren = Vec(
     id_ctrl.vs1_val && id_ctrl.vs1_type === REG_SHR,
@@ -265,8 +265,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_smu_load = id_ctrl.fn_smu().cmd === SM_L
   val id_smu_store = id_ctrl.fn_smu().cmd === SM_S
   val id_set_sboard =
-    io.vxu.fire() && id_first_inst ||
-    io.fpu.req.fire() || io.smu.req.fire() && id_smu_load || muldiv.io.req.fire()
+    io.vxu.fire && id_first_inst ||
+    io.fpu.req.fire || io.smu.req.fire && id_smu_load || muldiv.io.req.fire
   sboard.set(id_set_sboard, id_ctrl.vd)
 
   val enq_vxu = id_val && id_vector_inst
@@ -454,7 +454,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.smu.req.bits.data := id_sreads(1)
   io.smu.req.bits.tag := id_ctrl.vd
   io.smu.req.bits.status := id_status
-  when (io.smu.req.fire()) { pending_smu := Bool(true) }
+  when (io.smu.req.fire) { pending_smu := Bool(true) }
   when (io.smu.confirm) { pending_smu := Bool(false) }
 
   implicit def BitPatToUInt(x: BitPat): UInt = {
@@ -491,7 +491,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_stall_rfirst = ex_reg_valid && io.red.first.valid
 
   io.red.pred.ready := Bool(true)
-  ex_br_resolved := io.red.pred.fire()
+  ex_br_resolved := io.red.pred.fire
   ex_br_taken := ex_br_resolved && io.red.pred.bits.cond
   ex_br_not_taken := ex_br_resolved && !io.red.pred.bits.cond
   when (ex_br_resolved) { pending_cbranch := Bool(false) }
@@ -565,9 +565,9 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.smu.resp.ready := ll_warb.io.in(1).ready
 
   mrt.io.lret.cnt := UInt(1)
-  mrt.io.lret.update := io.smu.resp.fire() && !io.smu.resp.bits.store
+  mrt.io.lret.update := io.smu.resp.fire && !io.smu.resp.bits.store
   mrt.io.sret.cnt := UInt(1)
-  mrt.io.sret.update := io.smu.resp.fire() && io.smu.resp.bits.store
+  mrt.io.sret.update := io.smu.resp.fire && io.smu.resp.bits.store
 
   ll_warb.io.in(2).valid := muldiv.io.resp.valid
   ll_warb.io.in(2).bits.addr := muldiv.io.resp.bits.tag

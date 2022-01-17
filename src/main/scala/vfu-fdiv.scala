@@ -32,8 +32,8 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
   qcnt.suggestName("qcntInst")
 
-  qcnt.io.dec := io.req.fire()
-  qcnt.io.inc := io.resp.fire()
+  qcnt.io.dec := io.req.fire
+  qcnt.io.inc := io.resp.fire
 
   // stage0
   val ins = List(io.req.bits.in0, io.req.bits.in1) map { in =>
@@ -139,7 +139,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   rq.io.enq.bits.exc := s1_result_exc | s1_exc | outtagq.io.deq.bits.exc
 
   assert(!s1_result_valid || rq.io.enq.ready, "result queue should always be ready when a result is about to enqueue")
-  assert(!io.req.fire() || rq.io.enq.ready, "result queue should always be ready when a request fires")
+  assert(!io.req.fire || rq.io.enq.ready, "result queue should always be ready when a request fires")
 
   io.resp <> rq.io.deq
 }

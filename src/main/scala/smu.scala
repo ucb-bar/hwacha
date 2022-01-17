@@ -170,7 +170,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
 
   io.scalar.resp.valid := grant.valid
   grant.ready := io.scalar.resp.ready
-  tr.valid := io.scalar.resp.fire()
+  tr.valid := io.scalar.resp.fire
   tr.bits := grant.bits.source(log2Up(nSMU)-1,0)
 
   val resp_mt = DecodedMemType(tr.record.mt)
