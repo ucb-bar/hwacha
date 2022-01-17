@@ -699,7 +699,6 @@ trait VLUSelect extends DCCParameters {
 class VLUSelectBundle(implicit p: Parameters) extends VXUBundle()(p) with VLUSelect
 class VLUSelectIO(implicit p: Parameters)
   extends DecoupledIO(new VLUSelectBundle()(p)) {
-  override def cloneType: this.type = (new VLUSelectIO()).asInstanceOf[this.type]
 }
 
 class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {

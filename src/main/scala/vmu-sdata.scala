@@ -17,7 +17,6 @@ class VMUStoreMeta(implicit p: Parameters) extends VMUMetaStore with VMUMetaCoun
 class VMUStoreIO(implicit p: Parameters) extends VSDQIO()(p) {
   val meta = new VMUStoreMeta().asInput
 
-  override def cloneType = new VMUStoreIO().asInstanceOf[this.type]
 }
 
 class SBox(implicit p: Parameters) extends VMUModule()(p) {

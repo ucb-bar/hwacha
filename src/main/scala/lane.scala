@@ -127,10 +127,8 @@ class LaneAckIO(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class LPQIO(implicit p: Parameters) extends DecoupledIO(new LPQEntry()(p)) {
-  override def cloneType = new LPQIO().asInstanceOf[this.type]
 }
 class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p)) {
-  override def cloneType = new LRQIO().asInstanceOf[this.type]
 }
 
 trait LanePred extends VXUBundle {

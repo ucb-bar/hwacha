@@ -11,7 +11,6 @@ class FrontendResp(icacheParams: ICacheParams)(implicit p: Parameters) extends H
   val data = UInt(width = icacheParams.fetchBytes * 8)
   val pf = Bool()
 
-  override def cloneType = new FrontendResp(icacheParams).asInstanceOf[this.type]
 }
 
 class FrontendReq(implicit p: Parameters) extends freechips.rocketchip.tile.CoreBundle()(p) {
@@ -25,7 +24,6 @@ class FrontendIO(cacheParams: ICacheParams)(implicit p: Parameters) extends Hwac
   val resp = Decoupled(new FrontendResp(cacheParams)).flip
   val invalidate = Bool(OUTPUT)
 
-  override def cloneType = new FrontendIO(cacheParams).asInstanceOf[this.type]
 }
 
 class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaModule()(p) with freechips.rocketchip.tile.HasL1CacheParameters {

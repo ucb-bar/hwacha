@@ -73,13 +73,11 @@ class HwachaFPInput(implicit p: Parameters) extends freechips.rocketchip.tile.FP
   val bSRegs = log2Up(p(HwachaNScalarRegs))
   val in_fmt = UInt(width = 2)
   val tag = UInt(width = bSRegs)
-  override def cloneType = new HwachaFPInput()(p).asInstanceOf[this.type]
 }
 
 class HwachaFPResult(implicit p: Parameters) extends freechips.rocketchip.tile.FPResult {
   val bSRegs = log2Up(p(HwachaNScalarRegs))
   val tag = UInt(width = bSRegs)
-  override def cloneType = new HwachaFPResult()(p).asInstanceOf[this.type]
 }
 
 class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {

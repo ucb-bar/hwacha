@@ -39,7 +39,6 @@ class VMUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val meta = new VMUMetaAddr
 }
 class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p)) {
-  override def cloneType = new VMUPipeIO().asInstanceOf[this.type]
 }
 
 
