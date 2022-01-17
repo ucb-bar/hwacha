@@ -70,7 +70,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   private val mask = io.mask.bits
   val pred = mask.pred
 
-  unless (op.mode.unit) {
+  when (!op.mode.unit) {
     assert(!io.mask.valid || !pred || (mask.nonunit.shift === UInt(0)),
       "ABox0: simultaneous true predicate and non-zero stride shift")
   }
@@ -118,7 +118,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     }
 
     is (s_busy) {
-      unless (stall || io.xcpt.prop.vmu.stall) {
+      when (!(stall || io.xcpt.prop.vmu.stall)) {
         io.mask.ready := fire(io.mask.valid)
         io.vvaq.ready := fire(vvaq_valid, vvaq_en)
         io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
@@ -127,7 +127,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
         io.agu.in.valid := op.mode.indexed || !mask.last
 
         when (fire(null)) {
-          unless (op.mode.indexed || (op.mode.unit && !mask.unit.page)) {
+          when (!(op.mode.indexed || (op.mode.unit && !mask.unit.page))) {
             op.base := io.agu.out.bits.addr
           }
           when (io.tlb.resp.xcpt && pred) {
