@@ -39,7 +39,6 @@ class VMUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
   val meta = new VMUMetaAddr
 }
 class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p)) {
-  override def cloneType = new VMUPipeIO().asInstanceOf[this.type]
 }
 
 
@@ -71,7 +70,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   private val mask = io.mask.bits
   val pred = mask.pred
 
-  unless (op.mode.unit) {
+  when (!op.mode.unit) {
     assert(!io.mask.valid || !pred || (mask.nonunit.shift === UInt(0)),
       "ABox0: simultaneous true predicate and non-zero stride shift")
   }
@@ -88,6 +87,8 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
   io.tlb.req.bits.passthrough := Bool(false)
   io.tlb.req.bits.size := op.mt.shift()
   io.tlb.req.bits.cmd := op.cmd.bits
+  io.tlb.req.bits.prv := op.status.dprv
+  io.tlb.req.bits.v := op.status.dv
   io.tlb.status := op.status
   io.vpaq.bits.addr := io.tlb.paddr()
   io.vcu.bits.ecnt := mask.ecnt
@@ -119,7 +120,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     }
 
     is (s_busy) {
-      unless (stall || io.xcpt.prop.vmu.stall) {
+      when (!(stall || io.xcpt.prop.vmu.stall)) {
         io.mask.ready := fire(io.mask.valid)
         io.vvaq.ready := fire(vvaq_valid, vvaq_en)
         io.vpaq.valid := fire(vpaq_ready, pred, !io.tlb.resp.xcpt)
@@ -128,7 +129,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
         io.agu.in.valid := op.mode.indexed || !mask.last
 
         when (fire(null)) {
-          unless (op.mode.indexed || (op.mode.unit && !mask.unit.page)) {
+          when (!(op.mode.indexed || (op.mode.unit && !mask.unit.page))) {
             op.base := io.agu.out.bits.addr
           }
           when (io.tlb.resp.xcpt && pred) {
@@ -145,7 +146,7 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     }
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
   }
@@ -226,7 +227,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt = Mux(valve_off, offset(valve), ecnt_test)
   /* Track number of elements permitted to depart following VCU */
   val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
-  val valve_sub = Mux(io.mask.fire(), ecnt, UInt(0))
+  val valve_sub = Mux(io.mask.fire, ecnt, UInt(0))
   valve := valve + valve_add - valve_sub
 
   val en = !valve_off || xcpt
@@ -310,7 +311,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
     }
   }
 
-  when (io.op.fire()) { /* initialization */
+  when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
     blkidx := io.op.bits.base(bPgIdx-1, tlByteAddrBits)

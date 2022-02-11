@@ -37,7 +37,7 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
   io.req.ready := Bool(true)
   val pred = PriorityEncoderOH((io.req.bits.active & io.req.bits.pred).asBools)
   val found = pred.reduce(_ || _)
-  when (io.req.fire() && !result.found && found) {
+  when (io.req.fire && !result.found && found) {
     result.found := Bool(true)
     result.lsidx := io.req.bits.lsidx
     result.first := Mux1H(pred, io.req.bits.in)

@@ -47,7 +47,7 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
   val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
   pcntr.suggestName("pcntrInst")
   pcntr.io.inc.cnt := UInt(1)
-  pcntr.io.inc.update := lpq.io.deq.fire()
+  pcntr.io.inc.update := lpq.io.deq.fire
   pcntr.io.dec <> io.pla
 
   for (i <- 0 until nVDUOperands) {
@@ -194,7 +194,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     is (s_wait) {
       io.rpred.result.valid := op.active.vrpred
       io.rfirst.result.valid := op.active.vrfirst
-      when (io.rpred.result.fire() || io.rfirst.result.fire()) {
+      when (io.rpred.result.fire || io.rfirst.result.fire) {
         state := s_idle
       }
     }
@@ -286,13 +286,13 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     fdiv.req.bits.in1 := unpack_slice(io.lrqs.q(1).bits.data, i)
   }
 
-  io.rpred.fu.op.valid := opq.io.deq.fire() && opq.io.deq.bits.active.vrpred
+  io.rpred.fu.op.valid := opq.io.deq.fire && opq.io.deq.bits.active.vrpred
   io.rpred.fu.op.bits := opq.io.deq.bits.fn.vrpu()
   io.rpred.fu.req.valid := fire_rpred(io.rpred.fu.req.ready)
   io.rpred.fu.req.bits.active := pred
   io.rpred.fu.req.bits.pred := io.lpq.bits.pred
 
-  io.rfirst.fu.op.valid := opq.io.deq.fire() && opq.io.deq.bits.active.vrfirst
+  io.rfirst.fu.op.valid := opq.io.deq.fire && opq.io.deq.bits.active.vrfirst
   io.rfirst.fu.op.bits := opq.io.deq.bits.fn.vrfu()
   io.rfirst.fu.req.valid := fire_rfirst(io.rfirst.fu.req.ready)
   io.rfirst.fu.req.bits.active := pred

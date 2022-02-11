@@ -31,7 +31,7 @@ class RPredLane(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   io.req.ready := Bool(true)
-  when (io.req.fire()) {
+  when (io.req.fire) {
     when (fn.op_is(FR_ALL)) { cond := cond & (io.req.bits.pred | ~io.req.bits.active).orR }
     when (fn.op_is(FR_ANY)) { cond := cond | (io.req.bits.pred & io.req.bits.active).orR }
   }

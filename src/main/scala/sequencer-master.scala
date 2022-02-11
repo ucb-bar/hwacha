@@ -634,7 +634,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def logic = {
       require(!retired) // must issue before retiring for dhazard bookkeeping
 
-      when (io.op.fire()) {
+      when (io.op.fire) {
         when (io.op.bits.active.vint) { vint }
         when (io.op.bits.active.vipred) { vipred }
         when (io.op.bits.active.vimul) { vimul }

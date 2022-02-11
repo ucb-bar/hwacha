@@ -133,17 +133,17 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
       _agent.io.id := io.id
       _agent.io.cfg <> io.cfg
       io.agu <> _agent.io.agu
-      _agent
-  } else Module(new IBoxSL)
+      _agent.io
+  } else (Module(new IBoxSL)).io
 
-  agent.io.op.bits := op
-  agent.io.op.valid := opq.io.deq.valid
-  opq.io.deq.ready := agent.io.op.ready
-  io.aret := agent.io.aret
+  agent.op.bits := op
+  agent.op.valid := opq.io.deq.valid
+  opq.io.deq.ready := agent.op.ready
+  io.aret := agent.aret
 
   val issue = Seq(io.abox(0), io.pbox(0),
-    agent.io.span(io.abox(1), io.pbox(1)), io.abox(2))
-  issue zip agent.io.issue map {case(s,d) => s <> d}
+    agent.span(io.abox(1), io.pbox(1)), io.abox(2))
+  issue zip agent.issue map {case(s,d) => s <> d}
 }
 
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
@@ -221,7 +221,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   io.aret := Bool(false)
   enq.valid := Bool(false)
 
-  when(io.issue(3).fire()) {
+  when(io.issue(3).fire) {
     qcntr := Mux(qcntr === 0.U, 0.U, (qcntr.zext - 1.S).asUInt)
     io.aret := qcntr === 1.U || aret_pending
     aret_pending := Bool(false)
@@ -247,8 +247,8 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
       io.agu.in.valid := !indexed
       enq.valid := !aret_pending && (indexed || io.agu.out.valid)
 
-      when (enq.fire()) {
-        unless (indexed) {
+      when (enq.fire) {
+        when (!indexed) {
           op.base := io.agu.out.bits.addr
         }
         op.vlen := vlen_next.asUInt()
@@ -259,7 +259,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
           io.op.ready := Bool(true)
           // Last queue is abox2 deepest stage
           // +1+1 because we are enqing this cycle and need to wait for the next op to be eaten by abox2
-          qcntr := qcnts(3) + 1.U + Mux(io.issue(3).fire(), 0.U, 1.U)
+          qcntr := qcnts(3) + 1.U + Mux(io.issue(3).fire, 0.U, 1.U)
           // aret after next issue3.fire
           aret_pending := qcntr =/= 0.U
           assert(qcntr <= UInt(1), "IBox: qcntr too large. aret broken")

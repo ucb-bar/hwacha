@@ -20,8 +20,10 @@ class IRQIO extends Bundle {
   val vmu = new Bundle {
     val ma_ld = Bool(OUTPUT)
     val ma_st = Bool(OUTPUT)
-    val faulted_ld = Bool(OUTPUT)
-    val faulted_st = Bool(OUTPUT)
+    val pf_ld = Bool(OUTPUT)
+    val pf_st = Bool(OUTPUT)
+    val ae_ld = Bool(OUTPUT)
+    val ae_st = Bool(OUTPUT)
     val aux = Bits(OUTPUT, 64)
   }
 }
@@ -52,8 +54,10 @@ class IRQ extends Module {
     (io.vu.issue.illegal_regid, 7, io.vu.issue.aux),
     (io.vu.vmu.ma_ld, 8, io.vu.vmu.aux),
     (io.vu.vmu.ma_st, 9, io.vu.vmu.aux),
-    (io.vu.vmu.faulted_ld, 10, io.vu.vmu.aux),
-    (io.vu.vmu.faulted_st, 11, io.vu.vmu.aux)
+    (io.vu.vmu.pf_ld, 10, io.vu.vmu.aux),
+    (io.vu.vmu.pf_st, 11, io.vu.vmu.aux),
+    (io.vu.vmu.ae_ld, 12, io.vu.vmu.aux),
+    (io.vu.vmu.ae_st, 13, io.vu.vmu.aux),
   )
 
   when (!reg_irq) {

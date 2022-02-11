@@ -7,14 +7,12 @@ class TableWIO[T <: Data](gen: => T, sztag: Int)
   extends DecoupledIO(gen) {
   val tag = UInt(INPUT, sztag)
 
-  override def cloneType = new TableWIO(gen, sztag).asInstanceOf[this.type]
 }
 
 class TableRIO[T <: Data](gen: => T, sztag: Int)
   extends ValidIO(UInt(width = sztag)) {
   val record = gen.asInput
 
-  override def cloneType = new TableRIO(gen, sztag).asInstanceOf[this.type]
 }
 
 class Table[T <: Data](n: Int, gen: => T) extends Module {
@@ -33,7 +31,7 @@ class Table[T <: Data](n: Int, gen: => T) extends Module {
   private val wtag = io.w.tag
   wtag := CTZ(~valid, n)
 
-  val wen = io.w.fire()
+  val wen = io.w.fire
   val ren = io.r.valid
   val valid_mask_r = ren << rtag
   val valid_mask_w = wen << wtag
