@@ -57,27 +57,33 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   private def pipe(valid: Bool, out: Bits, exc: Bits, fn: Bits=>Bits = identity) =
     (fn(Pipe(valid, out, stagesFConv).bits), Pipe(valid, exc, stagesFConv).bits)
 
+  val supported = List(p(HwachaSupportsFPD), p(HwachaSupportsFPS), p(HwachaSupportsFPH))
   val results_int2float =
     List((FPD, ieee_dp _, expand_float_d _, wdp),
          (FPS, ieee_sp _, expand_float_s _, wsp),
-         (FPH, ieee_hp _, expand_float_h _, whp)) map {
-      case (fp, ieee, expand, (exp, sig)) => {
+         (FPH, ieee_hp _, expand_float_h _, whp)) zip supported map {
+      case ((fp, ieee, expand, (exp, sig)), build) => {
         val valid = fn.fp_is(fp) && val_int2float && pred(0)
-        val input = dgate(valid, in)
-        val rm = dgate(valid, fn.rm)
-        val op = dgate(valid, op_int2float)
-        val l2fp = Module(new hardfloat.INToRecFN(SZ_D, exp, sig))
-        l2fp.suggestName("l2fpInst")
-        val w2fp = Module(new hardfloat.INToRecFN(SZ_W, exp, sig))
-        w2fp.suggestName("w2fpInst")
-        l2fp.io.signedIn := op(0)
-        l2fp.io.in := input
-        l2fp.io.roundingMode := rm
-        w2fp.io.signedIn := op(0)
-        w2fp.io.in := input
-        w2fp.io.roundingMode := rm
-        val output = Mux(op(1), l2fp.io.out, w2fp.io.out)
-        val exc = Mux(op(1), l2fp.io.exceptionFlags, w2fp.io.exceptionFlags)
+        val (output, exc) = if (build) {
+          val input = dgate(valid, in)
+          val rm = dgate(valid, fn.rm)
+          val op = dgate(valid, op_int2float)
+          val l2fp = Module(new hardfloat.INToRecFN(SZ_D, exp, sig))
+          l2fp.suggestName("l2fpInst")
+          val w2fp = Module(new hardfloat.INToRecFN(SZ_W, exp, sig))
+          w2fp.suggestName("w2fpInst")
+          l2fp.io.signedIn := op(0)
+          l2fp.io.in := input
+          l2fp.io.roundingMode := rm
+          w2fp.io.signedIn := op(0)
+          w2fp.io.in := input
+          w2fp.io.roundingMode := rm
+          val output = Mux(op(1), l2fp.io.out, w2fp.io.out)
+          val exc = Mux(op(1), l2fp.io.exceptionFlags, w2fp.io.exceptionFlags)
+          (output, exc)
+        } else {
+          (0.U, 0.U)
+        }
         pipe(valid, ieee(output), exc, expand)
       }
     }
@@ -85,55 +91,64 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val results_float2int =
     List((FPD, recode_dp _, unpack_d _, wdp),
          (FPS, recode_sp _, unpack_w _, wsp),
-         (FPH, recode_hp _, unpack_h _, whp)) map {
-      case (fp, recode, unpack, (exp, sig)) => {
+         (FPH, recode_hp _, unpack_h _, whp)) zip supported map {
+      case ((fp, recode, unpack, (exp, sig)), build) => {
         val valid = fn.fp_is(fp) && val_float2int && pred(0)
-        val input = recode(dgate(valid, unpack(in, 0)))
-        val rm = dgate(valid, fn.rm)
-        val op = dgate(valid, op_float2int)
-        val fp2l = Module(new hardfloat.RecFNToIN(exp, sig, SZ_D))
-        fp2l.suggestName("fp2lInst")
-        val fp2w = Module(new hardfloat.RecFNToIN(exp, sig, SZ_W))
-        fp2w.suggestName("fp2wInst")
-        fp2l.io.signedOut := op(0)
-        fp2l.io.in := input
-        fp2l.io.roundingMode := rm
-        fp2w.io.signedOut := op(0)
-        fp2w.io.in := input
-        fp2w.io.roundingMode := rm
-        val output = Mux(op(1), fp2l.io.out, expand_w(fp2w.io.out))
-        val iexc = Mux(op(1), fp2l.io.intExceptionFlags, fp2w.io.intExceptionFlags)
+        val (output, iexc) = if (build) {
+          val input = recode(dgate(valid, unpack(in, 0)))
+          val rm = dgate(valid, fn.rm)
+          val op = dgate(valid, op_float2int)
+          val fp2l = Module(new hardfloat.RecFNToIN(exp, sig, SZ_D))
+          fp2l.suggestName("fp2lInst")
+          val fp2w = Module(new hardfloat.RecFNToIN(exp, sig, SZ_W))
+          fp2w.suggestName("fp2wInst")
+          fp2l.io.signedOut := op(0)
+          fp2l.io.in := input
+          fp2l.io.roundingMode := rm
+          fp2w.io.signedOut := op(0)
+          fp2w.io.in := input
+          fp2w.io.roundingMode := rm
+          val output = Mux(op(1), fp2l.io.out, expand_w(fp2w.io.out))
+          val iexc = Mux(op(1), fp2l.io.intExceptionFlags, fp2w.io.intExceptionFlags)
+          (output, iexc)
+        } else {
+          (0.U, 0.U(3.W))
+        }
         pipe(valid, output, Cat(iexc(2, 1).orR, UInt(0, 3), iexc(0)))
       }
     }
 
   val results_float2float =
-    List((FV_CSTD, recode_sp _, unpack_w _, ieee_dp _, expand_float_d _, wsp, wdp),
-         (FV_CHTD, recode_hp _, unpack_h _, ieee_dp _, expand_float_d _, whp, wdp),
-         (FV_CDTS, recode_dp _, unpack_d _, ieee_sp _, expand_float_s _, wdp, wsp),
-         (FV_CHTS, recode_hp _, unpack_h _, ieee_sp _, expand_float_s _, whp, wsp),
-         (FV_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp),
-         (FV_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp)) map {
-      case (op, recode, unpack, ieee, expand, (exps, sigs), (expd, sigd)) => {
-        val (szs, szd) = (exps + sigs, expd + sigd)
-        val sz = math.max(szs, szd)
-        val (m, n) = (math.max(szd / szs, 1), regLen / sz)
-        val val_op = fn.op_is(op)
-        val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
-          val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
-          fp2fp.suggestName("fp2fpInst")
-          val valid = pred(i) && val_op
-          fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
-          fp2fp.io.roundingMode := dgate(valid, fn.rm)
-          pipe(valid, ieee(fp2fp.io.out), fp2fp.io.exceptionFlags, expand)
+    List((FV_CSTD, recode_sp _, unpack_w _, ieee_dp _, expand_float_d _, wsp, wdp, p(HwachaSupportsFPD)),
+         (FV_CHTD, recode_hp _, unpack_h _, ieee_dp _, expand_float_d _, whp, wdp, p(HwachaSupportsFPD)),
+         (FV_CDTS, recode_dp _, unpack_d _, ieee_sp _, expand_float_s _, wdp, wsp, p(HwachaSupportsFPS)),
+         (FV_CHTS, recode_hp _, unpack_h _, ieee_sp _, expand_float_s _, whp, wsp, p(HwachaSupportsFPS)),
+         (FV_CDTH, recode_dp _, unpack_d _, ieee_hp _, expand_float_h _, wdp, whp, p(HwachaSupportsFPH)),
+         (FV_CSTH, recode_sp _, unpack_w _, ieee_hp _, expand_float_h _, wsp, whp, p(HwachaSupportsFPH))) map {
+      case (op, recode, unpack, ieee, expand, (exps, sigs), (expd, sigd), build) => {
+        if (build) {
+          val (szs, szd) = (exps + sigs, expd + sigd)
+          val sz = math.max(szs, szd)
+          val (m, n) = (math.max(szd / szs, 1), regLen / sz)
+          val val_op = fn.op_is(op)
+          val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
+            val fp2fp = Module(new hardfloat.RecFNToRecFN(exps, sigs, expd, sigd))
+            fp2fp.suggestName("fp2fpInst")
+            val valid = pred(i) && val_op
+              fp2fp.io.in := recode(dgate(valid, unpack(in, i * m)))
+            fp2fp.io.roundingMode := dgate(valid, fn.rm)
+            pipe(valid, ieee(fp2fp.io.out), fp2fp.io.exceptionFlags, expand)
+          }
+          val valid = active && val_op
+          val output = if (results.size > 1) {
+            val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
+            Mux(Pipe(valid, rmatch, stagesFConv).bits,
+              Vec(results.map(_._1(sz-1, 0))).asUInt, results.head._1)
+          } else results.head._1
+          (output, results.map(_._2).reduce(_.asUInt | _.asUInt ))
+        } else {
+          (0.U, 0.U)
         }
-        val valid = active && val_op
-        val output = if (results.size > 1) {
-          val rmatch = (io.req.bits.rate === UInt(log2Ceil(n)))
-          Mux(Pipe(valid, rmatch, stagesFConv).bits,
-            Vec(results.map(_._1(sz-1, 0))).asUInt, results.head._1)
-        } else results.head._1
-        (output, results.map(_._2).reduce(_.asUInt | _.asUInt ))
       }
     }
 

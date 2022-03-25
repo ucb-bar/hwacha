@@ -56,25 +56,33 @@ class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
       fn.op_is(FM_MUL) -> Bits(0, SZ_D)
     ))
 
+  val buildDFMA = p(HwachaSupportsFPD)
+  val buildSFMA = p(HwachaSupportsFPS)
+  val buildHFMA = p(HwachaSupportsFPH)
   val results =
-    List((stagesDFMA, SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (11, 53)),
-         (stagesSFMA, SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (8, 24)),
-         (stagesHFMA, SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (8, 8))) map {
-      case (stages, sz, fp, recode, unpack, ieee, repack, expand, (exp, sig)) => {
+    List((buildDFMA, stagesDFMA, SZ_D, FPD, recode_dp _, unpack_d _, ieee_dp _, repack_d _, expand_float_d _, (11, 53)),
+         (buildSFMA, stagesSFMA, SZ_W, FPS, recode_sp _, unpack_w _, ieee_sp _, repack_w _, expand_float_s _, (8, 24)),
+         (buildHFMA, stagesHFMA, SZ_H, FPH, recode_hp _, unpack_h _, ieee_hp _, repack_h _, expand_float_h _, (8, 8))) map {
+      case (build, stages, sz, fp, recode, unpack, ieee, repack, expand, (exp, sig)) => {
         val n = SZ_D / sz
         val val_fp = fn.fp_is(fp)
         val results = for (i <- (0 until n) if (confprec || i == 0)) yield {
-          val fma = Module(new freechips.rocketchip.tile.MulAddRecFNPipe(stages min 2, exp, sig))
-          fma.suggestName("fmaInst")
-          val valid = pred(i) && val_fp
-          fma.io.validin := valid
-          fma.io.op := dgate(valid, fma_op)
-          fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))
-          fma.io.b := recode(dgate(valid, unpack(fma_multiplier, i)))
-          fma.io.c := recode(dgate(valid, unpack(fma_addend, i)))
-          fma.io.roundingMode := dgate(valid, fn.rm)
-          val out = Pipe(fma.io.validout, ieee(fma.io.out), (stages - 2) max 0).bits
-          val exc = Pipe(fma.io.validout, fma.io.exceptionFlags, (stages - 2) max 0).bits
+          val (out, exc) = if (build) {
+            val fma = Module(new freechips.rocketchip.tile.MulAddRecFNPipe(stages min 2, exp, sig))
+            fma.suggestName("fmaInst")
+            val valid = pred(i) && val_fp
+              fma.io.validin := valid
+            fma.io.op := dgate(valid, fma_op)
+            fma.io.a := recode(dgate(valid, unpack(fma_multiplicand, i)))
+            fma.io.b := recode(dgate(valid, unpack(fma_multiplier, i)))
+            fma.io.c := recode(dgate(valid, unpack(fma_addend, i)))
+            fma.io.roundingMode := dgate(valid, fn.rm)
+            val out = Pipe(fma.io.validout, ieee(fma.io.out), (stages - 2) max 0).bits
+            val exc = Pipe(fma.io.validout, fma.io.exceptionFlags, (stages - 2) max 0).bits
+            (out, exc)
+          } else {
+            (0.U, 0.U)
+          }
           (out, exc)
         }
         val valid = active && val_fp

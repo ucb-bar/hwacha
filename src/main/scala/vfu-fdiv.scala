@@ -46,10 +46,10 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     sp.io.roundingMode := io.req.bits.fn.rm
     hp.io.in := recode_hp(in)
     hp.io.roundingMode := io.req.bits.fn.rm
-    val out = Mux(io.req.bits.fn.fp_is(FPD), dp,
-              Mux(io.req.bits.fn.fp_is(FPS), sp.io.out, hp.io.out))
-    val exc = Mux(io.req.bits.fn.fp_is(FPD), Bits(0),
-              Mux(io.req.bits.fn.fp_is(FPS), sp.io.exceptionFlags, hp.io.exceptionFlags))
+    val out = Mux(io.req.bits.fn.fp_is(FPD) && p(HwachaSupportsFPD).B, dp,
+              Mux(io.req.bits.fn.fp_is(FPS) && p(HwachaSupportsFPS).B, sp.io.out, hp.io.out))
+    val exc = Mux(io.req.bits.fn.fp_is(FPD) && p(HwachaSupportsFPD).B, Bits(0),
+              Mux(io.req.bits.fn.fp_is(FPS) && p(HwachaSupportsFPS).B, sp.io.exceptionFlags, hp.io.exceptionFlags))
     (out, exc)
   }
 
