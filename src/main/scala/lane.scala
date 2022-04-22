@@ -21,6 +21,10 @@ case object HwachaStagesSFMA extends Field[Int]
 case object HwachaStagesHFMA extends Field[Int]
 case object HwachaStagesFConv extends Field[Int]
 case object HwachaStagesFCmp extends Field[Int]
+case object HwachaFLen extends Field[Int]
+case object HwachaSupportsFPD extends Field[Boolean]
+case object HwachaSupportsFPS extends Field[Boolean]
+case object HwachaSupportsFPH extends Field[Boolean]
 
 abstract trait LaneParameters extends UsesHwachaParameters {
   val nSRAM = p(HwachaNSRAMRFEntries)

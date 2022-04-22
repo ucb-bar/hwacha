@@ -24,6 +24,7 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
 
     case HwachaCommitLog => true
 
+
     // hwacha constants
     case HwachaNAddressRegs => 32
     case HwachaNScalarRegs => 64
@@ -65,6 +66,12 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaStagesHFMA => 3
     case HwachaStagesFConv => 2
     case HwachaStagesFCmp => 1
+    case HwachaFLen => 64
+    case HwachaSupportsFPD => site(HwachaFLen) >= 64
+    case HwachaSupportsFPS => site(HwachaFLen) >= 32
+    case HwachaSupportsFPH => site(HwachaFLen) >= 16
+    case HwachaSupportsFDIV => true
+    case HwachaSupportsIDIV => true
 
     case HwachaNSeqEntries => 8
 
@@ -92,5 +99,6 @@ class DefaultHwachaConfig extends Config((site, here, up) => {
     case HwachaVRUMaxRunaheadBytes => 16777216
     case HwachaCMDQLen => 32
     case HwachaVSETVLCompress => true
+    case HwachaUseAtlNode => false
   }
 )

@@ -66,29 +66,35 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with
       }
     }
 
+  val supported = List(p(HwachaSupportsFPD), p(HwachaSupportsFPD), p(HwachaSupportsFPH))
+
   val results =
     List((unpack_d _, expand_float_d _, FType.D),
          (unpack_w _, expand_float_s _, FType.S),
-         (unpack_h _, expand_float_h _, FType(whp._1, whp._2))) zip cmps zip ins zip classifys map {
-      case ((((unpack, expand, fType), cmp), (input0, input1)), classify) => {
-        val less = cmp.lt || (input0.asSInt < 0.S && input1.asSInt >= 0.S)
-        val in0_nan = fType.isNaN(input0)
-        val in1_nan = fType.isNaN(input1)
-        val isInvalid = fType.isSNaN(input0) || fType.isSNaN(input1)
-        val isNaNOut = (in0_nan && in1_nan)
-        val want_min = in1_nan || (fn.op_is(FC_MIN) === less) && !in0_nan
-        val in0_minmax = expand(unpack(in0, 0))
-        val in1_minmax = expand(unpack(in1, 0))
-        val qnan = fType.qNaN
-        val ieeeNaN = if(fType == FType.S || fType == FType.D) ieee(qnan, fType) else qnan
-        val minmax =
-          Mux(isNaNOut, ieeeNaN, Mux(want_min, in0_minmax, in1_minmax))
-        val sel = List(FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
-        val in = List(
-          minmax,        // FC_MIN
-          minmax,        // FC_MAX
-          classify._1)   // FC_CLASS
-        Mux1H(sel, in)
+         (unpack_h _, expand_float_h _, FType(whp._1, whp._2))) zip cmps zip ins zip classifys zip supported map {
+      case (((((unpack, expand, fType), cmp), (input0, input1)), classify), build) => {
+        if (build) {
+          val less = cmp.lt || (input0.asSInt < 0.S && input1.asSInt >= 0.S)
+          val in0_nan = fType.isNaN(input0)
+          val in1_nan = fType.isNaN(input1)
+          val isInvalid = fType.isSNaN(input0) || fType.isSNaN(input1)
+          val isNaNOut = (in0_nan && in1_nan)
+          val want_min = in1_nan || (fn.op_is(FC_MIN) === less) && !in0_nan
+          val in0_minmax = expand(unpack(in0, 0))
+          val in1_minmax = expand(unpack(in1, 0))
+          val qnan = fType.qNaN
+          val ieeeNaN = if(fType == FType.S || fType == FType.D) ieee(qnan, fType) else qnan
+          val minmax =
+            Mux(isNaNOut, ieeeNaN, Mux(want_min, in0_minmax, in1_minmax))
+          val sel = List(FC_MIN,FC_MAX,FC_CLASS).map(fn.op_is(_))
+          val in = List(
+            minmax,        // FC_MIN
+            minmax,        // FC_MAX
+            classify._1)   // FC_CLASS
+          Mux1H(sel, in)
+        } else {
+          0.U
+        }
       }
     }
 
