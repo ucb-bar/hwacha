@@ -18,14 +18,26 @@ class WithNLanes(n: Int) extends Config((site, here, up) => {
 })
 
 class With32BtbEntires extends Config((site, here, up) => {
-  case RocketTilesKey => up(RocketTilesKey, site) map { r =>
-    r.copy(btb = r.btb.map(_.copy(nEntries = 32)))
+  case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
+    case tp: RocketTileAttachParams => tp.copy(
+      tileParams = tp.tileParams.copy(
+        btb = tp.tileParams.btb.map(_.copy(nEntries = 32))
+      )
+    )
   }
 })
 
 class Process28nmConfig extends Config((site, here, up) => {
-  case RocketTilesKey => up(RocketTilesKey, site) map { r =>
-    r.copy(core = r.core.copy(fpu = r.core.fpu.map(_.copy(sfmaLatency = 3, dfmaLatency = 4))))
+  case TilesLocated(InSubsystem) => up(TilesLocated(InSubsystem), site) map {
+    case tp: RocketTileAttachParams => tp.copy(
+      tileParams = tp.tileParams.copy(
+        core = tp.tileParams.core.copy(
+          fpu = tp.tileParams.core.fpu.map(_.copy(
+            sfmaLatency = 3, dfmaLatency = 4)
+          )
+        )
+      )
+    )
   }
 })
 
