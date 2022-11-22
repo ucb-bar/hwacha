@@ -133,15 +133,15 @@ class Hwacha(implicit p: Parameters) extends LazyRoCC(
   val vus = Seq.fill(nLanes) {LazyModule(new VectorUnit())}
   val atlBus = LazyModule(new TLXbar)
 
-  atlNode := atlBus.node
+  atlNode := TLWidthWidget(16) := atlBus.node
   atlBus.node := icache.masterNode
-  atlBus.node := smu.masterNode
+  atlBus.node := TLWidthWidget(16) := smu.masterNode
   val vru = if(confvru) {
     val vruM = LazyModule(new VRU)
-    atlBus.node := vruM.masterNode
+    atlBus.node := TLWidthWidget(16) := vruM.masterNode
     Some(vruM)
   } else None
-  vus.map(_.masterNode).foreach { tlNode := _ }
+  vus.map(_.masterNode).foreach { tlNode := TLWidthWidget(16) := _ }
 }
 
 class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp(outer)
