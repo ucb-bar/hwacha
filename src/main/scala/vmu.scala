@@ -22,7 +22,7 @@ trait MemParameters extends UsesHwachaParameters
   val bPgIdx = pgIdxBits
   val pgSize = 1 << bPgIdx
 
-  val tlDataBytes = p(TileVisibilityNodeKey).edges.out.head.manager.beatBytes
+  val tlDataBytes = 16
   val tlByteAddrBits = log2Up(tlDataBytes)
   val tlDataBits = tlDataBytes*8
 
