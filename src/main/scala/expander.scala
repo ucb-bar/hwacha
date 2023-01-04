@@ -185,7 +185,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     def mark_sram_reads = {
-      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) foreach {
+      (Seq(preg_vs1, preg_vs2, preg_vs3).zipWithIndex) foreach {
         case (fn, idx) => {
           val read_idx = rport_idx(idx)
           when (rport_valid(idx)) {
@@ -415,7 +415,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     def mark_lop_sreg(sreg: Vec[Bool], nregs: Int) = {
-      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) map { case (fn, i) =>
+      (Seq(preg_vs1, preg_vs2, preg_vs3).zipWithIndex) map { case (fn, i) =>
         if (nregs > i) {
           val rinfo = fn(seq_exp.reg)
           sreg(i) := rinfo.valid && rinfo.is_scalar()
@@ -441,7 +441,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       (lop: VFVULaneOp) => { lop.fn := seq_exp.fn.vfvu(); mark_lop_sreg(lop.sreg, 1) })
 
     def mark_vipu = {
-      (Seq(preg_vs1, preg_vs2, preg_vs3) zipWithIndex) foreach { case (fn, idx) =>
+      (Seq(preg_vs1, preg_vs2, preg_vs3).zipWithIndex) foreach { case (fn, idx) =>
         check_assert("pred read" + idx, tick_pred_read(idx), UInt(0))
         assert(fn(seq_vipu.reg).valid, "pred op with no predicate")
         val e = tick_pred_read(idx).s(0)

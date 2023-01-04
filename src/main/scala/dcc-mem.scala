@@ -128,7 +128,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
-  val bpqs = (io.bpqs zipWithIndex) map { case (enq, i) =>
+  val bpqs = (io.bpqs.zipWithIndex) map { case (enq, i) =>
     val bpq = Module(new Queue(new BPQEntry, nBPQ))
     bpq.suggestName("bpqInst")
     val placntr = Module(new LookAheadCounter(nBPQ, nBPQ))
@@ -152,7 +152,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   val vlen_next = op.vlen - strip
 
   val deq_bpqs = strip_to_bmask(strip)
-  val mask_bpqs_valid = (bpqs_deq zipWithIndex) map { case (bpq, i) =>
+  val mask_bpqs_valid = (bpqs_deq.zipWithIndex) map { case (bpq, i) =>
     !deq_bpqs(i) || bpq.valid }
   val enq_lpred = op.active.enq_vlu()
   val enq_spred = op.active.enq_vsu()
@@ -187,13 +187,13 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     }
   }
 
-  (bpqs_deq zipWithIndex) map { case (bpq, i) =>
+  (bpqs_deq.zipWithIndex) map { case (bpq, i) =>
     bpq.ready := fire(mask_bpqs_valid(i), deq_bpqs(i)) }
   io.pred.valid := fire(io.pred.ready)
   io.lpred.valid := fire(mask_lpred_ready, enq_lpred)
   io.spred.valid := fire(mask_spred_ready, enq_spred)
 
-  val pred = Vec((bpqs_deq zipWithIndex) map { case (bpq, i) =>
+  val pred = Vec((bpqs_deq.zipWithIndex) map { case (bpq, i) =>
     dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).asUInt
   io.pred.bits.pred := pred
   io.lpred.bits := pred
