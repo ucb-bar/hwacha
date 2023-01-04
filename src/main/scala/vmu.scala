@@ -251,7 +251,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
         when (!indexed) {
           op.base := io.agu.out.bits.addr
         }
-        op.vlen := vlen_next.asUInt()
+        op.vlen := vlen_next.asUInt
         op.eidx := eidx_next
         op.first := Bool(false)
         when (vlen_end) {
