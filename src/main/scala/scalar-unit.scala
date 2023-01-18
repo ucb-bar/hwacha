@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.rocket._
-import freechips.rocketchip.rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
 
@@ -467,14 +466,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     Mux(id_ctrl.alu_dw === DW32, RocketConstants.DW_32, RocketConstants.DW_64)
   muldiv.io.req.bits.fn :=
     Mux(id_mul_inst,
-      Mux(id_ctrl.vimu_fn === IM_M,    FN_MUL,
-      Mux(id_ctrl.vimu_fn === IM_MH,   FN_MULH,
-      Mux(id_ctrl.vimu_fn === IM_MHU,  FN_MULHU,
-                                       FN_MULHSU))),
-      Mux(id_ctrl.vidu_fn === ID_DIV,  FN_DIV,
-      Mux(id_ctrl.vidu_fn === ID_DIVU, FN_DIVU,
-      Mux(id_ctrl.vidu_fn === ID_REM,  FN_REM,
-                                       FN_REMU))))
+      Mux(id_ctrl.vimu_fn === IM_M,    aluFn.FN_MUL,
+      Mux(id_ctrl.vimu_fn === IM_MH,   aluFn.FN_MULH,
+      Mux(id_ctrl.vimu_fn === IM_MHU,  aluFn.FN_MULHU,
+                                       aluFn.FN_MULHSU))),
+      Mux(id_ctrl.vidu_fn === ID_DIV,  aluFn.FN_DIV,
+      Mux(id_ctrl.vidu_fn === ID_DIVU, aluFn.FN_DIVU,
+      Mux(id_ctrl.vidu_fn === ID_REM,  aluFn.FN_REM,
+                                       aluFn.FN_REMU))))
   muldiv.io.req.bits.in1 := id_sreads(0)
   muldiv.io.req.bits.in2 := id_sreads(1)
   muldiv.io.req.bits.tag := id_ctrl.vd

@@ -39,7 +39,9 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters with UsesHwachaOnlyParameters
+abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters with UsesHwachaOnlyParameters {
+  val aluFn = new freechips.rocketchip.rocket.ALUFN
+}
 
 abstract trait UsesHwachaOnlyParameters {
   implicit val p: Parameters
