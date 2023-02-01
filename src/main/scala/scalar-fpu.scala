@@ -1,26 +1,27 @@
 package hwacha 
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import freechips.rocketchip.config._
 import freechips.rocketchip.tile.FPConstants._
 import freechips.rocketchip.tile.{FPResult, FPUCtrlSigs, HasFPUParameters}
 import freechips.rocketchip.util._
 
 class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUParameters {
-  val io = new Bundle {
-    val req = Decoupled(new freechips.rocketchip.tile.FPInput()).flip
+  val io = IO(new Bundle {
+    val req = Flipped(Decoupled(new freechips.rocketchip.tile.FPInput()))
     val resp = Decoupled(new FPResult())
-  }
+  })
   //buffer for simple back-pressure model
-  val resp_reg = Reg(Bits())
-  val resp_reg_val = Reg(init=Bool(false))
+  val resp_reg = Reg(UInt())
+  val resp_reg_val = RegInit(false.B)
 
   io.req.ready := !resp_reg_val
 
   val ex_ctrl = Wire(new FPUCtrlSigs)
   ex_ctrl <> io.req.bits
   val wb_ctrl = RegEnable(ex_ctrl, io.req.valid)
-  val wb_reg_valid = Reg(next=io.req.valid, init=Bool(false))
+  val wb_reg_valid = RegNext(io.req.valid, init=false.B)
 
   val req = new freechips.rocketchip.tile.FPInput
   req := io.req.bits
@@ -68,18 +69,18 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUPar
   )
   def latencyMask(c: FPUCtrlSigs, offset: Int) = {
     require(pipes.forall(_.lat >= offset))
-    pipes.map(p => Mux(p.cond(c), UInt(1 << p.lat-offset), UInt(0))).reduce(_|_)
+    pipes.map(p => Mux(p.cond(c), (1.U << (1 << p.lat-offset)), 0.U)).reduce(_|_)
   }
-  def pipeid(c: FPUCtrlSigs) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), UInt(p._2), UInt(0))).reduce(_|_)
+  def pipeid(c: FPUCtrlSigs) = pipes.zipWithIndex.map(p => Mux(p._1.cond(c), p._2.U, 0.U)).reduce(_|_)
   val maxLatency = pipes.map(_.lat).max
   val wbLatencyMask = latencyMask(wb_ctrl, 2)
 
   class WBInfo extends Bundle {
     val single = Bool()
-    val pipeid = UInt(width = log2Ceil(pipes.size))
+    val pipeid = UInt(log2Ceil(pipes.size).W)
   }
 
-  val wen = Reg(init=Bits(0, maxLatency-1))
+  val wen = RegInit(0.U((maxLatency-1).W))
   val wbInfo = Reg(Vec(maxLatency-1, new WBInfo))
   val wb_wen = wb_reg_valid && (wb_ctrl.fma || wb_ctrl.fastpipe || wb_ctrl.fromint)
   val write_port_busy = RegEnable(wb_wen && (wbLatencyMask & latencyMask(ex_ctrl, 1)).orR || (wen & latencyMask(ex_ctrl, 0)).orR, io.req.valid)
@@ -88,9 +89,9 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUPar
   for (i <- 0 until maxLatency-2) {
     when (wen(i+1)) { wbInfo(i) := wbInfo(i+1) }
   }
-  wen := wen >> UInt(1)
+  wen := wen >> 1.U
   when (wb_wen) {
-    wen := wen >> UInt(1) | wbLatencyMask
+    wen := wen >> 1.U | wbLatencyMask
     for (i <- 0 until maxLatency-1) {
       when (!write_port_busy && wbLatencyMask(i)) {
         wbInfo(i).single := wb_ctrl.typeTagOut === S
@@ -104,15 +105,15 @@ class ScalarFPU(implicit p: Parameters) extends HwachaModule()(p) with HasFPUPar
   val wexc = (pipes.map(_.res.exc): Seq[UInt])(wsrc)
   val resp_data = Mux(!fpiu.io.out.valid, wdata, fpiu.io.out.bits.toint) 
   io.resp.bits.data := resp_data
-  when (wen(0) || fpiu.io.out.valid ) { 
+  when (wen(0) || fpiu.io.out.valid ) {
     when(!io.resp.ready){
       resp_reg := resp_data
-      resp_reg_val := Bool(true)
+      resp_reg_val := true.B
     }
   }
   when(io.resp.ready && resp_reg_val){
     io.resp.bits.data := resp_reg
-    resp_reg_val := Bool(false)
+    resp_reg_val := false.B
   }
   io.resp.valid := wen(0) || fpiu.io.out.valid || resp_reg_val
 }

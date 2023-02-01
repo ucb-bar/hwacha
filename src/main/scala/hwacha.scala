@@ -39,7 +39,9 @@ abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
   with UsesHwachaParameters
 
-abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters with UsesHwachaOnlyParameters
+abstract trait UsesHwachaParameters extends freechips.rocketchip.tile.HasCoreParameters with UsesHwachaOnlyParameters {
+  val aluFn = new freechips.rocketchip.rocket.ALUFN
+}
 
 abstract trait UsesHwachaOnlyParameters {
   implicit val p: Parameters
@@ -250,7 +252,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
 
   mseq.io.op.valid := fire_vxu(mseq.io.op.ready)
   mseq.io.op.bits <> scalar.io.vxu.bits
-  (mseq.io.master.clear zipWithIndex) map { case (c, r) =>
+  (mseq.io.master.clear.zipWithIndex) map { case (c, r) =>
     c := vus.map(_.io.mseq.clear(r)).reduce(_&&_)
   }
   scalar.io.pending.mseq <> mseq.io.pending
@@ -273,7 +275,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   (vus zip mou.io.check.vus) map { case (vu, mocheck) => vu.io.mocheck <> mocheck }
   (scalar.io.pending.mrt.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
 
-  (vus zipWithIndex) map { case (vu, i) =>
+  (vus.zipWithIndex) map { case (vu, i) =>
     vu.io.id := UInt(i)
 
     vu.io.cfg <> rocc.io.cfg

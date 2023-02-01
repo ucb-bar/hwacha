@@ -46,10 +46,10 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
     Mux(io.req.bits.fn.dw_is(DW32), RocketConstants.DW_32,
                                     RocketConstants.DW_64)
   div.io.req.bits.fn :=
-    Mux(io.req.bits.fn.op_is(ID_DIV),  ALU.FN_DIV,
-    Mux(io.req.bits.fn.op_is(ID_DIVU), ALU.FN_DIVU,
-    Mux(io.req.bits.fn.op_is(ID_REM),  ALU.FN_REM,
-                                       ALU.FN_REMU)))
+    Mux(io.req.bits.fn.op_is(ID_DIV),  aluFn.FN_DIV,
+    Mux(io.req.bits.fn.op_is(ID_DIVU), aluFn.FN_DIVU,
+    Mux(io.req.bits.fn.op_is(ID_REM),  aluFn.FN_REM,
+                                       aluFn.FN_REMU)))
   div.io.req.bits.in1 := io.req.bits.in0
   div.io.req.bits.in2 := io.req.bits.in1
   div.io.kill := Bool(false)

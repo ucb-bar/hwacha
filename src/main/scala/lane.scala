@@ -307,7 +307,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   banksrw.map { b =>
     b.wpred.pred := Vec(vfcus.map(_.bits.cmp)).asUInt
     b.wpred.mask := vfcu_vals
-    (b.wdata zipWithIndex) map { case (bwdata, i) =>
+    (b.wdata.zipWithIndex) map { case (bwdata, i) =>
       bwdata.data := wdata(i)
       bwdata.pred := wdata_pred(i)
     }

@@ -3,7 +3,6 @@ package hwacha
 import Chisel._
 import freechips.rocketchip.config._
 import freechips.rocketchip.rocket._
-import freechips.rocketchip.rocket.ALU._
 import ScalarFPUDecode._
 import HardFloatHelper._
 
@@ -20,7 +19,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     val cfg = new HwachaConfigIO().flip
 
     val cmdq = new CMDQIO().flip
-    val imem = new FrontendIO(p(HwachaIcacheKey))
+    val imem = new hwacha.FrontendIO(p(HwachaIcacheKey))
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
@@ -163,7 +162,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val pending_cbranch = Reg(init=Bool(false))
 
   val ex_reg_valid = Reg(Bool())
-  val ex_reg_ctrl = Reg(new IntCtrlSigs)
+  val ex_reg_ctrl = Reg(new hwacha.IntCtrlSigs)
   val ex_reg_pc = Reg(UInt())
   val ex_reg_inst = Reg(Bits())
   val ex_reg_bypass = Reg(Vec(3, Bool()))
@@ -171,7 +170,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_reg_ars = Reg(Vec(2, Bits()))
 
   val wb_reg_valid = Reg(Bool())
-  val wb_reg_ctrl = Reg(new IntCtrlSigs)
+  val wb_reg_ctrl = Reg(new hwacha.IntCtrlSigs)
   val wb_reg_pc = Reg(UInt())
   val wb_reg_inst = Reg(Bits())
   val wb_reg_wdata = Reg(Bits())
@@ -201,7 +200,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_pc = io.imem.resp.bits.pc
   val id_inst = io.imem.resp.bits.data; require(io.imem.resp.bits.data.getWidth == HwachaElementInstBytes*8)
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
-  val id_ctrl = Wire(new IntCtrlSigs()).decode(id_inst, decode_table)
+  val id_ctrl = Wire(new hwacha.IntCtrlSigs()).decode(id_inst, decode_table)
   when (!killd && id_ctrl.decode_stop) {
     vf_active := Bool(false)
   }
@@ -467,14 +466,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     Mux(id_ctrl.alu_dw === DW32, RocketConstants.DW_32, RocketConstants.DW_64)
   muldiv.io.req.bits.fn :=
     Mux(id_mul_inst,
-      Mux(id_ctrl.vimu_fn === IM_M,    FN_MUL,
-      Mux(id_ctrl.vimu_fn === IM_MH,   FN_MULH,
-      Mux(id_ctrl.vimu_fn === IM_MHU,  FN_MULHU,
-                                       FN_MULHSU))),
-      Mux(id_ctrl.vidu_fn === ID_DIV,  FN_DIV,
-      Mux(id_ctrl.vidu_fn === ID_DIVU, FN_DIVU,
-      Mux(id_ctrl.vidu_fn === ID_REM,  FN_REM,
-                                       FN_REMU))))
+      Mux(id_ctrl.vimu_fn === IM_M,    aluFn.FN_MUL,
+      Mux(id_ctrl.vimu_fn === IM_MH,   aluFn.FN_MULH,
+      Mux(id_ctrl.vimu_fn === IM_MHU,  aluFn.FN_MULHU,
+                                       aluFn.FN_MULHSU))),
+      Mux(id_ctrl.vidu_fn === ID_DIV,  aluFn.FN_DIV,
+      Mux(id_ctrl.vidu_fn === ID_DIVU, aluFn.FN_DIVU,
+      Mux(id_ctrl.vidu_fn === ID_REM,  aluFn.FN_REM,
+                                       aluFn.FN_REMU))))
   muldiv.io.req.bits.in1 := id_sreads(0)
   muldiv.io.req.bits.in2 := id_sreads(1)
   muldiv.io.req.bits.tag := id_ctrl.vd

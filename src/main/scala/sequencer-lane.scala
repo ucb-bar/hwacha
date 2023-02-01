@@ -146,7 +146,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val wpred_mat_vd = wpred_mat(reg_vd, pregid_vd)
 
     def wport_lookup(row: Vec[Bool], level: UInt) =
-      Vec((row zipWithIndex) map { case (r, i) => r && UInt(i) > level })
+      Vec((row.zipWithIndex) map { case (r, i) => r && UInt(i) > level })
 
     val raw =
       (0 until nSeq).map { r =>
@@ -210,7 +210,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
   val shazard = new {
     def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
       val mask =
-        (lops zipWithIndex) map { case (lop, i) =>
+        (lops.zipWithIndex) map { case (lop, i) =>
           dgate(fn(lop), Wire(UInt(width = lops.size+nBanks-1), init = strip_to_bmask(lop.bits.strip) << UInt(i)))
         } reduce(_|_)
       mask >> UInt(1) // shift right by one because we are looking one cycle in the future
@@ -382,7 +382,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val first = ff((i: Int) => afn(me(i).active))
       val strip = stripfn(first)
 
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val valids = Vec((first.zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = la.available
       def fires(n: Int) = valids(n) && ready
       val fire = valids.reduce(_ || _) && ready
@@ -402,7 +402,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val fn = mread(first, (me: MasterSeqEntry) => me.fn)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
 
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val valids = Vec((first.zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val readys = Vec((0 until nSeq) map { case i =>
         io.vmu.pala.available &&
         (!mcmd.read || io.mocheck(i).load && io.lreq.available) &&
@@ -429,7 +429,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val first = ff((i: Int) => me(i).active.vlu)
       val strip = stripfn(first)
 
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val valids = Vec((first.zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = io.lla.available
       def fires(n: Int) = valids(n) && ready
       val fire = valids.reduce(_ || _) && ready
@@ -489,7 +489,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       }
 
       def debug = {
-        (io.debug.consider zipWithIndex) foreach { case (io, i) => io := consider(i) }
+        (io.debug.consider.zipWithIndex) foreach { case (io, i) => io := consider(i) }
         (io.debug.first_sched zip first_sched) foreach { case (io, c) => io := c }
         (io.debug.second_sched zip second_sched) foreach { case (io, c) => io := c }
       }
@@ -533,7 +533,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         out
       }
 
-      val valids = Vec((first zipWithIndex) map { case (f, i) => f && nohazards(i) })
+      val valids = Vec((first.zipWithIndex) map { case (f, i) => f && nohazards(i) })
       val ready = io.pla.available && (!sel || exp.fire_vgu)
       def fires(n: Int) = valids(n) && ready
       val fire = valids.reduce(_ || _) && ready
@@ -594,7 +594,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       def logic = {
         io.dpla.cnt := cnt
         io.dpla.reserve := exp.fire_vqu
-        (io.dqla zipWithIndex) map { case (la, i) =>
+        (io.dqla.zipWithIndex) map { case (la, i) =>
           la.cnt := cnt
           la.reserve := exp.fire_vqu_latch(i)
         }

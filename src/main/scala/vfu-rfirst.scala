@@ -70,7 +70,7 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
   }
 
   io.result.valid := fire(io.result.ready)
-  (io.lane zipWithIndex) map { case (lane, i) =>
+  (io.lane.zipWithIndex) map { case (lane, i) =>
     lane.ready := fire(mask_lane_valid(i), deq_lane(i)) }
 
   opq.io.deq.ready := Bool(false)
