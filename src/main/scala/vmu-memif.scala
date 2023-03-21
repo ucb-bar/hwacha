@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import freechips.rocketchip.tilelink._
 
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp

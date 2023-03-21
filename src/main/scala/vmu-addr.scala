@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 class AGUOperand(implicit p: Parameters) extends VMUBundle()(p) {
   val base = UInt(width = bVAddrExtended)

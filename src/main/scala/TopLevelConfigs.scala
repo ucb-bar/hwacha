@@ -7,7 +7,7 @@ import freechips.rocketchip.system._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.rocket._
 import hwacha._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 class HwachaConfig extends Config(new DefaultHwachaConfig ++ new DefaultConfig)
 

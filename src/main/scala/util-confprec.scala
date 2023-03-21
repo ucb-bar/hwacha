@@ -2,7 +2,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 trait PrecLogic {
   def confprec_decode(prec: UInt): Seq[(Bool, Int)] =

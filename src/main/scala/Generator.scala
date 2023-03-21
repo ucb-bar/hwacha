@@ -2,7 +2,7 @@ package hwacha
 
 import scala.collection.mutable.LinkedHashSet
 import freechips.rocketchip.system._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 class VectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-vec")
 class ScalarVectorAssemblyTestSuite(prefix: String, names: LinkedHashSet[String])(env: String) extends AssemblyTestSuite(prefix, names)(env + "-svec")

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import freechips.rocketchip.util.ParameterizedBundle
 import freechips.rocketchip.tile._
 import freechips.rocketchip.rocket.ICacheParams

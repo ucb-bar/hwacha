@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 case object HwachaNSRAMRFEntries extends Field[Int]
 case object HwachaNFFRFEntries extends Field[Int]
