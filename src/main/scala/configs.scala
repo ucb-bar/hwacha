@@ -3,7 +3,7 @@ package hwacha
 import Chisel._
 import freechips.rocketchip._
 import freechips.rocketchip.system._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.rocket._

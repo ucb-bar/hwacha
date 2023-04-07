@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 class RPredOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val active = Bits(width = nSlices)

@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import HwachaElementInstructions._
 import freechips.rocketchip.util._
 import ScalarFPUDecode._

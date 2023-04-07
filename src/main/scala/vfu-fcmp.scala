@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import DataGating._
 import HardFloatHelper._
 import freechips.rocketchip.tile.FType

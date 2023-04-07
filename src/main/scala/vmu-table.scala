@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 
 class TableWIO[T <: Data](gen: => T, sztag: Int)
   extends DecoupledIO(gen) {

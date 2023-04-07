@@ -1,7 +1,7 @@
 package hwacha
 
 import Chisel._
-import freechips.rocketchip.config._
+import org.chipsalliance.cde.config._
 import freechips.rocketchip.tilelink.TLEdgeOut
 import freechips.rocketchip.tile.TileVisibilityNodeKey
 
