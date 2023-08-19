@@ -1,6 +1,7 @@
 package hwacha
 
 import Chisel._
+import chisel3.DontCare
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.util.ParameterizedBundle
 import freechips.rocketchip.tile._
@@ -213,6 +214,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
     rocc.io.cmdqs.vru.cnt.ready := Bool(true)
     rocc.io.cmdqs.vru.status.ready := Bool(true)
 
+    icache.io.vru := DontCare
     icache.io.vru.req.valid := Bool(false)
     icache.io.vru.active := Bool(false)
 

@@ -152,6 +152,9 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
     tlb.io.resp.miss || tlb.io.resp.pf.inst
     //TODO: check ptw result
   icache.io.s2_kill := Bool(false)
+  icache.io.s2_cacheable := false.B
+  icache.io.s2_prefetch := false.B
+  icache.io.clock_enabled := true.B
 
   tlb.io.req.valid := Reg(next=req.valid)
   tlb.io.req.bits.vaddr := s1_pc
