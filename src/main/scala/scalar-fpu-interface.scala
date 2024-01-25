@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tile.FPConstants._
 import freechips.rocketchip.tile.FType
@@ -81,18 +82,18 @@ class HwachaFPResult(implicit p: Parameters) extends freechips.rocketchip.tile.F
 }
 
 class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val hwacha = new Bundle {
-      val req = Decoupled(new HwachaFPInput).flip
+      val req = Flipped(Decoupled(new HwachaFPInput))
       val resp = Decoupled(new HwachaFPResult)
     }
     val rocc = new Bundle {
       val req = Decoupled(new freechips.rocketchip.tile.FPInput)
-      val resp = Decoupled(new freechips.rocketchip.tile.FPResult).flip
+      val resp = Flipped(Decoupled(new freechips.rocketchip.tile.FPResult))
     }
-  }
+  })
 
-  val pending_fpu = Reg(init=Bool(false))
+  val pending_fpu = RegInit(false.B)
   val pending_fpu_req = Reg(new HwachaFPInput)
   val pending_fpu_typ = Reg(Bits(width=2))
 
@@ -122,7 +123,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   io.rocc.req.valid := fire(mask_rocc_req_ready, enq_rocc)
 
   when (fire(null)) {
-    pending_fpu := Bool(true)
+    pending_fpu := true.B
     pending_fpu_req := hreq
     pending_fpu_typ := Mux(hreq.fromint, hreq.in_fmt, hreq.typ)
   }
@@ -163,7 +164,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   respq.io.enq.valid := io.rocc.resp.valid || fire(mask_respq_enq_ready, !enq_rocc)
   respq.io.enq.bits := io.rocc.resp.bits
   when (fire(null, !enq_rocc)) {
-    respq.io.enq.bits.data := Mux(hreq.in_fmt === UInt(0), rec_s_in1, box(h2s(0), typeTag(FType.S).U))
+    respq.io.enq.bits.data := Mux(hreq.in_fmt === 0.U, rec_s_in1, box(h2s(0), typeTag(FType.S).U))
   }
 
   respq.io.deq.ready := io.hwacha.resp.ready
@@ -171,7 +172,7 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   io.rocc.resp.ready := respq.io.enq.ready
 
   when (respq.io.deq.fire) {
-    pending_fpu := Bool(false)
+    pending_fpu := false.B
   }
 
   private val rresp = respq.io.deq.bits
@@ -188,8 +189,8 @@ class ScalarFPUInterface(implicit p: Parameters) extends HwachaModule()(p) with 
   val unrec_d = ieee(rresp.data)
   val fsgnj_s = unrec_s.asSInt.pad(64).asUInt
   val unrec_fpu_resp =
-    Mux(pending_fpu_typ === UInt(0), unrec_s,
-      Mux(pending_fpu_typ === UInt(1), unrec_d,
+    Mux(pending_fpu_typ === 0.U, unrec_s,
+      Mux(pending_fpu_typ === 1.U, unrec_d,
         expand_float_h(unrec_h)))
 
   hresp.tag := pending_fpu_req.tag

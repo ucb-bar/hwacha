@@ -1,30 +1,31 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class VMUStoreCtrl(implicit p: Parameters) extends VMUBundle()(p) {
   val mode = new Bundle {
     val unit = Bool()
   }
-  val base = UInt(width = tlByteAddrBits)
+  val base = UInt(tlByteAddrBits.W)
   val mt = new DecodedMemType
 }
 
 class VMUStoreMeta(implicit p: Parameters) extends VMUMetaStore with VMUMetaCount {
-  val offset = UInt(width = tlByteAddrBits)
+  val offset = UInt(tlByteAddrBits.W)
 }
 class VMUStoreIO(implicit p: Parameters) extends VSDQIO()(p) {
-  val meta = new VMUStoreMeta().asInput
+  val meta = Input(new VMUStoreMeta())
 
 }
 
 class SBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val ctrl = Valid(new VMUStoreCtrl).flip
-    val lane = new VSDQIO().flip
+  val io = IO(new Bundle {
+    val ctrl = Flipped(Valid(new VMUStoreCtrl))
+    val lane = Flipped(new VSDQIO())
     val mem = new VMUStoreIO
-  }
+  })
 
   private val op = io.ctrl.bits
   private val mts = Seq(op.mt.d, op.mt.w, op.mt.h, op.mt.b)
@@ -38,11 +39,11 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
   private def saturate[T <: Bits](x: T) =
     Cat(x(tlByteAddrBits-1) & (!op.mt.b), x(tlByteAddrBits-2, 0))
 
-  val lead = Reg(init = Bool(true))
-  val index = Reg(init = UInt(0, tlByteAddrBits))
+  val lead = RegInit(true.B)
+  val index = RegInit(0.U(tlByteAddrBits.W))
   val index_step = Cat(mts)
   val index_next = saturate(index + index_step)
-  val index_end = (index_next === UInt(0))
+  val index_end = (index_next === 0.U)
 
   val offset_u = saturate(op.base)
   val offset = Mux(op.mode.unit, offset_u, meta.offset)
@@ -55,7 +56,7 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
      save into the hold register */
   private val bpart = bbyte - 8
 
-  val hold = Reg(Bits(width = tlDataBits - 16))
+  val hold = Reg(Bits(tlDataBits - 16))
   when (vsdq.io.deq.fire) {
    /* Byte mode: Align relevant data bits to the upper end of the
       hold register */
@@ -68,16 +69,16 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
 
   val data_head = Cat(vsdq.io.deq.bits.data, hold, Bits(0, 8) /* pad */)
   /* Equivalence: index + (UInt(tlDataBytes) - 1 - offset) */
-  val shift = Cat(UInt(0,1), index) + (~offset)
+  val shift = Cat(0.U(1.W), index) + (~offset)
 
-  val data_align = (data_head >> Cat(shift, UInt(0,3)))(tlDataBits-1, 0)
+  val data_align = (data_head >> Cat(shift, 0.U(3.W)))(tlDataBits-1, 0)
   val data_hi = data_align(tlDataBits-1, bbyte)
   val data_lo = data_align(bbyte-1, 0)
   val data = Cat(Mux(op.mode.unit && op.mt.b, data_lo, data_hi), data_lo)
   io.mem.bits.data := data
 
   val bcnt = meta.ecnt.decode() << op.mt.shift()
-  assert(!op.mt.b || (bcnt <= UInt(tlDataBytes >> 1)),
+  assert(!op.mt.b || (bcnt <= (tlDataBytes >> 1).U),
     "SBox: bcnt exceeds limit")
   val truncate = (bcnt <= offset_u) && !lead && meta.last
 
@@ -95,7 +96,7 @@ class SBox(implicit p: Parameters) extends VMUModule()(p) {
   io.mem.valid := fire(io.mem.ready)
 
   when (fire(null)) {
-    index := Mux(op.mode.unit || meta.last, UInt(0), index_next)
+    index := Mux(op.mode.unit || meta.last, 0.U, index_next)
     lead := meta.last
   }
 }

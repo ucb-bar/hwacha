@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class BankOpIO(implicit p: Parameters) extends VXUBundle()(p) {
@@ -43,30 +44,30 @@ class BWQIO(implicit p: Parameters) extends DecoupledIO(new BWQEntry()(p)) {
 }
 
 class BankRWIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val pdl = Vec(nGPDL, new BankPredEntry()).asOutput
-  val opl = Vec(nGOPL, new BankDataEntry()).asOutput
-  val wpred = new BankPredMaskEntry().asInput
-  val wdata = Vec(nWSel, new BankDataPredEntry()).asInput
+  val pdl = Output(Vec(nGPDL, new BankPredEntry()))
+  val opl = Output(Vec(nGOPL, new BankDataEntry()))
+  val wpred = Input(new BankPredMaskEntry())
+  val wdata = Input(Vec(nWSel, new BankDataPredEntry()))
 
   val bpq = new BPQIO
   val brq = new BRQIO
   val bwq = new Bundle {
-    val mem = new BWQIO().flip
-    val fu = new BWQIO().flip
+    val mem = Flipped(new BWQIO())
+    val fu = Flipped(new BWQIO())
   }
 }
 
 class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
-  val io = new Bundle {
-    val lid = UInt(INPUT)
-    val cfg = new HwachaConfigIO().flip
-    val op = new BankOpIO().flip
+  val io = IO(new Bundle {
+    val lid = Input(UInt())
+    val cfg = Flipped(new HwachaConfigIO())
+    val op = Flipped(new BankOpIO())
     val ack = new Bundle {
       val viu = Valid(new VIUAck)
       val vipu = Valid(new VIPUAck)
     }
     val rw = new BankRWIO
-  }
+  })
 
   val rf = Module(new BankRegfile(bid))
   rf.suggestName("rfInst")
@@ -76,7 +77,7 @@ class Bank(bid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing
   io.rw <> rf.io.global
 
   def valids(valid: Bool, pred: UInt, latency: Int) =
-    ShiftRegister(Mux(valid, pred, Bits(0)), latency)
+    ShiftRegister(Mux(valid, pred, 0.U), latency)
 
   // ALU
   val alu_pred = io.op.viu.bits.pred & rf.io.local.pdl(0).pred

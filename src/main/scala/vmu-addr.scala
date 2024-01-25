@@ -1,24 +1,25 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class AGUOperand(implicit p: Parameters) extends VMUBundle()(p) {
-  val base = UInt(width = bVAddrExtended)
-  val offset = UInt(width = bVAddrExtended)
-  val shift = UInt(width = math.max(bLStride + bLanes, bStrip))
+  val base = UInt(bVAddrExtended.W)
+  val offset = UInt(bVAddrExtended.W)
+  val shift = UInt(math.max(bLStride + bLanes, bStrip).W)
 }
 class AGUResult(implicit p: Parameters) extends VVAQEntry()(p)
 class AGUIO(implicit p: Parameters) extends VMUBundle()(p) {
   val in = Valid(new AGUOperand)
-  val out = Valid(new AGUResult).flip
+  val out = Flipped(Valid(new AGUResult))
 }
 
 class AGU(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
 // COLIN TODO FIXME: report issue in Chisel3 that io can't just equal Vec
-  val io = new Bundle {
-    val ports = Vec(n, new AGUIO).flip
-  }
+  val io = IO(new Bundle {
+    val ports = Flipped(Vec(n, new AGUIO))
+  })
 
   val in = io.ports.init.foldRight(io.ports.last.in.bits) { case (a, b) =>
     Mux(a.in.valid, a.in.bits, b) /* Priority mux */
@@ -26,7 +27,7 @@ class AGU(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
   val offset = in.offset << in.shift
   val addr = in.base + offset
 
-  val mask = io.ports.init.map(!_.in.valid).scanLeft(Bool(true))(_ && _)
+  val mask = io.ports.init.map(!_.in.valid).scanLeft(true.B)(_ && _)
   io.ports.zip(mask).foreach { case (x, m) =>
     x.out.valid := x.in.valid && m
     x.out.bits.addr := addr
@@ -35,7 +36,7 @@ class AGU(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
 
 
 class VMUPipeEntry(implicit p: Parameters) extends VMUBundle()(p) {
-  val addr = UInt(width = bPAddr - tlByteAddrBits)
+  val addr = UInt((bPAddr - tlByteAddrBits).W)
   val meta = new VMUMetaAddr
 }
 class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p)) {
@@ -43,10 +44,10 @@ class VMUPipeIO(implicit p: Parameters) extends DecoupledIO(new VMUPipeEntry()(p
 
 
 class VVAQ(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val enq = new VVAQIO().flip
+  val io = IO(new Bundle {
+    val enq = Flipped(new VVAQIO())
     val deq = new VVAQIO
-  }
+  })
 
   val q = Module(new Queue(io.enq.bits, nVVAQ))
   q.suggestName("qInst")
@@ -55,36 +56,36 @@ class VVAQ(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class ABox0(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val vvaq = new VVAQIO().flip
+  val io = IO(new VMUIssueIO {
+    val vvaq = Flipped(new VVAQIO())
     val vpaq = new VPAQIO
     val vcu = new VCUIO
 
     val agu = new AGUIO
     val tlb = new TLBIO
-    val mask = new VMUMaskIO_0().flip
-    val xcpt = new XCPTIO().flip
-  }
+    val mask = Flipped(new VMUMaskIO_0())
+    val xcpt = Flipped(new XCPTIO())
+  })
 
   val op = Reg(new VMUDecodedOp)
   private val mask = io.mask.bits
   val pred = mask.pred
 
   when (!op.mode.unit) {
-    assert(!io.mask.valid || !pred || (mask.nonunit.shift === UInt(0)),
+    assert(!io.mask.valid || !pred || (mask.nonunit.shift === 0.U),
       "ABox0: simultaneous true predicate and non-zero stride shift")
   }
 
-  io.agu.in.valid := Bool(false)
+  io.agu.in.valid := false.B
   io.agu.in.bits.base := op.base
   io.agu.in.bits.offset := MuxCase(op.stride, Seq(
     op.mode.indexed -> io.vvaq.bits.addr,
-    op.mode.unit -> UInt(pgSize)))
-  io.agu.in.bits.shift := Mux(op.mode.unit || op.mode.indexed, UInt(0), mask.nonunit.shift)
+    op.mode.unit -> pgSize.U))
+  io.agu.in.bits.shift := Mux(op.mode.unit || op.mode.indexed, 0.U, mask.nonunit.shift)
   val addr = Mux(op.mode.indexed, io.agu.out.bits.addr, op.base)
 
   io.tlb.req.bits.vaddr := addr
-  io.tlb.req.bits.passthrough := Bool(false)
+  io.tlb.req.bits.passthrough := false.B
   io.tlb.req.bits.size := op.mt.shift()
   io.tlb.req.bits.cmd := op.cmd.bits
   io.tlb.req.bits.prv := op.status.dprv
@@ -103,20 +104,20 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  io.op.ready := Bool(false)
-  io.mask.ready := Bool(false)
-  io.vvaq.ready := Bool(false)
-  io.vpaq.valid := Bool(false)
-  io.vcu.valid := Bool(false)
-  io.tlb.req.valid := Bool(false)
+  io.op.ready := false.B
+  io.mask.ready := false.B
+  io.vvaq.ready := false.B
+  io.vpaq.valid := false.B
+  io.vcu.valid := false.B
+  io.tlb.req.valid := false.B
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
-  val stall = Reg(init = Bool(false))
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
+  val stall = RegInit(false.B)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
+      io.op.ready := true.B
     }
 
     is (s_busy) {
@@ -133,12 +134,12 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
             op.base := io.agu.out.bits.addr
           }
           when (io.tlb.resp.xcpt && pred) {
-            stall := Bool(true)
+            stall := true.B
           } .otherwise {
-            io.vcu.valid := Bool(true)
+            io.vcu.valid := true.B
             when (mask.last) {
               state := s_idle
-              io.op.ready := Bool(true)
+              io.op.ready := true.B
             }
           }
         }
@@ -153,13 +154,13 @@ class ABox0(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class VPAQ(implicit p: Parameters) extends VMUModule()(p) with SeqParameters {
-  val io = new Bundle {
-    val enq = new VPAQIO().flip
+  val io = IO(new Bundle {
+    val enq = Flipped(new VPAQIO())
     val deq = new VPAQIO
 
-    val vcu = Valid(new VCUEntry).flip
-    val la = new CounterLookAheadIO().flip
-  }
+    val vcu = Flipped(Valid(new VCUEntry))
+    val la = Flipped(new CounterLookAheadIO())
+  })
 
   val q = Module(new Queue(io.enq.bits, nVPAQ))
   q.suggestName("qInst")
@@ -174,46 +175,46 @@ class VPAQ(implicit p: Parameters) extends VMUModule()(p) with SeqParameters {
 }
 
 class ABox1(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val vpaq = new VPAQIO().flip
+  val io = IO(new VMUIssueIO {
+    val vpaq = Flipped(new VPAQIO())
     val pipe = new VMUPipeIO
 
-    val mask = new VMUMaskIO_1().flip
-    val xcpt = new XCPTIO().flip
-    val la = new CounterLookAheadIO().flip
-  }
+    val mask = Flipped(new VMUMaskIO_1())
+    val xcpt = Flipped(new XCPTIO())
+    val la = Flipped(new CounterLookAheadIO())
+  })
 
   val op = Reg(new VMUDecodedOp)
-  val shift = Reg(UInt(width = 2))
+  val shift = Reg(UInt(2.W))
 
   private val limit = tlDataBytes >> 1
   private val lglimit = tlByteAddrBits - 1
 
   val lead = Reg(Bool())
-  val beat = Reg(UInt(width = 1))
-  private val beat_1 = (beat === UInt(1))
+  val beat = Reg(UInt(1.W))
+  private val beat_1 = (beat === 1.U)
 
   private def offset(x: UInt) = x(tlByteAddrBits-1, 0)
   val off_u = offset(op.base)
   val off_n = offset(io.vpaq.bits.addr)
   val off = Mux(op.mode.unit, off_u, off_n)
   val eoff = off >> shift
-  val pad_u_rear = Cat(op.mt.b && beat_1, UInt(0, tlByteAddrBits-1))
-//val pad_u_rear = Mux(op.mt.b && beat_1, UInt(limit), UInt(0))
+  val pad_u_rear = Cat(op.mt.b && beat_1, 0.U((tlByteAddrBits-1).W))
+//val pad_u_rear = Mux(op.mt.b && beat_1, UInt(limit), 0.U)
   val pad_u = Mux(lead, off_u, pad_u_rear)
   val epad = Mux(op.mode.unit && !lead, pad_u_rear, eoff)
 
   /* Equivalence: x modulo UInt(limit) */
   private def truncate(x: UInt) = x(tlByteAddrBits-2, 0)
   private def saturate(x: UInt) = {
-    /* Precondition: x != UInt(0) */
+    /* Precondition: x != 0.U */
     val v = truncate(x)
-    Cat(v === UInt(0), v)
+    Cat(v === 0.U, v)
   }
 
-  val ecnt_u_max = (UInt(tlDataBytes) - pad_u) >> shift
+  val ecnt_u_max = (tlDataBytes.U - pad_u) >> shift
   val ecnt_u = saturate(ecnt_u_max)
-  val ecnt_max = Mux(op.mode.unit, ecnt_u, UInt(1))
+  val ecnt_max = Mux(op.mode.unit, ecnt_u, 1.U)
 
   val vlen_next = op.vlen.zext - ecnt_max.zext
   val vlen_end = (vlen_next <= SInt(0))
@@ -221,22 +222,22 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
 
   val xcpt = io.xcpt.prop.top.stall
 
-  val valve = Reg(init = UInt(0, bVCU))
+  val valve = RegInit(0.U(bVCU.W))
   val valve_off = (valve < ecnt_test)
   val valve_end = xcpt && (valve_off || (valve === ecnt_test))
   val ecnt = Mux(valve_off, offset(valve), ecnt_test)
   /* Track number of elements permitted to depart following VCU */
-  val valve_add = Mux(io.la.reserve, io.la.cnt, UInt(0))
-  val valve_sub = Mux(io.mask.fire, ecnt, UInt(0))
+  val valve_add = Mux(io.la.reserve, io.la.cnt, 0.U)
+  val valve_sub = Mux(io.mask.fire, ecnt, 0.U)
   valve := valve + valve_add - valve_sub
 
   val en = !valve_off || xcpt
   val end = vlen_end || valve_end
 
   val blkidx = Reg(UInt())
-  val blkidx_next = blkidx + UInt(1)
+  val blkidx_next = blkidx + 1.U
   val blkidx_update = !op.mt.b || beat_1
-  val blkidx_end = (blkidx_update && (blkidx_next === UInt(0)))
+  val blkidx_end = (blkidx_update && (blkidx_next === 0.U))
 
   val addr_ppn = io.vpaq.bits.addr(bPAddr-1, bPgIdx)
   val addr_pgidx = Mux(op.mode.unit,
@@ -273,17 +274,17 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  io.op.ready := Bool(false)
-  io.mask.ready := Bool(false)
-  io.vpaq.ready := Bool(false)
-  io.pipe.valid := Bool(false)
+  io.op.ready := false.B
+  io.mask.ready := false.B
+  io.vpaq.ready := false.B
+  io.pipe.valid := false.B
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
+      io.op.ready := true.B
     }
 
     is (s_busy) {
@@ -293,10 +294,10 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
         io.pipe.valid := fire(io.pipe.ready)
 
         when (fire(null)) {
-          lead := Bool(false)
+          lead := false.B
           pred_hold := pred_u && !blkidx_end
           when (op.mt.b) {
-            beat := beat + UInt(1)
+            beat := beat + 1.U
           }
           when (op.mode.unit && blkidx_update) {
             blkidx := blkidx_next
@@ -304,7 +305,7 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
           op.vlen := vlen_next.asUInt
           when (end) {
             state := s_idle
-            io.op.ready := Bool(true)
+            io.op.ready := true.B
           }
         }
       }
@@ -317,18 +318,18 @@ class ABox1(implicit p: Parameters) extends VMUModule()(p) {
     blkidx := io.op.bits.base(bPgIdx-1, tlByteAddrBits)
     shift := io.op.bits.mt.shift()
     beat := io.op.bits.base(tlByteAddrBits-1)
-    lead := Bool(true)
-    pred_hold := Bool(false)
+    lead := true.B
+    pred_hold := false.B
   }
 }
 
 class ABox2(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val inner = new VMUPipeIO().flip
+  val io = IO(new VMUIssueIO {
+    val inner = Flipped(new VMUPipeIO())
     val outer = new VMUAddrIO
     val store = Valid(new VMUStoreCtrl)
-    val load = new VLUSelectIO().flip
-  }
+    val load = Flipped(new VLUSelectIO())
+  })
 
   private val outer = io.outer.bits
   private val inner = io.inner.bits
@@ -367,20 +368,20 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  io.op.ready := Bool(false)
-  io.inner.ready := Bool(false)
-  io.outer.valid := Bool(false)
-  io.store.valid := Bool(false)
-  io.load.ready := Bool(false)
+  io.op.ready := false.B
+  io.inner.ready := false.B
+  io.outer.valid := false.B
+  io.store.valid := false.B
+  io.load.ready := false.B
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
   val init = Wire(Bool())
-  init := Bool(false)
+  init := false.B
 
   switch (state) {
     is (s_idle) {
-      init := Bool(true)
+      init := true.B
     }
 
     is (s_busy) {
@@ -392,7 +393,7 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
         op.eidx := op.eidx + inner.meta.ecnt.decode()
         when (inner.meta.last) {
           state := s_idle
-          init := Bool(true)
+          init := true.B
         }
       }
     }
@@ -412,20 +413,20 @@ class ABox2(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class ABox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val op = Vec(3, Decoupled(new VMUDecodedOp)).flip
-    val lane = new VVAQIO().flip
+  val io = IO(new Bundle {
+    val op = Flipped(Vec(3, Decoupled(new VMUDecodedOp)))
+    val lane = Flipped(new VVAQIO())
     val mem = new VMUAddrIO
 
     val agu = new AGUIO
     val tlb = new TLBIO
-    val mask = new VMUMaskIO().flip
-    val xcpt = new XCPTIO().flip
-    val la = new CounterLookAheadIO().flip
+    val mask = Flipped(new VMUMaskIO())
+    val xcpt = Flipped(new XCPTIO())
+    val la = Flipped(new CounterLookAheadIO())
 
     val store = Valid(new VMUStoreCtrl)
-    val load = new VLUSelectIO().flip
-  }
+    val load = Flipped(new VLUSelectIO())
+  })
 
   val vvaq = Module(new VVAQ)
   vvaq.suggestName("vvaqInst")

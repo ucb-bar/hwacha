@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.diplomacy._
@@ -17,21 +18,21 @@ trait SMUParameters extends MemParameters {
 }
 
 class SMUFn extends Bundle {
-  val cmd = Bits(width = SZ_SMU_CMD)
-  val mt = Bits(width = MT_SZ)
+  val cmd = UInt(SZ_SMU_CMD.W)
+  val mt = UInt(MT_SZ.W)
 }
 
 trait SMUTag extends SMUBundle {
-  val tag = UInt(width = bSMUTag)
+  val tag = UInt(bSMUTag.W)
 }
 trait SMUData extends SMUTag {
-  val data = Bits(width = regLen)
+  val data = UInt(regLen.W)
 }
 
 class SMUReq(implicit p: Parameters) extends SMUBundle()(p)
   with SMUData {
   val fn = new SMUFn
-  val addr = UInt(width = bVAddrExtended)
+  val addr = UInt(bVAddrExtended.W)
   val status = new freechips.rocketchip.rocket.MStatus
 }
 
@@ -42,15 +43,15 @@ class SMUResp(implicit p: Parameters) extends SMUBundle()(p)
 
 class SMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val req = Decoupled(new SMUReq)
-  val resp = Decoupled(new SMUResp).flip
-  val confirm = Bool(INPUT)
+  val resp = Flipped(Decoupled(new SMUResp))
+  val confirm = Input(Bool())
 }
 
 
 class SMUEntry(implicit p: Parameters) extends SMUBundle()(p)
   with SMUTag {
-  val mt = Bits(width = MT_SZ)
-  val offset = UInt(width = tlByteAddrBits)
+  val mt = UInt(MT_SZ.W)
+  val offset = UInt(tlByteAddrBits.W)
 }
 
 class SMU(implicit p: Parameters) extends LazyModule {
@@ -62,7 +63,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   with SMUParameters {
 
   val io = IO(new Bundle {
-    val scalar = new SMUIO().flip
+    val scalar = Flipped(new SMUIO())
 
     val ptw = new TLBPTWIO
     val irq = new IRQIO
@@ -86,9 +87,9 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   val tbox = Module(new TBox(1))
   tbox.suggestName("tboxInst")
   private val tlb = tbox.io.inner(0)
-  tlb.req.valid := Bool(false)
+  tlb.req.valid := false.B
   tlb.req.bits.vaddr := req.addr
-  tlb.req.bits.passthrough := Bool(false)
+  tlb.req.bits.passthrough := false.B
   tlb.req.bits.size := req_mt.shift()
   tlb.req.bits.cmd := Mux(req_store, M_XWR, M_XRD)
   tlb.status := req.status
@@ -110,11 +111,11 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
       if(i == 0) (s, UInt(0, width=1)) else (s, Fill((1 << i) - 1, UInt(1, width=1)))
     })
 
-  val req_mask_base = Cat(mask(req_mt), Bool(true))
+  val req_mask_base = Cat(mask(req_mt), true.B)
   val req_mask = req_mask_base << addr_offset
   val req_data = req.data << Cat(addr_offset, UInt(0,3))
 
-  tw.valid := Bool(false)
+  tw.valid := false.B
   tw.bits.tag := req.tag
   tw.bits.mt := req.fn.mt
   tw.bits.offset := addr_offset
@@ -130,15 +131,15 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
   }
 
   val s_idle :: s_tlb :: s_mem :: Nil = Enum(UInt(), 3)
-  val state = Reg(init = s_idle)
+  val state = RegInit(s_idle)
 
-  io.scalar.confirm := Bool(false)
-  io.scalar.req.ready := Bool(false)
-  acquire.valid := Bool(false)
+  io.scalar.confirm := false.B
+  io.scalar.req.ready := false.B
+  acquire.valid := false.B
 
   switch (state) {
     is (s_idle) {
-      io.scalar.req.ready := Bool(true)
+      io.scalar.req.ready := true.B
       when (io.scalar.req.valid) {
         state := s_tlb
         req := io.scalar.req.bits
@@ -146,7 +147,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
     }
 
     is (s_tlb) {
-      tlb.req.valid := Bool(true)
+      tlb.req.valid := true.B
       when (tlb.req.ready) {
         state := Mux(tlb.resp.xcpt, s_idle, s_mem)
         io.scalar.confirm := !tlb.resp.xcpt
@@ -192,7 +193,7 @@ class SMUModule(outer: SMU)(implicit p: Parameters) extends LazyModuleImp(outer)
     resp_data(7, 0))
 
   //Tie off unused channels
-  dmem.b.ready := Bool(true)
-  dmem.c.valid := Bool(false)
-  dmem.e.valid := Bool(false)
+  dmem.b.ready := true.B
+  dmem.c.valid := false.B
+  dmem.e.valid := false.B
 }

@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 case object HwachaNSRAMRFEntries extends Field[Int]
@@ -132,25 +133,25 @@ class LRQIO(implicit p: Parameters) extends DecoupledIO(new LRQEntry()(p)) {
 }
 
 trait LanePred extends VXUBundle {
-  val pred = Bits(width = nPack)
+  val pred = UInt(nPack.W)
   def active(dummy: Int = 0) = pred.orR
 }
 
 class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with RateLogic {
-  val io = new Bundle {
-    val id = UInt(INPUT)
-    val cfg = new HwachaConfigIO().flip
-    val op = new LaneOpIO().flip
+  val io = IO(new Bundle {
+    val id = Input(UInt())
+    val cfg = Flipped(new HwachaConfigIO())
+    val op = Flipped(new LaneOpIO())
     val ack = new LaneAckIO
     val lpqs = Vec(nLPQ, new LPQIO)
     val lrqs = Vec(nLRQ, new LRQIO)
     val bpqs = Vec(nBanks, new BPQIO)
     val brqs = Vec(nBanks, new BRQIO)
     val bwqs = new Bundle {
-      val mem = Vec(nBanks, new BWQIO).flip
-      val fu = Vec(nBanks, new BWQIO).flip
+      val mem = Flipped(Vec(nBanks, new BWQIO))
+      val fu = Flipped(Vec(nBanks, new BWQIO))
     }
-  }
+  })
 
   val ctrl = Module(new LaneCtrl)
   ctrl.suggestName("ctrlInst")
@@ -185,7 +186,7 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   }
 
   def valids(valid: Bool, pred: Bits, latency: Int) =
-    ShiftRegister(Mux(valid, pred, Bits(0)), latency)
+    ShiftRegister(Mux(valid, pred, 0.U), latency)
 
   require(nLRQ == 3)
 
@@ -292,11 +293,11 @@ class Lane(implicit p: Parameters) extends VXUModule()(p) with Packing with Rate
   val vfvu_vals = vfvus._2
 
   val wdata = List(
-    MuxCase(Bits(0), Array(
+    MuxCase(0.U, Array(
       vimu_vals.orR -> repack_slice(vimus.map(_.bits.out)),
       vfmu_vals(0).orR -> repack_slice(vfmus(0)._1.map(_.out)),
       vfvu_vals.asUInt.orR -> repack_slice(vfvus._1.map(_.out)))),
-    MuxCase(Bits(0), Array(
+    MuxCase(0.U, Array(
       vfmu_vals(1).orR -> repack_slice(vfmus(1)._1.map(_.out)),
       vfcu_vals.orR -> repack_slice(vfcus.map(_.bits.out)))))
 

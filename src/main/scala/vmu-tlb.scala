@@ -1,19 +1,20 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.rocket.{TLBReq, TLBResp, MStatus}
 
 abstract class TLBReqIO(implicit p: Parameters) extends VMUBundle()(p) {
-  val status = new MStatus().asOutput
+  val status = Output(new MStatus())
   val req = Decoupled(new TLBReq(log2Ceil(regBytes)))
 }
 
 class TLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
-  val resp = new Bundle {
-    val ppn = UInt(INPUT, bPPN)
-    val xcpt = Bool(INPUT)
-  }
+  val resp = IO(new Bundle {
+    val ppn = Input(UInt(bPPN.W))
+    val xcpt = Input(Bool())
+  })
 
   def pgidx(dummy: Int = 0): UInt = this.req.bits.vaddr(bPgIdx-1, 0)
   def vpn(dummy: Int = 0): UInt = this.req.bits.vaddr(bVAddrExtended-1, bPgIdx)
@@ -21,7 +22,7 @@ class TLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
 }
 
 class RocketTLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
-  val resp = new TLBResp().flip
+  val resp = Flipped(new TLBResp())
 
   def bridge(client: TLBIO) {
     this.status := client.status
@@ -33,11 +34,11 @@ class RocketTLBIO(implicit p: Parameters) extends TLBReqIO()(p) {
 }
 
 class TBox(n: Int)(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val inner = Vec(n, new TLBIO()).flip
+  val io = IO(new Bundle {
+    val inner = Flipped(Vec(n, new TLBIO()))
     val outer = new RocketTLBIO
     val irq = new IRQIO
-  }
+  })
 
   val arb = Wire(new TLBIO())
   io.outer.bridge(arb)

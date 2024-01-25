@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
@@ -14,19 +15,19 @@ class VectorUnit(implicit p: Parameters) extends LazyModule {
 
 class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyModuleImp(outer) with SeqParameters {
   val io = IO(new Bundle {
-    val id = UInt(INPUT)
-    val cfg = new HwachaConfigIO().flip
+    val id = Input(UInt())
+    val cfg = Flipped(new HwachaConfigIO())
     val issue = new Bundle {
-      val vxu = Decoupled(new IssueOp).flip
-      val vmu = Decoupled(new VMUOp).flip
+      val vxu = Flipped(Decoupled(new IssueOp))
+      val vmu = Flipped(Decoupled(new VMUOp))
     }
-    val mseq = new MasterSequencerIO().flip
-    val mocheck = Vec(nSeq, new MOCheck).asInput
+    val mseq = Flipped(new MasterSequencerIO())
+    val mocheck = Input(Vec(nSeq, new MOCheck))
     val red = new ReduceResultIO
     val ptw = new TLBPTWIO
-    val pending = new MRTPending().asOutput
+    val pending = Output(new MRTPending())
 
-    val complete_memop = Bool(OUTPUT)
+    val complete_memop = Output(Bool())
   })
   val (dmem, edge) = outer.masterNode.out.head
 
@@ -71,7 +72,7 @@ class VectorUnitModule(outer: VectorUnit)(implicit p: Parameters) extends LazyMo
   dmem <> memif.io.dmem
   io.pending <> mrt.io.pending
 
-  vmu.io.xcpt.prop.vmu.stall := Bool(false)
-  vmu.io.xcpt.prop.vmu.drain := Bool(false)
-  vmu.io.xcpt.prop.top.stall := Bool(false)
+  vmu.io.xcpt.prop.vmu.stall := false.B
+  vmu.io.xcpt.prop.vmu.drain := false.B
+  vmu.io.xcpt.prop.top.stall := false.B
 }

@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import chisel3.DontCare
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.util.ParameterizedBundle
@@ -33,8 +34,7 @@ case object HwachaVRUMaxRunaheadBytes extends Field[Int]
 case object HwachaCMDQLen extends Field[Int]
 case object HwachaVSETVLCompress extends Field[Boolean]
 
-abstract class HwachaModule(clock: Clock = null, _reset: Bool = null)
-                           (implicit val p: Parameters) extends Module(Option(clock), Option(_reset))
+abstract class HwachaModule(implicit val p: Parameters) extends Module
   with UsesHwachaParameters
 
 abstract class HwachaBundle(implicit val p: Parameters) extends ParameterizedBundle()(p)
@@ -188,7 +188,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   if (local_sfpu) {
     val sfpu = Module(new ScalarFPU)
     scalar.io.fpu <> sfpu.io
-    io.fpu_req.valid := Bool(false)
+    io.fpu_req.valid := false.B
   } else {
     val sfpu = Module(new ScalarFPUInterface)
     sfpu.io.hwacha.req <> scalar.io.fpu.req
@@ -208,21 +208,21 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
     //io.counters.vru <> vru.io.counters
   } else {
     // vru plumbing in RoCCUnit should be automatically optimized out
-    rocc.io.cmdqs.vru.cmd.ready := Bool(true)
-    rocc.io.cmdqs.vru.imm.ready := Bool(true)
-    rocc.io.cmdqs.vru.rd.ready := Bool(true)
-    rocc.io.cmdqs.vru.cnt.ready := Bool(true)
-    rocc.io.cmdqs.vru.status.ready := Bool(true)
+    rocc.io.cmdqs.vru.cmd.ready := true.B
+    rocc.io.cmdqs.vru.imm.ready := true.B
+    rocc.io.cmdqs.vru.rd.ready := true.B
+    rocc.io.cmdqs.vru.cnt.ready := true.B
+    rocc.io.cmdqs.vru.status.ready := true.B
 
     icache.io.vru := DontCare
-    icache.io.vru.req.valid := Bool(false)
-    icache.io.vru.active := Bool(false)
+    icache.io.vru.req.valid := false.B
+    icache.io.vru.active := false.B
 
-    //io.counters.vru <> (new VRUCounterIO).fromBits(UInt(0))
+    //io.counters.vru <> (new VRUCounterIO).fromBits(0.U)
   }
 
   // Connect supporting Hwacha memory modules to external ports
-  io.mem.req.valid := Bool(false)
+  io.mem.req.valid := false.B
 
   smu.io.scalar <> scalar.io.smu
   io.ptw(1) <> smu.io.ptw
@@ -278,7 +278,7 @@ class HwachaImp(outer: Hwacha)(implicit p: Parameters) extends LazyRoCCModuleImp
   (scalar.io.pending.mrt.vus zip vus) map { case (pending, vu) => pending <> vu.io.pending }
 
   (vus.zipWithIndex) map { case (vu, i) =>
-    vu.io.id := UInt(i)
+    vu.io.id := i.U
 
     vu.io.cfg <> rocc.io.cfg
     vu.io.issue.vxu.valid := fire_vxu(mask_vxus_ready(i), enq_vxus(i))

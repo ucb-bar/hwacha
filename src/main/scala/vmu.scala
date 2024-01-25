@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tilelink.TLEdgeOut
 import freechips.rocketchip.tile.TileVisibilityNodeKey
@@ -52,7 +53,7 @@ trait VMUParameters extends MemParameters {
 class VMUIO(implicit p: Parameters) extends HwachaBundle()(p) {
   val vaq = new VVAQIO
   val vsdq = new VSDQIO
-  val vldq = new VLDQIO().flip
+  val vldq = Flipped(new VLDQIO())
 
   val pred = Decoupled(new PredEntry)
   val pala = new CounterLookAheadIO
@@ -86,14 +87,14 @@ object VMUDecodedOp extends HwachaConstants {
     dec.cmd := DecodedMemCommand(op.fn.cmd)
     dec.mt := DecodedMemType(op.fn.mt)
 
-    dec.eidx := UInt(0)
-    dec.first := Bool(true)
+    dec.eidx := 0.U
+    dec.first := true.B
     dec
   }
 }
 
 class VMUIssueIO(implicit p: Parameters) extends HwachaBundle()(p) {
-  val op = Decoupled(new VMUDecodedOp).flip
+  val op = Flipped(Decoupled(new VMUDecodedOp))
 }
 class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
   val issue = Vec(4, Decoupled(new VMUDecodedOp))
@@ -112,15 +113,15 @@ class IBoxIO(implicit p: Parameters) extends VMUIssueIO()(p) {
 }
 
 class IBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val id = UInt(INPUT)
-    val op = Decoupled(new VMUOp).flip
-    val cfg = new HwachaConfigIO().flip
+  val io = IO(new Bundle {
+    val id = Input(UInt())
+    val op = Flipped(Decoupled(new VMUOp))
+    val cfg = Flipped(new HwachaConfigIO())
     val agu = new AGUIO
     val abox = Vec(3, Decoupled(new VMUDecodedOp))
     val pbox = Vec(2, Decoupled(new VMUDecodedOp))
     val aret = Bool()
-  }
+  })
 
   val opq = Module(new Queue(io.op.bits, nVMUQ))
   opq.suggestName("opqInst")
@@ -147,9 +148,9 @@ class IBox(implicit p: Parameters) extends VMUModule()(p) {
 }
 
 class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new IBoxIO
+  val io = IO(new IBoxIO)
 
-  val mask = Reg(init = Vec.fill(io.issue.size){Bool(false)})
+  val mask = RegInit(VecInit.fill(io.issue.size){false.B})
   io.issue.zipWithIndex.map { case (box, i) =>
     val _mask = mask(i)
     box.bits := io.op.bits
@@ -160,17 +161,17 @@ class IBoxSL(implicit p: Parameters) extends VMUModule()(p) {
 
   io.op.ready := mask.asUInt.andR
   when (io.op.ready) {
-    mask.map(_ := Bool(false))
+    mask.map(_ := false.B)
     io.aret := true.B
   }
 }
 
 class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new IBoxIO {
-    val id = UInt(INPUT, width = bLanes)
-    val cfg = new HwachaConfigIO().flip
+  val io = IO(new IBoxIO {
+    val id = Input(UInt(bLanes.W))
+    val cfg = Flipped(new HwachaConfigIO())
     val agu = new AGUIO
-  }
+  })
 
   val op = Reg(new VMUDecodedOp)
   val indexed = io.op.bits.mode.indexed
@@ -188,7 +189,7 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   val shift = Wire(UInt(width = io.agu.in.bits.shift.getWidth))
   shift := UInt(bLanes)
 
-  io.agu.in.valid := Bool(false)
+  io.agu.in.valid := false.B
   io.agu.in.bits.base := op.base
   io.agu.in.bits.offset := Cat(io.op.bits.stride, UInt(0, bStrip))
   io.agu.in.bits.shift := io.cfg.lstride + shift
@@ -200,9 +201,9 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   val ecnt = Mux(vlen_end, op.vlen(bfLStrip-1, 0), ecnt_max)
 
 
-  val qcntr = Reg(init = 0.U((log2Up(nVMUIQ + 2)).W))
+  val qcntr = RegInit(0.U((log2Up(nVMUIQ + 2)).W))
   val qcnts = Wire(Vec(io.issue.size, UInt(width = log2Up(nVMUIQ + 1))))
-  val aret_pending = Reg(init = Bool(false))
+  val aret_pending = RegInit(false.B)
   val enq = io.span(io.issue.zipWithIndex.map { case (deq, i) =>
     val q = Module(new Queue(new VMUDecodedOp, nVMUIQ))
     qcnts(i) := q.io.count
@@ -217,24 +218,24 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
   enq.bits.first := op.first
   enq.bits.status := op.status
 
-  io.op.ready := Bool(false)
-  io.aret := Bool(false)
-  enq.valid := Bool(false)
+  io.op.ready := false.B
+  io.aret := false.B
+  enq.valid := false.B
 
   when(io.issue(3).fire) {
     qcntr := Mux(qcntr === 0.U, 0.U, (qcntr.zext - 1.S).asUInt)
     io.aret := qcntr === 1.U || aret_pending
-    aret_pending := Bool(false)
+    aret_pending := false.B
   }
 
   val s_idle :: s_busy :: s_setup :: Nil = Enum(UInt(), 3)
-  val state = Reg(init = s_idle)
+  val state = RegInit(s_idle)
 
   switch (state) {
     is (s_idle) {
       when (io.op.valid) {
         op := io.op.bits
-        when(io.id =/= UInt(0)) {
+        when(io.id =/= 0.U) {
           idMask := ~UInt(0, bLanes)
           state := Mux(indexed, s_busy, s_setup)
         } .otherwise {
@@ -253,29 +254,29 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
         }
         op.vlen := vlen_next.asUInt
         op.eidx := eidx_next
-        op.first := Bool(false)
+        op.first := false.B
         when (vlen_end) {
           state := s_idle
-          io.op.ready := Bool(true)
+          io.op.ready := true.B
           // Last queue is abox2 deepest stage
           // +1+1 because we are enqing this cycle and need to wait for the next op to be eaten by abox2
           qcntr := qcnts(3) + 1.U + Mux(io.issue(3).fire, 0.U, 1.U)
           // aret after next issue3.fire
           aret_pending := qcntr =/= 0.U
-          assert(qcntr <= UInt(1), "IBox: qcntr too large. aret broken")
+          assert(qcntr <= 1.U, "IBox: qcntr too large. aret broken")
         }
       }
     }
 
     is (s_setup) {
-      when (io.id =/= UInt(0)) {
+      when (io.id =/= 0.U) {
         shift := pMux
-        io.agu.in.valid := Bool(true)
+        io.agu.in.valid := true.B
         when (io.agu.out.valid) {
           op.base := io.agu.out.bits.addr
-          val newMask = idMask & ((UInt(1) << pMux) - UInt(1))
+          val newMask = idMask & ((1.U << pMux) - 1.U)
           idMask := newMask
-          when (newMask === UInt(0) || !((newMask & io.id).orR)) {
+          when (newMask === 0.U || !((newMask & io.id).orR)) {
             state := s_busy
           }
         }
@@ -286,19 +287,19 @@ class IBoxML(implicit p: Parameters) extends VMUModule()(p) {
 
 class VMU(resetSignal: Bool = null)(implicit p: Parameters)
   extends VMUModule(_reset = resetSignal)(p) {
-  val io = new Bundle {
-    val id = UInt(INPUT)
-    val op = Decoupled(new VMUOp).flip
-    val cfg = new HwachaConfigIO().flip
-    val lane = new VMUIO().flip
+  val io = IO(new Bundle {
+    val id = Input(UInt())
+    val op = Flipped(Decoupled(new VMUOp))
+    val cfg = Flipped(new HwachaConfigIO())
+    val lane = Flipped(new VMUIO())
     val tlb = new RocketTLBIO
     val memif = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)
     val aret = Bool()
     val irq = new IRQIO
-    val xcpt = new XCPTIO().flip
-  }
+    val xcpt = Flipped(new XCPTIO())
+  })
 
   private val confml = (nLanes > 1)
   val ibox = Module(new IBox)

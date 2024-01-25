@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class PLUOperand(implicit p: Parameters) extends VXUBundle()(p) {
@@ -16,7 +17,7 @@ class PLUResult(implicit p: Parameters) extends VXUBundle()(p) {
 
 class PLUSlice(implicit p: Parameters) extends VXUModule()(p) {
   val io = new Bundle {
-    val req = Valid(new PLUOperand).flip
+    val req = Flipped(Valid(new PLUOperand))
     val resp = Valid(new PLUResult)
   }
 

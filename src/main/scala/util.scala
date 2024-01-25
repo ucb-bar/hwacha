@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import scala.math._
 
@@ -53,8 +54,8 @@ abstract trait Packing extends LaneParameters {
 
 abstract trait BankLogic extends LaneParameters {
   def strip_to_bcnt(strip: UInt) = {
-    val stripp1 = strip + UInt(1)
-    if (nSlices > 1) stripp1 >> UInt(bSlices) else strip
+    val stripp1 = strip + 1.U
+    if (nSlices > 1) stripp1 >> bSlices else strip
   }
 
   def strip_to_bmask(strip: UInt) = {
@@ -72,7 +73,7 @@ abstract trait SeqLogic extends SeqParameters {
     val internal = Wire(Vec(2*nSeq, Bool()))
     for (i <- 0 until nSeq) {
       internal(i+nSeq) := v(i) && fn(i)
-      internal(i) := internal(i+nSeq) && (UInt(i) >= head)
+      internal(i) := internal(i+nSeq) && (i.U >= head)
     }
     val priority_oh = PriorityEncoderOH(internal)
     val out = Wire(Vec(nSeq, Bool()))
@@ -93,14 +94,14 @@ abstract trait SeqLogic extends SeqParameters {
     if (isPow2(nSeq))
       ptr + UInt(n)
     else if (n == 1)
-      Mux(ptr === UInt(nSeq-1), UInt(0), ptr + UInt(1))
+      Mux(ptr === UInt(nSeq-1), 0.U, ptr + 1.U)
     else
       ptr + Mux(ptr < UInt(nSeq-n), UInt(n), -UInt(nSeq-n, log2Up(nSeq)))
   }
 }
 
 object DataGating {
-  def dgate(valid: Bool, b: UInt) = Fill(b.getWidth, valid) & b
+  def dgate[T <: Data](valid: Bool, b: T) = Mux(valid, b, 0.U.asTypeOf(b.cloneType))
 }
 
 object HardFloatHelper {
@@ -113,11 +114,11 @@ object HardFloatHelper {
 }
 
 class MaskStall[T <: Data](data: => T) extends Module {
-  val io = new Bundle {
-    val input = Decoupled(data).flip
+  val io = IO(new Bundle {
+    val input = Flipped(Decoupled(data))
     val output = Decoupled(data)
-    val stall = Bool(INPUT)
-  }
+    val stall = Input(Bool())
+  })
 
   io.output.valid := io.input.valid && !io.stall
   io.output.bits := io.input.bits
@@ -137,51 +138,51 @@ object MaskStall {
 class QCounter(reset_cnt: Int, max_cnt: Int) extends Module() {
   val sz = log2Down(max_cnt)+1
   val io = new Bundle {
-    val inc = Bool(INPUT)
-    val dec = Bool(INPUT)
+    val inc = Input(Bool())
+    val dec = Input(Bool())
     val qcnt = UInt(INPUT, sz)
-    val watermark = Bool(OUTPUT)
-    val full = Bool(OUTPUT)
-    val empty = Bool(OUTPUT)
+    val watermark = Output(Bool())
+    val full = Output(Bool())
+    val empty = Output(Bool())
   }
 
-  val count = Reg(init = UInt(reset_cnt, sz))
+  val count = RegInit(UInt(reset_cnt, sz))
 
   when (io.inc ^ io.dec) {
-    when (io.inc) { count := count + UInt(1) }
-    when (io.dec) { count := count - UInt(1) }
+    when (io.inc) { count := count + 1.U }
+    when (io.dec) { count := count - 1.U }
   }
 
   io.watermark := count >= io.qcnt
   io.full := count === UInt(max_cnt)
-  io.empty := count === UInt(0)
+  io.empty := count === 0.U
 }
 
 trait LookAheadIO extends HwachaBundle {
-  val reserve = Bool(OUTPUT)
-  val available = Bool(INPUT)
+  val reserve = Output(Bool())
+  val available = Input(Bool())
 }
 
 class CounterLookAheadIO(implicit p: Parameters) extends LookAheadIO with SeqParameters {
-  val cnt = UInt(OUTPUT, bLookAhead)
+  val cnt = Output(UInt(bLookAhead.W))
 }
 
 class CounterUpdateIO(sz: Int) extends Bundle {
-  val cnt = UInt(OUTPUT, sz)
-  val update = Bool(OUTPUT)
+  val cnt = Output(UInt(sz.W))
+  val update = Output(Bool())
 
 }
 
 class LookAheadCounter(reset_cnt: Int, max_cnt: Int, resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p) with LaneParameters {
   require(reset_cnt <= max_cnt)
   val sz = log2Down(max_cnt)+1
-  val io = new Bundle {
-    val inc = new CounterUpdateIO(sz).flip
-    val dec = new CounterLookAheadIO().flip
-    val full = Bool(OUTPUT)
-  }
+  val io = IO(new Bundle {
+    val inc = Flipped(new CounterUpdateIO(sz))
+    val dec = Flipped(new CounterLookAheadIO())
+    val full = Output(Bool())
+  })
 
-  val count = Reg(init = UInt(reset_cnt, sz))
+  val count = RegInit(UInt(reset_cnt, sz))
   io.dec.available := (count >= io.dec.cnt)
 
   val add = (io.inc.cnt & Fill(sz, io.inc.update))

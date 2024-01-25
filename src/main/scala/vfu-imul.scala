@@ -1,24 +1,25 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 
 class IMulOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIMUFn
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
 }
 
 class IMulResult extends Bundle {
-  val out = Bits(width = SZ_D)
+  val out = UInt(SZ_D.W)
 }
 
 class IMulSlice(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val req = Valid(new IMulOperand).flip
+  val io = IO(new Bundle {
+    val req = Flipped(Valid(new IMulOperand))
     val resp = Valid(new IMulResult)
-  }
+  })
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
   val in0 = dgate(io.req.valid, io.req.bits.in0)
@@ -44,7 +45,7 @@ class IMulSlice(implicit p: Parameters) extends VXUModule()(p) {
 
   val result = Wire(new IMulResult)
   result.out := MuxCase(
-    Bits(0), Array(
+    0.U, Array(
       fn.is(DW64, IM_M)    -> mul_result(63,0),
       fn.is(DW64, IM_MH)   -> mul_result(127,64),
       fn.is(DW64, IM_MHU)  -> mul_result(127,64),

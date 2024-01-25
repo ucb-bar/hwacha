@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 
@@ -12,15 +13,15 @@ class SequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
 
 class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
   with SeqLogic with BankLogic with PrecLogic {
-  val io = new Bundle {
-    val lid = UInt(INPUT)
-    val cfg = new HwachaConfigIO().flip
-    val op = Valid(new IssueOp).flip
-    val master = new MasterSequencerIO().flip
-    val mocheck = Vec(nSeq, new MOCheck).asInput
+  val io = IO(new Bundle {
+    val lid = Input(UInt())
+    val cfg = Flipped(new HwachaConfigIO())
+    val op = Flipped(Valid(new IssueOp))
+    val master = Flipped(new MasterSequencerIO())
+    val mocheck = Input(Vec(nSeq, new MOCheck))
     val seq = new SequencerIO
     val vmu = new VMUIO
-    val ticker = new TickerIO().flip
+    val ticker = Flipped(new TickerIO())
 
     val dpla = new CounterLookAheadIO
     val dqla = Vec(nVDUOperands, new CounterLookAheadIO)
@@ -35,57 +36,57 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val sreq = new CounterLookAheadIO
     val areq = new MRTAddrIO
 
-    val lpred = Decoupled(Bits(width=nStrip))
-    val spred = Decoupled(Bits(width=nStrip))
+    val lpred = Decoupled(UInt(nStrip.W))
+    val spred = Decoupled(UInt(nStrip.W))
 
-    val lack = new LaneAckIO().flip
-    val dack = new DCCAckIO().flip
+    val lack = Flipped(new LaneAckIO())
+    val dack = Flipped(new DCCAckIO())
 
     val debug = new Bundle {
-      val valid = Vec(nSeq, Bool(OUTPUT))
-      val e = Vec(nSeq, new SeqEntry).asOutput
-      val dhazard_raw_vlen = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_pred_vp = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_pred_vs1 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_pred_vs2 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_pred_vs3 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_vs1 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_vs2 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_raw_vs3 = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_war = Vec(nSeq, Bool(OUTPUT))
-      val dhazard_waw = Vec(nSeq, Bool(OUTPUT))
-      val dhazard = Vec(nSeq, Bool(OUTPUT))
-      val bhazard = Vec(nSeq, Bool(OUTPUT))
-      val shazard = Vec(nSeq, Bool(OUTPUT))
-      val use_mask_sreg_global = Vec(nGOPL, Bits(OUTPUT, maxSRegGlobalTicks+nBanks-1))
-      val use_mask_xbar = Vec(nGOPL, Bits(OUTPUT, maxXbarTicks+nBanks-1))
-      val use_mask_vimu = Bits(OUTPUT, maxVIMUTicks+nBanks-1)
-      val use_mask_vfmu = Vec(nVFMU, Bits(OUTPUT, maxVFMUTicks+nBanks-1))
-      val use_mask_vfcu = Bits(OUTPUT, maxVFCUTicks+nBanks-1)
-      val use_mask_vfvu = Bits(OUTPUT, maxVFVUTicks+nBanks-1)
-      val use_mask_vgu = Bits(OUTPUT, maxVGUTicks+nBanks-1)
-      val use_mask_vqu = Bits(OUTPUT, maxVQUTicks+nBanks-1)
-      val use_mask_wport_sram = Vec(nWSel, Bits(OUTPUT, maxWPortLatency+nBanks-1))
-      val use_mask_wport_pred = Bits(OUTPUT, maxPredWPortLatency+nBanks-1)
-      val pred_first = Vec(nSeq, Bool(OUTPUT))
-      val consider = Vec(nSeq, Bool(OUTPUT))
-      val first_sched = Vec(nSeq, Bool(OUTPUT))
-      val second_sched = Vec(nSeq, Bool(OUTPUT))
+      val valid = Vec(nSeq, Output(Bool()))
+      val e = Output(Vec(nSeq, new SeqEntry))
+      val dhazard_raw_vlen = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_pred_vp = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_pred_vs1 = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_pred_vs2 = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_pred_vs3 = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_vs1 = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_vs2 = Vec(nSeq, Output(Bool()))
+      val dhazard_raw_vs3 = Vec(nSeq, Output(Bool()))
+      val dhazard_war = Vec(nSeq, Output(Bool()))
+      val dhazard_waw = Vec(nSeq, Output(Bool()))
+      val dhazard = Vec(nSeq, Output(Bool()))
+      val bhazard = Vec(nSeq, Output(Bool()))
+      val shazard = Vec(nSeq, Output(Bool()))
+      val use_mask_sreg_global = Vec(nGOPL, Output(UInt((maxSRegGlobalTicks+nBanks-1).W)))
+      val use_mask_xbar = Vec(nGOPL, Output(UInt((maxXbarTicks+nBanks-1).W)))
+      val use_mask_vimu = Output(UInt((maxVIMUTicks+nBanks-1).W))
+      val use_mask_vfmu = Vec(nVFMU, Output(UInt((maxVFMUTicks+nBanks-1).W)))
+      val use_mask_vfcu = Output(UInt((maxVFCUTicks+nBanks-1).W))
+      val use_mask_vfvu = Output(UInt((maxVFVUTicks+nBanks-1).W))
+      val use_mask_vgu = Output(UInt((maxVGUTicks+nBanks-1).W))
+      val use_mask_vqu = Output(UInt((maxVQUTicks+nBanks-1).W))
+      val use_mask_wport_sram = Vec(nWSel, Output(UInt((maxWPortLatency+nBanks-1).W)))
+      val use_mask_wport_pred = Output(UInt((maxPredWPortLatency+nBanks-1).W))
+      val pred_first = Vec(nSeq, Output(Bool()))
+      val consider = Vec(nSeq, Output(Bool()))
+      val first_sched = Vec(nSeq, Output(Bool()))
+      val second_sched = Vec(nSeq, Output(Bool()))
     }
-  }
+  })
   chisel3.dontTouch(io.debug)
 
   val mv = io.master.state.valid
   val me = io.master.state.e
   val head = io.master.state.head
 
-  val v = Reg(init = Vec.fill(nSeq){Bool(false)})
+  val v = RegInit(VecInit.fill(nSeq){false.B})
   val e = Reg(Vec(nSeq, new SeqEntry))
 
-  val me_rate = Vec(me.map(UInt(1) << _.rate))
+  val me_rate = Vec(me.map(1.U << _.rate))
 
-  val e_sidx_next = Vec((0 until nSeq) map { r => e(r).sidx + me_rate(r) })
-  val e_strip = Vec((0 until nSeq) map { r =>
+  val e_sidx_next = VecInit((0 until nSeq) map { r => e(r).sidx + me_rate(r) })
+  val e_strip = VecInit((0 until nSeq) map { r =>
     val vl = e(r).vlen
     val strip_max = if (confprec) Cat(me_rate(r), UInt(0, bStrip)) else UInt(nStrip)
     Mux(vl > strip_max, strip_max, vl(bStrip+bPack, 0))
@@ -98,16 +99,16 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
   val dhazard = new {
     val vlen_check_ok =
-      Vec((0 until nSeq).map { r =>
-        Vec((0 until nSeq).map { c =>
+      VecInit((0 until nSeq).map { r =>
+        VecInit((0 until nSeq).map { c =>
           if (r != c) e_sidx_next(r) <= e(c).sidx
-          else Bool(true) }) })
+          else true.B }) })
 
     def scmp_mat[T <: RFWriteOp with Rate](ticker: Vec[ValidIO[T]]) = {
       def cmp(x: UInt, y: UInt) = { val z = (x <= y); (z, !z || (x === y)) }
       val t_range = ticker.map(t =>
-        (t.bits.sidx, t.bits.sidx + (UInt(1) << t.bits.rate)))
-      Vec((0 until nSeq).map { r =>
+        (t.bits.sidx, t.bits.sidx + (1.U << t.bits.rate)))
+      VecInit((0 until nSeq).map { r =>
         val s = (e(r).sidx, e_sidx_next(r))
         Vec(t_range.map { t =>
           val (s1_lte_t1, t1_lte_s1) = cmp(s._1, t._1)
@@ -119,7 +120,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val wsram_mat_scmp = scmp_mat(io.ticker.sram.write)
     def wsram_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
-        Vec((0 until maxWPortLatency) map { l =>
+        VecInit((0 until maxWPortLatency) map { l =>
           val t = io.ticker.sram.write(l)
           t.valid && fn(me(r).base).valid && fn(me(r).base).is_vector() && (
             if (confprec) (t.bits.id === fn(me(r).base).id) && wsram_mat_scmp(r)(l)
@@ -133,7 +134,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val wpred_mat_scmp = scmp_mat(io.ticker.pred.write)
     def wpred_mat(fn: RegFn, pfn: PRegIdFn) =
       (0 until nSeq) map { r =>
-        Vec((0 until maxPredWPortLatency) map { l =>
+        VecInit((0 until maxPredWPortLatency) map { l =>
           val t = io.ticker.pred.write(l)
           t.valid && fn(me(r).base).valid && fn(me(r).base).is_pred() && (
             if (confprec) (t.bits.id === fn(me(r).base).id) && wpred_mat_scmp(r)(l)
@@ -146,7 +147,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val wpred_mat_vd = wpred_mat(reg_vd, pregid_vd)
 
     def wport_lookup(row: Vec[Bool], level: UInt) =
-      Vec((row.zipWithIndex) map { case (r, i) => r && UInt(i) > level })
+      Vec((row.zipWithIndex) map { case (r, i) => r && i.U > level })
 
     val raw =
       (0 until nSeq).map { r =>
@@ -169,14 +170,14 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         raw(r) || war(r) || waw(r) }
 
     def debug = {
-      io.debug.dhazard_raw_vlen := Vec((0 until nSeq) map { r => (me(r).raw.asUInt & ~vlen_check_ok(r).asUInt).orR })
-      io.debug.dhazard_raw_pred_vp := Vec((0 until nSeq) map { r => wpred_mat_vp(r).asUInt.orR })
-      io.debug.dhazard_raw_pred_vs1 := Vec((0 until nSeq) map { r => wpred_mat_vs1(r).asUInt.orR })
-      io.debug.dhazard_raw_pred_vs2 := Vec((0 until nSeq) map { r => wpred_mat_vs2(r).asUInt.orR })
-      io.debug.dhazard_raw_pred_vs3 := Vec((0 until nSeq) map { r => wpred_mat_vs3(r).asUInt.orR })
-      io.debug.dhazard_raw_vs1 := Vec((0 until nSeq) map { r => wsram_mat_vs1(r).asUInt.orR })
-      io.debug.dhazard_raw_vs2 := Vec((0 until nSeq) map { r => wsram_mat_vs2(r).asUInt.orR })
-      io.debug.dhazard_raw_vs3 := Vec((0 until nSeq) map { r => wsram_mat_vs3(r).asUInt.orR })
+      io.debug.dhazard_raw_vlen := VecInit((0 until nSeq) map { r => (me(r).raw.asUInt & ~vlen_check_ok(r).asUInt).orR })
+      io.debug.dhazard_raw_pred_vp := VecInit((0 until nSeq) map { r => wpred_mat_vp(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs1 := VecInit((0 until nSeq) map { r => wpred_mat_vs1(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs2 := VecInit((0 until nSeq) map { r => wpred_mat_vs2(r).asUInt.orR })
+      io.debug.dhazard_raw_pred_vs3 := VecInit((0 until nSeq) map { r => wpred_mat_vs3(r).asUInt.orR })
+      io.debug.dhazard_raw_vs1 := VecInit((0 until nSeq) map { r => wsram_mat_vs1(r).asUInt.orR })
+      io.debug.dhazard_raw_vs2 := VecInit((0 until nSeq) map { r => wsram_mat_vs2(r).asUInt.orR })
+      io.debug.dhazard_raw_vs3 := VecInit((0 until nSeq) map { r => wsram_mat_vs3(r).asUInt.orR })
       io.debug.dhazard_war := war
       io.debug.dhazard_waw := waw
       io.debug.dhazard := check
@@ -211,9 +212,9 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     def use_mask_lop[T <: LaneOp](lops: Vec[ValidIO[T]], fn: ValidIO[T]=>Bool) = {
       val mask =
         (lops.zipWithIndex) map { case (lop, i) =>
-          dgate(fn(lop), Wire(UInt(width = lops.size+nBanks-1), init = strip_to_bmask(lop.bits.strip) << UInt(i)))
+          dgate(fn(lop), Wire(UInt(width = lops.size+nBanks-1), init = strip_to_bmask(lop.bits.strip) << i.U))
         } reduce(_|_)
-      mask >> UInt(1) // shift right by one because we are looking one cycle in the future
+      mask >> 1.U // shift right by one because we are looking one cycle in the future
     }
     def use_mask_lop_valid[T <: LaneOp](lops: Vec[ValidIO[T]]) =
       use_mask_lop(lops, (lop: ValidIO[T]) => lop.valid)
@@ -229,7 +230,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
     val use_mask_wport_sram = (0 until nWSel) map { i =>
       use_mask_lop(
         io.ticker.sram.write,
-        (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === UInt(i)) }
+        (lop: ValidIO[SRAMRFWriteOp]) => lop.valid && lop.bits.selg && lop.bits.wsel === i.U) }
     val use_mask_wport_pred =
       use_mask_lop(
         io.ticker.pred.write,
@@ -270,7 +271,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         val shazard_vfvu = chk_rport_2 || chk_wport_sram_0 || chk_op_shazard(use_mask_vfvu)
         val shazard_vgu = chk_rport_5 || chk_wport_sram_1 || chk_op_shazard(use_mask_vgu)
         val shazard_vqu = chk_rport_3_4 || chk_wport_sram_1 || chk_op_shazard(use_mask_vqu)
-        select(r).vfmu := Mux(shazard_vfmu0, UInt(1), UInt(0))
+        select(r).vfmu := Mux(shazard_vfmu0, 1.U, 0.U)
         val a = me(r).active
         val out =
           a.vimu && shazard_vimu ||
@@ -281,10 +282,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
     def debug = {
       io.debug.shazard := check
-      io.debug.use_mask_sreg_global := Vec((0 until nGOPL) map { i => use_mask_sreg_global(i) })
-      io.debug.use_mask_xbar := Vec((0 until nGOPL) map { i => use_mask_xbar(i) })
+      io.debug.use_mask_sreg_global := VecInit((0 until nGOPL) map { i => use_mask_sreg_global(i) })
+      io.debug.use_mask_xbar := VecInit((0 until nGOPL) map { i => use_mask_xbar(i) })
       io.debug.use_mask_vimu := use_mask_vimu
-      io.debug.use_mask_vfmu := Vec((0 until nVFMU) map { i => use_mask_vfmu(i) })
+      io.debug.use_mask_vfmu := VecInit((0 until nVFMU) map { i => use_mask_vfmu(i) })
       io.debug.use_mask_vfcu := use_mask_vfcu
       io.debug.use_mask_vfvu := use_mask_vfvu
       io.debug.use_mask_vgu := use_mask_vgu
@@ -303,21 +304,21 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
     val set = new {
       def valid(n: UInt) = {
-        next_update(n) := Bool(true)
-        next_v(n) := Bool(true)
+        next_update(n) := true.B
+        next_v(n) := true.B
       }
     }
 
     val clear = new {
       def valid(n: UInt) = {
-        next_update(n) := Bool(true)
-        next_v(n) := Bool(false)
+        next_update(n) := true.B
+        next_v(n) := false.B
       }
     }
 
     def header = {
       (0 until nSeq) map { r =>
-        next_update(r) := Bool(false)
+        next_update(r) := false.B
         next_v(r) := v(r)
       }
     }
@@ -332,10 +333,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
           e(r).reg := io.master.update.reg(r)
           e(r).vlen := io.op.bits.vlen
           e(r).eidx.major := io.lid << io.cfg.lstride
-          e(r).eidx.minor := UInt(0)
-          e(r).sidx := UInt(0)
-          e(r).age := UInt(0)
-          e(r).pack.idx := UInt(0)
+          e(r).eidx.minor := 0.U
+          e(r).sidx := 0.U
+          e(r).age := 0.U
+          e(r).pack.idx := 0.U
         }
         io.master.clear(r) := !v(r) || !next_v(r)
       }
@@ -403,7 +404,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val mcmd = DecodedMemCommand(fn.vmu().cmd)
 
       val valids = Vec((first.zipWithIndex) map { case (f, i) => f && nohazards(i) })
-      val readys = Vec((0 until nSeq) map { case i =>
+      val readys = VecInit((0 until nSeq) map { case i =>
         io.vmu.pala.available &&
         (!mcmd.read || io.mocheck(i).load && io.lreq.available) &&
         (!mcmd.store || io.mocheck(i).store && io.sreq.available) })
@@ -452,7 +453,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         me(i).active.vgu && vgu_consider(i) ||
         me(i).active.vsu && vsu_consider(i) ||
         me(i).active.vqu && vqu_consider(i))
-      val first_sched = ff((i: Int) => consider(i) && e(i).age === UInt(0))
+      val first_sched = ff((i: Int) => consider(i) && e(i).age === 0.U)
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
@@ -497,7 +498,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
     val vipu = new {
       val consider = (i: Int) => me(i).active.vipu && nohazards(i)
-      val first_sched = ff((i: Int) => consider(i) && e(i).age === UInt(0))
+      val first_sched = ff((i: Int) => consider(i) && e(i).age === 0.U)
       val second_sched = ff((i: Int) => consider(i))
       val sel = first_sched.reduce(_ || _)
       val sched = Vec(first_sched zip second_sched map { case (f, s) => Mux(sel, f, s) })
@@ -585,7 +586,7 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
       val strip = stripfn(first)
       val cnt = strip_to_bcnt(strip)
 
-      val readys = Vec((0 until nSeq) map { case i =>
+      val readys = VecInit((0 until nSeq) map { case i =>
         io.dpla.available &&
         (!me(i).fn.vqu().latch(0) || io.dqla(0).available) &&
         (!me(i).fn.vqu().latch(1) || io.dqla(1).available) })
@@ -612,9 +613,9 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
       def update_eidx(i: Int) {
         val strip = io.cfg.lstrip >> UInt(bStrip)
-        val minor = Cat(UInt(0), e(i).eidx.minor) + me_rate(i)
+        val minor = Cat(0.U, e(i).eidx.minor) + me_rate(i)
         when (minor === strip) {
-          e(i).eidx.minor := UInt(0)
+          e(i).eidx.minor := 0.U
           e(i).eidx.major := e(i).eidx.major + (strip << UInt(bLanes))
         } .otherwise {
           e(i).eidx.minor := minor
@@ -624,14 +625,14 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
         e(i).sidx := e_sidx_next(i)
       }
 
-      val e_pack_idx_next = Vec((0 until nSeq).map(i =>
+      val e_pack_idx_next = VecInit((0 until nSeq).map(i =>
         e(i).pack.idx + me_rate(i)))
       def update_pack(i: Int) {
         if (confprec) e(i).pack.idx := e_pack_idx_next(i)
       }
 
       def step_pstride(i: Int) =
-        if (confprec) (e_pack_idx_next(i)(bPack-1, 0) === UInt(0)) else Bool(true)
+        if (confprec) (e_pack_idx_next(i)(bPack-1, 0) === 0.U) else true.B
       def update_vp(i: Int, fn: RegPFn, pfn: PRegIdFn) {
         val info = fn(me(i).base)
         val id = pfn(e(i).reg).id
@@ -645,10 +646,10 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
 
         val (step_vstride, vstride) = if (confprec)
             confprec_step(info.prec, e_pack_idx_next(i), io.cfg)
-          else (Bool(true), io.cfg.vstride.d)
+          else (true.B, io.cfg.vstride.d)
 
         when (info.valid) {
-          id := id + MuxCase(UInt(0), Seq(
+          id := id + MuxCase(0.U, Seq(
             (info.is_vector() && step_vstride) -> vstride,
             (info.is_pred() && step_pstride(i)) -> io.cfg.pstride))
         }
@@ -669,11 +670,11 @@ class LaneSequencer(implicit p: Parameters) extends VXUModule()(p)
             update_vs(i, reg_vs3, pregid_vs3)
             update_vd(i, reg_vd, pregid_vd)
             when (e(i).vlen === strip) {
-              iwindow.clear.valid(UInt(i))
+              iwindow.clear.valid(i.U)
             }
           }
           when (e(i).age.orR) {
-            e(i).age := e(i).age - UInt(1)
+            e(i).age := e(i).age - 1.U
           }
           when (exp.fires(i)) {
             e(i).age := UInt(nBanks-1)

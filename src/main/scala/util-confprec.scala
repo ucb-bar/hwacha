@@ -1,7 +1,8 @@
 
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 trait PrecLogic {
@@ -13,21 +14,21 @@ trait PrecLogic {
     val selp = confprec_decode(prec)
     val stride = confprec_stride(selp, cfg)
     val update = Mux1H(selp.map { case (p, i) =>
-      p -> (if (i > 0) idx(i-1, 0) === UInt(0) else Bool(true)) })
+      p -> (if (i > 0) idx(i-1, 0) === 0.U else true.B) })
     (update, stride)
   }
 }
 
 trait RateLogic extends LaneParameters {
   def rate_decode(rate: UInt): Seq[(Bool, Int)] =
-    (0 to bPack).map(r => rate === UInt(r)).zipWithIndex
+    (0 to bPack).map(r => rate === r.U).zipWithIndex
 
   def unpack_pred(n: UInt, i: Int, rate: UInt): Bits = {
     require(i <= nSlices)
     if (confprec) {
-      val shift = UInt(i) << rate
+      val shift = i.U << rate
       val mask = Mux1H(rate_decode(rate).map { case (r, k) =>
-        r -> Fill(1 << k, UInt(1,1)) })
+        r -> Fill(1 << k, 1.U(1.W)) })
       ((n >> shift) & mask)(nPack-1, 0)
     } else n(i)
   }
@@ -35,7 +36,7 @@ trait RateLogic extends LaneParameters {
     if (confprec)
       Mux1H(rate_decode(rate).map { case (r, i) =>
         val w = (1 << i) - 1
-        r -> Vec((0 until wPred by nPack).map(k => n(w+k, k))).asUInt })
+        r -> VecInit((0 until wPred by nPack).map(k => n(w+k, k))).asUInt })
     else n
 
   def splat_scalar(uop: SRegMicroOp) =
@@ -57,7 +58,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
     val out = Wire(new BankDataEntry)
     if (confprec) {
       val (selp, selr, shift) = _prologue(pack, rate)
-      val data = in.data >> Cat(shift, UInt(0, bSlices + 4))
+      val data = in.data >> Cat(shift, 0.U((bSlices+4).W))
       val fn = Seq(
         (unpack_d _, expand_d _),
         (unpack_w _, expand_w _),
@@ -69,7 +70,7 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
           (r, i) <- selr.take(n)
         } yield (p && r) -> {
           val msb = (regLen >> i) - 1
-          Vec((0 until (nSlices << i)).map(k =>
+          VecInit((0 until (nSlices << i)).map(k =>
             expand(unpack(data, k))(msb, 0))).asUInt }
 
       out.data := Mux1H((pass.reduce(_ || _), in.data) +: opts)
@@ -85,14 +86,14 @@ trait PackLogic extends PrecLogic with RateLogic with Packing {
     val out = Wire(new BankDataMaskEntry)
     if (confprec) {
       val (selp, selr, shift) = _prologue(pack, rate)
-      val shift_data = Cat(shift, UInt(0, bSlices + 4))
-      val shift_mask = Cat(shift, UInt(0, bSlices))
+      val shift_data = Cat(shift, 0.U((bSlices + 4).W))
+      val shift_mask = Cat(shift, 0.U(bSlices.W))
 
       val pass = selp.map { case (p, n) => p && selr(n)._1 }
       val opts = for ((p, n) <- selp; (r, i) <- selr.take(n))
         yield (p && r) -> {
           val (width, period) = (regLen >> n, regLen >> i)
-          Vec((0 until (nSlices << i)).map(k =>
+          VecInit((0 until (nSlices << i)).map(k =>
             _unpack(in.data, k, wBank, period, width))).asUInt }
       val data = Mux1H((pass.reduce(_ || _), in.data) +: opts)
 

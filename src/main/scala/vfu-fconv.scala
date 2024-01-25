@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 import HardFloatHelper._
@@ -9,27 +10,27 @@ import scala.collection.mutable.ArrayBuffer
 class FConvOperand(implicit p: Parameters) extends VXUBundle()(p)
   with LanePred with Rate {
   val fn = new VFVUFn
-  val in = Bits(width = SZ_D)
+  val in = UInt(SZ_D.W)
 }
 
 class FConvResult extends Bundle {
-  val out = Bits(OUTPUT, SZ_D)
-  val exc = Bits(OUTPUT, freechips.rocketchip.tile.FPConstants.FLAGS_SZ)
+  val out = UInt(SZ_D.W)
+  val exc = UInt(freechips.rocketchip.tile.FPConstants.FLAGS_SZ.W)
 }
 
 class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
-    val req = Valid(new FConvOperand).flip
+  val io = IO(new Bundle {
+    val req = Flipped(Valid(new FConvOperand))
     val resp = Valid(new FConvResult)
-  }
+  })
 
-  val pred = Mux(io.req.valid, io.req.bits.pred, Bits(0))
+  val pred = Mux(io.req.valid, io.req.bits.pred, 0.U)
   val active = io.req.valid && io.req.bits.active()
   val fn = io.req.bits.fn.dgate(active)
   val in = io.req.bits.in
 
   val op_int2float = MuxCase(
-    Bits(0), Array(
+    0.U, Array(
       fn.op_is(FV_CLTF)  -> UInt("b11"),
       fn.op_is(FV_CLUTF) -> UInt("b10"),
       fn.op_is(FV_CWTF)  -> UInt("b01"),
@@ -37,7 +38,7 @@ class FConvSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     ))
 
   val op_float2int = MuxCase(
-    Bits(0), Array(
+    0.U, Array(
       fn.op_is(FV_CFTL)  -> UInt("b11"),
       fn.op_is(FV_CFTLU) -> UInt("b10"),
       fn.op_is(FV_CFTW)  -> UInt("b01"),

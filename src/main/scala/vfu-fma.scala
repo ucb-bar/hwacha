@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 import HardFloatHelper._
@@ -9,23 +10,23 @@ import scala.collection.mutable.ArrayBuffer
 class FMAOperand(implicit p: Parameters) extends VXUBundle()(p)
   with LanePred with Rate {
   val fn = new VFMUFn
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
-  val in2 = Bits(width = SZ_D)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
+  val in2 = UInt(SZ_D.W)
 }
 
 class FMAResult extends Bundle {
-  val out = Bits(OUTPUT, SZ_D)
-  val exc = Bits(OUTPUT, freechips.rocketchip.tile.FPConstants.FLAGS_SZ)
+  val out = UInt(SZ_D.W)
+  val exc = UInt(freechips.rocketchip.tile.FPConstants.FLAGS_SZ.W)
 }
 
 class FMASlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new Bundle {
-    val req = Valid(new FMAOperand).flip
+  val io = IO(new Bundle {
+    val req = Flipped(Valid(new FMAOperand))
     val resp = Valid(new FMAResult)
-  }
+  })
 
-  val pred = Mux(io.req.valid, io.req.bits.pred, Bits(0))
+  val pred = Mux(io.req.valid, io.req.bits.pred, 0.U)
   val active = io.req.valid && io.req.bits.active()
   val fn = io.req.bits.fn.dgate(active)
   val in0 = io.req.bits.in0

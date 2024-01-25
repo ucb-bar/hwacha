@@ -1,12 +1,13 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.tilelink._
 
 class VMUMemReq(implicit p: Parameters) extends VMUMemOp
   with VMUTag with VMUData {
-  val mask = UInt(width = tlDataBytes)
+  val mask = UInt(tlDataBytes.W)
   val pred = Bool()
 }
 
@@ -16,20 +17,20 @@ class VMUMemResp(implicit p: Parameters) extends VMULoadData()(p) {
 
 class VMUMemIO(implicit p: Parameters) extends VMUBundle()(p) {
   val req = Decoupled(new VMUMemReq)
-  val resp = Decoupled(new VMUMemResp).flip
+  val resp = Flipped(Decoupled(new VMUMemResp))
 }
 
 class MBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val inner = new Bundle {
-      val abox = new VMUAddrIO().flip
-      val sbox = new VMUStoreIO().flip
+      val abox = Flipped(new VMUAddrIO())
+      val sbox = Flipped(new VMUStoreIO())
       val lbox = new VLDQIO
     }
     val outer = new VMUMemIO
 
     val sret = new CounterUpdateIO(bSRet)
-  }
+  })
 
   val vmt = Module(new Table(nVMT, new VMTEntry))
   vmt.suggestName("vmtInst")
@@ -105,17 +106,17 @@ class MBox(implicit p: Parameters) extends VMUModule()(p) {
   val sret_resp_en = vmt.io.r.valid && resp.bits.store
   val sret_resp_cnt = vmt.io.r.record.store().ecnt.decode()
 
-  io.sret.update := Bool(true)
+  io.sret.update := true.B
   io.sret.cnt :=
     Mux(sret_req_en, sret_req_cnt, 0.U) +
     Mux(sret_resp_en, sret_resp_cnt, 0.U)
 }
 
 class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val vmu = new VMUMemIO().flip
+  val io = IO(new Bundle {
+    val vmu = Flipped(new VMUMemIO())
     val dmem = TLBundle(edge.bundle)
-  }
+  })
 
   private val req = io.vmu.req
   private val resp = io.vmu.resp
@@ -160,7 +161,7 @@ class VMUTileLink(edge: TLEdgeOut)(implicit p: Parameters) extends VMUModule()(p
   resp.bits.store := grant.bits.opcode === TLMessages.AccessAck
 
   //Tie off unused channels
-  io.dmem.b.ready := Bool(true)
-  io.dmem.c.valid := Bool(false)
-  io.dmem.e.valid := Bool(false)
+  io.dmem.b.ready := true.B
+  io.dmem.c.valid := false.B
+  io.dmem.e.valid := false.B
 }

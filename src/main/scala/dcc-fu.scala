@@ -1,15 +1,16 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 
 class VDUTag(implicit p: Parameters) extends VXUBundle()(p)
   with BankPred with BankPack {
-  val bank = UInt(width = bBanks)
+  val bank = UInt(bBanks.W)
   val selff = Bool() // select ff if true
-  val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
-  val fusel = Bits(width = 1) // because we have 2 units idiv/fdiv
+  val addr = UInt(math.max(log2Up(nSRAM), log2Up(nFF)).W)
+  val fusel = UInt(1.W) // because we have 2 units idiv/fdiv
 }
 
 class ReduceResultIO(implicit p: Parameters) extends VXUBundle()(p) {
@@ -18,18 +19,18 @@ class ReduceResultIO(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class VDU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new DCCIssueIO {
-    val cfg = new HwachaConfigIO().flip
+  val io = IO(new DCCIssueIO {
+    val cfg = Flipped(new HwachaConfigIO())
     val ack = new DCCAckIO
-    val pla = new CounterLookAheadIO().flip // lpq entry
-    val qla = Vec(nVDUOperands, new CounterLookAheadIO).flip // lrq entries
-    val ila = new CounterLookAheadIO().flip // idiv output entries
-    val fla = new CounterLookAheadIO().flip // fdiv output entries
-    val lpq = new LPQIO().flip
-    val lrqs = Vec(nVDUOperands, new LRQIO).flip
+    val pla = Flipped(new CounterLookAheadIO()) // lpq entry
+    val qla = Flipped(Vec(nVDUOperands, new CounterLookAheadIO)) // lrq entries
+    val ila = Flipped(new CounterLookAheadIO()) // idiv output entries
+    val fla = Flipped(new CounterLookAheadIO()) // fdiv output entries
+    val lpq = Flipped(new LPQIO())
+    val lrqs = Flipped(Vec(nVDUOperands, new LRQIO))
     val bwqs = Vec(nBanks, new BWQIO)
     val red = new ReduceResultIO
-  }
+  })
 
   val ctrl = Module(new VDUCtrl)
   ctrl.suggestName("ctrlInst")
@@ -46,7 +47,7 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 
   val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
   pcntr.suggestName("pcntrInst")
-  pcntr.io.inc.cnt := UInt(1)
+  pcntr.io.inc.cnt := 1.U
   pcntr.io.inc.update := lpq.io.deq.fire
   pcntr.io.dec <> io.pla
 
@@ -58,7 +59,7 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 
     val cntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
     cntr.suggestName("cntrInst")
-    cntr.io.inc.cnt := UInt(1)
+    cntr.io.inc.cnt := 1.U
     cntr.io.inc.update := ctrl.io.lrqs.update(i)
     cntr.io.dec <> io.qla(i)
   }
@@ -92,14 +93,14 @@ class VDU(implicit p: Parameters) extends VXUModule()(p) {
 }
 
 class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
-  val io = new DCCIssueIO {
-    val cfg = new HwachaConfigIO().flip
-    val ila = new CounterLookAheadIO().flip
-    val fla = new CounterLookAheadIO().flip
-    val lpq = new LPQIO().flip
+  val io = IO(new DCCIssueIO {
+    val cfg = Flipped(new HwachaConfigIO())
+    val ila = Flipped(new CounterLookAheadIO())
+    val fla = Flipped(new CounterLookAheadIO())
+    val lpq = Flipped(new LPQIO())
     val lrqs = new Bundle {
-      val q = Vec(nVDUOperands, new LRQIO).flip
-      val update = Vec(nVDUOperands, Bool(OUTPUT))
+      val q = Flipped(Vec(nVDUOperands, new LRQIO))
+      val update = Vec(nVDUOperands, Output(Bool()))
     }
 
     val idiv = new Bundle {
@@ -120,74 +121,74 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
     }
 
     val bwqs = Vec(nBanks, new BWQIO)
-  }
+  })
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
   opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
-  val s_idle :: s_busy :: s_wait :: Nil = Enum(UInt(), 3)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: s_wait :: Nil = Enum(3)
+  val state = RegInit(s_idle)
   val op = Reg(new DCCOp)
 
-  val slice_idx = Reg(UInt(width = bfLStrip - bSlices))
-  val strip_idx = Reg(UInt(width = bVLen - bStrip))
-  val slice_idx_next = slice_idx + UInt(1)
-  val lstrip = io.cfg.lstrip >> UInt(bSlices)
+  val slice_idx = Reg(UInt((bfLStrip - bSlices).W))
+  val strip_idx = Reg(UInt((bVLen - bStrip).W))
+  val slice_idx_next = slice_idx + 1.U
+  val lstrip = io.cfg.lstrip >> bSlices
   val bank = slice_idx(bBanks-1, 0)
 
   val pack = Wire(new PackInfo)
   val (vd_update, vd_stride) = if (confprec) {
     pack.prec := op.vd.prec
-    pack.idx := slice_idx >> UInt(bBanks)
-    confprec_step(pack.prec, slice_idx_next >> UInt(bBanks), io.cfg)
+    pack.idx := slice_idx >> bBanks
+    confprec_step(pack.prec, slice_idx_next >> bBanks, io.cfg)
   } else {
     pack.prec := PREC_D
-    pack.idx := UInt(0)
-    (Bool(true), io.cfg.vstride.d)
+    pack.idx := 0.U
+    (true.B, io.cfg.vstride.d)
   }
 
   val fire = Wire(Bool())
   val fire_div = Wire(Bool())
   val fire_first = Wire(Bool())
   val fire_reduce = Wire(Bool())
-  val ecnt = Mux(op.vlen > UInt(nSlices), UInt(nSlices), op.vlen(bSlices, 0))
+  val ecnt = Mux(op.vlen > nSlices.U, nSlices.U, op.vlen(bSlices, 0))
   val vlen_next = op.vlen - ecnt
-  val pred = Vec((0 until nSlices).map(UInt(_) < ecnt)).asUInt
+  val pred = VecInit((0 until nSlices).map(_.U < ecnt)).asUInt
   val idiv_active = op.active.vidiv
 
-  opq.io.deq.ready := Bool(false)
-  io.rpred.result.valid := Bool(false)
-  io.rfirst.result.valid := Bool(false)
+  opq.io.deq.ready := false.B
+  io.rpred.result.valid := false.B
+  io.rfirst.result.valid := false.B
 
   switch (state) {
     is (s_idle) {
-      opq.io.deq.ready := Bool(true)
+      opq.io.deq.ready := true.B
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
-        slice_idx := UInt(0)
-        strip_idx := UInt(0)
+        slice_idx := 0.U
+        strip_idx := 0.U
       }
     }
     is (s_busy) {
       when (fire) {
         op.vlen := vlen_next
-        when (vlen_next === UInt(0)) {
+        when (vlen_next === 0.U) {
           state := Mux(fire_reduce, s_wait, s_idle)
         }
       }
       when (fire_div) {
         slice_idx := slice_idx_next
-        when (vd_update && (bank === UInt(nBanks-1))) {
+        when (vd_update && (bank === (nBanks-1).U)) {
           op.vd.id := op.vd.id + vd_stride
         }
       }
       when (fire_first) {
         slice_idx := slice_idx_next
         when (slice_idx_next === lstrip) {
-          slice_idx := UInt(0)
-          strip_idx := strip_idx + UInt(1)
+          slice_idx := 0.U
+          strip_idx := strip_idx + 1.U
         }
       }
     }
@@ -265,7 +266,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   tagq.io.enq.valid := fire_idiv(tagq.io.enq.ready) || fire_fdiv(tagq.io.enq.ready)
   tagq.io.enq.bits.pred := pred & io.lpq.bits.pred
   tagq.io.enq.bits.bank := bank
-  tagq.io.enq.bits.selff := Bool(false) // FIXME
+  tagq.io.enq.bits.selff := false.B // FIXME
   tagq.io.enq.bits.addr := op.vd.id
   tagq.io.enq.bits.fusel := op.active.vidiv
   tagq.io.enq.bits.pack := pack
@@ -298,7 +299,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   io.rfirst.fu.req.bits.active := pred
   io.rfirst.fu.req.bits.pred := io.lpq.bits.pred
   io.rfirst.fu.req.bits.lsidx := strip_idx
-  io.rfirst.fu.req.bits.in := Vec((0 until nSlices) map { unpack_slice(io.lrqs.q(0).bits.data, _) })
+  io.rfirst.fu.req.bits.in := VecInit((0 until nSlices) map { unpack_slice(io.lrqs.q(0).bits.data, _) })
 
   val deq_idivs_resp = (0 until nSlices).map {  tagq.io.deq.bits.fusel.asBool && tagq.io.deq.bits.pred(_) }
   val deq_fdivs_resp = (0 until nSlices).map { !tagq.io.deq.bits.fusel.asBool && tagq.io.deq.bits.pred(_) }
@@ -307,7 +308,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   val mask_fdivs_resp_valid = io.fdiv.fus.zipWithIndex.map { case (fdiv, i) =>
     !deq_fdivs_resp(i) || fdiv.resp.valid }
 
-  val enq_bwqs = (0 until nBanks).map { tagq.io.deq.bits.active() && tagq.io.deq.bits.bank === UInt(_) }
+  val enq_bwqs = (0 until nBanks).map { tagq.io.deq.bits.active() && tagq.io.deq.bits.bank === _.U }
   val mask_bwqs_ready = io.bwqs.zipWithIndex.map { case (bwq, i) => !enq_bwqs(i) || bwq.ready }
 
   def fire_bwq(exclude: Bool, include: Bool*) = {
@@ -328,7 +329,7 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
   wraw.data := Mux(tagq.io.deq.bits.fusel.asBool,
     repack_slice(io.idiv.fus.map(_.resp.bits.out)),
     repack_slice(io.fdiv.fus.map(_.resp.bits.out)))
-  val wpack = repack_bank(tagq.io.deq.bits.pack, UInt(0), wraw)
+  val wpack = repack_bank(tagq.io.deq.bits.pack, 0.U, wraw)
 
   io.bwqs.map { bwq =>
     bwq.bits.selff := tagq.io.deq.bits.selff
@@ -346,13 +347,13 @@ class VDUCtrl(implicit p: Parameters) extends VXUModule()(p) with PackLogic {
 
   val icntr = Module(new LookAheadCounter(0, maxLookAhead))
   icntr.suggestName("icntrInst")
-  icntr.io.inc.cnt := UInt(1)
+  icntr.io.inc.cnt := 1.U
   icntr.io.inc.update := fire_bwq(null, tagq.io.deq.bits.fusel.asBool)
   icntr.io.dec <> io.ila
 
   val fcntr = Module(new LookAheadCounter(0, maxLookAhead))
   fcntr.suggestName("fcntrInst")
-  fcntr.io.inc.cnt := UInt(1)
+  fcntr.io.inc.cnt := 1.U
   fcntr.io.inc.update := fire_bwq(null, !tagq.io.deq.bits.fusel.asBool)
   fcntr.io.dec <> io.fla
 }

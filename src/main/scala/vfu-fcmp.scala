@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 import HardFloatHelper._
@@ -8,20 +9,20 @@ import freechips.rocketchip.tile.FType
 
 class FCmpOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFCUFn
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
 }
 
 class FCmpResult(implicit p: Parameters) extends VXUBundle()(p) {
-  val out = Bits(width = SZ_D)
-  val cmp = Bits(width = nPack)
+  val out = UInt(SZ_D.W)
+  val cmp = UInt(nPack.W)
 }
 
 class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with freechips.rocketchip.tile.HasFPUParameters {
-  val io = new Bundle {
-    val req = Valid(new FCmpOperand).flip
+  val io = IO(new Bundle {
+    val req = Flipped(Valid(new FCmpOperand))
     val resp = Valid(new FCmpResult)
-  }
+  })
 
   val fn = io.req.bits.fn.dgate(io.req.valid)
   val in0 = dgate(io.req.valid, io.req.bits.in0)
@@ -52,7 +53,7 @@ class FCmpSlice(implicit p: Parameters) extends VXUModule()(p) with Packing with
         comp.suggestName("compInst")
         comp.io.a := input0
         comp.io.b := input1
-        comp.io.signaling := Bool(true)
+        comp.io.signaling := true.B
         comp.io
       }
     }

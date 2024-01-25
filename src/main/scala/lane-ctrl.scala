@@ -1,13 +1,14 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val op = new LaneOpIO().flip
+  val io = IO(new Bundle {
+    val op = Flipped(new LaneOpIO())
     val uop = new MicroOpIO
-  }
+  })
 
   class Systolic[T <: LaneOp](in: ValidIO[T], multirate: Boolean) {
     val in_overflow = in.bits.strip > UInt(nSlices)
@@ -23,7 +24,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
         in.bits.getClass.getName)
 
     val out = Wire(Valid(in.bits.cloneType))
-    out.valid := Reg(next=in_next_valid, init=Bool(false))
+    out.valid := RegNext(in_next_valid, init=false.B)
     out.bits := RegEnable(in.bits, in_next_valid)
     out.bits.strip := RegEnable(in.bits.strip - in_popcnt, in_next_valid)
   }
@@ -87,7 +88,7 @@ class LaneCtrl(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     when (reset) {
-      reg_valid := Bool(false)
+      reg_valid := false.B
     }
   }
 

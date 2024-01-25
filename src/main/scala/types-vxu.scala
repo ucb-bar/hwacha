@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 abstract class VXUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
@@ -13,11 +14,11 @@ abstract class VXUBundle(implicit p: Parameters)
 //-------------------------------------------------------------------------\\
 
 class VIUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val dw = Bits(width = SZ_DW)
-  val fp = Bits(width = SZ_FP)
-  val op = Bits(width = SZ_VIU_OP)
+  val dw = UInt(SZ_DW.W)
+  val fp = UInt(SZ_FP.W)
+  val op = UInt(SZ_VIU_OP.W)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
+  def dgate(valid: Bool) = DataGating.dgate(valid, this)
 
   def dw_is(_dw: UInt) = dw === _dw
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
@@ -25,14 +26,14 @@ class VIUFn(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class VIPUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val op = Bits(width = SZ_VIPU_OP)
+  val op = UInt(SZ_VIPU_OP.W)
 }
 
 class VIXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
-  val dw = UInt(width = SZ_DW)
-  val op = UInt(width = sz_op)
+  val dw = UInt(SZ_DW.W)
+  val op = UInt(sz_op.W)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
+  def dgate(valid: Bool) = DataGating.dgate(valid, this)
 
   def dw_is(_dw: UInt) = dw === _dw
   def op_is(ops: UInt*): Bool = op_is(ops.toList)
@@ -44,11 +45,11 @@ class VIMUFn(implicit p: Parameters) extends VIXUFn(SZ_VIMU_OP)(p)
 class VIDUFn(implicit p: Parameters) extends VIXUFn(SZ_VIDU_OP)(p)
 
 class VFXUFn(sz_op: Int)(implicit p: Parameters) extends VXUBundle()(p) {
-  val fp = UInt(width = SZ_FP)
-  val rm = UInt(width = freechips.rocketchip.tile.FPConstants.RM_SZ)
-  val op = UInt(width = sz_op)
+  val fp = UInt(SZ_FP.W)
+  val rm = UInt(freechips.rocketchip.tile.FPConstants.RM_SZ.W)
+  val op = UInt(sz_op.W)
 
-  def dgate(valid: Bool) = this.cloneType.fromBits(DataGating.dgate(valid, this.asUInt))
+  def dgate(valid: Bool) = DataGating.dgate(valid, this)
 
   def fp_is(fps: UInt*) = fps.toList.map(x => {fp === x}).reduceLeft(_ || _)
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
@@ -60,20 +61,20 @@ class VFCUFn(implicit p: Parameters) extends VFXUFn(SZ_VFCU_OP)(p)
 class VFVUFn(implicit p: Parameters) extends VFXUFn(SZ_VFVU_OP)(p)
 
 class VQUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val latch = Bits(width = 2)
+  val latch = UInt(2.W)
 }
 
 class VRPUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val op = UInt(width = SZ_VRPU_OP)
+  val op = UInt(SZ_VRPU_OP.W)
   def op_is(ops: UInt*) = ops.toList.map(x => {op === x}).reduceLeft(_ || _)
 }
 
 class VRFUFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val sd = UInt(width = bSRegs)
+  val sd = UInt(bSRegs.W)
 }
 
 class VFn(implicit p: Parameters) extends VXUBundle()(p) {
-  val union = Bits(width = List(
+  val union = UInt(List(
     new VIUFn().getWidth,
     new VIPUFn().getWidth,
     new VIMUFn().getWidth,
@@ -85,21 +86,21 @@ class VFn(implicit p: Parameters) extends VXUBundle()(p) {
     new VMUFn().getWidth,
     new VQUFn().getWidth,
     new VRPUFn().getWidth,
-    new VRFUFn().getWidth).max
+    new VRFUFn().getWidth).max.W
   )
 
-  def viu(d: Int = 0) = new VIUFn().fromBits(this.union)
-  def vipu(d: Int = 0) = new VIPUFn().fromBits(this.union)
-  def vimu(d: Int = 0) = new VIMUFn().fromBits(this.union)
-  def vidu(d: Int = 0) = new VIDUFn().fromBits(this.union)
-  def vfmu(d: Int = 0) = new VFMUFn().fromBits(this.union)
-  def vfdu(d: Int = 0) = new VFDUFn().fromBits(this.union)
-  def vfcu(d: Int = 0) = new VFCUFn().fromBits(this.union)
-  def vfvu(d: Int = 0) = new VFVUFn().fromBits(this.union)
-  def vrpu(d: Int = 0) = new VRPUFn().fromBits(this.union)
-  def vrfu(d: Int = 0) = new VRFUFn().fromBits(this.union)
-  def vmu(d: Int = 0) = new VMUFn().fromBits(this.union)
-  def vqu(d: Int = 0) = new VQUFn().fromBits(this.union)
+  def viu(d: Int = 0) = this.union.asTypeOf(new VIUFn())
+  def vipu(d: Int = 0) = this.union.asTypeOf(new VIPUFn())
+  def vimu(d: Int = 0) = this.union.asTypeOf(new VIMUFn())
+  def vidu(d: Int = 0) = this.union.asTypeOf(new VIDUFn())
+  def vfmu(d: Int = 0) = this.union.asTypeOf(new VFMUFn())
+  def vfdu(d: Int = 0) = this.union.asTypeOf(new VFDUFn())
+  def vfcu(d: Int = 0) = this.union.asTypeOf(new VFCUFn())
+  def vfvu(d: Int = 0) = this.union.asTypeOf(new VFVUFn())
+  def vrpu(d: Int = 0) = this.union.asTypeOf(new VRPUFn())
+  def vrfu(d: Int = 0) = this.union.asTypeOf(new VRFUFn())
+  def vmu(d: Int = 0) = this.union.asTypeOf(new VMUFn())
+  def vqu(d: Int = 0) = this.union.asTypeOf(new VQUFn())
 }
 
 
@@ -108,7 +109,7 @@ class VFn(implicit p: Parameters) extends VXUBundle()(p) {
 //-------------------------------------------------------------------------\\
 
 class RegId(bId: Int)(implicit p: Parameters) extends VXUBundle()(p) {
-  val id = UInt(width = bId)
+  val id = UInt(bId.W)
 }
 
 class RegInfo(bId: Int)(implicit p: Parameters) extends RegId(bId)(p) {
@@ -122,10 +123,10 @@ class RegInfo(bId: Int)(implicit p: Parameters) extends RegId(bId)(p) {
   def neg(d: Int = 0) = scalar
 }
 
-class BasePRegId(implicit p: Parameters) extends RegId(p(HwachaPredRegBits))(p)
-class BaseRegId(implicit p: Parameters) extends RegId(p(HwachaRegBits))(p)
-class BasePRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPredRegBits))(p)
-class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegBits))(p) with RegPrec
+class BasePRegId(implicit p: Parameters) extends RegId(p(HwachaPredRegUInt))(p)
+class BaseRegId(implicit p: Parameters) extends RegId(p(HwachaRegUInt))(p)
+class BasePRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPredRegUInt))(p)
+class BaseRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRegUInt))(p) with RegPrec
 
 class BaseRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val vp = new BasePRegInfo
@@ -135,10 +136,10 @@ class BaseRegisters(implicit p: Parameters) extends VXUBundle()(p) {
   val vd = new BaseRegInfo
 }
 
-class PhysicalPRegId(implicit p: Parameters) extends RegId(p(HwachaPRFAddrBits))(p)
-class PhysicalRegId(implicit p: Parameters) extends RegId(p(HwachaRFAddrBits))(p)
-class PhysicalPRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPRFAddrBits))(p)
-class PhysicalRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRFAddrBits))(p) with RegPrec
+class PhysicalPRegId(implicit p: Parameters) extends RegId(p(HwachaPRFAddrUInt))(p)
+class PhysicalRegId(implicit p: Parameters) extends RegId(p(HwachaRFAddrUInt))(p)
+class PhysicalPRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaPRFAddrUInt))(p)
+class PhysicalRegInfo(implicit p: Parameters) extends RegInfo(p(HwachaRFAddrUInt))(p) with RegPrec
 
 class PhysicalRegisterIds(implicit p: Parameters) extends VXUBundle()(p) {
   val vp = new PhysicalPRegId
@@ -157,9 +158,9 @@ class PhysicalRegisters(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class ScalarRegisters(implicit p: Parameters) extends VXUBundle()(p) {
-  val ss1 = Bits(width = regLen)
-  val ss2 = Bits(width = regLen)
-  val ss3 = Bits(width = regLen)
+  val ss1 = UInt(regLen.W)
+  val ss2 = UInt(regLen.W)
+  val ss3 = UInt(regLen.W)
 }
 
 
@@ -215,12 +216,12 @@ class IssueType(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 trait SingleLaneVLen extends HwachaBundle {
-  val vlen = UInt(width = bVLen)
+  val vlen = UInt(bVLen.W)
 }
 
 class VLenEntry(implicit p: Parameters) extends HwachaBundle()(p) {
   val active = Bool()
-  val vlen = UInt(width = bVLen)
+  val vlen = UInt(bVLen.W)
 }
 
 trait MultiLaneVLen extends HwachaBundle {
@@ -241,25 +242,25 @@ class IssueOpML(implicit p: Parameters) extends IssueOpBase()(p) with MultiLaneV
 //-------------------------------------------------------------------------\\
 
 trait LaneOp extends VXUBundle with Rate {
-  val strip = UInt(width = bStrip + bPack + 1)
+  val strip = UInt((bStrip + bPack + 1).W)
 }
 
 trait BankPred extends VXUBundle {
-  val pred = Bits(width = wPred)
+  val pred = UInt(wPred.W)
   def active(dummy: Int = 0) = pred.orR
   def neg(cond: Bool) = Mux(cond, ~pred, pred)
 }
 
 trait PredMask extends VXUBundle {
-  val mask = Bits(width = wPred)
+  val mask = UInt(wPred.W)
 }
 
 trait BankMask extends VXUBundle {
-  val mask = Bits(width = wBank/8)
+  val mask = UInt((wBank/8).W)
 }
 
 trait BankData extends VXUBundle {
-  val data = Bits(width = wBank)
+  val data = UInt(wBank.W)
 }
 
 trait MicroOp extends BankPred with Rate
@@ -269,15 +270,15 @@ trait MicroOp extends BankPred with Rate
 //-------------------------------------------------------------------------\\
 
 trait Rate extends VXUBundle {
-  val rate = UInt(width = bRate)
+  val rate = UInt(bRate.W)
 }
 
 trait RegPrec extends Bundle {
-  val prec = Bits(width = SZ_PREC)
+  val prec = UInt(SZ_PREC.W)
 }
 
 trait RegSelect extends VXUBundle {
-  val idx = UInt(width = math.max(bPack, 1))
+  val idx = UInt(math.max(bPack, 1).W)
 }
 
 class PackInfo(implicit p: Parameters) extends VXUBundle()(p) with RegPrec with RegSelect
@@ -320,44 +321,44 @@ class MasterSeqEntry(implicit p: Parameters) extends DecodedInst()(p)
   val war = Vec(nSeq, Bool())
   val waw = Vec(nSeq, Bool())
   val last = Bool()
-  val rports = UInt(width = bRPorts)
+  val rports = UInt(bRPorts.W)
   val wport = new Bundle {
-    val sram = UInt(width = bWPortLatency)
-    val pred = UInt(width = bPredWPortLatency)
+    val sram = UInt(bWPortLatency.W)
+    val pred = UInt(bPredWPortLatency.W)
   }
 }
 
 class SeqEntry(implicit p: Parameters) extends VXUBundle()(p)
   with HasPhysRegIds with PredPack {
-  val vlen = UInt(width = bVLen)
+  val vlen = UInt(bVLen.W)
   val eidx = new Bundle {
-    val major = UInt(width = bMLVLen - bStrip)
-    val minor = UInt(width = (1 << maxLStride) - 1)
+    val major = UInt((bMLVLen - bStrip).W)
+    val minor = UInt(((1 << maxLStride) - 1).W)
   }
-  val sidx = UInt(width = bVLen - bStrip)
-  val age = UInt(width = bBanks)
+  val sidx = UInt((bVLen - bStrip).W)
+  val age = UInt(bBanks.W)
 }
 
 class SeqSelect(implicit p: Parameters) extends VXUBundle()(p) {
-  val vfmu = UInt(width = log2Up(nVFMU))
+  val vfmu = UInt(log2Up(nVFMU).W)
 }
 
 class SeqOp(implicit p: Parameters) extends DecodedInst()(p)
   with HasPhysRegs with LaneOp with PredPack {
   val active = new SeqType
   val select = new SeqSelect
-  val eidx = UInt(width = bMLVLen - bStrip)
-  val sidx = UInt(width = bVLen - bStrip)
-  val rports = UInt(width = bRPorts)
+  val eidx = UInt((bMLVLen - bStrip).W)
+  val sidx = UInt((bVLen - bStrip).W)
+  val rports = UInt(bRPorts.W)
   val wport = new Bundle {
-    val sram = UInt(width = bWPortLatency)
-    val pred = UInt(width = bPredWPortLatency)
+    val sram = UInt(bWPortLatency.W)
+    val pred = UInt(bPredWPortLatency.W)
   }
   val base = new Bundle {
     val vd = new BaseRegId
   }
 
-  def active_vfmu(i: Int) = active.vfmu && select.vfmu === UInt(i)
+  def active_vfmu(i: Int) = active.vfmu && select.vfmu === i.U
 }
 
 class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p)
@@ -365,7 +366,7 @@ class SeqVPUOp(implicit p: Parameters) extends DecodedInst()(p)
 
 class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p)
   with HasPhysRegs with LaneOp with PredPack {
-  val sidx = UInt(width = bVLen - bStrip)
+  val sidx = UInt((bVLen - bStrip).W)
   val base = new Bundle {
     val vd = new BaseRegId
   }
@@ -377,31 +378,31 @@ class SeqVIPUOp(implicit p: Parameters) extends DecodedInst()(p)
 //-------------------------------------------------------------------------\\
 
 abstract class RFWriteOp(implicit p: Parameters) extends BaseRegId()(p) {
-  val sidx = UInt(width = bVLen - bStrip)
+  val sidx = UInt((bVLen - bStrip).W)
 }
 
 class SRAMRFReadOp(implicit p: Parameters) extends VXUBundle()(p) with BankPack {
-  val addr = UInt(width = log2Up(nSRAM))
+  val addr = UInt(log2Up(nSRAM).W)
 }
 
 class SRAMRFWriteOp(implicit p: Parameters) extends RFWriteOp()(p) with BankPack {
-  val addr = UInt(width = log2Up(nSRAM))
+  val addr = UInt(log2Up(nSRAM).W)
   val selg = Bool()
-  val wsel = UInt(width = log2Up(nWSel))
+  val wsel = UInt(log2Up(nWSel).W)
 }
 
 class FFRFReadOp(implicit p: Parameters) extends VXUBundle()(p) {
-  val addr = UInt(width = log2Up(nFF))
+  val addr = UInt(log2Up(nFF).W)
 }
 
 class FFRFWriteOp(implicit p: Parameters) extends VXUBundle()(p) {
-  val addr = UInt(width = log2Up(nFF))
+  val addr = UInt(log2Up(nFF).W)
   val selg = Bool()
-  val wsel = UInt(width = log2Up(nWSel))
+  val wsel = UInt(log2Up(nWSel).W)
 }
 
 class PredRFReadOp(implicit p: Parameters) extends VXUBundle()(p) with PredPack {
-  val addr = UInt(width = log2Up(nPred))
+  val addr = UInt(log2Up(nPred).W)
 }
 
 class PredRFGatedReadOp(implicit p: Parameters) extends PredRFReadOp()(p) {
@@ -410,7 +411,7 @@ class PredRFGatedReadOp(implicit p: Parameters) extends PredRFReadOp()(p) {
 }
 
 class PredRFWriteOp(implicit p: Parameters) extends RFWriteOp()(p) with PredPack {
-  val addr = UInt(width = log2Up(nPred))
+  val addr = UInt(log2Up(nPred).W)
   val selg = Bool()
   val plu = Bool()
 }
@@ -422,18 +423,18 @@ class OPLOp(implicit p: Parameters) extends VXUBundle()(p) {
 class PDLOp(implicit p: Parameters) extends VXUBundle()(p)
 
 class SRegOp(implicit p: Parameters) extends VXUBundle()(p) {
-  val operand = Bits(width = regLen)
+  val operand = UInt(regLen.W)
 }
 
 class XBarOp(implicit p: Parameters) extends VXUBundle()(p) {
-  val pdladdr = UInt(width = log2Up(nGPDL))
+  val pdladdr = UInt(log2Up(nGPDL).W)
 }
 
 class PXBarOp(implicit p: Parameters) extends VXUBundle()(p)
 
 class VIUOp(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIUFn
-  val eidx = UInt(width = bVLen)
+  val eidx = UInt(bVLen.W)
 }
 
 class VIPUOp(implicit p: Parameters) extends VXUBundle()(p) {
@@ -504,11 +505,11 @@ class VSULaneOp(implicit p: Parameters) extends VSUOp()(p) with LaneOp
 class SRAMRFReadExpEntry(implicit p: Parameters) extends SRAMRFReadLaneOp()(p) {
   val global = new VXUBundle {
     val valid = Bool()
-    val id = UInt(width = log2Up(nGOPL))
+    val id = UInt(log2Up(nGOPL).W)
   }
   val local = new VXUBundle {
     val valid = Bool()
-    val id = UInt(width = log2Up(nLOPL))
+    val id = UInt(log2Up(nLOPL).W)
   }
 }
 class SRAMRFWriteExpEntry(implicit p: Parameters) extends SRAMRFWriteLaneOp()(p)
@@ -516,11 +517,11 @@ class SRAMRFWriteExpEntry(implicit p: Parameters) extends SRAMRFWriteLaneOp()(p)
 class PredRFReadExpEntry(implicit p: Parameters) extends PredRFGatedReadLaneOp()(p) {
   val global = new VXUBundle {
     val valid = Bool()
-    val id = UInt(width = log2Up(nGPDL))
+    val id = UInt(log2Up(nGPDL).W)
   }
   val local = new VXUBundle {
     val valid = Bool()
-    val id = UInt(width = log2Up(nLPDL))
+    val id = UInt(log2Up(nLPDL).W)
   }
 }
 
@@ -575,7 +576,7 @@ class VGUAck(implicit p: Parameters) extends BankPred
 class VQUAck(implicit p: Parameters) extends BankPred
 
 class VFXUAck(implicit p: Parameters) extends VXUBundle()(p) with BankPred {
-  val exc = Bits(OUTPUT, freechips.rocketchip.tile.FPConstants.FLAGS_SZ)
+  val exc = Output(UInt(freechips.rocketchip.tile.FPConstants.FLAGS_SZ.W))
 }
 
 class VFMUAck(implicit p: Parameters) extends VFXUAck()(p)
@@ -589,7 +590,7 @@ class VFVUAck(implicit p: Parameters) extends VFXUAck()(p)
 //-------------------------------------------------------------------------\\
 
 class DCCOp(implicit p: Parameters) extends VXUBundle()(p) {
-  val vlen = UInt(width = bVLen)
+  val vlen = UInt(bVLen.W)
   val active = new IssueType
   val fn = new VFn
   val vd = new PhysicalRegInfo
@@ -601,7 +602,7 @@ class LRQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData
 class BRQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData
 class BWQEntry(implicit p: Parameters) extends VXUBundle()(p) with BankData with BankMask {
   val selff = Bool() // select ff if true
-  val addr = UInt(width = math.max(log2Up(nSRAM), log2Up(nFF)))
+  val addr = UInt(math.max(log2Up(nSRAM), log2Up(nFF)).W)
 
   def saddr(dummy: Int = 0) = addr(log2Up(nSRAM)-1, 0)
   def faddr(dummy: Int = 0) = addr(log2Up(nFF)-1, 0)

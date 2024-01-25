@@ -1,19 +1,20 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class VXU(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val id = UInt(INPUT)
-    val cfg = new HwachaConfigIO().flip
-    val issue = Decoupled(new IssueOp).flip
-    val mseq = new MasterSequencerIO().flip
-    val mocheck = Vec(nSeq, new MOCheck).asInput
+  val io = IO(new Bundle {
+    val id = Input(UInt())
+    val cfg = Flipped(new HwachaConfigIO())
+    val issue = Flipped(Decoupled(new IssueOp))
+    val mseq = Flipped(new MasterSequencerIO())
+    val mocheck = Input(Vec(nSeq, new MOCheck))
     val red = new ReduceResultIO
     val vmu = new VMUIO
     val mrt = new LaneMRTIO
-  }
+  })
 
   val seq = Module(new LaneSequencer)
   seq.suggestName("seqInst")

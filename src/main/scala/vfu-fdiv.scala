@@ -1,33 +1,34 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 import HardFloatHelper._
 
 class FDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFDUFn
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
 }
 
 class FDivResult extends Bundle {
-  val out = Bits(width = SZ_D)
-  val exc = Bits(width = freechips.rocketchip.tile.FPConstants.FLAGS_SZ)
+  val out = UInt(SZ_D.W)
+  val exc = UInt(freechips.rocketchip.tile.FPConstants.FLAGS_SZ.W)
 }
 
 class FDivIO(implicit p: Parameters) extends VXUBundle()(p) {
   val req = Decoupled(new FDivOperand)
-  val resp = Decoupled(new FDivResult).flip
+  val resp = Flipped(Decoupled(new FDivResult))
 }
 
 class FDivTag(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VFDUFn
-  val exc = Bits(width = freechips.rocketchip.tile.FPConstants.FLAGS_SZ)
+  val exc = UInt(freechips.rocketchip.tile.FPConstants.FLAGS_SZ.W)
 }
 
 class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new FDivIO().flip
+  val io = IO(Flipped(new FDivIO()))
 
   val qcnt = Module(new QCounter(nDecoupledUnitWBQueue, nDecoupledUnitWBQueue))
   qcnt.suggestName("qcntInst")
@@ -48,14 +49,14 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
     hp.io.roundingMode := io.req.bits.fn.rm
     val out = Mux(io.req.bits.fn.fp_is(FPD), dp,
               Mux(io.req.bits.fn.fp_is(FPS), sp.io.out, hp.io.out))
-    val exc = Mux(io.req.bits.fn.fp_is(FPD), Bits(0),
+    val exc = Mux(io.req.bits.fn.fp_is(FPD), 0.U,
               Mux(io.req.bits.fn.fp_is(FPS), sp.io.exceptionFlags, hp.io.exceptionFlags))
     (out, exc)
   }
 
-  val in0q = Module(new Queue(Bits(width = 65), 2))
+  val in0q = Module(new Queue(UInt(65.W), 2))
   in0q.suggestName("in0qInst")
-  val in1q = Module(new Queue(Bits(width = 65), 2))
+  val in1q = Module(new Queue(UInt(65.W), 2))
   in1q.suggestName("in1qInst")
   val intagq = Module(new Queue(new FDivTag, 2))
   intagq.suggestName("intagqInst")
@@ -108,7 +109,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val s0_result_valid = div.io.outValid_div || div.io.outValid_sqrt
 
   // stage output+1
-  val s1_result_valid = Reg(next=s0_result_valid)
+  val s1_result_valid = RegNext(s0_result_valid)
   val s1_result_out = RegEnable(div.io.out, s0_result_valid).asUInt
   val s1_result_exc = RegEnable(div.io.exceptionFlags, s0_result_valid)
 
@@ -128,7 +129,7 @@ class FDivSlice(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val s1_out = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), s1_result_dp,
                Mux(outtagq.io.deq.bits.fn.fp_is(FPS), expand_float_s(ieee_sp(s1_result_sp.io.out)),
                                                       expand_float_h(ieee_hp(s1_result_hp.io.out))))
-  val s1_exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), Bits(0),
+  val s1_exc = Mux(outtagq.io.deq.bits.fn.fp_is(FPD), 0.U,
                Mux(outtagq.io.deq.bits.fn.fp_is(FPS), s1_result_sp.io.exceptionFlags,
                                                       s1_result_hp.io.exceptionFlags))
 

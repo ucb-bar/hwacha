@@ -1,11 +1,12 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class MRTAddrIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
   val valid = Bool()
-  val bits = UInt(width = log2Up(nSeq))
+  val bits = UInt(log2Up(nSeq).W)
 }
 
 class LaneMRTIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
@@ -18,7 +19,7 @@ class LaneMRTIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParame
 class MRTIO(implicit p: Parameters) extends LaneMRTIO()(p) with VMUParameters {
   val sret = new CounterUpdateIO(bSRet)
   val aret = Bool()
-  val pending = new MRTPending().asInput
+  val pending = Input(new MRTPending())
 }
 
 class MRTPending(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -29,7 +30,7 @@ class MRTPending(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class MemTracker(nlreq: Int, nsreq: Int)(implicit p: Parameters) extends HwachaModule()(p) with SeqParameters with VMUParameters {
-  val io = new MRTIO().flip
+  val io = IO(Flipped(new MRTIO()))
 
   val lcnt = Module(new LookAheadCounter(nlreq, nlreq))
   lcnt.suggestName("lcntInst")

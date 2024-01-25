@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.rocket._
 
@@ -10,21 +11,21 @@ object RocketConstants extends freechips.rocketchip.rocket.constants.ScalarOpCon
 
 class IDivOperand(implicit p: Parameters) extends VXUBundle()(p) {
   val fn = new VIDUFn
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
 }
 
 class IDivResult extends Bundle {
-  val out = Bits(width = SZ_D)
+  val out = UInt(SZ_D.W)
 }
 
 class IDivIO(implicit p: Parameters) extends VXUBundle()(p) {
   val req = Decoupled(new IDivOperand)
-  val resp = Decoupled(new IDivResult).flip
+  val resp = Flipped(Decoupled(new IDivResult))
 }
 
 class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new IDivIO().flip
+  val io = IO(Flipped(new IDivIO()))
 
   implicit def BitPatToUInt(x: BitPat): UInt = {
     require(x.mask == (BigInt(1) << x.getWidth)-1)
@@ -52,7 +53,7 @@ class IDivSlice(implicit p: Parameters) extends VXUModule()(p) {
                                        aluFn.FN_REMU)))
   div.io.req.bits.in1 := io.req.bits.in0
   div.io.req.bits.in2 := io.req.bits.in1
-  div.io.kill := Bool(false)
+  div.io.kill := false.B
 
   val rq = Module(new Queue(new IDivResult, nDecoupledUnitWBQueue))
   rq.suggestName("rqInst")

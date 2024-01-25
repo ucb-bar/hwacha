@@ -1,44 +1,45 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 
 class RFirstOperand(implicit p: Parameters) extends VXUBundle()(p) {
-  val active = Bits(width = nSlices)
-  val pred = Bits(width = nSlices)
-  val lsidx = UInt(width = bVLen - bStrip)
-  val in = Vec(nSlices, Bits(width = SZ_D))
+  val active = UInt(nSlices.W)
+  val pred = UInt(nSlices.W)
+  val lsidx = UInt((bVLen - bStrip).W)
+  val in = Vec(nSlices, UInt(SZ_D.W))
 }
 
 class RFirstResult(implicit p: Parameters) extends VXUBundle()(p) {
   val found = Bool()
-  val lsidx = Bits(width = bVLen - bStrip)
-  val first = Bits(width = SZ_D)
-  val sd = UInt(width = bSRegs)
+  val lsidx = UInt((bVLen - bStrip).W)
+  val first = UInt(SZ_D.W)
+  val sd = UInt(bSRegs.W)
 }
 
 class RFirstIO(implicit p: Parameters) extends VXUBundle()(p) {
   val op = Valid(new VRFUFn)
   val req = Decoupled(new RFirstOperand)
-  val result = Decoupled(new RFirstResult).flip
+  val result = Flipped(Decoupled(new RFirstResult))
 }
 
 class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new RFirstIO().flip
+  val io = IO(Flipped(new RFirstIO()))
 
   val result = Reg(new RFirstResult)
 
   when (io.op.valid) {
-    result.found := Bool(false)
+    result.found := false.B
     result.sd := io.op.bits.sd
   }
 
-  io.req.ready := Bool(true)
+  io.req.ready := true.B
   val pred = PriorityEncoderOH((io.req.bits.active & io.req.bits.pred).asBools)
   val found = pred.reduce(_ || _)
   when (io.req.fire && !result.found && found) {
-    result.found := Bool(true)
+    result.found := true.B
     result.lsidx := io.req.bits.lsidx
     result.first := Mux1H(pred, io.req.bits.in)
   }
@@ -47,18 +48,18 @@ class RFirstLane(implicit p: Parameters) extends VXUModule()(p) {
 }
 
 class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val op = Decoupled(new IssueOpML).flip
-    val lane = Vec(nLanes, Decoupled(new RFirstResult)).flip
+  val io = IO(new Bundle {
+    val op = Flipped(Decoupled(new IssueOpML))
+    val lane = Flipped(Vec(nLanes, Decoupled(new RFirstResult)))
     val result = Decoupled(new RFirstResult)
-  }
+  })
 
   val opq = Module(new Queue(new IssueOpML, 2))
   opq.suggestName("opqInst")
   opq.io.enq <> io.op
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val state = RegInit(s_idle)
   val deq_lane = Reg(Vec(nLanes, Bool()))
   val fn = Reg(new VRFUFn)
 
@@ -73,11 +74,11 @@ class RFirstMaster(implicit p: Parameters) extends VXUModule()(p) {
   (io.lane.zipWithIndex) map { case (lane, i) =>
     lane.ready := fire(mask_lane_valid(i), deq_lane(i)) }
 
-  opq.io.deq.ready := Bool(false)
+  opq.io.deq.ready := false.B
 
   switch (state) {
     is (s_idle) {
-      opq.io.deq.ready := Bool(true)
+      opq.io.deq.ready := true.B
       when (opq.io.deq.valid) {
         state := s_busy
         deq_lane := Vec(opq.io.deq.bits.lane.map(_.active))

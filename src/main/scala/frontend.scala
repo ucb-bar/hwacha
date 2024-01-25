@@ -1,55 +1,55 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.rocket.{ICacheParams, MStatus, TLBConfig, TLBResp}
 
 class FrontendResp(icacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
-  val pc = UInt(width = vaddrBitsExtended)  // ID stage PC
-  val data = UInt(width = icacheParams.fetchBytes * 8)
+  val pc = UInt(vaddrBitsExtended.W)  // ID stage PC
+  val data = UInt((icacheParams.fetchBytes * 8).W)
   val pf = Bool()
-
 }
 
 class FrontendReq(implicit p: Parameters) extends freechips.rocketchip.tile.CoreBundle()(p) {
-  val pc = UInt(width = vaddrBits+1)
+  val pc = UInt((vaddrBits+1).W)
   val status = new MStatus
 }
 
 class FrontendIO(cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaBundle()(p) {
-  val active = Bool(OUTPUT)
+  val active = Output(Bool())
   val req = Valid(new FrontendReq)
-  val resp = Decoupled(new FrontendResp(cacheParams)).flip
-  val invalidate = Bool(OUTPUT)
+  val resp = Flipped(Decoupled(new FrontendResp(cacheParams)))
+  val invalidate = Output(Bool())
 
 }
 
 class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extends HwachaModule()(p) with freechips.rocketchip.tile.HasL1CacheParameters {
-  val io = new Bundle {
-    val front = new FrontendIO(cacheParams).flip
+  val io = IO(new Bundle {
+    val front = Flipped(new FrontendIO(cacheParams))
     val back = new Bundle {
       val s0_req = Decoupled(new FrontendReq)
-      val s1_kill = Bool(OUTPUT)
+      val s1_kill = Output(Bool())
       //TODO: make sure we dont need double Valid nesting
-      val s1_resp = Valid(UInt(width = cacheParams.fetchBytes * 8)).flip
-      val s1_tlb = new TLBResp().flip
+      val s1_resp = Input(Valid(UInt((cacheParams.fetchBytes * 8).W)))
+      val s1_tlb = Flipped(new TLBResp())
     }
-  }
+  })
 
-  val s1_valid = Reg(init=Bool(false))
+  val s1_valid = RegInit(false.B)
   val s1_pc_ = Reg(UInt())
   val s1_status = Reg(new MStatus)
-  val s1_pc = ~(~s1_pc_ | UInt(HwachaElementInstBytes-1)) // discard PC LSBS (this propagates down the pipeline)
-  val s1_same_block = Reg(init=Bool(false))
-  val s1_req_valid = Reg(init=Bool(false))
+  val s1_pc = ~(~s1_pc_ | (HwachaElementInstBytes-1).U) // discard PC LSBS (this propagates down the pipeline)
+  val s1_same_block = RegInit(false.B)
+  val s1_req_valid = RegInit(false.B)
 
-  val s2_valid = Reg(init=Bool(false))
+  val s2_valid = RegInit(false.B)
   val s2_pc = Reg(UInt())
   val s2_status = Reg(new MStatus)
-  val s2_xcpt_if = Reg(init=Bool(false))
-  val s2_line = Module(new Queue(UInt(width = cacheParams.fetchBytes * 8), 1, pipe=true))
+  val s2_xcpt_if = RegInit(false.B)
+  val s2_line = Module(new Queue(UInt((cacheParams.fetchBytes * 8).W), 1, pipe=true))
 
   s1_req_valid := io.back.s0_req.fire
 
@@ -59,9 +59,9 @@ class MiniFrontend(val cacheParams: ICacheParams)(implicit p: Parameters) extend
 
   val stall = !io.front.req.valid && (io.front.resp.valid && !io.front.resp.ready || !io.front.active)
   val s1_kill = io.front.req.valid || icmiss || s1_replay
-  val s0_npc = s1_pc + UInt(HwachaElementInstBytes)
+  val s0_npc = s1_pc + HwachaElementInstBytes.U
   val s0_same_block =
-    !s1_kill && ((s0_npc & UInt(rowBytes)) === (s1_pc & UInt(rowBytes)))
+    !s1_kill && ((s0_npc & rowBytes.U) === (s1_pc & rowBytes.U))
   val s0_req_valid = !stall && !s0_same_block
 
   io.back.s0_req.valid := s0_req_valid
@@ -122,8 +122,8 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
   val cacheParams = outer.cacheParams
 
   val io = IO(new Bundle {
-    val vxu = new FrontendIO(cacheParams).flip
-    val vru = new FrontendIO(cacheParams).flip
+    val vxu = Flipped(new FrontendIO(cacheParams))
+    val vru = Flipped(new FrontendIO(cacheParams))
     val ptw = new freechips.rocketchip.rocket.TLBPTWIO()
   })
   val icache = outer.icache.module
@@ -144,25 +144,25 @@ class HwachaFrontendModule(outer: HwachaFrontend)(implicit p: Parameters) extend
 
   icache.io.req.valid := req.valid
   icache.io.req.bits.addr := req.bits.pc
-  icache.io.invalidate := Bool(false)
+  icache.io.invalidate := false.B
   icache.io.s1_paddr := tlb.io.resp.paddr
   icache.io.s2_vaddr := s2_pc
   icache.io.s1_kill :=
     vxu.io.back.s1_kill || vru.io.back.s1_kill ||
     tlb.io.resp.miss || tlb.io.resp.pf.inst
     //TODO: check ptw result
-  icache.io.s2_kill := Bool(false)
+  icache.io.s2_kill := false.B
   icache.io.s2_cacheable := false.B
   icache.io.s2_prefetch := false.B
   icache.io.clock_enabled := true.B
 
-  tlb.io.req.valid := Reg(next=req.valid)
+  tlb.io.req.valid := RegNext(req.valid)
   tlb.io.req.bits.vaddr := s1_pc
-  tlb.io.req.bits.passthrough := Bool(false)
-  tlb.io.req.bits.size := UInt(log2Ceil(cacheParams.fetchBytes))
+  tlb.io.req.bits.passthrough := false.B
+  tlb.io.req.bits.size := log2Ceil(cacheParams.fetchBytes).U
   tlb.io.sfence.valid := false.B
 
-  req.ready := Bool(true)
+  req.ready := true.B
 
   vxu.io.back.s1_resp.valid <> icache.io.resp.valid
   vru.io.back.s1_resp.valid <> icache.io.resp.valid

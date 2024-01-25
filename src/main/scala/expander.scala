@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 abstract trait ExpParameters extends UsesHwachaParameters with SeqParameters {
@@ -63,26 +64,26 @@ class TickerIO(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class Expander(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
-    val seq = new SequencerIO().flip
+  val io = IO(new Bundle {
+    val cfg = Flipped(new HwachaConfigIO())
+    val seq = IO(new SequencerIO())
     val lane = new LaneOpIO
     val ticker = new TickerIO
-  }
+  })
 
   class Ticker[T <: Data](gen: T, n: Int) {
     val s = Reg(Vec(n,Valid(gen.cloneType)))
 
     (0 until n).reverse.foreach(i => ({
-      val step_en = if (i == n-1) Bool(false) else s(i+1).valid
+      val step_en = if (i == n-1) false.B else s(i+1).valid
       s(i).valid := step_en
       if (i != n-1) {
         when (step_en) {
           s(i).bits := s(i+1).bits
         }
       }
-      when (reset) {
-        s(i).valid := Bool(false)
+      when (reset.asBool) {
+        s(i).valid := false.B
       }
     }))
 
@@ -118,68 +119,68 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     val seq_vipu = io.seq.vipu.bits
     val seq_vpu = io.seq.vpu.bits
 
-    val rport_valid = Vec(Seq(
+    val rport_valid = VecInit(Seq(
       seq_exp.reg.vs1.valid && seq_exp.reg.vs1.is_vector(),
       seq_exp.reg.vs2.valid && seq_exp.reg.vs2.is_vector(),
       seq_exp.reg.vs3.valid && seq_exp.reg.vs3.is_vector()))
 
-    val rport_idx = Vec(Seq(
-      UInt(0),
-      Mux(rport_valid(0), UInt(1), UInt(0)),
+    val rport_idx = VecInit(Seq(
+      0.U,
+      Mux(rport_valid(0), 1.U, 0.U),
       Mux(rport_valid(0),
-        Mux(rport_valid(1), UInt(2), UInt(1)),
-        Mux(rport_valid(1), UInt(1), UInt(0)))))
+        Mux(rport_valid(1), 2.U, 1.U),
+        Mux(rport_valid(1), 1.U, 0.U))))
 
-    val op_idx = seq_exp.rports + UInt(expLatency, bRPorts+1)
+    val op_idx = seq_exp.rports + expLatency.U((bRPorts+1).W)
 
     def check_assert[T <: LaneOp](name: String, t: Ticker[T], n: UInt) = {
-      assert(n < UInt(t.s.size), name+" asking over limit")
-      assert(n === UInt(t.s.size-1) || !t.s(n+UInt(1, n.getWidth+1)).valid, name+" scheduling is wrong")
+      assert(n < t.s.size.U, name+" asking over limit")
+      assert(n === (t.s.size-1).U || !t.s(n+&1.U).valid, name+" scheduling is wrong")
     }
 
     def mark_opl(n: UInt, idx: Int) = {
       val e = tick_sram_read.s(n)
 
-      e.bits.global.valid := Bool(false)
-      e.bits.local.valid := Bool(false)
+      e.bits.global.valid := false.B
+      e.bits.local.valid := false.B
 
       // 3-ported operations
       (0 until nVFMU) foreach { i =>
         when (seq_exp.active_vfmu(i)) {
-          e.bits.global.valid := Bool(true)
-          e.bits.global.id := UInt(3*i+idx)
+          e.bits.global.valid := true.B
+          e.bits.global.id := (3*i+idx).U
         }
       }
 
       // 2-ported operations
       if (idx <= 1) {
         when (seq_exp.active.vimu) {
-          e.bits.global.valid := Bool(true)
-          e.bits.global.id := UInt(idx)
+          e.bits.global.valid := true.B
+          e.bits.global.id := idx.U
         }
         when (seq_exp.active.vqu || seq_exp.active.vfcu) {
-          e.bits.global.valid := Bool(true)
-          e.bits.global.id := UInt(3+idx)
+          e.bits.global.valid := true.B
+          e.bits.global.id := (3+idx).U
         }
         when (seq_exp.active.viu) {
-          e.bits.local.valid := Bool(true)
-          e.bits.local.id := UInt(idx)
+          e.bits.local.valid := true.B
+          e.bits.local.id := idx.U
         }
       }
 
       // 1-ported operations
       if (idx <= 0) {
         when (seq_exp.active.vfvu) {
-          e.bits.global.valid := Bool(true)
-          e.bits.global.id := UInt(2)
+          e.bits.global.valid := true.B
+          e.bits.global.id := 2.U
         }
         when (seq_exp.active.vgu) {
-          e.bits.global.valid := Bool(true)
-          e.bits.global.id := UInt(5)
+          e.bits.global.valid := true.B
+          e.bits.global.id := 5.U
         }
         when (seq_exp.active.vsu) {
-          e.bits.local.valid := Bool(true)
-          e.bits.local.id := UInt(2)
+          e.bits.local.valid := true.B
+          e.bits.local.id := 2.U
         }
       }
     }
@@ -191,7 +192,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           when (rport_valid(idx)) {
             check_assert("sram read", tick_sram_read, read_idx)
             val e = tick_sram_read.s(read_idx)
-            e.valid := Bool(true)
+            e.valid := true.B
             e.bits.addr := fn(seq_exp.reg).id
             e.bits.strip := seq_exp.strip
             e.bits.rate := seq_exp.rate
@@ -206,46 +207,46 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     def mark_pdl(n: UInt, idx: Int) = {
       val p = tick_pred_gread.s(n)
 
-      p.bits.global.valid := Bool(false)
-      p.bits.local.valid := Bool(false)
+      p.bits.global.valid := false.B
+      p.bits.local.valid := false.B
 
       // 3-ported operations
       (0 until nVFMU) foreach { i =>
         when (seq_exp.active_vfmu(i)) {
-          p.bits.global.valid := Bool(true)
-          p.bits.global.id := UInt(2*i)
+          p.bits.global.valid := true.B
+          p.bits.global.id := (2*i).U
         }
       }
 
       // 2-ported operations
       if (idx <= 1) {
         when (seq_exp.active.vimu) {
-          p.bits.global.valid := Bool(true)
-          p.bits.global.id := UInt(0)
+          p.bits.global.valid := true.B
+          p.bits.global.id := 0.U
         }
         when (seq_exp.active.vqu || seq_exp.active.vfcu) {
-          p.bits.global.valid := Bool(true)
-          p.bits.global.id := UInt(2)
+          p.bits.global.valid := true.B
+          p.bits.global.id := 2.U
         }
         when (seq_exp.active.viu) {
-          p.bits.local.valid := Bool(true)
-          p.bits.local.id := UInt(0)
+          p.bits.local.valid := true.B
+          p.bits.local.id := 0.U
         }
       }
 
       // 1-ported operations
       if (idx <= 0) {
         when (seq_exp.active.vfvu) {
-          p.bits.global.valid := Bool(true)
-          p.bits.global.id := UInt(1)
+          p.bits.global.valid := true.B
+          p.bits.global.id := 1.U
         }
         when (seq_exp.active.vgu) {
-          p.bits.global.valid := Bool(true)
-          p.bits.global.id := UInt(3)
+          p.bits.global.valid := true.B
+          p.bits.global.id := 3.U
         }
         when (seq_exp.active.vsu) {
-          p.bits.local.valid := Bool(true)
-          p.bits.local.id := UInt(1)
+          p.bits.local.valid := true.B
+          p.bits.local.id := 1.U
         }
       }
     }
@@ -254,11 +255,11 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       val null_rport = !rport_valid.reduce(_||_)
       (0 until 3) foreach { idx =>
         val read_idx = rport_idx(idx)
-        when (rport_valid(idx) || null_rport && Bool(idx == 0)) {
+        when (rport_valid(idx) || null_rport && (idx == 0).B) {
           check_assert("pred gread", tick_pred_gread, read_idx)
           assert(seq_exp.reg.vp.valid && seq_exp.reg.vp.is_pred(), "gread with no guard predicate")
           val p = tick_pred_gread.s(read_idx)
-          p.valid := Bool(true)
+          p.valid := true.B
           p.bits.off := io.cfg.unpred
           p.bits.neg := seq_exp.reg.vp.neg()
           p.bits.addr := seq_exp.reg.vp.id
@@ -274,24 +275,24 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
         when (seq_exp.reg.vd.is_vector()) {
           check_assert("sram write", tick_sram_write, seq_exp.wport.sram)
           val e = tick_sram_write.s(seq_exp.wport.sram)
-          e.valid := Bool(true)
+          e.valid := true.B
           e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
-          e.bits.selg := Bool(false)
+          e.bits.selg := false.B
           (0 until nVFMU) foreach { i =>
             when (seq_exp.active_vfmu(i)) {
-              e.bits.selg := Bool(true)
-              e.bits.wsel := UInt(i)
+              e.bits.selg := true.B
+              e.bits.wsel := i.U
             }
           }
           when (seq_exp.active.vimu || seq_exp.active.vfvu) {
-            e.bits.selg := Bool(true)
-            e.bits.wsel := UInt(0)
+            e.bits.selg := true.B
+            e.bits.wsel := 0.U
           }
           when (seq_exp.active.vfcu) {
-            e.bits.selg := Bool(true)
-            e.bits.wsel := UInt(1)
+            e.bits.selg := true.B
+            e.bits.wsel := 1.U
           }
           e.bits.sidx := seq_exp.sidx
           e.bits.rate := seq_exp.rate
@@ -302,16 +303,16 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
           check_assert("pred write", tick_pred_write, seq_exp.wport.pred)
           assert(seq_exp.active.viu || seq_exp.active.vfcu, "check pred write logic")
           val e = tick_pred_write.s(seq_exp.wport.pred)
-          e.valid := Bool(true)
+          e.valid := true.B
           e.bits.id := seq_exp.base.vd.id
           e.bits.addr := seq_exp.reg.vd.id
           e.bits.strip := seq_exp.strip
           when (seq_exp.active.viu) {
-            e.bits.selg := Bool(false)
-            e.bits.plu := Bool(false)
+            e.bits.selg := false.B
+            e.bits.plu := false.B
           }
           when (seq_exp.active.vfcu) {
-            e.bits.selg := Bool(true) // plu bit doesn't matter
+            e.bits.selg := true.B // plu bit doesn't matter
           }
           e.bits.sidx := seq_exp.sidx
           e.bits.rate := seq_exp.rate
@@ -325,15 +326,15 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       assert(!rinfo.valid || !rinfo.is_pred(), "xbar op shouldn't be a pred operand")
       when (rinfo.valid && rinfo.is_vector()) {
         check_assert("xbar"+i, tick_xbar(i), op_idx)
-        tick_xbar(i).s(op_idx).valid := Bool(true)
-        tick_xbar(i).s(op_idx).bits.pdladdr := UInt(p)
+        tick_xbar(i).s(op_idx).valid := true.B
+        tick_xbar(i).s(op_idx).bits.pdladdr := p.U
         tick_xbar(i).s(op_idx).bits.strip := seq_exp.strip
       }
     }
 
     def mark_pxbar(i: Int) = {
       check_assert("pxbar"+i, tick_pxbar(i), op_idx)
-      tick_pxbar(i).s(op_idx).valid := Bool(true)
+      tick_pxbar(i).s(op_idx).valid := true.B
       tick_pxbar(i).s(op_idx).bits.strip := seq_exp.strip
     }
 
@@ -342,7 +343,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
       assert(!rinfo.valid || !rinfo.is_pred(), "sreg op shouldn't be a pred operand")
       when (rinfo.valid && rinfo.is_scalar()) {
         check_assert("sreg"+name+i, t(i), op_idx)
-        t(i).s(op_idx).valid := Bool(true)
+        t(i).s(op_idx).valid := true.B
         t(i).s(op_idx).bits.operand := sfn(seq_exp.sreg)
         t(i).s(op_idx).bits.strip := seq_exp.strip
         t(i).s(op_idx).bits.rate := seq_exp.rate
@@ -407,7 +408,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     def mark_vfu[T <: LaneOp](name: String, tick: Ticker[T], opfn: SeqOp=>Bool, fn: T=>Unit) = {
       when (opfn(seq_exp)) {
         check_assert(name, tick, op_idx)
-        tick.s(op_idx).valid := Bool(true)
+        tick.s(op_idx).valid := true.B
         tick.s(op_idx).bits.strip := seq_exp.strip
         tick.s(op_idx).bits.rate := seq_exp.rate
         fn(tick.s(op_idx).bits)
@@ -426,7 +427,7 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     def mark_viu = mark_vfu("viu", tick_viu, (op: SeqOp) => op.active.viu,
       (lop: VIULaneOp) => { lop.fn := seq_exp.fn.viu(); lop.eidx := seq_exp.eidx })
     def mark_vsu = mark_vfu("vsu", tick_vsu, (op: SeqOp) => op.active.vsu,
-      (lop: VSULaneOp) => { lop.selff := Bool(false) })
+      (lop: VSULaneOp) => { lop.selff := false.B })
     def mark_vqu = mark_vfu("vqu", tick_vqu, (op: SeqOp) => op.active.vqu,
       (lop: VQULaneOp) => { lop.fn := seq_exp.fn.vqu(); mark_lop_sreg(lop.sreg, 2) })
     def mark_vgu = mark_vfu("vgu", tick_vgu, (op: SeqOp) => op.active.vgu,
@@ -442,28 +443,28 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
 
     def mark_vipu = {
       (Seq(preg_vs1, preg_vs2, preg_vs3).zipWithIndex) foreach { case (fn, idx) =>
-        check_assert("pred read" + idx, tick_pred_read(idx), UInt(0))
+        check_assert("pred read" + idx, tick_pred_read(idx), 0.U)
         assert(fn(seq_vipu.reg).valid, "pred op with no predicate")
         val e = tick_pred_read(idx).s(0)
-        e.valid := Bool(true)
+        e.valid := true.B
         e.bits.addr := fn(seq_vipu.reg).id
         e.bits.strip := seq_vipu.strip
         e.bits.pack := seq_vipu.pack
       }
 
-      check_assert("vipu", tick_vipu, UInt(1))
-      tick_vipu.s(1).valid := Bool(true)
+      check_assert("vipu", tick_vipu, 1.U)
+      tick_vipu.s(1).valid := true.B
       tick_vipu.s(1).bits.fn := seq_vipu.fn.vipu()
       tick_vipu.s(1).bits.strip := seq_vipu.strip
 
       val wport = 1 + stagesPLU
-      check_assert("pred write", tick_pred_write, UInt(wport))
+      check_assert("pred write", tick_pred_write, wport.U)
       assert(seq_vipu.reg.vd.valid, "pred op with no predicate")
-      tick_pred_write.s(wport).valid := Bool(true)
+      tick_pred_write.s(wport).valid := true.B
       tick_pred_write.s(wport).bits.id := seq_vipu.base.vd.id
       tick_pred_write.s(wport).bits.addr := seq_vipu.reg.vd.id
-      tick_pred_write.s(wport).bits.selg := Bool(false)
-      tick_pred_write.s(wport).bits.plu := Bool(true)
+      tick_pred_write.s(wport).bits.selg := false.B
+      tick_pred_write.s(wport).bits.plu := true.B
       tick_pred_write.s(wport).bits.sidx := seq_vipu.sidx
       tick_pred_write.s(wport).bits.rate := seq_vipu.rate
       tick_pred_write.s(wport).bits.strip := seq_vipu.strip
@@ -471,17 +472,17 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
     }
 
     def mark_vpu = {
-      check_assert("pred pread", tick_pred_pread, UInt(0))
+      check_assert("pred pread", tick_pred_pread, 0.U)
       assert(seq_vpu.reg.vp.valid && seq_vpu.reg.vp.is_pred(), "pread with no guard predicate")
-      tick_pred_pread.s(0).valid := Bool(true)
+      tick_pred_pread.s(0).valid := true.B
       tick_pred_pread.s(0).bits.off := io.cfg.unpred
       tick_pred_pread.s(0).bits.neg := seq_vpu.reg.vp.neg()
       tick_pred_pread.s(0).bits.addr := seq_vpu.reg.vp.id
       tick_pred_pread.s(0).bits.strip := seq_vpu.strip
       tick_pred_pread.s(0).bits.pack := seq_vpu.pack
 
-      check_assert("vpu", tick_vpu, UInt(1))
-      tick_vpu.s(1).valid := Bool(true)
+      check_assert("vpu", tick_vpu, 1.U)
+      tick_vpu.s(1).valid := true.B
       tick_vpu.s(1).bits.strip := seq_vpu.strip
     }
   }
@@ -515,32 +516,32 @@ class Expander(implicit p: Parameters) extends VXUModule()(p) {
   io.lane.pred.pread <> exp.tick_pred_pread.ondeck
   (0 until nPredRPorts) foreach { i => io.lane.pred.read(i) <> exp.tick_pred_read(i).ondeck }
   io.lane.pred.write <> exp.tick_pred_write.ondeck
-  (0 until nFFRPorts) foreach { io.lane.ff.read(_).valid := Bool(false) }
-  io.lane.ff.write.valid := Bool(false)
+  (0 until nFFRPorts) foreach { io.lane.ff.read(_).valid := false.B }
+  io.lane.ff.write.valid := false.B
 
   val s1_sram_read = Pipe(exp.tick_sram_read.ondeck.valid, exp.tick_sram_read.ondeck.bits)
   (io.lane.opl.global ++ io.lane.opl.local) foreach { opl =>
-    opl.valid := Bool(false)
-    opl.bits.selff := Bool(false) // FIXME
+    opl.valid := false.B
+    opl.bits.selff := false.B // FIXME
     opl.bits.strip := s1_sram_read.bits.strip
   }
   when (s1_sram_read.valid && s1_sram_read.bits.global.valid) {
-    io.lane.opl.global(s1_sram_read.bits.global.id).valid := Bool(true)
+    io.lane.opl.global(s1_sram_read.bits.global.id).valid := true.B
   }
   when (s1_sram_read.valid && s1_sram_read.bits.local.valid) {
-    io.lane.opl.local(s1_sram_read.bits.local.id).valid := Bool(true)
+    io.lane.opl.local(s1_sram_read.bits.local.id).valid := true.B
   }
 
   val s1_pred_read = Pipe(exp.tick_pred_gread.ondeck.valid, exp.tick_pred_gread.ondeck.bits)
   (io.lane.pdl.global ++ io.lane.pdl.local) foreach { pdl =>
-    pdl.valid := Bool(false)
+    pdl.valid := false.B
     pdl.bits.strip := s1_pred_read.bits.strip
   }
   when (s1_pred_read.valid && s1_pred_read.bits.global.valid) {
-    io.lane.pdl.global(s1_pred_read.bits.global.id).valid := Bool(true)
+    io.lane.pdl.global(s1_pred_read.bits.global.id).valid := true.B
   }
   when (s1_pred_read.valid && s1_pred_read.bits.local.valid) {
-    io.lane.pdl.local(s1_pred_read.bits.local.id).valid := Bool(true)
+    io.lane.pdl.local(s1_pred_read.bits.local.id).valid := true.B
   }
 
   (0 until nGOPL) foreach { i => io.lane.sreg.global(i) <> exp.tick_sreg_global(i).ondeck }

@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 abstract trait DCCParameters extends UsesHwachaParameters {
@@ -24,30 +25,30 @@ class DCCAckIO(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class DCCIssueIO(implicit p: Parameters) extends Bundle {
-  val op = Decoupled(new DCCOp).flip
+  val op = Flipped(Decoupled(new DCCOp))
 }
 
 class DecoupledCluster(implicit p: Parameters) extends VXUModule()(p) {
   val io = new DCCIssueIO {
-    val cfg = new HwachaConfigIO().flip
+    val cfg = Flipped(new HwachaConfigIO())
     val ack = new DCCAckIO
-    val lpqs = Vec(nLPQ, new LPQIO).flip
-    val lrqs = Vec(nLRQ, new LRQIO).flip
-    val bpqs = Vec(nBanks, new BPQIO).flip
-    val brqs = Vec(nBanks, new BRQIO).flip
+    val lpqs = Flipped(Vec(nLPQ, new LPQIO))
+    val lrqs = Flipped(Vec(nLRQ, new LRQIO))
+    val bpqs = Flipped(Vec(nBanks, new BPQIO))
+    val brqs = Flipped(Vec(nBanks, new BRQIO))
     val bwqs = new Bundle {
       val mem = Vec(nBanks, new BWQIO)
       val fu = Vec(nBanks, new BWQIO)
     }
-    val dpla = new CounterLookAheadIO().flip // DCC LPQ counter
-    val dqla = Vec(nVDUOperands, new CounterLookAheadIO).flip // DCC LRQ counter
-    val dila = new CounterLookAheadIO().flip // idiv counter
-    val dfla = new CounterLookAheadIO().flip // fdiv counter
-    val gpla = new CounterLookAheadIO().flip // VGU LPQ counter
-    val gqla = new CounterLookAheadIO().flip // VGU LRQ counter
-    val pla = new BPQLookAheadIO().flip // VPU BPQ counter
-    val lla = new CounterLookAheadIO().flip // VLU BWQ counter
-    val sla = new BRQLookAheadIO().flip // VSU BRQ counter
+    val dpla = Flipped(new CounterLookAheadIO()) // DCC LPQ counter
+    val dqla = Flipped(Vec(nVDUOperands, new CounterLookAheadIO)) // DCC LRQ counter
+    val dila = Flipped(new CounterLookAheadIO()) // idiv counter
+    val dfla = Flipped(new CounterLookAheadIO()) // fdiv counter
+    val gpla = Flipped(new CounterLookAheadIO()) // VGU LPQ counter
+    val gqla = Flipped(new CounterLookAheadIO()) // VGU LRQ counter
+    val pla = Flipped(new BPQLookAheadIO()) // VPU BPQ counter
+    val lla = Flipped(new CounterLookAheadIO()) // VLU BWQ counter
+    val sla = Flipped(new BRQLookAheadIO()) // VSU BRQ counter
     val red = new ReduceResultIO
     val vmu = new VMUIO
   }

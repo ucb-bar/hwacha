@@ -1,47 +1,48 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 
 class IRQIO extends Bundle {
   val top = new Bundle {
-    val illegal_cfg = Bool(OUTPUT)
-    val illegal_inst = Bool(OUTPUT)
-    val priv_inst = Bool(OUTPUT)
-    val illegal_regid = Bool(OUTPUT)
-    val aux = Bits(OUTPUT, 64)
+    val illegal_cfg = Output(Bool())
+    val illegal_inst = Output(Bool())
+    val priv_inst = Output(Bool())
+    val illegal_regid = Output(Bool())
+    val aux = Output(UInt(64.W))
   }
   val issue = new Bundle {
-    val ma_inst = Bool(OUTPUT)
-    val fault_inst = Bool(OUTPUT)
-    val illegal = Bool(OUTPUT)
-    val illegal_regid = Bool(OUTPUT)
-    val aux = Bits(OUTPUT, 64)
+    val ma_inst = Output(Bool())
+    val fault_inst = Output(Bool())
+    val illegal = Output(Bool())
+    val illegal_regid = Output(Bool())
+    val aux = Output(UInt(64.W))
   }
   val vmu = new Bundle {
-    val ma_ld = Bool(OUTPUT)
-    val ma_st = Bool(OUTPUT)
-    val pf_ld = Bool(OUTPUT)
-    val pf_st = Bool(OUTPUT)
-    val ae_ld = Bool(OUTPUT)
-    val ae_st = Bool(OUTPUT)
-    val aux = Bits(OUTPUT, 64)
+    val ma_ld = Output(Bool())
+    val ma_st = Output(Bool())
+    val pf_ld = Output(Bool())
+    val pf_st = Output(Bool())
+    val ae_ld = Output(Bool())
+    val ae_st = Output(Bool())
+    val aux = Output(UInt(64.W))
   }
 }
 
 class IRQ extends Module {
-  val io = new Bundle {
-    val vu = new IRQIO().flip
+  val io = IO(new Bundle {
+    val vu = Flipped(new IRQIO())
     val rocc = new Bundle {
-      val request = Bool(OUTPUT)
-      val cause = UInt(OUTPUT, 5)
-      val aux = Bits(OUTPUT, 64)
-      val clear = Bool(INPUT)
+      val request = Output(Bool())
+      val cause = Output(UInt(5.W))
+      val aux = Output(UInt(64.W))
+      val clear = Input(Bool())
     }
-  }
+  })
 
-  val reg_irq = Reg(init=Bool(false))
-  val reg_cause = Reg(init=UInt(0, 5))
-  val reg_aux = Reg(init=Bits(0, 64))
+  val reg_irq = RegInit(false.B)
+  val reg_cause = RegInit(0.U(5.W))
+  val reg_aux = RegInit(Bits(0, 64))
 
   val irqs = List(
     (io.vu.top.illegal_cfg, 0, io.vu.top.aux),
@@ -63,15 +64,15 @@ class IRQ extends Module {
   when (!reg_irq) {
     for ((cond, cause, aux) <- irqs.reverse) {
       when (cond) {
-        reg_irq := Bool(true)
-        reg_cause := UInt(cause)
+        reg_irq := true.B
+        reg_cause := cause.U
         reg_aux := aux
       }
     }
   }
 
   when (io.rocc.clear) {
-    reg_irq := Bool(false)
+    reg_irq := false.B
   }
 
   io.rocc.request := reg_irq

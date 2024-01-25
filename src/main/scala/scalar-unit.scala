@@ -1,14 +1,15 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.rocket._
 import ScalarFPUDecode._
 import HardFloatHelper._
 
 class ScalarRFWritePort(implicit p: Parameters) extends HwachaBundle()(p) {
-  val addr = UInt(width = bSRegs)
-  val data = UInt(width = regLen)
+  val addr = UInt(bSRegs.W)
+  val data = UInt(regLen.W)
 }
 
 class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends HwachaModule(_reset = resetSignal)(p)
@@ -16,47 +17,47 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   import Commands._
 
   val io = IO(new Bundle {
-    val cfg = new HwachaConfigIO().flip
+    val cfg = Flipped(new HwachaConfigIO())
 
-    val cmdq = new CMDQIO().flip
+    val cmdq = Flipped(new CMDQIO())
     val imem = new hwacha.FrontendIO(p(HwachaIcacheKey))
     val vxu = Decoupled(new IssueOpML)
     val vmu = Decoupled(new VMUOpML)
     val fpu = new Bundle {
       val req = Decoupled(new HwachaFPInput)
-      val resp = Decoupled(new HwachaFPResult).flip
+      val resp = Flipped(Decoupled(new HwachaFPResult))
     }
     val smu = new SMUIO
     val lreq = new CounterLookAheadIO
     val sreq = new CounterLookAheadIO
-    val mocheck = new MOCheck().asInput
-    val red = new ReduceResultIO().flip
+    val mocheck = Input(new MOCheck())
+    val red = Flipped(new ReduceResultIO())
 
-    val vf_active = Bool(OUTPUT)
-    val vf_stop = Bool(OUTPUT)
+    val vf_active = Output(Bool())
+    val vf_stop = Output(Bool())
     val pending = new Bundle {
-      val mseq = new SequencerPending().asInput
+      val mseq = Input(new SequencerPending())
       val mrt = new Bundle {
-        val su = new MRTPending().asOutput
-        val vus = Vec(nLanes, new MRTPending).asInput
+        val su = Output(new MRTPending())
+        val vus = Input(Vec(nLanes, new MRTPending))
       }
     }
   })
 
   // STATE
   class SRegFile {
-    private val rf = Mem(nSRegs-1, UInt(width = regLen))
+    private val rf = Mem(nSRegs-1, UInt(regLen.W))
     private val reads = collection.mutable.ArrayBuffer[(UInt,UInt)]()
     private var canRead = true
     def read(addr: UInt) = {
       require(canRead)
       reads += addr -> Wire(UInt())
-      reads.last._2 := Mux(addr =/= UInt(0), rf(~addr), UInt(0))
+      reads.last._2 := Mux(addr =/= 0.U, rf(~addr), 0.U)
       reads.last._2
     }
     def write(addr: UInt, data: UInt) = {
       canRead = false
-      when (addr =/= UInt(0)) {
+      when (addr =/= 0.U) {
         rf(~addr) := data
         for ((raddr, rdata) <- reads)
           when (addr === raddr) { rdata := data }
@@ -70,10 +71,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     def read(addr: UInt): Bool = r(addr)
     def readBypassed(addr: UInt): Bool = _next(addr)
 
-    private val r = Reg(init=Bits(0, n))
+    private val r = RegInit(Bits(0, n))
     private var _next = r
-    private var ens = Bool(false)
-    private def mask(en: Bool, addr: UInt) = Mux(en, UInt(1) << addr, UInt(0))
+    private var ens = false.B
+    private def mask(en: Bool, addr: UInt) = Mux(en, 1.U << addr, 0.U)
     private def update(en: Bool, update: UInt) = {
       _next = update
       ens = ens || en
@@ -82,7 +83,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   }
 
   val srf = new SRegFile // doesn't have vs0
-  val arf = Mem(nARegs, UInt(width = regLen))
+  val arf = Mem(nARegs, UInt(regLen.W))
   val sboard = new Scoreboard(nSRegs)
   val mrt = Module(new MemTracker(4, 4))
   mrt.suggestName("mrtInst")
@@ -91,7 +92,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   io.pending.mrt.su := mrt.io.pending
 
-  val vf_active = Reg(init=Bool(false))
+  val vf_active = RegInit(false.B)
   val vl = Reg(Vec(nLanes, new VLenEntry))
   val busy_scalar = Wire(Bool())
 
@@ -130,21 +131,21 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   when (fire_cmdq(null, decode_vsetcfg)) {
     (0 until nLanes) map { i =>
-      vl(i).active := Bool(false)
-      vl(i).vlen := UInt(0)
+      vl(i).active := false.B
+      vl(i).vlen := 0.U
     }
   }
   when (fire_cmdq(null, decode_vsetvl)) {
-    val mask_strip = io.cfg.lstrip - UInt(1)
+    val mask_strip = io.cfg.lstrip - 1.U
     val mask_base = ~Cat(UInt(0, bMLVLen - bfLStrip), mask_strip)
     val vlen_ml = io.cmdq.imm.bits
     val vlen_base = (vlen_ml >> UInt(bLanes)) & mask_base
-    val vlen_lane = if(nLanes == 1) UInt(0) else ((vlen_ml >> UInt(bStrip)) >> io.cfg.lstride)(bLanes-1, 0)
+    val vlen_lane = if(nLanes == 1) 0.U else ((vlen_ml >> UInt(bStrip)) >> io.cfg.lstride)(bLanes-1, 0)
     val vlen_strip = (vlen_ml & mask_strip)(bfLStrip-1, 0)
     (0 until nLanes) map { i =>
       val vlen_fringe =
-        Mux(vlen_lane > UInt(i), io.cfg.lstrip,
-          Mux(vlen_lane === UInt(i), vlen_strip, UInt(0)))
+        Mux(vlen_lane > i.U, io.cfg.lstrip,
+          Mux(vlen_lane === i.U, vlen_strip, 0.U))
       val vlen = if (nLanes == 1) vlen_ml else vlen_base + vlen_fringe
       vl(i).active := vlen.orR
       vl(i).vlen := vlen
@@ -154,12 +155,12 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val fire_vf = fire_cmdq(null, decode_vf)
   val id_status = Reg(new MStatus)
   when (fire_vf) {
-    vf_active := Bool(true)
+    vf_active := true.B
     id_status := io.cmdq.status.bits
   }
 
-  val pending_smu = Reg(init=Bool(false))
-  val pending_cbranch = Reg(init=Bool(false))
+  val pending_smu = RegInit(false.B)
+  val pending_cbranch = RegInit(false.B)
 
   val ex_reg_valid = Reg(Bool())
   val ex_reg_ctrl = Reg(new hwacha.IntCtrlSigs)
@@ -193,7 +194,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.imem.req.bits.pc := Mux(ex_br_taken, ex_br_taken_pc, io.cmdq.imm.bits)
   io.imem.req.bits.status := Mux(ex_br_taken, id_status, io.cmdq.status.bits)
   io.imem.active := vf_active
-  io.imem.invalidate := Bool(false) // TODO: flush cache/tlb on vfence
+  io.imem.invalidate := false.B // TODO: flush cache/tlb on vfence
   io.imem.resp.ready := !stalld
 
   // DECODE
@@ -202,7 +203,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val decode_table = ScalarDecode.table ++ VectorMemoryDecode.table ++ VectorArithmeticDecode.table
   val id_ctrl = Wire(new hwacha.IntCtrlSigs()).decode(id_inst, decode_table)
   when (!killd && id_ctrl.decode_stop) {
-    vf_active := Bool(false)
+    vf_active := false.B
   }
   io.vf_stop := io.imem.resp.fire && id_ctrl.decode_stop
 
@@ -239,10 +240,10 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val id_val = io.imem.resp.valid && id_ctrl.ival
 
   // only look at shared reg because addr reg can't be written during vf block
-  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_ctrl.vd =/= UInt(0)
-  val id_ctrl_rens1_not0 = sren(0) && id_ctrl.vs1 =/= UInt(0)
-  val id_ctrl_rens2_not0 = sren(1) && id_ctrl.vs2 =/= UInt(0)
-  val id_ctrl_rens3_not0 = sren(2) && id_ctrl.vs3 =/= UInt(0)
+  val id_ctrl_wen_not0 = id_ctrl.vd_val && id_ctrl.vd_type === REG_SHR & id_ctrl.vd =/= 0.U
+  val id_ctrl_rens1_not0 = sren(0) && id_ctrl.vs1 =/= 0.U
+  val id_ctrl_rens2_not0 = sren(1) && id_ctrl.vs2 =/= 0.U
+  val id_ctrl_rens3_not0 = sren(2) && id_ctrl.vs3 =/= 0.U
 
   // stall for RAW hazards on non scalar integer pipes
   val id_can_bypass =
@@ -274,8 +275,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val enq_smu = id_val && id_smem_inst
   val enq_muldiv = id_val && id_scalar_inst && id_muldiv_inst
 
-  mrt.io.lreq.cnt := UInt(1)
-  mrt.io.sreq.cnt := UInt(1)
+  mrt.io.lreq.cnt := 1.U
+  mrt.io.sreq.cnt := 1.U
 
   val stall_smu =
     pending_smu ||
@@ -316,7 +317,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   // use rm in inst unless its dynamic then take rocket rm
   // TODO: pipe rockets rm here (FPU outputs it?, or store it in rocc unit)
-  val rm = Mux(id_ctrl.rm === Bits("b111"), UInt(0), id_ctrl.rm)
+  val rm = Mux(id_ctrl.rm === Bits("b111"), 0.U, id_ctrl.rm)
 
   val vbias_w = io.cfg.base.w - io.cfg.id.vd
   val vbias_h = io.cfg.base.h - io.cfg.id.vw
@@ -327,8 +328,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
     if (confprec) {
       val (d, dw) = (id < io.cfg.id.vd, id < io.cfg.id.vw)
       val sel = Seq(d, !d && dw, !d && !dw)
-      val bias = Mux1H(sel, Seq(UInt(0), vbias_w, vbias_h))
-      reg.id := id + Mux(base.is_vector(), bias, UInt(0))
+      val bias = Mux1H(sel, Seq(0.U, vbias_w, vbias_h))
+      reg.id := id + Mux(base.is_vector(), bias, 0.U)
       base.id := id
       base.prec := Mux1H(sel, Seq(PREC_D, PREC_W, PREC_H))
     } else {
@@ -400,11 +401,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   vregid(reg_vs3, pregid_vs3, id_ctrl.vs3)
   vregid(reg_vd, pregid_vd, id_ctrl.vd)
   io.vxu.bits.base.vp.valid := id_ctrl.vp_val
-  io.vxu.bits.base.vp.pred := Bool(true)
+  io.vxu.bits.base.vp.pred := true.B
   io.vxu.bits.base.vp.neg() := id_ctrl.vp_neg
   io.vxu.bits.base.vp.id := id_ctrl.vp
   io.vxu.bits.reg.vp.id := id_ctrl.vp
-  when (fire_decode(null, id_branch_inst)) { pending_cbranch := Bool(true) }
+  when (fire_decode(null, id_branch_inst)) { pending_cbranch := true.B }
 
   // to VMU
   io.vmu.valid := fire_decode(mask_vmu_ready, enq_vmu)
@@ -415,11 +416,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.vmu.bits.status := id_status
 
   val addr_stride =
-    MuxLookup(id_ctrl.mt, UInt(0),Seq(
-      MT_B->  UInt(1),
-      MT_BU-> UInt(1),
-      MT_H->  UInt(2),
-      MT_HU-> UInt(2),
+    MuxLookup(id_ctrl.mt, 0.U,Seq(
+      MT_B->  1.U,
+      MT_BU-> 1.U,
+      MT_H->  2.U,
+      MT_HU-> 2.U,
       MT_W->  UInt(4),
       MT_WU-> UInt(4),
       MT_D->  UInt(8)
@@ -427,7 +428,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
 
   io.vmu.bits.base :=
     Mux(aren(0), id_areads(0), // unit-stride
-      Mux(isAMO(id_ctrl.vmu_cmd), UInt(0), // AMO
+      Mux(isAMO(id_ctrl.vmu_cmd), 0.U, // AMO
         id_sreads(0))) // indexed
   io.vmu.bits.stride :=
     Mux(aren(1), id_areads(1), // constant-stride
@@ -453,8 +454,8 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   io.smu.req.bits.data := id_sreads(1)
   io.smu.req.bits.tag := id_ctrl.vd
   io.smu.req.bits.status := id_status
-  when (io.smu.req.fire) { pending_smu := Bool(true) }
-  when (io.smu.confirm) { pending_smu := Bool(false) }
+  when (io.smu.req.fire) { pending_smu := true.B }
+  when (io.smu.confirm) { pending_smu := false.B }
 
   implicit def BitPatToUInt(x: BitPat): UInt = {
     require(x.mask == (BigInt(1) << x.getWidth)-1)
@@ -477,7 +478,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   muldiv.io.req.bits.in1 := id_sreads(0)
   muldiv.io.req.bits.in2 := id_sreads(1)
   muldiv.io.req.bits.tag := id_ctrl.vd
-  muldiv.io.kill := Bool(false)
+  muldiv.io.kill := false.B
 
   // to MRT
   mrt.io.lreq.reserve := fire_decode(null, enq_smu, id_smu_load)
@@ -489,11 +490,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   val ex_stall_muldiv = ex_reg_valid && muldiv.io.resp.valid
   val ex_stall_rfirst = ex_reg_valid && io.red.first.valid
 
-  io.red.pred.ready := Bool(true)
+  io.red.pred.ready := true.B
   ex_br_resolved := io.red.pred.fire
   ex_br_taken := ex_br_resolved && io.red.pred.bits.cond
   ex_br_not_taken := ex_br_resolved && !io.red.pred.bits.cond
-  when (ex_br_resolved) { pending_cbranch := Bool(false) }
+  when (ex_br_resolved) { pending_cbranch := false.B }
 
   stallx :=
     pending_cbranch && !ex_br_resolved ||
@@ -523,7 +524,7 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   def imm(sel: UInt, inst: Bits) = {
     val sign = inst(63).asSInt
     val b30_3 = inst(62,35)
-    val b2_0 = Mux(sel === IMM_I, inst(34,32), Bits(0))
+    val b2_0 = Mux(sel === IMM_I, inst(34,32), 0.U)
     val out = Cat(sign, b30_3, b2_0).asSInt
     Mux(sel === IMM_L, Cat(out, UInt(0, 32)).asSInt, out)
   }
@@ -556,16 +557,16 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   ll_warb.io.in(0).bits.addr := io.fpu.resp.bits.tag
   ll_warb.io.in(0).bits.data := io.fpu.resp.bits.data
   assert(!io.fpu.resp.valid || ll_warb.io.in(0).ready, "fpu port should always have priority")
-  io.fpu.resp.ready := Bool(true)
+  io.fpu.resp.ready := true.B
 
   ll_warb.io.in(1).valid := io.smu.resp.valid && !io.smu.resp.bits.store
   ll_warb.io.in(1).bits.addr := io.smu.resp.bits.tag
   ll_warb.io.in(1).bits.data := io.smu.resp.bits.data
   io.smu.resp.ready := ll_warb.io.in(1).ready
 
-  mrt.io.lret.cnt := UInt(1)
+  mrt.io.lret.cnt := 1.U
   mrt.io.lret.update := io.smu.resp.fire && !io.smu.resp.bits.store
-  mrt.io.sret.cnt := UInt(1)
+  mrt.io.sret.cnt := 1.U
   mrt.io.sret.update := io.smu.resp.fire && io.smu.resp.bits.store
 
   ll_warb.io.in(2).valid := muldiv.io.resp.valid
@@ -578,14 +579,14 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
   ll_warb.io.in(3).bits.data := io.red.first.bits.first
   io.red.first.ready := ll_warb.io.in(3).ready
 
-  ll_warb.io.out.ready := Bool(true) // long-latency write port always wins
+  ll_warb.io.out.ready := true.B // long-latency write port always wins
 
   // WRITEBACK
-  val wb_ll_valid = Reg(next=ll_warb.io.out.valid)
+  val wb_ll_valid = RegNext(ll_warb.io.out.valid)
   val wb_ll_waddr = RegEnable(ll_warb.io.out.bits.addr, ll_warb.io.out.valid)
   val wb_ll_wdata = RegEnable(ll_warb.io.out.bits.data, ll_warb.io.out.valid)
 
-  stallw := Bool(false)
+  stallw := false.B
 
   when (!stallw) {
     wb_reg_valid := !killx
@@ -626,11 +627,11 @@ class ScalarUnit(resetSignal: Bool = null)(implicit p: Parameters) extends Hwach
          wb_reg_valid, wb_reg_pc,
          wb_waddr, wb_wdata, swrite || wb_ll_valid || wb_wen,
          wb_reg_ctrl.vs1, Mux(wb_reg_ctrl.vs1_type === REG_ADDR,
-                            Reg(next=Reg(next=ex_reg_ars(0))),
-                            Reg(next=Reg(next=ex_srs(0)))),
+                            RegNext(RegNext(ex_reg_ars(0))),
+                            RegNext(RegNext(ex_srs(0)))),
          wb_reg_ctrl.vs2, Mux(wb_reg_ctrl.vs2_type === REG_ADDR,
-                            Reg(next=Reg(next=ex_reg_ars(1))),
-                            Reg(next=Reg(next=ex_srs(1)))),
+                            RegNext(RegNext(ex_reg_ars(1))),
+                            RegNext(RegNext(ex_srs(1)))),
          wb_reg_inst, wb_reg_inst)
   }
 }

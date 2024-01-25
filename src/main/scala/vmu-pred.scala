@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class VMUMaskIO(implicit p: Parameters) extends VMUBundle()(p) {
@@ -9,11 +10,11 @@ class VMUMaskIO(implicit p: Parameters) extends VMUBundle()(p) {
 }
 
 class PBox0(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val ingress = Decoupled(new PredEntry).flip
+  val io = IO(new VMUIssueIO {
+    val ingress = Flipped(Decoupled(new PredEntry))
     val egress = Decoupled(new PredEntry)
     val sample = new VMUMaskIO_0
-  }
+  })
 
   val op = Reg(new VMUDecodedOp)
 
@@ -30,36 +31,36 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
    *      Computer Architecture, New York, NY, 2000, pp. 260-269.
    */
   private val scan = (1 to bStrip).scanLeft(
-    (0, Bool(true))) {
+    (0, true.B)) {
       case ((j, zero_tail), i) =>
         val m = (1 << i)
         val n = (1 << j) - 1
         // Ensure that sufficient number of predicates remain in the set
         val valid = (index <= UInt(nStrip - m))
-        val zero = zero_tail && (head(m-1, n) === UInt(0)) && valid
+        val zero = zero_tail && (head(m-1, n) === 0.U) && valid
         (i, zero)
   }.tail
 
   val pred_n = MuxCase(head(0),
-    scan.reverse.map { case (_, zero) => (zero -> Bool(false)) })
+    scan.reverse.map { case (_, zero) => (zero -> false.B) })
 
-  val lgecnt_n = MuxCase(UInt(0),
-    scan.reverse.map { case (i, zero) => (zero -> UInt(i)) })
-  val ecnt_n = UInt(1) << lgecnt_n
+  val lgecnt_n = MuxCase(0.U,
+    scan.reverse.map { case (i, zero) => (zero -> i.U) })
+  val ecnt_n = 1.U << lgecnt_n
   val step_n = ecnt_n
 
   val lead = Wire(Bool())
-  lead := Bool(false)
+  lead := false.B
 
   val pglen = Reg(UInt(width = bPgIdx + 1))
   val pglen_next = pglen.zext - step_max.zext
   val pglen_end = (pglen_next <= SInt(0))
-  val pglen_skip = Mux(lead, io.op.bits.base(bPgIdx-1, 0), UInt(0))
+  val pglen_skip = Mux(lead, io.op.bits.base(bPgIdx-1, 0), 0.U)
   val pglen_shift = Mux(lead, io.op.bits.mt.shift(), op.mt.shift())
   val pglen_max = (UInt(pgSize) - pglen_skip) >> pglen_shift
   val pglen_final = Reg(Bool())
   val pglen_reset = Wire(Bool())
-  pglen_reset := Bool(false)
+  pglen_reset := false.B
 
   val head_mask = EnableDecoder(pglen, nStrip)
   val pred_u = (head & head_mask).orR
@@ -98,18 +99,18 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  io.op.ready := Bool(false)
-  io.ingress.ready := Bool(false)
-  io.egress.valid := Bool(false)
-  io.sample.valid := Bool(false)
+  io.op.ready := false.B
+  io.ingress.ready := false.B
+  io.egress.valid := false.B
+  io.sample.valid := false.B
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val state = RegInit(s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
-      pglen_reset := Bool(true)
+      io.op.ready := true.B
+      pglen_reset := true.B
     }
 
     is (s_busy) {
@@ -123,11 +124,11 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
 
         when (op.mode.unit) {
           when (pred_u) {
-            sample_en := Bool(false)
+            sample_en := false.B
           }
           pglen := pglen_next.asUInt
           when (pglen_end) {
-            pglen_reset := Bool(true)
+            pglen_reset := true.B
           }
         }
 
@@ -137,8 +138,8 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
           assert(!op.mode.unit || pglen_end,
             "PBox0: desynchronized vlen and pglen counters");
 
-          io.op.ready := Bool(true)
-          pglen_reset := Bool(true)
+          io.op.ready := true.B
+          pglen_reset := true.B
         }
       }
     }
@@ -149,22 +150,22 @@ class PBox0(implicit p: Parameters) extends VMUModule()(p) {
   when (pglen_reset) {
     pglen := Mux(_pglen_final, _vlen_next, pglen_max)
     pglen_final := _pglen_final
-    sample_en := Bool(true)
+    sample_en := true.B
   }
 
   when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
-    index := UInt(0)
-    lead := Bool(true)
+    index := 0.U
+    lead := true.B
   }
 }
 
 class PBox1(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new VMUIssueIO {
-    val ingress = Decoupled(new PredEntry).flip
+  val io = IO(new VMUIssueIO {
+    val ingress = Flipped(Decoupled(new PredEntry))
     val sample = new VMUMaskIO_1
-  }
+  })
 
   private val limit = tlDataBytes >> 1
   private val lglimit = tlByteAddrBits - 1
@@ -182,9 +183,9 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 
   val index = Reg(UInt(width = lglimit))
   val step_u = Cat(mts :+ UInt(0, lgslices))
-  val step = Mux(op.mode.unit, step_u, UInt(1))
+  val step = Mux(op.mode.unit, step_u, 1.U)
   val index_next = (index + step)(lglimit-1, 0)
-  val index_end = (index_next === UInt(0))
+  val index_end = (index_next === 0.U)
 
   when (io.sample.fire) {
     index := index_next
@@ -196,7 +197,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   }
 
   val surplus = Wire(Bool())
-  val pred = Mux(surplus, Bits(0), io.ingress.bits.pred)
+  val pred = Mux(surplus, 0.U, io.ingress.bits.pred)
   val preds = (0 until nStrip).map(pred(_)).toSeq
 
   val head = Cat(pred, hold)
@@ -211,7 +212,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
 //  case (m, i) => (m, 1 << (i + lgslices))
 //}
 //val mask_type_full = Cat((
-//  Bool(true) +: /* First predicate is always relevant */
+//  true.B +: /* First predicate is always relevant */
 //  ((mask_type_head +: mask_type_tail).map {
 //    case (m, w) => Fill(w, m) /* Trailing predicates */
 //  })).reverse)
@@ -247,7 +248,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
    */
   val remnant = (op.vlen + meta.eoff)(lglimit-1, 0)
   val truncate = op.mode.unit &&
-    (remnant <= meta.eoff) && (remnant =/= UInt(0))
+    (remnant <= meta.eoff) && (remnant =/= 0.U)
   surplus := meta.last && truncate
 
   io.sample.bits.data := mask_data
@@ -261,16 +262,16 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  io.op.ready := Bool(false)
-  io.ingress.ready := Bool(false)
-  io.sample.valid := Bool(false)
+  io.op.ready := false.B
+  io.ingress.ready := false.B
+  io.sample.valid := false.B
 
   val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val state = RegInit(s_idle)
 
   switch (state) {
     is (s_idle) {
-      io.op.ready := Bool(true)
+      io.op.ready := true.B
     }
 
     is (s_busy) {
@@ -278,7 +279,7 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
       io.sample.valid := fire(io.sample.ready)
       when (fire(null) && meta.last) {
         state := s_idle
-        io.op.ready := Bool(true)
+        io.op.ready := true.B
       }
     }
   }
@@ -286,17 +287,17 @@ class PBox1(implicit p: Parameters) extends VMUModule()(p) {
   when (io.op.fire) { /* initialization */
     state := s_busy
     op := io.op.bits
-    hold := Bits(0)
-    index := UInt(0)
+    hold := 0.U
+    index := 0.U
   }
 }
 
 class PBox(implicit p: Parameters) extends VMUModule()(p) {
-  val io = new Bundle {
-    val op = Vec(2, Decoupled(new VMUDecodedOp)).flip
-    val pred = Decoupled(new PredEntry).flip
+  val io = IO(new Bundle {
+    val op = Flipped(Vec(2, Decoupled(new VMUDecodedOp)))
+    val pred = Flipped(Decoupled(new PredEntry))
     val mask = new VMUMaskIO
-  }
+  })
 
   /* NOTE: As a consequence of limited buffer space, predicates enqueued
    * in predq1 must be matched by at least an equal increment of the VCU

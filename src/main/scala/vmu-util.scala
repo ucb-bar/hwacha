@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 
 // Bidirectional barrel shifter
 // Selects n-element field from 2n-element input
@@ -8,12 +9,12 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
   private val lgn = log2Up(n)
   require(n == (1 << lgn))
 
-  val io = new Bundle {
-    val in0 = Vec(n, gen.cloneType).asInput
-    val in1 = Vec(n, gen.cloneType).asInput // left-shift input
-    val out = Vec(n, gen.cloneType).asOutput
-    val shift = SInt(INPUT, lgn + 1)
-  }
+  val io = IO(new Bundle {
+    val in0 = Input(Vec(n, gen.cloneType))
+    val in1 = Input(Vec(n, gen.cloneType)) // left-shift input
+    val out = Output(Vec(n, gen.cloneType))
+    val shift = Input(SInt((lgn + 1).W))
+  })
 
   // Right shift by n
   private var data = Vec((1 until n).map(i =>
@@ -33,11 +34,11 @@ class FunnelShifter[T <: Data](gen: T, n: Int) extends Module {
 // Rotates n input elements into m output slots
 class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends Module {
   require(n <= m)
-  val io = new Bundle {
-    val in = Vec(n, gen.cloneType).asInput
-    val out = Vec(m, gen.cloneType).asOutput
-    val sel = UInt(INPUT, log2Up(m))
-  }
+  val io = IO(new Bundle {
+    val in = Vec(n, gen.cloneType)
+    val out = Vec(m, gen.cloneType)
+    val sel = Input(UInt(log2Up(m).W))
+  })
 
   var barrel = io.in
   for (stage <- 0 until log2Up(m)) {
@@ -62,10 +63,10 @@ class Rotator[T <: Data](gen: T, n: Int, m: Int, rev: Boolean = false) extends M
 object EnableDecoder {
   def apply[T <: UInt](in: T, n: Int): UInt = {
     val lgn = log2Up(n)
-    val lut = Vec(
+    val lut = VecInit(
       (0 until n).map(i => Bits((1 << i) - 1, n)) ++
-      Seq.fill((1 << lgn) - n)(Fill(n, Bool(true))))
-    val mask = ((in >> lgn) =/= UInt(0))
+      Seq.fill((1 << lgn) - n)(Fill(n, true.B)))
+    val mask = ((in >> lgn) =/= 0.U)
     lut(in(lgn-1, 0)) | Fill(n, mask)
   }
 }
@@ -93,8 +94,8 @@ object CTZ {
   }
 
   def apply[T <: Bits](in: T, n: Int): UInt = {
-    val init = (0 until n).map(i => (in(i), UInt(i))) :+
-      (Bool(true), UInt(n)) /* Result for zero input */
+    val init = (0 until n).map(i => (in(i), i.U)) :+
+      (true.B, n.U) /* Result for zero input */
     tree(init).head._2
   }
 }

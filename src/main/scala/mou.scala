@@ -1,6 +1,6 @@
 package hwacha
 
-import Chisel._
+import chisel3._
 import org.chipsalliance.cde.config._
 
 class MOCheck(implicit p: Parameters) extends HwachaBundle()(p) {
@@ -9,23 +9,23 @@ class MOCheck(implicit p: Parameters) extends HwachaBundle()(p) {
 }
 
 class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with SeqLogic {
-  val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
-    val mseq = new MasterSequencerState().asInput
-    val pending = new Bundle {
-      val su = new MRTPending().asInput
-      val vus = Vec(nLanes, new MRTPending).asInput
-    }
-    val check = new Bundle {
-      val su = new MOCheck().asOutput
-      val vus = Vec(nLanes, Vec(nSeq, new MOCheck)).asOutput
-    }
-  }
+  val io = IO(new Bundle {
+    val cfg = Flipped(new HwachaConfigIO())
+    val mseq = Input(new MasterSequencerState())
+    val pending = Input(new Bundle {
+      val su = new MRTPending()
+      val vus = Vec(nLanes, new MRTPending)
+    })
+    val check = Output(new Bundle {
+      val su = new MOCheck()
+      val vus = Vec(nLanes, Vec(nSeq, new MOCheck))
+    })
+  })
 
   // Treat addr as limiter on head advancement for comparisons
-  val latchedHead = Reg(init = 0.U(log2Up(nSeq).W))
+  val latchedHead = RegInit(0.U(log2Up(nSeq).W))
   val headMatchAddr = io.pending.vus.map(_.addr).map{ case a =>
-    a.valid && a.bits === latchedHead }.foldLeft(Bool(false))(_ || _)
+    a.valid && a.bits === latchedHead }.foldLeft(false.B)(_ || _)
   when(!headMatchAddr) { latchedHead := io.mseq.head }
   // if the vmu is sending out acquires for a vlu/vsu between
   // the head and our mseq entry we need to wait
@@ -41,9 +41,9 @@ class MemOrderingUnit(implicit p: Parameters) extends HwachaModule()(p) with Seq
   }
 
   def vus_pending_store(exclude: Bool) =
-    io.pending.vus.map(_.store).filter(_ ne exclude).foldLeft(Bool(false))(_ || _)
+    io.pending.vus.map(_.store).filter(_ ne exclude).foldLeft(false.B)(_ || _)
   def vus_pending_all(exclude: Bool) =
-    io.pending.vus.map(_.all).filter(_ ne exclude).foldLeft(Bool(false))(_ || _)
+    io.pending.vus.map(_.all).filter(_ ne exclude).foldLeft(false.B)(_ || _)
 
   // scalar loads can go through when memory ordering is relaxed or
   // when no pending vector stores

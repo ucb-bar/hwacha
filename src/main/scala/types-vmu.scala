@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 abstract class VMUModule(clock: Clock = null, _reset: Bool = null)(implicit p: Parameters)
@@ -9,20 +10,20 @@ abstract class VMUBundle(implicit p: Parameters)
   extends HwachaBundle()(p) with VMUParameters
 
 class VMUMemFn extends Bundle {
-  val cmd = Bits(width = M_SZ)
-  val mt = Bits(width = MT_SZ)
+  val cmd = UInt(M_SZ.W)
+  val mt = UInt(MT_SZ.W)
 }
 
 class VMUFn extends Bundle {
-  val mode = Bits(width = SZ_VMU_MODE)
-  val cmd = Bits(width = M_SZ)
-  val mt = Bits(width = MT_SZ)
+  val mode = UInt(SZ_VMU_MODE.W)
+  val cmd = UInt(M_SZ.W)
+  val mt = UInt(MT_SZ.W)
 }
 
 class VMUOpBase(implicit p: Parameters) extends VMUBundle()(p) {
   val fn = new VMUFn
-  val base = UInt(width = bVAddrExtended)
-  val stride = UInt(width = regLen)
+  val base = UInt(bVAddrExtended.W)
+  val stride = UInt(regLen.W)
   val status = new freechips.rocketchip.rocket.MStatus
 }
 
@@ -30,7 +31,7 @@ class VMUOp(implicit p: Parameters) extends VMUOpBase()(p) with SingleLaneVLen
 class VMUOpML(implicit p: Parameters) extends VMUOpBase()(p) with MultiLaneVLen
 
 class DecodedMemCommand extends Bundle {
-  val bits = Bits(width = M_SZ)
+  val bits = UInt(M_SZ.W)
 
   val load = Bool()
   val store = Bool()
@@ -93,13 +94,13 @@ object DecodedMemType {
 /**********************************************************************/
 
 class VVAQEntry(implicit p: Parameters) extends VMUBundle()(p) {
-  val addr = UInt(width = bVAddrExtended)
+  val addr = UInt(bVAddrExtended.W)
 }
 class VVAQIO(implicit p: Parameters) extends DecoupledIO(new VVAQEntry()(p)) {
 }
 
 trait VMUAddr extends VMUBundle {
-  val addr = UInt(width = bPAddr)
+  val addr = UInt(bPAddr.W)
 }
 class VPAQEntry(implicit p: Parameters) extends VMUAddr
 class VPAQIO(implicit p: Parameters) extends DecoupledIO(new VPAQEntry()(p)) {
@@ -107,7 +108,7 @@ class VPAQIO(implicit p: Parameters) extends DecoupledIO(new VPAQEntry()(p)) {
 
 
 trait VMUData extends VMUBundle {
-  val data = Bits(width = tlDataBits)
+  val data = UInt(tlDataBits.W)
 }
 
 class VSDQEntry(implicit p: Parameters) extends VMUData
@@ -115,13 +116,13 @@ class VSDQIO(implicit p: Parameters) extends DecoupledIO(new VSDQEntry()(p)) {
 }
 
 class VCUEntry(implicit p: Parameters) extends VMUBundle()(p) {
-  val ecnt = UInt(width = bVLen)
+  val ecnt = UInt(bVLen.W)
 }
 class VCUIO(implicit p: Parameters) extends ValidIO(new VCUEntry()(p))
 
 
 trait VMUTag extends VMUBundle {
-  val tag = UInt(width = bVMUTag)
+  val tag = UInt(bVMUTag.W)
 }
 
 class VMULoadData(implicit p: Parameters) extends VMUData with VMUTag
@@ -133,12 +134,12 @@ class VMTStoreEntry(implicit p: Parameters) extends VMUBundle()(p)
   with VMUMetaCount
 
 class VMTEntry(implicit p: Parameters) extends VMUBundle()(p) {
-  val union = Bits(math.max(
+  val union = UInt(math.max(
     new VMTLoadEntry().getWidth,
     new VMTStoreEntry().getWidth).W)
 
-  def load(d: Int = 0) = new VMTLoadEntry().fromBits(this.union)
-  def store(d: Int = 0) = new VMTStoreEntry().fromBits(this.union)
+  def load(d: Int = 0) = new VMTLoadEntry().fromUInt(this.union)
+  def store(d: Int = 0) = new VMTStoreEntry().fromUInt(this.union)
 }
 
 class VLDQEntry(implicit p: Parameters) extends VMUData {
@@ -150,32 +151,32 @@ class VLDQIO(implicit p: Parameters) extends DecoupledIO(new VLDQEntry()(p)) {
 /**********************************************************************/
 
 class PredEntry(implicit p: Parameters) extends HwachaBundle()(p) {
-  val pred = Bits(width = nStrip)
+  val pred = UInt(nStrip.W)
 }
 
 class VMUMaskEntry_0(implicit p: Parameters) extends VMUBundle()(p) {
   val pred = Bool()
-  val ecnt = UInt(width = bVLen)
+  val ecnt = UInt(bVLen.W)
   val last = Bool()
 
   val unit = new Bundle {
     val page = Bool() /* Entry is final for current page */
   }
   val nonunit = new Bundle {
-    val shift = UInt(width = bStrip)
+    val shift = UInt(bStrip.W)
   }
 }
 class VMUMaskIO_0(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_0()(p)) {
 }
 
 class VMUMaskEntry_1(implicit p: Parameters) extends VMUBundle()(p) {
-  val data = Bits(width = tlDataBytes >> 1)
+  val data = UInt((tlDataBytes >> 1).W)
   val vsdq = Bool()
 }
 class VMUMaskIO_1(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_1()(p)) {
   val meta = new VMUBundle {
-    val eoff = UInt(INPUT, tlByteAddrBits - 1)
-    val last = Bool(INPUT)
+    val eoff = UInt((tlByteAddrBits - 1).W)
+    val last = Input(Bool())
   }
 }
 
@@ -183,26 +184,26 @@ class VMUMaskIO_1(implicit p: Parameters) extends DecoupledIO(new VMUMaskEntry_1
 
 /* Encodes 2^n as 0; values 1 to (2^n-1) are represented as normal. */
 class CInt(n: Int) extends Bundle {
-  val raw = UInt(width = n)
+  val raw = n.W
   def encode[T <: UInt](x: T) {
     //COLIN FIXME: this was not being emitted in chisel2 and always fires in chisel3
-    //assert(x != UInt(0), "CInt: invalid value")
+    //assert(x != 0.U, "CInt: invalid value")
     raw := x
   }
-  def decode(dummy: Int = 0): UInt = Cat(raw === UInt(0), raw)
+  def decode(dummy: Int = 0): UInt = Cat(raw === 0.U, raw)
 }
 
 trait VMUMetaCount extends VMUBundle {
   val ecnt = new CInt(tlByteAddrBits-1)
 }
 trait VMUMetaPadding extends VMUBundle {
-  val epad = UInt(width = tlByteAddrBits)
+  val epad = UInt(tlByteAddrBits.W)
 }
 trait VMUMetaIndex extends VMUBundle {
-  val eidx = UInt(width = bVLen)
+  val eidx = UInt(bVLen.W)
 }
 trait VMUMetaMask extends VMUBundle {
-  val mask = Bits(width = nStrip)
+  val mask = UInt(nStrip.W)
 }
 trait VMUMetaStore extends VMUBundle {
   val last = Bool()

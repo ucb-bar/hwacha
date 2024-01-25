@@ -1,6 +1,7 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 import chisel3.dontTouch
@@ -59,7 +60,7 @@ abstract trait SeqParameters extends UsesHwachaParameters
 class MasterSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
   val valid = Vec(nSeq, Bool())
   val e = Vec(nSeq, new MasterSeqEntry)
-  val head = UInt(OUTPUT, log2Up(nSeq))
+  val head = Output(UInt(log2Up(nSeq).W))
 }
 
 class UpdateSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
@@ -68,9 +69,9 @@ class UpdateSequencerState(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class MasterSequencerIO(implicit p: Parameters) extends VXUBundle()(p) {
-  val state = new MasterSequencerState().asOutput
-  val update = new UpdateSequencerState().asOutput
-  val clear = Vec(nSeq, Bool()).asInput
+  val state = Output(new MasterSequencerState())
+  val update = Output(new UpdateSequencerState())
+  val clear = Input(Vec(nSeq, Bool()))
 }
 
 class SequencerPending(implicit p: Parameters) extends VXUBundle()(p) {
@@ -79,36 +80,36 @@ class SequencerPending(implicit p: Parameters) extends VXUBundle()(p) {
 }
 
 class MasterSequencerCounterIO(implicit p: Parameters) extends HwachaBundle()(p) with SeqParameters {
-  val memoryUOps = UInt(width = log2Up(nSeq))
-  val arithUOps = UInt(width = log2Up(nSeq))
-  val predUOps = UInt(width = log2Up(nSeq))
+  val memoryUOps = UInt(log2Up(nSeq).W)
+  val arithUOps = UInt(log2Up(nSeq).W)
+  val predUOps = UInt(log2Up(nSeq).W)
 }
 
 class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLogic {
-  val io = new Bundle {
-    val op = Decoupled(new IssueOpBase).flip
+  val io = IO(new Bundle {
+    val op = Flipped(Decoupled(new IssueOpBase))
     val master = new MasterSequencerIO
-    val pending = new SequencerPending().asOutput
+    val pending = Output(new SequencerPending())
     val vf = new Bundle {
-      val stop = Bool(INPUT)
-      val last = Bool(OUTPUT)
+      val stop = Input(Bool())
+      val last = Output(Bool())
     }
     val counters = new MasterSequencerCounterIO
-
+    
     val debug = new Bundle {
-      val head = UInt(OUTPUT, log2Up(nSeq))
-      val tail = UInt(OUTPUT, log2Up(nSeq))
-      val maybe_full = Bool(OUTPUT)
-      val empty = UInt(OUTPUT, log2Down(nSeq)+1)
+      val head = Output(UInt(log2Up(nSeq).W))
+      val tail = Output(UInt(log2Up(nSeq).W))
+      val maybe_full = Output(Bool())
+      val empty = Output(UInt((log2Down(nSeq)+1).W))
     }
-  }
+  })
   dontTouch(io.debug)
 
-  val v = Reg(init = Vec.fill(nSeq){Bool(false)})
+  val v = RegInit(VecInit.fill(nSeq){false.B})
   val e = Reg(Vec(nSeq, new MasterSeqEntry))
-  val maybe_full = Reg(init = Bool(false))
-  val head = Reg(init = UInt(0, log2Up(nSeq)))
-  val tail = Reg(init = UInt(0, log2Up(nSeq)))
+  val maybe_full = RegInit(false.B)
+  val head = RegInit(UInt(0, log2Up(nSeq)))
+  val tail = RegInit(UInt(0, log2Up(nSeq)))
 
   io.master.state.valid := v
   io.master.state.e := e
@@ -126,12 +127,12 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     val next_waw = Wire(Vec(nSeq, Vec(nSeq, Bool())))
 
     val set = new {
-      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(true) }
-      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(true) }
-      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(true) }
+      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := true.B }
+      def war(n: UInt, o: UInt) = { next_war(n)(o) := true.B }
+      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := true.B }
 
       def issue_base_eq(ifn: RegFn, sfn: RegFn) =
-        Vec((0 until nSeq) map { i => v(i) &&
+        VecInit((0 until nSeq) map { i => v(i) &&
           sfn(e(i).base).valid && ifn(io.op.bits.base).valid &&
           !sfn(e(i).base).is_scalar() && !ifn(io.op.bits.base).is_scalar() &&
           (sfn(e(i).base).is_vector() && ifn(io.op.bits.base).is_vector() ||
@@ -150,21 +151,21 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       def raws(n: UInt, eq: Vec[Bool]) = {
         for (i <- 0 until nSeq) {
           when (eq(i)) {
-            raw(n, UInt(i))
+            raw(n, i.U)
           }
         }
       }
       def wars(n: UInt) = {
         for (i <- 0 until nSeq) {
           when (ivd_evp_eq(i) || ivd_evs1_eq(i) || ivd_evs2_eq(i) || ivd_evs3_eq(i)) {
-            war(n, UInt(i))
+            war(n, i.U)
           }
         }
       }
       def waws(n: UInt) = {
         for (i <- 0 until nSeq) {
           when (ivd_evd_eq(i)) {
-            waw(n, UInt(i))
+            waw(n, i.U)
           }
         }
       }
@@ -178,16 +179,16 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     }
 
     val clear = new {
-      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := Bool(false) }
-      def war(n: UInt, o: UInt) = { next_war(n)(o) := Bool(false) }
-      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := Bool(false) }
+      def raw(n: UInt, o: UInt) = { next_raw(n)(o) := false.B }
+      def war(n: UInt, o: UInt) = { next_war(n)(o) := false.B }
+      def waw(n: UInt, o: UInt) = { next_waw(n)(o) := false.B }
     }
 
-    def update(n: UInt) = next_update(n) := Bool(true)
+    def update(n: UInt) = next_update(n) := true.B
 
     def header = {
       for (i <- 0 until nSeq) {
-        next_update(i) := Bool(false)
+        next_update(i) := false.B
         for (j <- 0 until nSeq) {
           next_raw(i)(j) := e(i).raw(j)
           next_war(i)(j) := e(i).war(j)
@@ -216,8 +217,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         val cnt = PopCount(fns.map{ fn => fn(io.op.bits.base).valid && fn(io.op.bits.base).is_vector() })
         // make sure # of rports is larger than 1, because we need to read predicate
         val gated = !io.op.bits.active.vipred
-        val min = Mux(gated, UInt(1), UInt(0))
-        Mux(cnt > UInt(0), cnt, min)
+        val min = Mux(gated, 1.U, 0.U)
+        Mux(cnt > 0.U, cnt, min)
       }
       val nrports = nports_list(reg_vs1, reg_vs2, reg_vs3)
       val nrport_vs1 = nports_list(reg_vs1)
@@ -226,14 +227,14 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
       def mark_rports(n: UInt, rports: UInt) = {
         e(n).rports := rports
-        e(n).wport.sram := UInt(0)
-        e(n).wport.pred := UInt(0)
+        e(n).wport.sram := 0.U
+        e(n).wport.pred := 0.U
       }
       def mark_wport(n: UInt, wport: UInt) = {
         when (io.op.bits.base.vd.is_vector()) { e(n).wport.sram := wport }
         when (io.op.bits.base.vd.is_pred()) { e(n).wport.pred := wport }
       }
-      def noports(n: UInt) = mark_rports(n, UInt(0))
+      def noports(n: UInt) = mark_rports(n, 0.U)
       def rport_vs1(n: UInt) = mark_rports(n, nrport_vs1)
       def rport_vs2(n: UInt) = mark_rports(n, nrport_vs2)
       def rport_vd(n: UInt) = mark_rports(n, nrport_vd)
@@ -255,40 +256,40 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
   val iwindow = new {
     val update_head = Wire(Bool())
     val update_tail = Wire(Bool())
-    val next_head = Wire(UInt(width = log2Up(nSeq)))
-    val next_tail = Wire(UInt(width = log2Up(nSeq)))
+    val next_head = Wire(UInt(log2Up(nSeq)))
+    val next_tail = Wire(UInt(log2Up(nSeq)))
 
     val set = new {
-      def head(n: UInt) = { update_head := Bool(true); next_head := n }
-      def tail(n: UInt) = { update_tail := Bool(true); next_tail := n }
+      def head(n: UInt) = { update_head := true.B; next_head := n }
+      def tail(n: UInt) = { update_tail := true.B; next_tail := n }
 
-      def valid(n: UInt) = { v(n) := Bool(true) }
+      def valid(n: UInt) = { v(n) := true.B }
 
       def entry(n: UInt) = {
         valid(n)
-        e(n).rate := UInt(0)
-        e(n).base.vp.valid := Bool(false)
-        e(n).base.vs1.valid := Bool(false)
-        e(n).base.vs2.valid := Bool(false)
-        e(n).base.vs3.valid := Bool(false)
-        e(n).base.vd.valid := Bool(false)
+        e(n).rate := 0.U
+        e(n).base.vp.valid := false.B
+        e(n).base.vs1.valid := false.B
+        e(n).base.vs2.valid := false.B
+        e(n).base.vs3.valid := false.B
+        e(n).base.vd.valid := false.B
         dhazard.update(n)
         for (i <- 0 until nSeq) {
-          dhazard.clear.raw(n, UInt(i))
-          dhazard.clear.war(n, UInt(i))
-          dhazard.clear.waw(n, UInt(i))
+          dhazard.clear.raw(n, i.U)
+          dhazard.clear.war(n, i.U)
+          dhazard.clear.waw(n, i.U)
         }
-        e(n).last := Bool(false)
-        io.master.update.valid(n) := Bool(true)
+        e(n).last := false.B
+        io.master.update.valid(n) := true.B
       }
 
       def active(n: UInt, afn: SeqType=>Bool, fn: IssueOpBase=>Bits) = {
-        afn(e(n).active) := Bool(true)
+        afn(e(n).active) := true.B
         e(n).fn.union := fn(io.op.bits)
       }
 
       def last(n: UInt) = {
-        e(n).last := Bool(true)
+        e(n).last := true.B
       }
 
       val fn_identity = (d: IssueOpBase) => d.fn.union
@@ -367,18 +368,18 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     }
 
     val clear = new {
-      def valid(n: UInt) = { v(n) := Bool(false) }
-      def active(n: UInt) = { e(n).active := e(0).active.cloneType.fromBits(Bits(0)) }
+      def valid(n: UInt) = { v(n) := false.B }
+      def active(n: UInt) = { e(n).active := e(0).active.cloneType.fromBits(0.U) }
     }
 
     def retire(n: UInt) = {
       clear.valid(n)
       clear.active(n)
       for (i <- 0 until nSeq) {
-        dhazard.update(UInt(i))
-        dhazard.clear.raw(UInt(i), n)
-        dhazard.clear.war(UInt(i), n)
-        dhazard.clear.waw(UInt(i), n)
+        dhazard.update(i.U)
+        dhazard.clear.raw(i.U, n)
+        dhazard.clear.war(i.U, n)
+        dhazard.clear.waw(i.U, n)
       }
     }
 
@@ -386,27 +387,27 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
       val empty = if (isPow2(nSeq)) {
           Cat(!maybe_full && (head === tail), head - tail)
         } else {
-          Mux(maybe_full && (head === tail), UInt(0),
+          Mux(maybe_full && (head === tail), 0.U,
             Mux(head > tail, head - tail, UInt(nSeq) - (tail - head)))
         }
       io.debug.empty := empty
       val a = io.op.bits.active
 
-      (empty >= UInt(1)) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv || a.vrpred || a.vrfirst) ||
-      (empty >= UInt(2)) && (a.vidiv || a.vfdiv) ||
+      (empty >= 1.U) && (a.vint || a.vipred || a.vimul || a.vfma || a.vfcmp || a.vfconv || a.vrpred || a.vrfirst) ||
+      (empty >= 2.U) && (a.vidiv || a.vfdiv) ||
       (empty >= UInt(3)) && (a.vld || a.vst || a.vldx || a.vstx) ||
       (empty >= UInt(4)) && (a.vamo)
     }
 
     def header = {
-      update_head := Bool(false)
-      update_tail := Bool(false)
+      update_head := false.B
+      update_tail := false.B
       next_head := head
       next_tail := tail
 
       (0 until nSeq) map { r =>
-        io.master.update.valid(r) := Bool(false)
-        io.master.update.reg(r) := new PhysicalRegisterIds().fromBits(UInt(0))
+        io.master.update.valid(r) := false.B
+        io.master.update.reg(r) := new PhysicalRegisterIds().fromBits(0.U)
       }
     }
 
@@ -415,11 +416,11 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
       when (update_tail) {
         tail := next_tail
-        maybe_full := Bool(true)
+        maybe_full := true.B
       }
       when (update_head) {
         head := next_head
-        maybe_full := Bool(false)
+        maybe_full := false.B
       }
 
       val tailm1 = step(tail, nSeq-1)
@@ -427,7 +428,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
 
       val vf_last = Wire(Bool())
 
-      vf_last := Bool(false)
+      vf_last := false.B
       when (io.vf.stop) {
         set.last(tailm1)
         vf_last := !io.pending.all
@@ -439,7 +440,7 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
         vf_last := e(head).last || io.vf.stop && (headp1 === tail)
       }
 
-      io.vf.last := Reg(next=vf_last)
+      io.vf.last := RegNext(vf_last)
 
       val vcus = (v zip e) map { case (valid, e) => valid && e.active.vcu }
       io.pending.mem := vcus.reduce(_ || _)
@@ -465,8 +466,8 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
     def footer = {
       when (reset) {
         for (i <- 0 until nSeq) {
-          clear.valid(UInt(i))
-          clear.active(UInt(i))
+          clear.valid(i.U)
+          clear.active(i.U)
         }
       }
     }
@@ -506,10 +507,10 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
                  { import bhazard.set._; rwports(t0, stagesALU); }
                  if (confprec) {
                    val fn = io.op.bits.fn.viu()
-                   e(t0).rate := MuxCase(UInt(0), Seq(
+                   e(t0).rate := MuxCase(0.U, Seq(
                      (fn.op_is(I_ADD,I_ADDU,I_SUB,I_SLL,I_SRL,I_SRA,I_OR,I_AND,I_XOR,
                                I_SLT,I_SLTU,I_CEQ,I_CLT,I_CLTU)
-                      && vs1_w && vs2_w && vd_w) -> UInt(1))) }
+                      && vs1_w && vs2_w && vd_w) -> 1.U)) }
       stop(t1); }
 
     def vipred = {
@@ -540,9 +541,9 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
                    val stages = Seq(stagesDFMA, stagesSFMA, stagesHFMA)
                    rwports(t0, Mux1H(fp, stages.map(rwlatency(_)))) }
                  if (confprec) {
-                   e(t0).rate := MuxCase(UInt(0), Seq(
-                     (fp_h && vs1_h && vs2_h && vs3_h && vd_h) -> UInt(2),
-                     (fp_s && vs1_w && vs2_w && vs3_w && vd_w) -> UInt(1))) }
+                   e(t0).rate := MuxCase(0.U, Seq(
+                     (fp_h && vs1_h && vs2_h && vs3_h && vd_h) -> 2.U,
+                     (fp_s && vs1_w && vs2_w && vs3_w && vd_w) -> 1.U)) }
       stop(t1); }
 
     def vfdiv = {
@@ -563,9 +564,9 @@ class MasterSequencer(implicit p: Parameters) extends VXUModule()(p) with SeqLog
                  { import bhazard.set._; rwports(t0, stagesFConv); }
                  if (confprec) {
                    val fn = io.op.bits.fn.vfvu()
-                   e(t0).rate := MuxCase(UInt(0), Seq(
+                   e(t0).rate := MuxCase(0.U, Seq(
                      ((fn.op_is(FV_CSTH) && vs1_w && (vd_w || vd_h)) ||
-                      (fn.op_is(FV_CHTS) && (vs1_w || vs1_h) && vd_w)) -> UInt(1))) }
+                      (fn.op_is(FV_CHTS) && (vs1_w || vs1_h) && vd_w)) -> 1.U)) }
       stop(t1); }
 
     def vrpred = {

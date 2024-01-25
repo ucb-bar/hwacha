@@ -1,25 +1,26 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 
 class ALUOperand(implicit p: Parameters) extends VXUBundle()(p)
   with LanePred with Rate {
   val fn = new VIUFn
-  val eidx = Bits(width = bMLVLen - bStrip)
-  val in0 = Bits(width = SZ_D)
-  val in1 = Bits(width = SZ_D)
+  val eidx = UInt((bMLVLen-bStrip).W)
+  val in0 = UInt(SZ_D.W)
+  val in1 = UInt(SZ_D.W)
 }
 
 class ALUResult(implicit p: Parameters) extends VXUBundle()(p) {
-  val out = Bits(width = SZ_D)
-  val cmp = Bits(width = nPack)
+  val out = UInt(SZ_D.W)
+  val cmp = UInt(nPack.W)
 }
 
 class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Packing {
   val io = new Bundle {
-    val cfg = new HwachaConfigIO().flip
-    val req = Valid(new ALUOperand).flip
+    val cfg = Flipped(new HwachaConfigIO())
+    val req = Flipped(Valid(new ALUOperand))
     val resp = Valid(new ALUResult)
   }
 
@@ -33,7 +34,7 @@ class ALUSlice(aid: Int)(implicit p: Parameters) extends VXUModule()(p) with Pac
   val (fn_dw64, fn_dw32) = (fn.dw_is(DW64), fn.dw_is(DW32))
 
   // TODO: Support x4 rate with halfwords
-  val rate_x2 = if (confprec) (io.req.bits.rate === UInt(1)) else Bool(false)
+  val rate_x2 = if (confprec) (io.req.bits.rate === 1.U) else false.B
 
   val sub = fn.op_is(I_SUB)
   class Adder(in0: UInt, in1: UInt, cin: UInt, w: Int = SZ_W) {

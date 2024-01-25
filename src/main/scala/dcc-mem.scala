@@ -1,25 +1,26 @@
 package hwacha
 
-import Chisel._
+import chisel3._
+import chisel3.util._
 import org.chipsalliance.cde.config._
 import DataGating._
 
 class BPQLookAheadIO(implicit p: Parameters) extends VXUBundle()(p) with LookAheadIO {
-  val mask = Bits(OUTPUT, nBanks)
+  val mask = Output(UInt(nBanks.W))
 }
 
 class BRQLookAheadIO(implicit p: Parameters) extends VXUBundle()(p) with LookAheadIO {
-  val mask = Bits(OUTPUT, nBanks)
+  val mask = Output(UInt(nBanks.W))
 }
 
 class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
-  val io = new DCCIssueIO {
-    val pla = new CounterLookAheadIO().flip // lpq entry
-    val qla = new CounterLookAheadIO().flip // lrq entry
-    val lpq = new LPQIO().flip
-    val lrq = new LRQIO().flip
+  val io = IO(new DCCIssueIO {
+    val pla = Flipped(new CounterLookAheadIO()) // lpq entry
+    val qla = Flipped(new CounterLookAheadIO()) // lrq entry
+    val lpq = Flipped(new LPQIO())
+    val lrq = Flipped(new LRQIO())
     val vaq = new VVAQIO
-  }
+  })
 
   val opq = Module(new Queue(new DCCOp, nDCCOpQ))
   opq.suggestName("opqInst")
@@ -33,27 +34,27 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   lrq.suggestName("lrqInst")
   lrq.io.enq <> io.lrq
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
   val op = Reg(new DCCOp)
-  val slice = Reg(UInt(width = bSlices))
+  val slice = Reg(UInt(bSlices.W))
 
   // FIXME: I didn't have time to generalize, logic explained below
   require(nSlices == 2)
 
-  // if slice === UInt(1), shave off last bit
-  val pred = lpq.io.deq.bits.pred & Mux(slice === UInt(0), UInt(3), UInt(2))
+  // if slice === 1.U, shave off last bit
+  val pred = lpq.io.deq.bits.pred & Mux(slice === 0.U, 3.U, 2.U)
   // dequeue lq when one hot
-  val deq_lq = pred =/= UInt(3)
+  val deq_lq = pred =/= 3.U
   // enqueue vaq when there's something
-  val active_entry = pred =/= UInt(0)
+  val active_entry = pred =/= 0.U
   // find slice_next when more then two elements are alive
-  val slice_next = Mux(pred === UInt(3), UInt(1), UInt(0))
+  val slice_next = Mux(pred === 3.U, 1.U, 0.U)
   // find first one for pick
-  val pick = Mux(pred(0), UInt(0), UInt(1))
+  val pick = Mux(pred(0), 0.U, 1.U)
   // process 2 elements only when pred is empty or popcount of 1
   // otherwise process 1 element
-  val ecnt = Mux(pred =/= UInt(3) && slice === UInt(0), UInt(2), UInt(1))
+  val ecnt = Mux(pred =/= 3.U && slice === 0.U, 2.U, 1.U)
   val vlen_cnt = Mux(ecnt > op.vlen, op.vlen, ecnt)
   val vlen_next = op.vlen - vlen_cnt
 
@@ -67,15 +68,15 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  opq.io.deq.ready := Bool(false)
+  opq.io.deq.ready := false.B
 
   switch (state) {
     is (s_idle) {
-      opq.io.deq.ready := Bool(true)
+      opq.io.deq.ready := true.B
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
-        slice := UInt(0)
+        slice := 0.U
       }
     }
 
@@ -83,7 +84,7 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
       when (fire(null)) {
         op.vlen := vlen_next
         slice := slice_next
-        when (vlen_next === UInt(0)) {
+        when (vlen_next === 0.U) {
           state := s_idle
         }
       }
@@ -94,33 +95,33 @@ class VGU(implicit p: Parameters) extends VXUModule()(p) with Packing {
   lrq.io.deq.ready := fire(mask_lrq_valid, deq_lq, active_entry)
   io.vaq.valid := fire(mask_vaq_ready, active_entry)
 
-  io.vaq.bits.addr := MuxLookup(pick, Bits(0), (0 until nSlices) map {
-    i => UInt(i) -> unpack_slice(lrq.io.deq.bits.data, i) })
+  io.vaq.bits.addr := MuxLookup(pick, 0.U)((0 until nSlices) map {
+    i => i.U -> unpack_slice(lrq.io.deq.bits.data, i) })
 
   // using fire fn, just to be consistent with rcntr
   // don't really need to do this, because lpq entry should always be there
   val pcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
   pcntr.suggestName("pcntrInst")
-  pcntr.io.inc.cnt := UInt(1)
+  pcntr.io.inc.cnt := 1.U
   pcntr.io.inc.update := fire(null, deq_lq)
   pcntr.io.dec <> io.pla
 
   // have to update with fire fn, since there are cases where the lrq is empty
   val rcntr = Module(new LookAheadCounter(nBanks+2, nBanks+2))
   rcntr.suggestName("rcntrInst")
-  rcntr.io.inc.cnt := UInt(1)
+  rcntr.io.inc.cnt := 1.U
   rcntr.io.inc.update := fire(null, deq_lq)
   rcntr.io.dec <> io.qla
 }
 
 class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
-  val io = new DCCIssueIO {
-    val la = new BPQLookAheadIO().flip
-    val bpqs = Vec(nBanks, new BPQIO).flip
+  val io = IO(new DCCIssueIO {
+    val la = Flipped(new BPQLookAheadIO())
+    val bpqs = Flipped(Vec(nBanks, new BPQIO))
     val pred = Decoupled(new PredEntry)
-    val lpred = Decoupled(Bits(width = nStrip))
-    val spred = Decoupled(Bits(width = nStrip))
-  }
+    val lpred = Decoupled(UInt(nStrip.W))
+    val spred = Decoupled(UInt(nStrip.W))
+  })
 
   require(nBanks*2 == nStrip)
 
@@ -135,20 +136,20 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     placntr.suggestName("placntrInst")
     val en = io.la.mask(i)
     bpq.io.enq <> enq
-    placntr.io.inc.cnt := UInt(1)
+    placntr.io.inc.cnt := 1.U
     placntr.io.inc.update := bpq.io.deq.fire
-    placntr.io.dec.cnt := UInt(1)
+    placntr.io.dec.cnt := 1.U
     placntr.io.dec.reserve := io.la.reserve && en
     (bpq.io.deq, !en || placntr.io.dec.available)
   }
   io.la.available := bpqs.map(_._2).reduce(_ && _)
-  val bpqs_deq = Vec(bpqs.map(_._1))
+  val bpqs_deq = VecInit(bpqs.map(_._1))
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
   val op = Reg(new DCCOp)
 
-  val strip = Mux(op.vlen > UInt(8), UInt(8), op.vlen)
+  val strip = Mux(op.vlen > 8.U, 8.U, op.vlen)
   val vlen_next = op.vlen - strip
 
   val deq_bpqs = strip_to_bmask(strip)
@@ -166,11 +167,11 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  opq.io.deq.ready := Bool(false)
+  opq.io.deq.ready := false.B
 
   switch (state) {
     is (s_idle) {
-      opq.io.deq.ready := Bool(true)
+      opq.io.deq.ready := true.B
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
@@ -180,7 +181,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
     is (s_busy) {
       when (fire(null)) {
         op.vlen := vlen_next
-        when (vlen_next === UInt(0)) {
+        when (vlen_next === 0.U) {
           state := s_idle
         }
       }
@@ -193,7 +194,7 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
   io.lpred.valid := fire(mask_lpred_ready, enq_lpred)
   io.spred.valid := fire(mask_spred_ready, enq_spred)
 
-  val pred = Vec((bpqs_deq.zipWithIndex) map { case (bpq, i) =>
+  val pred = VecInit((bpqs_deq.zipWithIndex) map { case (bpq, i) =>
     dgate(deq_bpqs(i), bpq.bits.pred(nSlices-1,0)) }).asUInt
   io.pred.bits.pred := pred
   io.lpred.bits := pred
@@ -202,18 +203,18 @@ class VPU(implicit p: Parameters) extends VXUModule()(p) with BankLogic {
 
 class VSU(implicit p: Parameters) extends VXUModule()(p)
   with MemParameters {
-  val io = new DCCIssueIO {
-    val la = new BRQLookAheadIO().flip
-    val brqs = Vec(nBanks, new BRQIO).flip
+  val io = IO(new DCCIssueIO {
+    val la = Flipped(new BRQLookAheadIO())
+    val brqs = Flipped(Vec(nBanks, new BRQIO))
     val vsdq = new VSDQIO
 
-    val pred = Decoupled(Bits(width = nStrip)).flip
-  }
+    val pred = Flipped(Decoupled(UInt(nStrip.W)))
+  })
 
   val opq = Module(new Queue(io.op.bits, nDCCOpQ))
   opq.suggestName("opqInst")
   opq.io.enq <> io.op
-  opq.io.deq.ready := Bool(false)
+  opq.io.deq.ready := false.B
 
   val op = Reg(new DCCOp)
   val mt = DecodedMemType(op.fn.vmu().mt)
@@ -228,17 +229,17 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     require(tlDataBits % b == 0)
     math.min(tlDataBits / b, nBanks)
   }
-  val qcnt_max = Mux1H(mts, qcnts.map(UInt(_)))
-  val ecnt_max = Cat(qcnt_max, UInt(0, bSlices))
+  val qcnt_max = Mux1H(mts, qcnts.map(_.U))
+  val ecnt_max = Cat(qcnt_max, 0.U(bSlices.W))
 
   val vlen_next = op.vlen.zext - ecnt_max.zext
-  val vlen_end = (vlen_next <= SInt(0))
+  val vlen_end = (vlen_next <= 0.S)
   val ecnt = Mux(vlen_end, op.vlen(bStrip, 0), ecnt_max)
   val qcnt = Ceil(ecnt, bSlices)
 
-  val index = Reg(UInt(width = bBanks))
+  val index = Reg(UInt(bBanks.W))
   val index_next = index + qcnt_max
-  val index_end = (index_next(bBanks-1, 0) === UInt(0))
+  val index_end = (index_next(bBanks-1, 0) === 0.U)
 
   //--------------------------------------------------------------------\\
   // predication / masking
@@ -266,7 +267,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     val brq = Module(new Queue(enq.bits, nBRQ))
     brq.suggestName("brqInst")
     brq.io.enq <> enq
-    brq.io.deq.ready := Bool(false)
+    brq.io.deq.ready := false.B
     brq.io.deq
   }
 
@@ -274,9 +275,9 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     val scntr = Module(new LookAheadCounter(nBRQ, maxSLA))
     scntr.suggestName("scntrInst")
     val en = io.la.mask(i)
-    scntr.io.inc.cnt := UInt(1)
-    scntr.io.inc.update := Bool(false)
-    scntr.io.dec.cnt := UInt(1)
+    scntr.io.inc.cnt := 1.U
+    scntr.io.inc.update := false.B
+    scntr.io.dec.cnt := 1.U
     scntr.io.dec.reserve := io.la.reserve && en
     (scntr, !en || scntr.io.dec.available)
   }
@@ -300,8 +301,8 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
     (rvs.filter(_ ne exclude) ++ include).reduce(_ && _)
   }
 
-  pred.ready := Bool(false)
-  io.vsdq.valid := Bool(false)
+  pred.ready := false.B
+  io.vsdq.valid := false.B
 
   val pred_deq = index_end || vlen_end
 
@@ -317,7 +318,7 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
       Cat(xs.reverse)).toSeq
     if (sets.size > 1) {
       val sel = index(bBanks-1, log2Ceil(qcnt))
-      Vec(sets)(sel)
+      VecInit(sets)(sel)
     } else sets.head
   }
 
@@ -329,17 +330,17 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
   // control
   //--------------------------------------------------------------------\\
 
-  val s_idle :: s_busy :: Nil = Enum(UInt(), 2)
-  val state = Reg(init = s_idle)
+  val s_idle :: s_busy :: Nil = Enum(2)
+  val state = RegInit(s_idle)
 
   switch (state) {
     is (s_idle) {
-      opq.io.deq.ready := Bool(true)
+      opq.io.deq.ready := true.B
       when (opq.io.deq.valid) {
         state := s_busy
         op := opq.io.deq.bits
       }
-      index := UInt(0)
+      index := 0.U
     }
 
     is (s_busy) {
@@ -368,20 +369,20 @@ class VSU(implicit p: Parameters) extends VXUModule()(p)
 
 class VLUEntry(implicit p: Parameters) extends VXUBundle()(p)
   with VLUSelect with BankData with BankPred {
-  val eidx = UInt(width = bVLen - log2Up(nStrip))
+  val eidx = UInt((bVLen - log2Up(nStrip)).W)
 }
 
 class VLU(implicit p: Parameters) extends VXUModule()(p)
   with MemParameters with PackLogic {
-  val io = new DCCIssueIO {
-    val vldq = new VLDQIO().flip
-    val pred = Decoupled(Bits(width = nStrip)).flip
-    val bwqs = Vec(nBanks, new BWQIO)
-    val la = new CounterLookAheadIO().flip
+  val io = IO(new DCCIssueIO {
+    val vldq = Flipped(new VLDQIO())
+    val pred = Flipped(Decoupled(UInt(nStrip.W)))
+    val bwqs = Flipped(Vec(nBanks, new BWQIO))
+    val la = Flipped(new CounterLookAheadIO())
 
     val map = new VLUSelectIO
-    val cfg = new HwachaConfigIO().flip
-  }
+    val cfg = Flipped(new HwachaConfigIO())
+  })
 
   private val vldq = io.vldq
   private val meta = vldq.bits.meta
@@ -397,7 +398,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val map = Module(new VLUMapper)
   map.suggestName("mapInst")
   map.io.op <> opq.io.deq
-  map.io.free := Bool(false)
+  map.io.free := false.B
   io.map <> map.io.use
 
   val busy = map.io.busy
@@ -414,7 +415,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   private val lgwb = log2Up(szwb)
 
   val op = Reg(Vec(nVLU, new DCCOp))
-  val wb = Reg(init = Bits(0, szwb))
+  val wb = RegInit(0.U(szwb.W))
 
   val vidx = map.io.vidx
   val vidx_tail = map.io.use.bits.vidx
@@ -425,13 +426,13 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   private val mts = Seq(mt.d, mt.w, mt.h, mt.b)
 
   val rcnt = Ceil(io.la.cnt, bStrip)
-  val rcnt_pulse = Mux(io.la.reserve, rcnt, UInt(0))
+  val rcnt_pulse = Mux(io.la.reserve, rcnt, 0.U)
   val rcnt_residue = io.la.cnt(bStrip-1, 0)
 
   private val bbias = bVLen - bStrip + 1
-  val bias = Reg(Vec(nVLU, SInt(width = bbias)))
+  val bias = Reg(Vec(nVLU, SInt(bbias.W)))
   val bias_in = Wire(Vec(nVLU, SInt()))
-  val bias_next = Vec(bias_in.map(_ + rcnt_pulse.zext))
+  val bias_next = VecInit(bias_in.map(_ + rcnt_pulse.zext))
   bias_in := bias
   bias := bias_next
 
@@ -443,15 +444,15 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
    * such that its first strip of elements is recorded in the writeback
    * bitmap immediately after the final strip of the preceding vector.
    */
-  val bias_tail = Reg(init = SInt(0, bbias))
+  val bias_tail = RegInit(0.S(bbias.W))
   val vlen_tail = Ceil(opq.io.deq.bits.vlen, bStrip)
-  val bias_tail_sub = Mux(issue, vlen_tail, UInt(0))
+  val bias_tail_sub = Mux(issue, vlen_tail, 0.U)
   bias_tail := (bias_tail + rcnt_pulse.zext) - bias_tail_sub.zext
-  assert(bias_tail <= SInt(0), "VLU: positive bias_tail")
+  assert(bias_tail <= 0.S, "VLU: positive bias_tail")
 
   val vlen_next = bias_next(vidx)
   val vlen_end = (vlen_next === op_head.vlen.zext)
-  assert(!io.la.reserve || vlen_end || (rcnt_residue === UInt(0)),
+  assert(!io.la.reserve || vlen_end || (rcnt_residue === 0.U),
     "VLU: retire count not a strip multiple")
 
   map.io.free := vlen_end && busy
@@ -462,10 +463,10 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val prec = confprec_decode(opq.io.deq.bits.vd.prec)
     when (issue) {
       stride(vidx_tail) := confprec_stride(prec, io.cfg)
-      shift(vidx_tail) := Mux1H(prec.map(p => p._1 -> UInt(p._2)))
+      shift(vidx_tail) := Mux1H(prec.map(p => p._1 -> p._2.U))
     }
     (stride, shift)
-  } else (Vec.fill(nVLU)(io.cfg.vstride.d), Vec.fill(nVLU)(UInt(0)))
+  } else (VecInit.fill(nVLU)(io.cfg.vstride.d), VecInit.fill(nVLU)(0.U))
 
   //--------------------------------------------------------------------\\
   // predication
@@ -479,32 +480,32 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val pred_fire = predq.io.deq.fire
 
   private val bpcnt = bVLen - bStrip + log2Ceil(nVLU)
-  val pcnt = Reg(init = UInt(0, bpcnt))
-  val pcnt_end = (pcnt === UInt(0))
-  val pcnt_add = Mux(issue, vlen_tail, UInt(0))
+  val pcnt = RegInit(0.U(bpcnt.W))
+  val pcnt_end = (pcnt === 0.U)
+  val pcnt_add = Mux(issue, vlen_tail, 0.U)
   val pcnt_next = (pcnt.zext + pcnt_add.zext) - pred_fire.zext
   pcnt := pcnt_next.asUInt
-  assert(pcnt_next >= SInt(0), "VLU: pcnt underflow")
+  assert(pcnt_next >= 0.S, "VLU: pcnt underflow")
 
   private val maxpidx = (szwb >> bStrip) - 1
-  val pidx = Reg(init = UInt(0, log2Up(maxpidx)))
-  val pidx_end = (pidx === UInt(maxpidx))
+  val pidx = RegInit(0.U(log2Up(maxpidx).W))
+  val pidx_end = (pidx === maxpidx.U)
   val pidx_next = (pidx.zext + pred_fire.zext) - rcnt_pulse.zext
   pidx := pidx_next.asUInt
   /* NOTE: Predicates should always arrive before the corresponding
      load due to VMU latency, thus precluding this race condition */
-  assert(pidx_next >= SInt(0), "VLU: pidx underflow")
+  assert(pidx_next >= 0.S, "VLU: pidx underflow")
 
-  val pred = Mux(pred_fire, ~predq.io.deq.bits, UInt(0))
-  val pred_shift = Cat(pidx, UInt(0, bStrip))
+  val pred = Mux(pred_fire, ~predq.io.deq.bits, 0.U)
+  val pred_shift = Cat(pidx, 0.U(bStrip.W))
   val wb_pred = pred << pred_shift
   predq.io.deq.ready := !(pcnt_end || pidx_end)
 
   when (!busy) {
-    assert(wb === Bits(0), "VLU: non-zero quiescent wb")
-    assert(bias_tail === SInt(0), "VLU: non-zero quiescent bias_tail")
-    assert(pcnt === UInt(0), "VLU: non-zero quiescent pcnt")
-    assert(pidx === UInt(0), "VLU: non-zero quiescent pidx")
+    assert(wb === 0.U, "VLU: non-zero quiescent wb")
+    assert(bias_tail === 0.S, "VLU: non-zero quiescent bias_tail")
+    assert(pcnt === 0.U, "VLU: non-zero quiescent pcnt")
+    assert(pidx === 0.U, "VLU: non-zero quiescent pidx")
   }
 
   //--------------------------------------------------------------------\\
@@ -515,7 +516,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val eidx_strip = meta.eidx(bStrip-1, 0)
   val eidx_bank = meta.eidx(bStrip-1, bSlices)
   val eidx_reg = meta.eidx(bVLen-1, bStrip)
-  val eidx_reg_next = eidx_reg + UInt(1)
+  val eidx_reg_next = eidx_reg + 1.U
 
   require(tlDataBytes == (nStrip << 1))
   val epad_msb = meta.epad(bStrip)
@@ -541,8 +542,8 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     require(w > 0)
     val in = (0 until w by sz).map(i => data(i+sz-1, i))
     require(in.size <= nStrip)
-    val out = rotate(UInt(width = sz), in)
-    Vec(out.map(extend(_, sz)))
+    val out = rotate(UInt(sz.W), in)
+    VecInit(out.map(extend(_, sz)))
   }
 
   private val tlDataMidBits = tlDataBits >> 1
@@ -563,14 +564,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   //--------------------------------------------------------------------\\
 
   require(nSlices == 2)
-  val tick = Reg(init = Bool(true))
+  val tick = RegInit(true.B)
 
   /* When the load represents a full strip of elements and meta.eidx is
    * odd, the first and last elements reside in the same bank but in
    * different SRAM entries.  If both are present, they must be written
    * separately over two cycles.
    */
-  val slice_unaligned = (eidx_slice =/= UInt(0)) && (epad_eff === UInt(0))
+  val slice_unaligned = (eidx_slice =/= 0.U) && (epad_eff === 0.U)
   val slice_used = slice_unaligned && meta.mask(0)
   val slice_free = slice_unaligned && !meta.mask(0)
   val slice_conflict = slice_used && meta.mask(nStrip-1)
@@ -582,14 +583,14 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   }
 
   val mask_head = tick
-  val mask_tail = Mux(tick, !slice_used, Bool(true))
+  val mask_tail = Mux(tick, !slice_used, true.B)
   val mask_beat = Cat(mask_tail, Fill(nStrip-1, mask_head))
   val mask_base = meta.mask & mask_beat
   val mask = rotate(Bool(), mask_base.asBools)
 
   /* Handle intra-load eidx increment */
   val eidx_step_head = EnableDecoder(eidx_bank, nBanks)
-  val eidx_step_tail = Mux(tick, slice_free, Bool(true)) << eidx_bank
+  val eidx_step_tail = Mux(tick, slice_free, true.B) << eidx_bank
   val eidx_step = eidx_step_head | eidx_step_tail
 
   //--------------------------------------------------------------------\\
@@ -603,7 +604,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   val bwqs_mask = merge(mask)
   val bwqs_en = bwqs_mask.map(_.asUInt.orR)
 
-  val wb_update = Wire(Vec(nBanks, Bits(width = szwb)))
+  val wb_update = Wire(Vec(nBanks, UInt(szwb.W)))
 
   val bwqs = io.bwqs.zipWithIndex.map { case (deq, i) =>
     val bwq = Module(new Queue(new VLUEntry, nBWQ))
@@ -614,7 +615,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     bwq.io.enq.bits.data := bwqs_data(i)
     bwq.io.enq.bits.pred := bwqs_mask(i)
 
-    val wb_mask = Mux(bwq.io.deq.fire, bwq.io.deq.bits.pred, Bits(0))
+    val wb_mask = Mux(bwq.io.deq.fire, bwq.io.deq.bits.pred, 0.U)
     val wb_vidx = bwq.io.deq.bits.vidx
     val wb_eidx = bwq.io.deq.bits.eidx
     val wb_offset = wb_eidx.zext - bias(wb_vidx)
@@ -626,8 +627,8 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     wb_update(i) := wb_mask << wb_shift
 
     val max = (szwb + (nStrip-1)) >> bStrip
-    assert(!deq.valid || (wb_offset >= SInt(0)), f"VLU: BWQ ${i}: wb_offset underflow")
-    assert(!deq.valid || (wb_offset < SInt(max)), f"VLU: BWQ ${i}: wb_offset overflow")
+    assert(!deq.valid || (wb_offset >= 0.S), f"VLU: BWQ ${i}: wb_offset underflow")
+    assert(!deq.valid || (wb_offset < max.S), f"VLU: BWQ ${i}: wb_offset overflow")
 
     deq.valid := bwq.io.deq.valid
     bwq.io.deq.ready := deq.ready
@@ -640,9 +641,9 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
     val pack = Wire(new PackInfo)
     pack.prec := vd.prec
     pack.idx := wb_eidx
-    val out = repack_bank(pack, UInt(0), bwq.io.deq.bits)
+    val out = repack_bank(pack, 0.U, bwq.io.deq.bits)
 
-    deq.bits.selff := Bool(false) // FIXME
+    deq.bits.selff := false.B // FIXME
     deq.bits.addr := addr
     deq.bits.data := out.data
     deq.bits.mask := out.mask
@@ -670,10 +671,10 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
   //--------------------------------------------------------------------\\
 
   val wb_sets = Seq(wb, wb_pred) ++ wb_update
-  assert(wb_sets.reduce(_ & _) === Bits(0), "VLU: wb bitmap collision")
+  assert(wb_sets.reduce(_ & _) === 0.U, "VLU: wb bitmap collision")
 
   val wb_merge = wb_sets.reduce(_ | _)
-  val wb_shift = Cat(rcnt_pulse, UInt(0, bStrip))
+  val wb_shift = Cat(rcnt_pulse, 0.U(bStrip.W))
   val wb_next = wb_merge >> wb_shift
   wb := wb_next
 
@@ -694,7 +695,7 @@ class VLU(implicit p: Parameters) extends VXUModule()(p)
 }
 
 trait VLUSelect extends DCCParameters {
-  val vidx = UInt(width = bVLU)
+  val vidx = UInt(bVLU.W)
 }
 class VLUSelectBundle(implicit p: Parameters) extends VXUBundle()(p) with VLUSelect
 class VLUSelectIO(implicit p: Parameters)
@@ -702,26 +703,26 @@ class VLUSelectIO(implicit p: Parameters)
 }
 
 class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
-  val io = new DCCIssueIO {
+  val io = IO(new DCCIssueIO {
     val use = new VLUSelectIO
-    val free = Bool(INPUT)
-    val vidx = UInt(OUTPUT, bVLU)
-    val busy = Bool(OUTPUT)
-  }
+    val free = Input(Bool())
+    val vidx = Output(UInt(bVLU.W))
+    val busy = Output(Bool())
+  })
 
-  val head = Reg(init = UInt(0, bVLU))
-  val tail = Reg(init = UInt(0, bVLU))
+  val head = RegInit(0.U(bVLU.W))
+  val tail = RegInit(0.U(bVLU.W))
   val equal = (head === tail)
 
   private def next[T <: UInt](ptr: T) = {
-    val ptr1 = ptr + UInt(1)
+    val ptr1 = ptr + 1.U
     if (isPow2(nVLU)) ptr1 else
-      Mux(ptr === UInt(nVLU-1), UInt(0), ptr1)
+      Mux(ptr === (nVLU-1).U, 0.U, ptr1)
   }
   val head_next = next(head)
   val tail_next = next(tail)
 
-  val used = Reg(init = Bool(false))
+  val used = RegInit(false.B)
   val valid = !(equal && used)
   io.busy := !(equal && !used)
 
@@ -737,10 +738,10 @@ class VLUMapper(implicit p: Parameters) extends VXUModule()(p) {
 
   when (io.free) {
     head := head_next
-    used := Bool(false)
+    used := false.B
   }
   when (io.use.fire) {
     tail := tail_next
-    used := Bool(true)
+    used := true.B
   }
 }
